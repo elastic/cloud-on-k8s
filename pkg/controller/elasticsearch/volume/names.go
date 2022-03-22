@@ -43,4 +43,6 @@ const (
 	DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
 	LabelsFile            = "labels"
 	AnnotationsFile       = "annotations"
+
+	ServiceAccountsFile = "service_tokens"
 )

@@ -7,11 +7,13 @@ package v1
 import (
 	"fmt"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 const (
@@ -19,6 +21,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Kibana"
+	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
+	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
 )
 
 // +kubebuilder:object:root=true
@@ -165,6 +169,8 @@ func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
 
+var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
+
 // -- associations
 
 var _ commonv1.Associated = &Kibana{}
@@ -277,6 +283,17 @@ type KibanaEsAssociation struct {
 
 var _ commonv1.Association = &KibanaEsAssociation{}
 
+func (kbes *KibanaEsAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	v, err := version.Parse(kbes.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+	if v.GTE(KibanaServiceAccountMinVersion) {
+		return KibanaServiceAccount, nil
+	}
+	return "", nil
+}
+
 func (kbes *KibanaEsAssociation) Associated() commonv1.Associated {
 	if kbes == nil {
 		return nil
@@ -324,6 +341,10 @@ type KibanaEntAssociation struct {
 
 var _ commonv1.Association = &KibanaEntAssociation{}
 
+func (kbent *KibanaEntAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (kbent *KibanaEntAssociation) Associated() commonv1.Associated {
 	if kbent == nil {
 		return nil
@@ -369,6 +390,10 @@ type KbMonitoringAssociation struct {
 }
 
 var _ commonv1.Association = &KbMonitoringAssociation{}
+
+func (kbmon *KbMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
 
 func (kbmon *KbMonitoringAssociation) Associated() commonv1.Associated {
 	if kbmon == nil {

@@ -58,6 +58,20 @@ const (
 	Type = "elasticsearch"
 )
 
+// NonMasterRoles are all Elasticsearch node roles except master or voting-only.
+var NonMasterRoles = []common.TrueFalseLabel{
+	NodeTypesDataLabelName,
+	NodeTypesDataHotLabelName,
+	NodeTypesDataColdLabelName,
+	NodeTypesDataFrozenLabelName,
+	NodeTypesDataContentLabelName,
+	NodeTypesDataWarmLabelName,
+	NodeTypesIngestLabelName,
+	NodeTypesMLLabelName,
+	NodeTypesRemoteClusterClientLabelName,
+	NodeTypesTransformLabelName,
+}
+
 // IsMasterNode returns true if the pod has the master node label
 func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)

@@ -132,6 +132,10 @@ func (as *ApmServer) EffectiveVersion() string {
 	return ver
 }
 
+func (as *ApmServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (as *ApmServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 

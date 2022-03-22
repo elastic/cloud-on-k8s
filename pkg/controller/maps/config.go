@@ -116,14 +116,14 @@ func associationConfig(c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settin
 	if !assocConf.IsConfigured() {
 		return cfg, nil
 	}
-	username, password, err := association.ElasticsearchAuthSettings(c, &ems)
+	credentials, err := association.ElasticsearchAuthSettings(c, &ems)
 	if err != nil {
 		return nil, err
 	}
 	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
 		"elasticsearch.host":     assocConf.URL,
-		"elasticsearch.username": username,
-		"elasticsearch.password": password,
+		"elasticsearch.username": credentials.Username,
+		"elasticsearch.password": credentials.Password,
 	})); err != nil {
 		return nil, err
 	}

@@ -217,7 +217,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		return deployment.Params{}, err
 	}
 	// setup a keystore with secure settings in an init container, if specified by the user
-	keystoreResources, err := keystore.NewResources(
+	keystoreResources, err := keystore.ReconcileResources(
 		d,
 		kb,
 		kbv1.KBNamer,

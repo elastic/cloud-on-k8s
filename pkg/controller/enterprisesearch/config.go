@@ -310,14 +310,14 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth 
 		})
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(c, &ent)
+	credentials, err := association.ElasticsearchAuthSettings(c, &ent)
 	if err != nil {
 		return nil, err
 	}
 	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
 		"elasticsearch.host":     entAssocConf.URL,
-		"elasticsearch.username": username,
-		"elasticsearch.password": password,
+		"elasticsearch.username": credentials.Username,
+		"elasticsearch.password": credentials.Password,
 	})); err != nil {
 		return nil, err
 	}

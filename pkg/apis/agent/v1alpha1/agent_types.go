@@ -7,18 +7,22 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/blang/semver/v4"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
+	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
+	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
 
 // AgentSpec defines the desired state of the Agent
@@ -204,6 +208,8 @@ type Agent struct {
 
 var _ commonv1.Associated = &Agent{}
 
+var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
+
 func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range a.Spec.ElasticsearchRefs {
@@ -290,6 +296,20 @@ type AgentESAssociation struct {
 
 var _ commonv1.Association = &AgentESAssociation{}
 
+func (aea *AgentESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	if !aea.Spec.FleetServerEnabled {
+		return "", nil
+	}
+	v, err := version.Parse(aea.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+	if v.GTE(FleetServerServiceAccountMinVersion) {
+		return FleetServerServiceAccount, nil
+	}
+	return "", nil
+}
+
 func (aea *AgentESAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", aea.ref.Namespace, aea.ref.Name)
 }
@@ -338,6 +358,10 @@ type AgentKibanaAssociation struct {
 
 var _ commonv1.Association = &AgentKibanaAssociation{}
 
+func (a *AgentKibanaAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (a *AgentKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(a, a.kbAssocConf)
 }
@@ -377,6 +401,10 @@ type AgentFleetServerAssociation struct {
 }
 
 var _ commonv1.Association = &AgentFleetServerAssociation{}
+
+func (a *AgentFleetServerAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
 
 func (a *AgentFleetServerAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(a, a.fsAssocConf)

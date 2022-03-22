@@ -331,16 +331,16 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apmEsAssociation.SetAssociationConf(&tt.assocConf)
-			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, &apmEsAssociation)
+			gotCredentials, err := ElasticsearchAuthSettings(tt.client, &apmEsAssociation)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotUsername != tt.wantUsername {
-				t.Errorf("getCredentials() gotUsername = %v, want %v", gotUsername, tt.wantUsername)
+			if gotCredentials.Username != tt.wantUsername {
+				t.Errorf("getCredentials() gotUsername = %v, want %v", gotCredentials.Username, tt.wantUsername)
 			}
-			if gotPassword != tt.wantPassword {
-				t.Errorf("getCredentials() gotPassword = %v, want %v", gotPassword, tt.wantPassword)
+			if gotCredentials.Password != tt.wantPassword {
+				t.Errorf("getCredentials() gotPassword = %v, want %v", gotCredentials.Password, tt.wantPassword)
 			}
 		})
 	}

@@ -286,7 +286,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user
-	keystoreResources, err := keystore.NewResources(
+	keystoreResources, err := keystore.ReconcileResources(
 		d,
 		&d.ES,
 		esv1.ESNamer,

@@ -122,6 +122,8 @@ const (
 	NoAuthRequiredValue = "-"
 )
 
+type ServiceAccountName string
+
 // Associated represents an Elastic stack resource that is associated with other stack resources.
 // Examples:
 // - Kibana can be associated with Elasticsearch
@@ -143,6 +145,9 @@ type Associated interface {
 // +kubebuilder:object:generate=false
 type Association interface {
 	Associated
+
+	// ElasticServiceAccount returns the Elasticsearch service account name to be used for authentication.
+	ElasticServiceAccount() (ServiceAccountName, error)
 
 	// Associated can be used to retrieve the associated object
 	Associated() Associated
@@ -188,11 +193,12 @@ func FormatNameWithID(template string, id string) string {
 
 // AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
-	AuthSecretName string `json:"authSecretName"`
-	AuthSecretKey  string `json:"authSecretKey"`
-	CACertProvided bool   `json:"caCertProvided"`
-	CASecretName   string `json:"caSecretName"`
-	URL            string `json:"url"`
+	AuthSecretName   string `json:"authSecretName"`
+	AuthSecretKey    string `json:"authSecretKey"`
+	IsServiceAccount bool   `json:"isServiceAccount"`
+	CACertProvided   bool   `json:"caCertProvided"`
+	CASecretName     string `json:"caSecretName"`
+	URL              string `json:"url"`
 	// Version of the referenced resource. If a version upgrade is in progress,
 	// matches the lowest running version. May be empty if unknown.
 	Version string `json:"version"`

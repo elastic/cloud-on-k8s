@@ -39,7 +39,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	keystoreResources, err := keystore.NewResources(
+	keystoreResources, err := keystore.ReconcileResources(
 		r,
 		as,
 		Namer,

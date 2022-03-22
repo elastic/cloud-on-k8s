@@ -29,7 +29,7 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
@@ -37,8 +37,8 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 	esOutput := map[string]interface{}{
 		"output.elasticsearch": map[string]interface{}{
 			"hosts":    []string{esAssocConf.GetURL()},
-			"username": username,
-			"password": password,
+			"username": credentials.Username,
+			"password": credentials.Password,
 		},
 	}
 
@@ -59,7 +59,7 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
@@ -68,8 +68,8 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 		"setup.dashboards.enabled": true,
 		"setup.kibana": map[string]interface{}{
 			"host":     kbAssocConf.GetURL(),
-			"username": username,
-			"password": password,
+			"username": credentials.Username,
+			"password": credentials.Password,
 		},
 	}
 
