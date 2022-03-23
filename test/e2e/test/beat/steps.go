@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,15 +15,12 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
-
-var log = ulog.Log.WithName("beat-e2e")
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -137,7 +133,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					beat.Status.AvailableNodes = 0
 				}
 				if beat.Status != expected {
-					log.Error(fmt.Errorf("unexpected status"), "unexpected status", "expected", expected, "actual", beat.Status, "diff", cmp.Diff(expected, beat.Status))
 					return fmt.Errorf("expected status %+v but got %+v", expected, beat.Status)
 				}
 				return nil
