@@ -73,8 +73,9 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 
 	err = calculateStatus(params, ready, desired, params.Status)
 	if err != nil {
-		params.Logger.V(1).Info(
-			"Error while calculating new status",
+		params.Logger.Error(
+			err,
+			"While calculating new status",
 			"namespace", params.Beat.Namespace,
 			"beat_name", params.Beat.Name)
 	}
