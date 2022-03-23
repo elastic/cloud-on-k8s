@@ -25,7 +25,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.4 | Apache-2.0
 | link:https://github.com/fsnotify/fsnotify[$$github.com/fsnotify/fsnotify$$] | v1.5.1 | BSD-3-Clause
 | link:https://github.com/ghodss/yaml[$$github.com/ghodss/yaml$$] | v1.0.0 | MIT
-| link:https://github.com/go-logr/logr[$$github.com/go-logr/logr$$] | v1.2.2 | Apache-2.0
+| link:https://github.com/go-logr/logr[$$github.com/go-logr/logr$$] | v1.2.3 | Apache-2.0
 | link:https://github.com/go-test/deep[$$github.com/go-test/deep$$] | v1.0.8 | MIT
 | link:https://github.com/gobuffalo/flect[$$github.com/gobuffalo/flect$$] | v0.2.4 | MIT
 | link:https://github.com/google/go-cmp[$$github.com/google/go-cmp$$] | v0.5.7 | BSD-3-Clause
