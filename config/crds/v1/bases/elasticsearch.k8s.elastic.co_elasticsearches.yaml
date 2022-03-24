@@ -9253,8 +9253,6 @@ spec:
                           can be made. It is only available for clusters managed with
                           the Elasticsearch shutdown API.
                         type: boolean
-                    required:
-                    - nodes
                     type: object
                   upgrade:
                     description: UpgradeOperation provides an overview of the pending
@@ -9297,8 +9295,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                   upscale:
                     description: UpscaleOperation provides an overview of in progress
@@ -9330,8 +9326,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                 required:
                 - downscale
