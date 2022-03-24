@@ -20,17 +20,21 @@ type HasMonitoring interface {
 
 // IsReconcilable return true if a resource has at least one association defined in its specification
 // and all defined associations are configured.
-func IsReconcilable(resource HasMonitoring) bool {
+func IsReconcilable(resource HasMonitoring) (bool, error) {
 	if !IsDefined(resource) {
-		return false
+		return false, nil
 	}
 	allRefs := append(resource.GetMonitoringMetricsRefs(), resource.GetMonitoringLogsRefs()...)
 	for _, ref := range allRefs {
-		if !resource.MonitoringAssociation(ref).AssociationConf().IsConfigured() {
-			return false
+		assocConf, err := resource.MonitoringAssociation(ref).AssociationConf()
+		if err != nil {
+			return false, err
+		}
+		if !assocConf.IsConfigured() {
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // IsDefined return true if a resource has at least one association for Stack Monitoring defined in its specification

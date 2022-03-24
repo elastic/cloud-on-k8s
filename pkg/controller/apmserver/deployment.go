@@ -128,9 +128,13 @@ func buildConfigHash(c k8s.Client, as *apmv1.ApmServer, params PodSpecParams) (s
 
 	// - in the CA certificates of the referenced resources in associations
 	for _, association := range as.GetAssociations() {
-		if association.AssociationConf().CAIsConfigured() {
+		assocConf, err := association.AssociationConf()
+		if err != nil {
+			return "", err
+		}
+		if assocConf.CAIsConfigured() {
 			var publicCASecret corev1.Secret
-			key := types.NamespacedName{Namespace: as.Namespace, Name: association.AssociationConf().GetCASecretName()}
+			key := types.NamespacedName{Namespace: as.Namespace, Name: assocConf.GetCASecretName()}
 			if err := c.Get(context.Background(), key, &publicCASecret); err != nil {
 				return "", err
 			}

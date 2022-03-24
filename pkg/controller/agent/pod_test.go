@@ -472,7 +472,8 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assocs := tt.params.Agent.GetAssociations()
 			tt.setAssocConfs(assocs)
-			associations := getVolumesFromAssociations(assocs)
+			associations, err := getVolumesFromAssociations(assocs)
+			require.NoError(t, err)
 			require.Equal(t, tt.wantAssociationsLength, len(associations))
 		})
 	}

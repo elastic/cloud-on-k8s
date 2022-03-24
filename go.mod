@@ -9,7 +9,7 @@ require (
 	github.com/elastic/go-ucfg v0.8.4
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v1.2.2
+	github.com/go-logr/logr v1.2.3
 	github.com/go-test/deep v1.0.8
 	github.com/gobuffalo/flect v0.2.4
 	github.com/google/go-cmp v0.5.7
@@ -38,7 +38,7 @@ require (
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5
-	k8s.io/klog/v2 v2.60.0
+	k8s.io/klog/v2 v2.60.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/controller-runtime v0.11.1
 	sigs.k8s.io/controller-tools v0.8.0

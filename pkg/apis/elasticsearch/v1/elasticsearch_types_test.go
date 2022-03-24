@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
@@ -313,4 +314,85 @@ func TestElasticsearch_DisabledPredicates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_AssociationConfs tests that if the association configuration map in an associated object is cleared, then
+// AssociationConf() is rebuilt from the annotation.
+func Test_AssociationConfs(t *testing.T) {
+	// simple es without associations
+	es := &Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es",
+			Namespace: "default",
+		},
+	}
+	assert.Equal(t, 0, len(es.GetAssociations()))
+	assert.Equal(t, 0, len(es.AssocConfs))
+
+	// es with associations
+	metricsEsRef := commonv1.ObjectSelector{
+		Name:      "metrics",
+		Namespace: "default",
+	}
+	esMon := &Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "esmon",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"association.k8s.elastic.co/es-conf-4154131866":  `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+				"association.k8s.elastic.co/es-conf-611214426": `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
+			},
+		},
+		Spec: ElasticsearchSpec{
+			Monitoring: Monitoring{
+				Metrics: MetricsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{metricsEsRef},
+				},
+				Logs: LogsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{{
+						Name:      "logs",
+						Namespace: "default"},
+					},
+				},
+			},
+		},
+	}
+	assert.Equal(t, 2, len(esMon.GetAssociations()))
+
+	// map should be initially empty
+	assert.Equal(t, 0, len(esMon.AssocConfs))
+
+	// get and set assoc conf
+	for _, assoc := range esMon.GetAssociations() {
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
+	}
+	// map should have been populated by the call to AssociationConf()
+	assert.Equal(t, 2, len(esMon.AssocConfs))
+
+	// simulate the case where the assocConfs map is reset, which can happen if the resource is updated
+	esMon.AssocConfs = nil
+	assert.Equal(t, 0, len(esMon.AssocConfs))
+
+	// get and set assoc conf
+	for _, assoc := range esMon.GetAssociations() {
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
+	}
+	// checks that all map entries are set again
+	assert.Equal(t, 2, len(esMon.AssocConfs))
+
+	// delete just one entry in the map
+	delete(esMon.AssocConfs, metricsEsRef)
+	assert.Equal(t, 1, len(esMon.AssocConfs))
+
+	// checks that the missing entry is set again
+	for _, assoc := range esMon.GetAssociations() {
+		assocConf, err := assoc.AssociationConf()
+		assert.NotNil(t, assocConf)
+		assert.NoError(t, err)
+	}
+	assert.Equal(t, 2, len(esMon.AssocConfs))
 }

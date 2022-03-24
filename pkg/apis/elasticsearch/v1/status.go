@@ -180,7 +180,7 @@ type NewNode struct {
 type UpscaleOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
 	// Nodes expected to be added by the operator.
-	Nodes []NewNode `json:"nodes"`
+	Nodes []NewNode `json:"nodes,omitempty"`
 }
 
 // UpgradedNode provides details about the status of nodes which are expected to be updated.
@@ -208,7 +208,7 @@ type UpgradeOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
 
 	// Nodes that must be restarted for upgrade.
-	Nodes []UpgradedNode `json:"nodes"`
+	Nodes []UpgradedNode `json:"nodes,omitempty"`
 }
 
 // DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster.
@@ -234,7 +234,7 @@ type DownscaleOperation struct {
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime,omitempty"`
 
 	// Nodes which are scheduled to be removed from the cluster.
-	Nodes []DownscaledNode `json:"nodes"`
+	Nodes []DownscaledNode `json:"nodes,omitempty"`
 
 	// Stalled represents a state where no progress can be made.
 	// It is only available for clusters managed with the Elasticsearch shutdown API.

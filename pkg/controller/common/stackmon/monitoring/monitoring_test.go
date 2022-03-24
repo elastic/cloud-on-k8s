@@ -168,7 +168,8 @@ func TestIsReconcilable(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := IsReconcilable(&tc.es)
+			got, err := IsReconcilable(&tc.es)
+			assert.NoError(t, err)
 			if got != tc.want {
 				t.Errorf("IsReconcilable() got = %v, want %v", got, tc.want)
 				return

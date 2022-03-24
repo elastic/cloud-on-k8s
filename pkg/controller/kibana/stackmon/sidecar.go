@@ -83,7 +83,11 @@ func Filebeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
 // WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Kibana pod and injects the volumes for the beat configurations and the ES CA certificates.
 func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana) (*defaults.PodTemplateBuilder, error) {
-	if !monitoring.IsReconcilable(&kb) {
+	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
+	if err != nil {
+		return nil, err
+	}
+	if !isMonitoringReconcilable {
 		return builder, nil
 	}
 
