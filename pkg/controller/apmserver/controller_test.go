@@ -22,7 +22,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -464,9 +463,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},
 			}
-			var apm apmv1.ApmServer
-			getErr := association.FetchWithAssociations(context.Background(), r.Client, tt.args.request, &apm)
-			require.NoError(t, getErr)
 			got, err := r.Reconcile(context.Background(), tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.Reconcile() error = %v, wantErr %v", err, tt.wantErr)

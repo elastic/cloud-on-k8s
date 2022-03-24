@@ -203,14 +203,6 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return result, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
-	if err != nil {
-		return result, tracing.CaptureError(ctx, err)
-	}
-	if !areAssocsConfigured {
-		return result, nil
-    }
-    
 	results, state := r.doReconcile(ctx, request, &as)
 
 	return results.WithError(r.updateStatus(ctx, state)).Aggregate()
@@ -219,6 +211,14 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (*reconciler.Results, State) {
 	state := NewState(request, as)
 	results := reconciler.NewResult(ctx)
+
+	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err), state
+	}
+	if !areAssocsConfigured {
+		return results, state
+	}
 
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, as); err != nil {
@@ -255,7 +255,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
 	assocAllowed, err := association.AllowVersion(asVersion, as, logger, r.recorder)
 	if err != nil {
-        return results.WithError(err), state
+		return results.WithError(err), state
 	}
 	if !assocAllowed {
 		return results, state // will eventually retry
