@@ -75,6 +75,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				beat := beatv1beta1.Beat{}
 				err := f.Client.Get(
@@ -99,6 +100,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				beat := beatv1beta1.Beat{}
 				err := f.Client.Get(
@@ -123,6 +125,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				beat := beatv1beta1.Beat{}
 				err := f.Client.Get(
@@ -147,6 +150,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				beat := beatv1beta1.Beat{}
 				err := f.Client.Get(
@@ -177,6 +181,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			want:      reconcile.Result{},
 			wantErr:   true,
 			errString: `Beat.beat.k8s.elastic.co "superreallylongbeatsnamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
+			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
 				beat := beatv1beta1.Beat{}
 				err := f.Client.Get(
