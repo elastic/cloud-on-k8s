@@ -92,7 +92,7 @@ Before your current Enterprise license expires, you will receive a new Enterpris
 
 NOTE: You can check the expiry date of your license in the <<{p}-get-usage-data,elastic-licensing>> ConfigMap. Enterprise licenses are container licenses that include multiple licenses for individual Elasticsearch clusters with shorter expiry. Therefore, you will get a different expiry in Kibana or through the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API. ECK will automatically update the Elasticsearch cluster licenses until the expiry date of the ECK Enterprise license is reached.
 
-To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license, we recommend to install the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name from the examples above. ECK will use the correct license automatically.
+To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license, we recommend installing the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name in the <<{p}-add-license,examples above>>. ECK will use the correct license automatically.
 
 Once you have created the new license secret you can safely delete the old license secret.
 
