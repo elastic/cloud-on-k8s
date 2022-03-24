@@ -76,17 +76,17 @@ func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface) {
 	labels := metav1.ListOptions{
 		LabelSelector: "control-plane=elastic-operator",
 	}
-	//Get all the pods that are related to control-plane label.
+	// Get all the pods that are related to control-plane label.
 	pods, err := clientset.CoreV1().Pods("elastic-system").List(ctx, labels)
 	if err != nil {
 		return
 	}
-	for _, pod := range (*pods).Items {
-		UpdateOperatorPod(pod, ctx, clientset)
+	for _, pod := range pods.Items {
+		UpdateOperatorPod(ctx, pod, clientset)
 	}
 }
 
-func UpdateOperatorPod(pod corev1.Pod, ctx context.Context, clientset kubernetes.Interface) {
+func UpdateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes.Interface) {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}

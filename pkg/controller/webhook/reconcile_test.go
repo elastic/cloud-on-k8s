@@ -225,7 +225,7 @@ func TestUpdateOperatorPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			previousValue, previousValueExists := tt.args.pod.Annotations[UpdateAnnotation]
-			UpdateOperatorPod(tt.args.pod, context.Background(), tt.args.clientset)
+			UpdateOperatorPod(context.Background(), tt.args.pod, tt.args.clientset)
 			gotPod, err := tt.args.clientset.CoreV1().Pods("elastic-system").Get(context.Background(), tt.args.modifiedPod, metav1.GetOptions{})
 			assert.NoError(t, err)
 			assert.NotNil(t, gotPod.Annotations)
