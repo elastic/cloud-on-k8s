@@ -84,35 +84,44 @@ func defaultContext() Context {
 	}
 }
 
+type ElasticStackImageDefinition struct {
+	Kind    string `json:"kind"`
+	Image   string `json:"image"`
+	Version string `json:"version"`
+}
+
+type ElasticStackImages []ElasticStackImageDefinition
+
 // Context encapsulates data about a specific test run
 type Context struct {
-	Operator              NamespaceOperator `json:"operator"`
-	E2EImage              string            `json:"e2e_image"`
-	E2ENamespace          string            `json:"e2e_namespace"`
-	E2EServiceAccount     string            `json:"e2e_service_account"`
-	ElasticStackVersion   string            `json:"elastic_stack_version"`
-	LogVerbosity          int               `json:"log_verbosity"`
-	OperatorImage         string            `json:"operator_image"`
-	OperatorImageRepo     string            `json:"operator_image_repo"`
-	OperatorImageTag      string            `json:"operator_image_tag"`
-	TestLicense           string            `json:"test_license"`
-	TestLicensePKeyPath   string            `json:"test_license_pkey_path"`
-	TestRegex             string            `json:"test_regex"`
-	TestRun               string            `json:"test_run"`
-	MonitoringSecrets     string            `json:"monitoring_secrets"`
-	TestTimeout           time.Duration     `json:"test_timeout"`
-	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
-	DeployChaosJob        bool              `json:"deploy_chaos_job"`
-	Local                 bool              `json:"local"`
-	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
-	OcpCluster            bool              `json:"ocp_cluster"`
-	Ocp3Cluster           bool              `json:"ocp3_cluster"`
-	Pipeline              string            `json:"pipeline"`
-	BuildNumber           string            `json:"build_number"`
-	Provider              string            `json:"provider"`
-	ClusterName           string            `json:"clusterName"`
-	KubernetesVersion     version.Version   `json:"kubernetes_version"`
-	TestEnvTags           []string          `json:"test_tags"`
+	Operator              NamespaceOperator  `json:"operator"`
+	E2EImage              string             `json:"e2e_image"`
+	E2ENamespace          string             `json:"e2e_namespace"`
+	E2EServiceAccount     string             `json:"e2e_service_account"`
+	ElasticStackVersion   string             `json:"elastic_stack_version"`
+	ElasticStackImages    ElasticStackImages `json:"elastic_stack_images"`
+	LogVerbosity          int                `json:"log_verbosity"`
+	OperatorImage         string             `json:"operator_image"`
+	OperatorImageRepo     string             `json:"operator_image_repo"`
+	OperatorImageTag      string             `json:"operator_image_tag"`
+	TestLicense           string             `json:"test_license"`
+	TestLicensePKeyPath   string             `json:"test_license_pkey_path"`
+	TestRegex             string             `json:"test_regex"`
+	TestRun               string             `json:"test_run"`
+	MonitoringSecrets     string             `json:"monitoring_secrets"`
+	TestTimeout           time.Duration      `json:"test_timeout"`
+	AutoPortForwarding    bool               `json:"auto_port_forwarding"`
+	DeployChaosJob        bool               `json:"deploy_chaos_job"`
+	Local                 bool               `json:"local"`
+	IgnoreWebhookFailures bool               `json:"ignore_webhook_failures"`
+	OcpCluster            bool               `json:"ocp_cluster"`
+	Ocp3Cluster           bool               `json:"ocp3_cluster"`
+	Pipeline              string             `json:"pipeline"`
+	BuildNumber           string             `json:"build_number"`
+	Provider              string             `json:"provider"`
+	ClusterName           string             `json:"clusterName"`
+	KubernetesVersion     version.Version    `json:"kubernetes_version"`
+	TestEnvTags           []string           `json:"test_tags"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
@@ -128,6 +137,17 @@ func (c Context) HasTag(tag string) bool {
 // KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
 func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
+}
+
+// ImageDefinitionFor returns a specific override for the given kind of resource. Defaults to an empty image
+// and the global Elastic Stack version under test if no override exists.
+func (c Context) ImageDefinitionFor(kind string) ElasticStackImageDefinition {
+	for _, def := range c.ElasticStackImages {
+		if kind == def.Kind {
+			return def
+		}
+	}
+	return ElasticStackImageDefinition{Version: c.ElasticStackVersion}
 }
 
 // ClusterResource is a generic cluster resource.

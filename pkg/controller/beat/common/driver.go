@@ -79,8 +79,13 @@ func Reconcile(
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
-	if !association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder()) {
-		return results, params.Status // will eventually retry
+
+	assocAllowed, err := association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder())
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !assocAllowed {
+		return results // will eventually retry
 	}
 
 	configHash := fnv.New32a()

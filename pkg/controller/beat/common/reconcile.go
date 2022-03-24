@@ -144,7 +144,10 @@ func calculateStatus(params DriverParams, ready, desired int32, status *beatv1be
 	}
 	status.AvailableNodes = ready
 	status.ExpectedNodes = desired
-	status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
+	status.Health, err = CalculateHealth(beat.GetAssociations(), ready, desired)
+    if err != nil {
+        return err
+    }
 	status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
 
 	return nil

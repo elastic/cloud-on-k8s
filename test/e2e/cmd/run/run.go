@@ -140,12 +140,25 @@ func (h *helper) initTestContext() error {
 		return fmt.Errorf("invalid operator image: %s", h.operatorImage)
 	}
 
+	var stackImages test.ElasticStackImages
+	if h.elasticStackImagesPath != "" {
+		bytes, err := ioutil.ReadFile(h.elasticStackImagesPath)
+		if err != nil {
+			return fmt.Errorf("unable to read Elastic Stack images config file: %w", err)
+		}
+		err = json.Unmarshal(bytes, &stackImages)
+		if err != nil {
+			return fmt.Errorf("unable to parse Elastic Stack images config file: %w", err)
+		}
+	}
+
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
 		E2ENamespace:        h.testRunName,
 		E2EServiceAccount:   h.testRunName,
 		ElasticStackVersion: h.elasticStackVersion,
+		ElasticStackImages:  stackImages,
 		Local:               h.local,
 		LogVerbosity:        h.logVerbosity,
 		Operator: test.NamespaceOperator{

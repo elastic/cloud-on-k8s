@@ -44,13 +44,13 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-
+	def := test.Ctx().ImageDefinitionFor(apmv1.Kind)
 	return Builder{
 		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmv1.ApmServerSpec{
 				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"apm-server.ilm.enabled": false,
@@ -64,6 +64,7 @@ func newBuilder(name, randSuffix string) Builder {
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
@@ -73,6 +74,11 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
 	}
+	return b
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.ApmServer.Spec.Image = image
 	return b
 }
 

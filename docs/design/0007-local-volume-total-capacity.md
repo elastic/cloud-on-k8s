@@ -30,9 +30,9 @@ We need a way to make sure pod scheduling takes available disk space into consid
 
 One way to circumvent these problems is to consider that each kubernetes node is composed of:
 
-* X amount of RAM capacity (eg. 10GB)
-* Y amount of disk space (eg. 1TB)
-* A ration Y/X can be expressed as the ram-to-disk storage multiplier (eg. 100 in this scenario)
+* X amount of RAM capacity (for ex. 10GB)
+* Y amount of disk space (for ex. 1TB)
+* A ration Y/X can be expressed as the ram-to-disk storage multiplier (for ex. 100 in this scenario)
 
 If all nodes in the kubernetes cluster respect this approach and use the same ram-to-disk multiplier, we can consider the node will run out of RAM (hence be unschedulable for new pods) before it runs out of disk.
 
@@ -47,7 +47,7 @@ It requires:
 
 Instead of having a single cluster-wide provisioner, we have one provisioner per node, responsible for provisioning PersistentVolume corresponding to the node. Let's call it the "node volume provisioner" (name TBD). The global provisioner does not exist anymore.
 
-On startup, the node volume provisioner inspects the available disk space (eg. 10TB total). It creates a single PersistentVolume resource on the apiserver, with node affinity set to the node it's running on. This PersistentVolume covers the entire available disk space (10TB). This PersistentVolume is not bound to any PersistentVolumeClaim yet. So far, this is quite similar to what's done by the [static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner), except we probably want to consider a single PV with the entire LVM disk space (spanning over multiple disks) instead of creating one PV per disk.
+On startup, the node volume provisioner inspects the available disk space (for ex. 10TB total). It creates a single PersistentVolume resource on the apiserver, with node affinity set to the node it's running on. This PersistentVolume covers the entire available disk space (10TB). This PersistentVolume is not bound to any PersistentVolumeClaim yet. So far, this is quite similar to what's done by the [static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner), except we probably want to consider a single PV with the entire LVM disk space (spanning over multiple disks) instead of creating one PV per disk.
 
 #### PVC/PV binding
 

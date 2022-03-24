@@ -95,7 +95,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -442,6 +442,10 @@ func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }
 
+func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 // IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
 func (es Elasticsearch) IsAutoscalingDefined() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
@@ -542,16 +546,8 @@ func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if ema.AssocConfs == nil {
-		return nil
-	}
-	assocConf, found := ema.AssocConfs[ema.ref]
-	if !found {
-		return nil
-	}
-
-	return &assocConf
+func (ema *EsMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

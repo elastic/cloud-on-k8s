@@ -143,7 +143,11 @@ func updateStatus(params Params, ready, desired int32) error {
 	}
 	agent.Status.AvailableNodes = ready
 	agent.Status.ExpectedNodes = desired
-	agent.Status.Health = CalculateHealth(agent.GetAssociations(), ready, desired)
+	health, err := CalculateHealth(agent.GetAssociations(), ready, desired)
+	if err != nil {
+		return err
+	}
+	agent.Status.Health = health
 	agent.Status.Version = common.LowestVersionFromPods(agent.Status.Version, pods, VersionLabelName)
 
 	return params.Client.Status().Update(context.Background(), &agent)

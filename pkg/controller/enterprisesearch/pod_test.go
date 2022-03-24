@@ -43,7 +43,8 @@ func Test_newPodSpec(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newPodSpec(tt.ent, "amFpbWVsZXNjaGF0c2V0dm91cz8=")
+			got, err := newPodSpec(tt.ent, "amFpbWVsZXNjaGF0c2V0dm91cz8=")
+			assert.NoError(t, err)
 			tt.assertions(got)
 		})
 	}

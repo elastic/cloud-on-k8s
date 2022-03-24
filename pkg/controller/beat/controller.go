@@ -132,9 +132,13 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	defer tracing.EndTransaction(tx)
 
 	var beat beatv1beta1.Beat
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &beat); err != nil {
+	err := r.Client.Get(ctx, request.NamespacedName, &beat)
+	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(request.NamespacedName)
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -169,9 +173,13 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 
 func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(ctx)
-	status := newStatus(beat)
-
-	if !association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder) {
+    status := newStatus(beat)
+    
+	areAssocsConfigured, err := association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err), &status
+	}
+	if !areAssocsConfigured {
 		return results, &status
 	}
 

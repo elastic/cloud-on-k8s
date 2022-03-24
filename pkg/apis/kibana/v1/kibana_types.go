@@ -7,11 +7,13 @@ package v1
 import (
 	"fmt"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 const (
@@ -19,6 +21,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Kibana"
+	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
+	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
 )
 
 // +kubebuilder:object:root=true
@@ -92,7 +96,7 @@ type KibanaSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -164,6 +168,8 @@ func (k *Kibana) SecureSettings() []commonv1.SecretSource {
 func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
+
+var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 // -- associations
 
@@ -277,6 +283,17 @@ type KibanaEsAssociation struct {
 
 var _ commonv1.Association = &KibanaEsAssociation{}
 
+func (kbes *KibanaEsAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	v, err := version.Parse(kbes.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+	if v.GTE(KibanaServiceAccountMinVersion) {
+		return KibanaServiceAccount, nil
+	}
+	return "", nil
+}
+
 func (kbes *KibanaEsAssociation) Associated() commonv1.Associated {
 	if kbes == nil {
 		return nil
@@ -299,8 +316,8 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
-func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbes.assocConf
+func (kbes *KibanaEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbes, kbes.assocConf)
 }
 
 func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -324,6 +341,10 @@ type KibanaEntAssociation struct {
 
 var _ commonv1.Association = &KibanaEntAssociation{}
 
+func (kbent *KibanaEntAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (kbent *KibanaEntAssociation) Associated() commonv1.Associated {
 	if kbent == nil {
 		return nil
@@ -346,8 +367,8 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
-func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbent.entAssocConf
+func (kbent *KibanaEntAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbent, kbent.entAssocConf)
 }
 
 func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -369,6 +390,10 @@ type KbMonitoringAssociation struct {
 }
 
 var _ commonv1.Association = &KbMonitoringAssociation{}
+
+func (kbmon *KbMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
 
 func (kbmon *KbMonitoringAssociation) Associated() commonv1.Associated {
 	if kbmon == nil {
@@ -395,15 +420,8 @@ func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbmon.monitoringAssocConfs == nil {
-		return nil
-	}
-	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
-	if !found {
-		return nil
-	}
-	return &assocConf
+func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(kbmon, kbmon.ref, kbmon.monitoringAssocConfs)
 }
 
 func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

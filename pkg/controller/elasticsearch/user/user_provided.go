@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -151,6 +150,6 @@ func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, 
 
 func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
-	log.Error(errors.Wrap(err, "msg"), "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
+	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 }

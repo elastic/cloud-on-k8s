@@ -8714,9 +8714,9 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. a remote Elasticsearch cluster) in a
-                  different namespace. Can only be used if ECK is enforcing RBAC on
-                  references.
+                  resource to a resource (for ex. a remote Elasticsearch cluster)
+                  in a different namespace. Can only be used if ECK is enforcing RBAC
+                  on references.
                 type: string
               transport:
                 description: Transport holds transport layer settings for Elasticsearch.
@@ -9253,8 +9253,6 @@ spec:
                           can be made. It is only available for clusters managed with
                           the Elasticsearch shutdown API.
                         type: boolean
-                    required:
-                    - nodes
                     type: object
                   upgrade:
                     description: UpgradeOperation provides an overview of the pending
@@ -9297,8 +9295,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                   upscale:
                     description: UpscaleOperation provides an overview of in progress
@@ -9330,8 +9326,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                 required:
                 - downscale

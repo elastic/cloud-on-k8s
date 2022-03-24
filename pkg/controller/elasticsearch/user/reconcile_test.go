@@ -27,7 +27,7 @@ func TestReconcileUsersAndRoles(t *testing.T) {
 	var reconciledSecret corev1.Secret
 	err = c.Get(context.Background(), RolesFileRealmSecretKey(sampleEsWithAuth), &reconciledSecret)
 	require.NoError(t, err)
-	require.Len(t, reconciledSecret.Data, 3)
+	require.Len(t, reconciledSecret.Data, 4)
 	require.NotEmpty(t, reconciledSecret.Data[RolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersRolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersFile])
@@ -50,16 +50,26 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 		WithRole("role1", []string{"user1"}).
 		WithRole("role2", []string{"user2"})
 
-	err := reconcileRolesFileRealmSecret(c, es, roles, realm)
+	saTokens := ServiceAccountTokens{}.
+		Add(ServiceAccountToken{
+			FullyQualifiedServiceAccountName: "fqsa2",
+			HashedSecret:                     "hash2",
+		}).
+		Add(ServiceAccountToken{
+			FullyQualifiedServiceAccountName: "fqsa1",
+			HashedSecret:                     "hash1",
+		})
+	err := reconcileRolesFileRealmSecret(c, es, roles, realm, saTokens)
 	require.NoError(t, err)
 	// retrieve reconciled secret
 	var secret corev1.Secret
 	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.RolesAndFileRealmSecret(es.Name)}, &secret)
 	require.NoError(t, err)
-	require.Len(t, secret.Data, 3)
+	require.Len(t, secret.Data, 4)
 	require.Contains(t, string(secret.Data[RolesFile]), "click_admins")
 	require.Contains(t, string(secret.Data[filerealm.UsersRolesFile]), "role1:user1")
 	require.Contains(t, string(secret.Data[filerealm.UsersFile]), "user1:hash1")
+	require.Equal(t, string(secret.Data[ServiceTokensFileName]), "fqsa1:hash1\nfqsa2:hash2\n")
 }
 
 func Test_aggregateFileRealm(t *testing.T) {

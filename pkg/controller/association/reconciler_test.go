@@ -104,7 +104,7 @@ var (
 	sampleKibanaWithESRef = func() kbv1.Kibana {
 		sample := sampleKibanaNoEsRef()
 		kb := (&sample).DeepCopy()
-		kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace}}
+		kb.Spec = kbv1.KibanaSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace}}
 		return *kb
 	}
 	sampleAssociatedKibana = func(customSvc ...string) kbv1.Kibana {
@@ -115,7 +115,7 @@ var (
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			kb.EsAssociation().AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
+			kb.EsAssociation().AssociationConfAnnotationName(): fmt.Sprintf("{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://%s.esns.svc:9200\",\"version\":\"7.7.0\"}", svcName),
 		}
 		return *kb
 	}
@@ -587,7 +587,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
 	// association conf should be set
-	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
 		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
 	// ent association status should be established
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
@@ -839,6 +839,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			Namespace: "agentNs",
 		},
 		Spec: agentv1alpha1.AgentSpec{
+			Version: "7.7.0",
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
 					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
@@ -862,12 +863,14 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 					Name:      "es1",
 					Namespace: "es1Namespace",
 				},
+				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
 			},
 			&esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "es2",
 					Namespace: "es2Namespace",
 				},
+				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
 			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{

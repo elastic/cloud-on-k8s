@@ -256,9 +256,9 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			expectations:    expectations.NewExpectations(k8sClient),
 			reconcileState:  reconcile.MustNewState(esv1.Elasticsearch{}),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
-			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
+			currentPods:     tt.fields.upgradeTestPods.toCurrentPods(),
 		}
 
 		deleted, err := ctx.Delete()
@@ -987,6 +987,69 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
+			name: "Do not delete all nodes of a tier",
+			fields: fields{
+				esVersion: "8.0.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("ingest-0").withRoles(esv1.IngestRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("ingest-ml-0").withRoles(esv1.IngestRole, esv1.MLRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("ingest-ml-1").withRoles(esv1.IngestRole, esv1.MLRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				shutdowns: map[string]client.NodeShutdown{
+					"ingest-0":    {Status: client.ShutdownComplete},
+					"ingest-ml-0": {Status: client.ShutdownComplete},
+					"ingest-ml-1": {Status: client.ShutdownComplete},
+				},
+				maxUnavailable: 3,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"ingest-0", "ingest-ml-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
+		{
+			name: "But allow deletion of single node tiers",
+			fields: fields{
+				esVersion: "8.0.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("ingest-0").withRoles(esv1.IngestRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				shutdowns: map[string]client.NodeShutdown{
+					"ingest-0": {Status: client.ShutdownComplete},
+				},
+				maxUnavailable: 1,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"ingest-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
+		{
+			name: "Do allow the deletion of unhealthy Pods in a tier",
+			fields: fields{
+				esVersion: "8.0.0",
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("ingest-0").withRoles(esv1.IngestRole).isHealthy(false).needsUpgrade(true).isInCluster(true),
+					newTestPod("ingest-1").withRoles(esv1.IngestRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				shutdowns: map[string]client.NodeShutdown{
+					"ingest-0": {Status: client.ShutdownComplete},
+					"ingest-1": {Status: client.ShutdownComplete},
+				},
+				maxUnavailable: 2,
+				shardLister:    migration.NewFakeShardLister(client.Shards{}),
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"ingest-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
+		{
 			name: "Pod deleted while upgrading",
 			fields: fields{
 				esVersion: "7.5.0",
@@ -1114,7 +1177,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
 				podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 				healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
-				numberOfPods:    len(tt.fields.upgradeTestPods),
+				currentPods:     tt.fields.upgradeTestPods.toCurrentPods(),
 				nodeShutdown:    nodeShutdown,
 			}
 
