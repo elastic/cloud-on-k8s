@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -87,15 +86,16 @@ func TestExternalESStackMonitoring(t *testing.T) {
 	steps := func(k *test.K8sClient) test.StepList {
 		s := test.StepList{
 			test.Step{
-				Name: "Get external node IP",
+				Name: "Get external k8s node IP",
 				Test: test.Eventually(func() error {
 					var err error
 					nodeExternalIP, err = k.GetFirstNodeExternalIP()
-					if err != nil {
-						return err
-					}
-					assert.NoError(t, err)
-
+					return err
+				}),
+			},
+			test.Step{
+				Name: "Configure monitoring ES cluster with NodePort service and k8s node IP in the SAN of the self-signed certificate",
+				Test: test.Eventually(func() error {
 					var es esv1.Elasticsearch
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&monitoring.Elasticsearch), &es); err != nil {
 						return err
@@ -119,12 +119,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						},
 					}
 
-					err = k.Client.Update(context.Background(), &es)
-					if err != nil {
-						return err
-					}
-					return nil
-
+					return k.Client.Update(context.Background(), &es)
 				}),
 			},
 			test.Step{
@@ -144,11 +139,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 					}
 
 					_, err = esClient.Request(context.Background(), req)
-					if err != nil {
-						return err
-					}
-
-					return nil
+					return err
 				}),
 			},
 			test.Step{
@@ -181,12 +172,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						},
 					}
 
-					err = k.CreateOrUpdate(&refSecret)
-					if err != nil {
-						return err
-					}
-
-					return nil
+					return k.CreateOrUpdate(&refSecret)
 				}),
 			},
 			test.Step{
@@ -203,11 +189,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						Logs: esv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
 					}
 
-					err := k.Client.Update(context.Background(), &es)
-					if err != nil {
-						return err
-					}
-					return nil
+					return k.Client.Update(context.Background(), &es)
 				}),
 			},
 		}
