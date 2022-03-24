@@ -247,7 +247,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
 	assocAllowed, err := association.AllowVersion(asVersion, as, logger, r.recorder)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 	if !assocAllowed {
 		return reconcile.Result{}, nil // will eventually retry
