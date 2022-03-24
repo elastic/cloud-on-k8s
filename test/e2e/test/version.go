@@ -14,11 +14,11 @@ import (
 // Elastic Stack versions used in the E2E tests. These should be updated as new versions for each major are released.
 const (
 	// LatestReleasedVersion6x is the latest released version for 6.x
-	LatestReleasedVersion6x = "6.8.20"
+	LatestReleasedVersion6x = "6.8.23"
 	// LatestReleasedVersion7x is the latest released version for 7.x
 	LatestReleasedVersion7x = "7.17.1"
 	// LatestReleasedVersion8x is the latest release version for 8.x
-	LatestReleasedVersion8x = "8.1.0"
+	LatestReleasedVersion8x = "8.1.1"
 	// LatestSnapshotVersion8x is the latest snapshot version for 8.x
 	LatestSnapshotVersion8x = "8.2.0-SNAPSHOT"
 )

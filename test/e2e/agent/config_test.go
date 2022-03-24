@@ -134,7 +134,9 @@ func TestMultipleOutputConfig(t *testing.T) {
 }
 
 func TestFleetMode(t *testing.T) {
-	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(8, 1, 0)) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	// installation of policies and integrations through Kibana file based configuration was broken between those versions:
+	if v.LT(version.MinFor(8, 1, 0)) && v.GTE(version.MinFor(8, 0, 0)) {
 		t.SkipNow()
 	}
 
