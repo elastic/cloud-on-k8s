@@ -107,15 +107,16 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				dynamicWatches: tt.fields.dynamicWatches,
 				Parameters:     tt.fields.Parameters,
 			}
-			got, err := r.doReconcile(context.Background(), tt.args.request, tt.as.DeepCopy())
+			results, _ := r.doReconcile(context.Background(), tt.args.request, tt.as.DeepCopy())
+			res, err := results.Aggregate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.NotNil(t, got)
-			require.Equal(t, got.Requeue, tt.wantRequeue)
+			require.NotNil(t, results)
+			require.Equal(t, res.Requeue, tt.wantRequeue)
 			if tt.wantRequeue {
-				require.True(t, got.RequeueAfter > 0)
+				require.True(t, res.RequeueAfter > 0)
 			}
 		})
 	}

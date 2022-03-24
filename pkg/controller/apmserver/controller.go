@@ -175,6 +175,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "apmserver")
 	defer tracing.EndTransaction(tx)
+	result := reconcile.Result{}
 
 	var as apmv1.ApmServer
 	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
@@ -184,60 +185,48 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 				Name:      request.Name,
 			})
 		}
-		return r.updateStatus(ctx, NewState(request, &as)).WithError(err).Aggregate()
+		return result, err
 	}
 
-	result, err := r.doReconcile(ctx, request, &as)
-
-	if updateStatusresults := r.updateStatus(ctx, state).WithError(err); updateStatusresults != nil {
-		results = updateStatusresults
-	}
-}
-
-func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (*reconcile.Results, State) {
-	var (
-		err error
-		res reconcile.Result
-	)
-
-	state := NewState(request, as)
-	results := reconciler.NewResult(ctx)
-
-	if common.IsUnmanaged(as) {
+	if common.IsUnmanaged(&as) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
-		return results, state
+		return result, nil
 	}
 
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
-		return reconcile.Result{}, err
+		return result, err
 	}
 
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, clean up resources
-		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
+		return result, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	// Always attempt to update the status of the APMServer object during reconciliation.
-	defer func() {
+	results, state := r.doReconcile(ctx, request, &as)
 
-	}()
+	return results.WithError(r.updateStatus(ctx, state)).Aggregate()
+}
+
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (*reconciler.Results, State) {
+	state := NewState(request, as)
+	results := reconciler.NewResult(ctx)
 
 	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
-		return reconcile.Result{}, nil
+		return results, state
 	}
 
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, as); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 
-	_, results = certificates.Reconciler{
+	_, certificateResults := certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 as,
@@ -249,36 +238,36 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		CertRotation:          r.CertRotation,
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
-	if results.HasError() {
-		res, err := results.Aggregate()
+	if certificateResults.HasError() {
+		_, err := certificateResults.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return res, err
+		return results.WithResults(certificateResults), state
 	}
 
 	asVersion, err := version.Parse(as.Spec.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
 	if !association.AllowVersion(asVersion, as, logger, r.recorder) {
-		return reconcile.Result{}, nil // will eventually retry
+		return results, state // will eventually retry
 	}
 
 	state, err = r.reconcileApmServerDeployment(ctx, state, as)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
-			return reconcile.Result{Requeue: true}, nil
+			return results.WithResult(reconcile.Result{Requeue: true}), state
 		}
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
-		return state.Result, tracing.CaptureError(ctx, err)
+		return results.WithResult(state.Result).WithError(err), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
-	res, err = results.WithError(err).Aggregate()
+	_, err = results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
-	return res, err
+	return results, state
 }
 
 func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) error {
@@ -330,14 +319,13 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	return reconciler.ReconcileSecretNoOwnerRef(c, expectedApmServerSecret, as)
 }
 
-func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) *reconciler.Results {
+func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
-	results := reconciler.NewResult(ctx)
 
 	original := state.originalApmServer
 	if reflect.DeepEqual(original.Status, state.ApmServer.Status) {
-		return results
+		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
 		r.recorder.Event(original, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
@@ -348,15 +336,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) *rec
 		"as_name", state.ApmServer.Name,
 		"status", state.ApmServer.Status,
 	)
-	err := common.UpdateStatus(r.Client, state.ApmServer)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", original.Namespace, "as_name", original.Name)
-		results = results.WithResult(reconcile.Result{Requeue: true})
-	} else if err != nil {
-		log.Error(err, "Error while updating status", "namespace", original.Namespace, "as_name", original.Name)
-		results = results.WithError(err)
-	}
-	return results
+	return common.UpdateStatus(r.Client, state.ApmServer)
 }
 
 // NewService returns the service used by the APM Server.
