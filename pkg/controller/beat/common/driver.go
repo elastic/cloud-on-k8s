@@ -82,10 +82,10 @@ func Reconcile(
 
 	assocAllowed, err := association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder())
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	if !assocAllowed {
-		return results // will eventually retry
+		return results, params.Status // will eventually retry
 	}
 
 	configHash := fnv.New32a()
