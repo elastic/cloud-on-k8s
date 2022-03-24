@@ -12,7 +12,7 @@ In Kubernetes, a https://kubernetes.io/docs/tasks/configure-pod-container/securi
 
 == Run as non-root Elasticsearch
 
-By default, the Elastisearch container is run as root and its entrypoint is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK makes sure via an `initContainer` that the data volume is writable for the `elasticsearch` user.
+By default, the Elastisearch container is run as root and its entrypoint is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK uses an `initContainer` to make sure that the data volume is writable for the `elasticsearch` user.
 
 To run the Elastisearch container as a non-root user, you need to configure the Elasticsearch manifest with an appropriate security context to make the data volume writable to the `elasticsearch` user by specifying the right group ID through the `fsGroup`.
 

@@ -1386,7 +1386,7 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
@@ -2321,7 +2321,7 @@ spec:
                 type: string
               type:
                 description: Type is the type of the Beat to deploy (filebeat, metricbeat,
-                  heartbeat, auditbeat, journalbeat, packetbeat, etc.). Any string
+                  heartbeat, auditbeat, journalbeat, packetbeat, and so on). Any string
                   can be used, but well-known types will have the image field defaulted
                   and have the appropriate Elasticsearch roles created automatically.
                   It also allows for dashboard setup when combined with a `KibanaRef`.
@@ -2893,7 +2893,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
@@ -4054,9 +4054,9 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. a remote Elasticsearch cluster) in a
-                  different namespace. Can only be used if ECK is enforcing RBAC on
-                  references.
+                  resource to a resource (for ex. a remote Elasticsearch cluster)
+                  in a different namespace. Can only be used if ECK is enforcing RBAC
+                  on references.
                 type: string
               transport:
                 description: Transport holds transport layer settings for Elasticsearch.
@@ -4593,8 +4593,6 @@ spec:
                           can be made. It is only available for clusters managed with
                           the Elasticsearch shutdown API.
                         type: boolean
-                    required:
-                    - nodes
                     type: object
                   upgrade:
                     description: UpgradeOperation provides an overview of the pending
@@ -4637,8 +4635,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                   upscale:
                     description: UpscaleOperation provides an overview of in progress
@@ -4670,8 +4666,6 @@ spec:
                           - status
                           type: object
                         type: array
-                    required:
-                    - nodes
                     type: object
                 required:
                 - downscale
@@ -6239,7 +6233,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
@@ -6784,7 +6778,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
@@ -7476,7 +7470,7 @@ spec:
                 type: array
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:

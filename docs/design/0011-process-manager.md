@@ -3,7 +3,7 @@
 * Status: rejected (implementation removed) in July 2019. The keystore updater is moved into an init container to adopt the same 
 pattern used for Kibana and APM server. With the move towards the StatefulSet way of doing rolling restarts, we no longer need a
 process manager to perform Elasticsearch cluster restart. The zombie reaping problem only exists when another process is started
-in the container (e.g. kubectl exec) and should probably be handled in the official images.
+in the container (for example kubectl exec) and should probably be handled in the official images.
 Main benefits are code and architecture simplicity as well as respecting k8s standards.
 * Deciders: cloud-on-k8s team
 * Date: 2019-05-28
@@ -20,8 +20,7 @@ The existence of the process manager is driven by three needs:
 
 We chose to provide a Kubernetes native way to users to update the Elasticsearch keystore through a Kubernetes Secret.
 
-The keystore updater is a custom go binary that watches a Volume mounted from a Kubernetes Secret and synchronizes its content
-in the Elasticsearch keystore. Users just have to update the Secret to update the Elasticsearch keystore.
+The keystore updater is a custom go binary that watches a Volume mounted from a Kubernetes Secret and synchronizes its content in the Elasticsearch keystore. Users just have to update the Secret to update the Elasticsearch keystore.
 
 The keystore updater must be able to access the elasticsearch-keystore binary, request the Elasticsearch API endpoint 
 and be run in a long-running process.
@@ -86,7 +85,7 @@ How to perform cluster restart?
     that no other pod will be scheduled on that node, taking up all resources available on the node, preventing the replacing pod to be scheduled.
 * Inject a process manager into the standard Elasticsearch container/image
     * ++ would allow us to restart without recreating the pod, unless we need to change pod resources or environment variables, in which case the above applies
-    * ~ has the disadvantage of being fairly intrusive and complex (copying binaries via initcontainers, overriding command etc)
+    * ~ has the disadvantage of being fairly intrusive and complex (copying binaries through initcontainers, overriding command etc)
 * Use a liveness probe to make Kubernetes restart the container
     * -- hard to coordinate across an ES cluster
     * -- scheduling of restart is somewhat delayed (maybe not a big issue)
@@ -101,7 +100,7 @@ How to perform cluster restart?
 PID 1 zombie reaping problem?
 * Inject a process manager to properly handle signals and reap orphaned zombie processes
 * Use [pid namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/#understanding-process-namespace-sharing)
-    * -- it is off by default in the versions of Kubernetes we support (controlled via `--docker-disable-shared-pid=false`) and there is an experimental new way of doing it in 1.14+ which again we don't know if people are using it
+    * -- it is off by default in the versions of Kubernetes we support (controlled through `--docker-disable-shared-pid=false`) and there is an experimental new way of doing it in 1.14+ which again we don't know if people are using it
 
 ## Decision Outcome
 
@@ -129,7 +128,7 @@ to run the keystore updater and manage the Elasticsearch process in one containe
 ### Negative Consequences
 
 * Share CPU and memory resources with the Elasticsearch container
-* A bit intrusive (copying binaries via init containers, overriding command etc)
+* A bit intrusive (copying binaries through init containers, overriding command, and so on)
 * A bit complex (os signal handling)
 
 ## Links

@@ -127,7 +127,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	defer tracing.EndContextTransaction(ctx)
 
 	agent := &agentv1alpha1.Agent{}
-	if err := association.FetchWithAssociations(ctx, r.Client, request, agent); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, agent); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
@@ -165,7 +165,11 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
-	if !association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder) {
+	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !areAssocsConfigured {
 		return results, status
 	}
 

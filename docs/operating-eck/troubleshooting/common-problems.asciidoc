@@ -200,7 +200,7 @@ For more information, check <<{p}-troubleshooting-methods>>.
 == ECK operator upgrade stays pending when using OLM
 
 When using link:https://github.com/operator-framework/operator-lifecycle-manager[Operator Lifecycle Manager] (OLM) to install and upgrade the ECK operator an upgrade of ECK will not complete on older versions of OLM.
-This is due to an link:https://github.com/operator-framework/operator-lifecycle-manager/pull/1659[issue] in OLM itself that is fixed in version 0.16.0 or later. OLM is also used behind the scenes when you install ECK as a link:https://catalog.redhat.com/software/operators/detail/5f32f067651c4c0bcecf1bfe[Red Hat Certified Operator] on OpenShift or as a community operator via link:https://operatorhub.io/operator/elastic-cloud-eck[operatorhub.io].
+This is due to an link:https://github.com/operator-framework/operator-lifecycle-manager/pull/1659[issue] in OLM itself that is fixed in version 0.16.0 or later. OLM is also used behind the scenes when you install ECK as a link:https://catalog.redhat.com/software/operators/detail/5f32f067651c4c0bcecf1bfe[Red Hat Certified Operator] on OpenShift or as a community operator through link:https://operatorhub.io/operator/elastic-cloud-eck[operatorhub.io].
 
 [source,sh]
 ----

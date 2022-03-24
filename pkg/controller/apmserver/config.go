@@ -105,22 +105,26 @@ func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalCo
 }
 
 func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssociation) (*settings.CanonicalConfig, error) {
-	if !esAssociation.AssociationConf().IsConfigured() {
+	esAssocConf, err := esAssociation.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !esAssocConf.IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
 
 	// Get username and password
-	username, password, err := association.ElasticsearchAuthSettings(c, &esAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(c, &esAssociation)
 	if err != nil {
 		return nil, err
 	}
 
 	tmpOutputCfg := map[string]interface{}{
-		"output.elasticsearch.hosts":    []string{esAssociation.AssociationConf().GetURL()},
-		"output.elasticsearch.username": username,
-		"output.elasticsearch.password": password,
+		"output.elasticsearch.hosts":    []string{esAssocConf.GetURL()},
+		"output.elasticsearch.username": credentials.Username,
+		"output.elasticsearch.password": credentials.Password,
 	}
-	if esAssociation.AssociationConf().GetCACertProvided() {
+	if esAssocConf.GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
 	}
 
@@ -128,23 +132,27 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 }
 
 func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAssociation) (*settings.CanonicalConfig, error) {
-	if !kibanaAssociation.AssociationConf().IsConfigured() {
+	kbAssocConf, err := kibanaAssociation.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !kbAssocConf.IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
 
 	// Get username and password
-	username, password, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
 	if err != nil {
 		return nil, err
 	}
 
 	tmpOutputCfg := map[string]interface{}{
 		"apm-server.kibana.enabled":  true,
-		"apm-server.kibana.host":     kibanaAssociation.AssociationConf().GetURL(),
-		"apm-server.kibana.username": username,
-		"apm-server.kibana.password": password,
+		"apm-server.kibana.host":     kbAssocConf.GetURL(),
+		"apm-server.kibana.username": credentials.Username,
+		"apm-server.kibana.password": credentials.Password,
 	}
-	if kibanaAssociation.AssociationConf().GetCACertProvided() {
+	if kbAssocConf.GetCACertProvided() {
 		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociationType()), certificates.CAFileName)}
 	}
 

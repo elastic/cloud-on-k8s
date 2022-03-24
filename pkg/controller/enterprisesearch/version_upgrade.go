@@ -62,7 +62,12 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return err
 	}
 
-	if upgradeRequested && !r.ent.AssociationConf().AuthIsConfigured() {
+	esAssocConf, err := r.ent.AssociationConf()
+	if err != nil {
+		return err
+	}
+
+	if upgradeRequested && !esAssocConf.AuthIsConfigured() {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
@@ -201,7 +206,7 @@ func (r *VersionUpgrade) serviceURL() string {
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
 func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
-	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
+	credentials, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +221,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(credentials.Username, credentials.Password)
 
 	return req, nil
 }

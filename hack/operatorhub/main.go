@@ -164,6 +164,9 @@ func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, 
 			return nil, closer, fmt.Errorf("failed to open %s: %w", manifestPaths, err)
 		}
 		rs = append(rs, r)
+		// if we're using local yaml files, ensure that they have a proper
+		// end of directives marker between them.
+		rs = append(rs, strings.NewReader(yamlSeparator))
 	}
 	return io.MultiReader(rs...), closer, nil
 }

@@ -134,6 +134,129 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantPendingNewNodes: true, // we have pending nodes waiting to be created
 		},
+		{
+			name: "Merge non-empty status",
+			state: func() *State {
+				s := MustNewState(esv1.Elasticsearch{})
+				// New nodes
+				s.RecordNewNodes([]string{"new-0"})
+				// Nodes to be upgraded
+				s.RecordNodesToBeUpgraded([]string{"to-upgrade-1", "to-upgrade-2"})
+				s.RecordNodesToBeUpgradedWithMessage([]string{"to-upgrade-1"}, "An upgrade Message for to-upgrade-1")
+				s.RecordDeletedNode("to-upgrade-2", "delete message")
+				// Nodes to be removed
+				s.RecordNodesToBeRemoved([]string{"removed-0", "removed-1", "removed-2"})
+				// removed-0 cannot be downscaled for now
+				s.OnReconcileShutdowns([]string{"removed-1", "removed-2"})
+				s.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, "message1")
+				s.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionFalse, "eventually not")
+				return s
+			},
+			args: args{
+				otherStatus: esv1.ElasticsearchStatus{
+					Phase: esv1.ElasticsearchResourceInvalid,
+					Conditions: esv1.Conditions{
+						{
+							Type:    "ReconciliationComplete",
+							Status:  "True",
+							Message: "initially reconciled",
+						},
+					},
+					InProgressOperations: esv1.InProgressOperations{
+						DownscaleOperation: esv1.DownscaleOperation{
+							LastUpdatedTime: metav1.Time{},
+							Nodes: []esv1.DownscaledNode{
+								{
+									Name:           "removed-1",
+									ShutdownStatus: "STALLED",
+									Explanation:    pointer.String("stalled for a reason"),
+								},
+							},
+							Stalled: pointer.Bool(true),
+						},
+						UpgradeOperation: esv1.UpgradeOperation{
+							LastUpdatedTime: metav1.Time{},
+							Nodes: []esv1.UpgradedNode{
+								{
+									Name:      "to-upgrade-0",
+									Status:    "PENDING",
+									Message:   pointer.String("Cannot restart node because of failed predicate"),
+									Predicate: pointer.String("a-predicate-result"),
+								},
+							},
+						},
+						UpscaleOperation: esv1.UpscaleOperation{
+							LastUpdatedTime: metav1.Time{},
+							Nodes: []esv1.NewNode{
+								{Name: "new-1", Status: "PENDING", Message: pointer.String("node 1 to 3 are delayed")},
+								{Name: "new-2", Status: "PENDING", Message: pointer.String("node 1 to 3 are delayed")},
+								{Name: "new-3", Status: "PENDING"},
+							},
+						},
+					},
+				},
+			},
+			wantElasticsearchStatus: esv1.ElasticsearchStatus{
+				Phase: esv1.ElasticsearchResourceInvalid,
+				Conditions: esv1.Conditions{
+					{
+						Type:    "ReconciliationComplete",
+						Status:  "False",
+						Message: "eventually not",
+					},
+					{
+						Type:    "ElasticsearchIsReachable",
+						Status:  "False",
+						Message: "message1",
+					},
+				},
+				InProgressOperations: esv1.InProgressOperations{
+					DownscaleOperation: esv1.DownscaleOperation{
+						LastUpdatedTime: metav1.Time{},
+						Nodes: []esv1.DownscaledNode{
+							{
+								Name:           "removed-0",
+								ShutdownStatus: "NOT_STARTED",
+								Explanation:    nil,
+							},
+							{
+								Name:           "removed-1",
+								ShutdownStatus: "IN_PROGRESS",
+								Explanation:    nil,
+							},
+							{
+								Name:           "removed-2",
+								ShutdownStatus: "IN_PROGRESS",
+								Explanation:    nil,
+							},
+						},
+						Stalled: nil,
+					},
+					UpgradeOperation: esv1.UpgradeOperation{
+						LastUpdatedTime: metav1.Time{},
+						Nodes: []esv1.UpgradedNode{
+							{
+								Name:    "to-upgrade-1",
+								Status:  "PENDING",
+								Message: pointer.String("An upgrade Message for to-upgrade-1"),
+							},
+							{
+								Name:    "to-upgrade-2",
+								Status:  "DELETED",
+								Message: pointer.String("delete message"),
+							},
+						},
+					},
+					UpscaleOperation: esv1.UpscaleOperation{
+						LastUpdatedTime: metav1.Time{},
+						Nodes: []esv1.NewNode{
+							{Name: "new-0", Status: "PENDING"},
+						},
+					},
+				},
+			},
+			wantPendingNewNodes: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

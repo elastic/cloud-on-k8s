@@ -91,7 +91,11 @@ func internalReconcile(params Params, status *agentv1alpha1.AgentStatus) *reconc
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder) {
+	assocAllowed, err := association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !assocAllowed {
 		return results // will eventually retry
 	}
 

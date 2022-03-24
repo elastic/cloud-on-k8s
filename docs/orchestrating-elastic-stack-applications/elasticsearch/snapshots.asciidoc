@@ -73,7 +73,7 @@ kubectl apply -f elasticsearch.yaml
 ----
 
 [id="{p}-secure-settings"]
-== Configure GCS credentials via the Elasticsearch keystore
+== Configure GCS credentials through the Elasticsearch keystore
 
 The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, check https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
 

@@ -97,17 +97,23 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-
+	def := test.Ctx().ImageDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: esv1.ElasticsearchSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.Elasticsearch.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {

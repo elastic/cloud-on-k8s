@@ -41,6 +41,9 @@ func NewState(c esv1.Elasticsearch) (*State, error) {
 	// reset the health to 'unknown' so that if reconciliation fails before the observer has had a chance to get it,
 	// we stop reporting a health that may be out of date
 	status.Health = esv1.ElasticsearchUnknownHealth
+	// reset the phase to an empty string so that we do not report an outdated phase given that certain phases are
+	// stickier than others (eg. invalid)
+	status.Phase = ""
 	return &State{
 		Recorder: events.NewRecorder(),
 		StatusReporter: &StatusReporter{
@@ -101,6 +104,14 @@ func (s *State) UpdateClusterHealth(clusterHealth esv1.ElasticsearchHealth) *Sta
 func (s *State) UpdateWithPhase(
 	phase esv1.ElasticsearchOrchestrationPhase,
 ) *State {
+	switch {
+	// do not overwrite the Invalid marker
+	case s.status.Phase == esv1.ElasticsearchResourceInvalid:
+		return s
+	// do not overwrite non-ready phases like MigratingData
+	case s.status.Phase != "" && phase == esv1.ElasticsearchApplyingChangesPhase:
+		return s
+	}
 	s.status.Phase = phase
 	return s
 }
@@ -150,11 +161,6 @@ func (s *State) UpdateMinRunningVersion(
 	s.ReportCondition(esv1.RunningDesiredVersion, corev1.ConditionTrue, fmt.Sprintf("All nodes are running version %s", runningVersion))
 
 	return s
-}
-
-// IsElasticsearchPhase reports if Elasticsearch is in the provided phase.
-func (s *State) IsElasticsearchPhase(phase esv1.ElasticsearchOrchestrationPhase) bool {
-	return s.status.Phase == phase
 }
 
 // UpdateElasticsearchInvalidWithEvent is a convenient method to set the phase to esv1.ElasticsearchResourceInvalid

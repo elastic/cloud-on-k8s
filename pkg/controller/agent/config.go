@@ -24,7 +24,8 @@ import (
 )
 
 type connectionSettings struct {
-	host, ca, username, password string
+	host, ca    string
+	credentials association.Credentials
 }
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
@@ -90,26 +91,28 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		}
 	}
 
-	for _, assoc := range esAssociations {
-		if !assoc.AssociationConf().IsConfigured() {
-			return settings.NewCanonicalConfig(), nil
-		}
-	}
-
 	outputs := map[string]interface{}{}
 	for i, assoc := range esAssociations {
-		username, password, err := association.ElasticsearchAuthSettings(params.Client, assoc)
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return settings.NewCanonicalConfig(), err
+		}
+		if !assocConf.IsConfigured() {
+			return settings.NewCanonicalConfig(), nil
+		}
+
+		credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
 		}
 
 		output := map[string]interface{}{
 			"type":     "elasticsearch",
-			"username": username,
-			"password": password,
-			"hosts":    []string{assoc.AssociationConf().GetURL()},
+			"username": credentials.Username,
+			"password": credentials.Password,
+			"hosts":    []string{assocConf.GetURL()},
 		}
-		if assoc.AssociationConf().GetCACertProvided() {
+		if assocConf.GetCACertProvided() {
 			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
 		}
 
@@ -152,20 +155,24 @@ func extractConnectionSettings(
 		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
+	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
+	assocConf, err := assoc.AssociationConf()
 	if err != nil {
 		return connectionSettings{}, err
 	}
 
 	ca := ""
-	if assoc.AssociationConf().GetCACertProvided() {
+	if assocConf.GetCACertProvided() {
 		ca = path.Join(certificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{
-		host:     assoc.AssociationConf().GetURL(),
-		ca:       ca,
-		username: username,
-		password: password,
+		host:        assocConf.GetURL(),
+		ca:          ca,
+		credentials: credentials,
 	}, err
 }

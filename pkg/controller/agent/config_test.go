@@ -12,6 +12,7 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -87,9 +88,11 @@ func TestExtractConnectionSettings(t *testing.T) {
 			}),
 			assocType: commonv1.KibanaAssociationType,
 			wantConnectionSettings: connectionSettings{
-				host:     "url",
-				username: "user",
-				password: "password",
+				host: "url",
+				credentials: association.Credentials{
+					Username: "user",
+					Password: "password",
+				},
 			},
 			wantErr: false,
 		},
@@ -107,10 +110,12 @@ func TestExtractConnectionSettings(t *testing.T) {
 			}),
 			assocType: commonv1.KibanaAssociationType,
 			wantConnectionSettings: connectionSettings{
-				host:     "url",
-				ca:       "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
-				username: "user",
-				password: "password",
+				host: "url",
+				ca:   "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
+				credentials: association.Credentials{
+					Username: "user",
+					Password: "password",
+				},
 			},
 			wantErr: false,
 		},

@@ -154,7 +154,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			},
 			{
 				Name: esName + "-es-xpack-file-realm",
-				Keys: []string{"users", "users_roles", "roles.yml"},
+				Keys: []string{"users", "users_roles", "roles.yml", "service_tokens"},
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":                "elasticsearch",
 					"elasticsearch.k8s.elastic.co/cluster-name": esName,

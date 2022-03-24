@@ -59,11 +59,6 @@ func (d *defaultDriver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	// Get current masters
-	actualMasters, err := sset.GetActualMastersForCluster(d.Client, d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
 
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
@@ -77,7 +72,6 @@ func (d *defaultDriver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	numberOfPods := len(currentPods)
 
 	expectedMasters := expectedResources.MasterNodesNames()
 
@@ -91,10 +85,9 @@ func (d *defaultDriver) handleUpgrades(
 		esState,
 		nodeShutdown,
 		expectedMasters,
-		actualMasters,
 		podsToUpgrade,
 		healthyPods,
-		numberOfPods,
+		currentPods,
 	)
 
 	var deletedPods []corev1.Pod
@@ -143,10 +136,9 @@ type upgradeCtx struct {
 	expectations    *expectations.Expectations
 	reconcileState  *reconcile.State
 	expectedMasters []string
-	actualMasters   []corev1.Pod
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
-	numberOfPods    int
+	currentPods     []corev1.Pod
 }
 
 func newUpgrade(
@@ -158,10 +150,9 @@ func newUpgrade(
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
-	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
-	numberOfPods int,
+	currentPods []corev1.Pod,
 ) upgradeCtx {
 	return upgradeCtx{
 		parentCtx:       ctx,
@@ -176,10 +167,9 @@ func newUpgrade(
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,
 		expectedMasters: expectedMaster,
-		actualMasters:   actualMasters,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
-		numberOfPods:    numberOfPods,
+		currentPods:     currentPods,
 	}
 }
 
@@ -187,7 +177,7 @@ func run(upgrade func() ([]corev1.Pod, error)) ([]corev1.Pod, error) {
 	deletedPods, err := upgrade()
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
-		// (could be the statefulset controller)
+		// (could be the StatefulSet controller)
 		// TODO: should we at least log this one in debug mode ?
 		return deletedPods, nil
 	}
@@ -247,6 +237,8 @@ func healthyPods(
 	return healthyPods, nil
 }
 
+// podsToUpgrade returns all Pods of all StatefulSets where the controller-revision-hash label compared to the sset's
+// .status.updateRevision indicates that the Pod still needs to be deleted to be recreated with the new spec.
 func podsToUpgrade(
 	client k8s.Client,
 	statefulSets sset.StatefulSetList,
