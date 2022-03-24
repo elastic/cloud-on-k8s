@@ -161,7 +161,7 @@ func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-// Recorder returns the kubernetes recorder that is responsible for recording and reporting
+// Recorder returns the Kubernetes recorder that is responsible for recording and reporting
 // events from the APM Server reconciler.
 func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder

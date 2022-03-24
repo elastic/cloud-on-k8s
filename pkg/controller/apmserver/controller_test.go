@@ -288,7 +288,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 		Client k8s.Client
 	}
 	type args struct {
-		ctx     context.Context
 		request reconcile.Request
 	}
 	tests := []struct {
@@ -307,7 +306,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:     context.Background(),
 				request: defaultRequest,
 			},
 			want:    reconcile.Result{},
@@ -328,7 +326,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:     context.Background(),
 				request: defaultRequest,
 			},
 			want:    reconcile.Result{},
@@ -350,7 +347,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:     context.Background(),
 				request: defaultRequest,
 			},
 			want:    reconcile.Result{},
@@ -397,7 +393,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:     context.Background(),
 				request: defaultRequest,
 			},
 			want:    reconcile.Result{},
@@ -418,7 +413,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx: context.Background(),
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "superlongapmservernamecausesvalidationissues",
@@ -444,7 +438,6 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:     context.Background(),
 				request: defaultRequest,
 			},
 			want:    reconcile.Result{},
@@ -474,7 +467,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			var apm apmv1.ApmServer
 			getErr := association.FetchWithAssociations(context.Background(), r.Client, tt.args.request, &apm)
 			require.NoError(t, getErr)
-			got, err := r.Reconcile(tt.args.ctx, tt.args.request)
+			got, err := r.Reconcile(context.Background(), tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
