@@ -173,8 +173,8 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 
 func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(ctx)
-    status := newStatus(beat)
-    
+	status := newStatus(beat)
+
 	areAssocsConfigured, err := association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(err), &status
