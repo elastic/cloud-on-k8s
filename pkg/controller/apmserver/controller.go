@@ -187,9 +187,25 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return r.updateStatus(ctx, NewState(request, &as)).WithError(err).Aggregate()
 	}
 
-	if common.IsUnmanaged(&as) {
+	result, err := r.doReconcile(ctx, request, &as)
+
+	if updateStatusresults := r.updateStatus(ctx, state).WithError(err); updateStatusresults != nil {
+		results = updateStatusresults
+	}
+}
+
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (*reconcile.Results, State) {
+	var (
+		err error
+		res reconcile.Result
+	)
+
+	state := NewState(request, as)
+	results := reconciler.NewResult(ctx)
+
+	if common.IsUnmanaged(as) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
-		return reconcile.Result{}, nil
+		return results, state
 	}
 
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
@@ -202,23 +218,9 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	return r.doReconcile(ctx, request, &as)
-}
-
-func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
-	var (
-		err error
-		res reconcile.Result
-	)
-
-	state := NewState(request, as)
-	results := reconciler.NewResult(ctx)
-
 	// Always attempt to update the status of the APMServer object during reconciliation.
 	defer func() {
-		if updateStatusresults := r.updateStatus(ctx, state).WithError(err); updateStatusresults != nil {
-			results = updateStatusresults
-		}
+
 	}()
 
 	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
