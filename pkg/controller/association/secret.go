@@ -107,7 +107,7 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 }
 
 func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
-	url := r.URL+path
+	url := r.URL + path
 	req, err := http.NewRequest("GET", url, nil) //nolint:noctx
 	if err != nil {
 		return "", err
