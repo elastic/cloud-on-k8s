@@ -62,7 +62,12 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return err
 	}
 
-	if upgradeRequested && !r.ent.AssociationConf().AuthIsConfigured() {
+	esAssocConf, err := r.ent.AssociationConf()
+	if err != nil {
+		return err
+	}
+
+	if upgradeRequested && !esAssocConf.AuthIsConfigured() {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.

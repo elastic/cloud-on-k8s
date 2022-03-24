@@ -153,7 +153,11 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 
 	// all volumes with CAs of direct associations
-	vols = append(vols, getVolumesFromAssociations(params.Agent.GetAssociations())...)
+	caAssocVols, err := getVolumesFromAssociations(params.Agent.GetAssociations())
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	vols = append(vols, caAssocVols...)
 
 	labels := maps.Merge(NewLabels(params.Agent), map[string]string{
 		VersionLabelName: spec.Version})
@@ -314,8 +318,12 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		)
 	}
 
+	assocConf, err := esAssociation.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
 	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
-		esAssociation.AssociationConf().GetCASecretName(),
+		assocConf.GetCASecretName(),
 		fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
 		certificatesDir(esAssociation),
 	))
@@ -346,21 +354,25 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 	)
 }
 
-func getVolumesFromAssociations(associations []commonv1.Association) []volume.VolumeLike {
+func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
 	var vols []volume.VolumeLike //nolint:prealloc
 	for i, assoc := range associations {
-		if !assoc.AssociationConf().CAIsConfigured() {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return nil, err
+		}
+		if !assocConf.CAIsConfigured() {
 			// skip as there is no volume to mount if association has no CA configured
 			continue
 		}
-		caSecretName := assoc.AssociationConf().GetCASecretName()
+		caSecretName := assocConf.GetCASecretName()
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
 			caSecretName,
 			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
 			certificatesDir(assoc),
 		))
 	}
-	return vols
+	return vols, nil
 }
 
 func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
@@ -374,13 +386,8 @@ func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
 
 	fsRef := assoc.AssociationRef()
 	fs := agentv1alpha1.Agent{}
-
-	if err := association.FetchWithAssociations(
-		params.Context,
-		params.Client,
-		reconcile.Request{NamespacedName: fsRef.NamespacedName()},
-		&fs,
-	); err != nil {
+	request := reconcile.Request{NamespacedName: fsRef.NamespacedName()}
+	if err = params.Client.Get(params.Context, request.NamespacedName, &fs); err != nil {
 		return nil, err
 	}
 
@@ -496,9 +503,12 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 		if assoc == nil {
 			return fleetCfg, nil
 		}
-
-		fleetCfg[FleetURL] = assoc.AssociationConf().GetURL()
-		if assoc.AssociationConf().GetCACertProvided() {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return nil, err
+		}
+		fleetCfg[FleetURL] = assocConf.GetURL()
+		if assocConf.GetCACertProvided() {
 			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
 		}
 	}

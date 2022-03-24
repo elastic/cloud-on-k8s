@@ -339,16 +339,8 @@ func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.ElasticsearchConfigAnnotationName(aea.ref)
 }
 
-func (aea *AgentESAssociation) AssociationConf() *commonv1.AssociationConf {
-	if aea.esAssocConfs == nil {
-		return nil
-	}
-	assocConf, found := aea.esAssocConfs[aea.ref]
-	if !found {
-		return nil
-	}
-
-	return &assocConf
+func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
 }
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -370,8 +362,8 @@ func (a *AgentKibanaAssociation) ElasticServiceAccount() (commonv1.ServiceAccoun
 	return "", nil
 }
 
-func (a *AgentKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return a.kbAssocConf
+func (a *AgentKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(a, a.kbAssocConf)
 }
 
 func (a *AgentKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -414,8 +406,8 @@ func (a *AgentFleetServerAssociation) ElasticServiceAccount() (commonv1.ServiceA
 	return "", nil
 }
 
-func (a *AgentFleetServerAssociation) AssociationConf() *commonv1.AssociationConf {
-	return a.fsAssocConf
+func (a *AgentFleetServerAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(a, a.fsAssocConf)
 }
 
 func (a *AgentFleetServerAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

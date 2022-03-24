@@ -105,10 +105,14 @@ func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[strin
 		return nil, volume.SecretVolume{}, err
 	}
 
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return nil, nil, err
+	}
 	outputConfig := map[string]interface{}{
 		"username": credentials.Username,
 		"password": credentials.Password,
-		"hosts":    []string{assoc.AssociationConf().GetURL()},
+		"hosts":    []string{assocConf.GetURL()},
 	}
 
 	caDirPath := fmt.Sprintf(
@@ -117,12 +121,12 @@ func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[strin
 	)
 
 	var caVolume volume.VolumeLike
-	if assoc.AssociationConf().GetCACertProvided() {
+	if assocConf.GetCACertProvided() {
 		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
 		outputConfig["ssl.certificate_authorities"] = []string{sslCAPath}
 		volumeName := caVolumeName(assoc)
 		caVolume = volume.NewSecretVolumeWithMountPath(
-			assoc.AssociationConf().GetCASecretName(), volumeName, caDirPath,
+			assocConf.GetCASecretName(), volumeName, caDirPath,
 		)
 	}
 

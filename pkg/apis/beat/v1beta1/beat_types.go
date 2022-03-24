@@ -253,8 +253,8 @@ func (b *BeatESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return b.esAssocConf
+func (b *BeatESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(b, b.esAssocConf)
 }
 
 func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -271,8 +271,8 @@ type BeatKibanaAssociation struct {
 
 var _ commonv1.Association = &BeatKibanaAssociation{}
 
-func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return b.kbAssocConf
+func (b *BeatKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(b, b.kbAssocConf)
 }
 
 func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
