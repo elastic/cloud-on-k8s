@@ -262,14 +262,14 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 		stateAssertions func(s *State)
 	}{
 		{
-			name: "phase is not changed by default",
+			name: "phase is defaulting to empty",
 			cluster: esv1.Elasticsearch{
 				Status: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchApplyingChangesPhase,
 				},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, esv1.ElasticsearchApplyingChangesPhase, s.status.Phase)
+				assert.EqualValues(t, "", s.status.Phase)
 			},
 		},
 		{
@@ -470,4 +470,50 @@ func conditionsEqual(c1, c2 esv1.Condition) bool {
 	return c1.Message == c2.Message &&
 		c1.Type == c2.Type &&
 		c1.Status == c2.Status
+}
+
+func TestState_UpdateWithPhase(t *testing.T) {
+	tests := []struct {
+		name   string
+		status esv1.ElasticsearchStatus
+		phase  esv1.ElasticsearchOrchestrationPhase
+		want   esv1.ElasticsearchOrchestrationPhase
+	}{
+		{
+			name:   "empty default can always be overridden",
+			status: esv1.ElasticsearchStatus{},
+			phase:  esv1.ElasticsearchApplyingChangesPhase,
+			want:   esv1.ElasticsearchApplyingChangesPhase,
+		},
+		{
+			name: "Invalid phase is sticky",
+			status: esv1.ElasticsearchStatus{
+				Phase: esv1.ElasticsearchResourceInvalid,
+			},
+			phase: esv1.ElasticsearchReadyPhase,
+			want:  esv1.ElasticsearchResourceInvalid,
+		},
+		{
+			name: "ApplyingChanges must not override non-ready phases",
+			status: esv1.ElasticsearchStatus{
+				Phase: esv1.ElasticsearchMigratingDataPhase,
+			},
+			phase: esv1.ElasticsearchApplyingChangesPhase,
+			want:  esv1.ElasticsearchMigratingDataPhase,
+		},
+		{
+			name:   "ApplyingChanges can be set if no other phase is set",
+			status: esv1.ElasticsearchStatus{},
+			phase:  esv1.ElasticsearchApplyingChangesPhase,
+			want:   esv1.ElasticsearchApplyingChangesPhase,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &State{
+				status: tt.status,
+			}
+			assert.Equalf(t, tt.want, s.UpdateWithPhase(tt.phase).status.Phase, "UpdateWithPhase(%v)", tt.phase)
+		})
+	}
 }

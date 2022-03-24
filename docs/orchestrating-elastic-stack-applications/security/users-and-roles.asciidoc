@@ -24,6 +24,8 @@ kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | 
 
 == Creating custom users
 
+WARNING: Do not run the `elasticsearch-service-tokens` command inside an Elasticsearch Pod managed by the operator. This would overwrite the service account tokens used internally to authenticate the Elastic stack applications.
+
 === Native realm
 
 You can create custom users in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/native-realm.html[Elasticsearch native realm] using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api.html#security-user-apis[Elasticsearch user management APIs].

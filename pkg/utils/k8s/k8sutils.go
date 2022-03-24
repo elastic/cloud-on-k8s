@@ -168,6 +168,22 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 	return nil
 }
 
+// DeleteSecretIfExists deletes the secret identified by key if exists.
+func DeleteSecretIfExists(c Client, key types.NamespacedName) error {
+	var secret corev1.Secret
+	err := c.Get(context.Background(), key, &secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	err = c.Delete(context.Background(), &secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
 // PodsMatchingLabels returns Pods from the given namespace matching the given labels.
 func PodsMatchingLabels(c Client, namespace string, labels map[string]string) ([]corev1.Pod, error) {
 	var pods corev1.PodList

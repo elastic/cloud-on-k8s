@@ -405,11 +405,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/logr
-Version : v1.2.2
-Time    : 2021-12-05T13:02:31Z
+Version : v1.2.3
+Time    : 2022-03-17T09:17:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.2.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/logr@v1.2.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2082,11 +2082,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cobra
-Version : v1.3.0
-Time    : 2021-12-14T18:22:51Z
+Version : v1.4.0
+Time    : 2022-03-10T15:19:35Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.3.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.4.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -2334,11 +2334,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.7.0
-Time    : 2021-01-13T09:54:11Z
+Version : v1.7.1
+Time    : 2022-03-15T21:08:43Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.1/LICENSE:
 
 MIT License
 
@@ -3182,11 +3182,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.23.4
-Time    : 2022-02-17T18:14:00Z
+Version : v0.23.5
+Time    : 2022-03-17T02:22:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.5/LICENSE:
 
 
                                  Apache License
@@ -3394,11 +3394,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.23.4/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.23.4
+Version : v0.23.5
 Time    : 2022-01-24T17:21:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.5/LICENSE:
 
 
                                  Apache License
@@ -3606,11 +3606,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.23.4/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.23.4
-Time    : 2022-02-17T18:23:51Z
+Version : v0.23.5
+Time    : 2022-03-17T02:36:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.5/LICENSE:
 
 
                                  Apache License
@@ -3818,11 +3818,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.23.4/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.40.1
-Time    : 2021-12-18T21:15:25Z
+Version : v2.60.1
+Time    : 2022-03-20T11:07:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.40.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.60.1/LICENSE:
 
 Apache License
 Version 2.0, January 2004
@@ -4019,11 +4019,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20211116205334-6203023598ed
-Time    : 2021-11-16T20:53:34Z
+Version : v0.0.0-20220210201930-3a6ce19ff2f9
+Time    : 2022-02-10T20:19:30Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20211116205334-6203023598ed/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220210201930-3a6ce19ff2f9/LICENSE:
 
 
                                  Apache License

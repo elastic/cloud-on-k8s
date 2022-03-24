@@ -45,7 +45,7 @@ spec:
   count: 1
 ----
 
-Versions of {ems} prior to 7.14 need a connection to Elasticseach to verify the installed license. You define the connection via the `elasticsearchRef` attribute:
+Versions of {ems} prior to 7.14 need a connection to Elasticseach to verify the installed license. You define the connection with the `elasticsearchRef` attribute:
 
 [source,yaml,subs="attributes"]
 ----
@@ -199,7 +199,7 @@ spec:
      logging.level: debug
 ----
 
-Alternatively, settings can be provided via a Secret specified in the `configRef` element:
+Alternatively, settings can be provided through a Secret specified in the `configRef` element:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: maps.k8s.elastic.co/v1alpha1

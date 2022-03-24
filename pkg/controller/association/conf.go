@@ -8,64 +8,43 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"unsafe"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// FetchWithAssociations retrieves an object and extracts its association configurations.
-func FetchWithAssociations(
-	ctx context.Context,
-	client k8s.Client,
-	request reconcile.Request,
-	associated commonv1.Associated,
-) error {
-	span, _ := apm.StartSpan(ctx, "fetch_associations", tracing.SpanTypeApp)
-	defer span.End()
-
-	if err := client.Get(context.Background(), request.NamespacedName, associated); err != nil {
-		return err
-	}
-
-	for _, association := range associated.GetAssociations() {
-		assocConf, err := GetAssociationConf(association)
-		if err != nil {
-			return err
-		}
-		association.SetAssociationConf(assocConf)
-	}
-
-	return nil
-}
-
-func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) bool {
+func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) (bool, error) {
 	allAssociationsConfigured := true
 	for _, association := range associations {
-		allAssociationsConfigured = allAssociationsConfigured && IsConfiguredIfSet(association, r)
+		isAssocConfigured, err := IsConfiguredIfSet(association, r)
+		if err != nil {
+			return false, err
+		}
+		allAssociationsConfigured = allAssociationsConfigured && isAssocConfigured
 	}
-	return allAssociationsConfigured
+	return allAssociationsConfigured, nil
 }
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) bool {
+func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) (bool, error) {
 	ref := association.AssociationRef()
-	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return false, err
+	}
+	if (&ref).IsDefined() && !assocConf.IsConfigured() {
 		r.Event(
 			association,
 			corev1.EventTypeWarning,
@@ -79,55 +58,74 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"ref_namespace", ref.Namespace,
 			"ref_name", ref.Name,
 		)
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
-// ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
+type Credentials struct {
+	Username, Password, ServiceAccountToken string
+}
+
+func (c Credentials) HasServiceAccountToken() bool {
+	return len(c.ServiceAccountToken) > 0
+}
+
+// ElasticsearchAuthSettings returns the credentials to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
 // This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
-func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (username, password string, err error) {
-	assocConf := association.AssociationConf()
+func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (Credentials, error) {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return Credentials{}, err
+	}
 	if !assocConf.AuthIsConfigured() {
-		return "", "", nil
+		return Credentials{}, nil
 	}
 
 	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
 	var secret corev1.Secret
 	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
-		return "", "", err
+		return Credentials{}, err
 	}
 
 	data, ok := secret.Data[assocConf.AuthSecretKey]
 	if !ok {
-		return "", "", errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
+		return Credentials{}, errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
 	}
 
-	return assocConf.AuthSecretKey, string(data), nil
+	if assocConf.IsServiceAccount {
+		return Credentials{ServiceAccountToken: string(data)}, nil
+	}
+
+	return Credentials{Username: assocConf.AuthSecretKey, Password: string(data)}, nil
 }
 
 // AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
 // Referenced resources version is parsed from the association conf annotation.
-func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) bool {
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
 		if !assocRef.IsDefined() {
 			// no association specified, move on
 			continue
 		}
-		if assoc.AssociationConf() == nil || assoc.AssociationConf().Version == "" {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return false, err
+		}
+		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
 				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
-			return false
+			return false, nil
 		}
-		refVer, err := version.Parse(assoc.AssociationConf().Version)
+		refVer, err := version.Parse(assocConf.Version)
 		if err != nil {
-			logger.Error(err, "Invalid version found in association configuration", "association_version", assoc.AssociationConf().Version)
-			return false
+			logger.Error(err, "Invalid version found in association configuration", "association_version", assocConf.Version)
+			return false, nil
 		}
 
 		compatibleVersions := refVer.GTE(resourceVersion) || ((refVer.Major == resourceVersion.Major) && (refVer.Minor == resourceVersion.Minor))
@@ -139,21 +137,10 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
-			return false
+			return false, nil
 		}
 	}
-	return true
-}
-
-// GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(association)
-	if err != nil {
-		return nil, err
-	}
-
-	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
+	return true, nil
 }
 
 // SingleAssociationOfType returns single association from the provided slice that matches provided type. Returns
@@ -174,24 +161,6 @@ func SingleAssociationOfType(
 	}
 
 	return result, nil
-}
-
-func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
-	if len(annotations) == 0 {
-		return nil, nil
-	}
-
-	var assocConf commonv1.AssociationConf
-	serializedConf, exists := annotations[annotationName]
-	if !exists || serializedConf == "" {
-		return nil, nil
-	}
-
-	if err := json.Unmarshal(unsafeStringToBytes(serializedConf), &assocConf); err != nil {
-		return nil, errors.Wrapf(err, "failed to extract association configuration")
-	}
-
-	return &assocConf, nil
 }
 
 // RemoveObsoleteAssociationConfs removes all no longer needed annotations on `associated` matching
@@ -289,18 +258,6 @@ func UpdateAssociationConf(
 
 	// persist the changes
 	return client.Update(context.Background(), obj)
-}
-
-// unsafeStringToBytes converts a string to a byte array without making extra allocations.
-// since we read potentially large strings from annotations on every reconcile loop, this should help
-// reduce the amount of garbage created.
-func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
-		Data: hdr.Data,
-		Len:  hdr.Len,
-		Cap:  hdr.Len,
-	}))
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.

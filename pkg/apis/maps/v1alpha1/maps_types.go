@@ -51,7 +51,7 @@ type MapsSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -88,8 +88,8 @@ func (m *ElasticMapsServer) ServiceAccountName() string {
 	return m.Spec.ServiceAccountName
 }
 
-func (m *ElasticMapsServer) AssociationConf() *commonv1.AssociationConf {
-	return m.assocConf
+func (m *ElasticMapsServer) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(m, m.assocConf)
 }
 
 func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -121,6 +121,10 @@ func (m *ElasticMapsServer) SetAssociationStatusMap(typ commonv1.AssociationType
 
 	m.Status.AssociationStatus = single
 	return nil
+}
+
+func (m *ElasticMapsServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
 }
 
 func (m *ElasticMapsServer) GetAssociations() []commonv1.Association {

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
@@ -57,10 +58,11 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
-		want    []corev1.PersistentVolumeClaim
-		wantErr bool
+		name       string
+		args       args
+		want       []corev1.PersistentVolumeClaim
+		wantUpdate bool
+		wantErr    bool
 	}{
 		{
 			name: "remove references on DeleteOnScaledownOnlyPolicy",
@@ -68,8 +70,19 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
-			wantErr: false,
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
+			wantErr:    false,
+			wantUpdate: true,
+		},
+		{
+			name: "avoid unnecessary updates when reference already removed",
+			args: args{
+				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0")),
+				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
+			},
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
+			wantUpdate: false,
+			wantErr:    false,
 		},
 		{
 			name: "add references for DeleteOnScaledownAndClusterDeletionPolicy",
@@ -77,8 +90,19 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "es")},
-			wantErr: false,
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "es")},
+			wantErr:    false,
+			wantUpdate: true,
+		},
+		{
+			name: "avoid unnecessary updates when reference already added",
+			args: args{
+				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es")),
+				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
+			},
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "es")},
+			wantErr:    false,
+			wantUpdate: false,
 		},
 		{
 			name: "keep references set by other controllers when removing owner ref",
@@ -86,8 +110,9 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "es", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref")},
-			wantErr: false,
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref")},
+			wantErr:    false,
+			wantUpdate: true,
 		},
 		{
 			name: "keep references set by other controllers when setting owner ref",
@@ -95,13 +120,15 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 				c:  k8s.NewFakeClient(pvcFixturePtr("es-data-0", "some-other-ref")),
 				es: esFixture(esv1.DeleteOnScaledownAndClusterDeletionPolicy),
 			},
-			want:    []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref", "es")},
-			wantErr: false,
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref", "es")},
+			wantErr:    false,
+			wantUpdate: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reconcilePVCOwnerRefs(tt.args.c, tt.args.es); (err != nil) != tt.wantErr {
+			trackedClient := trackingK8sClient{Client: tt.args.c}
+			if err := reconcilePVCOwnerRefs(&trackedClient, tt.args.es); (err != nil) != tt.wantErr {
 				t.Errorf("reconcilePVCOwnerRefs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var pvcs corev1.PersistentVolumeClaimList
@@ -112,6 +139,17 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			for i := 0; i < len(tt.want); i++ {
 				comparison.AssertEqual(t, &pvcs.Items[i], &tt.want[i])
 			}
+			require.Equal(t, tt.wantUpdate, trackedClient.updateCalled, "unexpected client interaction: update called")
 		})
 	}
+}
+
+type trackingK8sClient struct {
+	k8s.Client
+	updateCalled bool
+}
+
+func (t *trackingK8sClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	t.updateCalled = true
+	return t.Client.Update(ctx, obj, opts...)
 }

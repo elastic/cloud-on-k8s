@@ -68,16 +68,17 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-
+	def := test.Ctx().ImageDefinitionFor(entv1.Kind)
 	b := Builder{
 		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,
 			Spec: entv1.EnterpriseSearchSpec{
 				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name).
@@ -97,6 +98,11 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 		Name:      b.EnterpriseSearch.Name,
 		Namespace: b.EnterpriseSearch.Namespace,
 	}
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.EnterpriseSearch.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {

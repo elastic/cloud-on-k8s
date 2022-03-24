@@ -55,11 +55,12 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
+	def := test.Ctx().ImageDefinitionFor(kbv1.Kind)
 	return Builder{
 		Kibana: kbv1.Kibana{
 			ObjectMeta: meta,
 			Spec: kbv1.KibanaSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -68,9 +69,15 @@ func newBuilder(name, randSuffix string) Builder {
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.Kibana.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {

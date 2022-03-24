@@ -54,7 +54,7 @@ type ApmServerSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -141,6 +141,10 @@ func (as *ApmServer) EffectiveVersion() string {
 	}
 
 	return ver
+}
+
+func (as *ApmServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
 }
 
 func (as *ApmServer) GetAssociations() []commonv1.Association {
@@ -231,8 +235,8 @@ func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
-func (aes *ApmEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return aes.esAssocConf
+func (aes *ApmEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(aes, aes.esAssocConf)
 }
 
 func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -280,8 +284,8 @@ func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
 	return akb.Spec.KibanaRef.Name != ""
 }
 
-func (akb *ApmKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return akb.kibanaAssocConf
+func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(akb, akb.kibanaAssocConf)
 }
 
 func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
