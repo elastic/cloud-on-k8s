@@ -28,9 +28,6 @@ func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) (*A
 // (see https://github.com/elastic/cloud-on-k8s/issues/4709#issuecomment-1042898108), hence we check if this map is empty,
 // in which case we try to populate it again from the annotation.
 func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]AssociationConf) (*AssociationConf, error) {
-	if len(assocConfs) == 0 {
-		return setAssocConfFromAnnotation(assoc)
-	}
 	assocConf, found := assocConfs[ref]
 	if !found {
 		return setAssocConfFromAnnotation(assoc)
@@ -50,10 +47,6 @@ func setAssocConfFromAnnotation(assoc Association) (*AssociationConf, error) {
 
 // extractAssocConfFromAnnotation extracts the association configuration from annotations and an annotation name.
 func extractAssocConfFromAnnotation(annotations map[string]string, annotationName string) (*AssociationConf, error) {
-	if len(annotations) == 0 {
-		return nil, nil
-	}
-
 	var assocConf AssociationConf
 	serializedConf, exists := annotations[annotationName]
 	if !exists || serializedConf == "" {
