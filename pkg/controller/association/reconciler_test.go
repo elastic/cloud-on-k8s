@@ -1197,8 +1197,8 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	require.Error(t, err)
 	require.Equal(t, "password secret key doesn't exist in secret sample-es-ref-secret", err.Error())
-	// no requeue to trigger
-	require.Equal(t, reconcile.Result{}, results)
+	// expect a re-queue
+	require.Equal(t, defaultRequeue, results)
 	// should only have dynamic watches set for secrets
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
 	require.Empty(t, r.watches.ReferencedResources.Registrations())
