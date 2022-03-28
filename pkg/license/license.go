@@ -39,7 +39,8 @@ type LicensingInfo struct {
 	Timestamp                  string
 	EckLicenseLevel            string
 	EckLicenseExpiryDate       *time.Time
-	TotalManagedMemory         float64
+	TotalManagedMemoryGiB      float64
+	TotalManagedMemoryBytes    int64
 	MaxEnterpriseResourceUnits int64
 	EnterpriseResourceUnits    int64
 }
@@ -47,10 +48,11 @@ type LicensingInfo struct {
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
 func (li LicensingInfo) toMap() map[string]string {
 	m := map[string]string{
-		"timestamp":                 li.Timestamp,
-		"eck_license_level":         li.EckLicenseLevel,
-		"total_managed_memory":      fmt.Sprintf("%0.2fGB", li.TotalManagedMemory),
-		"enterprise_resource_units": strconv.FormatInt(li.EnterpriseResourceUnits, 10),
+		"timestamp":                  li.Timestamp,
+		"eck_license_level":          li.EckLicenseLevel,
+		"total_managed_memory":       fmt.Sprintf("%0.2fGiB", li.TotalManagedMemoryGiB),
+		"total_managed_memory_bytes": fmt.Sprintf("%d", li.TotalManagedMemoryBytes),
+		"enterprise_resource_units":  strconv.FormatInt(li.EnterpriseResourceUnits, 10),
 	}
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -66,7 +68,7 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemory)
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemoryGiB)
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -91,7 +93,8 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         r.getOperatorLicenseLevel(operatorLicense),
 		EckLicenseExpiryDate:    r.getOperatorLicenseExpiry(operatorLicense),
-		TotalManagedMemory:      inGB(totalMemory),
+		TotalManagedMemoryGiB:   inGiB(totalMemory),
+		TotalManagedMemoryBytes: totalMemory.Value(),
 		EnterpriseResourceUnits: inEnterpriseResourceUnits(totalMemory),
 	}
 
@@ -186,10 +189,10 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 	return int64(maxERUs)
 }
 
-// inGB converts a resource.Quantity in gigabytes
-func inGB(q resource.Quantity) float64 {
-	// divide the value (in bytes) per 1 billion (1GB)
-	return float64(q.Value()) / 1000000000
+// inGiB converts a resource.Quantity in gibibytes
+func inGiB(q resource.Quantity) float64 {
+	// divide the value (in bytes) per 1024*1024*1024 (1GiB)
+	return float64(q.Value()) / (1024*1024*1024)
 }
 
 // inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
