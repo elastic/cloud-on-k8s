@@ -97,15 +97,19 @@ func buildPodTemplate(
 		dataVolume,
 	}
 
-	for _, association := range params.Beat.GetAssociations() {
-		if !association.AssociationConf().CAIsConfigured() {
+	for _, assoc := range params.Beat.GetAssociations() {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		if !assocConf.CAIsConfigured() {
 			continue
 		}
-		caSecretName := association.AssociationConf().GetCASecretName()
+		caSecretName := assocConf.GetCASecretName()
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("%s-certs", association.AssociationType()),
-			certificatesDir(association),
+			fmt.Sprintf("%s-certs", assoc.AssociationType()),
+			certificatesDir(assoc),
 		)
 		vols = append(vols, caVolume)
 	}

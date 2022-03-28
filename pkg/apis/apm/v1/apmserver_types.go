@@ -219,8 +219,8 @@ func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
-func (aes *ApmEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return aes.esAssocConf
+func (aes *ApmEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(aes, aes.esAssocConf)
 }
 
 func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -268,8 +268,8 @@ func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
 	return akb.Spec.KibanaRef.Name != ""
 }
 
-func (akb *ApmKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return akb.kibanaAssocConf
+func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(akb, akb.kibanaAssocConf)
 }
 
 func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

@@ -36,7 +36,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.6 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
 | link:https://github.com/pmezard/go-difflib[$$github.com/pmezard/go-difflib$$] | v1.0.0 | BSD-3-Clause
-| link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.11.0 | Apache-2.0
+| link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.12.1 | Apache-2.0
 | link:https://github.com/prometheus/common[$$github.com/prometheus/common$$] | v0.32.1 | Apache-2.0
 | link:https://github.com/sethvargo/go-password[$$github.com/sethvargo/go-password$$] | v0.2.0 | MIT
 | link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.4.0 | Apache-2.0
@@ -145,7 +145,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml$$] | v1.9.4 | Apache-2.0
 | link:https://github.com/pierrec/lz4[$$github.com/pierrec/lz4$$] | v2.5.2+incompatible | BSD-3-Clause
 | link:https://github.com/prometheus/client_model[$$github.com/prometheus/client_model$$] | v0.2.0 | Apache-2.0
-| link:https://github.com/prometheus/procfs[$$github.com/prometheus/procfs$$] | v0.6.0 | Apache-2.0
+| link:https://github.com/prometheus/procfs[$$github.com/prometheus/procfs$$] | v0.7.3 | Apache-2.0
 | link:https://github.com/ryanuber/go-glob[$$github.com/ryanuber/go-glob$$] | v1.0.0 | MIT
 | link:https://github.com/santhosh-tekuri/jsonschema[$$github.com/santhosh-tekuri/jsonschema$$] | v1.2.4 | BSD-3-Clause
 | link:https://github.com/shopspring/decimal[$$github.com/shopspring/decimal$$] | v1.2.0 | MIT
@@ -165,7 +165,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.5.0 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20211209124913-491a49abca63 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20211104180415-d3ed0bb246c8 | BSD-3-Clause
-| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20211210111614-af8b64212486 | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220114195835-da31bd327af9 | BSD-3-Clause
 | link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210615171337-6886f2dfbf5b | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.7 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20210723032227-1f47c861a9ac | BSD-3-Clause

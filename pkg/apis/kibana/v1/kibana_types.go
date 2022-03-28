@@ -316,8 +316,8 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
-func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbes.assocConf
+func (kbes *KibanaEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbes, kbes.assocConf)
 }
 
 func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -367,8 +367,8 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
-func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbent.entAssocConf
+func (kbent *KibanaEntAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbent, kbent.entAssocConf)
 }
 
 func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -420,15 +420,8 @@ func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbmon.monitoringAssocConfs == nil {
-		return nil
-	}
-	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
-	if !found {
-		return nil
-	}
-	return &assocConf
+func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(kbmon, kbmon.ref, kbmon.monitoringAssocConfs)
 }
 
 func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

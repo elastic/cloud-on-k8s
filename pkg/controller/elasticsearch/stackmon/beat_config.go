@@ -25,7 +25,11 @@ var (
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
 func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
-	if !monitoring.IsReconcilable(&es) {
+	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
+	if err != nil {
+		return err
+	}
+	if !isMonitoringReconcilable {
 		return nil
 	}
 
