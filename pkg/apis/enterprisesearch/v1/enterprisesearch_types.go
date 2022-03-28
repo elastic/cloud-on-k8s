@@ -161,6 +161,11 @@ func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) 
 var _ commonv1.Associated = &EnterpriseSearch{}
 var _ commonv1.Association = &EnterpriseSearch{}
 
+// GetObservedGeneration will return the observedGeneration from the EnterpriseSearch's status.
+func (ent *EnterpriseSearch) GetObservedGeneration() int64 {
+	return ent.Status.ObservedGeneration
+}
+
 // +kubebuilder:object:root=true
 
 // EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
