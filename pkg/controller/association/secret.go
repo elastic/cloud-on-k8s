@@ -23,9 +23,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
-const authUsernameUnmanagedSecretKey = "username"
-const authPasswordUnmanagedSecretKey = "password"
+const (
+	// authPasswordUnmanagedSecretKey is the name of the key for the username when using a secret to reference an unmanaged resource
+	authUsernameUnmanagedSecretKey = "username"
+	// authPasswordUnmanagedSecretKey is the name of the key for the password when using a secret to reference an unmanaged resource
+	authPasswordUnmanagedSecretKey = "password"
+)
 
 func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
 	assocRef := association.AssociationRef()
