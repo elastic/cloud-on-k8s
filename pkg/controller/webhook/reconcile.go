@@ -66,18 +66,18 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
-		UpdateOperatorPods(ctx, clientset)
+		UpdateOperatorPods(ctx, clientset, w.Namespace)
 	}
 
 	return nil
 }
 
-func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface) {
+func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface, operatorNamespace string) {
 	// Get all the pods that are related to control-plane label.
 	labels := metav1.ListOptions{
 		LabelSelector: "control-plane=elastic-operator",
 	}
-	pods, err := clientset.CoreV1().Pods("elastic-system").List(ctx, labels)
+	pods, err := clientset.CoreV1().Pods(operatorNamespace).List(ctx, labels)
 	if err != nil {
 		return
 	}
