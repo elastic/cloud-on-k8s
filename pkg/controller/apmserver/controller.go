@@ -43,8 +43,8 @@ import (
 )
 
 const (
-	controllerName          = "apmserver-controller"
-	configChecksumLabelName = "apm.k8s.elastic.co/config-files-checksum"
+	controllerName           = "apmserver-controller"
+	configHashAnnotationName = "apm.k8s.elastic.co/config-hash"
 
 	// ApmBaseDir is the base directory of the APM server
 	ApmBaseDir = "/usr/share/apm-server"
@@ -174,7 +174,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	defer tracing.EndTransaction(tx)
 
 	var as apmv1.ApmServer
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &as); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -199,7 +199,11 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
+	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if !areAssocsConfigured {
 		return reconcile.Result{}, nil
 	}
 
@@ -241,7 +245,11 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
-	if !association.AllowVersion(asVersion, as, logger, r.recorder) {
+	assocAllowed, err := association.AllowVersion(asVersion, as, logger, r.recorder)
+	if err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if !assocAllowed {
 		return reconcile.Result{}, nil // will eventually retry
 	}
 

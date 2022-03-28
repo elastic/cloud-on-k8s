@@ -20,6 +20,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 const (
@@ -71,19 +72,28 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
+	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
-	mutatedFrom := b.MutatedFrom
+	mutatedFrom := b.MutatedFrom //nolint:ifshort
+	isMutated := true
 	if mutatedFrom == nil {
 		// cluster mutates to itself (same spec)
 		mutatedFrom = &b
+		isMutated = false
 	}
 
-	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
-	changeBudgetWatcher := NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch)
+	var watchers []test.Watcher
+	isNonHAUpgrade := IsNonHAUpgrade(b)
+	if !isNonHAUpgrade {
+		watchers = []test.Watcher{
+			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
+			NewMasterChangeBudgetWatcher(b.Elasticsearch),
+		}
+	}
 
 	//nolint:thelper
-	return test.StepList{
+	steps := test.StepList{
 		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
@@ -97,7 +107,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node or non-HA cluster.
 				// The cluster will become either unavailable (1 or 2 node cluster due to loss of quorum) or red
 				// (single data node when that node goes down).
-				return IsNonHAUpgrade(b)
+				return isNonHAUpgrade
 			},
 			Test: func(t *testing.T) {
 				var err error
@@ -106,18 +116,22 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				continuousHealthChecks.Start()
 			},
 		},
-		masterChangeBudgetWatcher.StartStep(k),
-		changeBudgetWatcher.StartStep(k),
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-	}.
-		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
+		generation.RetrieveGenerationsStep(&b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
+	}
+
+	for _, watcher := range watchers {
+		steps = steps.WithStep(watcher.StartStep(k))
+	}
+
+	//nolint:thelper
+	steps = steps.WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-			masterChangeBudgetWatcher.StopStep(k),
-			changeBudgetWatcher.StopStep(k),
+			generation.CompareObjectGenerationsStep(&b.Elasticsearch, k, isMutated, clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation),
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
@@ -141,6 +155,11 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				}),
 			},
 		})
+
+	for _, watcher := range watchers {
+		steps = steps.WithStep(watcher.StopStep(k))
+	}
+	return steps
 }
 
 func IsNonHAUpgrade(b Builder) bool {

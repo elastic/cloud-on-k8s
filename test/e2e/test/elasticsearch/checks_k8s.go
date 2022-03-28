@@ -154,7 +154,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			},
 			{
 				Name: esName + "-es-xpack-file-realm",
-				Keys: []string{"users", "users_roles", "roles.yml"},
+				Keys: []string{"users", "users_roles", "roles.yml", "service_tokens"},
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":                "elasticsearch",
 					"elasticsearch.k8s.elastic.co/cluster-name": esName,
@@ -315,18 +315,28 @@ func CheckClusterHealth(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES cluster health should eventually be green",
 		Test: test.Eventually(func() error {
-			return clusterHealthGreen(b, k)
+			return clusterHealthIs(b, k, esv1.ElasticsearchGreenHealth)
 		}),
 	}
 }
 
-func clusterHealthGreen(b Builder, k *test.K8sClient) error {
+// CheckSpecificClusterHealth checks that the given ES status reports a given ES health
+func CheckSpecificClusterHealth(b Builder, k *test.K8sClient, health esv1.ElasticsearchHealth) test.Step {
+	return test.Step{
+		Name: fmt.Sprintf("ES cluster health should eventually be %s", string(health)),
+		Test: test.Eventually(func() error {
+			return clusterHealthIs(b, k, health)
+		}),
+	}
+}
+
+func clusterHealthIs(b Builder, k *test.K8sClient, health esv1.ElasticsearchHealth) error {
 	var es esv1.Elasticsearch
 	err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 	if err != nil {
 		return err
 	}
-	if es.Status.Health != esv1.ElasticsearchGreenHealth {
+	if es.Status.Health != health {
 		return fmt.Errorf("health is %s", es.Status.Health)
 	}
 	return nil

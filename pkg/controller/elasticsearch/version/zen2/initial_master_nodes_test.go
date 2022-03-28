@@ -54,6 +54,8 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 		sset.TestPod{Name: "es-masterdata-2", Master: true, Data: true, Version: "6.8.5", ClusterName: "es", Namespace: "ns"}.BuildPtr(),
 	}
 
+	v7Master := sset.TestPod{Name: "es-master-1", Master: true, Data: false, Version: "7.5.0", ClusterName: "es", Namespace: "ns"}.BuildPtr()
+
 	expectedv7resources := func() nodespec.ResourcesList {
 		return nodespec.ResourcesList{
 			{StatefulSet: sset.TestSset{Name: "es-master", Version: "7.5.0", Replicas: 3, Master: true, Data: false, ClusterName: "es"}.Build(), Config: settings.NewCanonicalConfig()},
@@ -61,9 +63,9 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			{StatefulSet: sset.TestSset{Name: "es-data", Version: "7.5.0", Replicas: 3, Master: false, Data: true, ClusterName: "es"}.Build(), Config: settings.NewCanonicalConfig()},
 		}
 	}
-	expectedv7SingleMasterResources := func(ssetName string) nodespec.ResourcesList {
+	expectedv7MasterResources := func(replicas int32, ssetName string) nodespec.ResourcesList {
 		return nodespec.ResourcesList{
-			{StatefulSet: sset.TestSset{Name: ssetName, Version: "7.5.0", Replicas: 1, Master: true, Data: false, ClusterName: "es"}.Build(), Config: settings.NewCanonicalConfig()},
+			{StatefulSet: sset.TestSset{Name: ssetName, Version: "7.5.0", Replicas: replicas, Master: true, Data: false, ClusterName: "es"}.Build(), Config: settings.NewCanonicalConfig()},
 		}
 	}
 	tests := []struct {
@@ -138,7 +140,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 		{
 			name:              "upgrade single v6 master to single v7 master: should set cluster.initial_master_nodes",
 			es:                withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
-			nodeSpecResources: expectedv7SingleMasterResources("es-master"),
+			nodeSpecResources: expectedv7MasterResources(1, "es-master"),
 			k8sClient:         k8s.NewFakeClient(v6Masters[0]), // one existing v6 master running
 			expectedConfigs: []settings.CanonicalConfig{
 				// master nodes config
@@ -149,11 +151,32 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			expectedAnnotation: "es-master-0",
 		},
 		{
+			name:              "upgrade two v6 master to two v7 masters: should set cluster.initial_master_nodes",
+			es:                withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
+			nodeSpecResources: expectedv7MasterResources(2, "es-master"),
+			k8sClient:         k8s.NewFakeClient(v6Masters[0], v6Masters[1]), // two existing v6 master running
+			expectedConfigs: []settings.CanonicalConfig{
+				// master nodes config
+				{CanonicalConfig: commonsettings.MustCanonicalConfig(map[string][]string{
+					esv1.ClusterInitialMasterNodes: {"es-master-0", "es-master-1"},
+				})},
+			},
+			expectedAnnotation: "es-master-0,es-master-1",
+		},
+		{
+			name:               "upgrade mixed v6/v7 master to two v7 masters: should not set cluster.initial_master_nodes",
+			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
+			nodeSpecResources:  expectedv7MasterResources(2, "es-master"),
+			k8sClient:          k8s.NewFakeClient(v6Masters[0], v7Master), // mixed masters running
+			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig()},
+			expectedAnnotation: "",
+		},
+		{
 			name: "upgrade single v6 master to single v7 master in a different statefulset: should not set " +
 				"cluster.initial_master_nodes since the new master will be created before the old one is removed",
 			es:                 withAnnotations(esv7(), map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"}),
-			nodeSpecResources:  expectedv7SingleMasterResources("es-different-sset"), // v7 master in a different sset
-			k8sClient:          k8s.NewFakeClient(v6Masters[0]),                      // one existing v6 master running
+			nodeSpecResources:  expectedv7MasterResources(1, "es-different-sset"), // v7 master in a different sset
+			k8sClient:          k8s.NewFakeClient(v6Masters[0]),                   // one existing v6 master running
 			expectedConfigs:    []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 			expectedAnnotation: "",
 		},

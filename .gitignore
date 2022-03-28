@@ -52,6 +52,7 @@ hack/deployer/config/provider
 deployer-config.yml
 .env
 .registry.env
+stack-versions-def.json
 
 # ignore test output
 integration-tests.json

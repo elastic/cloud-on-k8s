@@ -347,7 +347,8 @@ func Test_buildConfigHash(t *testing.T) {
 				ems:          emsWithAssoc,
 				configSecret: cfgFixture,
 			},
-			wantErr: true,
+			want:    "3032871734",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

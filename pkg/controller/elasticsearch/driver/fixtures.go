@@ -5,6 +5,10 @@
 package driver
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -12,9 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -116,11 +123,12 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	return result
 }
 
-func (u upgradeTestPods) toES(version string, maxUnavailable int) esv1.Elasticsearch {
+func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations map[string]string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestEsName,
-			Namespace: TestEsNamespace,
+			Name:        TestEsName,
+			Namespace:   TestEsNamespace,
+			Annotations: annotations,
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: version,
@@ -159,7 +167,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter) []runtime.Object {
+func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []runtime.Object {
 	var result []runtime.Object
 	for _, testPod := range u {
 		pod := testPod.toPod()
@@ -167,18 +175,15 @@ func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f 
 			result = append(result, &pod)
 		}
 	}
-	es := u.toES(version, maxUnavailable)
+	es := u.toES(version, maxUnavailable, annotations)
 	result = append(result, &es)
 	return result
 }
 
-func (u upgradeTestPods) toMasterPods() []corev1.Pod {
-	var result []corev1.Pod
+func (u upgradeTestPods) toCurrentPods() []corev1.Pod {
+	result := make([]corev1.Pod, 0, len(u))
 	for _, testPod := range u {
-		pod := testPod.toPod()
-		if label.IsMasterNode(pod) {
-			result = append(result, pod)
-		}
+		result = append(result, testPod.toPod())
 	}
 	return result
 }
@@ -192,6 +197,39 @@ func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 		}
 	}
 	return result
+}
+
+// toResourcesList infers the resources from the test Pod list.
+func (u upgradeTestPods) toResourcesList(t *testing.T) nodespec.ResourcesList {
+	t.Helper()
+	resourcesByStatefulSet := make(map[string]nodespec.Resources)
+	for _, p := range u {
+		statefulSetName, _, err := sset.StatefulSetName(p.name)
+		require.NoError(t, err)
+		if _, exists := resourcesByStatefulSet[statefulSetName]; exists {
+			continue
+		}
+		resources := nodespec.Resources{
+			StatefulSet: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: statefulSetName,
+				},
+			},
+			HeadlessService: corev1.Service{},
+			Config:          settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]interface{}{})},
+		}
+		if p.roles != nil {
+			resources.Config = settings.CanonicalConfig{CanonicalConfig: common.MustCanonicalConfig(map[string]interface{}{"node.roles": p.roles})}
+		}
+		resourcesByStatefulSet[statefulSetName] = resources
+	}
+
+	resources := make(nodespec.ResourcesList, 0, len(resourcesByStatefulSet))
+	for _, r := range resourcesByStatefulSet {
+		resources = append(resources, r)
+	}
+
+	return resources
 }
 
 func (u upgradeTestPods) toUpgrade() []corev1.Pod {
@@ -323,3 +361,19 @@ func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
 	}
 	return false, nil
 }
+
+func newSettings(nodeRoles ...esv1.NodeRole) esv1.ElasticsearchSettings {
+	roles := make([]string, len(nodeRoles))
+	for i := range nodeRoles {
+		roles[i] = string(nodeRoles[i])
+	}
+	return esv1.ElasticsearchSettings{
+		Node: &esv1.Node{
+			Roles: roles,
+		},
+		Cluster: esv1.ClusterSettings{},
+	}
+}
+
+// emptySettingsNode can be used in tests as a node with only the default settings.
+var emptySettingsNode = esv1.ElasticsearchSettings{}

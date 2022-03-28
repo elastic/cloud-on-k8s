@@ -160,9 +160,9 @@ var expectedJSONized = commonv1.Config{
 	},
 }
 
-func TestConfig_HasRole(t *testing.T) {
+var (
 	// roles that are applied by default (everything except voting_only)
-	defaultRoles := []NodeRole{
+	defaultRoles = []NodeRole{
 		DataColdRole,
 		DataContentRole,
 		DataHotRole,
@@ -175,9 +175,61 @@ func TestConfig_HasRole(t *testing.T) {
 		TransformRole,
 	}
 
-	allRoles := append([]NodeRole(nil), defaultRoles...)
-	allRoles = append(allRoles, VotingOnlyRole)
+	allRoles = append([]NodeRole{VotingOnlyRole}, defaultRoles...)
+)
 
+func TestConfig_HasRole(t *testing.T) {
+	testCases := []struct {
+		name      string
+		node      *Node
+		wantRoles []NodeRole
+	}{
+		{
+			name:      "master and data",
+			node:      &Node{Roles: []string{"master", "data"}},
+			wantRoles: []NodeRole{MasterRole, DataContentRole, DataRole, DataHotRole, DataWarmRole, DataColdRole, DataFrozenRole},
+		},
+		{
+			name:      "master and data_content",
+			node:      &Node{Roles: []string{"master", "data_content"}},
+			wantRoles: []NodeRole{MasterRole, DataContentRole},
+		},
+		{
+			name:      "data_hot and data_warm only",
+			node:      &Node{Roles: []string{"data_hot", "data_warm"}},
+			wantRoles: []NodeRole{DataHotRole, DataWarmRole},
+		},
+		{
+			name:      "node.roles (ingest only)",
+			node:      &Node{Roles: []string{"ingest"}},
+			wantRoles: []NodeRole{IngestRole},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wantRolesSet := make(map[NodeRole]struct{}, len(tc.wantRoles))
+
+			// check that the node has the required roles
+			for _, r := range tc.wantRoles {
+				wantRolesSet[r] = struct{}{}
+
+				require.True(t, tc.node.HasRole(r), "Missing wanted role [%s]", r)
+			}
+
+			// check that the node does not have any other roles
+			for _, r := range allRoles {
+				if _, exists := wantRolesSet[r]; exists {
+					continue
+				}
+
+				require.False(t, tc.node.HasRole(r), "Unexpected role [%s]", r)
+			}
+		})
+	}
+}
+
+func TestConfig_IsConfiguredWithRole(t *testing.T) {
 	testCases := []struct {
 		name      string
 		node      *Node
@@ -278,7 +330,7 @@ func TestConfig_HasRole(t *testing.T) {
 			for _, r := range tc.wantRoles {
 				wantRolesSet[r] = struct{}{}
 
-				require.True(t, tc.node.HasRole(r), "Missing wanted role [%s]", r)
+				require.True(t, tc.node.IsConfiguredWithRole(r), "Missing wanted role [%s]", r)
 			}
 
 			// check that the node does not have any other roles
@@ -287,7 +339,7 @@ func TestConfig_HasRole(t *testing.T) {
 					continue
 				}
 
-				require.False(t, tc.node.HasRole(r), "Unexpected role [%s]", r)
+				require.False(t, tc.node.IsConfiguredWithRole(r), "Unexpected role [%s]", r)
 			}
 		})
 	}

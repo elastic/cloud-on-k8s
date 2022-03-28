@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
@@ -28,6 +29,7 @@ type upscaleCtx struct {
 	esState              ESState
 	expectations         *expectations.Expectations
 	validateStorageClass bool
+	upscaleReporter      *reconcile.UpscaleReporter
 }
 
 type UpscaleResults struct {
@@ -51,6 +53,11 @@ func HandleUpscaleAndSpecChanges(
 	expectedResources nodespec.ResourcesList,
 ) (UpscaleResults, error) {
 	results := UpscaleResults{}
+
+	// Set the list of expected new nodes in the status early. This is to ensure that the list of expected nodes to be
+	// created is surfaced in the status even if an error occurs later in the upscale process.
+	ctx.upscaleReporter.RecordNewNodes(podsToCreate(actualStatefulSets, expectedResources.StatefulSets()))
+
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -84,6 +91,21 @@ func HandleUpscaleAndSpecChanges(
 	}
 	results.ActualStatefulSets = actualStatefulSets
 	return results, nil
+}
+
+func podsToCreate(
+	actualStatefulSets, expectedStatefulSets sset.StatefulSetList,
+) []string {
+	var pods []string
+	for _, expectedStatefulSet := range expectedStatefulSets {
+		actualSset, _ := actualStatefulSets.GetByName(expectedStatefulSet.Name)
+		expectedReplicas := sset.GetReplicas(expectedStatefulSet)
+		for expectedReplicas > sset.GetReplicas(actualSset) {
+			pods = append(pods, sset.PodName(expectedStatefulSet.Name, expectedReplicas-1))
+			expectedReplicas--
+		}
+	}
+	return pods
 }
 
 func adjustResources(
@@ -139,9 +161,4 @@ func adjustStatefulSetReplicas(
 	}
 
 	return expected, nil
-}
-
-// isReplicaIncrease returns true if expected replicas are higher than actual replicas.
-func isReplicaIncrease(actual appsv1.StatefulSet, expected appsv1.StatefulSet) bool {
-	return sset.GetReplicas(expected) > sset.GetReplicas(actual)
 }

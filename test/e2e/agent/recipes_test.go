@@ -30,7 +30,8 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
+			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
@@ -74,7 +75,8 @@ func TestMultiOutputRecipe(t *testing.T) {
 			WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
+			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
@@ -96,14 +98,14 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
+			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-			// TODO reenable when https://github.com/elastic/beats/issues/27127 is fixed
-			//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
 			// see https://github.com/elastic/cloud-on-k8s/issues/4092
@@ -118,7 +120,8 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.volume", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
+			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
@@ -144,15 +147,15 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
+			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "generic", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-			// TODO reenable next two when https://github.com/elastic/beats/issues/27127 is fixed
-			//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-			//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasEvent("/_search?q=message:" + loggingPod.Logged)).
 			WithDefaultESValidation(agent.NoEvent("/_search?q=message:" + notLoggingPod.Logged))
 	}
@@ -169,15 +172,15 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
+			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.apm_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.apm_server", "default"))
-		// TODO reenable next three when https://github.com/elastic/beats/issues/27127 is fixed
-		//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
-		//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
-		//WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.apm_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"))
 	}
 
 	runAgentRecipe(t, "fleet-apm-integration.yaml", customize)

@@ -8,7 +8,7 @@ metadata:
     k8s-app: metricbeat
 spec:
   type: metricbeat
-  version: 7.17.0
+  version: 8.1.1
   config:
     metricbeat.modules:
     - module: kubernetes
@@ -224,7 +224,7 @@ metadata:
     k8s-app: filebeat
 spec:
   type: filebeat
-  version: 7.17.0
+  version: 8.1.1
   config:
     max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
     close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m

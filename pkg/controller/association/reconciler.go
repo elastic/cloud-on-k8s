@@ -150,7 +150,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	defer tracing.EndTransaction(tx)
 
 	associated := r.AssociatedObjTemplate()
-	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
 			r.onDelete(ctx, types.NamespacedName{
@@ -210,6 +210,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// we want to attempt a status update even in the presence of errors
 	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status")
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
 		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
 	return results.
@@ -285,6 +289,36 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	// check if reference to Elasticsearch is allowed to be established
 	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
 		return commonv1.AssociationPending, err
+	}
+
+	serviceAccount, err := association.ElasticServiceAccount()
+	if err != nil {
+		return commonv1.AssociationPending, err
+	}
+	// Detect if we should use a service account. If it is the case create the related Secrets and update the association
+	// configuration on the associated resource.
+	if len(serviceAccount) > 0 {
+		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+		r.log(k8s.ExtractNamespacedName(association)).V(1).Info("Ensure service account exists", "sa", serviceAccount)
+		err := ReconcileServiceAccounts(
+			ctx,
+			r.Client,
+			es,
+			assocLabels,
+			applicationSecretName,
+			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
+			serviceAccount,
+			association.GetName(),
+			association.GetUID(),
+		)
+		if err != nil {
+			return commonv1.AssociationFailed, err
+		}
+		expectedAssocConf.AuthSecretName = applicationSecretName.Name
+		expectedAssocConf.AuthSecretKey = "token"
+		expectedAssocConf.IsServiceAccount = true
+		// update the association configuration if necessary
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
 
 	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
@@ -364,7 +398,11 @@ func (r *Reconciler) updateAssocConf(
 	span, _ := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
 	defer span.End()
 
-	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return "", err
+	}
+	if !reflect.DeepEqual(expectedAssocConf, assocConf) {
 		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
 		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {

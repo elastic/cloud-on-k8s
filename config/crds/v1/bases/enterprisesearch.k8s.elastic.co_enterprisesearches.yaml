@@ -7585,7 +7585,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:
@@ -15209,7 +15209,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
-                  resource to a resource (eg. Elasticsearch) in a different namespace.
+                  resource to a resource (for ex. Elasticsearch) in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
               version:

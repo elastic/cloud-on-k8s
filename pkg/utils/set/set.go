@@ -4,7 +4,9 @@
 
 package set
 
-import "sort"
+import (
+	"sort"
+)
 
 type StringSet map[string]struct{}
 
@@ -39,6 +41,17 @@ func (set StringSet) Has(s string) (exists bool) {
 		_, exists = set[s]
 	}
 	return
+}
+
+func (set StringSet) Diff(other StringSet) StringSet {
+	diff := Make()
+	for str := range set {
+		if other.Has(str) {
+			continue
+		}
+		diff.Add(str)
+	}
+	return diff
 }
 
 func (set StringSet) AsSlice() sort.StringSlice {

@@ -6,6 +6,7 @@ package beat
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	ghodssyaml "github.com/ghodss/yaml"
@@ -106,7 +107,13 @@ func newBuilder(name string, suffix string) Builder {
 type ValidationFunc func(client.Client) error
 
 func (b Builder) WithType(typ beatcommon.Type) Builder {
-	b.Beat.Spec.Type = string(typ)
+	typeStr := string(typ)
+	// for Beats we have to use the specific type as there are different Beats images within the one CRD kind.
+	// capitalize the Beat name to be consistent in spelling with the other CRD kinds.
+	def := test.Ctx().ImageDefinitionFor(strings.Title(typeStr))
+	b.Beat.Spec.Type = typeStr
+	b.Beat.Spec.Version = def.Version
+	b.Beat.Spec.Image = def.Image
 	return b
 }
 

@@ -51,7 +51,7 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 			"pod_count", len(podsToUpgrade),
 		)
 		for _, pod := range toUpgrade {
-			if err := deletePod(d.Client, d.ES, pod, d.Expectations); err != nil {
+			if err := deletePod(d.Client, d.ES, pod, d.Expectations, d.ReconcileState, "Deleting Pod for forced rolling upgrade"); err != nil {
 				return attempted, err
 			}
 		}

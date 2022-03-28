@@ -63,7 +63,7 @@ The concept of `global` and `namespace` operator roles no longer exists, and as 
 [id="{p}-110-breaking-port-names"]
 ==== Container port name change
 
-Container ports of managed resources are now named according to the protocol (`https` for TLS enabled ports and `http` for TLS disabled ports). Previously they were named `http` regardless of the protocol being used. If you have any configurations that refer to the container ports by name (Ingress configurations, for example), review those to ensure that they use the correct name. One option may be to temporarily change to targeting the port number (e.g. `9200` for Elasticsearch), rather than the name, before updating ECK. Once the container port is updated to the new name, you can change to targeting the port name again.
+Container ports of managed resources are now named according to the protocol (`https` for TLS enabled ports and `http` for TLS disabled ports). Previously they were named `http` regardless of the protocol being used. If you have any configurations that refer to the container ports by name (Ingress configurations, for example), review those to ensure that they use the correct name. One option may be to temporarily change to targeting the port number (for example `9200` for Elasticsearch), rather than the name, before updating ECK. Once the container port is updated to the new name, you can change to targeting the port name again.
 
 [float]
 [id="{p}-110-breaking-readiness-probe"]

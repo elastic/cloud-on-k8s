@@ -19,7 +19,7 @@ Reusing pods may also be useful in other situations, where simply restarting Ela
 
 * It must be possible to perform a "full cluster restart" and reuse existing pods.
 * Configuration changes should be propagated through a volume mount, not through the pod spec.
-* Operator client cache inconsistencies must be taken into consideration (eg. don't restart a pod 3 times because of a stale cache).
+* Operator client cache inconsistencies must be taken into consideration (for ex. don't restart a pod 3 times because of a stale cache).
 * Volume propagation time must be taken into consideration (it can take more than 1 minute, the ES restart must not happen before the new configuration is there).
 * It should be resilient to operator restart.
 
@@ -45,7 +45,7 @@ Other options that are considered not good enough:
 ### Configuration through a secret volume
 
 We need to move away from storing Elasticsearch settings (from `elasticsearch.yml`) in the pod environment variables, because it prevents us from reusing pods. Instead, we can store the `elasticsearch.yml` file in a secret volume, mounted into the Elasticsearch pod.
-Why a secret volume and not a configmap volume? Because it may contain some secrets (eg. Slack or email credentials).
+Why a secret volume and not a configmap volume? Because it may contain some secrets (for ex. Slack or email credentials).
 
 #### Order of creations
 
@@ -119,18 +119,18 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
     * Create the pod
 * Maybe delete deprecated pods
     * Exclude pod from shard allocations
-    * Check if the pod does not hold any primary shard, or requeue
+    * Check if the pod does not hold any primary shard, or re-queue
     * Delete the pod
     * Delete the configuration secret (would be garbage collected, but still)
 * Handle pods reuse and pods restarts (always executed)
     * Annotate each pod to reuse, unless already annotated
         * `restart-phase: schedule` for restarting the ES process. The operator has no reason to apply this (a human could).
         * `restart-phase: schedule-rolling` for restarting ES processes one by one. The operator would apply this to perform a safe restart (default case).
-        * `restart-phase: schedule-coordinated` for all ES processes at once (full cluster restart). The operator would apply this to switch TLS setting following a license change (eg. basic with no TLS to Gold with TLS).
+        * `restart-phase: schedule-coordinated` for all ES processes at once (full cluster restart). The operator would apply this to switch TLS setting following a license change (for ex. basic with no TLS to Gold with TLS).
      * Handle pods in a _schedule_ phase
         * If annotated with `schedule`: annotate them with `restart-phase: stop`.
         * If annotated with `schedule-rolling`
-            * If there are some pods in another phase (eg. `stop`), requeue.
+            * If there are some pods in another phase (for ex. `stop`), re-queue.
             * Else, deterministically pick the best pod to get started with, and annotate it with `restart-phase: stop`.
         * If annotated with `schedule-coordinated`: annotate them with `restart-phase: stop-coordinated`.
      * Handle pods in a _stop_ phase
@@ -138,7 +138,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
             * Disable shards allocations in the cluster (avoids shards of the temporarily stopped node to be moved around)
             * Perform a sync flush, for fast recovery during restarts
             * Request a stop to the process manager: `POST /es/stop` (idempotent)
-            * Check if ES is stopped (`GET /es/status`), or requeue
+            * Check if ES is stopped (`GET /es/status`), or re-queue
             * Annotate pod with `restart-phase: start`
         * If annotated with `stop-coordinated`
             * Apply the same steps as above, but:
@@ -147,8 +147,8 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
      * Handle pods in a `start` phase
         * If annotated with `start`:
             * If the pod is marked for reuse, update the configuration secret with the new expected configuration (else, we'll use the current one)
-            * Check if the config (expected one if reuse, else current one) is propagated to the pod by requesting the process manager (`GET /es/status` should return the configuration file checksum), or requeue.
-            * Update the pods labels if required (eg. new node types)
+            * Check if the config (expected one if reuse, else current one) is propagated to the pod by requesting the process manager (`GET /es/status` should return the configuration file checksum), or re-queue.
+            * Update the pods labels if required (for ex. new node types)
             * Start the ES process: `POST /es/start` (idempotent)
             * Wait until the ES process is started (`GET /es/status`)
             * Enable shards allocations
@@ -156,7 +156,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
         * If annotated with `start-coordinated`:
             * Perform the same steps as above, but wait until *all* ES processes are started before enabling shards allocations
 * Garbage-collect useless resources
-    * Configuration secrets that do not match any pod and existed for more than eg. 15min are safe to delete
+    * Configuration secrets that do not match any pod and existed for more than for ex. 15min are safe to delete
 
 #### State machine specifics
 
@@ -166,7 +166,7 @@ It is important in the algorithm outlined above that:
 * transition to the next step is resilient to stale cache. If a pod is annotated with the `start` phase, it should be ok to perform all steps of the `stop` phase again (no-op). However the cache cannot go back in time: once we reach the `start` phase we must not perform the `stop` phase at the next iteration. Our apiserver and cache implementation consistency model guarantee this behaviour.
 * the operator can restart at any point: on restart it should get back to the current phase.
 * a pod that should be reused will be reflected in the results of the comparison algorithm. However, once its configuration has been updated (but before it is actually restarted), it might not be reflected anymore. The comparison would then be based on the "new" configuration (not yet applied to the ES process), and the pod would require no change. That's OK: the ES process will still eventually be restarted with this correct new configuration, since annotated in the `start` phase.
-* if a pod is no longer requested for reuse (eg. user changed their mind and reverted ES spec to the previous version) but is in the middle of a restart process, it will still go through that restart process. Depending on when the user reverted back the ES spec, compared to the pod current phase in the state machine:
+* if a pod is no longer requested for reuse (for ex. user changed their mind and reverted ES spec to the previous version) but is in the middle of a restart process, it will still go through that restart process. Depending on when the user reverted back the ES spec, compared to the pod current phase in the state machine:
     * if the new config was not yet applied, the ES process will still be restarted with its current config
     * if the new config was already applied and the ES process is starting, we'll have to wait for the restart process to be over before the pod can be reused with the old configuration (and restarted again). Depending on the pods reuse choices, we might end up reverting the original configuration to different pods. But eventually things will get back to the expected state.
 
@@ -207,5 +207,5 @@ Chosen option: option 1, because that's the only one we have here? :)
 
 * [https://github.com/elastic/cloud-on-k8s/issues/454] Full cluster restart issue
 * [https://github.com/elastic/cloud-on-k8s/issues/453] Basic license support issue
-* [https://www.elastic.co/guide/en/elasticsearch/reference/current/restart-upgrade.html] Elasticsearch full cluster restart upgrade
-* [https://www.elastic.co/guide/en/elasticsearch/reference/current/rolling-upgrades.html] Elasticsearch rolling cluster restart upgrade
+* [https://www.elastic.co/guide/en/elasticsearch/reference/7.17/restart-upgrade.html] Elasticsearch full cluster restart upgrade
+* [https://www.elastic.co/guide/en/elasticsearch/reference/7.17/rolling-upgrades.html] Elasticsearch rolling cluster restart upgrade

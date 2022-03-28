@@ -26,7 +26,7 @@ var (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.).
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, and so on).
 	// Any string can be used, but well-known types will have the image field defaulted and have the appropriate
 	// Elasticsearch roles created automatically. It also allows for dashboard setup when combined with a `KibanaRef`.
 	// +kubebuilder:validation:MaxLength=20
@@ -191,6 +191,10 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 
 var _ commonv1.Associated = &Beat{}
 
+func (b *Beat) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (b *Beat) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
@@ -249,8 +253,8 @@ func (b *BeatESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.ElasticsearchConfigAnnotationNameBase
 }
 
-func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
-	return b.esAssocConf
+func (b *BeatESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(b, b.esAssocConf)
 }
 
 func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -267,8 +271,8 @@ type BeatKibanaAssociation struct {
 
 var _ commonv1.Association = &BeatKibanaAssociation{}
 
-func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return b.kbAssocConf
+func (b *BeatKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(b, b.kbAssocConf)
 }
 
 func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {

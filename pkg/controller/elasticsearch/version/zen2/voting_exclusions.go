@@ -43,7 +43,8 @@ func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.Statef
 	// - expectation like Pod being restarted should be check prior to calling this function
 	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
 	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
-	return actualStatefulSets.PodReconciliationDone(c)
+	reconciled, _, err := actualStatefulSets.PodReconciliationDone(c)
+	return reconciled, err
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.

@@ -99,7 +99,7 @@ func TestElasticMapsServerVersionUpgradeToLatest7x(t *testing.T) {
 
 func TestElasticMapsServerVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestSnapshotVersion8x
+	dstVersion := test.LatestReleasedVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

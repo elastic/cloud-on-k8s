@@ -109,22 +109,26 @@ func tlsConfig(ems emsv1alpha1.ElasticMapsServer) *settings.CanonicalConfig {
 
 func associationConfig(c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
-	if !ems.AssociationConf().IsConfigured() {
+	assocConf, err := ems.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !assocConf.IsConfigured() {
 		return cfg, nil
 	}
-	username, password, err := association.ElasticsearchAuthSettings(c, &ems)
+	credentials, err := association.ElasticsearchAuthSettings(c, &ems)
 	if err != nil {
 		return nil, err
 	}
 	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
-		"elasticsearch.host":     ems.AssociationConf().URL,
-		"elasticsearch.username": username,
-		"elasticsearch.password": password,
+		"elasticsearch.host":     assocConf.URL,
+		"elasticsearch.username": credentials.Username,
+		"elasticsearch.password": credentials.Password,
 	})); err != nil {
 		return nil, err
 	}
 
-	if ems.AssociationConf().CAIsConfigured() {
+	if assocConf.GetCACertProvided() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"elasticsearch.ssl.verificationMode":       "certificate",
 			"elasticsearch.ssl.certificateAuthorities": filepath.Join(ESCertsPath, certificates.CAFileName),

@@ -57,8 +57,9 @@ const (
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
 
-	ElasticsearchUsername = "elasticsearch.username"
-	ElasticsearchPassword = "elasticsearch.password"
+	ElasticsearchUsername            = "elasticsearch.username"
+	ElasticsearchPassword            = "elasticsearch.password"
+	ElasticsearchServiceAccountToken = "elasticsearch.serviceAccountToken"
 
 	ElasticsearchHosts = "elasticsearch.hosts"
 
@@ -117,7 +118,11 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
-	if !kb.EsAssociation().AssociationConf().IsConfigured() {
+	esAssocConf, err := kb.EsAssociation().AssociationConf()
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	if !esAssocConf.IsConfigured() {
 		// merge the configuration with userSettings last so they take precedence
 		if err := cfg.MergeWith(
 			reusableSettings,
@@ -131,9 +136,26 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{cfg}, nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+	credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
 	if err != nil {
 		return CanonicalConfig{}, err
+	}
+	var credentialsCfg *settings.CanonicalConfig
+	if credentials.HasServiceAccountToken() {
+		credentialsCfg =
+			settings.MustCanonicalConfig(
+				map[string]interface{}{
+					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
+				},
+			)
+	} else {
+		credentialsCfg =
+			settings.MustCanonicalConfig(
+				map[string]interface{}{
+					ElasticsearchUsername: credentials.Username,
+					ElasticsearchPassword: credentials.Password,
+				},
+			)
 	}
 
 	// merge the configuration with userSettings last so they take precedence
@@ -143,13 +165,8 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		kibanaTLSCfg,
 		entSearchCfg,
 		monitoringCfg,
-		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
-		settings.MustCanonicalConfig(
-			map[string]interface{}{
-				ElasticsearchUsername: username,
-				ElasticsearchPassword: password,
-			},
-		),
+		settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf)),
+		credentialsCfg,
 		userSettings,
 	)
 	if err != nil {
@@ -263,7 +280,7 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 		conf[XpackMonitoringUIContainerElasticsearchEnabled] = true
 	}
 
-	assocConf := kb.EsAssociation().AssociationConf()
+	assocConf, _ := kb.EsAssociation().AssociationConf()
 	if assocConf.URLIsConfigured() {
 		conf[ElasticsearchHosts] = []string{assocConf.GetURL()}
 	}
@@ -282,13 +299,13 @@ func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 	}
 }
 
-func elasticsearchTLSSettings(kb kbv1.Kibana) map[string]interface{} {
+func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]interface{} {
 	cfg := map[string]interface{}{
 		ElasticsearchSslVerificationMode: "certificate",
 	}
 
-	if kb.EsAssociation().AssociationConf().GetCACertProvided() {
-		esCertsVolumeMountPath := esCaCertSecretVolume(kb).VolumeMount().MountPath
+	if esAssocConf.GetCACertProvided() {
+		esCertsVolumeMountPath := esCaCertSecretVolume(esAssocConf).VolumeMount().MountPath
 		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
 	}
 
@@ -296,18 +313,18 @@ func elasticsearchTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 }
 
 // esCaCertSecretVolume returns a SecretVolume to hold the Elasticsearch CA certs for the given Kibana resource.
-func esCaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
+func esCaCertSecretVolume(esAssocConf commonv1.AssociationConf) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		kb.EsAssociation().AssociationConf().GetCASecretName(),
+		esAssocConf.GetCASecretName(),
 		"elasticsearch-certs",
 		esCertsVolumeMountPath,
 	)
 }
 
 // entCaCertSecretVolume returns a SecretVolume to hold the EnterpriseSearch CA certs for the given Kibana resource.
-func entCaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
+func entCaCertSecretVolume(entAssocConf commonv1.AssociationConf) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		kb.EntAssociation().AssociationConf().GetCASecretName(),
+		entAssocConf.GetCASecretName(),
 		"ent-certs",
 		entCertsVolumeMountPath,
 	)
@@ -315,11 +332,11 @@ func entCaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
 
 func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 	cfg := map[string]interface{}{}
-	assocConf := kb.EntAssociation().AssociationConf()
+	assocConf, _ := kb.EntAssociation().AssociationConf()
 	if assocConf.URLIsConfigured() {
 		cfg[EnterpriseSearchHost] = assocConf.GetURL()
 	}
-	if assocConf.CAIsConfigured() {
+	if assocConf.GetCACertProvided() {
 		cfg[EnterpriseSearchSslCertificateAuthorities] = filepath.Join(entCertsVolumeMountPath, certificates.CAFileName)
 		// Rely on "certificate" verification mode rather than "full" to allow Kibana
 		// to connect to Enterprise Search through the k8s-internal service DNS name

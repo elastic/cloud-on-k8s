@@ -10,10 +10,8 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -32,7 +30,7 @@ type Reconciler struct {
 	K8sClient      k8s.Client
 	DynamicWatches watches.DynamicWatches
 
-	Owner client.Object // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+	Owner client.Object // owner for the TLS certificates (for ex. Elasticsearch, Kibana)
 
 	TLSOptions    commonv1.TLSOptions               // TLS options of the object
 	ExtraHTTPSANs []commonv1.SubjectAlternativeName // SANs dynamically set by a controller, only used in the self signed cert
@@ -86,9 +84,11 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 			return nil, results.WithError(err)
 		}
 		// handle CA expiry via requeue
-		results.WithResult(reconcile.Result{
-			RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore),
-		})
+		results.WithReconciliationState(
+			reconciler.
+				RequeueAfter(ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore)).
+				ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
+		)
 	}
 
 	// reconcile http customCerts: either self-signed or user-provided
@@ -100,9 +100,11 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	if err != nil {
 		return nil, results.WithError(err)
 	}
-	results.WithResult(reconcile.Result{
-		RequeueAfter: ShouldRotateIn(time.Now(), primaryCert.NotAfter, r.CertRotation.RotateBefore),
-	})
+	results.WithReconciliationState(
+		reconciler.
+			RequeueAfter(ShouldRotateIn(time.Now(), primaryCert.NotAfter, r.CertRotation.RotateBefore)).
+			ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
+	)
 
 	// reconcile http public cert secret, which does not contain the private key
 	results.WithError(r.ReconcilePublicHTTPCerts(httpCertificates))
@@ -112,19 +114,19 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: InternalCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
-	if err := deleteIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: CAInternalSecretName(r.Namer, owner.Name, HTTPCAType)},
 	); err != nil {
 		return err
@@ -134,20 +136,4 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Owner.GetName()))
 
 	return nil
-}
-
-func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
-	var secret corev1.Secret
-	err := c.Get(context.Background(), secretRef, &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
-	err = c.Delete(context.Background(), &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		return nil
-	}
-	return err
 }

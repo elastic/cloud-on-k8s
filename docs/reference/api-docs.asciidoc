@@ -203,7 +203,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster. It allows APM agent central configuration management in Kibana.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
 
@@ -302,7 +302,7 @@ BeatSpec defines the desired state of a Beat.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, etc.). Any string can be used, but well-known types will have the image field defaulted and have the appropriate Elasticsearch roles created automatically. It also allows for dashboard setup when combined with a `KibanaRef`.
+| *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, and so on). Any string can be used, but well-known types will have the image field defaulted and have the appropriate Elasticsearch roles created automatically. It also allows for dashboard setup when combined with a `KibanaRef`.
 | *`version`* __string__ | Version of the Beat.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 | *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster. It allows automatic setup of dashboards and visualizations.
@@ -358,8 +358,6 @@ BeatSpec defines the desired state of a Beat.
 == common.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for common types used by all resources.
-
-
 
 
 
@@ -428,6 +426,8 @@ HTTPConfig holds the HTTP layer configuration for resources.
 | *`service`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate[$$ServiceTemplate$$]__ | Service defines the template for the associated Kubernetes Service object.
 | *`tls`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]__ | TLS defines options for configuring TLS for HTTP.
 |===
+
+
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-keytopath"]
@@ -879,8 +879,80 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition"]
+=== Condition 
+
+Condition represents Elasticsearch resource's condition. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`type`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-conditiontype[$$ConditionType$$]__ | 
+| *`status`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#conditionstatus-v1-core[$$ConditionStatus$$]__ | 
+| *`lastTransitionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`message`* __string__ | 
+|===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-conditiontype"]
+=== ConditionType (string) 
+
+ConditionType defines the condition of an Elasticsearch resource.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$]
+****
+
+
+
+
+
+
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation"]
+=== DownscaleOperation 
+
+DownscaleOperation provides details about in progress downscale operations. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$] array__ | Nodes which are scheduled to be removed from the cluster.
+| *`stalled`* __boolean__ | Stalled represents a state where no progress can be made. It is only available for clusters managed with the Elasticsearch shutdown API.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscalednode"]
+=== DownscaledNode 
+
+DownscaledNode provides an overview of in progress changes applied by the operator to remove Elasticsearch nodes from the cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation[$$DownscaleOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | Name of the Elasticsearch node that should be removed.
+| *`shutdownStatus`* __string__ | Shutdown status as returned by the Elasticsearch shutdown API. If the Elasticsearch shutdown API is not available, the shutdown status is then inferred from the remaining shards on the nodes, as observed by the operator.
+| *`explanation`* __string__ | Explanation provides details about an in progress node shutdown. It is only available for clusters managed with the Elasticsearch shutdown API.
+|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch"]
@@ -898,7 +970,32 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchhealth"]
+=== ElasticsearchHealth (string) 
+
+ElasticsearchHealth is the health of the cluster as returned by the health API.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase"]
+=== ElasticsearchOrchestrationPhase (string) 
+
+ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec"]
@@ -923,10 +1020,33 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 | *`auth`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-auth[$$Auth$$]__ | Auth contains user authentication and authorization security settings for Elasticsearch.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`remoteClusters`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$] array__ | RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 | *`volumeClaimDeletePolicy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy[$$VolumeClaimDeletePolicy$$]__ | VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets. Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion.
 | *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster. See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus"]
+=== ElasticsearchStatus 
+
+ElasticsearchStatus represents the observed state of Elasticsearch.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch[$$Elasticsearch$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`availableNodes`* __integer__ | AvailableNodes is the number of available instances.
+| *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run in parallel: this value specifies the lowest version currently running.
+| *`health`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchhealth[$$ElasticsearchHealth$$]__ | 
+| *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchorchestrationphase[$$ElasticsearchOrchestrationPhase$$]__ | 
+| *`conditions`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-condition[$$Condition$$] array__ | Conditions holds the current service state of an Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+| *`inProgressOperations`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster. It corresponds to the metadata generation, which is updated on mutation by the API Server. If the generation observed in status diverges from the generation in metadata, the Elasticsearch controller has not yet processed the changes contained in the Elasticsearch specification.
 |===
 
 
@@ -945,6 +1065,25 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 | Field | Description
 | *`SecretRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource. Multiple users and their roles mapping can be specified in a Kubernetes secret. The secret should contain 2 entries: - users: contain all users and the hash of their password (https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms) - users_roles: contain the role to users mapping The format of those 2 entries must correspond to the expected file realm format, as specified in Elasticsearch documentation: https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration. 
  Example: --- # File realm in ES format (from the CLI or manually assembled) kind: Secret apiVersion: v1 metadata:   name: my-filerealm stringData:   users: |-     rdeniro:$2a$10$BBJ/ILiyJ1eBTYoRKxkqbuDEdYECplvxnqQ47uiowE7yGqvCEgj9W     alpacino:$2a$10$cNwHnElYiMYZ/T3K4PvzGeJ1KbpXZp2PfoQD.gfaVdImnHOwIuBKS     jacknich:{PBKDF2}50000$z1CLJt0MEFjkIK5iEfgvfnA6xq7lF25uasspsTKSo5Q=$XxCVLbaKDimOdyWgLCLJiyoiWpA/XDMe/xtVgn1r5Sg=   users_roles: |-     admin:rdeniro     power_user:alpacino,jacknich     user:jacknich ---
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations"]
+=== InProgressOperations 
+
+InProgressOperations provides details about in progress changes applied by the operator on the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`downscale`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-downscaleoperation[$$DownscaleOperation$$]__ | 
+| *`upgrade`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation[$$UpgradeOperation$$]__ | 
+| *`upscale`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation[$$UpscaleOperation$$]__ | 
 |===
 
 
@@ -998,6 +1137,37 @@ FileRealmSource references users to create in the Elasticsearch cluster.
 | *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
 | *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode"]
+=== NewNode 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation[$$UpscaleOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | Name of the Elasticsearch node that should be added to the cluster.
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnodestatus[$$NewNodeStatus$$]__ | NewNodeStatus states if a new node is being created, or if the upscale is delayed.
+| *`message`* __string__ | Optional message to explain why a node may not be immediately added.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnodestatus"]
+=== NewNodeStatus (string) 
+
+NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$]
+****
+
 
 
 
@@ -1116,6 +1286,62 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation"]
+=== UpgradeOperation 
+
+UpgradeOperation provides an overview of the pending or in progress changes applied by the operator to update the Elasticsearch nodes in the cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode[$$UpgradedNode$$] array__ | Nodes that must be restarted for upgrade.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradednode"]
+=== UpgradedNode 
+
+UpgradedNode provides details about the status of nodes which are expected to be updated. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upgradeoperation[$$UpgradeOperation$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`name`* __string__ | Name of the Elasticsearch node that should be upgraded.
+| *`status`* __string__ | Status states if the node is either in the process of being deleted for an upgrade, or blocked by a predicate or another condition stated in the message field.
+| *`message`* __string__ | Optional message to explain why a node may not be immediately restarted for upgrade.
+| *`predicate`* __string__ | Predicate is the name of the predicate currently preventing this node from being deleted for an upgrade.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-upscaleoperation"]
+=== UpscaleOperation 
+
+UpscaleOperation provides an overview of in progress changes applied by the operator to add Elasticsearch nodes to the cluster. **This API is in technical preview and may be changed or removed in a future release.**
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-inprogressoperations[$$InProgressOperations$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$] array__ | Nodes expected to be added by the operator.
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-volumeclaimdeletepolicy"]
 === VolumeClaimDeletePolicy (string) 
 
@@ -1125,8 +1351,6 @@ VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolum
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-
-
 
 
 
@@ -1176,6 +1400,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
+| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
 |===
 
 
@@ -1199,6 +1424,24 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
 | *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus"]
+=== ElasticsearchStatus 
+
+ElasticsearchStatus defines the observed state of Elasticsearch
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch[$$Elasticsearch$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`health`* __ElasticsearchHealth__ | 
+| *`phase`* __ElasticsearchOrchestrationPhase__ | 
 |===
 
 
@@ -1294,7 +1537,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
 
@@ -1348,7 +1591,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
 
@@ -1403,7 +1646,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 |===
 
@@ -1585,7 +1828,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration. Configuration settings are merged and have precedence over settings specified in `config`.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Elastic Maps Server.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
-| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
 

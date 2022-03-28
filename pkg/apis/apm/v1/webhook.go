@@ -12,12 +12,16 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the APM Server validating webhook.
+	webhookPath = "/validate-apm-k8s-elastic-co-v1-apmserver"
 )
 
 var (
@@ -43,22 +47,22 @@ var (
 
 var _ webhook.Validator = &ApmServer{}
 
-func (as *ApmServer) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(as).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (as *ApmServer) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", as.Name)
 	return as.validate(nil)
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (as *ApmServer) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", as.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (as *ApmServer) ValidateUpdate(old runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", as.Name)
 	oldObj, ok := old.(*ApmServer)
@@ -67,6 +71,11 @@ func (as *ApmServer) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return as.validate(oldObj)
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (as *ApmServer) WebhookPath() string {
+	return webhookPath
 }
 
 func (as *ApmServer) validate(old *ApmServer) error {

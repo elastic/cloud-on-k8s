@@ -142,7 +142,11 @@ func updateStatus(params DriverParams, ready, desired int32) error {
 	}
 	beat.Status.AvailableNodes = ready
 	beat.Status.ExpectedNodes = desired
-	beat.Status.Health = CalculateHealth(beat.GetAssociations(), ready, desired)
+	health, err := CalculateHealth(beat.GetAssociations(), ready, desired)
+	if err != nil {
+		return err
+	}
+	beat.Status.Health = health
 	beat.Status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
 
 	return params.Client.Status().Update(context.Background(), &beat)

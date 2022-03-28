@@ -20,6 +20,18 @@ import (
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
+	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
+	// Elasticsearch cluster to disable certain predicates during rolling upgrades.  Multiple
+	// predicates names can be separated by ",".
+	//
+	// Example:
+	//
+	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
+	//
+	//   metadata:
+	//     annotations:
+	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
+	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
 	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
 	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
@@ -83,7 +95,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -380,69 +392,6 @@ func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
 	return maxUnavailable
 }
 
-// ElasticsearchHealth is the health of the cluster as returned by the health API.
-type ElasticsearchHealth string
-
-// Possible traffic light states Elasticsearch health can have.
-const (
-	ElasticsearchRedHealth     ElasticsearchHealth = "red"
-	ElasticsearchYellowHealth  ElasticsearchHealth = "yellow"
-	ElasticsearchGreenHealth   ElasticsearchHealth = "green"
-	ElasticsearchUnknownHealth ElasticsearchHealth = "unknown"
-)
-
-var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
-	ElasticsearchRedHealth:    1,
-	ElasticsearchYellowHealth: 2,
-	ElasticsearchGreenHealth:  3,
-}
-
-// Less for ElasticsearchHealth means green > yellow > red
-func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
-	l := elasticsearchHealthOrder[h]
-	r := elasticsearchHealthOrder[other]
-	// 0 is not found/unknown and less is not defined for that
-	return l != 0 && r != 0 && l < r
-}
-
-// ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
-type ElasticsearchOrchestrationPhase string
-
-const (
-	// ElasticsearchReadyPhase is operating at the desired spec.
-	ElasticsearchReadyPhase ElasticsearchOrchestrationPhase = "Ready"
-	// ElasticsearchApplyingChangesPhase controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
-	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
-	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
-	// ElasticsearchNodeShutdownStalledPhase Elasticsearch cannot make progress with a node shutdown during downscale or rolling upgrade.
-	ElasticsearchNodeShutdownStalledPhase ElasticsearchOrchestrationPhase = "Stalled"
-	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
-	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
-)
-
-// ElasticsearchStatus defines the observed state of Elasticsearch
-type ElasticsearchStatus struct {
-	// AvailableNodes is the number of available instances.
-	AvailableNodes int32 `json:"availableNodes,omitempty"`
-	// Version of the stack resource currently running. During version upgrades, multiple versions may run
-	// in parallel: this value specifies the lowest version currently running.
-	Version string                          `json:"version,omitempty"`
-	Health  ElasticsearchHealth             `json:"health,omitempty"`
-	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
-
-	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
-}
-
-type ZenDiscoveryStatus struct {
-	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
-	return es.Health.Less(prev.Health)
-}
-
 // +kubebuilder:object:root=true
 
 // Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
@@ -493,6 +442,10 @@ func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }
 
+func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 // IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
 func (es Elasticsearch) IsAutoscalingDefined() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
@@ -509,17 +462,26 @@ func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
 }
 
 func (es Elasticsearch) SuspendedPodNames() set.StringSet {
-	suspended, exists := es.Annotations[SuspendAnnotation]
+	return setFromAnnotations(SuspendAnnotation, es.Annotations)
+}
+
+// GetObservedGeneration will return the observed generation from the Elasticsearch status.
+func (es Elasticsearch) GetObservedGeneration() int64 {
+	return es.Status.ObservedGeneration
+}
+
+func setFromAnnotations(annotationKey string, annotations map[string]string) set.StringSet {
+	allValues, exists := annotations[annotationKey]
 	if !exists {
 		return nil
 	}
 
-	podNames := strings.Split(suspended, ",")
-	suspendedPods := set.Make()
-	for _, p := range podNames {
-		suspendedPods.Add(strings.TrimSpace(p))
+	splitValues := strings.Split(allValues, ",")
+	valueSet := set.Make()
+	for _, p := range splitValues {
+		valueSet.Add(strings.TrimSpace(p))
 	}
-	return suspendedPods
+	return valueSet
 }
 
 // -- associations
@@ -545,23 +507,6 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		}
 	}
 	return associations
-}
-
-func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return commonv1.AssociationStatusMap{}
-	}
-
-	return es.Status.MonitoringAssociationsStatus
-}
-
-func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return fmt.Errorf("association type %s not known", typ)
-	}
-
-	es.Status.MonitoringAssociationsStatus = status
-	return nil
 }
 
 // -- association with monitoring Elasticsearch clusters
@@ -601,16 +546,8 @@ func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
 	}
 }
 
-func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if ema.AssocConfs == nil {
-		return nil
-	}
-	assocConf, found := ema.AssocConfs[ema.ref]
-	if !found {
-		return nil
-	}
-
-	return &assocConf
+func (ema *EsMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -641,4 +578,10 @@ func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) comm
 		Elasticsearch: es,
 		ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
 	}
+}
+
+// DisabledPredicates returns the set of predicates that are currently disabled by the
+// DisableUpgradePredicatesAnnotation annotation.
+func (es Elasticsearch) DisabledPredicates() set.StringSet {
+	return setFromAnnotations(DisableUpgradePredicatesAnnotation, es.Annotations)
 }

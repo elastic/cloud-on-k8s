@@ -21,24 +21,28 @@ import (
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
-	if !associated.AssociationConf().IsConfigured() {
+	esAssocConf, err := associated.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !esAssocConf.IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
 
 	esOutput := map[string]interface{}{
 		"output.elasticsearch": map[string]interface{}{
-			"hosts":    []string{associated.AssociationConf().GetURL()},
-			"username": username,
-			"password": password,
+			"hosts":    []string{esAssocConf.GetURL()},
+			"username": credentials.Username,
+			"password": credentials.Password,
 		},
 	}
 
-	if associated.AssociationConf().GetCACertProvided() {
+	if esAssocConf.GetCACertProvided() {
 		esOutput["output.elasticsearch.ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
 
@@ -47,11 +51,15 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 
 // BuildKibanaConfig builds on optional Kibana configuration for dashboard setup and visualizations.
 func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssociation) (*settings.CanonicalConfig, error) {
-	if !associated.AssociationConf().IsConfigured() {
+	kbAssocConf, err := associated.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !kbAssocConf.IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	username, password, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
@@ -59,13 +67,13 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 	kibanaCfg := map[string]interface{}{
 		"setup.dashboards.enabled": true,
 		"setup.kibana": map[string]interface{}{
-			"host":     associated.AssociationConf().GetURL(),
-			"username": username,
-			"password": password,
+			"host":     kbAssocConf.GetURL(),
+			"username": credentials.Username,
+			"password": credentials.Password,
 		},
 	}
 
-	if associated.AssociationConf().GetCACertProvided() {
+	if kbAssocConf.GetCACertProvided() {
 		kibanaCfg["setup.kibana.ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
 	return settings.NewCanonicalConfigFrom(kibanaCfg)

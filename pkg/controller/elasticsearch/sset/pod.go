@@ -83,24 +83,16 @@ func GetActualMastersForCluster(c k8s.Client, es esv1.Elasticsearch) ([]corev1.P
 	return pods.Items, nil
 }
 
-func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
+func pendingPodsForStatefulSet(c k8s.Client, statefulSet appsv1.StatefulSet) ([]string, []string, error) {
 	// check all expected pods are there: no more, no less
 	actualPods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
 	if err != nil {
-		return false, err
+		return nil, nil, err
 	}
 	actualPodNames := k8s.PodNames(actualPods)
 	expectedPodNames := PodNames(statefulSet)
-	if !(len(actualPodNames) == len(expectedPodNames) && stringsutil.StringsInSlice(expectedPodNames, actualPodNames)) {
-		log.V(1).Info(
-			"Some pods still need to be created/deleted",
-			"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
-			"expected_pods", expectedPodNames, "actual_pods", actualPodNames,
-		)
-		return false, nil
-	}
-
-	return true, nil
+	pendingCreations, pendingDeletions := stringsutil.Difference(expectedPodNames, actualPodNames)
+	return pendingCreations, pendingDeletions, nil
 }
 
 // StatefulSetName returns the name of the statefulset a Pod belongs to.

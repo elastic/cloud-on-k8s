@@ -4,7 +4,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 7.17.0
+  version: 8.1.1
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -221,7 +221,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.17.0
+  version: 8.1.1
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -316,7 +316,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.17.0
+  version: 8.1.1
   nodeSets:
   - name: default
     count: 3
@@ -328,7 +328,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.17.0
+  version: 8.1.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

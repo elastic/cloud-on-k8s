@@ -196,6 +196,7 @@ go-run:
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
+				--exposed-node-labels=topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.* \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
@@ -429,7 +430,7 @@ ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it 
 endif
 
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 7.17.0
+E2E_STACK_VERSION          ?= 8.1.1
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
@@ -469,6 +470,7 @@ e2e-run: go-generate
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
+		--elastic-stack-images=stack-versions-def.json \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \
@@ -510,7 +512,7 @@ e2e-local: go-generate
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci-check: check-license-header lint shellcheck generate check-local-changes
+ci-check: check-license-header lint shellcheck generate check-local-changes check-predicates
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
@@ -542,6 +544,16 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+# Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
+# defined in the user documentation in orchestration.asciidoc.
+check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
+check-predicates: DOC = docs/orchestrating-elastic-stack-applications/elasticsearch/orchestration.asciidoc
+check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
+check-predicates:
+	@ diff \
+		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
+		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
 
 # Runs small Go tool to validate syntax correctness of Jenkins pipelines
 validate-jenkins-pipelines:

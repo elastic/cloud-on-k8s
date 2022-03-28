@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -13,10 +14,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -84,9 +87,16 @@ type PodSpecParams struct {
 	keystoreResources *keystore.Resources
 }
 
-func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
+func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodTemplateSpec, error) {
 	labels := NewLabels(as.Name)
 	labels[APMVersionLabelName] = p.Version
+
+	// ensure the Pod gets rotated on config change
+	configHash, err := buildConfigHash(c, as, p)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	annotations := map[string]string{configHashAnnotationName: configHash}
 
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
@@ -122,6 +132,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 
 	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
 		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
@@ -130,12 +141,46 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 		WithEnv(env...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
-		WithInitContainers(initContainers...).
-		WithInitContainerDefaults()
+		WithInitContainers(initContainers...)
 
-	return builder.PodTemplate
+	builder, err = withAssociationCACertsVolumes(builder, *as)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	builder = withHTTPCertsVolume(builder, *as)
+
+	return builder.WithInitContainerDefaults().PodTemplate, nil
 }
 
 func getDefaultContainerPorts(as apmv1.ApmServer) []corev1.ContainerPort {
 	return []corev1.ContainerPort{{Name: as.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}}
+}
+
+func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) *defaults.PodTemplateBuilder {
+	if !as.Spec.HTTP.TLS.Enabled() {
+		return builder
+	}
+	vol := certificates.HTTPCertSecretVolume(Namer, as.Name)
+	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+}
+
+func withAssociationCACertsVolumes(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) (*defaults.PodTemplateBuilder, error) {
+	for _, association := range as.GetAssociations() {
+		assocConf, err := association.AssociationConf()
+		if err != nil {
+			return nil, err
+		}
+		if !assocConf.CAIsConfigured() {
+			continue
+		}
+
+		vol := volume.NewSecretVolumeWithMountPath(
+			assocConf.GetCASecretName(),
+			fmt.Sprintf("%s-certs", association.AssociationType()),
+			filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
+		)
+
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+	}
+	return builder, nil
 }

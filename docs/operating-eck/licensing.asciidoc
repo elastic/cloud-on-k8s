@@ -83,7 +83,7 @@ kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elas
 == Update your license
 Before your current Enterprise license expires, you will receive a new Enterprise license from Elastic (provided that your subscription is valid).
 
-NOTE: You can check the expiry date of your license in the license file that you received from Elastic. Enterprise licenses are container licenses that include multiple licenses for individual Elasticsearch clusters with shorter expiry. Therefore, you will get a different expiry in Kibana or via the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API. ECK will automatically update the Elasticsearch cluster licenses until the expiry date of the ECK Enterprise license is reached.
+NOTE: You can check the expiry date of your license in the license file that you received from Elastic. Enterprise licenses are container licenses that include multiple licenses for individual Elasticsearch clusters with shorter expiry. Therefore, you will get a different expiry in Kibana or through the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API. ECK will automatically update the Elasticsearch cluster licenses until the expiry date of the ECK Enterprise license is reached.
 
 To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license, we recommend to install the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name from the examples above. ECK will use the correct license automatically.
 
@@ -107,7 +107,7 @@ The operator periodically writes the total amount of Elastic resources under man
 }
 ----
 
-If the operator metrics endpoint is enabled via the `--metrics-port` flag (check <<{p}-operator-config>>), license usage data will be included in the reported metrics. 
+If the operator metrics endpoint is enabled with the `--metrics-port` flag (check <<{p}-operator-config>>), license usage data will be included in the reported metrics. 
 
 [source,shell]
 ----

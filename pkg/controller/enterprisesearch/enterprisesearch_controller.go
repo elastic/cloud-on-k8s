@@ -26,6 +26,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -147,7 +148,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	defer tracing.EndTransaction(tx)
 
 	var ent entv1.EnterpriseSearch
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &ent); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -189,7 +190,11 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ent)
 
-	if !association.IsConfiguredIfSet(&ent, r.recorder) {
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ent, r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !isEsAssocConfigured {
 		return results, status
 	}
 
@@ -226,7 +231,11 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(err), status
 	}
 	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	if !association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder) {
+	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !assocAllowed {
 		return results, status // will eventually retry once updated
 	}
 
@@ -355,16 +364,9 @@ func buildConfigHash(c k8s.Client, ent entv1.EnterpriseSearch, configSecret core
 		}
 	}
 
-	// - in the Elasticsearch TLS certificates
-	if ent.AssociationConf().CAIsConfigured() {
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}
-		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
-			return "", err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			_, _ = configHash.Write(certPem)
-		}
+	// - in the associated Elasticsearch TLS certificates
+	if err := commonassociation.WriteAssocsToConfigHash(c, ent.GetAssociations(), configHash); err != nil {
+		return "", err
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil

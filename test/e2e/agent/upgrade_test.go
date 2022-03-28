@@ -20,6 +20,9 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestSnapshotVersion8x
 
+	// TODO remove skip when https://github.com/elastic/kibana/issues/126611 is fixed
+	t.SkipNow()
+
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-agent-upgrade"
@@ -47,7 +50,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(esBuilder.Ref(), fleetServerBuilder.Ref()))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
 	agentBuilder := agent.NewBuilder(name+"-ea").
 		WithVersion(srcVersion).

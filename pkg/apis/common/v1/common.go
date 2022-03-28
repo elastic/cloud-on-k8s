@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentHealth string
@@ -236,4 +237,11 @@ type ConfigSource struct {
 	//    email.account.email_defaults.from: my@email.com
 	// ---
 	SecretRef `json:",inline"`
+}
+
+// HasObservedGeneration allows a return of any object's observed generation.
+// +kubebuilder:object:generate=false
+type HasObservedGeneration interface {
+	client.Object
+	GetObservedGeneration() int64
 }

@@ -93,9 +93,9 @@ func TestExpectedPodDeletions_DeletionsSatisfied(t *testing.T) {
 				e.ExpectDeletion(tt.expectDeletions[i])
 				require.Contains(t, e.podDeletions, k8s.ExtractNamespacedName(&tt.expectDeletions[i]))
 			}
-			satisfied, err := e.DeletionsSatisfied()
+			pendingPodsDeletions, err := e.PendingPodDeletions()
 			require.NoError(t, err)
-			require.Equal(t, tt.wantSatisfied, satisfied)
+			require.Equal(t, tt.wantSatisfied, len(pendingPodsDeletions) == 0)
 			require.Equal(t, tt.wantExpectedDeletions, e.podDeletions)
 		})
 	}

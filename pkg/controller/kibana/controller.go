@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -56,9 +56,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
-	client := mgr.GetClient()
 	return &ReconcileKibana{
-		Client:         client,
+		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
@@ -132,7 +131,8 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &kb); err != nil {
+	err := r.Client.Get(ctx, request.NamespacedName, &kb)
+	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -161,30 +161,43 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
+	state := NewState(request, kb)
+
+	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
+	// note that this deferred function is modifying the return values, which are named return values, which allows this
+	// to function properly.
+	defer func() {
+		statusErr := r.updateStatus(ctx, state)
+		if statusErr != nil && apierrors.IsConflict(statusErr) {
+			log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
+			result = reconcile.Result{Requeue: true}
+		} else if statusErr != nil {
+			finalError := statusErr
+			if err != nil {
+				finalError = errors.Wrapf(err, "while updating status: %s", statusErr)
+			}
+			log.Error(finalError, "Error while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
+			err = finalError
+		}
+	}()
+
 	// Run validation in case the webhook is disabled
-	if err := r.validate(ctx, kb); err != nil {
-		return reconcile.Result{}, err
+	if err = r.validate(ctx, kb); err != nil {
+		return result, err
 	}
 
-	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
+	var driver *driver
+	driver, err = newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	state := NewState(request, kb)
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
-	// update status
-	err = r.updateStatus(ctx, state)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return reconcile.Result{Requeue: true}, nil
-	}
-
-	res, err := results.WithError(err).Aggregate()
+	result, err = results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, "Reconciliation error: %v", err)
-	return res, err
+	return result, err
 }
 
 func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
@@ -240,5 +253,7 @@ type State struct {
 // NewState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
 func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
-	return State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+	newState := State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+	newState.Kibana.Status.ObservedGeneration = kb.Generation
+	return newState
 }

@@ -4,7 +4,12 @@
 
 package expectations
 
-import "github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+)
 
 /*
 
@@ -89,14 +94,20 @@ func NewExpectations(client k8s.Client) *Expectations {
 }
 
 // Satisfied returns true if both deletions and generations are expected.
-func (e *Expectations) Satisfied() (bool, error) {
-	deletionsSatisfied, err := e.DeletionsSatisfied()
+func (e *Expectations) Satisfied() (bool, string, error) {
+	pendingPodDeletions, err := e.PendingPodDeletions()
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
-	generationsSatisfied, err := e.GenerationsSatisfied()
+	if len(pendingPodDeletions) > 0 {
+		return false, fmt.Sprintf("Expecting deletion for Pods: %s", strings.Join(pendingPodDeletions, ",")), nil
+	}
+	pendingGenerations, err := e.PendingGenerations()
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
-	return deletionsSatisfied && generationsSatisfied, nil
+	if len(pendingGenerations) > 0 {
+		return false, fmt.Sprintf("StatefulSets not reconciled yet: %s", strings.Join(pendingGenerations, ",")), nil
+	}
+	return true, "", nil
 }

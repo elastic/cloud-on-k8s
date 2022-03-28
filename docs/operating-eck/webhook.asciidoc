@@ -71,7 +71,7 @@ This section describes how you can use your own certificates for the webhook ins
 [id="{p}-{page_id}-own-ca"]
 ==== Use a certificate signed by your own CA
 
-- The certificate must have a Subject Alternative Name (SAN) of the form `<service_name>.<namespace>.svc` (e.g. `elastic-webhook-server.elastic-system.svc`). A typical OpenSSL command to generate such a certificate would be as follows:
+- The certificate must have a Subject Alternative Name (SAN) of the form `<service_name>.<namespace>.svc` (for example `elastic-webhook-server.elastic-system.svc`). A typical OpenSSL command to generate such a certificate would be as follows:
 +
 [source,sh]
 ----

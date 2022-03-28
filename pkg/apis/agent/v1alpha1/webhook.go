@@ -11,10 +11,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the Elastic Agent validating webhook.
+	webhookPath = "/validate-agent-k8s-elastic-co-v1alpha1-agent"
 )
 
 var (
@@ -26,22 +30,22 @@ var (
 
 var _ webhook.Validator = &Agent{}
 
-func (a *Agent) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(a).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (a *Agent) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", a.Name)
 	return a.validate(nil)
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (a *Agent) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", a.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (a *Agent) ValidateUpdate(old runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", a.Name)
 	oldObj, ok := old.(*Agent)
@@ -50,6 +54,11 @@ func (a *Agent) ValidateUpdate(old runtime.Object) error {
 	}
 
 	return a.validate(oldObj)
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (a *Agent) WebhookPath() string {
+	return webhookPath
 }
 
 func (a *Agent) validate(old *Agent) error {

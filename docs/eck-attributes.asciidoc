@@ -1,5 +1,5 @@
-:eck_version: 1.9.1
+:eck_version: 2.1.0
 :eck_crd_version: v1
-:eck_release_branch: 1.9
+:eck_release_branch: 2.1
 :eck_github: https://github.com/elastic/cloud-on-k8s
 :eck_resources_list: Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, and Elastic Maps Server

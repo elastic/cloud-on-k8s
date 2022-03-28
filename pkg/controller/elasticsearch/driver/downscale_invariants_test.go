@@ -12,11 +12,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
@@ -27,20 +25,20 @@ func Test_newDownscaleState(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		initialResources []runtime.Object
-		want             *downscaleState
+		name       string
+		actualPods []corev1.Pod
+		want       *downscaleState
 	}{
 		{
-			name:             "no resources in the apiserver",
-			initialResources: nil,
-			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: pointer.Int32(0)},
+			name:       "no resources in the apiserver",
+			actualPods: nil,
+			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: pointer.Int32(0)},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
-			initialResources: []runtime.Object{
+			actualPods: []corev1.Pod{
 				// 3 masters running
-				&corev1.Pod{
+				corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-0",
@@ -63,7 +61,7 @@ func Test_newDownscaleState(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Pod{
+				corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-1",
@@ -86,7 +84,7 @@ func Test_newDownscaleState(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Pod{
+				corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-2",
@@ -110,7 +108,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 				// 1 master not ready yet
-				&corev1.Pod{
+				corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ssetMaster3Replicas.Namespace,
 						Name:      ssetMaster3Replicas.Name + "-3",
@@ -127,9 +125,7 @@ func Test_newDownscaleState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.NewFakeClient(tt.initialResources...)
-			got, err := newDownscaleState(k8sClient, es)
-			require.NoError(t, err)
+			got := newDownscaleState(tt.actualPods, es)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDownscaleInvariants() got = %v, want %v", got, tt.want)
 			}

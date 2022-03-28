@@ -39,6 +39,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
@@ -66,6 +67,7 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	commonwebhook "github.com/elastic/cloud-on-k8s/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -482,11 +484,6 @@ func startOperator(ctx context.Context) error {
 		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 
-		// Add the empty namespace to allow watching cluster-scoped resources if storage class validation is enabled.
-		if viper.GetBool(operator.ValidateStorageClassFlag) {
-			managedNamespaces = append(managedNamespaces, "")
-		}
-
 		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
 
@@ -580,7 +577,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels)
+		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -845,7 +842,8 @@ func setupWebhook(
 	certRotation certificates.RotationParams,
 	validateStorageClass bool,
 	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels) {
+	exposedNodeLabels esvalidation.NodeLabels,
+	managedNamespaces []string) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -879,7 +877,8 @@ func setupWebhook(
 	// setup webhooks for supported types
 	webhookObjects := []interface {
 		runtime.Object
-		SetupWebhookWithManager(manager.Manager) error
+		admission.Validator
+		WebhookPath() string
 	}{
 		&agentv1alpha1.Agent{},
 		&apmv1.ApmServer{},
@@ -893,14 +892,19 @@ func setupWebhook(
 		&emsv1alpha1.ElasticMapsServer{},
 	}
 	for _, obj := range webhookObjects {
-		if err := obj.SetupWebhookWithManager(mgr); err != nil {
+		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
+			Manager:          mgr,
+			WebhookPath:      obj.WebhookPath(),
+			ManagedNamespace: managedNamespaces,
+			Validator:        obj,
+		}); err != nil {
 			gvk := obj.GetObjectKind().GroupVersionKind()
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
 		}
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels)
+	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

@@ -66,8 +66,7 @@ func main() {
 		RunE:          doRun,
 	}
 
-	cmd.Flags().StringVar(&args.confPath, "conf", "", "Path to config file")
-	_ = cmd.MarkFlagRequired("conf")
+	cmd.Flags().StringVar(&args.confPath, "conf", "config.yaml", "Path to config file")
 
 	cmd.Flags().StringSliceVar(&args.manifestPaths, "yaml-manifest", nil, "Path to installation manifests")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
@@ -81,30 +80,30 @@ func main() {
 func doRun(_ *cobra.Command, _ []string) error {
 	conf, err := loadConfig(args.confPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("when loading config: %w", err)
 	}
 
 	manifestStream, close, err := getInstallManifestStream(conf, args.manifestPaths)
 	if err != nil {
-		return err
+		return fmt.Errorf("when getting install manifest stream: %w", err)
 	}
 
 	defer close()
 
 	extracts, err := extractYAMLParts(manifestStream)
 	if err != nil {
-		return err
+		return fmt.Errorf("when extracting YAML parts: %w", err)
 	}
 
 	for i := range conf.Packages {
 		params, err := buildRenderParams(conf, i, extracts)
 		if err != nil {
-			return err
+			return fmt.Errorf("when building render params: %w", err)
 		}
 
 		outDir := conf.Packages[i].OutputPath
 		if err := render(params, args.templatesDir, outDir); err != nil {
-			return err
+			return fmt.Errorf("when rendering: %w", err)
 		}
 	}
 
@@ -165,6 +164,9 @@ func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, 
 			return nil, closer, fmt.Errorf("failed to open %s: %w", manifestPaths, err)
 		}
 		rs = append(rs, r)
+		// if we're using local yaml files, ensure that they have a proper
+		// end of directives marker between them.
+		rs = append(rs, strings.NewReader(yamlSeparator))
 	}
 	return io.MultiReader(rs...), closer, nil
 }
@@ -174,13 +176,15 @@ func installManifestFromWeb(version string) (io.Reader, error) {
 	buf, err := makeRequest(fmt.Sprintf(allInOneURL, version))
 	if err == errNotFound {
 		// if not found load the separate manifests for CRDs and operator (version >= 1.7.0)
-		crds, err := makeRequest(fmt.Sprintf(crdManifestURL, version))
+		crdManifestURL := fmt.Sprintf(crdManifestURL, version)
+		crds, err := makeRequest(crdManifestURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("when getting %s: %w", crdManifestURL, err)
 		}
-		op, err := makeRequest(fmt.Sprintf(operatorManifestURL, version))
+		operatorManifestURL := fmt.Sprintf(operatorManifestURL, version)
+		op, err := makeRequest(operatorManifestURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("when getting %s: %w", operatorManifestURL, err)
 		}
 		return io.MultiReader(crds, strings.NewReader(yamlSeparator), op), nil
 	}
@@ -241,6 +245,7 @@ type WebhookDefinition struct {
 	ContainerPort           int                              `json:"containerPort"`
 	DeploymentName          string                           `json:"deploymentName"`
 	FailurePolicy           *admissionv1.FailurePolicyType   `json:"failurePolicy"`
+	MatchPolicy             admissionv1.MatchPolicyType      `json:"matchPolicy"`
 	GenerateName            string                           `json:"generateName"`
 	Rules                   []admissionv1.RuleWithOperations `json:"rules"`
 	SideEffects             *admissionv1.SideEffectClass     `json:"sideEffects"`
@@ -285,6 +290,8 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 			return nil, fmt.Errorf("failed to read CRD YAML: %w", err)
 		}
 
+		yamlBytes = normalizeTrailingNewlines(yamlBytes)
+
 		runtimeObj, _, err := decoder.Decode(yamlBytes, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode CRD YAML: %w", err)
@@ -315,6 +322,12 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 			parts.operatorWebhooks = append(parts.operatorWebhooks, *obj)
 		}
 	}
+}
+
+// normalizeTrailingNewlines removed duplicate newlines at the end of the documents to satisfy YAML linter rules.
+func normalizeTrailingNewlines(yamlBytes []byte) []byte {
+	trimmed := bytes.TrimRight(yamlBytes, "\n")
+	return append(trimmed, "\n"...)
 }
 
 type RenderParams struct {
@@ -414,6 +427,7 @@ func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admi
 			ContainerPort:           443,
 			DeploymentName:          "elastic-operator",
 			FailurePolicy:           webhook.FailurePolicy,
+			MatchPolicy:             admissionv1.Exact,
 			GenerateName:            webhook.Name,
 			Rules:                   webhook.Rules,
 			SideEffects:             webhook.SideEffects,
@@ -433,7 +447,10 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 			return fmt.Errorf("failed to stat %s: %w", versionDir, err)
 		}
 	} else {
-		return fmt.Errorf("directory already exists: %s", versionDir)
+		err := os.RemoveAll(versionDir)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing directory: %w", err)
+		}
 	}
 
 	if err := os.MkdirAll(versionDir, 0o766); err != nil {

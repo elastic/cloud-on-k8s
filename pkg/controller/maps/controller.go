@@ -27,6 +27,7 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -151,7 +152,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	// retrieve the EMS object
 	var ems emsv1alpha1.ElasticMapsServer
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &ems); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, &ems); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -184,7 +185,11 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
 	}
 
-	if !association.IsConfiguredIfSet(&ems, r.recorder) {
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ems, r.recorder)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !isEsAssocConfigured {
 		return reconcile.Result{}, nil
 	}
 
@@ -226,7 +231,11 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return reconcile.Result{}, err
 	}
 	logger := log.WithValues("namespace", ems.Namespace, "maps_name", ems.Name) // TODO  mapping explosion
-	if !association.AllowVersion(emsVersion, ems.Associated(), logger, r.recorder) {
+	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), logger, r.recorder)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !assocAllowed {
 		return reconcile.Result{}, nil // will eventually retry once updated
 	}
 
@@ -307,16 +316,9 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 		}
 	}
 
-	// - in the Elasticsearch TLS certificates
-	if ems.AssociationConf().CAIsConfigured() {
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: ems.Namespace, Name: ems.AssociationConf().GetCASecretName()}
-		if err := c.Get(context.Background(), key, &esPublicCASecret); err != nil {
-			return "", err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			_, _ = configHash.Write(certPem)
-		}
+	// - in the associated Elasticsearch TLS certificates
+	if err := commonassociation.WriteAssocsToConfigHash(c, ems.GetAssociations(), configHash); err != nil {
+		return "", err
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil
@@ -330,12 +332,19 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploy := deployment.New(r.deploymentParams(ems, configHash))
+	deployParams, err := r.deploymentParams(ems, configHash)
+	if err != nil {
+		return appsv1.Deployment{}, err
+	}
+	deploy := deployment.New(deployParams)
 	return deployment.Reconcile(r.K8sClient(), deploy, &ems)
 }
 
-func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) deployment.Params {
-	podSpec := newPodSpec(ems, configHash)
+func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) (deployment.Params, error) {
+	podSpec, err := newPodSpec(ems, configHash)
+	if err != nil {
+		return deployment.Params{}, err
+	}
 
 	deploymentLabels := labels(ems.Name)
 
@@ -351,7 +360,7 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 		Labels:          deploymentLabels,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
-	}
+	}, nil
 }
 
 func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) error {

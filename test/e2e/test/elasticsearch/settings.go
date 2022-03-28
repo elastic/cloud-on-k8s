@@ -32,7 +32,7 @@ func mustNumNodes(role esv1.NodeRole, es esv1.Elasticsearch) int {
 
 func hasRole(role esv1.NodeRole, node esv1.NodeSet, ver version.Version) bool {
 	if node.Config == nil {
-		return esv1.DefaultCfg(ver).Node.HasRole(esv1.DataRole)
+		return esv1.DefaultCfg(ver).Node.IsConfiguredWithRole(esv1.DataRole)
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {

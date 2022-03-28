@@ -58,7 +58,7 @@ These permissions are needed by the Service Account that ECK operator runs as.
 |Endpoint||no|Checking availability of service endpoints.
 |Event||no|Emitting events concerning reconciliation progress and issues.
 |PersistentVolumeClaim||no|Expanding existing volumes. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
-|Secret||no|Reading/writing configuration, passwords, certificates, etc.
+|Secret||no|Reading/writing configuration, passwords, certificates, and so on.
 |Service||no|Creating Services fronting Elastic Stack applications.
 |ConfigMap||no|Reading/writing configuration.
 |StatefulSet|apps|no|Deploying Elasticsearch
