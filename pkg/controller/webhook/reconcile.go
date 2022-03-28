@@ -90,8 +90,7 @@ func UpdateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	pod.Annotations[UpdateAnnotation] =
-		time.Now().Format(time.RFC3339Nano)
+	pod.Annotations[UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
 	if _, err := clientset.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{}); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
