@@ -73,10 +73,10 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 }
 
 func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface) {
+	// Get all the pods that are related to control-plane label.
 	labels := metav1.ListOptions{
 		LabelSelector: "control-plane=elastic-operator",
 	}
-	// Get all the pods that are related to control-plane label.
 	pods, err := clientset.CoreV1().Pods("elastic-system").List(ctx, labels)
 	if err != nil {
 		return
