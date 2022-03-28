@@ -16,7 +16,7 @@
               - ${sha1}
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
             refspec: '+refs/pull/${ghprbPullId}/*:refs/remotes/origin/pr/${ghprbPullId}/*'
-      # Jenkinsfile shared with the release build job
+      # Jenkinsfile shared with the e2e-tests-main build job
       script-path: .ci/pipelines/e2e-tests-main-gke.Jenkinsfile
       lightweight-checkout: false
     triggers:
@@ -29,7 +29,7 @@
           cancel-builds-on-update: false
           white-list:
             - renovate[bot]
-          trigger-phrase: 'run full pr build.*'
+          trigger-phrase: '(run\sfull\spr\sbuild).*|(run/e2e-tests).*'
           only-trigger-phrase: true
     properties:
     - github:
