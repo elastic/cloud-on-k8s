@@ -20,10 +20,11 @@ func TestToMap(t *testing.T) {
 		i := LicensingInfo{}
 		have := i.toMap()
 		want := map[string]string{
-			"timestamp":                 "",
-			"eck_license_level":         "",
-			"total_managed_memory":      "0.00GB",
-			"enterprise_resource_units": "0",
+			"timestamp":                  "",
+			"eck_license_level":          "",
+			"total_managed_memory":       "0.00GiB",
+			"total_managed_memory_bytes": "0",
+			"enterprise_resource_units":  "0",
 		}
 		assert.Equal(t, want, have)
 	})
@@ -33,8 +34,9 @@ func TestToMap(t *testing.T) {
 			Timestamp:                  "2020-05-28T11:15:31Z",
 			EckLicenseLevel:            "enterprise",
 			EckLicenseExpiryDate:       &dateFixture,
-			TotalManagedMemoryGiB:      72.54578,
-			EnterpriseResourceUnits:    5,
+			TotalManagedMemoryGiB:      64,
+			TotalManagedMemoryBytes:    68719476736,
+			EnterpriseResourceUnits:    1,
 			MaxEnterpriseResourceUnits: 10,
 		}
 
@@ -43,8 +45,9 @@ func TestToMap(t *testing.T) {
 			"timestamp":                     "2020-05-28T11:15:31Z",
 			"eck_license_level":             "enterprise",
 			"eck_license_expiry_date":       "2021-11-03T00:00:00Z",
-			"total_managed_memory":          "72.55GiB",
-			"enterprise_resource_units":     "5",
+			"total_managed_memory":          "64.00GiB",
+			"total_managed_memory_bytes":    "68719476736",
+			"enterprise_resource_units":     "1",
 			"max_enterprise_resource_units": "10",
 		}
 		assert.Equal(t, want, have)

@@ -139,7 +139,7 @@ func TestAggregator(t *testing.T) {
 
 	val, err := aggregator.AggregateMemory()
 	require.NoError(t, err)
-	require.Equal(t, 349.940350976, inGiB(val))
+	require.Equal(t, 325.9073486328125, inGiB(val))
 }
 
 func readObjects(t *testing.T, filePath string) []runtime.Object {
