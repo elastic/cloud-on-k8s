@@ -192,7 +192,7 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 // inGiB converts a resource.Quantity in gibibytes
 func inGiB(q resource.Quantity) float64 {
 	// divide the value (in bytes) per 1024*1024*1024 (1GiB)
-	return float64(q.Value()) / (1024*1024*1024)
+	return float64(q.Value()) / (1024 * 1024 * 1024)
 }
 
 // inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
