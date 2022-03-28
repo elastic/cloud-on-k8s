@@ -1630,11 +1630,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.11.0
-Time    : 2021-06-07T12:32:16Z
+Version : v1.12.1
+Time    : 2022-01-29T14:48:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.12.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -1841,11 +1841,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.28.0
-Time    : 2021-06-07T13:15:57Z
+Version : v0.32.1
+Time    : 2021-10-20T18:49:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.28.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.32.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15892,11 +15892,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.6.0
-Time    : 2021-02-10T15:13:02Z
+Version : v0.7.3
+Time    : 2021-08-09T15:06:36Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.7.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -17083,11 +17083,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20211210111614-af8b64212486
-Time    : 2021-12-10T11:16:14Z
+Version : v0.0.0-20220114195835-da31bd327af9
+Time    : 2022-01-14T19:58:35Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20211210111614-af8b64212486/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20220114195835-da31bd327af9/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
