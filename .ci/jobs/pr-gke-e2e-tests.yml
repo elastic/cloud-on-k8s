@@ -1,7 +1,7 @@
 ---
 - job:
     description: Build a PR version of ECK and run full suite of E2E tests
-    name: cloud-on-k8s-pr-full
+    name: cloud-on-k8s-pr-e2e-tests
     project-type: pipeline
     concurrent: true
     parameters:
@@ -26,7 +26,7 @@
             - elastic
           allow-whitelist-orgs-as-admins: true
           github-hooks: true
-          status-context: devops-ci/full
+          status-context: devops-ci/e2e-tests
           cancel-builds-on-update: false
           white-list:
             - renovate[bot]
