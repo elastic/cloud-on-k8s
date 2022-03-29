@@ -50,11 +50,12 @@ func Metricbeat(client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error)
 		}
 		username, password = info.Username, info.Password
 	} else {
-		password, err := user.GetMonitoringUserPassword(client, associatedEsNsn)
+		var err error
+		username = user.MonitoringUserName
+		password, err = user.GetMonitoringUserPassword(client, associatedEsNsn)
 		if err != nil {
 			return stackmon.BeatSidecar{}, err
 		}
-		username, password = user.MonitoringUserName, password
 	}
 
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
