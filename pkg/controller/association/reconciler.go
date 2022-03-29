@@ -243,8 +243,8 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	if assocRef.IsExternal() {
 		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
-		// unmanaged object, update association conf from the unmanaged custom Secret
-		expectedAssocConf, err := r.ReconcileUnmanagedAssociation(association)
+		// external reference, update association conf to associate the unmanaged resource
+		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
 		if err != nil {
 			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
 			return commonv1.AssociationFailed, err

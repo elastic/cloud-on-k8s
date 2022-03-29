@@ -30,7 +30,9 @@ const (
 	authPasswordUnmanagedSecretKey = "password"
 )
 
-func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
+// ExpectedConfigFromUnmanagedAssociation returns the association configuration to associate the external unmanaged resource referenced
+// in the given association.
+func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1.Association) (commonv1.AssociationConf, error) {
 	assocRef := association.AssociationRef()
 	info, err := GetUnmanagedAssociationConnectionInfoFromSecret(r.Client, assocRef)
 	if err != nil {
@@ -80,7 +82,7 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 	if !ok {
 		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", o.SecretName)
 	}
-	username, ok := secretRef.Data["username"]
+	username, ok := secretRef.Data[authUsernameUnmanagedSecretKey]
 	if !ok {
 		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", o.SecretName)
 	}
