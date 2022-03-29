@@ -40,8 +40,12 @@ func watchCADir(ctx context.Context, path string, onChange chan struct{}) error 
 				// TODO verify rename is relevant
 				const relevantOps = fsnotify.Create | fsnotify.Write | fsnotify.Remove | fsnotify.Rename
 				// TODO verify we need to handle symlinks b/c k8s secret mounts etc
-				affectedFilePath := filepath.Clean(event.Name)
+				affectedFilePath, err := filepath.EvalSymlinks(filepath.Clean(event.Name))
+				if err != nil {
+					log.Error(err, "while evaluating symlinks for CA files")
+				}
 				affectedFileName := filepath.Base(affectedFilePath)
+				log.V(1).Info("watcher event", "file", affectedFilePath, "op", event.Op)
 				if (affectedFileName == certificates.KeyFileName || affectedFileName == certificates.CertFileName) &&
 					event.Op&relevantOps != 0 {
 					log.Info("CA file changed", "file", affectedFilePath, "op", event.Op)
