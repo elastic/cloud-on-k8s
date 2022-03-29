@@ -98,17 +98,8 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 // CheckAssociationRefs checks that the given association references are valid.
 func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
 	for _, ref := range refs {
-		if ref.Name != "" && ref.SecretName != "" {
-			return field.ErrorList{field.Forbidden(path, "Invalid association reference: specify name or secretName, not both")}
-		}
-		if ref.SecretName != "" && (ref.ServiceName != "" || ref.Namespace != "") {
-			return field.ErrorList{field.Forbidden(path, "Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName")}
-		}
-		if ref.Name == "" && (ref.ServiceName != "") {
-			return field.ErrorList{field.Forbidden(path, "Invalid association reference: serviceName can only be used in combination with name")}
-		}
-		if ref.Name == "" && (ref.Namespace != "") {
-			return field.ErrorList{field.Forbidden(path, "Invalid association reference: namespace can only be used in combination with name")}
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
 		}
 	}
 	return nil

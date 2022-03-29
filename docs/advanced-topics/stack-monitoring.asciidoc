@@ -117,10 +117,10 @@ metadata:
 stringData:
   url: https://mon1.es.abcd-42.xyz.elastic-cloud.com:9243
   username: monitoring-user
-  password: @j5SiN;<7yLJQz4<7:g:ap7hBb:2slbtfZ}?[PyO
+  password: REDACTED
 ---
 
-The creation of the user referenced in the secret is your responsibility.
+The user referenced in the Secret must have been created beforehand.
 
 == When to use it
 

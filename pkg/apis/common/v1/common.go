@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -86,12 +87,13 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 	}
 }
 
+// NameOrSecretName returns the name or the secret name of the ObjectSelector.
+// Name or secret name are mutually exclusive. Validation rules ensure that exactly one of the two is set.
 func (o ObjectSelector) NameOrSecretName() string {
-	name := o.Name
 	if o.SecretName != "" {
-		name = o.SecretName
+		return o.SecretName
 	}
-	return name
+	return o.Name
 }
 
 // NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
@@ -114,8 +116,27 @@ func (o ObjectSelector) IsExternal() bool {
 	return o.IsDefined() && o.SecretName != ""
 }
 
+func (o ObjectSelector) IsValid() error {
+	if o.Name != "" && o.SecretName != "" {
+		return errors.New("specify name or secretName, not both")
+	}
+	if o.SecretName != "" && (o.ServiceName != "" || o.Namespace != "") {
+		return errors.New("serviceName or namespace can only be used in combination with name, not with secretName")
+	}
+	if o.Name == "" && (o.ServiceName != "") {
+		return errors.New("serviceName can only be used in combination with name")
+	}
+	if o.Name == "" && (o.Namespace != "") {
+		return errors.New("namespace can only be used in combination with name")
+	}
+	return nil
+}
+
 func (o ObjectSelector) String() string {
-	return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
+	if o.Namespace != "" {
+		return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
+	}
+	return o.NameOrSecretName()
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.

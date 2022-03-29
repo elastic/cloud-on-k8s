@@ -60,17 +60,6 @@ func (r *Reconciler) ReconcileUnmanagedAssociation(association commonv1.Associat
 	return expectedAssocConf, err
 }
 
-func GetAuthFromUnmanagedSecretOr(client k8s.Client, unmanagedAssocRef commonv1.ObjectSelector, other func() (string, string, error)) (string, string, error) {
-	if unmanagedAssocRef.IsExternal() {
-		info, err := GetUnmanagedAssociationConnectionInfoFromSecret(client, unmanagedAssocRef)
-		if err != nil {
-			return "", "", err
-		}
-		return info.Username, info.Password, nil
-	}
-	return other()
-}
-
 // UnmanagedAssociationConnectionInfo holds connection information stored in a custom Secret to reach over HTTP an Elastic resource not managed by ECK
 // referenced in an Association. The resource can thus be external to the local Kubernetes cluster.
 type UnmanagedAssociationConnectionInfo struct {
