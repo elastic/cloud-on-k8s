@@ -8,8 +8,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"k8s.io/client-go/kubernetes"
 	"testing"
 	"time"
 
@@ -17,8 +15,10 @@ import (
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
@@ -243,7 +243,6 @@ func TestUpdateOperatorPod(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, sampleAnnotations, gotOtherPod.Annotations)
 			}
-
 		})
 	}
 }
