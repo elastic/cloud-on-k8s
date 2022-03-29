@@ -222,7 +222,7 @@ spec:
                   properties:
                     name:
                       description: Name of an existing Kubernetes object corresponding
-                        to an Elastic custom resource managed by ECK.
+                        to an Elastic resource managed by ECK.
                       type: string
                     namespace:
                       description: Namespace of the Kubernetes object. If empty, defaults
@@ -233,13 +233,13 @@ spec:
                     secretName:
                       description: 'SecretName is the name of an existing Kubernetes
                         secret that contains connection information for associating
-                        an Elastic resource not managed by ECK. The referenced secret
-                        must contain the following: - `url`: the URL to reach the
-                        Elastic resource - `username`: the username of the user to
-                        be authenticated to the Elastic resource - `password`: the
-                        password of the user to be authenticated to the Elastic resource
-                        - `ca.crt`: the CA certificate in PEM format (optional). This
-                        field cannot be used in combination with the other fields
+                        an Elastic resource not managed by the operator. The referenced
+                        secret must contain the following: - `url`: the URL to reach
+                        the Elastic resource - `username`: the username of the user
+                        to be authenticated to the Elastic resource - `password`:
+                        the password of the user to be authenticated to the Elastic
+                        resource - `ca.crt`: the CA certificate in PEM format (optional).
+                        This field cannot be used in combination with the other fields
                         name, namespace or serviceName.'
                       type: string
                     serviceName:
@@ -262,7 +262,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -271,14 +271,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -708,7 +708,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -717,14 +717,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -905,7 +905,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -914,14 +914,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -1350,7 +1350,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -1359,14 +1359,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2263,7 +2263,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -2272,14 +2272,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2300,7 +2300,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -2309,14 +2309,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -2502,7 +2502,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -2511,14 +2511,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -3517,11 +3517,13 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object which can be an Elastic custom resource or a Secret.
+                            object which can be an Elastic resource managed by the
+                            operator or a Secret describing an external Elastic resource
+                            not managed by the operator.
                           properties:
                             name:
                               description: Name of an existing Kubernetes object corresponding
-                                to an Elastic custom resource managed by ECK.
+                                to an Elastic resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
@@ -3531,12 +3533,12 @@ spec:
                               description: 'SecretName is the name of an existing
                                 Kubernetes secret that contains connection information
                                 for associating an Elastic resource not managed by
-                                ECK. The referenced secret must contain the following:
-                                - `url`: the URL to reach the Elastic resource - `username`:
-                                the username of the user to be authenticated to the
-                                Elastic resource - `password`: the password of the
-                                user to be authenticated to the Elastic resource -
-                                `ca.crt`: the CA certificate in PEM format (optional).
+                                the operator. The referenced secret must contain the
+                                following: - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated
+                                to the Elastic resource - `password`: the password
+                                of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional).
                                 This field cannot be used in combination with the
                                 other fields name, namespace or serviceName.'
                               type: string
@@ -3562,11 +3564,13 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object which can be an Elastic custom resource or a Secret.
+                            object which can be an Elastic resource managed by the
+                            operator or a Secret describing an external Elastic resource
+                            not managed by the operator.
                           properties:
                             name:
                               description: Name of an existing Kubernetes object corresponding
-                                to an Elastic custom resource managed by ECK.
+                                to an Elastic resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
@@ -3576,12 +3580,12 @@ spec:
                               description: 'SecretName is the name of an existing
                                 Kubernetes secret that contains connection information
                                 for associating an Elastic resource not managed by
-                                ECK. The referenced secret must contain the following:
-                                - `url`: the URL to reach the Elastic resource - `username`:
-                                the username of the user to be authenticated to the
-                                Elastic resource - `password`: the password of the
-                                user to be authenticated to the Elastic resource -
-                                `ca.crt`: the CA certificate in PEM format (optional).
+                                the operator. The referenced secret must contain the
+                                following: - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated
+                                to the Elastic resource - `password`: the password
+                                of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional).
                                 This field cannot be used in combination with the
                                 other fields name, namespace or serviceName.'
                               type: string
@@ -4064,23 +4068,11 @@ spec:
                       properties:
                         name:
                           description: Name of an existing Kubernetes object corresponding
-                            to an Elastic custom resource managed by ECK.
+                            to an Elastic resource managed by ECK.
                           type: string
                         namespace:
                           description: Namespace of the Kubernetes object. If empty,
                             defaults to the current namespace.
-                          type: string
-                        secretName:
-                          description: 'SecretName is the name of an existing Kubernetes
-                            secret that contains connection information for associating
-                            an Elastic resource not managed by ECK. The referenced
-                            secret must contain the following: - `url`: the URL to
-                            reach the Elastic resource - `username`: the username
-                            of the user to be authenticated to the Elastic resource
-                            - `password`: the password of the user to be authenticated
-                            to the Elastic resource - `ca.crt`: the CA certificate
-                            in PEM format (optional). This field cannot be used in
-                            combination with the other fields name, namespace or serviceName.'
                           type: string
                         serviceName:
                           description: ServiceName is the name of an existing Kubernetes
@@ -5876,7 +5868,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -5885,14 +5877,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -6432,7 +6424,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -6441,14 +6433,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -6999,7 +6991,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -7008,14 +7000,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -7032,7 +7024,7 @@ spec:
                 properties:
                   name:
                     description: Name of an existing Kubernetes object corresponding
-                      to an Elastic custom resource managed by ECK.
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
@@ -7041,14 +7033,14 @@ spec:
                   secretName:
                     description: 'SecretName is the name of an existing Kubernetes
                       secret that contains connection information for associating
-                      an Elastic resource not managed by ECK. The referenced secret
-                      must contain the following: - `url`: the URL to reach the Elastic
-                      resource - `username`: the username of the user to be authenticated
-                      to the Elastic resource - `password`: the password of the user
-                      to be authenticated to the Elastic resource - `ca.crt`: the
-                      CA certificate in PEM format (optional). This field cannot be
-                      used in combination with the other fields name, namespace or
-                      serviceName.'
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -7487,11 +7479,13 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object which can be an Elastic custom resource or a Secret.
+                            object which can be an Elastic resource managed by the
+                            operator or a Secret describing an external Elastic resource
+                            not managed by the operator.
                           properties:
                             name:
                               description: Name of an existing Kubernetes object corresponding
-                                to an Elastic custom resource managed by ECK.
+                                to an Elastic resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
@@ -7501,12 +7495,12 @@ spec:
                               description: 'SecretName is the name of an existing
                                 Kubernetes secret that contains connection information
                                 for associating an Elastic resource not managed by
-                                ECK. The referenced secret must contain the following:
-                                - `url`: the URL to reach the Elastic resource - `username`:
-                                the username of the user to be authenticated to the
-                                Elastic resource - `password`: the password of the
-                                user to be authenticated to the Elastic resource -
-                                `ca.crt`: the CA certificate in PEM format (optional).
+                                the operator. The referenced secret must contain the
+                                following: - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated
+                                to the Elastic resource - `password`: the password
+                                of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional).
                                 This field cannot be used in combination with the
                                 other fields name, namespace or serviceName.'
                               type: string
@@ -7532,11 +7526,13 @@ spec:
                           cluster is currently supported.
                         items:
                           description: ObjectSelector defines a reference to a Kubernetes
-                            object which can be an Elastic custom resource or a Secret.
+                            object which can be an Elastic resource managed by the
+                            operator or a Secret describing an external Elastic resource
+                            not managed by the operator.
                           properties:
                             name:
                               description: Name of an existing Kubernetes object corresponding
-                                to an Elastic custom resource managed by ECK.
+                                to an Elastic resource managed by ECK.
                               type: string
                             namespace:
                               description: Namespace of the Kubernetes object. If
@@ -7546,12 +7542,12 @@ spec:
                               description: 'SecretName is the name of an existing
                                 Kubernetes secret that contains connection information
                                 for associating an Elastic resource not managed by
-                                ECK. The referenced secret must contain the following:
-                                - `url`: the URL to reach the Elastic resource - `username`:
-                                the username of the user to be authenticated to the
-                                Elastic resource - `password`: the password of the
-                                user to be authenticated to the Elastic resource -
-                                `ca.crt`: the CA certificate in PEM format (optional).
+                                the operator. The referenced secret must contain the
+                                following: - `url`: the URL to reach the Elastic resource
+                                - `username`: the username of the user to be authenticated
+                                to the Elastic resource - `password`: the password
+                                of the user to be authenticated to the Elastic resource
+                                - `ca.crt`: the CA certificate in PEM format (optional).
                                 This field cannot be used in combination with the
                                 other fields name, namespace or serviceName.'
                               type: string
