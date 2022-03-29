@@ -62,13 +62,14 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
-		UpdateOperatorPods(ctx, clientset, w.Namespace)
+		updateOperatorPods(ctx, clientset, w.Namespace)
 	}
 
 	return nil
 }
 
-func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface, operatorNamespace string) {
+// updateOperatorPods updates a specific annotation on the pods to speed up secret propagation.
+func updateOperatorPods(ctx context.Context, clientset kubernetes.Interface, operatorNamespace string) {
 	// Get all the pods that are related to control-plane label.
 	labels := metav1.ListOptions{
 		LabelSelector: "control-plane=elastic-operator",
@@ -78,11 +79,12 @@ func UpdateOperatorPods(ctx context.Context, clientset kubernetes.Interface, ope
 		return
 	}
 	for _, pod := range pods.Items {
-		UpdateOperatorPod(ctx, pod, clientset)
+		updateOperatorPod(ctx, pod, clientset)
 	}
 }
 
-func UpdateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes.Interface) {
+// updateOperatorPod updates a specific annotation on a single pod to speed up secret propagation.
+func updateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes.Interface) {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
