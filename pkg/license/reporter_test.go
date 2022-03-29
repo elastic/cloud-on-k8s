@@ -54,7 +54,7 @@ func TestGet(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				NodeSets: []esv1.NodeSet{{
-					Count: 100,
+					Count: 40,
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -62,7 +62,7 @@ func TestGet(t *testing.T) {
 									Name: esv1.ElasticsearchContainerName,
 									Resources: corev1.ResourceRequirements{
 										Limits: map[corev1.ResourceName]resource.Quantity{
-											corev1.ResourceMemory: resource.MustParse("6Gi"),
+											corev1.ResourceMemory: resource.MustParse("8Gi"),
 										},
 									},
 								},
@@ -76,9 +76,9 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   600.00,
-			TotalManagedMemoryBytes: 644245094400,
-			EnterpriseResourceUnits: 11,
+			TotalManagedMemoryGiB:   320.00,
+			TotalManagedMemoryBytes: 343597383680,
+			EnterpriseResourceUnits: 5,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -89,7 +89,7 @@ func TestGet(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				NodeSets: []esv1.NodeSet{{
-					Count: 10,
+					Count: 13,
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -110,9 +110,9 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemoryGiB:   160.00,
-			TotalManagedMemoryBytes: 171798691840,
-			EnterpriseResourceUnits: 3,
+			TotalManagedMemoryGiB:   208.00,
+			TotalManagedMemoryBytes: 223338299392,
+			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -195,7 +195,7 @@ func TestGet(t *testing.T) {
 		want := LicensingInfo{
 			TotalManagedMemoryGiB:   190.73,
 			TotalManagedMemoryBytes: 204800000000,
-			EnterpriseResourceUnits: 4,
+			EnterpriseResourceUnits: 3,
 			EckLicenseLevel:         "basic",
 		}
 
