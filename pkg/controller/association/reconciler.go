@@ -42,7 +42,7 @@ var (
 
 	// timeToExpectServiceAfterCreation is an arbitrary time to wait after the associated object is created and start logging
 	// an error if the service of the associated object cannot be found
-	timeToExpectServiceAfterCreation = 5*time.Second
+	timeToExpectServiceAfterCreation = 5 * time.Second
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).

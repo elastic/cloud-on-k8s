@@ -108,8 +108,8 @@ var (
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: kibanaNamespace,
-				Name:      "kbname",
+				Namespace:         kibanaNamespace,
+				Name:              "kbname",
 				CreationTimestamp: metav1.Now(),
 			},
 		}
