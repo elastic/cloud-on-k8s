@@ -189,7 +189,7 @@ type RemoteCluster struct {
 	Name string `json:"name"`
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
 

@@ -51,12 +51,53 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
-// ObjectSelector defines a reference to a Kubernetes object which can be an Elastic custom resource or a Secret.
+// LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
+type LocalObjectSelector struct {
+	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK.
+	Name string `json:"name,omitempty"`
+
+	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+	// the referenced resource is used.
+	ServiceName string `json:"serviceName,omitempty"`
+}
+
+// WithDefaultNamespace adds a default namespace to a given LocalObjectSelector if none is set.
+func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) LocalObjectSelector {
+	if len(o.Namespace) > 0 {
+		return o
+	}
+	return LocalObjectSelector{
+		Namespace:   defaultNamespace,
+		Name:        o.Name,
+		ServiceName: o.ServiceName,
+	}
+}
+
+// NamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
+func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Name:      o.Name,
+		Namespace: o.Namespace,
+	}
+}
+
+// IsDefined checks if the local object selector is not nil and has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (o *LocalObjectSelector) IsDefined() bool {
+	return o != nil && o.Name != ""
+}
+
+// ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
+// or a Secret describing an external Elastic resource not managed by the operator.
 type ObjectSelector struct {
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 	Namespace string `json:"namespace,omitempty"`
 
-	// Name of an existing Kubernetes object corresponding to an Elastic custom resource managed by ECK.
+	// Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK.
 	Name string `json:"name,omitempty"`
 
 	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
@@ -65,7 +106,7 @@ type ObjectSelector struct {
 	ServiceName string `json:"serviceName,omitempty"`
 
 	// SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-	// Elastic resource not managed by ECK. The referenced secret must contain the following:
+	// Elastic resource not managed by the operator. The referenced secret must contain the following:
 	// - `url`: the URL to reach the Elastic resource
 	// - `username`: the username of the user to be authenticated to the Elastic resource
 	// - `password`: the password of the user to be authenticated to the Elastic resource
