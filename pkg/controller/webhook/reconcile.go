@@ -6,6 +6,7 @@ package webhook
 
 import (
 	"context"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,11 +15,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-)
-
-const (
-	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
-	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
@@ -90,14 +86,14 @@ func UpdateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	pod.Annotations[UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
+	pod.Annotations[annotation.UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
 	if _, err := clientset.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{}); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)
 		} else {
 			log.Error(err, "failed to update pod annotation",
-				"annotation", UpdateAnnotation,
+				"annotation", annotation.UpdateAnnotation,
 				"namespace", pod.Namespace,
 				"pod_name", pod.Name)
 		}

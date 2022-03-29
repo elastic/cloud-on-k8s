@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"k8s.io/client-go/kubernetes"
 	"testing"
 	"time"
@@ -214,7 +215,7 @@ func TestUpdateOperatorPod(t *testing.T) {
 						Namespace:   "elastic-system",
 						Name:        "pod-1",
 						Labels:      map[string]string{"control-plane": "elastic-operator"},
-						Annotations: map[string]string{UpdateAnnotation: time.Now().Add(-time.Second * 5).Format(time.RFC3339Nano)},
+						Annotations: map[string]string{annotation.UpdateAnnotation: time.Now().Add(-time.Second * 5).Format(time.RFC3339Nano)},
 					},
 				},
 				modifiedPod:    "pod-1",
@@ -224,12 +225,12 @@ func TestUpdateOperatorPod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			previousValue, previousValueExists := tt.args.pod.Annotations[UpdateAnnotation]
+			previousValue, previousValueExists := tt.args.pod.Annotations[annotation.UpdateAnnotation]
 			UpdateOperatorPod(context.Background(), tt.args.pod, tt.args.clientset)
 			gotPod, err := tt.args.clientset.CoreV1().Pods("elastic-system").Get(context.Background(), tt.args.modifiedPod, metav1.GetOptions{})
 			assert.NoError(t, err)
 			assert.NotNil(t, gotPod.Annotations)
-			newValue, exists := gotPod.Annotations[UpdateAnnotation]
+			newValue, exists := gotPod.Annotations[annotation.UpdateAnnotation]
 			assert.True(t, exists)
 
 			if previousValueExists {
