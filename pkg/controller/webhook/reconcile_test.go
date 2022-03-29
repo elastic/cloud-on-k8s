@@ -144,7 +144,7 @@ func TestUpdateOperatorPod(t *testing.T) {
 		args args
 	}{
 		{
-			name: "First test",
+			name: "Pod without annotation: annotation added",
 			args: args{
 				clientset: fake.NewSimpleClientset(
 					&corev1.Pod{
@@ -182,7 +182,7 @@ func TestUpdateOperatorPod(t *testing.T) {
 			},
 		},
 		{
-			name: "Second test",
+			name: "Pod with annotation: annotation updated",
 			args: args{
 				clientset: fake.NewSimpleClientset(
 					&corev1.Pod{
