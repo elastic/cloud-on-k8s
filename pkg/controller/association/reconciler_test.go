@@ -614,7 +614,13 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	// expect and error due to the missing service
+	// don't expect an error due to the missing service yet
+	require.NoError(t, err)
+	// wait for the timeToExpectServiceAfterCreation
+	time.Sleep(timeToExpectServiceAfterCreation)
+	// simulate a re-queue
+	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	// now expect an error due to the missing service
 	require.Error(t, err)
 	// also expect a re-queue to be scheduled
 	require.Equal(t, defaultRequeue, results)

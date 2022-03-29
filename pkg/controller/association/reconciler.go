@@ -39,6 +39,10 @@ import (
 
 var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+
+	// timeToExpectServiceAfterCreation is an arbitrary time to wait after the associated object is created and start logging
+	// an error if the service of the associated object cannot be found
+	timeToExpectServiceAfterCreation = 5*time.Second
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
@@ -246,7 +250,12 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
 	if err != nil {
-		return commonv1.AssociationPending, err // maybe not created yet
+		// don't log an error if the service is not found and its parent resource has just been created
+		timeSinceCreation := time.Now().Sub(association.Associated().GetCreationTimestamp().Time)
+		if apierrors.IsNotFound(err) && timeSinceCreation > timeToExpectServiceAfterCreation {
+			return commonv1.AssociationPending, nil
+		}
+		return commonv1.AssociationPending, err
 	}
 
 	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
