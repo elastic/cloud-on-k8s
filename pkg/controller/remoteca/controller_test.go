@@ -52,7 +52,7 @@ func (cb *clusterBuilder) build() *esv1.Elasticsearch {
 	remoteClusters := make([]esv1.RemoteCluster, len(cb.remoteClusters))
 	for i, remoteCluster := range cb.remoteClusters {
 		remoteClusters[i] = esv1.RemoteCluster{
-			ElasticsearchRef: commonv1.ObjectSelector{
+			ElasticsearchRef: commonv1.LocalObjectSelector{
 				Name:      remoteCluster.Name,
 				Namespace: remoteCluster.Namespace,
 			}}

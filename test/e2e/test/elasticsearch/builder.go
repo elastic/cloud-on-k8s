@@ -131,6 +131,13 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
+func (b Builder) LocalRef() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
+		Name:      b.Elasticsearch.Name,
+		Namespace: b.Elasticsearch.Namespace,
+	}
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Elasticsearch.Name,
@@ -152,7 +159,7 @@ func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
 		append(b.Elasticsearch.Spec.RemoteClusters,
 			esv1.RemoteCluster{
 				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.Ref(),
+				ElasticsearchRef: remoteEs.LocalRef(),
 			})
 	return b
 }

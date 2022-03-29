@@ -67,11 +67,24 @@ spec:
                   cluster running in the same Kubernetes cluster.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -80,8 +93,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                required:
-                - name
                 type: object
               http:
                 description: HTTP holds the HTTP layer configuration for the APM Server
@@ -501,11 +512,24 @@ spec:
                   management in Kibana.
                 properties:
                   name:
-                    description: Name of the Kubernetes object.
+                    description: Name of an existing Kubernetes object corresponding
+                      to an Elastic resource managed by ECK.
                     type: string
                   namespace:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
+                    type: string
+                  secretName:
+                    description: 'SecretName is the name of an existing Kubernetes
+                      secret that contains connection information for associating
+                      an Elastic resource not managed by the operator. The referenced
+                      secret must contain the following: - `url`: the URL to reach
+                      the Elastic resource - `username`: the username of the user
+                      to be authenticated to the Elastic resource - `password`: the
+                      password of the user to be authenticated to the Elastic resource
+                      - `ca.crt`: the CA certificate in PEM format (optional). This
+                      field cannot be used in combination with the other fields name,
+                      namespace or serviceName.'
                     type: string
                   serviceName:
                     description: ServiceName is the name of an existing Kubernetes
@@ -514,8 +538,6 @@ spec:
                       If left empty, the default HTTP service of the referenced resource
                       is used.
                     type: string
-                required:
-                - name
                 type: object
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,

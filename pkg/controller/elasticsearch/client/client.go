@@ -121,6 +121,8 @@ type Client interface {
 	// Version returns the Elasticsearch version this client is constructed for which should equal the minimal version
 	// in the cluster.
 	Version() version.Version
+	// URL returns the Elasticsearch URL configured for this client
+	URL() string
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
