@@ -202,7 +202,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	for _, association := range associations {
 		newStatus, err := r.reconcileAssociation(ctx, association)
 		if err != nil {
-			results.WithResult(defaultRequeue).WithError(err)
+			results.WithError(err)
 		}
 
 		newStatusMap[association.AssociationRef().NamespacedName().String()] = newStatus
