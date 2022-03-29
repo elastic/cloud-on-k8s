@@ -25,6 +25,8 @@ image:
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
 
+priorityClassName: ""
+
 # imagePullSecrets defines the secrets to use when pulling the operator container image.
 imagePullSecrets: []
 
@@ -175,6 +177,9 @@ config:
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.
   validateStorageClass: true
+
+  # enableLeaderElection specifies whether leader election should be enabled
+  enableLeaderElection: true
 
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor

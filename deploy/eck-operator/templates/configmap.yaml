@@ -45,3 +45,4 @@ data:
     {{- if .Values.managedNamespaces }}
     namespaces: [{{ join "," .Values.managedNamespaces  }}]
     {{- end }}
+    enable-leader-election: {{ .Values.config.enableLeaderElection }}
