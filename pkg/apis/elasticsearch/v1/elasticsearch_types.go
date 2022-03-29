@@ -555,7 +555,7 @@ func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Assoc
 }
 
 func (ema *EsMonitoringAssociation) AssociationID() string {
-	return ema.ref.String()
+	return ema.ref.ToID()
 }
 
 // HasMonitoring methods

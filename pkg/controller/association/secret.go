@@ -100,6 +100,8 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 	return &ref, nil
 }
 
+// Request performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
+// from the returned result using the given json path.
 func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
 	url := r.URL + path
 	req, err := http.NewRequest("GET", url, nil) //nolint:noctx

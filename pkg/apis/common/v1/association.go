@@ -6,7 +6,6 @@ package v1
 
 import (
 	"fmt"
-	"hash/fnv"
 	"sort"
 	"strings"
 
@@ -292,10 +291,5 @@ func (ac *AssociationConf) GetVersion() string {
 func ElasticsearchConfigAnnotationName(o ObjectSelector) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
 	// based on the ObjectSelector
-	objHash := fnv.New32a()
-	hash.WriteHashObject(objHash, o)
-	return FormatNameWithID(
-		ElasticsearchConfigAnnotationNameBase+"%s",
-		fmt.Sprint(objHash.Sum32()),
-	)
+	return FormatNameWithID(ElasticsearchConfigAnnotationNameBase+"%s", hash.HashObject(o))
 }

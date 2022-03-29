@@ -94,7 +94,16 @@ func (o *LocalObjectSelector) IsDefined() bool {
 // ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
 // or a Secret describing an external Elastic resource not managed by the operator.
 type ObjectSelector struct {
-	LocalObjectSelector
+	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK.
+	Name string `json:"name,omitempty"`
+
+	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+	// the referenced resource is used.
+	ServiceName string `json:"serviceName,omitempty"`
 
 	// SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
 	// Elastic resource not managed by the operator. The referenced secret must contain the following:
@@ -112,7 +121,9 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 		return o
 	}
 	return ObjectSelector{
-		LocalObjectSelector: o.LocalObjectSelector.WithDefaultNamespace(defaultNamespace),
+		Namespace:   defaultNamespace,
+		Name:        o.Name,
+		ServiceName: o.ServiceName,
 		SecretName:  o.SecretName,
 	}
 }
@@ -162,7 +173,8 @@ func (o ObjectSelector) IsValid() error {
 	return nil
 }
 
-func (o ObjectSelector) String() string {
+// ToID returns a string representing the object selector that can be used as a unique identifier.
+func (o ObjectSelector) ToID() string {
 	if o.Namespace != "" {
 		return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
 	}

@@ -265,7 +265,7 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
-// GetPVsByPods returns all the PersistentVolumeClaims associated to a list of pods
+// GetPVCsByPods returns all the PersistentVolumeClaims associated to a list of pods
 func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeClaim, error) {
 	pvcs := make([]corev1.PersistentVolumeClaim, len(pods))
 	for i, pod := range pods {
@@ -476,6 +476,7 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 	return err
 }
 
+// GetFirstNodeExternalIP gets the external IP address of the first k8s node in the current k8s cluster.
 func (k K8sClient) GetFirstNodeExternalIP() (string, error) {
 	var nodes corev1.NodeList
 	if err := k.Client.List(context.Background(), &nodes); err != nil {
