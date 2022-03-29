@@ -810,7 +810,7 @@ func Test_attemptDownscale(t *testing.T) {
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
-			expectedDownscaledNodes: []esv1.DownscaledNode{}, // expectedDownscaledNodes is not updated
+			expectedDownscaledNodes: nil, // expectedDownscaledNodes is not updated
 		},
 	}
 	for _, tt := range tests {
