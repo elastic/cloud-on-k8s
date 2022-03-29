@@ -216,6 +216,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		Namer:                 EMSNamer,
 		Labels:                labels(ems.Name),
 		Services:              []corev1.Service{*svc},
+		GlobalCA:              r.CA,
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
 		GarbageCollectSecrets: true,

@@ -11,6 +11,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -230,6 +232,38 @@ func internalSecretForCA(
 			KeyFileName:  privateKeyData,
 		},
 	}, nil
+}
+
+func BuildCAFromFile(path string) (*CA, error) {
+	certFile := filepath.Join(path, CertFileName)
+	bytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, err
+	}
+	certs, err := ParsePEMCerts(bytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Cannot parse PEM cert from %s", certFile)
+	}
+
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("PEM %s file did not contain any certificates", certFile)
+	}
+
+	if len(certs) > 1 {
+		return nil, fmt.Errorf("more than one certificate in PEM file %s", certFile)
+	}
+	cert := certs[0]
+
+	privateKeyFile := filepath.Join(path, KeyFileName)
+	privateKeyBytes, err := ioutil.ReadFile(privateKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Cannot parse private key from PEM file %s", privateKeyFile)
+	}
+	return NewCA(privateKey, cert), nil
 }
 
 // BuildCAFromSecret parses the given secret into a CA.

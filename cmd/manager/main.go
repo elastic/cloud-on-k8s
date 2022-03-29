@@ -144,6 +144,11 @@ func Command() *cobra.Command {
 		"Enables automatic port-forwarding "+
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
+	cmd.Flags().String(
+		operator.CAFlag,
+		"",
+		"Path to a CA certificate (tls.crt) and private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation options.",
+	)
 	cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
@@ -316,27 +321,27 @@ func Command() *cobra.Command {
 
 func doRun(_ *cobra.Command, _ []string) error {
 	ctx := signals.SetupSignalHandler()
-	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
 
-	// no config file to watch so start the operator directly
-	if configFile == "" || disableConfigWatch {
-		return startOperator(ctx)
-	}
-
-	// receive config file update events over a channel
+	// receive config file update events over a channel, if config watch is disabled this will never be called.
 	confUpdateChan := make(chan struct{}, 1)
-
 	viper.OnConfigChange(func(evt fsnotify.Event) {
 		if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
 			confUpdateChan <- struct{}{}
 		}
 	})
 
-	// start the operator in a goroutine
+	// set up channels and context for the operator
 	errChan := make(chan error, 1)
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 
+	// watch for CA changes if any and restart the operator if they happen
+	caUpdateChan := make(chan struct{}, 1)
+	if err := watchCADir(ctx, viper.GetString(operator.CAFlag), caUpdateChan); err != nil {
+		return err
+	}
+
+	// start the operator in a goroutine
 	go func() {
 		err := startOperator(ctx)
 		if err != nil {
@@ -359,6 +364,9 @@ func doRun(_ *cobra.Command, _ []string) error {
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
 
+			return nil
+		case <-caUpdateChan: // changes in the directory containing shared CA
+			log.Info("Shutting down to apply updated certificate authority")
 			return nil
 		}
 	}
@@ -501,6 +509,13 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// Retrieve shared CA if any
+	ca, err := readOptionalCA(viper.GetString(operator.CAFlag))
+	if err != nil {
+		log.Error(err, "Invalid CA")
+		return err
+	}
+
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore, err := validateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
 	if err != nil {
@@ -562,6 +577,7 @@ func startOperator(ctx context.Context) error {
 		IPFamily:          ipFamily,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
+		CA:                ca,
 		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,
