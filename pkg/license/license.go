@@ -32,7 +32,7 @@ const (
 	// Type represents the Elastic usage type used to mark the config map that stores licensing information
 	Type = "elastic-usage"
 	// GiB represents the number of bytes for 1 GiB
-	GiB = 1024*1024*1024
+	GiB = 1024 * 1024 * 1024
 )
 
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
@@ -194,13 +194,13 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 // inGiB converts a resource.Quantity in gibibytes
 func inGiB(q resource.Quantity) float64 {
 	// divide the value (in bytes) per 1GiB
-	return float64(q.Value()) / (1*GiB)
+	return float64(q.Value()) / (1 * GiB)
 }
 
 // inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
 func inEnterpriseResourceUnits(q resource.Quantity) int64 {
 	// divide by the value (in bytes) per 64 GiB
-	eru := float64(q.Value()) / (64*GiB)
+	eru := float64(q.Value()) / (64 * GiB)
 	// round to the nearest superior integer
 	return int64(math.Ceil(eru))
 }
