@@ -34,6 +34,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkMonitoring,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -126,4 +127,13 @@ func checkMonitoring(k *Kibana) field.ErrorList {
 			validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg))
 	}
 	return errs
+}
+
+func checkAssociations(k *Kibana) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
+	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), k.GetMonitoringMetricsRefs()...)
+	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), k.GetMonitoringLogsRefs()...)
+	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef)
+	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
+	return append(err1, append(err2, append(err3, err4...)...)...)
 }

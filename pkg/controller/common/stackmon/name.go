@@ -24,7 +24,7 @@ func configVolumeName(name string, beatName string) string {
 }
 
 func caVolumeName(assoc commonv1.Association) string {
-	nsn := assoc.AssociationRef().Namespace + assoc.AssociationRef().Name
+	nsn := assoc.AssociationRef().Namespace + assoc.AssociationRef().NameOrSecretName()
 	nsnHash := fmt.Sprintf("%x", sha256.Sum256([]byte(nsn)))[0:6]
 	return VolumeNamer.Suffix(string(assoc.AssociationType()), nsnHash, "ca")
 }

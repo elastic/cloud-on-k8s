@@ -56,7 +56,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
 			"ref_namespace", ref.Namespace,
-			"ref_name", ref.Name,
+			"ref_name", ref.NameOrSecretName(),
 		)
 		return false, nil
 	}
@@ -73,9 +73,10 @@ func (c Credentials) HasServiceAccountToken() bool {
 
 // ElasticsearchAuthSettings returns the credentials to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
-// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
-func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (Credentials, error) {
-	assocConf, err := association.AssociationConf()
+// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana).
+// This supports direct or transitive association to unmanaged Elasticsearch using a custom Secret.
+func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (_ Credentials, err error) {
+	assocConf, err := assoc.AssociationConf()
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -83,23 +84,37 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 		return Credentials{}, nil
 	}
 
-	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
+	// get the auth secret
+	secretObjKey := types.NamespacedName{Namespace: assoc.GetNamespace(), Name: assocConf.AuthSecretName}
 	var secret corev1.Secret
 	if err := c.Get(context.Background(), secretObjKey, &secret); err != nil {
 		return Credentials{}, err
 	}
 
-	data, ok := secret.Data[assocConf.AuthSecretKey]
+	passwordBytes, ok := secret.Data[assocConf.AuthSecretKey]
 	if !ok {
 		return Credentials{}, errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
 	}
 
 	if assocConf.IsServiceAccount {
-		return Credentials{ServiceAccountToken: string(data)}, nil
+		return Credentials{ServiceAccountToken: string(passwordBytes)}, nil
 	}
 
-	return Credentials{Username: assocConf.AuthSecretKey, Password: string(data)}, nil
+	password := string(passwordBytes)
+	// if direct or transitive managed ES, the username is the name of the password key in the auth managed Secret
+	username := assocConf.AuthSecretKey
+	// if direct or transitive unmanaged ES, the auth secret points to an unmanaged Secret where the username key exists
+	if providedUsername, exists := secret.Data[authUsernameUnmanagedSecretKey]; exists {
+		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
+			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().NameOrSecretName())
+		username = string(providedUsername)
+	}
+
+	return Credentials{Username: username, Password: password}, nil
 }
+
+// UnknownVersion is used when the version of the referenced resource is unknown.
+const UnknownVersion = "unknown_version"
 
 // AllowVersion returns true if the given resourceVersion is lower or equal to the associations' versions.
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
@@ -119,8 +134,12 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
 			return false, nil
+		}
+		if assocConf.Version == UnknownVersion {
+			// unknown version (happens with an unmanaged FleetServer < 8.x), move on
+			return true, nil
 		}
 		refVer, err := version.Parse(assocConf.Version)
 		if err != nil {
@@ -134,7 +153,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.Name)
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
 			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
 				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
 			return false, nil

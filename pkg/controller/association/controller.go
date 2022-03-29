@@ -66,7 +66,7 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 		return err
 	}
 
-	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
+	// Dynamically watch Secrets (CA Secret of the referenced resource, ES user secret or custom referenced object secret)
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}

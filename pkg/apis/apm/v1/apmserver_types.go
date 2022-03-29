@@ -265,7 +265,7 @@ func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
-	return akb.Spec.KibanaRef.Name != ""
+	return akb.Spec.KibanaRef.IsDefined()
 }
 
 func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {

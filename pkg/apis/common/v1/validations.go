@@ -95,6 +95,16 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	return nil
 }
 
+// CheckAssociationRefs checks that the given association references are valid.
+func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
 func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	v, err := version.Parse(ver)
 	if err != nil {
