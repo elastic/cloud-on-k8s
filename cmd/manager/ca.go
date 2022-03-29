@@ -8,7 +8,9 @@ import (
 	"context"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/fsnotify/fsnotify"
+	"os"
 	"path/filepath"
+	"time"
 )
 
 func readOptionalCA(path string) (*certificates.CA, error) {
@@ -23,12 +25,16 @@ func watchCADir(ctx context.Context, path string, onChange chan struct{}) error 
 	if path == "" {
 		return nil
 	}
+	cache := newCAFileModTimeCache(path)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
 	go func() {
-		defer watcher.Close()
+		defer func() {
+			onChange <- struct{}{}
+			watcher.Close()
+		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -37,22 +43,11 @@ func watchCADir(ctx context.Context, path string, onChange chan struct{}) error 
 				if !ok {
 					return // channel closed
 				}
-				// TODO verify rename is relevant
-				const relevantOps = fsnotify.Create | fsnotify.Write | fsnotify.Remove | fsnotify.Rename
-				// TODO verify we need to handle symlinks b/c k8s secret mounts etc
-				affectedFilePath, err := filepath.EvalSymlinks(filepath.Clean(event.Name))
-				if err != nil {
-					log.Error(err, "while evaluating symlinks for CA files")
-				}
-				affectedFileName := filepath.Base(affectedFilePath)
-				log.V(1).Info("watcher event", "file", affectedFilePath, "op", event.Op)
-				if (affectedFileName == certificates.KeyFileName || affectedFileName == certificates.CertFileName) &&
-					event.Op&relevantOps != 0 {
-					log.Info("CA file changed", "file", affectedFilePath, "op", event.Op)
-					onChange <- struct{}{}
+
+				log.V(1).Info("watcher event", "file", event.Name, "op", event.Op)
+				if changed := cache.Update(path); changed {
 					return
 				}
-
 			case err, ok := <-watcher.Errors:
 				if ok {
 					log.Error(err, "CA watcher error")
@@ -63,4 +58,31 @@ func watchCADir(ctx context.Context, path string, onChange chan struct{}) error 
 	}()
 	log.Info("Setting up watcher for CA path", "path", path)
 	return watcher.Add(path)
+}
+
+type caFileModTimeCache map[string]time.Time
+
+func newCAFileModTimeCache(path string) caFileModTimeCache {
+	cache := caFileModTimeCache(map[string]time.Time{})
+	_ := cache.Update(path)
+	return cache
+}
+
+func (fmc caFileModTimeCache) Update(path string) bool {
+	var updated bool
+	for _, f := range []string{certificates.CertFileName, certificates.KeyFileName} {
+		stat, err := os.Stat(filepath.Join(path, f))
+		if err != nil {
+			continue
+		}
+		prev, ok := fmc[f]
+		if !ok {
+			// initialisation does not count as update
+			fmc[f] = stat.ModTime()
+		}
+		if prev != stat.ModTime() {
+			updated = true
+		}
+	}
+	return updated
 }
