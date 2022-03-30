@@ -31,6 +31,19 @@ var (
 type Builder struct {
 	EnterpriseSearch entv1.EnterpriseSearch
 	MutatedFrom      *Builder
+	SharedCA         bool
+}
+
+func (b Builder) DeepCopy() *Builder {
+	ent := b.EnterpriseSearch.DeepCopy()
+	builderCopy := Builder{
+		EnterpriseSearch: *ent,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.SharedCA = b.SharedCA
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}
@@ -143,6 +156,11 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 		b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
 	}
 	b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
+func (b Builder) WithSharedCA(v bool) Builder {
+	b.SharedCA = v
 	return b
 }
 

@@ -26,6 +26,20 @@ type Builder struct {
 	Kibana                   kbv1.Kibana
 	ExternalElasticsearchRef commonv1.ObjectSelector
 	MutatedFrom              *Builder
+	SharedCA                 bool
+}
+
+func (b Builder) DeepCopy() *Builder {
+	kb := b.Kibana.DeepCopy()
+	builderCopy := Builder{
+		Kibana: *kb,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.ExternalElasticsearchRef = b.ExternalElasticsearchRef
+	builderCopy.SharedCA = b.SharedCA
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}
@@ -180,6 +194,11 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 		b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate = b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
 	b.Kibana.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
+func (b Builder) WithSharedCA(v bool) Builder {
+	b.SharedCA = v
 	return b
 }
 

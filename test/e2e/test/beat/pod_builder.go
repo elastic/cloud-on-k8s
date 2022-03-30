@@ -7,6 +7,7 @@ package beat
 import (
 	"context"
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -61,6 +62,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 						},
 					},
 				},
+				TerminationGracePeriodSeconds: pointer.Int64(0),
 				SecurityContext: &corev1.PodSecurityContext{
 					// e2e PSP forbids root user on secured clusters
 					RunAsUser: &uid1001,

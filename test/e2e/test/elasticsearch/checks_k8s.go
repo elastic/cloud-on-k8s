@@ -68,6 +68,9 @@ func CheckHTTPCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 
 			return nil
 		}),
+		Skip: func() bool {
+			return b.SharedCA
+		},
 	}
 }
 
@@ -84,7 +87,7 @@ func CheckTransportCertificateAuthority(b Builder, k *test.K8sClient) test.Step 
 			return nil
 		}),
 		Skip: func() bool {
-			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA()
+			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() || b.SharedCA
 		},
 	}
 }
@@ -104,14 +107,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					"elasticsearch.k8s.elastic.co/cluster-name": esName,
 				},
 			},
-			{
-				Name: esName + "-es-http-ca-internal",
-				Keys: []string{"tls.crt", "tls.key"},
-				Labels: map[string]string{
-					"common.k8s.elastic.co/type":                "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": esName,
-				},
-			},
+
 			{
 				Name: esName + "-es-http-certs-internal",
 				Keys: []string{"tls.crt", "tls.key", "ca.crt"},
@@ -163,7 +159,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
 		}
 		// check internal TLS CA if no user provided CA is spec'ed
-		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() {
+		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() && !b.SharedCA {
 			expected = append(expected, test.ExpectedSecret{
 				Name: esName + "-es-transport-ca-internal",
 				Keys: []string{"tls.crt", "tls.key"},
@@ -172,6 +168,20 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					"elasticsearch.k8s.elastic.co/cluster-name": esName,
 				},
 			})
+		}
+
+		// unless a shared CA is used a CA secret should exist for the HTTP layer
+		if !b.SharedCA {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: esName + "-es-http-ca-internal",
+					Keys: []string{"tls.crt", "tls.key"},
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type":                "elasticsearch",
+						"elasticsearch.k8s.elastic.co/cluster-name": esName,
+					},
+				},
+			)
 		}
 
 		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {

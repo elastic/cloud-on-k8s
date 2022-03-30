@@ -54,6 +54,8 @@ type Builder struct {
 	// situations where the Elasticsearch resource is modified by an external mechanism, like the autoscaling controller.
 	// In such a situation the actual resources may diverge from what was originally specified in the builder.
 	expectedElasticsearch *esv1.Elasticsearch
+
+	SharedCA bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -67,6 +69,7 @@ func (b Builder) DeepCopy() *Builder {
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
+	builderCopy.SharedCA = b.SharedCA
 	return &builderCopy
 }
 
@@ -196,6 +199,11 @@ func (b Builder) WithCustomTransportCA(name string) Builder {
 
 func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	b.Elasticsearch.Spec.HTTP.TLS.Certificate.SecretName = name
+	return b
+}
+
+func (b Builder) WithSharedCA(v bool) Builder {
+	b.SharedCA = v
 	return b
 }
 
