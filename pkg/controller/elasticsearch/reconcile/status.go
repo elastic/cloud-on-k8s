@@ -105,22 +105,25 @@ func (u *UpscaleReporter) HasPendingNewNodes() bool {
 // Merge creates a new upscale status using the reported upscale status and an existing upscale status.
 func (u *UpscaleReporter) Merge(other esv1.UpscaleOperation) esv1.UpscaleOperation {
 	upscaleOperation := other.DeepCopy()
-	if u == nil || (len(u.nodes)+len(other.Nodes) == 0) {
+	if u == nil {
 		return *upscaleOperation
 	}
-	nodes := make([]esv1.NewNode, 0, len(u.nodes))
-	for name, node := range u.nodes {
-		nodes = append(nodes, esv1.NewNode{
-			Name:    name,
-			Status:  node.Status,
-			Message: node.Message,
+	var nodes []esv1.NewNode
+	if len(u.nodes) != 0 {
+		nodes = make([]esv1.NewNode, 0, len(u.nodes))
+		for name, node := range u.nodes {
+			nodes = append(nodes, esv1.NewNode{
+				Name:    name,
+				Status:  node.Status,
+				Message: node.Message,
+			})
+		}
+		// Sort for stable comparison
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	// Sort for stable comparison
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Name < nodes[j].Name
-	})
-	if (u.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || upscaleOperation.Nodes == nil {
+	if !reflect.DeepEqual(nodes, other.Nodes) || upscaleOperation.LastUpdatedTime.IsZero() {
 		upscaleOperation.Nodes = nodes
 		upscaleOperation.LastUpdatedTime = metav1.Now()
 	}
@@ -188,23 +191,26 @@ func (u *UpgradeReporter) RecordPredicatesResult(predicatesResult map[string]str
 // Merge creates a new upgrade status using the reported upgrade status and an existing upgrade status.
 func (u *UpgradeReporter) Merge(other esv1.UpgradeOperation) esv1.UpgradeOperation {
 	upgradeOperation := other.DeepCopy()
-	if u == nil || (len(u.nodes)+len(other.Nodes) == 0) {
+	if u == nil {
 		return *upgradeOperation
 	}
-	nodes := make([]esv1.UpgradedNode, 0, len(u.nodes))
-	for _, node := range u.nodes {
-		nodes = append(nodes, esv1.UpgradedNode{
-			Name:      node.Name,
-			Predicate: node.Predicate,
-			Message:   node.Message,
-			Status:    node.Status,
+	var nodes []esv1.UpgradedNode
+	if len(u.nodes) != 0 {
+		nodes = make([]esv1.UpgradedNode, 0, len(u.nodes))
+		for _, node := range u.nodes {
+			nodes = append(nodes, esv1.UpgradedNode{
+				Name:      node.Name,
+				Predicate: node.Predicate,
+				Message:   node.Message,
+				Status:    node.Status,
+			})
+		}
+		// Sort for stable comparison
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	// Sort for stable comparison
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Name < nodes[j].Name
-	})
-	if (u.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || upgradeOperation.Nodes == nil {
+	if !reflect.DeepEqual(nodes, other.Nodes) || upgradeOperation.LastUpdatedTime.IsZero() {
 		upgradeOperation.Nodes = nodes
 		upgradeOperation.LastUpdatedTime = metav1.Now()
 	}
@@ -240,22 +246,25 @@ func (d *DownscaleReporter) RecordNodesToBeRemoved(nodes []string) {
 // Merge creates a new downscale status using the reported downscale status and an existing downscale status.
 func (d *DownscaleReporter) Merge(other esv1.DownscaleOperation) esv1.DownscaleOperation {
 	downscaleOperation := other.DeepCopy()
-	if d == nil || (len(d.nodes)+len(other.Nodes) == 0) {
+	if d == nil {
 		return other
 	}
-	nodes := make([]esv1.DownscaledNode, 0, len(d.nodes))
-	for _, node := range d.nodes {
-		nodes = append(nodes, esv1.DownscaledNode{
-			Name:           node.Name,
-			ShutdownStatus: node.ShutdownStatus,
-			Explanation:    node.Explanation,
+	var nodes []esv1.DownscaledNode
+	if len(d.nodes) != 0 {
+		nodes = make([]esv1.DownscaledNode, 0, len(d.nodes))
+		for _, node := range d.nodes {
+			nodes = append(nodes, esv1.DownscaledNode{
+				Name:           node.Name,
+				ShutdownStatus: node.ShutdownStatus,
+				Explanation:    node.Explanation,
+			})
+		}
+		// Sort for stable comparison
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	// Sort for stable comparison
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Name < nodes[j].Name
-	})
-	if (d.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || downscaleOperation.Nodes == nil {
+	if !reflect.DeepEqual(nodes, other.Nodes) || downscaleOperation.LastUpdatedTime.IsZero() {
 		downscaleOperation.Nodes = nodes
 		downscaleOperation.LastUpdatedTime = metav1.Now()
 	}

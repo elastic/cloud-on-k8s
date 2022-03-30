@@ -361,13 +361,13 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 				},
 				InProgressOperations: esv1.InProgressOperations{
 					DownscaleOperation: esv1.DownscaleOperation{
-						Nodes: []esv1.DownscaledNode{},
+						Nodes: nil,
 					},
 					UpgradeOperation: esv1.UpgradeOperation{
-						Nodes: []esv1.UpgradedNode{},
+						Nodes: nil,
 					},
 					UpscaleOperation: esv1.UpscaleOperation{
-						Nodes: []esv1.NewNode{},
+						Nodes: nil,
 					},
 				},
 			},
