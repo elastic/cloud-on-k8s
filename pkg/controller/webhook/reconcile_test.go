@@ -246,3 +246,82 @@ func TestUpdateOperatorPod(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateOperatorPods(t *testing.T) {
+	sampleAnnotations := map[string]string{"foo": "bar"}
+	type args struct {
+		clientset         kubernetes.Interface
+		operatorNamespace string
+		modifiedPods      []string
+		unmodifiedPods    []string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Pod without annotation: annotation added",
+			args: args{
+				clientset: fake.NewSimpleClientset(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "elastic-system",
+							Name:        "pod-1",
+							Labels:      map[string]string{"control-plane": "elastic-operator"},
+							Annotations: sampleAnnotations,
+						},
+					},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "elastic-system",
+							Name:      "pod-2",
+							Labels:    map[string]string{"control-plane": "elastic-operator"},
+						},
+					},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace:   "elastic-system",
+							Name:        "pod-3",
+							Annotations: sampleAnnotations,
+						},
+					},
+				),
+				operatorNamespace: "elastic-system",
+				modifiedPods:      []string{"pod-1", "pod-2"},
+				unmodifiedPods:    []string{"pod-3"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pods, err := tt.args.clientset.CoreV1().Pods("elastic-system").List(context.Background(), metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"})
+			assert.NoError(t, err)
+			var previousValue [3]string
+			var previousValueExists [3]bool
+			for i, pod := range pods.Items {
+				previousValue[i], previousValueExists[i] = pod.Annotations[annotation.UpdateAnnotation]
+			}
+			// does the list of pods changes after running the updateOperatorPods func????
+			updateOperatorPods(context.Background(), tt.args.clientset, tt.args.operatorNamespace)
+			gotPods, err := tt.args.clientset.CoreV1().Pods("elastic-system").List(context.Background(), metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"})
+			assert.NoError(t, err)
+			var newValue [3]string
+			var newValueExists [3]bool
+			for i, pod := range gotPods.Items {
+				newValue[i], newValueExists[i] = pod.Annotations[annotation.UpdateAnnotation]
+				assert.NotNil(t, newValue[i])
+				assert.True(t, newValueExists[i])
+				if previousValueExists[i] {
+					assert.True(t, newValue[i] > previousValue[i])
+				}
+			}
+
+			// Check that other Pods have not been modified
+			for _, podName := range tt.args.unmodifiedPods {
+				gotOtherPod, err := tt.args.clientset.CoreV1().Pods("elastic-system").Get(context.Background(), podName, metav1.GetOptions{})
+				assert.NoError(t, err)
+				assert.Equal(t, sampleAnnotations, gotOtherPod.Annotations)
+			}
+		})
+	}
+}
