@@ -63,6 +63,10 @@ func TestESStackMonitoring(t *testing.T) {
 // The external Elasticsearch is managed by ECK but not directly associated to the monitored cluster, instead a monitoring user is created and a
 // secret with the corresponding info is created.
 func TestExternalESStackMonitoring(t *testing.T) {
+	// only execute this test on GKE where k8s nodes have public IPs and nodePort 32767 is open
+	if !test.IsGKE() {
+		t.SkipNow()
+	}
 	// only execute this test on supported version
 	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
@@ -131,7 +135,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 					}
 
 					body := bytes.NewBufferString(`{
-						"username":"`+extRefUsername+`","password":"`+string(extRefPassword)+`",
+						"username":"` + extRefUsername + `","password":"` + string(extRefPassword) + `",
 						"roles":["monitoring_user","kibana_admin","remote_monitoring_agent","remote_monitoring_collector"]}`)
 					req, err := http.NewRequest(http.MethodPost, "/_security/user/"+extRefUsername, body)
 					if err != nil {
@@ -165,10 +169,10 @@ func TestExternalESStackMonitoring(t *testing.T) {
 							Name:      extRefSecretName,
 						},
 						Data: map[string][]byte{
-							"url": []byte(fmt.Sprintf("https://%s:%d", nodeExternalIP, nodePort)),
+							"url":      []byte(fmt.Sprintf("https://%s:%d", nodeExternalIP, nodePort)),
 							"username": []byte(extRefUsername),
 							"password": extRefPassword,
-							"ca.crt": monitoringHTTPPublicCertsSecret.Data["ca.crt"],
+							"ca.crt":   monitoringHTTPPublicCertsSecret.Data["ca.crt"],
 						},
 					}
 
@@ -186,7 +190,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 					monitoringEsRef := []commonv1.ObjectSelector{{SecretName: extRefSecretName}}
 					es.Spec.Monitoring = esv1.Monitoring{
 						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: monitoringEsRef},
-						Logs: esv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
+						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
 					}
 
 					return k.Client.Update(context.Background(), &es)
