@@ -64,7 +64,7 @@ func TestESStackMonitoring(t *testing.T) {
 // secret with the corresponding info is created.
 func TestExternalESStackMonitoring(t *testing.T) {
 	// only execute this test on GKE where k8s nodes have public IPs and nodePort 32767 is open
-	if !test.IsGKE() {
+	if !test.IsGKE(test.Ctx().KubernetesVersion) {
 		t.SkipNow()
 	}
 	// only execute this test on supported version

@@ -12,8 +12,8 @@ import (
 
 func Test_IsGKE(t *testing.T) {
 	tests := []struct {
-		version    string
-		isGKE      bool
+		version string
+		isGKE   bool
 	}{
 		{version: "1.21.6-gke.1503", isGKE: true},
 		{version: "1.22.3-gke-4242", isGKE: true},
@@ -23,9 +23,7 @@ func Test_IsGKE(t *testing.T) {
 
 	ctx = Ctx()
 	for _, tt := range tests {
-		ctx.KubernetesVersion = version.MustParse(tt.version)
-		isGKE := IsGKE()
-
+		isGKE := IsGKE(version.MustParse(tt.version))
 		if tt.isGKE != isGKE {
 			t.Errorf(`version: %s, isGKE() = %v, want %v`, tt.version, isGKE, tt.isGKE)
 		}
