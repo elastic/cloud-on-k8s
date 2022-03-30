@@ -120,7 +120,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.EMS, k, isMutated, entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation))
-
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
