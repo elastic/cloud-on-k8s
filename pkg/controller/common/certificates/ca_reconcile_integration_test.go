@@ -88,10 +88,10 @@ func TestBuildCAFromFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir, err := ioutil.TempDir(os.TempDir(), "ca-from-file")
+			tempDir, err := ioutil.TempDir("testdata", "ca-from-file")
 			require.NoError(t, err)
-			os.Link(filepath.Join("testdata", tt.args.ca), filepath.Join(tempDir, CertFileName))
-			os.Link(filepath.Join("testdata", tt.args.key), filepath.Join(tempDir, KeyFileName))
+			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.ca), filepath.Join(tempDir, CertFileName)))
+			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.key), filepath.Join(tempDir, KeyFileName)))
 
 			got, err := BuildCAFromFile(tempDir)
 			if (tt.wantErrMsg != "") != (err != nil) || err != nil && !strings.Contains(err.Error(), tt.wantErrMsg) {
