@@ -49,8 +49,8 @@ var (
 	LicensingTotalMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Subsystem: licensingSubsystem,
-		Name:      "memory_gigabytes_total",
-		Help:      "Total memory used in GB",
+		Name:      "memory_gibibytes_total",
+		Help:      "Total memory used in GiB",
 	}, []string{LicenseLevelLabel}))
 )
 
