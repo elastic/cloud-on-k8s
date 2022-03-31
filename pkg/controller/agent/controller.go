@@ -144,14 +144,13 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	results, status := r.doReconcile(ctx, *agent)
+	status, results := r.doReconcile(ctx, *agent)
 
-	statusErr := updateStatus(*agent, r.Client, status)
-	if statusErr != nil {
-		if apierrors.IsConflict(statusErr) {
+	if err := updateStatus(*agent, r.Client, status); err != nil {
+		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
-		results = results.WithError(statusErr)
+		results = results.WithError(err)
 	}
 
 	result, err := results.Aggregate()
@@ -160,36 +159,33 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	return result, err
 }
 
-func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
+func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (agentv1alpha1.AgentStatus, *reconciler.Results) {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
 	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
 	if err != nil {
-		return results.WithError(err), status
+		return status, results.WithError(err)
 	}
 	if !areAssocsConfigured {
-		return results, status
+		return status, results
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err := r.validate(ctx, agent); err != nil {
 		results = results.WithError(err)
-		return results, status
+		return status, results
 	}
 
-	driverResults := internalReconcile(Params{
+	return internalReconcile(Params{
 		Context:        ctx,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Agent:          agent,
 		OperatorParams: r.Parameters,
-	}, &status)
-
-	results = results.WithResults(driverResults)
-	return results, status
+	}, status)
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {

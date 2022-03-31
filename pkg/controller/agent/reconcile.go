@@ -17,6 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/pkg/errors"
+
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
@@ -27,7 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, status *agentv1alpha1.AgentStatus) *reconciler.Results {
+func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, status agentv1alpha1.AgentStatus) (agentv1alpha1.AgentStatus, *reconciler.Results) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -62,7 +64,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 	})
 
 	if err != nil {
-		return results.WithError(err)
+		return status, results.WithError(err)
 	}
 
 	// clean up the other one
@@ -75,16 +77,11 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 		results.WithError(err)
 	}
 
-	err = calculateStatus(&params, ready, desired, status)
-	if err != nil {
-		params.Logger().Error(
-			err, "Error while calculating new status",
-			"namespace", params.Agent.Namespace,
-			"agent_name", params.Agent.Name,
-		)
+	if err = calculateStatus(&params, ready, desired, &status); err != nil {
+		err = errors.Wrap(err, "while calculating status")
 	}
 
-	return results.WithError(err)
+	return status, results.WithError(err)
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
