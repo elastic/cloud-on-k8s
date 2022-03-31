@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ func TestBuildCAFromFile(t *testing.T) {
 		name       string
 		args       args
 		want       *CA
-		wantErrMsg *string
+		wantErrMsg string
 	}{
 		{
 			name: "happy path",
@@ -48,7 +47,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       goodFixture,
-			wantErrMsg: nil,
+			wantErrMsg: "",
 		},
 		{
 			name: "corrupted crt",
@@ -57,7 +56,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       nil,
-			wantErrMsg: pointer.String("Cannot parse PEM cert"),
+			wantErrMsg: "Cannot parse PEM cert",
 		},
 		{
 			name: "corrupted key",
@@ -66,7 +65,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "corrupted.key",
 			},
 			want:       nil,
-			wantErrMsg: pointer.String("Cannot parse private key"),
+			wantErrMsg: "Cannot parse private key",
 		},
 		{
 			name: "multiple certs",
@@ -75,7 +74,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       nil,
-			wantErrMsg: pointer.String("more than one certificate in PEM file"),
+			wantErrMsg: "more than one certificate in PEM file",
 		},
 		{
 			name: "no certs",
@@ -84,7 +83,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       nil,
-			wantErrMsg: pointer.String("did not contain any certificates"),
+			wantErrMsg: "did not contain any certificates",
 		},
 	}
 	for _, tt := range tests {
@@ -95,8 +94,8 @@ func TestBuildCAFromFile(t *testing.T) {
 			os.Link(filepath.Join("testdata", tt.args.key), filepath.Join(tempDir, KeyFileName))
 
 			got, err := BuildCAFromFile(tempDir)
-			if (tt.wantErrMsg != nil) != (err != nil) || err != nil && !strings.Contains(err.Error(), *tt.wantErrMsg) {
-				t.Errorf("Want err %v but got %v", *tt.wantErrMsg, err)
+			if (tt.wantErrMsg != "") != (err != nil) || err != nil && !strings.Contains(err.Error(), tt.wantErrMsg) {
+				t.Errorf("Want err %v but got %v", tt.wantErrMsg, err)
 			}
 
 			assert.Equalf(t, tt.want, got, "BuildCAFromFile(%+v)", tt.args)
