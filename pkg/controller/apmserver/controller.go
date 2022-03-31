@@ -230,7 +230,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		return results.WithError(err), state
 	}
 
-	_, certificateResults := certificates.Reconciler{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 as,
@@ -242,10 +242,10 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		CertRotation:          r.CertRotation,
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
-	if certificateResults.HasError() {
-		_, err := certificateResults.Aggregate()
+	if results.HasError() {
+		_, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return results.WithResults(certificateResults), state
+		return results, state
 	}
 
 	asVersion, err := version.Parse(as.Spec.Version)

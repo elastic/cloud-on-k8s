@@ -114,6 +114,17 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) DeepCopy() *Builder {
+	apm := b.ApmServer.DeepCopy()
+	builderCopy := Builder{
+		ApmServer: *apm,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
 		b.ApmServer.Spec.Config = &commonv1.Config{
@@ -122,20 +133,12 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 		return b
 	}
 
-	// Copy the original APM Server's configuration to avoid mutating the original
-	// APM Server's map.
-	oldConfig := *b.ApmServer.Spec.Config
-	b.ApmServer.Spec.Config = &commonv1.Config{
-		Data: map[string]interface{}{},
-	}
-	for k, v := range oldConfig.Data {
-		b.ApmServer.Spec.Config.Data[k] = v
-	}
+	newBuilder := b.DeepCopy()
 
 	for k, v := range cfg {
-		b.ApmServer.Spec.Config.Data[k] = v
+		newBuilder.ApmServer.Spec.Config.Data[k] = v
 	}
-	return b
+	return *newBuilder
 }
 
 func (b Builder) WithRUM(enabled bool) Builder {
