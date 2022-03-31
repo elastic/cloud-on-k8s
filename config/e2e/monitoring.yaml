@@ -82,6 +82,14 @@ spec:
       hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
+      # Since E2E cluster's Elasticsearch instance may lag behind the newest version of Beat, we need to allow this scenario.
+      allow_older_versions: true
+      # The maximum size to send in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_body_size: 10M
+      # The maximum number of events to bulk in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_size: 10
+      # The maximum byte size to send in a single Elasticsearch bulk API index request, regardless of compression. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_bytes: 10485760
   daemonSet:
     podTemplate:
       spec:
@@ -278,6 +286,14 @@ spec:
       hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
+      # Since E2E cluster's Elasticsearch instance may lag behind the newest version of Beat, we need to allow this scenario.
+      allow_older_versions: true
+      # The maximum size to send in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_body_size: 10M
+      # The maximum number of events to bulk in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_size: 10
+      # The maximum byte size to send in a single Elasticsearch bulk API index request, regardless of compression. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_bytes: 10485760
   secureSettings:
   - secretName: "eck-{{ .TestRun }}"
   daemonSet:
