@@ -56,7 +56,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/kubernetes/client-go[$$k8s.io/client-go$$] | v0.23.5 | Apache-2.0
 | link:https://github.com/kubernetes/klog[$$k8s.io/klog/v2$$] | v2.60.1 | Apache-2.0
 | link:https://github.com/kubernetes/utils[$$k8s.io/utils$$] | v0.0.0-20220210201930-3a6ce19ff2f9 | Apache-2.0
-| link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.11.1 | Apache-2.0
+| link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.11.2 | Apache-2.0
 | link:https://sigs.k8s.io/controller-tools[$$sigs.k8s.io/controller-tools$$] | v0.8.0 | Apache-2.0
 |===
 
@@ -183,8 +183,8 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.5.1 | Apache-2.0
 | link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
 | link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
-| link:https://github.com/kubernetes/apiextensions-apiserver[$$k8s.io/apiextensions-apiserver$$] | v0.23.0 | Apache-2.0
-| link:https://github.com/kubernetes/component-base[$$k8s.io/component-base$$] | v0.23.0 | Apache-2.0
+| link:https://github.com/kubernetes/apiextensions-apiserver[$$k8s.io/apiextensions-apiserver$$] | v0.23.5 | Apache-2.0
+| link:https://github.com/kubernetes/component-base[$$k8s.io/component-base$$] | v0.23.5 | Apache-2.0
 | link:https://github.com/kubernetes/kube-openapi[$$k8s.io/kube-openapi$$] | v0.0.0-20211115234752-e816edb12b65 | Apache-2.0
 | link:https://sigs.k8s.io/json[$$sigs.k8s.io/json$$] | v0.0.0-20211020170558-c049b76a60c6 | Apache-2.0
 | link:https://sigs.k8s.io/structured-merge-diff/v4[$$sigs.k8s.io/structured-merge-diff/v4$$] | v4.2.1 | Apache-2.0
