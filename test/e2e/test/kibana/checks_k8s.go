@@ -118,7 +118,6 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					},
 				},
 			)
-
 		}
 
 		return expected

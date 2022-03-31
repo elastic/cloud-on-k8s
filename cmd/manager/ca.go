@@ -6,11 +6,13 @@ package manager
 
 import (
 	"context"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 func readOptionalCA(path string) (*certificates.CA, error) {

@@ -7,7 +7,6 @@ package beat
 import (
 	"context"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
