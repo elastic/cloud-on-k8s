@@ -6,10 +6,10 @@ package webhook
 
 import (
 	"context"
+	"k8s.io/client-go/util/retry"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -85,19 +85,24 @@ func updateOperatorPods(ctx context.Context, clientset kubernetes.Interface, ope
 
 // updateOperatorPod updates a specific annotation on a single pod to speed up secret propagation.
 func updateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes.Interface) {
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
-	pod.Annotations[annotation.UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
-	if _, err := clientset.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{}); err != nil {
-		if errors.IsConflict(err) {
-			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
-			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)
-		} else {
-			log.Error(err, "failed to update pod annotation",
-				"annotation", annotation.UpdateAnnotation,
-				"namespace", pod.Namespace,
-				"pod_name", pod.Name)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Fetch the last the version of the Pod
+		pod, err := clientset.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
 		}
+		// Update the annotation
+		if pod.Annotations == nil {
+			pod.Annotations = map[string]string{}
+		}
+		pod.Annotations[annotation.UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
+		_, err = clientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		log.Error(err, "failed to update pod annotation",
+			"annotation", annotation.UpdateAnnotation,
+			"namespace", pod.Namespace,
+			"pod_name", pod.Name)
 	}
 }
