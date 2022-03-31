@@ -123,7 +123,7 @@ func (u *UpscaleReporter) Merge(other esv1.UpscaleOperation) esv1.UpscaleOperati
 			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	if !reflect.DeepEqual(nodes, other.Nodes) || upscaleOperation.LastUpdatedTime.IsZero() {
+	if (u.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || upscaleOperation.LastUpdatedTime.IsZero() {
 		upscaleOperation.Nodes = nodes
 		upscaleOperation.LastUpdatedTime = metav1.Now()
 	}
@@ -210,7 +210,7 @@ func (u *UpgradeReporter) Merge(other esv1.UpgradeOperation) esv1.UpgradeOperati
 			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	if !reflect.DeepEqual(nodes, other.Nodes) || upgradeOperation.LastUpdatedTime.IsZero() {
+	if (u.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || upgradeOperation.LastUpdatedTime.IsZero() {
 		upgradeOperation.Nodes = nodes
 		upgradeOperation.LastUpdatedTime = metav1.Now()
 	}
@@ -264,7 +264,7 @@ func (d *DownscaleReporter) Merge(other esv1.DownscaleOperation) esv1.DownscaleO
 			return nodes[i].Name < nodes[j].Name
 		})
 	}
-	if !reflect.DeepEqual(nodes, other.Nodes) || downscaleOperation.LastUpdatedTime.IsZero() {
+	if (d.nodes != nil && !reflect.DeepEqual(nodes, other.Nodes)) || downscaleOperation.LastUpdatedTime.IsZero() {
 		downscaleOperation.Nodes = nodes
 		downscaleOperation.LastUpdatedTime = metav1.Now()
 	}
