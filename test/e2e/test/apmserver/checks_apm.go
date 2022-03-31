@@ -127,31 +127,6 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 	}
 }
 
-//nolint:thelper
-func (c *apmClusterChecks) CheckEventsAPI() test.Step {
-	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
-{ "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
-{ "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
-
-	return test.Step{
-		Name: "Events should be accepted",
-		Test: func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
-			defer cancel()
-			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
-			require.NoError(t, err)
-
-			// in the happy case, we get no error response
-			assert.Nil(t, eventsErrorResponse)
-			if eventsErrorResponse != nil {
-				// provide more details:
-				assert.Equal(t, 2, eventsErrorResponse.Accepted)
-				assert.Len(t, eventsErrorResponse.Errors, 0)
-			}
-		},
-	}
-}
-
 // CheckIndexCreation ensure that, prior to attempting to ingest events, the APM Server user
 // has the necessary permissions to either create indexes (ES < 8.x), or index documents into
 // non-existing indexes (ES >= 8.x). This fixes a transient issue that happens when upgrading
@@ -238,6 +213,31 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 			}
 			return nil
 		}),
+	}
+}
+
+//nolint:thelper
+func (c *apmClusterChecks) CheckEventsAPI() test.Step {
+	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
+{ "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
+{ "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
+
+	return test.Step{
+		Name: "Events should be accepted",
+		Test: func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+			defer cancel()
+			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
+			require.NoError(t, err)
+
+			// in the happy case, we get no error response
+			assert.Nil(t, eventsErrorResponse)
+			if eventsErrorResponse != nil {
+				// provide more details:
+				assert.Equal(t, 2, eventsErrorResponse.Accepted)
+				assert.Len(t, eventsErrorResponse.Errors, 0)
+			}
+		},
 	}
 }
 
