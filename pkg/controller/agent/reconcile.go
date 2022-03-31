@@ -147,14 +147,14 @@ func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1
 	if err != nil {
 		return err
 	}
+	status.Version = common.LowestVersionFromPods(status.Version, pods, VersionLabelName)
 	status.AvailableNodes = ready
 	status.ExpectedNodes = desired
 	health, err := CalculateHealth(agent.GetAssociations(), ready, desired)
 	if err != nil {
 		return err
 	}
-	agent.Status.Health = health
-	status.Version = common.LowestVersionFromPods(status.Version, pods, VersionLabelName)
+	status.Health = health
 	return nil
 }
 
