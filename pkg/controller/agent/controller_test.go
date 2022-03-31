@@ -229,10 +229,10 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 }
 
 func addLabel(labels map[string]string, key, value string) map[string]string {
-	copy := make(map[string]string, len(labels))
+	newLabels := make(map[string]string, len(labels))
 	for k, v := range labels {
-		copy[k] = v
+		newLabels[k] = v
 	}
-	copy[key] = value
-	return copy
+	newLabels[key] = value
+	return newLabels
 }
