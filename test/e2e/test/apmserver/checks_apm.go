@@ -13,8 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -24,16 +24,10 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -181,43 +175,37 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 
 			sec := corev1.Secret{}
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Name + "-apm-user", Namespace: managedNamespace}, &sec); err != nil {
-				log.Error(err, "while getting apm user secret")
-				return err
+				return errors.Wrap(err, "while getting apm user secret")
 			}
 
 			usernameKey := fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name)
 			b, ok := sec.Data[usernameKey]
 			if !ok {
-				log.Error(fmt.Errorf("key not found"), "while getting apm password from secret data")
 				return fmt.Errorf("secret data did not contain key %s", usernameKey)
 			}
 			password := string(b)
 
 			es := esv1.Elasticsearch{}
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Spec.ElasticsearchRef.Name, Namespace: apm.Spec.ElasticsearchRef.Namespace}, &es); err != nil {
-				log.Error(err, "while getting associated Elasticsearch cluster")
-				return err
+				return errors.Wrap(err, "while getting associated Elasticsearch cluster")
 			}
 
-			pods, err := sset.GetActualPodsForCluster(k.Client, es)
+			esClient, err := elasticsearch.NewElasticsearchClientWithUser(es, k, client.BasicAuth{
+				Name:     fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name),
+				Password: password,
+			})
 			if err != nil {
 				return err
-			}
-			inClusterURL := services.ElasticsearchURL(es, reconcile.AvailableElasticsearchNodes(pods))
-			var dialer net.Dialer
-			if test.Ctx().AutoPortForwarding {
-				dialer = portforward.NewForwardingDialer()
 			}
 
 			r, err := http.NewRequestWithContext(
 				ctx,
 				http.MethodPut,
-				fmt.Sprintf("%s/%s", inClusterURL, indexName),
+				fmt.Sprintf("/%s", indexName),
 				nil,
 			)
 			if err != nil {
-				log.Error(err, "while creating new http request")
-				return err
+				return errors.Wrap(err, "while creating new http request")
 			}
 
 			// If the ES version is >= 8.x, then the index name must change to a datastream,
@@ -229,35 +217,23 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 				r, err = http.NewRequestWithContext(
 					ctx,
 					http.MethodPost,
-					fmt.Sprintf("%s/%s/_doc/", inClusterURL, indexName),
+					fmt.Sprintf("/%s/_doc/", indexName),
 					strings.NewReader(`{"@timestamp": "2022-03-22T00:00:00.000Z","message": "test_message"}`),
 				)
 				if err != nil {
-					log.Error(err, "while creating new http request")
-					return err
+					return errors.Wrap(err, "while creating new http request")
 				}
 			}
 
-			r.Header.Set("Content-Type", "application/json")
-			r.Header.Set("Accept", "application/json")
-			r.SetBasicAuth(fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name), password)
-
-			caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
+			res, err := esClient.Request(ctx, r)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "while executing http request")
 			}
 
-			httpClient := common.HTTPClient(dialer, caCert, 10*time.Second)
-			res, err := httpClient.Do(r)
-			if err != nil {
-				log.Error(err, "while executing http request")
-				return err
-			}
 			defer res.Body.Close()
 			// we should receieve either a 200 (index creation), or 201 (index doc request)
 			// from Elasticsearch
 			if res.StatusCode > 201 {
-				log.Error(fmt.Errorf("status code %d", res.StatusCode), "during http request")
 				return fmt.Errorf("expected http 200/201 response code when creating index, got %d", res.StatusCode)
 			}
 			return nil
@@ -309,7 +285,6 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 			// Fetch the last version of the APM Server
 			var updatedApmServer apmv1.ApmServer
 			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
-				log.Error(err, "while getting elasticsearch client")
 				return err
 			}
 
