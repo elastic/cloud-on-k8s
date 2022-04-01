@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -125,9 +125,6 @@ func Command() *cobra.Command {
 					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
 				}
 
-				if !viper.GetBool(operator.DisableConfigWatch) {
-					viper.WatchConfig()
-				}
 			}
 
 			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
@@ -322,24 +319,36 @@ func Command() *cobra.Command {
 func doRun(_ *cobra.Command, _ []string) error {
 	ctx := signals.SetupSignalHandler()
 
-	// receive config file update events over a channel, if config watch is disabled this will never be called.
+	// receive config/CA file update events over a channel
 	confUpdateChan := make(chan struct{}, 1)
-	viper.OnConfigChange(func(evt fsnotify.Event) {
-		if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
-			confUpdateChan <- struct{}{}
-		}
-	})
+	var toWatch []string
+
+	// watch for config file changes
+	if !viper.GetBool(operator.DisableConfigWatch) && configFile != "" {
+		toWatch = append(toWatch, configFile)
+	}
+
+	// watch for CA files if configured
+	caDir := viper.GetString(operator.CAFlag)
+	if caDir != "" {
+		toWatch = append(toWatch,
+			filepath.Join(caDir, certificates.KeyFileName),
+			filepath.Join(caDir, certificates.CertFileName),
+			// TODO support ca.crt and ca.key
+			// filepath.Join(caDir, certificates.CAKeyFileName),
+			// filepath.Join(caDir, certificates.CAFileName),
+		)
+	}
+
+	watcher := fs.NewFileWatcher(ctx, toWatch, func(_ []string) {
+		confUpdateChan <- struct{}{}
+	}, 15*time.Second)
+	go watcher.Run()
 
 	// set up channels and context for the operator
 	errChan := make(chan error, 1)
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
-
-	// watch for CA changes if any and restart the operator if they happen
-	caUpdateChan := make(chan struct{}, 1)
-	if err := watchCADir(ctx, viper.GetString(operator.CAFlag), caUpdateChan); err != nil {
-		return err
-	}
 
 	// start the operator in a goroutine
 	go func() {
@@ -355,18 +364,12 @@ func doRun(_ *cobra.Command, _ []string) error {
 		select {
 		case err := <-errChan: // operator failed
 			log.Error(err, "Shutting down due to error")
-
 			return err
 		case <-ctx.Done(): // signal received
 			log.Info("Shutting down due to signal")
-
 			return nil
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
-
-			return nil
-		case <-caUpdateChan: // changes in the directory containing shared CA
-			log.Info("Shutting down to apply updated certificate authority")
 			return nil
 		}
 	}
@@ -650,6 +653,13 @@ func startOperator(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+func readOptionalCA(caDir string) (*certificates.CA, error) {
+	if caDir == "" {
+		return nil, nil
+	}
+	return certificates.BuildCAFromFile(caDir)
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
