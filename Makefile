@@ -527,6 +527,9 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
+set-kubeconfig:
+	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+
 ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
 
