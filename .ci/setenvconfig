@@ -517,6 +517,7 @@ MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secret
 
 PIPELINE=pr
 BUILD_NUMBER=$BUILD_NUMBER
+E2E_JSON=true
 E2E_PROVIDER=kind
 CLUSTER_NAME=eck-pr-$BUILD_NUMBER
 TEST_OPTS=-race
