@@ -7,6 +7,7 @@
 package certificates
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -100,6 +101,71 @@ func TestBuildCAFromFile(t *testing.T) {
 			}
 
 			assert.Equalf(t, tt.want, got, "BuildCAFromFile(%+v)", tt.args)
+		})
+	}
+}
+
+func Test_detectCAFileNames(t *testing.T) {
+	tests := []struct {
+		name     string
+		files    []string
+		wantCert string
+		wantKey  string
+		wantErr  bool
+	}{
+		{
+			name:     "happy path ca*",
+			files:    []string{"ca.crt", "ca.key"},
+			wantCert: "ca.crt",
+			wantKey:  "ca.key",
+			wantErr:  false,
+		},
+		{
+			name:     "happy path tls*",
+			files:    []string{"tls.crt", "tls.key"},
+			wantCert: "tls.crt",
+			wantKey:  "tls.key",
+			wantErr:  false,
+		},
+		{
+			name:     "tls.* with ca.crt OK",
+			files:    []string{"tls.crt", "tls.key", "ca.crt"},
+			wantCert: "tls.crt",
+			wantKey:  "tls.key",
+			wantErr:  false,
+		},
+		{
+			name:     "mixed tls.* and ca.* NOK",
+			files:    []string{"tls.crt", "tls.key", "ca.crt", "ca.key"},
+			wantCert: "",
+			wantKey:  "",
+			wantErr:  true,
+		},
+		{
+			name:     "no valid combination of files",
+			files:    nil,
+			wantCert: "",
+			wantKey:  "",
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, err := ioutil.TempDir("", "detect_ca_file_names")
+			require.NoError(t, err)
+			defer os.RemoveAll(dir)
+			for _, f := range tt.files {
+				require.NoError(t, ioutil.WriteFile(filepath.Join(dir, f), []byte("contents"), 0644))
+			}
+
+			cert, key, err := detectCAFileNames(dir)
+			if tt.wantErr != (err != nil) {
+				t.Errorf(fmt.Sprintf("want err %v got %v,files: %v ", tt.wantErr, err, tt.files))
+			}
+			if err == nil {
+				assert.Equalf(t, tt.wantCert, filepath.Base(cert), "detectCAFileNames(), files: %v", tt.files)
+				assert.Equalf(t, tt.wantKey, filepath.Base(key), "detectCAFileNames(), files: %v", tt.files)
+			}
 		})
 	}
 }

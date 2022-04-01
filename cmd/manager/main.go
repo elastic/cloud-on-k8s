@@ -333,9 +333,8 @@ func doRun(_ *cobra.Command, _ []string) error {
 		toWatch = append(toWatch,
 			filepath.Join(caDir, certificates.KeyFileName),
 			filepath.Join(caDir, certificates.CertFileName),
-			// TODO support ca.crt and ca.key
-			// filepath.Join(caDir, certificates.CAKeyFileName),
-			// filepath.Join(caDir, certificates.CAFileName),
+			filepath.Join(caDir, certificates.CAKeyFileName),
+			filepath.Join(caDir, certificates.CAFileName),
 		)
 	}
 

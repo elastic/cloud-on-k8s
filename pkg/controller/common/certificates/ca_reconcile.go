@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -234,8 +235,37 @@ func internalSecretForCA(
 	}, nil
 }
 
+func detectCAFileNames(path string) (string, string, error) {
+	files := map[string]bool{
+		CertFileName:  false,
+		KeyFileName:   false,
+		CAFileName:    false,
+		CAKeyFileName: false,
+	}
+	for f := range files {
+		exists, err := fs.FileExists(filepath.Join(path, f))
+		if err != nil {
+			return "", "", err
+		}
+		files[f] = exists
+	}
+	switch {
+	case (files[CertFileName] || files[KeyFileName]) && files[CAKeyFileName]:
+		return "", "", fmt.Errorf("both tls.* and ca.* files exist, configuration error")
+	case files[CAFileName] && files[CAKeyFileName]:
+		return filepath.Join(path, CAFileName), filepath.Join(CAKeyFileName), nil
+	case files[CertFileName] && files[KeyFileName]:
+		return filepath.Join(path, CertFileName), filepath.Join(path, KeyFileName), nil
+	}
+	return "", "", fmt.Errorf("no CA certificate files found: %+v", files)
+}
+
 func BuildCAFromFile(path string) (*CA, error) {
-	certFile := filepath.Join(path, CertFileName)
+	certFile, privateKeyFile, err := detectCAFileNames(path)
+	if err != nil {
+		return nil, err
+	}
+
 	bytes, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, err
@@ -254,7 +284,6 @@ func BuildCAFromFile(path string) (*CA, error) {
 	}
 	cert := certs[0]
 
-	privateKeyFile := filepath.Join(path, KeyFileName)
 	privateKeyBytes, err := ioutil.ReadFile(privateKeyFile)
 	if err != nil {
 		return nil, err
