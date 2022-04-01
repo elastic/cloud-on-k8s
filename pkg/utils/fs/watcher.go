@@ -8,17 +8,25 @@ import (
 	"context"
 	"os"
 	"time"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type fileWatcher struct {
+var log = logf.Log.WithName("fs-watcher")
+
+// FileWatcher watches a given set of file paths, not directories, for changes based on the file's mtime.
+type FileWatcher struct {
 	ctx      context.Context
 	onChange func([]string)
 	period   time.Duration
 	cache    fileModTimeCache
 }
 
-func NewFileWatcher(ctx context.Context, paths []string, onChange func([]string), period time.Duration) *fileWatcher {
-	return &fileWatcher{
+// NewFileWatcher creates a new file watcher, use ctx context for cancellation, paths to specify the files to watch.
+// onChange is a callback to be invoked when changes are detected, a list of affected files will be passed as argument.
+// period determines how often the file watcher will try to detect changes to the files of interest.
+func NewFileWatcher(ctx context.Context, paths []string, onChange func([]string), period time.Duration) *FileWatcher {
+	return &FileWatcher{
 		ctx:      ctx,
 		onChange: onChange,
 		period:   period,
@@ -26,7 +34,8 @@ func NewFileWatcher(ctx context.Context, paths []string, onChange func([]string)
 	}
 }
 
-func (fw *fileWatcher) Run() {
+// Run starts the file watcher. Should be typically run inside a go routine.
+func (fw *FileWatcher) Run() {
 	ticker := time.NewTicker(fw.period)
 	defer ticker.Stop()
 	for {
@@ -62,6 +71,8 @@ func (fmc fileModTimeCache) Update() []string {
 				// file was deleted
 				updated = append(updated, f)
 				fmc[f] = time.Time{}
+			} else {
+				log.Error(err, "while getting file info", "file", f, "err", err.Error())
 			}
 			continue
 		}

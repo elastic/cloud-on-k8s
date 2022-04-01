@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -83,6 +82,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
@@ -124,7 +124,6 @@ func Command() *cobra.Command {
 				if err := viper.ReadInConfig(); err != nil {
 					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
 				}
-
 			}
 
 			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
@@ -340,9 +339,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 		)
 	}
 
-	watcher := fs.NewFileWatcher(ctx, toWatch, func(_ []string) {
+	onConfChange := func(_ []string) {
 		confUpdateChan <- struct{}{}
-	}, 15*time.Second)
+	}
+	watcher := fs.NewFileWatcher(ctx, toWatch, onConfChange, 15*time.Second)
 	go watcher.Run()
 
 	// set up channels and context for the operator
