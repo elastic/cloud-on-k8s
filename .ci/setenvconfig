@@ -521,6 +521,8 @@ E2E_JSON=true
 E2E_PROVIDER=kind
 CLUSTER_NAME=eck-pr-$BUILD_NUMBER
 TEST_OPTS=-race
+BUILD_PLATFORM=linux/amd64
+
 ENV
 write_deployer_config <<CFG
 id: kind-ci
