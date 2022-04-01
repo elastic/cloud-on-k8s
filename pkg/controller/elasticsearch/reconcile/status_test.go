@@ -373,6 +373,73 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantPendingNewNodes: false,
 		},
+		{
+			name: "Do not overwrite existing status if reporter is not used",
+			state: func() *State {
+				s := MustNewState(esv1.Elasticsearch{})
+				return s
+			},
+			args: args{
+				otherStatus: esv1.ElasticsearchStatus{
+					Phase: esv1.ElasticsearchResourceInvalid,
+					Conditions: esv1.Conditions{
+						{
+							Type:    "ReconciliationComplete",
+							Status:  "False",
+							Message: "Nodes upgrade in progress",
+						},
+					},
+					InProgressOperations: esv1.InProgressOperations{
+						DownscaleOperation: esv1.DownscaleOperation{
+							Nodes: nil,
+						},
+						UpgradeOperation: esv1.UpgradeOperation{
+							LastUpdatedTime: metav1.Now(),
+							Nodes: []esv1.UpgradedNode{
+								{
+									Message:   pointer.String("Cannot restart node because of failed predicate"),
+									Name:      "node-1",
+									Status:    "PENDING",
+									Predicate: pointer.String("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
+								},
+							},
+						},
+						UpscaleOperation: esv1.UpscaleOperation{
+							Nodes: nil,
+						},
+					},
+				},
+			},
+			wantElasticsearchStatus: esv1.ElasticsearchStatus{
+				Phase: esv1.ElasticsearchResourceInvalid,
+				Conditions: esv1.Conditions{
+					{
+						Type:    "ReconciliationComplete",
+						Status:  "False",
+						Message: "Nodes upgrade in progress",
+					},
+				},
+				InProgressOperations: esv1.InProgressOperations{
+					DownscaleOperation: esv1.DownscaleOperation{
+						Nodes: nil,
+					},
+					UpgradeOperation: esv1.UpgradeOperation{
+						Nodes: []esv1.UpgradedNode{
+							{
+								Message:   pointer.String("Cannot restart node because of failed predicate"),
+								Name:      "node-1",
+								Status:    "PENDING",
+								Predicate: pointer.String("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
+							},
+						},
+					},
+					UpscaleOperation: esv1.UpscaleOperation{
+						Nodes: nil,
+					},
+				},
+			},
+			wantPendingNewNodes: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
