@@ -10,21 +10,20 @@ ENV E2E_TAGS $E2E_TAGS
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
-# Create the go test cache directory
+# create the go test cache directory
 RUN mkdir -p /.cache && chmod 777 /.cache
 
-# Download dependencies
+# non-root user to support restricted PSP
+RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
+USER 1001
+
+# download go dependencies
 COPY ["go.mod", "go.sum","./"]
 RUN go mod download
 
-# Copy the source
+# copy sources
 COPY pkg/ pkg/
 COPY config/ config/
 COPY test/ test/
-
-RUN chgrp -R 0 /go && chmod -R g=u /go
-
-# If a restricted PSP is applied we can't run as root
-USER 1001
 
 ENTRYPOINT ["test/e2e/run.sh"]
