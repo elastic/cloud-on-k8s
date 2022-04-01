@@ -20,65 +20,114 @@ pipeline {
     }
 
     stages {
-        stage('Run checks in parallel') {
-            failFast true
+        stage('setup-ci-env') {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
             parallel {
-                stage('Validate Jenkins pipelines') {
-                    when {
-                        expression {
-                            arePipelinesModified()
-                        }
-                    }
+                stage('build-image') {
                     steps {
-                        sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
+                        sh 'make -C .ci get-test-artifacts ci-build-image'
+                        sh '.ci/setenvconfig pr'
                     }
                 }
-                stage('Run checks') {
-                    when {
-                        expression {
-                            notOnlyDocs()
-                        }
-                    }
+                stage("validate-jenkins-pipelines") {
                     steps {
-                        sh 'make -C .ci TARGET=ci-check ci'
+                        script {
+                            sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
+                        }
                     }
                 }
             }
         }
-        stage('Run tests in parallel') {
+        stage('tests') {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
+            failFast true
             parallel {
-                stage("Run unit and integration tests") {
-                    when {
-                        expression {
-                            notOnlyDocs()
+                stage('tests') {
+                    stages {
+                        stage('lint') {
+                            steps {
+                                sh 'make -C .ci TARGET="lint check-local-changes" ci'
+                            }
                         }
-                    }
-                    steps {
-                        script {
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
-
-                            junit "unit-tests.xml"
-                            junit "integration-tests.xml"
-
-                            sh 'exit $SHELL_EXIT_CODE'
+                        stage('generate') {
+                            steps {
+                                sh 'make -C .ci TARGET="generate check-local-changes" ci'
+                            }
+                        }
+                        stage('check-license-header') {
+                            steps {
+                                sh 'make -C .ci TARGET=check-license-header ci'
+                            }
+                        }
+                        stage('check-predicates') {
+                            steps {
+                                sh 'make -C .ci TARGET=check-predicates ci'
+                            }
+                        }
+                        stage('shellcheck') {
+                            steps {
+                                sh 'make -C .ci TARGET=shellcheck ci'
+                            }
+                        }
+                        stage("reattach-pv-tool") {
+                            steps {
+                                sh 'make -C .ci TARGET=reattach-pv ci'
+                            }
+                        }
+                        stage("unit-tests") {
+                            steps {
+                                script {
+                                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=unit-xml ci')
+                                    junit "unit-tests.xml"
+                                    sh 'exit $SHELL_EXIT_CODE'
+                                }
+                            }
+                        }
+                        stage("integration-tests") {
+                            steps {
+                                script {
+                                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=integration-xml ci')
+                                    junit "integration-tests.xml"
+                                    sh 'exit $SHELL_EXIT_CODE'
+                                }
+                            }
                         }
                     }
                 }
-                stage("Run smoke E2E tests") {
-                    when {
-                        expression {
-                            notOnlyDocs()
+                stage('e2e-tests') {
+                    stages {
+                        stage("build-e2e-tests-docker-image") {
+                            steps {
+                                sh 'make -C .ci TARGET=e2e-docker-multiarch-build ci'
+                            }
                         }
-                    }
-                    steps {
-                        sh '.ci/setenvconfig pr'
-                        script {
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
-
-                            sh 'make -C .ci TARGET=e2e-generate-xml ci'
-                            junit "e2e-tests.xml"
-
-                            sh 'exit $SHELL_EXIT_CODE'
+                        stage("build-operator-docker-image") {
+                            steps {
+                                sh 'make -C .ci TARGET=build-operator-image ci'
+                            }
+                        }
+                        stage("create-k8s-cluster") {
+                            steps {
+                                sh 'make -C .ci TARGET="run-deployer apply-psp" ci'
+                            }
+                        }
+                        stage('e2e-tests') {
+                            steps {
+                                script {
+                                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET="set-kubeconfig e2e-run" ci')
+                                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
+                                    junit "e2e-tests.xml"
+                                    sh 'exit $SHELL_EXIT_CODE'
+                                }
+                            }
                         }
                     }
                 }
