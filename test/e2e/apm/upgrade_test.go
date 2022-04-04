@@ -25,7 +25,7 @@ func TestAPMServerVersionUpgradeToLatest8x(t *testing.T) {
 		WithVersion(srcVersion).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	apmServerBuilder := apmserver.NewBuilder(name).WithVersion(srcVersion).WithElasticsearchRef(esBuilder.Ref())
+	apmServerBuilder := apmserver.NewBuilder(name).WithVersion(srcVersion).WithElasticsearchRef(esBuilder.Ref()).WithoutIntegrationCheck()
 
 	mutated := apmServerBuilder.WithVersion(dstVersion).WithElasticsearchRef(esBuilder.Ref()).WithMutatedFrom(&apmServerBuilder).WithoutIntegrationCheck()
 
