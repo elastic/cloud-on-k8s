@@ -82,6 +82,10 @@ spec:
       hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
+      # Since E2E cluster's Elasticsearch instance may lag behind the newest version of Beat, we need to allow this scenario.
+      allow_older_versions: true
+      # The maximum number of events to bulk in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_size: 10
   daemonSet:
     podTemplate:
       spec:
@@ -278,6 +282,10 @@ spec:
       hosts: ['${monitoring_url}']
       username: ${monitoring_user}
       password: ${monitoring_pass}
+      # Since E2E cluster's Elasticsearch instance may lag behind the newest version of Beat, we need to allow this scenario.
+      allow_older_versions: true
+      # The maximum number of events to bulk in a single Elasticsearch bulk API index request. Needed if Elasticsearch is behind Cloud Ingress.
+      bulk_max_size: 10
   secureSettings:
   - secretName: "eck-{{ .TestRun }}"
   daemonSet:
