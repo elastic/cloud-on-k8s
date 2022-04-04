@@ -130,9 +130,6 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 // Elasticsearch between major versions where it takes a bit of time to transition between
 // file-based user roles, and permissions errors were being returned by Elasticsearch.
 func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
-	// default to < 8.x Elasticsearch APM Server index names
-	indexName := "apm-testindex-" + rand.String(4)
-
 	return test.Step{
 		Name: "ES Index should eventually be able to be created by APM Server user",
 		Test: test.Eventually(func() error {
@@ -145,7 +142,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 
 			managedNamespace := test.Ctx().ManagedNamespace(0)
 
-			sec := corev1.Secret{}
+			var sec corev1.Secret
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Name + "-apm-user", Namespace: managedNamespace}, &sec); err != nil {
 				return errors.Wrap(err, "while getting apm user secret")
 			}
@@ -157,7 +154,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 			}
 			password := string(b)
 
-			es := esv1.Elasticsearch{}
+			var es esv1.Elasticsearch
 			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Spec.ElasticsearchRef.Name, Namespace: apm.Spec.ElasticsearchRef.Namespace}, &es); err != nil {
 				return errors.Wrap(err, "while getting associated Elasticsearch cluster")
 			}
@@ -169,6 +166,9 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 			if err != nil {
 				return err
 			}
+
+			// default to < 8.x Elasticsearch APM Server index names
+			indexName := "apm-testindex-" + rand.String(4)
 
 			r, err := http.NewRequestWithContext(
 				ctx,
