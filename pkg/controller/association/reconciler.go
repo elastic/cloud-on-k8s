@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -216,12 +217,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			"name", associatedKey.Name)
 		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 	} else if err != nil {
-		log.Error(
-			err,
-			"Error while trying to update status",
-			"namespace", associatedKey.Namespace,
-			"name", associatedKey.Name)
-		return defaultRequeue, tracing.CaptureError(ctx, err)
+		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).

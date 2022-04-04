@@ -43,7 +43,8 @@ type Params struct {
 	EventRecorder record.EventRecorder
 	Watches       watches.DynamicWatches
 
-	Agent agentv1alpha1.Agent
+	Agent  agentv1alpha1.Agent
+	Status agentv1alpha1.AgentStatus
 
 	OperatorParams operator.Parameters
 }
@@ -83,25 +84,25 @@ func newStatus(agent agentv1alpha1.Agent) agentv1alpha1.AgentStatus {
 	return status
 }
 
-func internalReconcile(params Params, status agentv1alpha1.AgentStatus) (agentv1alpha1.AgentStatus, *reconciler.Results) {
+func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
 	agentVersion, err := version.Parse(params.Agent.Spec.Version)
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	assocAllowed, err := association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder)
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	if !assocAllowed {
-		return status, results // will eventually retry
+		return results, params.Status // will eventually retry
 	}
 
 	svc, err := reconcileService(params)
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	configHash := fnv.New32a()
@@ -122,24 +123,24 @@ func internalReconcile(params Params, status agentv1alpha1.AgentStatus) (agentv1
 			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("*.%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
 		}.ReconcileCAAndHTTPCerts(params.Context)
 		if caResults.HasError() {
-			return status, results.WithResults(caResults)
+			return results.WithResults(caResults), params.Status
 		}
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
 	}
 	if res := reconcileConfig(params, configHash); res.HasError() {
-		return status, results.WithResults(res)
+		return results.WithResults(res), params.Status
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Agent will not be rolled on content changes
 	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Agent.GetAssociations(), configHash); err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	podTemplate, err := buildPodTemplate(params, fleetCerts, configHash)
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
-	return reconcilePodVehicle(params, podTemplate, status)
+	return reconcilePodVehicle(params, podTemplate)
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {

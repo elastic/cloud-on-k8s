@@ -29,7 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, status agentv1alpha1.AgentStatus) (agentv1alpha1.AgentStatus, *reconciler.Results) {
+func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -64,7 +64,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 	})
 
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	// clean up the other one
@@ -77,11 +77,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec, stat
 		results.WithError(err)
 	}
 
-	if err = calculateStatus(&params, ready, desired, &status); err != nil {
+	var status agentv1alpha1.AgentStatus
+	if status, err = calculateStatus(&params, ready, desired); err != nil {
 		err = errors.Wrap(err, "while calculating status")
 	}
 
-	return status, results.WithError(err)
+	return results.WithError(err), status
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
@@ -137,22 +138,24 @@ type ReconciliationParams struct {
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return any error encountered.
-func calculateStatus(params *Params, ready, desired int32, status *agentv1alpha1.AgentStatus) error {
+func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentStatus, error) {
 	agent := params.Agent
+	status := params.Status
 
 	pods, err := k8s.PodsMatchingLabels(params.Client, agent.Namespace, map[string]string{NameLabelName: agent.Name})
 	if err != nil {
-		return err
+		return status, err
 	}
+
 	status.Version = common.LowestVersionFromPods(status.Version, pods, VersionLabelName)
 	status.AvailableNodes = ready
 	status.ExpectedNodes = desired
 	health, err := CalculateHealth(agent.GetAssociations(), ready, desired)
 	if err != nil {
-		return err
+		return status, err
 	}
 	status.Health = health
-	return nil
+	return status, nil
 }
 
 // updateStatus will update the Elastic Agent's status within the k8s cluster, using the given Elastic Agent and status.

@@ -144,7 +144,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	status, results := r.doReconcile(ctx, *agent)
+	results, status := r.doReconcile(ctx, *agent)
 
 	if err := updateStatus(*agent, r.Client, status); err != nil {
 		if apierrors.IsConflict(err) {
@@ -159,23 +159,23 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	return result, err
 }
 
-func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (agentv1alpha1.AgentStatus, *reconciler.Results) {
+func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
 	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
 	if err != nil {
-		return status, results.WithError(err)
+		return results.WithError(err), status
 	}
 	if !areAssocsConfigured {
-		return status, results
+		return results, status
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err := r.validate(ctx, agent); err != nil {
 		results = results.WithError(err)
-		return status, results
+		return results, status
 	}
 
 	return internalReconcile(Params{
@@ -184,8 +184,9 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Agent:          agent,
+		Status:         status,
 		OperatorParams: r.Parameters,
-	}, status)
+	})
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
