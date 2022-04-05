@@ -80,7 +80,7 @@ kubectl create secret generic eck-license --from-file=my-license-file.json -n el
 kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
 ----
 
-After you install a license into ECK, the Enterprise features of the operator, like Elasticsearch auto-scaling and support for the Elastic Maps Server are available. All the Elastic Stack applications you manage with ECK will have Platinum and Enterprise features enabled.  The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API reports that individual Elasticsearch clusters are running under an Enterprise license, and the <<{p}-get-usage-data, elastic-licensing>> ConfigMap contains the current license level of the ECK operator. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
+After you install a license into ECK, the Enterprise features of the operator are available, like Elasticsearch autoscaling and support for Elastic Maps Server. All the Elastic Stack applications you manage with ECK will have Platinum and Enterprise features enabled.  The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API reports that individual Elasticsearch clusters are running under an Enterprise license, and the <<{p}-get-usage-data, elastic-licensing>> ConfigMap contains the current license level of the ECK operator. The applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
 
 NOTE: The Elasticsearch `_license` API for versions before 8.0.0 reports a Platinum license level for backwards compatibility even if an Enterprise license is installed.
 
@@ -90,9 +90,9 @@ NOTE: The Elasticsearch `_license` API for versions before 8.0.0 reports a Plati
 == Update your license
 Before your current Enterprise license expires, you will receive a new Enterprise license from Elastic (provided that your subscription is valid).
 
-NOTE: You can check the expiry date of your license in the <<{p}-get-usage-data,elastic-licensing>> ConfigMap. Enterprise licenses are container licenses that include multiple licenses for individual Elasticsearch clusters with shorter expiry. Therefore, you will get a different expiry in Kibana or through the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API. ECK will automatically update the Elasticsearch cluster licenses until the expiry date of the ECK Enterprise license is reached.
+NOTE: You can check the expiry date of your license in the <<{p}-get-usage-data,elastic-licensing>> ConfigMap. Enterprise licenses are container licenses that include multiple licenses for individual Elasticsearch clusters with shorter expiry. Therefore, you get a different expiry in Kibana or through the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/get-license.html[`_license`] API. ECK automatically updates the Elasticsearch cluster licenses until the expiry date of the ECK Enterprise license is reached.
 
-To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license, we recommend installing the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name in the <<{p}-add-license,examples above>>. ECK will use the correct license automatically.
+To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license, we recommend installing the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name in the <<{p}-add-license,Kubernetes secret example>>. ECK will use the correct license automatically.
 
 Once you have created the new license secret you can safely delete the old license secret.
 
