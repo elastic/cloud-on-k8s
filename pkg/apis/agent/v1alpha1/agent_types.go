@@ -140,6 +140,12 @@ type AgentStatus struct {
 
 	// +kubebuilder:validation:Optional
 	FleetServerAssociationStatus commonv1.AssociationStatus `json:"fleetServerAssociationStatus,omitempty"`
+
+	// ObservedGeneration is the most recent generation observed for this Elastic Agent.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elastic
+	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 type AgentHealth string
@@ -293,6 +299,11 @@ func (a *Agent) SetAssociationStatusMap(typ commonv1.AssociationType, status com
 
 func (a *Agent) SecureSettings() []commonv1.SecretSource {
 	return a.Spec.SecureSettings
+}
+
+// GetObservedGeneration will return the observedGeneration from the Elastic Agent's status.
+func (a *Agent) GetObservedGeneration() int64 {
+	return a.Status.ObservedGeneration
 }
 
 type AgentESAssociation struct {

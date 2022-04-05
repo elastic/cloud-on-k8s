@@ -126,8 +126,8 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
-	var agent agentv1alpha1.Agent
-	if err := r.Client.Get(ctx, request.NamespacedName, &agent); err != nil {
+	agent := &agentv1alpha1.Agent{}
+	if err := r.Client.Get(ctx, request.NamespacedName, agent); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(request.NamespacedName)
 			return reconcile.Result{}, nil
@@ -135,7 +135,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&agent) {
+	if common.IsUnmanaged(agent) {
 		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
@@ -144,38 +144,49 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	res, err := r.doReconcile(ctx, agent).Aggregate()
-	k8s.EmitErrorEvent(r.recorder, err, &agent, events.EventReconciliationError, "Reconciliation error: %v", err)
+	results, status := r.doReconcile(ctx, *agent)
 
-	return res, err
+	if err := updateStatus(*agent, r.Client, status); err != nil {
+		if apierrors.IsConflict(err) {
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
+		results = results.WithError(err)
+	}
+
+	result, err := results.Aggregate()
+	k8s.EmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
+
+	return result, err
 }
 
-func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) *reconciler.Results {
+func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Agent) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
+	status := newStatus(agent)
+
 	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), status
 	}
 	if !areAssocsConfigured {
-		return results
+		return results, status
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err := r.validate(ctx, agent); err != nil {
-		return results.WithError(err)
+		results = results.WithError(err)
+		return results, status
 	}
 
-	driverResults := internalReconcile(Params{
+	return internalReconcile(Params{
 		Context:        ctx,
 		Client:         r.Client,
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Agent:          agent,
+		Status:         status,
 		OperatorParams: r.Parameters,
 	})
-
-	return results.WithResults(driverResults)
 }
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
