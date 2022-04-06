@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build es || e2e
 // +build es e2e
 
 package es
@@ -20,7 +21,8 @@ func TestReversalIllegalConfig(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-illegal-config").
 		WithNoESTopology().
 		WithESDataNodes(1, elasticsearch.DefaultResources).
-		WithESMasterNodes(1, elasticsearch.DefaultResources)
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithPreStopAdditionalWaitSeconds(0)
 
 	// then apply an illegal configuration change to the data node
 	bogus := b.WithAdditionalConfig(map[string]map[string]interface{}{
@@ -35,7 +37,8 @@ func TestReversalIllegalConfig(t *testing.T) {
 func TestReversalRiskyMasterDownscale(t *testing.T) {
 	// we create a non-ha cluster
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithPreStopAdditionalWaitSeconds(0)
 	// we then scale it down to 1 node, which for 6.x cluster in particular is a risky operation
 	// after reversing we expect a cluster to re-form. There is some potential for data loss
 	// in case the cluster indeed goes into split-brain.
@@ -47,7 +50,8 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 
 func TestReversalStatefulSetRename(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-rename-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithPreStopAdditionalWaitSeconds(0)
 
 	copy := b.Elasticsearch.Spec.NodeSets[0]
 	copy.Name = "other"
@@ -56,9 +60,10 @@ func TestReversalStatefulSetRename(t *testing.T) {
 	RunESMutationReversal(t, b, renamed)
 }
 
-func TestRiskyMasterReconfiguration(t *testing.T) {
+func TestReversalRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithPreStopAdditionalWaitSeconds(0)
 
 	b = b.WithNodeSet(esv1.NodeSet{
 		Name:  "other-master",
@@ -84,5 +89,27 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 }
 
 func RunESMutationReversal(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
-	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo.WithMutatedFrom(&toCreate)})
+	// skipIfIncompatibleBuilders(t, append(creationBuilders, mutationBuilders...)...)
+	ctx := mutateTo.MutationReversalTestContext()
+	k := test.NewK8sClientOrFatal()
+	steps := test.StepList{}.
+		WithSteps(toCreate.InitTestSteps(k)).
+		WithSteps(toCreate.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(toCreate, k)).
+		// set up the mutation test
+		WithSteps(ctx.PreMutationSteps(k)).
+		// trigger some mutations
+		WithSteps(mutateTo.UpgradeTestSteps(k)).
+		// ensure the desired progress has been made with the mutation
+		WithSteps(ctx.PostMutationSteps(k)).
+		// now revert the mutation
+		WithSteps(toCreate.UpgradeTestSteps(k)).
+		// run the standard checks once more
+		WithSteps(test.CheckTestSteps(toCreate, k)).
+		// verify the specifics of the upgrade reversal
+		WithSteps(ctx.VerificationSteps(k)).
+		// and delete the resources
+		WithSteps(mutateTo.DeletionTestSteps(k))
+
+	steps.RunSequential(t)
 }

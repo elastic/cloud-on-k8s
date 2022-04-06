@@ -15,7 +15,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
+// MutationReversalTestContext returns a context struct to test changes on a resource that are immediately reverted.
+// We assume the resource to be ready and running.
+// We assume the resource to be the same as the original resource after reversion.
+func (b Builder) MutationReversalTestContext() *mutationReversalTestContext {
 	return &mutationReversalTestContext{
 		esBuilder:              b,
 		initialRevisions:       make(map[string]string),
@@ -90,5 +93,3 @@ func (s *mutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.
 		},
 	}
 }
-
-var _ test.ReversalTestContext = &mutationReversalTestContext{}
