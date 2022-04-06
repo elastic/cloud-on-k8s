@@ -27,7 +27,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/ghodss/yaml[$$github.com/ghodss/yaml$$] | v1.0.0 | MIT
 | link:https://github.com/go-logr/logr[$$github.com/go-logr/logr$$] | v1.2.3 | Apache-2.0
 | link:https://github.com/go-test/deep[$$github.com/go-test/deep$$] | v1.0.8 | MIT
-| link:https://github.com/gobuffalo/flect[$$github.com/gobuffalo/flect$$] | v0.2.4 | MIT
+| link:https://github.com/gobuffalo/flect[$$github.com/gobuffalo/flect$$] | v0.2.5 | MIT
 | link:https://github.com/google/go-cmp[$$github.com/google/go-cmp$$] | v0.5.7 | BSD-3-Clause
 | link:https://github.com/google/uuid[$$github.com/google/uuid$$] | v1.3.0 | BSD-3-Clause
 | link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.1.1 | MPL-2.0
