@@ -19,8 +19,6 @@ const (
 	LatestReleasedVersion7x = "7.17.1"
 	// LatestReleasedVersion8x is the latest release version for 8.x
 	LatestReleasedVersion8x = "8.1.1"
-	// LatestSnapshotVersion8x is the latest snapshot version for 8.x
-	LatestSnapshotVersion8x = "8.2.0-SNAPSHOT"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.

@@ -18,7 +18,7 @@ import (
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestSnapshotVersion8x
+	dstVersion := test.LatestReleasedVersion8x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
