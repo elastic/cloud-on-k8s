@@ -8,6 +8,8 @@ import "encoding/json"
 
 // TODO this should probably be a package
 
+var azureClientImage = "mcr.microsoft.com/azure-cli"
+
 type azureCredentials struct {
 	ClientID       string
 	ClientSecret   string
@@ -29,13 +31,7 @@ func newAzureCredentials(client *VaultClient) (azureCredentials, error) {
 }
 
 func azureLogin(creds azureCredentials) error {
-	cmd := "az login --service-principal -u {{.AppId}} -p {{.TenantSecret}} --tenant {{.TenantId}}"
-	return NewCommand(cmd).
-		AsTemplate(map[string]interface{}{
-			"AppId":        creds.ClientID,
-			"TenantSecret": creds.ClientSecret,
-			"TenantId":     creds.TenantID,
-		}).
+	return azureCmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
 		WithoutStreaming().
 		Run()
 }
@@ -53,4 +49,18 @@ func azureExistsCmd(cmd *Command) (bool, error) {
 		return false, err
 	}
 	return r.Exists, nil
+}
+
+func azureCmd(args ...string) *Command {
+	params := map[string]interface{}{
+		"SharedVolume": SharedVolumeName(),
+		"ClientImage":  azureClientImage,
+		"Args":         args,
+	}
+	cmd := NewCommand(`docker run --rm \
+		-v {{.SharedVolume}}:/home \
+		-e HOME=/home \
+		{{.ClientImage}} \
+		az {{Join .Args " "}}`)
+	return cmd.AsTemplate(params)
 }

@@ -150,21 +150,30 @@ func (d *AksDriver) create() error {
 		servicePrincipal = fmt.Sprintf(" --service-principal %s --client-secret %s", secrets[0], secrets[1])
 	}
 
-	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --location {{.Location}} ` +
-		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
-		`--node-osdisk-size 30 --enable-addons http_application_routing --output none --generate-ssh-keys --zones {{.Zones}}` + servicePrincipal
-
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	return azureCmd("aks",
+		"create", "--resource-group", d.plan.Aks.ResourceGroup,
+		"--name", d.plan.ClusterName, "--location", d.plan.Aks.Location,
+		"--node-count", fmt.Sprintf("%d", d.plan.Aks.NodeCount), "--node-vm-size", d.plan.MachineType,
+		"--kubernetes-version", d.plan.KubernetesVersion,
+		"--node-osdisk-size", "30", "--enable-addons", "http_application_routing", "--output", "none", "--generate-ssh-keys",
+		"--zones", d.plan.Aks.Zones, servicePrincipal).
+		Run()
 }
 
 func (d *AksDriver) GetCredentials() error {
 	log.Print("Getting credentials...")
-	cmd := `az aks get-credentials --overwrite-existing --resource-group {{.ResourceGroup}} --name {{.ClusterName}}`
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	return azureCmd("aks",
+		"get-credentials", "--overwrite-existing",
+		"--resource-group", d.plan.Aks.ResourceGroup,
+		"--name", d.plan.ClusterName).
+		Run()
 }
 
 func (d *AksDriver) delete() error {
 	log.Print("Deleting cluster...")
-	cmd := "az aks delete --yes --name {{.ClusterName}} --resource-group {{.ResourceGroup}}"
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	return azureCmd("aks",
+		"delete", "--yes",
+		"--name", d.plan.ClusterName,
+		"--resource-group", d.plan.Aks.ResourceGroup).
+		Run()
 }
