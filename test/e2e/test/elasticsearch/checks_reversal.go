@@ -18,22 +18,22 @@ import (
 // MutationReversalTestContext returns a context struct to test changes on a resource that are immediately reverted.
 // We assume the resource to be ready and running.
 // We assume the resource to be the same as the original resource after reversion.
-func (b Builder) MutationReversalTestContext() *mutationReversalTestContext {
-	return &mutationReversalTestContext{
+func (b Builder) MutationReversalTestContext() *MutationReversalTestContext {
+	return &MutationReversalTestContext{
 		esBuilder:              b,
 		initialRevisions:       make(map[string]string),
 		initialCurrentReplicas: make(map[string]int32),
 	}
 }
 
-type mutationReversalTestContext struct {
+type MutationReversalTestContext struct {
 	esBuilder              Builder
 	initialCurrentReplicas map[string]int32
 	initialRevisions       map[string]string
 	dataIntegrity          *DataIntegrityCheck
 }
 
-func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
+func (s *MutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	return test.StepList{
 		{
@@ -57,7 +57,7 @@ func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.S
 	}
 }
 
-func (s *mutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.StepList {
+func (s *MutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Verify that a config change is being applied",
@@ -82,7 +82,7 @@ func (s *mutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.
 	}
 }
 
-func (s *mutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.StepList {
+func (s *MutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	return test.StepList{
 		{
