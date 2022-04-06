@@ -418,33 +418,6 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface
 	return b
 }
 
-// WithPreStopAdditionalWaitSeconds allows to speed up the test by shortening the pre-stop hook runtime.
-// Don't use if you want to test that Elasticsearch is not dropping connections.
-func (b Builder) WithPreStopAdditionalWaitSeconds(s int32) Builder {
-	env := corev1.EnvVar{
-		Name:  "PRE_STOP_ADDITIONAL_WAIT_SECONDS",
-		Value: fmt.Sprintf("%d", s),
-	}
-	for i := range b.Elasticsearch.Spec.NodeSets {
-		containers := b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers
-		if len(containers) == 0 {
-			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers = []corev1.Container{
-				{
-					Name: "elasticsearch",
-					Env:  []corev1.EnvVar{env},
-				},
-			}
-		} else {
-			for j, c := range containers {
-				if c.Name == "elasticsearch" {
-					b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = append(containers[j].Env, env)
-				}
-			}
-		}
-	}
-	return b
-}
-
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = esv1.ChangeBudget{
 		MaxSurge:       pointer.Int32(maxSurge),

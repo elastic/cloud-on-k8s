@@ -21,8 +21,7 @@ func TestReversalIllegalConfig(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-illegal-config").
 		WithNoESTopology().
 		WithESDataNodes(1, elasticsearch.DefaultResources).
-		WithESMasterNodes(1, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(0)
+		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
 	// then apply an illegal configuration change to the data node
 	bogus := b.WithAdditionalConfig(map[string]map[string]interface{}{
@@ -37,8 +36,8 @@ func TestReversalIllegalConfig(t *testing.T) {
 func TestReversalRiskyMasterDownscale(t *testing.T) {
 	// we create a non-ha cluster
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(0)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
 	// we then scale it down to 1 node, which for 6.x cluster in particular is a risky operation
 	// after reversing we expect a cluster to re-form. There is some potential for data loss
 	// in case the cluster indeed goes into split-brain.
@@ -50,8 +49,7 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 
 func TestReversalStatefulSetRename(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-rename-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(0)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	copy := b.Elasticsearch.Spec.NodeSets[0]
 	copy.Name = "other"
@@ -62,8 +60,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 
 func TestReversalRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(0)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	b = b.WithNodeSet(esv1.NodeSet{
 		Name:  "other-master",
