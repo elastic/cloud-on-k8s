@@ -245,6 +245,13 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.annotations['topology.kubernetes.io/zone']
+        initContainers:
+        - name: elastic-internal-init-keystore
+          env:
+          - name: ZONE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['topology.kubernetes.io/zone']
         topologySpreadConstraints:
           - maxSkew: 1
             topologyKey: topology.kubernetes.io/zone
