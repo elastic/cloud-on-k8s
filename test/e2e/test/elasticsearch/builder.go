@@ -316,12 +316,12 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		if b.Elasticsearch.Spec.NodeSets[i].Name == nodeSet.Name {
 			b.Elasticsearch.Spec.NodeSets[i] = nodeSet
-			return b.WithDefaultPersistentVolumes()
+			return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 		}
 	}
 
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
-	return b.WithDefaultPersistentVolumes()
+	return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
@@ -439,6 +439,22 @@ func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 		}
 	}
 	return b
+}
+
+// WithPreStopAdditionalWaitSeconds allows speeding up the test by shortening the pre-stop hook runtime.
+// Don't use if you want to test that Elasticsearch is not dropping connections.
+func (b Builder) WithPreStopAdditionalWaitSeconds(s int32) Builder {
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		containers := b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers
+		if len(containers) == 0 {
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers = []corev1.Container{
+				{
+					Name: "elasticsearch",
+				},
+			}
+		}
+	}
+	return b.WithEnvironmentVariable("PRE_STOP_ADDITIONAL_WAIT_SECONDS", fmt.Sprintf("%d", s))
 }
 
 func (b Builder) WithLabel(key, value string) Builder {
