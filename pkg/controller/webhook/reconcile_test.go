@@ -8,9 +8,10 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"sort"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/admissionregistration/v1"
@@ -207,39 +208,38 @@ func TestUpdateOperatorPods(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientset := fake.NewSimpleClientset(tt.args.objects...)
-			pods, err := clientset.CoreV1().Pods("elastic-system").List(context.Background(), metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"})
-			assert.NoError(t, err)
-			// Sort the pods to maintain the order
-			sort.SliceStable(pods.Items, func(i, j int) bool { return pods.Items[i].Name < pods.Items[j].Name })
-			expectedPodsCount := len(pods.Items)
-			assert.Equal(t, expectedPodsCount, len(tt.args.modifiedPods))
-			var prevAnnotations = make([]string, expectedPodsCount)
-			var prevAnnotationsExists = make([]bool, expectedPodsCount)
-			for i, pod := range pods.Items {
-				prevAnnotations[i], prevAnnotationsExists[i] = pod.Annotations[annotation.UpdateAnnotation]
+			// Create a map to track the current annotations
+			previousAnnotations := make(map[string]map[string]string)
+			for _, object := range tt.args.objects {
+				accessor, err := meta.Accessor(object)
+				assert.NoError(t, err)
+				previousAnnotations[accessor.GetName()] = accessor.GetAnnotations()
 			}
+			clientset := fake.NewSimpleClientset(tt.args.objects...)
+			// call the tested function
 			updateOperatorPods(context.Background(), clientset, tt.args.operatorNamespace)
-			gotPods, err := clientset.CoreV1().Pods("elastic-system").List(context.Background(), metav1.ListOptions{LabelSelector: "control-plane=elastic-operator"})
-			assert.NoError(t, err)
-			sort.SliceStable(gotPods.Items, func(i, j int) bool { return gotPods.Items[i].Name < gotPods.Items[j].Name })
-			assert.Equal(t, expectedPodsCount, len(gotPods.Items))
-			var newValue = make([]string, expectedPodsCount)
-			var newValueExists = make([]bool, expectedPodsCount)
-			for i, pod := range gotPods.Items {
-				newValue[i], newValueExists[i] = pod.Annotations[annotation.UpdateAnnotation]
-				assert.NotNil(t, newValue[i])
-				assert.True(t, newValueExists[i])
-				if prevAnnotationsExists[i] {
-					assert.True(t, newValue[i] > prevAnnotations[i])
+			// Check that expected Pods have been updated
+			for _, podName := range tt.args.modifiedPods {
+				pod, err := clientset.CoreV1().Pods("elastic-system").Get(context.Background(), podName, metav1.GetOptions{})
+				assert.NoError(t, err)
+				// Get previous annotation
+				previousPodAnnotations := previousAnnotations[podName]
+				previousValue, existed := previousPodAnnotations["update.k8s.elastic.co/timestamp"] // it's ok to read a nil map
+				// Get the new annotation
+				newValue, exists := pod.Annotations["update.k8s.elastic.co/timestamp"]
+				// Annotation should exist now
+				assert.True(t, exists)
+				if existed {
+					assert.True(t, newValue > previousValue)
 				}
 			}
-
-			// Check that other Pods have not been modified
+			// Check that other Pods have not been updated
 			for _, podName := range tt.args.unmodifiedPods {
-				gotOtherPod, err := clientset.CoreV1().Pods("elastic-system").Get(context.Background(), podName, metav1.GetOptions{})
+				pod, err := clientset.CoreV1().Pods("elastic-system").Get(context.Background(), podName, metav1.GetOptions{})
 				assert.NoError(t, err)
-				assert.Equal(t, sampleAnnotations, gotOtherPod.Annotations)
+				// Get previous annotation
+				previousPodAnnotations := previousAnnotations[podName]
+				assert.Equal(t, previousPodAnnotations, pod.Annotations)
 			}
 		})
 	}
