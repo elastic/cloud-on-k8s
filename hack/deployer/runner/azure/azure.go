@@ -2,27 +2,33 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package runner
+package azure
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
+)
 
-// TODO this should probably be a package
-
-var azureClientImage = "mcr.microsoft.com/azure-cli"
-
-type azureCredentials struct {
+type Credentials struct {
 	ClientID       string
 	ClientSecret   string
 	TenantID       string
 	SubscriptionID string
 }
 
-func newAzureCredentials(client *VaultClient) (azureCredentials, error) {
-	creds, err := client.GetMany(AksVaultPath, "appId", "password", "tenant", "subscription")
+const (
+	AKSVaultPath     = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
+	azureClientImage = "mcr.microsoft.com/azure-cli"
+)
+
+func NewCredentials(client *vault.Client) (Credentials, error) {
+	creds, err := client.GetMany(AKSVaultPath, "appId", "password", "tenant", "subscription")
 	if err != nil {
-		return azureCredentials{}, err
+		return Credentials{}, err
 	}
-	return azureCredentials{
+	return Credentials{
 		ClientID:       creds[0],
 		ClientSecret:   creds[1],
 		TenantID:       creds[2],
@@ -30,13 +36,13 @@ func newAzureCredentials(client *VaultClient) (azureCredentials, error) {
 	}, nil
 }
 
-func azureLogin(creds azureCredentials) error {
-	return azureCmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
+func Login(creds Credentials) error {
+	return Cmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
 		WithoutStreaming().
 		Run()
 }
 
-func azureExistsCmd(cmd *Command) (bool, error) {
+func ExistsCmd(cmd *exec.Command) (bool, error) {
 	str, err := cmd.WithoutStreaming().Output()
 	if err != nil {
 		return false, err
@@ -51,13 +57,13 @@ func azureExistsCmd(cmd *Command) (bool, error) {
 	return r.Exists, nil
 }
 
-func azureCmd(args ...string) *Command {
+func Cmd(args ...string) *exec.Command {
 	params := map[string]interface{}{
-		"SharedVolume": SharedVolumeName(),
+		"SharedVolume": env.SharedVolumeName(),
 		"ClientImage":  azureClientImage,
 		"Args":         args,
 	}
-	cmd := NewCommand(`docker run --rm \
+	cmd := exec.NewCommand(`docker run --rm \
 		-v {{.SharedVolume}}:/home \
 		-e HOME=/home \
 		{{.ClientImage}} \

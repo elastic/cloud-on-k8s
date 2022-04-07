@@ -6,6 +6,8 @@ package runner
 
 import (
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -132,7 +134,7 @@ func (k *KindDriver) inContainerName(file *os.File) string {
 }
 
 func kubectl(arg ...string) error {
-	output, err := NewCommand(`kubectl {{Join .Args " "}}`).AsTemplate(map[string]interface{}{"Args": arg}).Output()
+	output, err := exec.NewCommand(`kubectl {{Join .Args " "}}`).AsTemplate(map[string]interface{}{"Args": arg}).Output()
 	if err != nil && strings.Contains(output, "Error from server (NotFound)") {
 		log.Printf("Ignoring NotFound error for command: %v\n", arg)
 		return nil // ignore not found errors
@@ -183,15 +185,15 @@ func (k *KindDriver) workerNames() []string {
 	return names
 }
 
-func (k *KindDriver) cmd(args ...string) *Command {
+func (k *KindDriver) cmd(args ...string) *exec.Command {
 	params := map[string]interface{}{
-		"SharedVolume":    SharedVolumeName(),
+		"SharedVolume":    env.SharedVolumeName(),
 		"KindClientImage": k.clientImage,
 		"ClusterName":     k.plan.ClusterName,
 		"Args":            args,
 	}
 	// We need the docker socket so that kind can bootstrap
-	cmd := NewCommand(`docker run --rm \
+	cmd := exec.NewCommand(`docker run --rm \
 		-v {{.SharedVolume}}:/home \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \

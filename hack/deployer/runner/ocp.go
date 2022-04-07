@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 	"io"
 	"io/ioutil"
 	"log"
@@ -18,12 +21,12 @@ import (
 )
 
 const (
-	OcpDriverID                     = "ocp"
-	OcpVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
-	OcpServiceAccountVaultFieldName = "service-account"
-	OcpPullSecretFieldName          = "pull-secret"
-	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
-	DefaultOcpRunConfigTemplate     = `id: ocp-dev
+	OCPDriverID                     = "ocp"
+	OCPVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
+	OCPServiceAccountVaultFieldName = "service-account"
+	OCPPullSecretFieldName          = "pull-secret"
+	OCPStateBucket                  = "eck-deployer-ocp-clusters-state"
+	DefaultOCPRunConfigTemplate     = `id: ocp-dev
 overrides:
   clusterName: %s-dev-cluster
   ocp:
@@ -66,10 +69,10 @@ pullSecret: '{{.PullSecret}}'`
 )
 
 func init() {
-	drivers[OcpDriverID] = &OcpDriverFactory{}
+	drivers[OCPDriverID] = &OCPDriverFactory{}
 }
 
-type OcpDriverFactory struct {
+type OCPDriverFactory struct {
 }
 
 type runtimeState struct {
@@ -78,24 +81,24 @@ type runtimeState struct {
 	// SafeToDeleteWorkdir indicates that the installer state has been uploaded successfully to the storage bucket or is
 	// otherwise not needed anymore.
 	SafeToDeleteWorkdir bool
-	// ClusterStateDir is the effective work dir containing the OCP installer state. Derived from plan.Ocp.Workdir.
+	// ClusterStateDir is the effective work dir containing the OCP installer state. Derived from plan.OCP.Workdir.
 	ClusterStateDir string
 	// ClientImage is the name of the installer client image.
 	ClientImage string
 }
 
-type OcpDriver struct {
+type OCPDriver struct {
 	plan         Plan
 	runtimeState runtimeState
 }
 
-func (*OcpDriverFactory) Create(plan Plan) (Driver, error) {
-	return &OcpDriver{
+func (*OCPDriverFactory) Create(plan Plan) (Driver, error) {
+	return &OCPDriver{
 		plan: plan,
 	}, nil
 }
 
-func (d *OcpDriver) setup() []func() error {
+func (d *OCPDriver) setup() []func() error {
 	return []func() error{
 		d.ensureWorkDir,
 		d.authToGCP,
@@ -104,7 +107,7 @@ func (d *OcpDriver) setup() []func() error {
 	}
 }
 
-func (d *OcpDriver) Execute() error {
+func (d *OCPDriver) Execute() error {
 	// client image requires a plan which we don't have in GetCredentials
 	setup := append(d.setup(), d.ensureClientImage)
 
@@ -147,7 +150,7 @@ func (d *OcpDriver) Execute() error {
 	return nil
 }
 
-func (d *OcpDriver) create() error {
+func (d *OCPDriver) create() error {
 	log.Println("Creating cluster...")
 	params := map[string]interface{}{
 		"GCloudProject":     d.plan.Ocp.GCloudProject,
@@ -159,7 +162,7 @@ func (d *OcpDriver) create() error {
 		"LocalSsdCount":     d.plan.Ocp.LocalSsdCount,
 		"NodeCount":         d.plan.Ocp.NodeCount,
 		"BaseDomain":        d.baseDomain(),
-		"OcpStateBucket":    OcpStateBucket,
+		"OCPStateBucket":    OCPStateBucket,
 		"PullSecret":        d.plan.Ocp.PullSecret,
 	}
 	var tpl bytes.Buffer
@@ -182,7 +185,7 @@ func (d *OcpDriver) create() error {
 	return err
 }
 
-func (d *OcpDriver) delete() error {
+func (d *OCPDriver) delete() error {
 	log.Println("Deleting cluster...")
 
 	err := d.runInstallerCommand("destroy")
@@ -191,12 +194,12 @@ func (d *OcpDriver) delete() error {
 	}
 
 	// No need to check whether this `rm` command succeeds
-	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
+	_ = exec.NewCommand("gsutil rm -r gs://{{.OCPStateBucket}}/{{.ClusterName}}").AsTemplate(d.bucketParams()).WithoutStreaming().Run()
 	d.runtimeState.SafeToDeleteWorkdir = true
 	return d.removeKubeconfig()
 }
 
-func (d *OcpDriver) GetCredentials() error {
+func (d *OCPDriver) GetCredentials() error {
 	if err := run(d.setup()); err != nil {
 		return err
 	}
@@ -217,12 +220,12 @@ func run(steps []func() error) error {
 	return nil
 }
 
-func (d *OcpDriver) setupDisks() error {
+func (d *OCPDriver) setupDisks() error {
 	return setupDisks(d.plan)
 }
 
-func (d *OcpDriver) ensureClientImage() error {
-	image, err := ensureClientImage(OcpDriverID, d.plan.ClientVersion, d.plan.ClientBuildDefDir)
+func (d *OCPDriver) ensureClientImage() error {
+	image, err := ensureClientImage(OCPDriverID, d.plan.ClientVersion, d.plan.ClientBuildDefDir)
 	if err != nil {
 		return err
 	}
@@ -230,13 +233,13 @@ func (d *OcpDriver) ensureClientImage() error {
 	return nil
 }
 
-func (d *OcpDriver) ensurePullSecret() error {
+func (d *OCPDriver) ensurePullSecret() error {
 	if d.plan.Ocp.PullSecret == "" {
-		client, err := NewClient(*d.plan.VaultInfo)
+		client, err := vault.NewClient(*d.plan.VaultInfo)
 		if err != nil {
 			return err
 		}
-		s, err := client.Get(OcpVaultPath, OcpPullSecretFieldName)
+		s, err := client.Get(OCPVaultPath, OCPPullSecretFieldName)
 		if err != nil {
 			return err
 		}
@@ -245,7 +248,7 @@ func (d *OcpDriver) ensurePullSecret() error {
 	return nil
 }
 
-func (d *OcpDriver) ensureWorkDir() error {
+func (d *OCPDriver) ensureWorkDir() error {
 	if d.runtimeState.ClusterStateDir != "" {
 		// already initialised
 		return nil
@@ -272,7 +275,7 @@ func (d *OcpDriver) ensureWorkDir() error {
 	return nil
 }
 
-func (d *OcpDriver) removeWorkDir() error {
+func (d *OCPDriver) removeWorkDir() error {
 	if !d.runtimeState.SafeToDeleteWorkdir {
 		log.Printf("Not deleting work dir as rsync backup of installer state not successful")
 		return nil
@@ -285,14 +288,14 @@ func (d *OcpDriver) removeWorkDir() error {
 	return os.RemoveAll(d.plan.Ocp.WorkDir)
 }
 
-func (d *OcpDriver) authToGCP() error {
+func (d *OCPDriver) authToGCP() error {
 	// avoid double authentication
 	if d.runtimeState.Authenticated {
 		return nil
 	}
 
 	if err := authToGCP(
-		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
+		d.plan.VaultInfo, OCPVaultPath, OCPServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.plan.Ocp.GCloudProject,
 	); err != nil {
 		return err
@@ -310,7 +313,7 @@ var (
 	Running           ClusterStatus = "Running"
 )
 
-func (d *OcpDriver) currentStatus() ClusterStatus {
+func (d *OCPDriver) currentStatus() ClusterStatus {
 	log.Println("Checking if cluster exists...")
 
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
@@ -323,7 +326,7 @@ func (d *OcpDriver) currentStatus() ClusterStatus {
 
 	log.Println("Cluster state synced: Testing that the OpenShift cluster is alive... ")
 	cmd := "kubectl version"
-	alive, err := NewCommand(cmd).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
+	alive, err := exec.NewCommand(cmd).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
 
 	if !alive || err != nil { // error will be typically not nil when alive is false but let's be explicit here to avoid returning Running on a non-nil error
 		log.Printf("a cluster state dir was found in %s but the cluster is not responding to `kubectl version`: %s", d.runtimeState.ClusterStateDir, err.Error())
@@ -348,7 +351,7 @@ func isEmpty(dir string) (bool, error) {
 	return false, err
 }
 
-func (d *OcpDriver) uploadClusterState() error {
+func (d *OCPDriver) uploadClusterState() error {
 	// Let's check that the cluster dir exists
 	// before we attempt an upload.
 	if _, err := os.Stat(d.runtimeState.ClusterStateDir); os.IsNotExist(err) {
@@ -356,7 +359,7 @@ func (d *OcpDriver) uploadClusterState() error {
 		return nil
 	}
 
-	bucketNotFound, err := NewCommand("gsutil ls gs://{{.OcpStateBucket}}").
+	bucketNotFound, err := exec.NewCommand("gsutil ls gs://{{.OCPStateBucket}}").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
 		OutputContainsAny("BucketNotFoundException")
@@ -364,13 +367,13 @@ func (d *OcpDriver) uploadClusterState() error {
 		return fmt.Errorf("while checking state bucket existence %w", err)
 	}
 	if bucketNotFound {
-		if err := NewCommand("gsutil mb gs://{{.OcpStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
+		if err := exec.NewCommand("gsutil mb gs://{{.OCPStateBucket}}").AsTemplate(d.bucketParams()).Run(); err != nil {
 			return fmt.Errorf("while creating storage bucket: %w", err)
 		}
 	}
 
 	// rsync seems to get stuck at least in local mode every now and then let's retry a few times
-	err = NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}").
+	err = exec.NewCommand("gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OCPStateBucket}}/{{.ClusterName}}").
 		WithLog("Uploading cluster state").
 		AsTemplate(d.bucketParams()).
 		WithoutStreaming().
@@ -381,9 +384,9 @@ func (d *OcpDriver) uploadClusterState() error {
 	return err
 }
 
-func (d *OcpDriver) downloadClusterState() error {
-	cmd := "gsutil rsync -r -d gs://{{.OcpStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
-	doesNotExist, err := NewCommand(cmd).
+func (d *OCPDriver) downloadClusterState() error {
+	cmd := "gsutil rsync -r -d gs://{{.OCPStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
+	doesNotExist, err := exec.NewCommand(cmd).
 		AsTemplate(d.bucketParams()).
 		WithLog("Synching cluster state").
 		WithoutStreaming().
@@ -395,7 +398,7 @@ func (d *OcpDriver) downloadClusterState() error {
 	return err
 }
 
-func (d *OcpDriver) copyKubeconfig() error {
+func (d *OCPDriver) copyKubeconfig() error {
 	log.Printf("Copying  credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
@@ -404,25 +407,25 @@ func (d *OcpDriver) copyKubeconfig() error {
 		return err
 	}
 	// 2. after merging make sure that the ocp context is in use, which is always called `admin`
-	return NewCommand("kubectl config use-context admin").Run()
+	return exec.NewCommand("kubectl config use-context admin").Run()
 }
 
-func (d *OcpDriver) removeKubeconfig() error {
+func (d *OCPDriver) removeKubeconfig() error {
 	return removeKubeconfig("admin", "admin", "admin")
 }
 
-func (d *OcpDriver) bucketParams() map[string]interface{} {
+func (d *OCPDriver) bucketParams() map[string]interface{} {
 	return map[string]interface{}{
-		"OcpStateBucket":  OcpStateBucket,
+		"OCPStateBucket":  OCPStateBucket,
 		"ClusterName":     d.plan.ClusterName,
 		"ClusterStateDir": d.runtimeState.ClusterStateDir,
 	}
 }
 
-func (d *OcpDriver) runInstallerCommand(action string) error {
+func (d *OCPDriver) runInstallerCommand(action string) error {
 	params := map[string]interface{}{
 		"ClusterStateDirBase": filepath.Base(d.runtimeState.ClusterStateDir),
-		"SharedVolume":        SharedVolumeName(),
+		"SharedVolume":        env.SharedVolumeName(),
 		"GCloudCredsPath":     filepath.Join("/home", GCPDir, ServiceAccountFilename),
 		"OCPToolsDockerImage": d.runtimeState.ClientImage,
 		"Action":              action,
@@ -431,7 +434,7 @@ func (d *OcpDriver) runInstallerCommand(action string) error {
 	// this is mainly so that the GCloud tooling picks up the authentication information correctly as the base image is
 	// scratch+curl and thus an empty
 	// We are mounting tmp as the installer needs a scratch space and writing into the container won't work
-	cmd := NewCommand(`docker run --rm \
+	cmd := exec.NewCommand(`docker run --rm \
 		-v {{.SharedVolume}}:/home \
 		-v /tmp:/tmp \
 		-e GOOGLE_APPLICATION_CREDENTIALS={{.GCloudCredsPath}} \
@@ -441,7 +444,7 @@ func (d *OcpDriver) runInstallerCommand(action string) error {
 	return cmd.AsTemplate(params).Run()
 }
 
-func (d *OcpDriver) baseDomain() string {
+func (d *OCPDriver) baseDomain() string {
 	baseDomain := d.plan.Ocp.BaseDomain
 	// Domains used for the OCP deployment must be
 	// pre-configured on the destination cloud. A zone

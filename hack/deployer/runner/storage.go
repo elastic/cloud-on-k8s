@@ -6,6 +6,7 @@ package runner
 
 import (
 	"fmt"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"log"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ const (
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
 func createStorageClass() error {
-	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("e2e-default"); err != nil {
+	if exists, err := exec.NewCommand("kubectl get sc").OutputContainsAny("e2e-default"); err != nil {
 		return err
 	} else if exists {
 		return nil
@@ -33,7 +34,7 @@ func createStorageClass() error {
 		return err
 	}
 
-	sc, err := NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
+	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func createStorageClass() error {
 	// string, both are set.
 	sc = strings.ReplaceAll(sc, `storageclass.kubernetes.io/is-default-class: "true"`, `storageclass.kubernetes.io/is-default-class: "false"`)
 	sc = strings.ReplaceAll(sc, `storageclass.beta.kubernetes.io/is-default-class: "true"`, `storageclass.beta.kubernetes.io/is-default-class: "false"`)
-	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+	return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
 }
@@ -55,7 +56,7 @@ func setupDisks(plan Plan) error {
 	if plan.DiskSetup == "" {
 		return nil
 	}
-	return NewCommand(plan.DiskSetup).Run()
+	return exec.NewCommand(plan.DiskSetup).Run()
 }
 
 func getDefaultStorageClassName() (string, error) {
@@ -65,7 +66,7 @@ func getDefaultStorageClassName() (string, error) {
 			`storageclass\.beta\.kubernetes\.io/is-default-class`,
 		} {
 			template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
-			baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
+			baseScs, err := exec.NewCommand(fmt.Sprintf(template, annotation)).OutputList()
 			if err != nil {
 				return "", err
 			}
