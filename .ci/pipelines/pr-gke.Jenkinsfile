@@ -42,6 +42,31 @@ pipeline {
                 }
             }
         }
+        stage('build') {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
+            failFast true
+            parallel {
+                stage("build-e2e-tests-docker-image") {
+                    steps {
+                        sh 'make -C .ci TARGET=e2e-docker-multiarch-build ci'
+                    }
+                }
+                stage("build-operator-docker-image") {
+                    steps {
+                        sh 'make -C .ci TARGET=build-operator-image ci'
+                    }
+                }
+                stage("create-k8s-cluster") {
+                    steps {
+                        sh 'make -C .ci TARGET="run-deployer apply-psp" ci'
+                    }
+                }
+            }
+        }
         stage('tests') {
             when {
                 expression {
@@ -104,21 +129,6 @@ pipeline {
                 }
                 stage('e2e-tests') {
                     stages {
-                        stage("build-e2e-tests-docker-image") {
-                            steps {
-                                sh 'make -C .ci TARGET=e2e-docker-multiarch-build ci'
-                            }
-                        }
-                        stage("build-operator-docker-image") {
-                            steps {
-                                sh 'make -C .ci TARGET=build-operator-image ci'
-                            }
-                        }
-                        stage("create-k8s-cluster") {
-                            steps {
-                                sh 'make -C .ci TARGET="run-deployer apply-psp" ci'
-                            }
-                        }
                         stage('e2e-tests') {
                             steps {
                                 script {
