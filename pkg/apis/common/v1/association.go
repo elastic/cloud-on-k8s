@@ -6,13 +6,13 @@ package v1
 
 import (
 	"fmt"
-	"hash/fnv"
 	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 )
 
 const (
@@ -288,17 +288,8 @@ func (ac *AssociationConf) GetVersion() string {
 	return ac.Version
 }
 
-func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
+func ElasticsearchConfigAnnotationName(o ObjectSelector) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
-	// based on ElasticsearchRefs
-
-	nsNameHash := fnv.New32a()
-	// concat with dot to avoid collisions, as namespace can't contain dots
-	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
-	hash := fmt.Sprint(nsNameHash.Sum32())
-
-	return FormatNameWithID(
-		ElasticsearchConfigAnnotationNameBase+"%s",
-		hash,
-	)
+	// based on the ObjectSelector
+	return FormatNameWithID(ElasticsearchConfigAnnotationNameBase+"%s", hash.HashObject(o))
 }

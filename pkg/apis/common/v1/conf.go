@@ -10,7 +10,6 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // GetAndSetAssociationConf returns the association configuration if it is not nil, else the association configured is
@@ -27,7 +26,7 @@ func GetAndSetAssociationConf(assoc Association, assocConf *AssociationConf) (*A
 // The association configurations map is not persisted and can be cleared by an update of the parent resource
 // (see https://github.com/elastic/cloud-on-k8s/issues/4709#issuecomment-1042898108), hence we check if this map is empty,
 // in which case we try to populate it again from the annotation.
-func GetAndSetAssociationConfByRef(assoc Association, ref types.NamespacedName, assocConfs map[types.NamespacedName]AssociationConf) (*AssociationConf, error) {
+func GetAndSetAssociationConfByRef(assoc Association, ref ObjectSelector, assocConfs map[ObjectSelector]AssociationConf) (*AssociationConf, error) {
 	assocConf, found := assocConfs[ref]
 	if !found {
 		return setAssocConfFromAnnotation(assoc)

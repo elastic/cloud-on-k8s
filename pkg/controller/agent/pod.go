@@ -11,12 +11,12 @@ import (
 	"sort"
 	"strconv"
 
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -199,6 +199,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
+	// ES, Kibana and FleetServer connection info are inject using environment variables
 	builder, err = applyEnvVars(params, builder)
 	if err != nil {
 		return nil, err
@@ -286,20 +287,28 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if params.Agent.Spec.FleetServerRef.IsDefined() {
 		// As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
-		fs, err := getAssociatedFleetServer(params)
+		fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
 			return nil, err
 		}
 
-		if fs != nil {
-			var err error
-			esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
-			if err != nil {
-				return nil, err
-			}
+		fsRef := fsAssociation.AssociationRef()
+		if fsRef.IsExternal() {
+			// the Fleet Server is not managed by ECK, no transitive ES association to get to apply
+			return nil, nil
+		}
+
+		fs := agentv1alpha1.Agent{}
+		if err := params.Client.Get(params.Context, fsRef.NamespacedName(), &fs); err != nil {
+			return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
+		}
+
+		esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return esAssociation, nil
@@ -310,7 +319,9 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
-	if !agent.Spec.FleetServerEnabled && agent.Namespace != esAssociation.AssociationRef().Namespace {
+	esRef := esAssociation.AssociationRef()
+	if !esRef.IsExternal() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
+		// check agent and ES share the same namespace
 		return nil, fmt.Errorf(
 			"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
 			agent.Namespace,
@@ -318,9 +329,13 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		)
 	}
 
+	// no ES CA to configure, skip
 	assocConf, err := esAssociation.AssociationConf()
 	if err != nil {
 		return nil, err
+	}
+	if !assocConf.CAIsConfigured() {
+		return builder, nil
 	}
 	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
 		assocConf.GetCASecretName(),
@@ -375,25 +390,6 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 	return vols, nil
 }
 
-func getAssociatedFleetServer(params Params) (commonv1.Associated, error) {
-	assoc, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-	if err != nil {
-		return nil, err
-	}
-	if assoc == nil {
-		return nil, nil
-	}
-
-	fsRef := assoc.AssociationRef()
-	fs := agentv1alpha1.Agent{}
-	request := reconcile.Request{NamespacedName: fsRef.NamespacedName()}
-	if err = params.Client.Get(params.Context, request.NamespacedName, &fs); err != nil {
-		return nil, err
-	}
-
-	return &fs, nil
-}
-
 func trustCAScript(caPath string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -e
@@ -427,7 +423,7 @@ func certificatesDir(association commonv1.Association) string {
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		association.AssociationType(),
 		ref.Namespace,
-		ref.Name,
+		ref.NameOrSecretName(),
 	)
 }
 

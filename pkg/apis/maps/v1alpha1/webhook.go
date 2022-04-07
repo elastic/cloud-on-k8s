@@ -29,6 +29,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkAssociation,
 	}
 )
 
@@ -78,14 +79,18 @@ func (m *ElasticMapsServer) validate() error {
 	return nil
 }
 
-func checkNoUnknownFields(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.NoUnknownFields(k, k.ObjectMeta)
+func checkNoUnknownFields(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.NoUnknownFields(ems, ems.ObjectMeta)
 }
 
-func checkNameLength(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.CheckNameLength(k)
+func checkNameLength(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckNameLength(ems)
 }
 
-func checkSupportedVersion(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.CheckSupportedStackVersion(k.Spec.Version, version.SupportedMapsVersions)
+func checkSupportedVersion(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckSupportedStackVersion(ems.Spec.Version, version.SupportedMapsVersions)
+}
+
+func checkAssociation(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), ems.Spec.ElasticsearchRef)
 }

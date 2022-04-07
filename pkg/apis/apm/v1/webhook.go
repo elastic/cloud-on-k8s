@@ -36,6 +36,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAgentConfigurationMinVersion,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *ApmServer) field.ErrorList{
@@ -140,4 +141,10 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkAssociations(as *ApmServer) field.ErrorList {
+	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), as.Spec.ElasticsearchRef)
+	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), as.Spec.KibanaRef)
+	return append(err1, err2...)
 }

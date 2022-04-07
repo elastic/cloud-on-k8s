@@ -10,7 +10,6 @@ import (
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -47,7 +46,7 @@ type Kibana struct {
 	// entAssocConf holds the configuration for the Enterprise Search association
 	entAssocConf *commonv1.AssociationConf `json:"-"`
 	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
-	monitoringAssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
+	monitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true
@@ -196,7 +195,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+				ref:    ref.WithDefaultNamespace(k.Namespace),
 			})
 		}
 	}
@@ -204,7 +203,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+				ref:    ref.WithDefaultNamespace(k.Namespace),
 			})
 		}
 	}
@@ -385,8 +384,8 @@ func (kbent *KibanaEntAssociation) AssociationID() string {
 type KbMonitoringAssociation struct {
 	// The associated Kibana
 	*Kibana
-	// ref is the namespaced name of the monitoring Elasticsearch referenced in the Association
-	ref types.NamespacedName
+	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
+	ref commonv1.ObjectSelector
 }
 
 var _ commonv1.Association = &KbMonitoringAssociation{}
@@ -414,10 +413,7 @@ func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
-		Name:      kbmon.ref.Name,
-		Namespace: kbmon.ref.Namespace,
-	}
+	return kbmon.ref
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
@@ -426,7 +422,7 @@ func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationCo
 
 func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	if kbmon.monitoringAssocConfs == nil {
-		kbmon.monitoringAssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+		kbmon.monitoringAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if assocConf != nil {
 		kbmon.monitoringAssocConfs[kbmon.ref] = *assocConf
@@ -434,7 +430,7 @@ func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Ass
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.Name)
+	return kbmon.ref.ToID()
 }
 
 // -- HasMonitoring methods
@@ -450,6 +446,6 @@ func (k *Kibana) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
 func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
 	return &KbMonitoringAssociation{
 		Kibana: k,
-		ref:    esRef.WithDefaultNamespace(k.Namespace).NamespacedName(),
+		ref:    esRef.WithDefaultNamespace(k.Namespace),
 	}
 }

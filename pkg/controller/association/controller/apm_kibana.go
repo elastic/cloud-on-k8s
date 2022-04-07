@@ -73,9 +73,21 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
-func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {
+func referencedKibanaStatusVersion(c k8s.Client, kbRef commonv1.ObjectSelector) (string, error) {
+	if kbRef.IsExternal() {
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, kbRef)
+		if err != nil {
+			return "", err
+		}
+		ver, err := info.Request("/api/status", "{ .version.number }")
+		if err != nil {
+			return "", err
+		}
+		return ver, nil
+	}
+
 	var kb kbv1.Kibana
-	err := c.Get(context.Background(), kbRef, &kb)
+	err := c.Get(context.Background(), kbRef.NamespacedName(), &kb)
 	if err != nil {
 		return "", err
 	}
