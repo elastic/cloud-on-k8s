@@ -6350,6 +6350,15 @@ spec:
               health:
                 description: Health of the deployment.
                 type: string
+              observedGeneration:
+                description: ObservedGeneration represents the .metadata.generation
+                  that the status is based upon. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Enterprise Search controller has not yet processed the changes contained
+                  in the Enterprise Search specification.
+                format: int64
+                type: integer
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string
