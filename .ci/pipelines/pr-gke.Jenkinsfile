@@ -26,8 +26,8 @@ pipeline {
                     notOnlyDocs()
                 }
             }
-            parallel {
-                stage('build-image') {
+            stages {
+                stage('build-ci-image') {
                     steps {
                         sh 'make -C .ci get-test-artifacts ci-build-image'
                         sh '.ci/setenvconfig pr'
