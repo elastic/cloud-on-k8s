@@ -193,14 +193,17 @@ func TestMutationAndReversal(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-reverted-mutation").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	mutation := b.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+	mutation := b.DeepCopy().
 		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"node.attr.box_type": "mixed",
 			},
 		}).
 		WithMutatedFrom(&b)
-	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
+
+	reversed := b.DeepCopy().WithMutatedFrom(&mutation)
+
+	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, reversed})
 
 }
 
