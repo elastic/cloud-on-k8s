@@ -15192,7 +15192,7 @@ spec:
                   which is updated on mutation by the API Server. If the generation
                   observed in status diverges from the generation in metadata, the
                   Beats controller has not yet processed the changes contained in
-                  the APM Server specification.
+                  the Beats specification.
                 format: int64
                 type: integer
               version:
