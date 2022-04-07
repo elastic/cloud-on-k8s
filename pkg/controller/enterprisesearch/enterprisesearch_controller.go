@@ -164,16 +164,11 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	}
 
 	results, status := r.doReconcile(ctx, ent)
-	updateStatusErr := r.updateStatus(ent, status)
-	if updateStatusErr != nil {
-		if apierrors.IsConflict(updateStatusErr) {
-			log.V(1).Info(
-				"Conflict while updating status",
-				"namespace", ent.Namespace,
-				"beat_name", ent.Name)
+	if err := r.updateStatus(ent, status); err != nil {
+		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
-		results.WithError(updateStatusErr)
+		results.WithError(err)
 	}
 	return results.Aggregate()
 }
