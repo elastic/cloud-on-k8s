@@ -156,10 +156,6 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	statusErr := beatcommon.UpdateStatus(beat, r.Client, status)
 	if statusErr != nil {
 		if apierrors.IsConflict(statusErr) {
-			log.V(1).Info(
-				"Conflict while updating status",
-				"namespace", beat.Namespace,
-				"beat_name", beat.Name)
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
 		results.WithError(statusErr)

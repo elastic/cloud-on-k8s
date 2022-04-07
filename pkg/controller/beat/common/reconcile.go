@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -71,13 +72,9 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		results.WithError(err)
 	}
 
-	err = calculateStatus(params, ready, desired, params.Status)
+	err = calculateStatus(params, ready, desired)
 	if err != nil {
-		params.Logger.Error(
-			err,
-			"While calculating new status",
-			"namespace", params.Beat.Namespace,
-			"beat_name", params.Beat.Name)
+		err = pkgerrors.Wrapf(err, "while updating status")
 	}
 
 	return results.WithError(err)
@@ -135,8 +132,9 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return any error encountered.
-func calculateStatus(params DriverParams, ready, desired int32, status *beatv1beta1.BeatStatus) error {
+func calculateStatus(params DriverParams, ready, desired int32) error {
 	beat := params.Beat
+	status := params.Status
 
 	pods, err := k8s.PodsMatchingLabels(params.K8sClient(), beat.Namespace, map[string]string{NameLabelName: beat.Name})
 	if err != nil {

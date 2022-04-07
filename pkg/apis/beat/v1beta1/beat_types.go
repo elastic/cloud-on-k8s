@@ -119,7 +119,7 @@ type BeatStatus struct {
 	// ObservedGeneration represents the .metadata.generation that the status is based upon.
 	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
 	// If the generation observed in status diverges from the generation in metadata, the Beats
-	// controller has not yet processed the changes contained in the APM Server specification.
+	// controller has not yet processed the changes contained in the Beats specification.
 	// +kubebuilder:validation:Optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }

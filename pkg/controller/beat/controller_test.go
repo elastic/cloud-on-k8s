@@ -46,39 +46,29 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			Namespace: "testing",
 		},
 	}
-	type fields struct {
-		Client k8s.Client
-	}
-	type args struct {
-		request reconcile.Request
-	}
 	tests := []struct {
 		name      string
-		fields    fields
-		args      args
+		Client    k8s.Client
+		request   reconcile.Request
 		want      reconcile.Result
 		wantErr   bool
 		errString string
-		validate  func(*testing.T, fields)
+		validate  func(*testing.T, k8s.Client)
 	}{
 		{
 			name: "unmanaged beat observedGeneration is not changed",
-			fields: fields{
-				Client: k8s.NewFakeClient(
-					withAnnotations(defaultBeat, map[string]string{
-						common.ManagedAnnotation: "false",
-					}),
-				),
-			},
-			args: args{
-				request: defaultRequest,
-			},
+			Client: k8s.NewFakeClient(
+				withAnnotations(defaultBeat, map[string]string{
+					common.ManagedAnnotation: "false",
+				}),
+			),
+			request: defaultRequest,
 			want:    reconcile.Result{},
 			wantErr: false,
 			//nolint:thelper
-			validate: func(t *testing.T, f fields) {
+			validate: func(t *testing.T, c k8s.Client) {
 				beat := beatv1beta1.Beat{}
-				err := f.Client.Get(
+				err := c.Get(
 					context.Background(),
 					types.NamespacedName{
 						Name:      "testbeat",
@@ -90,20 +80,16 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 		{
 			name: "beat marked for deletion has observedGeneration unchanged",
-			fields: fields{
-				Client: k8s.NewFakeClient(
-					toBeDeleted(defaultBeat),
-				),
-			},
-			args: args{
-				request: defaultRequest,
-			},
+			Client: k8s.NewFakeClient(
+				toBeDeleted(defaultBeat),
+			),
+			request: defaultRequest,
 			want:    reconcile.Result{},
 			wantErr: false,
 			//nolint:thelper
-			validate: func(t *testing.T, f fields) {
+			validate: func(t *testing.T, c k8s.Client) {
 				beat := beatv1beta1.Beat{}
-				err := f.Client.Get(
+				err := c.Get(
 					context.Background(),
 					types.NamespacedName{
 						Name:      "testbeat",
@@ -115,20 +101,16 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 		{
 			name: "has observedGeneration updated",
-			fields: fields{
-				Client: k8s.NewFakeClient(
-					&defaultBeat,
-				),
-			},
-			args: args{
-				request: defaultRequest,
-			},
+			Client: k8s.NewFakeClient(
+				&defaultBeat,
+			),
+			request: defaultRequest,
 			want:    reconcile.Result{},
 			wantErr: false,
 			//nolint:thelper
-			validate: func(t *testing.T, f fields) {
+			validate: func(t *testing.T, c k8s.Client) {
 				beat := beatv1beta1.Beat{}
-				err := f.Client.Get(
+				err := c.Get(
 					context.Background(),
 					types.NamespacedName{
 						Name:      "testbeat",
@@ -140,20 +122,16 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 		{
 			name: "Elasticsearch association not ready observedGeneration is updated",
-			fields: fields{
-				Client: k8s.NewFakeClient(
-					withESReference(defaultBeat, commonv1.ObjectSelector{Name: "testes"}),
-				),
-			},
-			args: args{
-				request: defaultRequest,
-			},
+			Client: k8s.NewFakeClient(
+				withESReference(defaultBeat, commonv1.ObjectSelector{Name: "testes"}),
+			),
+			request: defaultRequest,
 			want:    reconcile.Result{},
 			wantErr: false,
 			//nolint:thelper
-			validate: func(t *testing.T, f fields) {
+			validate: func(t *testing.T, c k8s.Client) {
 				beat := beatv1beta1.Beat{}
-				err := f.Client.Get(
+				err := c.Get(
 					context.Background(),
 					types.NamespacedName{
 						Name:      "testbeat",
@@ -165,26 +143,22 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 		{
 			name: "validation issues return error and observedGeneration is updated",
-			fields: fields{
-				Client: k8s.NewFakeClient(
-					withName(defaultBeat, "superreallylongbeatsnamecausesvalidationissues"),
-				),
-			},
-			args: args{
-				request: reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      "superreallylongbeatsnamecausesvalidationissues",
-						Namespace: "testing",
-					},
+			Client: k8s.NewFakeClient(
+				withName(defaultBeat, "superreallylongbeatsnamecausesvalidationissues"),
+			),
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "superreallylongbeatsnamecausesvalidationissues",
+					Namespace: "testing",
 				},
 			},
 			want:      reconcile.Result{},
 			wantErr:   true,
 			errString: `Beat.beat.k8s.elastic.co "superreallylongbeatsnamecausesvalidationissues" is invalid: metadata.name: Too long: must have at most 36 bytes`,
 			//nolint:thelper
-			validate: func(t *testing.T, f fields) {
+			validate: func(t *testing.T, c k8s.Client) {
 				beat := beatv1beta1.Beat{}
-				err := f.Client.Get(
+				err := c.Get(
 					context.Background(),
 					types.NamespacedName{
 						Name:      "superreallylongbeatsnamecausesvalidationissues",
@@ -198,12 +172,12 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileBeat{
-				Client:         tt.fields.Client,
+				Client:         tt.Client,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},
 			}
-			got, err := r.Reconcile(context.Background(), tt.args.request)
+			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileBeat.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -214,7 +188,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileBeat.Reconcile() = %v, want %v", got, tt.want)
 			}
-			tt.validate(t, tt.fields)
+			tt.validate(t, tt.Client)
 		})
 	}
 }
