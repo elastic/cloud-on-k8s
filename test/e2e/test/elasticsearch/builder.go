@@ -434,7 +434,16 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		for j, container := range nodeSet.PodTemplate.Spec.Containers {
-			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			var update bool
+			for _, e := range container.Env {
+				if e.Name == name {
+					e.Value = value
+					update = true
+				}
+			}
+			if !update {
+				container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			}
 			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = container.Env
 		}
 	}
