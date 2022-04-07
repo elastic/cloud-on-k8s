@@ -129,8 +129,8 @@ func (d *AKSDriver) auth() error {
 func (d *AKSDriver) clusterExists() (bool, error) {
 	log.Print("Checking if cluster exists...")
 
-	cmd := "az aks show --name {{.ClusterName}} --resource-group {{.ResourceGroup}}"
-	contains, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("not be found", "was not found")
+	cmd := azure.Cmd("aks", "show", "--name", d.plan.ClusterName, "--resource-group", d.plan.Aks.ResourceGroup)
+	contains, err := cmd.WithoutStreaming().OutputContainsAny("not be found", "was not found")
 	if contains {
 		return false, nil
 	}
