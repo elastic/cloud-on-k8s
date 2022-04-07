@@ -7,13 +7,14 @@ package runner
 import (
 	"bytes"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 )
 
 const (

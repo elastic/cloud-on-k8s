@@ -7,11 +7,12 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 func mergeKubeconfig(kubeConfig string) error {

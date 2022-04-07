@@ -6,10 +6,11 @@ package runner
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 // Retrieving the default storage class is retried up to getDefaultScRetries times,

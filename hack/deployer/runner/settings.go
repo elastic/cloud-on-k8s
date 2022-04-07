@@ -5,9 +5,11 @@
 package runner
 
 import (
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 )
 
 // Plans encapsulates list of plans, expected to map to a file

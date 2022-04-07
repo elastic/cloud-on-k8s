@@ -6,9 +6,10 @@ package vault
 
 import (
 	"fmt"
-	"github.com/hashicorp/vault/api"
 	"io/ioutil"
 	"time"
+
+	"github.com/hashicorp/vault/api"
 )
 
 type Client struct {

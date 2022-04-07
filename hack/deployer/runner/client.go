@@ -8,12 +8,13 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 const clientBaseImageName = "docker.elastic.co/eck-ci/deployer"

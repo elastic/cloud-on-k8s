@@ -6,9 +6,10 @@ package runner
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"log"
 	"strings"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 const (

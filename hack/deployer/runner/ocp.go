@@ -8,9 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 	"io"
 	"io/ioutil"
 	"log"
@@ -18,6 +15,10 @@ import (
 	"path/filepath"
 	"text/template"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 )
 
 const (

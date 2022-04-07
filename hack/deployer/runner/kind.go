@@ -6,8 +6,6 @@ package runner
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -16,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
 
 	"github.com/blang/semver/v4"
 )

@@ -6,11 +6,12 @@ package runner
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 
 	"github.com/pkg/errors"
 )

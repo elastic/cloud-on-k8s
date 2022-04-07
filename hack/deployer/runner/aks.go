@@ -6,10 +6,11 @@ package runner
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/azure"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
-	"log"
 )
 
 func init() {
