@@ -79,7 +79,7 @@ pipeline {
                     stages {
                         stage('lint') {
                             steps {
-                                sh 'make -C .ci TARGET="lint check-local-changes" ci'
+                                sh 'make -C .ci TARGET="clean lint check-local-changes" ci'
                             }
                         }
                         stage('generate') {
