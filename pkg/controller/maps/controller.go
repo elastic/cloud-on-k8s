@@ -174,16 +174,11 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	// main reconciliation logic
 	results, status := r.doReconcile(ctx, ems)
-	updateStatusErr := r.updateStatus(ems, status)
-	if updateStatusErr != nil {
-		if apierrors.IsConflict(updateStatusErr) {
-			log.V(1).Info(
-				"Conflict while updating status",
-				"namespace", ems.Namespace,
-				"beat_name", ems.Name)
+	if err := r.updateStatus(ems, status); err != nil {
+		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
-		results.WithError(updateStatusErr)
+		results.WithError(err)
 	}
 	return results.Aggregate()
 }

@@ -48,6 +48,12 @@ var emsFixture = v1alpha1.ElasticMapsServer{
 
 func TestReconcileMapsServer_Reconcile(t *testing.T) {
 	timeFixture := metav1.Now()
+
+	assertObservedGeneration := func(r k8s.Client, expected int) {
+		var ems v1alpha1.ElasticMapsServer
+		require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
+		require.Equal(t, int64(expected), ems.Status.ObservedGeneration)
+	}
 	tests := []struct {
 		name             string
 		reconciler       ReconcileMapsServer
@@ -100,9 +106,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.Empty(t, r.DynamicWatches().Secrets.Registrations())
 
 				// observedGeneration should not have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(1), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 1)
 			},
 			wantErr: false,
 		},
@@ -135,9 +139,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.Equal(t, "Warning ReconciliationError Elastic Maps Server is an enterprise feature. Enterprise features are disabled", e)
 
 				// observedGeneration should have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 2)
 			},
 			wantRequeue:      true,
 			wantRequeueAfter: true, // license recheck
@@ -164,9 +166,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			},
 			post: func(r ReconcileMapsServer) {
 				// observedGeneration should have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 2)
 			},
 			wantErr: true,
 		},
@@ -196,9 +196,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
 
 				// observedGeneration should have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 2)
 			},
 			wantErr: false,
 		},
@@ -231,9 +229,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
 
 				// observedGeneration should have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 2)
 			},
 			wantErr: false,
 			// retry from certificate reconciliation.
@@ -286,9 +282,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				require.NotEmpty(t, dep.Spec.Template.Annotations[configHashAnnotationName])
 
 				// observedGeneration should have been updated
-				var ems v1alpha1.ElasticMapsServer
-				require.NoError(t, r.Get(context.Background(), types.NamespacedName{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace}, &ems))
-				require.Equal(t, int64(2), ems.Status.ObservedGeneration)
+				assertObservedGeneration(r, 2)
 			},
 			wantRequeue:      false,
 			wantRequeueAfter: true, // certificate refresh
