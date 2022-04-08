@@ -150,10 +150,6 @@ func (b Builder) ListOptions() []client.ListOption {
 	return test.MapsPodListOptions(b.EMS.Namespace, b.EMS.Name)
 }
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
-}
-
 func (b Builder) SkipTest() bool {
 	// only execute EMS tests if we have a test license to work with
 	if test.Ctx().TestLicense == "" {

@@ -242,7 +242,3 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k))
 }
-
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
-}

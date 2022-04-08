@@ -26,10 +26,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithStep(generation.CompareObjectGenerationsStep(&b.EnterpriseSearch, k, isMutated, entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation))
 }
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("not implemented")
-}
-
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
