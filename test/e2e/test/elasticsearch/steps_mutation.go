@@ -139,10 +139,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
-					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
+					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 				},
 			},
 			test.Step{
@@ -256,6 +256,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				clusterUnavailability.markAvailable()
 				if health.Status == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
+					printShardsAndAllocation(hc.esClientFactory)()
 					continue
 				}
 				hc.SuccessCount++
