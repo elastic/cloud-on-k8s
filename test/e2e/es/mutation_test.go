@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build es || e2e
 // +build es e2e
 
 package es
@@ -242,8 +243,7 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(70)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// force a rolling upgrade through label change
 	mutated := b.DeepCopy().
