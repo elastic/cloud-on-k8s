@@ -243,7 +243,8 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithPreStopAdditionalWaitSeconds(90)
 
 	// force a rolling upgrade through label change
 	mutated := b.DeepCopy().
