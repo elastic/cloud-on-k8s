@@ -67,9 +67,6 @@ RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHEL
     mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
     rm shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz
 
-# Azure CLI to provision AKS clusters
-RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
-
 # gotestsum to generate xUnit compatible XML for tests
 RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
     tar xzf gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \

@@ -12,6 +12,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 )
 
 const (
@@ -61,12 +64,12 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 		plan: plan,
 		ctx: map[string]interface{}{
 			"ClusterName":       plan.ClusterName,
-			"Region":            plan.EKS.Region,
+			"Region":            plan.Eks.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"NodeCount":         plan.EKS.NodeCount,
+			"NodeCount":         plan.Eks.NodeCount,
 			"MachineType":       plan.MachineType,
-			"NodeAMI":           plan.EKS.NodeAMI,
-			"WorkDir":           plan.EKS.WorkDir,
+			"NodeAMI":           plan.Eks.NodeAMI,
+			"WorkDir":           plan.Eks.WorkDir,
 		},
 	}, nil
 }
@@ -79,8 +82,8 @@ type EKSDriver struct {
 	ctx     map[string]interface{}
 }
 
-func (e *EKSDriver) newCmd(cmd string) *Command {
-	return NewCommand(cmd).
+func (e *EKSDriver) newCmd(cmd string) *exec.Command {
+	return exec.NewCommand(cmd).
 		AsTemplate(e.ctx)
 }
 
@@ -186,7 +189,7 @@ func (e *EKSDriver) auth() error {
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
 func (e *EKSDriver) fetchSecrets() error {
-	client, err := NewClient(*e.plan.VaultInfo)
+	client, err := vault.NewClient(*e.plan.VaultInfo)
 	if err != nil {
 		return err
 	}
