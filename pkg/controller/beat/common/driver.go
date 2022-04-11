@@ -102,6 +102,8 @@ func Reconcile(
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
-	results.WithResults(reconcilePodVehicle(podTemplate, params))
+	var reconcileResults *reconciler.Results
+	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params)
+	results.WithResults(reconcileResults)
 	return results, params.Status
 }
