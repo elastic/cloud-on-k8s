@@ -33,8 +33,10 @@ import (
 )
 
 type apmClusterChecks struct {
-	apmClient *ApmClient
-	esClient  client.Client
+	apmClient        *ApmClient
+	esClient         client.Client
+	metricIndexCount int
+	errorIndexCount  int
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
@@ -44,7 +46,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
 		a.CheckIndexCreation(b.ApmServer, k),
-		a.CheckEventsAPI(),
+		a.CheckEventsAPI(b.ApmServer),
 		a.CheckEventsInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
 	}.WithSteps(a.CheckAgentConfiguration(b.ApmServer, k))
@@ -214,7 +216,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 }
 
 //nolint:thelper
-func (c *apmClusterChecks) CheckEventsAPI() test.Step {
+func (c *apmClusterChecks) CheckEventsAPI(apm apmv1.ApmServer) test.Step {
 	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
 { "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
 { "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
@@ -222,6 +224,27 @@ func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 	return test.Step{
 		Name: "Events should be accepted",
 		Test: func(t *testing.T) {
+			// before sending event, get the document count in the metric, and error index
+			// and save, as it is used to calculate how many docs should be in the index after
+			// the event is sent through APM Server.
+			metricIndex, errorIndex, err := getIndexNames(apm)
+			require.NoError(t, err)
+
+			var count int
+			count, err = countIndex(c.esClient, metricIndex)
+			// 404 is acceptable in this scenario, as the index may not exist yet.
+			if err != nil && !client.IsNotFound(err) {
+				require.NoError(t, err)
+			}
+			c.metricIndexCount = count
+
+			count, err = countIndex(c.esClient, errorIndex)
+			// 404 is acceptable in this scenario, as the index may not exist yet.
+			if err != nil && !client.IsNotFound(err) {
+				require.NoError(t, err)
+			}
+			c.errorIndexCount = count
+
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 			defer cancel()
 			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
@@ -290,32 +313,48 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 				return nil
 			}
 
-			v, err := version.Parse(updatedApmServer.Spec.Version)
+			metricIndex, errorIndex, err := getIndexNames(updatedApmServer)
 			if err != nil {
 				return err
 			}
 
-			// Check that the metric and error have been stored
-			// default to indices names from 6.x
-			metricIndex := fmt.Sprintf("apm-%s-2017.05.30", updatedApmServer.EffectiveVersion())
-			errorIndex := fmt.Sprintf("apm-%s-2018.08.09", updatedApmServer.EffectiveVersion())
-			switch v.Major {
-			case 7:
-				metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", updatedApmServer.EffectiveVersion())
-				errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", updatedApmServer.EffectiveVersion())
-			case 8:
-				// these are datastreams and not indices, but can be searched/counted in the same way
-				metricIndex = "metrics-apm.app.1234_service_12a3-default"
-				errorIndex = "logs-apm.error-default"
-			}
-
-			if err := assertCountIndexEqual(c.esClient, metricIndex, 1); err != nil {
+			if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
 				return err
 			}
 
-			return assertCountIndexEqual(c.esClient, errorIndex, 1)
+			if err := assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1); err != nil {
+				return err
+			}
+			return nil
 		}),
 	}
+}
+
+// getIndexNames will return the names of the metric, and error indexes, depending on
+// the version of the APM Server, and any error encountered while parsing the version.
+func getIndexNames(apm apmv1.ApmServer) (string, string, error) {
+	var metricIndex, errorIndex string
+	v, err := version.Parse(apm.Spec.Version)
+	if err != nil {
+		fmt.Printf("couldn't parse the apmserver version: %s", err)
+		return metricIndex, errorIndex, err
+	}
+
+	// Check that the metric and error have been stored
+	// default to indices names from 6.x
+	metricIndex = fmt.Sprintf("apm-%s-2017.05.30", apm.EffectiveVersion())
+	errorIndex = fmt.Sprintf("apm-%s-2018.08.09", apm.EffectiveVersion())
+	switch v.Major {
+	case 7:
+		metricIndex = fmt.Sprintf("apm-%s-metric-2017.05.30", apm.EffectiveVersion())
+		errorIndex = fmt.Sprintf("apm-%s-error-2018.08.09", apm.EffectiveVersion())
+	case 8:
+		// these are datastreams and not indices, but can be searched/counted in the same way
+		metricIndex = "metrics-apm.app.1234_service_12a3-default"
+		errorIndex = "logs-apm.error-default"
+	}
+
+	return metricIndex, errorIndex, nil
 }
 
 // assertCountIndexEqual asserts that the number of document in an index is the expected one, it raises an error otherwise.
@@ -325,7 +364,7 @@ func assertCountIndexEqual(esClient client.Client, index string, expected int) e
 		return err
 	}
 	if metricCount != expected {
-		return fmt.Errorf("%d document expected in index %s, got %d instead", expected, index, metricCount)
+		return fmt.Errorf("%d documents expected in index %s, got %d instead", expected, index, metricCount)
 	}
 	return nil
 }
