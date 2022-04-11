@@ -72,8 +72,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		results.WithError(err)
 	}
 
-	err = calculateStatus(params, ready, desired)
-	if err != nil {
+	if err := calculateStatus(params, ready, desired); err != nil {
 		err = pkgerrors.Wrapf(err, "while updating status")
 	}
 
