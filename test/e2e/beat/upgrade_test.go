@@ -24,8 +24,7 @@ import (
 // If using a shared data directory on the host a replacement pod might otherwise never reach the ready state as the
 // data directory stays locked it happens to be scheduled on the same node.
 func TestVersionUpgradeToLatest7x(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestReleasedVersion7x
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -63,8 +62,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 }
 
 func TestVersionUpgradeToLatest8x(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestReleasedVersion8x
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

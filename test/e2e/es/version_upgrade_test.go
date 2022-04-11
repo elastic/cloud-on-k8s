@@ -183,8 +183,7 @@ func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 }
 
 func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestReleasedVersion8x
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -200,8 +199,7 @@ func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
 }
 
 func TestVersionUpgradeTwoNodesToLatest8x(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestReleasedVersion8x
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

@@ -72,3 +72,14 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	// all valid cases are capture above
 	return false, nil
 }
+
+// GetUpgradePathTo8x returns the source and destination versions to test an upgrade to 8x. The default upgrade path
+// is from the current Elastic Stack version to the latest released version 8x. However, if the current version is greater
+// than the latest released version 8x (happens when the current version is the latest snapshot version 8x), then the
+// upgrade path is reversed.
+func GetUpgradePathTo8x(currentVersion string) (string, string) {
+	if version.MustParse(currentVersion).GT(version.MustParse(LatestReleasedVersion8x)) {
+		return LatestReleasedVersion8x, currentVersion
+	}
+	return currentVersion, LatestReleasedVersion8x
+}
