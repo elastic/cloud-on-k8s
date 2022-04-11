@@ -7625,6 +7625,15 @@ spec:
               health:
                 description: Health of the deployment.
                 type: string
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this Elastic Maps Server. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Elastic Maps controller has not yet processed the changes contained
+                  in the Elastic Maps specification.
+                format: int64
+                type: integer
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string

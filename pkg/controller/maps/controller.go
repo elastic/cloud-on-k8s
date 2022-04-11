@@ -167,9 +167,29 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, nil
 	}
 
+	// MapsServer will be deleted nothing to do other than remove the watches
+	if ems.IsMarkedForDeletion() {
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
+	}
+
+	// main reconciliation logic
+	results, status := r.doReconcile(ctx, ems)
+	if err := r.updateStatus(ems, status); err != nil {
+		if apierrors.IsConflict(err) {
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
+		results.WithError(err)
+	}
+	return results.Aggregate()
+}
+
+func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (*reconciler.Results, emsv1alpha1.MapsStatus) {
+	results := reconciler.NewResult(ctx)
+	status := newStatus(ems)
+
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
 	if !enabled {
@@ -177,38 +197,28 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		log.Info(msg, "namespace", ems.Namespace, "name", ems.Name)
 		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}, nil
-	}
-
-	// MapsServer will be deleted nothing to do other than remove the watches
-	if ems.IsMarkedForDeletion() {
-		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
+		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
 	}
 
 	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ems, r.recorder)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 	if !isEsAssocConfigured {
-		return reconcile.Result{}, nil
+		return results, status
 	}
 
-	// main reconciliation logic
-	return r.doReconcile(ctx, ems)
-}
-
-func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (reconcile.Result, error) {
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, ems); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(ems), &ems)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
-	_, results := certificates.Reconciler{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 &ems,
@@ -221,46 +231,54 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
-		res, err := results.Aggregate()
+		_, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ems, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return res, err
+		return results, status
 	}
 
 	emsVersion, err := version.Parse(ems.Spec.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 	logger := log.WithValues("namespace", ems.Namespace, "maps_name", ems.Name) // TODO  mapping explosion
 	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), logger, r.recorder)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 	if !assocAllowed {
-		return reconcile.Result{}, nil // will eventually retry once updated
+		// will eventually retry once updated, along with the results
+		// from the certificate reconciliation having a retry after a time period
+		return results, status
 	}
 
 	configSecret, err := reconcileConfig(r, ems, r.IPFamily)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), status
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
 	configHash, err := buildConfigHash(r.K8sClient(), ems, configSecret)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("build config hash: %w", err)
+		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
 	deploy, err := r.reconcileDeployment(ctx, ems, configHash)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("reconcile deployment: %w", err)
+		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	err = r.updateStatus(ems, deploy)
+	status, err = r.getStatus(ems, deploy)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("updating status: %w", err)
+		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
 	}
 
-	return results.Aggregate()
+	return results, status
+}
+
+func newStatus(ems emsv1alpha1.ElasticMapsServer) emsv1alpha1.MapsStatus {
+	status := ems.Status
+	status.ObservedGeneration = ems.Generation
+	return status
 }
 
 func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) error {
@@ -363,33 +381,36 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 	}, nil
 }
 
-func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) error {
+func (r *ReconcileMapsServer) getStatus(ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
+	status := newStatus(ems)
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ems.Namespace, map[string]string{NameLabelName: ems.Name})
 	if err != nil {
-		return err
+		return status, err
 	}
 	deploymentStatus, err := common.DeploymentStatus(ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
 	if err != nil {
-		return err
+		return status, err
 	}
-	newStatus := emsv1alpha1.MapsStatus{
-		DeploymentStatus:  deploymentStatus,
-		AssociationStatus: ems.Status.AssociationStatus,
-	}
+	status.DeploymentStatus = deploymentStatus
+	status.AssociationStatus = ems.Status.AssociationStatus
 
-	if reflect.DeepEqual(newStatus, ems.Status) {
+	return status, nil
+}
+
+func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, status emsv1alpha1.MapsStatus) error {
+	if reflect.DeepEqual(status, ems.Status) {
 		return nil // nothing to do
 	}
-	if newStatus.IsDegraded(ems.Status.DeploymentStatus) {
+	if status.IsDegraded(ems.Status.DeploymentStatus) {
 		r.recorder.Event(&ems, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Maps Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ems.Namespace,
 		"maps_name", ems.Name,
-		"status", newStatus,
+		"status", status,
 	)
-	ems.Status = newStatus
+	ems.Status = status
 	return common.UpdateStatus(r.Client, &ems)
 }
 
