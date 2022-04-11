@@ -322,10 +322,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 				return err
 			}
 
-			if err := assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1); err != nil {
-				return err
-			}
-			return nil
+			return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
 		}),
 	}
 }
