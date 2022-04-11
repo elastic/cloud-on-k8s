@@ -640,14 +640,6 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	require.NoError(t, err)
 	// expect a re-queue to be scheduled
 	require.Equal(t, defaultRequeue, results)
-	// wait for the timeToExpectServiceAfterCreation
-	time.Sleep(timeToExpectServiceAfterCreation)
-	// simulate a re-queue
-	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	// now expect an error due to the missing service
-	require.Error(t, err)
-	// expect a re-queue to be scheduled as the association is still pending
-	require.Equal(t, defaultRequeue, results)
 
 	// create the missing service
 	svc := esHTTPService()
