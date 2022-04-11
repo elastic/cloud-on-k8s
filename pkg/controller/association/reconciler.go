@@ -263,7 +263,12 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
 	if err != nil {
-		return commonv1.AssociationPending, err // maybe not created yet
+		// the Service may not have been created by the resource controller yet
+		if apierrors.IsNotFound(err) {
+			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+			return commonv1.AssociationPending, nil
+		}
+		return commonv1.AssociationPending, err
 	}
 
 	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
