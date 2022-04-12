@@ -50,6 +50,8 @@ type Builder struct {
 
 	// Suffix is the suffix that is added to e2e test resources
 	Suffix string
+
+	MutatedFrom *Builder
 }
 
 func (b Builder) SkipTest() bool {
@@ -216,6 +218,11 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.Beat.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
 	return b
 }
 

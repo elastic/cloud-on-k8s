@@ -6,7 +6,9 @@ package common
 
 import (
 	"context"
+	"reflect"
 
+	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +17,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -26,7 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) *reconciler.Results {
+func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(params.Context)
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
@@ -58,7 +59,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		podTemplate: podTemplate,
 	})
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	// clean up the other one
@@ -71,16 +72,12 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		results.WithError(err)
 	}
 
-	err = updateStatus(params, ready, desired)
-	if err != nil && apierrors.IsConflict(err) {
-		params.Logger.V(1).Info(
-			"Conflict while updating status",
-			"namespace", params.Beat.Namespace,
-			"beat_name", params.Beat.Name)
-		return results.WithResult(reconcile.Result{Requeue: true})
+	params.Status, err = newStatus(params, ready, desired)
+	if err != nil {
+		err = pkgerrors.Wrapf(err, "while updating status")
 	}
 
-	return results.WithError(err)
+	return results.WithError(err), params.Status
 }
 
 type ReconciliationParams struct {
@@ -133,21 +130,32 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
-func updateStatus(params DriverParams, ready, desired int32) error {
+// newStatus will calculate a new status from the state of the pods within the k8s cluster
+// and returns any error encountered.
+func newStatus(params DriverParams, ready, desired int32) (*beatv1beta1.BeatStatus, error) {
 	beat := params.Beat
+	status := params.Status
 
 	pods, err := k8s.PodsMatchingLabels(params.K8sClient(), beat.Namespace, map[string]string{NameLabelName: beat.Name})
 	if err != nil {
-		return err
+		return status, err
 	}
-	beat.Status.AvailableNodes = ready
-	beat.Status.ExpectedNodes = desired
-	health, err := CalculateHealth(beat.GetAssociations(), ready, desired)
+	status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
+	status.AvailableNodes = ready
+	status.ExpectedNodes = desired
+	status.Health, err = calculateHealth(beat.GetAssociations(), ready, desired)
 	if err != nil {
-		return err
+		return status, err
 	}
-	beat.Status.Health = health
-	beat.Status.Version = common.LowestVersionFromPods(beat.Status.Version, pods, VersionLabelName)
 
-	return params.Client.Status().Update(context.Background(), &beat)
+	return status, nil
+}
+
+// UpdateStatus will update the Elastic Beat's status within the k8s cluster, using the given Elastic Beat and status.
+func UpdateStatus(beat beatv1beta1.Beat, client client.Client, status *beatv1beta1.BeatStatus) error {
+	if status == nil || reflect.DeepEqual(beat.Status, *status) {
+		return nil
+	}
+	beat.Status = *status
+	return common.UpdateStatus(client, &beat)
 }

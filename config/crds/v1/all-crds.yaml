@@ -2411,6 +2411,15 @@ spec:
               kibanaAssociationStatus:
                 description: AssociationStatus is the status of an association resource.
                 type: string
+              observedGeneration:
+                description: ObservedGeneration represents the .metadata.generation
+                  that the status is based upon. It corresponds to the metadata generation,
+                  which is updated on mutation by the API Server. If the generation
+                  observed in status diverges from the generation in metadata, the
+                  Beats controller has not yet processed the changes contained in
+                  the Beats specification.
+                format: int64
+                type: integer
               version:
                 description: 'Version of the stack resource currently running. During
                   version upgrades, multiple versions may run in parallel: this value

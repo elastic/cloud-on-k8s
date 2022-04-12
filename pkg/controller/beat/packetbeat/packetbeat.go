@@ -24,10 +24,10 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() *reconciler.Results {
+func (d *Driver) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	managedConfig, err := beatcommon.BuildKibanaConfig(d.Client, beatv1beta1.BeatKibanaAssociation{Beat: &d.Beat})
 	if err != nil {
-		return reconciler.NewResult(d.DriverParams.Context).WithError(err)
+		return reconciler.NewResult(d.DriverParams.Context).WithError(err), d.Status
 	}
 
 	return beatcommon.Reconcile(d.DriverParams, managedConfig, container.PacketbeatImage)
