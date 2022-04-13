@@ -106,7 +106,7 @@ func (el *eventLogger) runEventProcessor() {
 			return
 		}
 
-		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string))
+		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string)) //nolint:forcetypeassert
 		if err != nil {
 			log.Error(err, "Failed to get event", "key", key)
 			return

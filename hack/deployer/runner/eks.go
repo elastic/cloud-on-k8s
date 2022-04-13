@@ -114,7 +114,7 @@ func (e *EKSDriver) Execute() error {
 			if err := template.Must(template.New("").Parse(clusterCreationTemplate)).Execute(&createCfg, e.ctx); err != nil {
 				return fmt.Errorf("while formatting cluster create cfg %w", err)
 			}
-			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
+			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
