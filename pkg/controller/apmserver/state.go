@@ -7,7 +7,6 @@ package apmserver
 import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -16,9 +15,7 @@ import (
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an ApmServer
 // resource for status updates.
 type State struct {
-	ApmServer *apmv1.ApmServer
-	Result    reconcile.Result
-
+	ApmServer         *apmv1.ApmServer
 	originalApmServer *apmv1.ApmServer
 }
 
