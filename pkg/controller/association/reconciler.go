@@ -43,7 +43,7 @@ var (
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
-type AssociationInfo struct {
+type AssociationInfo struct { //nolint:revive
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
 	// elasticsearch for Beat to Elasticsearch association)
 	AssociationType commonv1.AssociationType

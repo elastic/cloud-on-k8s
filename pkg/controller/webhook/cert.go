@@ -19,7 +19,7 @@ import (
 )
 
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
-type WebhookCertificates struct {
+type WebhookCertificates struct { //nolint:revive
 	caCert []byte
 
 	serverKey  []byte
