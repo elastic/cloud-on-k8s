@@ -45,9 +45,9 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key" //nolint:gosec
-	credentialsTemplate = `[default]
+	awsAccessKeyID     = "aws_access_key_id"
+	awsSecretAccessKey = "aws_secret_access_key" //nolint:gosec
+	awsAuthTemplate    = `[default]
 %s = %s
 %s = %s`
 )
@@ -226,7 +226,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 		return nil
 	}
 	log.Printf("Writing aws credentials")
-	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
+	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
 	return ioutil.WriteFile(file, []byte(fileContents), 0600)
 }
 
