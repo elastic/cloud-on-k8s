@@ -37,14 +37,10 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 		dynamicWatches watches.DynamicWatches
 		Parameters     operator.Parameters
 	}
-	type args struct {
-		request reconcile.Request
-	}
 	tests := []struct {
 		name        string
 		as          apmv1.ApmServer
 		fields      fields
-		args        args
 		wantRequeue bool
 		wantErr     bool
 	}{
@@ -70,9 +66,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 					},
 				},
 			},
-			args: args{
-				request: reconcile.Request{},
-			},
 			wantRequeue: false,
 		},
 		{
@@ -92,9 +85,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},
 			},
-			args: args{
-				request: reconcile.Request{},
-			},
 			wantErr: true,
 		},
 	}
@@ -106,7 +96,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				dynamicWatches: tt.fields.dynamicWatches,
 				Parameters:     tt.fields.Parameters,
 			}
-			results, _ := r.doReconcile(context.Background(), tt.args.request, tt.as.DeepCopy())
+			results, _ := r.doReconcile(context.Background(), tt.as.DeepCopy())
 			res, err := results.Aggregate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
@@ -329,8 +319,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
-			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
+				t.Helper()
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
 				require.NoError(t, err)
@@ -350,8 +340,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
-			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
+				t.Helper()
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
 				require.NoError(t, err)
@@ -396,8 +386,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
-			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
+				t.Helper()
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
 				require.NoError(t, err)
@@ -421,8 +411,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: true,
-			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
+				t.Helper()
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongapmservernamecausesvalidationissues"}, &apm)
 				require.NoError(t, err)
@@ -441,8 +431,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			},
 			want:    reconcile.Result{},
 			wantErr: false,
-			//nolint:thelper
 			validate: func(t *testing.T, f fields) {
+				t.Helper()
 				var apm apmv1.ApmServer
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test"}, &apm)
 				require.NoError(t, err)

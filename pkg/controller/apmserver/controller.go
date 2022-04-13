@@ -185,7 +185,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 				Name:      request.Name,
 			})
 		}
-		return result, err
+		return result, tracing.CaptureError(ctx, err)
 	}
 
 	if common.IsUnmanaged(&as) {
@@ -203,13 +203,13 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return result, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	results, state := r.doReconcile(ctx, request, &as)
+	results, state := r.doReconcile(ctx, &as)
 
 	return results.WithError(r.updateStatus(ctx, state)).Aggregate()
 }
 
-func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (*reconciler.Results, State) {
-	state := NewState(request, as)
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServer) (*reconciler.Results, State) {
+	state := NewState(as)
 	results := reconciler.NewResult(ctx)
 
 	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)

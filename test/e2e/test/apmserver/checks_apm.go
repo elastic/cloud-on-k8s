@@ -45,7 +45,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.BuildApmServerClient(b.ApmServer, k),
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
-		a.CheckIndexCreation(b.ApmServer, k),
+		a.CheckAPMUserPermissions(b.ApmServer, k),
 		a.CheckEventsAPI(b.ApmServer),
 		a.CheckEventsInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
@@ -126,12 +126,12 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 	}
 }
 
-// CheckIndexCreation ensure that, prior to attempting to ingest events, the APM Server user
+// CheckAPMUserPermissions ensures that, prior to attempting to ingest events, the APM Server user
 // has the necessary permissions to either create indexes (ES < 8.x), or index documents into
 // non-existing indexes (ES >= 8.x). This fixes a transient issue that happens when upgrading
 // Elasticsearch between major versions where it takes a bit of time to transition between
 // file-based user roles, and permissions errors were being returned by Elasticsearch.
-func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
+func (c *apmClusterChecks) CheckAPMUserPermissions(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES Index should eventually be able to be created by APM Server user",
 		Test: test.Eventually(func() error {
@@ -205,7 +205,7 @@ func (c *apmClusterChecks) CheckIndexCreation(apm apmv1.ApmServer, k *test.K8sCl
 			}
 
 			defer res.Body.Close()
-			// we should receieve either a 200 (index creation), or 201 (index doc request)
+			// we should receive either a 200 (index creation), or 201 (index doc request)
 			// from Elasticsearch
 			if res.StatusCode > 201 {
 				return fmt.Errorf("expected http 200/201 response code when creating index, got %d", res.StatusCode)

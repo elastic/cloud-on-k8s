@@ -18,17 +18,16 @@ import (
 type State struct {
 	ApmServer *apmv1.ApmServer
 	Result    reconcile.Result
-	Request   reconcile.Request
 
 	originalApmServer *apmv1.ApmServer
 }
 
-// NewState creates a new reconcile state based on the given request and ApmServer resource with the resource
-// state reset to empty.
-func NewState(request reconcile.Request, as *apmv1.ApmServer) State {
+// NewState creates a new reconcile state based on the given request and ApmServer resource, with the
+// ApmServer's Status.ObservedGeneration set from the current generation of the ApmServer's specification.
+func NewState(as *apmv1.ApmServer) State {
 	current := as.DeepCopy()
 	current.Status.ObservedGeneration = as.Generation
-	return State{Request: request, ApmServer: current, originalApmServer: as}
+	return State{ApmServer: current, originalApmServer: as}
 }
 
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
