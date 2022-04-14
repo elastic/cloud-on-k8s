@@ -47,9 +47,9 @@ IMG_VERSION        ?= $(VERSION)-$(TAG)
 
 BASE_IMG                     := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
-OPERATOR_IMAGE_UBI           ?= $(BASE_IMG):$(IMG_VERSION)-ubi
+OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi:$(IMG_VERSION)
 OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)-ubi
+OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi:$(IMG_VERSION)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
