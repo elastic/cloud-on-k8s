@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       -o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 # Copy the operator binary into a lighter image
-FROM scratch
+FROM gcr.io/distroless/static:nonroot
 
 ARG VERSION
 
