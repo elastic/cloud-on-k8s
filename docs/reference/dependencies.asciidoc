@@ -41,14 +41,14 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/sethvargo/go-password[$$github.com/sethvargo/go-password$$] | v0.2.0 | MIT
 | link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.4.0 | Apache-2.0
 | link:https://github.com/spf13/pflag[$$github.com/spf13/pflag$$] | v1.0.5 | BSD-3-Clause
-| link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.10.1 | MIT
+| link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.11.0 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.7.1 | MIT
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
 | link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.15.0 | Apache-2.0
 | link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.15.0 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.1 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.21.0 | MIT
-| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20210817164053-32db794688a5 | BSD-3-Clause
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20220411220226-7b82a4e95df4 | BSD-3-Clause
 | link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.4.0 | Apache-2.0
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.0-20210107192922-496545a6307b | MIT
 | link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.23.5 | Apache-2.0
@@ -69,7 +69,8 @@ This page lists the third-party dependencies used to build {n}.
 |===
 | Name | Version | Licence
 
-| link:https://cloud.google.com/go[$$cloud.google.com/go$$] | v0.99.0 | Apache-2.0
+| link:https://cloud.google.com/go[$$cloud.google.com/go$$] | v0.100.2 | Apache-2.0
+| link:https://cloud.google.com/go/compute[$$cloud.google.com/go/compute$$] | v1.5.0 | Apache-2.0
 | link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.1 | Apache-2.0
 | link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.1.1 | MIT
 | link:https://github.com/armon/go-metrics[$$github.com/armon/go-metrics$$] | v0.3.10 | MIT
@@ -99,7 +100,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/googleapis/gnostic[$$github.com/googleapis/gnostic$$] | v0.5.5 | Apache-2.0
 | link:https://github.com/hashicorp/errwrap[$$github.com/hashicorp/errwrap$$] | v1.1.0 | MPL-2.0
 | link:https://github.com/hashicorp/go-cleanhttp[$$github.com/hashicorp/go-cleanhttp$$] | v0.5.2 | MPL-2.0
-| link:https://github.com/hashicorp/go-hclog[$$github.com/hashicorp/go-hclog$$] | v1.0.0 | MIT
+| link:https://github.com/hashicorp/go-hclog[$$github.com/hashicorp/go-hclog$$] | v1.2.0 | MIT
 | link:https://github.com/hashicorp/go-immutable-radix[$$github.com/hashicorp/go-immutable-radix$$] | v1.3.1 | MPL-2.0
 | link:https://github.com/hashicorp/go-plugin[$$github.com/hashicorp/go-plugin$$] | v1.4.3 | MPL-2.0
 | link:https://github.com/hashicorp/go-retryablehttp[$$github.com/hashicorp/go-retryablehttp$$] | v0.6.6 | MPL-2.0
@@ -143,6 +144,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/onsi/gomega[$$github.com/onsi/gomega$$] | v1.17.0 | MIT
 | link:https://github.com/pascaldekloe/goe[$$github.com/pascaldekloe/goe$$] | v0.1.0 | Public Domain
 | link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml$$] | v1.9.4 | Apache-2.0
+| link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml/v2$$] | v2.0.0-beta.8 | MIT
 | link:https://github.com/pierrec/lz4[$$github.com/pierrec/lz4$$] | v2.5.2+incompatible | BSD-3-Clause
 | link:https://github.com/prashantv/gostub[$$github.com/prashantv/gostub$$] | v1.1.0 | MIT
 | link:https://github.com/prometheus/client_model[$$github.com/prometheus/client_model$$] | v0.2.0 | Apache-2.0
@@ -150,7 +152,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/ryanuber/go-glob[$$github.com/ryanuber/go-glob$$] | v1.0.0 | MIT
 | link:https://github.com/santhosh-tekuri/jsonschema[$$github.com/santhosh-tekuri/jsonschema$$] | v1.2.4 | BSD-3-Clause
 | link:https://github.com/shopspring/decimal[$$github.com/shopspring/decimal$$] | v1.2.0 | MIT
-| link:https://github.com/spf13/afero[$$github.com/spf13/afero$$] | v1.6.0 | Apache-2.0
+| link:https://github.com/spf13/afero[$$github.com/spf13/afero$$] | v1.8.2 | Apache-2.0
 | link:https://github.com/spf13/cast[$$github.com/spf13/cast$$] | v1.4.1 | MIT
 | link:https://github.com/spf13/jwalterweatherman[$$github.com/spf13/jwalterweatherman$$] | v1.1.0 | MIT
 | link:https://github.com/streadway/quantile[$$github.com/streadway/quantile$$] | v0.0.0-20150917103942-b0c588724d25 | BSD-2-Clause
@@ -164,23 +166,23 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20200224162631-6cc2880d07d6 | BSD-3-Clause
 | link:https://golang.org/x/lint[$$golang.org/x/lint$$] | v0.0.0-20210508222113-6edffad5e616 | BSD-3-Clause
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.5.0 | BSD-3-Clause
-| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220225172249-27dd8689420f | BSD-3-Clause
-| link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220223155221-ee480838109b | BSD-3-Clause
-| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220114195835-da31bd327af9 | BSD-3-Clause
+| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220412020605-290c469a71a5 | BSD-3-Clause
+| link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220411215720-9780585627b5 | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220412211240-33da011f77ad | BSD-3-Clause
 | link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210927222741-03fcf44c2211 | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.7 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20210723032227-1f47c861a9ac | BSD-3-Clause
 | link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.1.6-0.20210820212750-d4cc65f0b2ff | BSD-3-Clause
-| link:https://golang.org/x/xerrors[$$golang.org/x/xerrors$$] | v0.0.0-20200804184101-5ec99f83aff1 | BSD-3-Clause
+| link:https://golang.org/x/xerrors[$$golang.org/x/xerrors$$] | v0.0.0-20220411194840-2f41105eb62f | BSD-3-Clause
 | link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.2.0 | Apache-2.0
 | link:https://github.com/gonum/gonum[$$gonum.org/v1/gonum$$] | v0.0.0-20181121035319-3f7ecaa7e8ca | BSD-3-Clause
 | link:https://google.golang.org/appengine[$$google.golang.org/appengine$$] | v1.6.7 | Apache-2.0
-| link:https://google.golang.org/genproto[$$google.golang.org/genproto$$] | v0.0.0-20211208223120-3a66f561d7aa | Apache-2.0
-| link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.43.0 | Apache-2.0
-| link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.27.1 | BSD-3-Clause
+| link:https://google.golang.org/genproto[$$google.golang.org/genproto$$] | v0.0.0-20220407144326-9054f6ed7bac | Apache-2.0
+| link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.45.0 | Apache-2.0
+| link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.28.0 | BSD-3-Clause
 | link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20200227125254-8fa46927fb4f | BSD-2-Clause
 | link:https://gopkg.in/inf.v0[$$gopkg.in/inf.v0$$] | v0.9.1 | BSD-3-Clause
-| link:https://gopkg.in/ini.v1[$$gopkg.in/ini.v1$$] | v1.66.2 | Apache-2.0
+| link:https://gopkg.in/ini.v1[$$gopkg.in/ini.v1$$] | v1.66.4 | Apache-2.0
 | link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.5.1 | Apache-2.0
 | link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
 | link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
