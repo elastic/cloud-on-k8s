@@ -5,7 +5,7 @@ metadata:
     capabilities: Full Lifecycle
     categories: Database
     certified: 'false'
-    containerImage: {{ .OperatorRepo }}:{{ .NewVersion }}-ubi
+    containerImage: {{ .OperatorRepo }}-ubi:{{ .NewVersion }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
     description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
@@ -312,7 +312,7 @@ spec:
             spec:
               serviceAccountName: elastic-operator
               containers:
-              - image: {{ .OperatorRepo }}:{{ .NewVersion }}-ubi
+              - image: {{ .OperatorRepo }}-ubi:{{ .NewVersion }}
                 name: manager
                 args:
                   - "manager"
