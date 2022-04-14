@@ -39,7 +39,3 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		}}
 }
-
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("not implemented")
-}

@@ -112,7 +112,4 @@ spec:
     kind: Issuer
     name: ca-issuer
   secretName: quickstart-es-cert
-  subject:
-    organizations:
-      - quickstart
 ----

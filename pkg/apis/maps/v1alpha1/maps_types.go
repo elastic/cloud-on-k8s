@@ -60,7 +60,14 @@ type MapsSpec struct {
 // MapsStatus defines the observed state of Elastic Maps Server
 type MapsStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
-	AssociationStatus         commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
+	AssociationStatus commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
+	// ObservedGeneration is the most recent generation observed for this Elastic Maps Server.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Elastic
+	// Maps controller has not yet processed the changes contained in the Elastic Maps specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Elastic Maps Server instance is going to be deleted
@@ -98,7 +105,7 @@ func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationCo
 
 // RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
 func (m *ElasticMapsServer) RequiresAssociation() bool {
-	return m.Spec.ElasticsearchRef.Name != ""
+	return m.Spec.ElasticsearchRef.IsDefined()
 }
 
 func (m *ElasticMapsServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
@@ -141,6 +148,11 @@ func (m *ElasticMapsServer) AssociationID() string {
 
 var _ commonv1.Associated = &ElasticMapsServer{}
 var _ commonv1.Association = &ElasticMapsServer{}
+
+// GetObservedGeneration will return the observed generation from the Elastic Maps status.
+func (m *ElasticMapsServer) GetObservedGeneration() int64 {
+	return m.Status.ObservedGeneration
+}
 
 // +kubebuilder:object:root=true
 

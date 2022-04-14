@@ -339,8 +339,8 @@ func Test_AssociationConfs(t *testing.T) {
 			Name:      "esmon",
 			Namespace: "default",
 			Annotations: map[string]string{
-				"association.k8s.elastic.co/es-conf-864518565":  `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
-				"association.k8s.elastic.co/es-conf-1654136115": `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
+				"association.k8s.elastic.co/es-conf-4154131866": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+				"association.k8s.elastic.co/es-conf-611214426":  `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
 			},
 		},
 		Spec: ElasticsearchSpec{
@@ -385,7 +385,7 @@ func Test_AssociationConfs(t *testing.T) {
 	assert.Equal(t, 2, len(esMon.AssocConfs))
 
 	// delete just one entry in the map
-	delete(esMon.AssocConfs, metricsEsRef.NamespacedName())
+	delete(esMon.AssocConfs, metricsEsRef)
 	assert.Equal(t, 1, len(esMon.AssocConfs))
 
 	// checks that the missing entry is set again

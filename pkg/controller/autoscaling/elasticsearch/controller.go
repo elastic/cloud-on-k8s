@@ -185,7 +185,7 @@ func newElasticsearchClient(
 		Namespace: es.Namespace,
 		Name:      esv1.InternalUsersSecret(es.Name),
 	}
-	if err := c.Get(context.Background(), key, &controllerUserSecret); err != nil {
+	if err := c.Get(ctx, key, &controllerUserSecret); err != nil {
 		return nil, err
 	}
 	password, ok := controllerUserSecret.Data[user.ControllerUserName]
@@ -199,7 +199,7 @@ func newElasticsearchClient(
 		Namespace: es.Namespace,
 		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 	}
-	if err := c.Get(context.Background(), key, &caSecret); err != nil {
+	if err := c.Get(ctx, key, &caSecret); err != nil {
 		return nil, err
 	}
 	trustedCerts, ok := caSecret.Data[certificates.CertFileName]

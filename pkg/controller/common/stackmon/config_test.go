@@ -97,9 +97,10 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 				fakeClient,
 				"xx-monitoring",
 				types.NamespacedName{Namespace: "namespace", Name: "name"},
-				types.NamespacedName{Namespace: "namespace", Name: "name"},
 				name.NewNamer("es"),
 				sampleURL,
+				"elastic-internal-monitoring",
+				"1234567890",
 				tc.isTLS,
 				baseConfigTemplate,
 			)

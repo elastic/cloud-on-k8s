@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 const clientBaseImageName = "docker.elastic.co/eck-ci/deployer"
@@ -34,7 +36,7 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 		return image, nil
 	}
 
-	if err = NewCommand(
+	if err = exec.NewCommand(
 		fmt.Sprintf("docker build --build-arg CLIENT_VERSION=%s -f %s -t %s %s",
 			clientVersion, dockerfileName, image, dockerfilePath),
 	).Run(); err != nil {
@@ -45,18 +47,18 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 		return image, fmt.Errorf("while logging into docker registry: %w", err)
 	}
 
-	err = NewCommand(fmt.Sprintf("docker push %s", image)).RunWithRetries(5, 1*time.Hour)
+	err = exec.NewCommand(fmt.Sprintf("docker push %s", image)).RunWithRetries(5, 1*time.Hour)
 	return image, err
 }
 
 func checkImageExists(image string) bool {
 	// short circuit if locally available e.g in local dev mode
-	if output, err := NewCommand(fmt.Sprintf("docker images -q %s", image)).Output(); len(output) > 0 && err == nil {
+	if output, err := exec.NewCommand(fmt.Sprintf("docker images -q %s", image)).Output(); len(output) > 0 && err == nil {
 		return true
 	}
 
 	// check registry
-	imageExists, err := NewCommand(fmt.Sprintf("docker pull -q %s", image)).OutputContainsAny(image)
+	imageExists, err := exec.NewCommand(fmt.Sprintf("docker pull -q %s", image)).OutputContainsAny(image)
 	return imageExists && err == nil
 }
 
@@ -82,6 +84,6 @@ func dockerLogin() error {
 		log.Printf("Not attempting Docker login as .registry.env is not present in the filesystem.")
 		return nil
 	}
-	return NewCommand(`docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD" docker.elastic.co 2> /dev/null`).
+	return exec.NewCommand(`docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD" docker.elastic.co 2> /dev/null`).
 		WithVariablesFromFile(registryEnv).Run()
 }

@@ -23,17 +23,17 @@ func Equal(a, b runtime.Object) bool {
 
 // Diff returns the difference between two objects ignoring the TypeMeta and ResourceVersion. Often used for tests ensuring that we receive structs that match what we expect without
 // runtime-specific information
-func Diff(a, b runtime.Object) string {
+func Diff(a, b runtime.Object, opts ...cmp.Option) string {
 	typemeta := cmpopts.IgnoreTypes(metav1.TypeMeta{})
 	rv := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
 	timestamps := cmpopts.IgnoreTypes(metav1.Time{})
-	return cmp.Diff(a, b, typemeta, rv, timestamps)
+	return cmp.Diff(a, b, append(opts, typemeta, rv, timestamps)...)
 }
 
 // AssertEqual errors if two objects ignoring the TypeMeta and ResourceVersion. Equivalent to calling t.Error()
-func AssertEqual(t *testing.T, a, b runtime.Object) {
+func AssertEqual(t *testing.T, a, b runtime.Object, opts ...cmp.Option) {
 	t.Helper()
-	if diff := Diff(a, b); diff != "" {
+	if diff := Diff(a, b, opts...); diff != "" {
 		t.Errorf("Expected objects to be the same. Differences:\n%v", diff)
 	}
 }

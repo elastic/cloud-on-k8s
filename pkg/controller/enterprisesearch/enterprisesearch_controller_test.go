@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 )
 
 func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
@@ -214,30 +215,60 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	// associate Enterprise Search 7.7.0 to Elasticsearch 7.7.0
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "some-es"}}
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-		Spec:       entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "ent",
+			// initially set read-only mode to 'false', as the reconciliation loop will begin
+			// by ensuring that read-only mode is disabled.
+			Annotations: map[string]string{
+				ReadOnlyModeAnnotationName: "false",
+			},
+		},
+		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
 	esTLSCertsSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
 	}
+	esAuthSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "ent-user"},
+		Data: map[string][]byte{
+			"ent-user-key": []byte("es-user-key"),
+		},
+	}
 	assocConf := commonv1.AssociationConf{
 		Version:        "7.7.0",
 		AuthSecretName: "ent-user",
+		AuthSecretKey:  "ent-user-key",
 		CASecretName:   "es-tls-certs",
 		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"}
+	entSearchPod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ent.Namespace,
+			Name:      "ent-pod1",
+			Labels: map[string]string{
+				EnterpriseSearchNameLabelName: ent.Name,
+				common.TypeLabelName:          Type,
+				VersionLabelName:              "7.7.0",
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+		},
+	}
 	// the association conf is required to reconcile the Enterprise Search resource, we set it manually because it is not
 	// persisted and instead set by the association controller in real condition
 	ent.SetAssociationConf(&assocConf)
 
 	r := &ReconcileEnterpriseSearch{
-		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret),
+		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       record.NewFakeRecorder(10),
 		Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}}},
 	}
-	_, err := r.doReconcile(context.Background(), ent)
+	results, _ := r.doReconcile(context.Background(), ent)
+	_, err := results.Aggregate()
 	require.NoError(t, err)
 
 	// the Enterprise Search deployment should be created and specify version 7.7.0
@@ -251,10 +282,14 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	// update EnterpriseSearch to 7.8.0: the deployment should stay in version 7.7.0 since
 	// Elasticsearch still runs 7.7.0
 	ent.Spec.Version = "7.8.0"
+	// set read-only mode on the EnterpriseSearch resource to allow the reconcile loop to not
+	// reach out with an API call trying to enable read-only mode during the upgrade.
+	ent.ObjectMeta.Annotations[ReadOnlyModeAnnotationName] = "true"
 	err = r.Client.Update(context.Background(), &ent)
 	require.NoError(t, err)
 	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
-	_, err = r.doReconcile(context.Background(), ent)
+	results, _ = r.doReconcile(context.Background(), ent)
+	_, err = results.Aggregate()
 	require.NoError(t, err)
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
 	require.NoError(t, err)
@@ -265,7 +300,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	// update the associated Elasticsearch to 7.8.0: Enterprise Search should now be upgraded to 7.8.0
 	assocConf.Version = "7.8.0"
 	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
-	_, err = r.doReconcile(context.Background(), ent)
+	results, _ = r.doReconcile(context.Background(), ent)
+	_, err = results.Aggregate()
 	require.NoError(t, err)
 
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
@@ -281,7 +317,8 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 	require.NoError(t, err)
 
 	ent.SetAssociationConf(&assocConf) // required to reconcile, normally set by the assoc controller
-	_, err = r.doReconcile(context.Background(), ent)
+	results, _ = r.doReconcile(context.Background(), ent)
+	_, err = results.Aggregate()
 	require.NoError(t, err)
 
 	err = r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: DeploymentName(ent.Name)}, &dep)
@@ -311,7 +348,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 	}{
 		{
 			name: "happy path",
-			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Generation: 2}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -328,14 +365,15 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					Version:        "",
 					Health:         "green",
 				},
-				ExternalService: "http-service",
+				ExternalService:    "http-service",
+				ObservedGeneration: 2,
 			},
 			wantStatusUpdateCalled: true,
 		},
 		{
-			name: "preserve existing association status",
-			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-				Status: entv1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished}},
+			name: "preserve existing association status, and update ObservedGeneration",
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Generation: 2},
+				Status: entv1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished, ObservedGeneration: 1}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -352,14 +390,15 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					Version:        "",
 					Health:         "green",
 				},
-				ExternalService: "http-service",
-				Association:     commonv1.AssociationEstablished,
+				ExternalService:    "http-service",
+				Association:        commonv1.AssociationEstablished,
+				ObservedGeneration: 2,
 			},
 			wantStatusUpdateCalled: true,
 		},
 		{
 			name: "red health if deployment not available",
-			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			ent:  entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Generation: 2}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
 				Conditions: []appsv1.DeploymentCondition{
@@ -376,20 +415,22 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					Version:        "",
 					Health:         "red",
 				},
-				ExternalService: "http-service",
+				ExternalService:    "http-service",
+				ObservedGeneration: 2,
 			},
 			wantStatusUpdateCalled: true,
 		},
 		{
-			name: "update existing status when replicas count changes",
-			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+			name: "update existing status, and ObservedGeneration when replicas count changes",
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Generation: 2},
 				Status: entv1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
 						Version:        "",
 						Health:         "green",
 					},
-					ExternalService: "http-service",
+					ExternalService:    "http-service",
+					ObservedGeneration: 1,
 				}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 4,
@@ -407,20 +448,22 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					Version:        "",
 					Health:         "green",
 				},
-				ExternalService: "http-service",
+				ExternalService:    "http-service",
+				ObservedGeneration: 2,
 			},
 			wantStatusUpdateCalled: true,
 		},
 		{
 			name: "don't do a status update if not necessary",
-			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Generation: 2},
 				Status: entv1.EnterpriseSearchStatus{
 					DeploymentStatus: commonv1.DeploymentStatus{
 						AvailableNodes: 3,
 						Version:        "",
 						Health:         "green",
 					},
-					ExternalService: "http-service",
+					ExternalService:    "http-service",
+					ObservedGeneration: 2,
 				}},
 			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
 				AvailableReplicas: 3,
@@ -438,7 +481,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 					Version:        "",
 					Health:         "green",
 				},
-				ExternalService: "http-service",
+				ExternalService:    "http-service",
+				ObservedGeneration: 2,
 			},
 			wantStatusUpdateCalled: false,
 		},
@@ -477,13 +521,16 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ulog.ChangeVerbosity(1)
 			c := &fakeClientStatusCall{Client: k8s.NewFakeClient(&tt.ent)}
 			fakeRecorder := record.NewFakeRecorder(10)
 			r := &ReconcileEnterpriseSearch{
 				Client:   c,
 				recorder: fakeRecorder,
 			}
-			err := r.updateStatus(tt.ent, tt.deploy, tt.svcName)
+			status, err := r.generateStatus(tt.ent, tt.deploy, tt.svcName)
+			require.NoError(t, err)
+			err = r.updateStatus(tt.ent, status)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.wantStatusUpdateCalled, c.updateCalled)
