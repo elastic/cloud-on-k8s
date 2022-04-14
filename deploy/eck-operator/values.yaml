@@ -25,7 +25,7 @@ image:
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
 
-# priorityClassName defines the priority of the operator pods
+# priorityClassName defines the PriorityClass to be used by the operator pods.
 priorityClassName: ""
 
 # imagePullSecrets defines the secrets to use when pulling the operator container image.
