@@ -11,15 +11,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
+	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -27,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -45,9 +43,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.BuildApmServerClient(b.ApmServer, k),
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
-		a.CheckAPMUserPermissions(b.ApmServer, k),
-		a.CheckEventsAPI(b.ApmServer),
-		a.CheckEventsInElasticsearch(b.ApmServer, k),
+		a.CheckAPMEventCanBeIndexedInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
 	}.WithSteps(a.CheckAgentConfiguration(b.ApmServer, k))
 }
@@ -126,139 +122,68 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 	}
 }
 
-// CheckAPMUserPermissions ensures that, prior to attempting to ingest events, the APM Server user
-// has the necessary permissions to either create indexes (ES < 8.x), or index documents into
-// non-existing indexes (ES >= 8.x). This fixes a transient issue that happens when upgrading
+// CheckAPMEventCanBeIndexedInElasticsearch ensures that any event that is sent to APM Server
+// eventually ends up within an Elasticsearch index.  The index name varies between versions.
+// APM Server version < 8.x creates an index, and writes data to a named index.  APM Server
+// version >= 8.x writes documents to a datastream, and an index is auto-created.
+// This test step has to be eventual, as a transient issue happens when upgrading
 // Elasticsearch between major versions where it takes a bit of time to transition between
-// file-based user roles, and permissions errors were being returned by Elasticsearch.
-func (c *apmClusterChecks) CheckAPMUserPermissions(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
+// file-based user roles, and permissions errors are returned from Elasticsearch.
+func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
 	return test.Step{
-		Name: "ES Index should eventually be able to be created by APM Server user",
+		Name: "ApmServer should accept event and write data to Elasticsearch",
 		Test: test.Eventually(func() error {
-			if !apm.Spec.ElasticsearchRef.IsDefined() {
-				return nil
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
-			defer cancel()
-
-			managedNamespace := test.Ctx().ManagedNamespace(0)
-
-			var sec corev1.Secret
-			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Name + "-apm-user", Namespace: managedNamespace}, &sec); err != nil {
-				return errors.Wrap(err, "while getting apm user secret")
-			}
-
-			usernameKey := fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name)
-			b, ok := sec.Data[usernameKey]
-			if !ok {
-				return fmt.Errorf("secret data did not contain key %s", usernameKey)
-			}
-			password := string(b)
-
-			var es esv1.Elasticsearch
-			if err := k.Client.Get(ctx, types.NamespacedName{Name: apm.Spec.ElasticsearchRef.Name, Namespace: apm.Spec.ElasticsearchRef.Namespace}, &es); err != nil {
-				return errors.Wrap(err, "while getting associated Elasticsearch cluster")
-			}
-
-			esClient, err := elasticsearch.NewElasticsearchClientWithUser(es, k, client.BasicAuth{
-				Name:     fmt.Sprintf("%s-%s-apm-user", managedNamespace, apm.Name),
-				Password: password,
-			})
-			if err != nil {
+			if err := c.checkEventsAPI(apm); err != nil {
 				return err
 			}
-
-			// default to < 8.x Elasticsearch APM Server index names
-			indexName := "apm-testindex-" + rand.String(4)
-
-			r, err := http.NewRequestWithContext(
-				ctx,
-				http.MethodPut,
-				fmt.Sprintf("/%s", indexName),
-				nil,
-			)
-			if err != nil {
-				return errors.Wrap(err, "while creating new http request")
-			}
-
-			// If the ES version is >= 8.x, then the index name must change to a datastream,
-			// and we only have permissions to auto-create indexes on index document requests,
-			// not explicitly create index requests.
-			if version.MustParse(es.Spec.Version).GE(version.MinFor(8, 0, 0)) {
-				indexName = "metrics-apm.testindex-" + rand.String(4)
-
-				r, err = http.NewRequestWithContext(
-					ctx,
-					http.MethodPost,
-					fmt.Sprintf("/%s/_doc/", indexName),
-					strings.NewReader(`{"@timestamp": "2022-03-22T00:00:00.000Z","message": "test_message"}`),
-				)
-				if err != nil {
-					return errors.Wrap(err, "while creating new http request")
-				}
-			}
-
-			res, err := esClient.Request(ctx, r)
-			if err != nil {
-				return errors.Wrap(err, "while executing http request")
-			}
-
-			defer res.Body.Close()
-			// we should receive either a 200 (index creation), or 201 (index doc request)
-			// from Elasticsearch
-			if res.StatusCode > 201 {
-				return fmt.Errorf("expected http 200/201 response code when creating index, got %d", res.StatusCode)
+			if err := c.checkEventsInElasticsearch(apm, k); err != nil {
+				return err
 			}
 			return nil
 		}),
 	}
 }
 
-//nolint:thelper
-func (c *apmClusterChecks) CheckEventsAPI(apm apmv1.ApmServer) test.Step {
+func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
 	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
 { "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
 { "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
-
-	return test.Step{
-		Name: "Events should be accepted",
-		Test: func(t *testing.T) {
-			// before sending event, get the document count in the metric, and error index
-			// and save, as it is used to calculate how many docs should be in the index after
-			// the event is sent through APM Server.
-			metricIndex, errorIndex, err := getIndexNames(apm)
-			require.NoError(t, err)
-
-			var count int
-			count, err = countIndex(c.esClient, metricIndex)
-			// 404 is acceptable in this scenario, as the index may not exist yet.
-			if err != nil && !client.IsNotFound(err) {
-				require.NoError(t, err)
-			}
-			c.metricIndexCount = count
-
-			count, err = countIndex(c.esClient, errorIndex)
-			// 404 is acceptable in this scenario, as the index may not exist yet.
-			if err != nil && !client.IsNotFound(err) {
-				require.NoError(t, err)
-			}
-			c.errorIndexCount = count
-
-			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
-			defer cancel()
-			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
-			require.NoError(t, err)
-
-			// in the happy case, we get no error response
-			assert.Nil(t, eventsErrorResponse)
-			if eventsErrorResponse != nil {
-				// provide more details:
-				assert.Equal(t, 2, eventsErrorResponse.Accepted)
-				assert.Len(t, eventsErrorResponse.Errors, 0)
-			}
-		},
+	// before sending event, get the document count in the metric, and error index
+	// and save, as it is used to calculate how many docs should be in the index after
+	// the event is sent through APM Server.
+	metricIndex, errorIndex, err := getIndexNames(apm)
+	if err != nil {
+		return err
 	}
+
+	var count int
+	count, err = countIndex(c.esClient, metricIndex)
+	// 404 is acceptable in this scenario, as the index may not exist yet.
+	if err != nil && !client.IsNotFound(err) {
+		return err
+	}
+	c.metricIndexCount = count
+
+	count, err = countIndex(c.esClient, errorIndex)
+	// 404 is acceptable in this scenario, as the index may not exist yet.
+	if err != nil && !client.IsNotFound(err) {
+		return err
+	}
+	c.errorIndexCount = count
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+	defer cancel()
+	eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
+	if err != nil {
+		return err
+	}
+
+	// in the happy case, we get no error response
+	if eventsErrorResponse != nil {
+		return fmt.Errorf("expected no error response when sending event to apm server got: %v", *eventsErrorResponse)
+	}
+
+	return nil
 }
 
 func (c *apmClusterChecks) CheckRUMEventsAPI(rumEnabled bool) test.Step {
@@ -298,33 +223,29 @@ type CountResult struct {
 
 // CheckEventsInElasticsearch checks that the events sent in the previous step have been stored.
 // We only count document to not rely on the internal schema of the APM Server.
-func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Events should eventually show up in Elasticsearch",
-		Test: test.Eventually(func() error {
-			// Fetch the last version of the APM Server
-			var updatedApmServer apmv1.ApmServer
-			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
-				return err
-			}
+func (c *apmClusterChecks) checkEventsInElasticsearch(apm apmv1.ApmServer, k *test.K8sClient) error {
+	return retry.UntilSuccess(func() error {
+		var updatedApmServer apmv1.ApmServer
+		if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+			return err
+		}
 
-			if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
-				// No ES is referenced, do not try to check data
-				return nil
-			}
+		if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
+			// No ES is referenced, do not try to check data
+			return nil
+		}
 
-			metricIndex, errorIndex, err := getIndexNames(updatedApmServer)
-			if err != nil {
-				return err
-			}
+		metricIndex, errorIndex, err := getIndexNames(updatedApmServer)
+		if err != nil {
+			return err
+		}
 
-			if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
-				return err
-			}
+		if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
+			return err
+		}
 
-			return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
-		}),
-	}
+		return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
+	}, 5*time.Minute, 5*time.Second)
 }
 
 // getIndexNames will return the names of the metric, and error indexes, depending on
@@ -333,7 +254,6 @@ func getIndexNames(apm apmv1.ApmServer) (string, string, error) {
 	var metricIndex, errorIndex string
 	v, err := version.Parse(apm.Spec.Version)
 	if err != nil {
-		fmt.Printf("couldn't parse the apmserver version: %s", err)
 		return metricIndex, errorIndex, err
 	}
 

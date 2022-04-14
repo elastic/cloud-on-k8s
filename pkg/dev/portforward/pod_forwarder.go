@@ -189,7 +189,7 @@ func (f *PodForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 
 // Run starts a port forwarder and blocks until either the port forwarding fails or the context is done.
 func (f *PodForwarder) Run(ctx context.Context) error {
-	log.Info("Running port-forwarder for", "addr", f.addr)
+	log.V(1).Info("Running port-forwarder for", "addr", f.addr)
 	defer log.Info("No longer running port-forwarder for", "addr", f.addr)
 
 	// used as a safeguard to ensure we only close the init channel once
@@ -266,7 +266,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 		case <-readyChan:
 			f.viaAddr = "127.0.0.1:" + localPort
 
-			log.Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
+			log.V(1).Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
 
 			// wrap this in a sync.Once because it will panic if it happens more than once, which it may if our
 			// outer function returned just as readyChan was closed.
