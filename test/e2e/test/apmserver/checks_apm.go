@@ -136,10 +136,7 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 			if err := c.checkEventsAPI(apm); err != nil {
 				return err
 			}
-			if err := c.checkEventsInElasticsearch(apm, k); err != nil {
-				return err
-			}
-			return nil
+			return c.checkEventsInElasticsearch(apm, k)
 		}),
 	}
 }
