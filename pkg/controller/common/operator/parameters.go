@@ -26,8 +26,8 @@ type Parameters struct {
 	Dialer net.Dialer
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
-	// CA is a, optionally configured, globally shared CA to be used for all managed resources.
-	CA *certificates.CA
+	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.
+	GlobalCA *certificates.CA
 	// CACertRotation defines the rotation params for CA certificates.
 	CACertRotation certificates.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.

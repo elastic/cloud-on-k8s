@@ -52,7 +52,7 @@ func ReconcileOrRetrieveCA(
 		return nil, err
 	}
 	// 1. No custom certs are specified, reconcile our internal self-signed CA instead (probably the common case)
-	// or return the shared CA
+	// or return the shared global CA
 	if customCASecret == nil {
 		if globalCA != nil {
 			return globalCA, nil

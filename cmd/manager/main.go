@@ -141,9 +141,9 @@ func Command() *cobra.Command {
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
 	cmd.Flags().String(
-		operator.CAFlag,
+		operator.CADirFlag,
 		"",
-		"Path to a CA certificate (tls.crt) and private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation options.",
+		"Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation options.",
 	)
 	cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
@@ -328,7 +328,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 
 	// watch for CA files if configured
-	caDir := viper.GetString(operator.CAFlag)
+	caDir := viper.GetString(operator.CADirFlag)
 	if caDir != "" {
 		toWatch = append(toWatch,
 			filepath.Join(caDir, certificates.KeyFileName),
@@ -512,7 +512,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// Retrieve shared CA if any
-	ca, err := readOptionalCA(viper.GetString(operator.CAFlag))
+	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
 	if err != nil {
 		log.Error(err, "Invalid CA")
 		return err
@@ -579,7 +579,7 @@ func startOperator(ctx context.Context) error {
 		IPFamily:          ipFamily,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
-		CA:                ca,
+		GlobalCA:          ca,
 		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,

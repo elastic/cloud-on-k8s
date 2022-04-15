@@ -8,13 +8,14 @@ package certificates
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildCAFromFile(t *testing.T) {
@@ -57,7 +58,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       nil,
-			wantErrMsg: "Cannot parse PEM cert",
+			wantErrMsg: "cannot parse PEM cert",
 		},
 		{
 			name: "corrupted key",
@@ -66,7 +67,7 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "corrupted.key",
 			},
 			want:       nil,
-			wantErrMsg: "Cannot parse private key",
+			wantErrMsg: "cannot parse private key",
 		},
 		{
 			name: "multiple certs",
@@ -106,6 +107,12 @@ func TestBuildCAFromFile(t *testing.T) {
 }
 
 func Test_detectCAFileNames(t *testing.T) {
+	// special case directory does not exist
+	_, _, err := detectCAFileNames("/does/not/exist")
+	require.Error(t, err)
+	require.Equal(t, "global CA directory /does/not/exist does not exist", err.Error())
+
+	// tests based on an existing directory
 	tests := []struct {
 		name     string
 		files    []string

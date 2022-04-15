@@ -201,7 +201,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		Namer:                 entv1.Namer,
 		Labels:                Labels(ent.Name),
 		Services:              []corev1.Service{*svc},
-		GlobalCA:              r.CA,
+		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
 		GarbageCollectSecrets: true,

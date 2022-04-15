@@ -230,7 +230,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		Namer:                 Namer,
 		Labels:                NewLabels(as.Name),
 		Services:              []corev1.Service{*svc},
-		GlobalCA:              r.CA,
+		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
 		GarbageCollectSecrets: true,

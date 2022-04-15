@@ -21,7 +21,7 @@ func TestNewFileWatcher(t *testing.T) {
 	requireEventEquals := func(c chan []string, expected []string, timeout time.Duration) {
 		select {
 		case event := <-c:
-			require.Equal(t, expected, event)
+			require.ElementsMatch(t, expected, event)
 		case <-time.After(timeout):
 			require.Fail(t, "no event observed")
 		}
@@ -42,6 +42,7 @@ func TestNewFileWatcher(t *testing.T) {
 	file1 := filepath.Join(dir, "file1")
 	file2 := filepath.Join(dir, "file2")
 	file3 := filepath.Join(dir, "file3")
+	file4 := filepath.Join(dir, "file4")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -56,7 +57,7 @@ func TestNewFileWatcher(t *testing.T) {
 	require.NoError(t, ioutil.WriteFile(file2, []byte("contents"), 0644))
 
 	// setup watcher
-	watcher := NewFileWatcher(ctx, []string{file1, file2, file3}, onChange, 1*time.Millisecond)
+	watcher := NewFileWatcher(ctx, []string{file1, file2, file3, file4}, onChange, 1*time.Millisecond)
 
 	// file 1 and 3 is only created afterwards
 	require.NoError(t, ioutil.WriteFile(file1, []byte("contents"), 0644))
@@ -67,6 +68,10 @@ func TestNewFileWatcher(t *testing.T) {
 	go watcher.Run()
 
 	requireEventEquals(events, []string{file1, file3}, 1*time.Second)
+
+	// create a new file 4 once the watcher has been started
+	require.NoError(t, ioutil.WriteFile(file4, []byte("contents"), 0644))
+	requireEventEquals(events, []string{file4}, 1*time.Second)
 
 	// update file 2
 	require.NoError(t, ioutil.WriteFile(file2, []byte("new contents"), 0644))

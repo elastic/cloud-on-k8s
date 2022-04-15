@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -236,28 +237,38 @@ func internalSecretForCA(
 }
 
 func detectCAFileNames(path string) (string, string, error) {
-	files := map[string]bool{
-		CertFileName:  false,
-		KeyFileName:   false,
-		CAFileName:    false,
-		CAKeyFileName: false,
+	dirExists, err := fs.FileExists(path)
+	if err != nil {
+		return "", "", err
 	}
-	for f := range files {
+	if !dirExists {
+		return "", "", fmt.Errorf("global CA directory %s does not exist", path)
+	}
+
+	caFiles := []string{CAFileName, CAKeyFileName}
+	tlsFiles := []string{CertFileName, KeyFileName}
+	existsInDirectory := map[string]bool{}
+	for _, f := range append(caFiles, tlsFiles...) {
 		exists, err := fs.FileExists(filepath.Join(path, f))
 		if err != nil {
 			return "", "", err
 		}
-		files[f] = exists
+		existsInDirectory[f] = exists
 	}
 	switch {
-	case (files[CertFileName] || files[KeyFileName]) && files[CAKeyFileName]:
+	case (existsInDirectory[CertFileName] || existsInDirectory[KeyFileName]) && existsInDirectory[CAKeyFileName]:
 		return "", "", fmt.Errorf("both tls.* and ca.* files exist, configuration error")
-	case files[CAFileName] && files[CAKeyFileName]:
+	case existsInDirectory[CAFileName] && existsInDirectory[CAKeyFileName]:
 		return filepath.Join(path, CAFileName), filepath.Join(CAKeyFileName), nil
-	case files[CertFileName] && files[KeyFileName]:
+	case existsInDirectory[CertFileName] && existsInDirectory[KeyFileName]:
 		return filepath.Join(path, CertFileName), filepath.Join(path, KeyFileName), nil
 	}
-	return "", "", fmt.Errorf("no CA certificate files found: %+v", files)
+	return "", "",
+		fmt.Errorf(
+			"no CA certificate files found in %s, expecting one of the following key pair: (%s) or (%s)",
+			path,
+			strings.Join(caFiles, ","),
+			strings.Join(tlsFiles, ","))
 }
 
 func BuildCAFromFile(path string) (*CA, error) {
@@ -272,7 +283,7 @@ func BuildCAFromFile(path string) (*CA, error) {
 	}
 	certs, err := ParsePEMCerts(bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Cannot parse PEM cert from %s", certFile)
+		return nil, errors.Wrapf(err, "cannot parse PEM cert from %s", certFile)
 	}
 
 	if len(certs) == 0 {
@@ -290,7 +301,7 @@ func BuildCAFromFile(path string) (*CA, error) {
 	}
 	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Cannot parse private key from PEM file %s", privateKeyFile)
+		return nil, errors.Wrapf(err, "cannot parse private key from PEM file %s", privateKeyFile)
 	}
 	return NewCA(privateKey, cert), nil
 }
@@ -307,7 +318,7 @@ func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	certs, err := ParsePEMCerts(caBytes)
 	if err != nil {
-		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
+		log.Error(err, "cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil
 	}
 	if len(certs) == 0 {

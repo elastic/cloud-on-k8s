@@ -6,7 +6,7 @@ package operator
 
 const (
 	AutoPortForwardFlag           = "auto-port-forward"
-	CAFlag                        = "ca"
+	CADirFlag                     = "ca-dir"
 	CACertRotateBeforeFlag        = "ca-cert-rotate-before"
 	CACertValidityFlag            = "ca-cert-validity"
 	CertRotateBeforeFlag          = "cert-rotate-before"

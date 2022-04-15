@@ -7,6 +7,7 @@ package fs
 import (
 	"context"
 	"os"
+	"sync"
 	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -18,37 +19,40 @@ var log = logf.Log.WithName("fs-watcher")
 type FileWatcher struct {
 	ctx      context.Context
 	onChange func([]string)
-	period   time.Duration
+	interval time.Duration
 	cache    fileModTimeCache
+	once     sync.Once
 }
 
 // NewFileWatcher creates a new file watcher, use ctx context for cancellation, paths to specify the files to watch.
 // onChange is a callback to be invoked when changes are detected, a list of affected files will be passed as argument.
-// period determines how often the file watcher will try to detect changes to the files of interest.
-func NewFileWatcher(ctx context.Context, paths []string, onChange func([]string), period time.Duration) *FileWatcher {
+// interval determines how often the file watcher will try to detect changes to the files of interest.
+func NewFileWatcher(ctx context.Context, paths []string, onChange func([]string), interval time.Duration) *FileWatcher {
 	return &FileWatcher{
 		ctx:      ctx,
 		onChange: onChange,
-		period:   period,
+		interval: interval,
 		cache:    newFileModTimeCache(paths),
 	}
 }
 
 // Run starts the file watcher. Should be typically run inside a go routine.
 func (fw *FileWatcher) Run() {
-	ticker := time.NewTicker(fw.period)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-fw.ctx.Done():
-			return
-		case <-ticker.C:
-			updated := fw.cache.Update()
-			if len(updated) > 0 {
-				fw.onChange(updated)
+	fw.once.Do(func() {
+		ticker := time.NewTicker(fw.interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-fw.ctx.Done():
+				return
+			case <-ticker.C:
+				updated := fw.cache.Update()
+				if len(updated) > 0 {
+					fw.onChange(updated)
+				}
 			}
 		}
-	}
+	})
 }
 
 type fileModTimeCache map[string]time.Time
@@ -67,11 +71,14 @@ func (fmc fileModTimeCache) Update() []string {
 	for f, prev := range fmc {
 		stat, err := os.Stat(f)
 		if err != nil {
-			if os.IsNotExist(err) && !prev.IsZero() {
+			switch {
+			case os.IsNotExist(err) && !prev.IsZero():
 				// file was deleted
 				updated = append(updated, f)
 				fmc[f] = time.Time{}
-			} else {
+			case os.IsNotExist(err):
+				// file does not exist can be ignored
+			default:
 				log.Error(err, "while getting file info", "file", f, "err", err.Error())
 			}
 			continue
