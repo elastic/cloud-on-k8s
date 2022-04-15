@@ -281,11 +281,11 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 func (r *ReconcileApmServer) warnIfDeprecated(version semver.Version, as *apmv1.ApmServer) {
 	if version.GTE(semver.MustParse("8.0.0")) {
-		message := "The standalone APM Server binary is deprecated as of version 8.0.0 and will be removed in a future release.  Consider using Elastic Agent in Fleet-managed mode."
+		message := "The standalone APM Server binary is deprecated as of version 8.0.0 and will be removed in a future release. Consider using Elastic Agent in Fleet-managed mode."
 		log.Info(
 			message,
 			"namespace", as.Namespace,
-			"es_name", as.Name,
+			"as_name", as.Name,
 		)
 		r.Recorder().Eventf(as, corev1.EventTypeWarning, events.EventReasonValidation, message)
 	}
