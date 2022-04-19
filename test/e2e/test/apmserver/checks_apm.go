@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -221,28 +219,26 @@ type CountResult struct {
 // CheckEventsInElasticsearch checks that the events sent in the previous step have been stored.
 // We only count document to not rely on the internal schema of the APM Server.
 func (c *apmClusterChecks) checkEventsInElasticsearch(apm apmv1.ApmServer, k *test.K8sClient) error {
-	return retry.UntilSuccess(func() error {
-		var updatedApmServer apmv1.ApmServer
-		if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
-			return err
-		}
+	var updatedApmServer apmv1.ApmServer
+	if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+		return err
+	}
 
-		if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
-			// No ES is referenced, do not try to check data
-			return nil
-		}
+	if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
+		// No ES is referenced, do not try to check data
+		return nil
+	}
 
-		metricIndex, errorIndex, err := getIndexNames(updatedApmServer)
-		if err != nil {
-			return err
-		}
+	metricIndex, errorIndex, err := getIndexNames(updatedApmServer)
+	if err != nil {
+		return err
+	}
 
-		if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
-			return err
-		}
+	if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
+		return err
+	}
 
-		return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
-	}, 5*time.Minute, 5*time.Second)
+	return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
 }
 
 // getIndexNames will return the names of the metric, and error indexes, depending on
