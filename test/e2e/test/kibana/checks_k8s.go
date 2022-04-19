@@ -107,7 +107,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			)
 		}
-		if b.Kibana.Spec.HTTP.TLS.Enabled() && !b.SharedCA {
+		if b.Kibana.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: kbName + "-kb-http-ca-internal",

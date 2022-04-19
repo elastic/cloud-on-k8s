@@ -26,7 +26,7 @@ type Builder struct {
 	Kibana                   kbv1.Kibana
 	ExternalElasticsearchRef commonv1.ObjectSelector
 	MutatedFrom              *Builder
-	SharedCA                 bool
+	GlobalCA                 bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -38,7 +38,7 @@ func (b Builder) DeepCopy() *Builder {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
 	builderCopy.ExternalElasticsearchRef = b.ExternalElasticsearchRef
-	builderCopy.SharedCA = b.SharedCA
+	builderCopy.GlobalCA = b.GlobalCA
 	return &builderCopy
 }
 
@@ -197,8 +197,8 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
-func (b Builder) WithSharedCA(v bool) Builder {
-	b.SharedCA = v
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
 	return b
 }
 

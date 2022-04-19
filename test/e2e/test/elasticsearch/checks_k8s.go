@@ -69,7 +69,7 @@ func CheckHTTPCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 		Skip: func() bool {
-			return b.SharedCA
+			return b.GlobalCA
 		},
 	}
 }
@@ -87,7 +87,7 @@ func CheckTransportCertificateAuthority(b Builder, k *test.K8sClient) test.Step 
 			return nil
 		}),
 		Skip: func() bool {
-			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() || b.SharedCA
+			return b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() || b.GlobalCA
 		},
 	}
 }
@@ -159,7 +159,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
 		}
 		// check internal TLS CA if no user provided CA is spec'ed
-		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() && !b.SharedCA {
+		if !b.Elasticsearch.Spec.Transport.TLS.UserDefinedCA() && !b.GlobalCA {
 			expected = append(expected, test.ExpectedSecret{
 				Name: esName + "-es-transport-ca-internal",
 				Keys: []string{"tls.crt", "tls.key"},
@@ -170,8 +170,8 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			})
 		}
 
-		// unless a shared CA is used a CA secret should exist for the HTTP layer
-		if !b.SharedCA {
+		// unless a globally shared CA is used a CA secret should exist for the HTTP layer
+		if !b.GlobalCA {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: esName + "-es-http-ca-internal",

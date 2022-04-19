@@ -32,20 +32,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
-func TestSharedCA(t *testing.T) {
+func TestGlobalCA(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 	name := "shared-ca"
 	es := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithSharedCA(true)
+		WithGlobalCA(true)
 	kb := kibana.NewBuilder(name).
 		WithNodeCount(1).
 		WithElasticsearchRef(es.Ref()).
-		WithSharedCA(true)
+		WithGlobalCA(true)
 	ent := enterprisesearch.NewBuilder(name).
 		WithNodeCount(1).
 		WithElasticsearchRef(es.Ref()).
-		WithSharedCA(true)
+		WithGlobalCA(true)
 	testPod := beat.NewPodBuilder(name)
 	agent := elasticagent.NewBuilder(name).
 		WithRoles(elasticagent.PSPClusterRoleName).
@@ -77,11 +77,11 @@ func TestSharedCA(t *testing.T) {
 	// then on update re-configure the operator to go back to self-signed certificates and verify that applications are
 	// reconfigured. Because this is not a real resource update we need to do trickery with the builders to avoid steps that
 	// check for update rollout (e.g. observed generation or hash changes)
-	kbUpd := kb.DeepCopy().WithSharedCA(false)
-	entUpd := ent.DeepCopy().WithSharedCA(false)
+	kbUpd := kb.DeepCopy().WithGlobalCA(false)
+	entUpd := ent.DeepCopy().WithGlobalCA(false)
 
 	esUpd := test.WrappedBuilder{
-		BuildingThis: es.DeepCopy().WithSharedCA(false),
+		BuildingThis: es.DeepCopy().WithGlobalCA(false),
 		PreMutationSteps: func(k *test.K8sClient) test.StepList {
 			return test.StepList{
 				{

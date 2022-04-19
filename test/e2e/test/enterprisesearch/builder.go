@@ -31,7 +31,7 @@ var (
 type Builder struct {
 	EnterpriseSearch entv1.EnterpriseSearch
 	MutatedFrom      *Builder
-	SharedCA         bool
+	GlobalCA         bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -42,7 +42,7 @@ func (b Builder) DeepCopy() *Builder {
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
-	builderCopy.SharedCA = b.SharedCA
+	builderCopy.GlobalCA = b.GlobalCA
 	return &builderCopy
 }
 
@@ -159,8 +159,8 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
-func (b Builder) WithSharedCA(v bool) Builder {
-	b.SharedCA = v
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
 	return b
 }
 

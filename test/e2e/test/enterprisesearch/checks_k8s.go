@@ -66,7 +66,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			)
 		}
 
-		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() && !b.SharedCA {
+		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: entName + "-ent-http-ca-internal",

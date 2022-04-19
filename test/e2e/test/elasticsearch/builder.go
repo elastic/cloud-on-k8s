@@ -55,7 +55,7 @@ type Builder struct {
 	// In such a situation the actual resources may diverge from what was originally specified in the builder.
 	expectedElasticsearch *esv1.Elasticsearch
 
-	SharedCA bool
+	GlobalCA bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -69,7 +69,7 @@ func (b Builder) DeepCopy() *Builder {
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
-	builderCopy.SharedCA = b.SharedCA
+	builderCopy.GlobalCA = b.GlobalCA
 	return &builderCopy
 }
 
@@ -202,8 +202,8 @@ func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	return b
 }
 
-func (b Builder) WithSharedCA(v bool) Builder {
-	b.SharedCA = v
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
 	return b
 }
 
