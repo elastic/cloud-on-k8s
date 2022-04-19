@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -229,6 +230,7 @@ func (t *TanzuDriver) create() error {
 	if err := t.dockerizedTanzuCmd("management-cluster", "create", "--file", cfgPathInContainer).Run(); err != nil {
 		return err
 	}
+
 	log.Println("Creating workload cluster")
 	if err := t.dockerizedTanzuCmd("cluster", "create", t.plan.ClusterName, "--file", cfgPathInContainer).Run(); err != nil {
 		return err
@@ -349,49 +351,57 @@ func (t *TanzuDriver) loginToAzure() error {
 // loginToContainerRegistry we use a private container registry to make the Tanzu CLI available in CI.
 func (t *TanzuDriver) loginToContainerRegistry() error {
 	log.Println("Logging in to container registry")
-	return exec.NewCommand("az acr login --name {{.ContainerRegistry}}").
-		AsTemplate(map[string]interface{}{
-			"ContainerRegistry": t.acrName,
-		}).Run()
+	// the Azure CLI image we use does not have a Docker client installed thus we extract a token here ...
+	jsonResp, err := azure.Cmd("acr", "login", "--name", t.acrName, "--expose-token").
+		StdoutOnly().WithoutStreaming().Output()
+	if err != nil {
+		return err
+	}
+
+	var loginDetails struct {
+		AccessToken string `json:"accessToken"`
+		LoginServer string `json:"loginServer"`
+	}
+	if err := json.Unmarshal([]byte(jsonResp), &loginDetails); err != nil {
+		return err
+	}
+	// ... and do a manual docker login with the extracted token in the context of the CI image/your local dev machine instead
+	return exec.NewCommand("docker login -u 00000000-0000-0000-0000-000000000000 -p {{.Token}} {{.Registry}}").AsTemplate(
+		map[string]interface{}{
+			"Token":    loginDetails.AccessToken,
+			"Registry": loginDetails.LoginServer,
+		},
+	).WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) installAzureStoragePreview() error {
 	log.Println("Installing Azure storage-preview extension")
-	return exec.NewCommand("az extension add --name storage-preview -y").Run()
+	return azure.Cmd("extension add --name storage-preview -y").Run()
 }
 
 // ensureResourceGroup checks for the existence of an Azure resource group (which we name unless overridden after the
 // cluster we want to deploy)
 func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
-	exists, err := exec.NewCommand("az group exists --name {{.ResourceGroup}}").
-		AsTemplate(map[string]interface{}{
-			"ResourceGroup": t.plan.Tanzu.ResourceGroup,
-		}).WithoutStreaming().OutputContainsAny("true")
+	exists, err := azure.Cmd("group", "exists", "--name", t.plan.Tanzu.ResourceGroup).
+		WithoutStreaming().OutputContainsAny("true")
 	if err != nil || exists {
 		return false, err
 	}
 	log.Println("Creating Azure resource group")
-	err = exec.NewCommand("az group create -l {{.Location}} --name {{.ResourceGroup}}").
-		AsTemplate(map[string]interface{}{
-			"Location":      t.plan.Tanzu.Location,
-			"ResourceGroup": t.plan.Tanzu.ResourceGroup,
-		}).WithoutStreaming().Run()
+	err = azure.Cmd("group", "create", "-l", t.plan.Tanzu.Location, "--name", t.plan.Tanzu.ResourceGroup).
+		WithoutStreaming().Run()
 	return true, err
 }
 
 func (t *TanzuDriver) deleteResourceGroup() error {
 	log.Println("Deleting Azure resource group")
-	return exec.NewCommand("az group delete --name {{.ResourceGroup}} -y").AsTemplate(map[string]interface{}{
-		"ResourceGroup": t.plan.Tanzu.ResourceGroup,
-	}).Run()
+	return azure.Cmd("group", "delete", "--name", t.plan.Tanzu.ResourceGroup, "-y").
+		Run()
 }
 
 func (t *TanzuDriver) storageContainerExists() (bool, error) {
-	return azure.ExistsCmd(exec.NewCommand("az storage container exists --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
-		AsTemplate(map[string]interface{}{
-			"StorageAccount":   t.azureStorageAccount,
-			"StorageContainer": t.plan.ClusterName,
-		}))
+	return azure.ExistsCmd(azure.Cmd("storage", "container", "exists",
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login"))
 }
 
 func (t *TanzuDriver) ensureStorageContainer() error {
@@ -404,40 +414,31 @@ func (t *TanzuDriver) ensureStorageContainer() error {
 		return nil
 	}
 	log.Println("Creating new storage container to persist installer state")
-	return exec.NewCommand("az storage container create --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
-		AsTemplate(map[string]interface{}{
-			"StorageAccount":   t.azureStorageAccount,
-			"StorageContainer": t.plan.ClusterName,
-		}).WithoutStreaming().Run()
+	return azure.Cmd("storage", "container", "create",
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login").
+		WithoutStreaming().Run()
 }
 
 func (t TanzuDriver) deleteStorageContainer() error {
 	log.Println("Deleting Azure storage container")
-	return exec.NewCommand("az storage container delete --account-name {{.StorageAccount}} --name {{.StorageContainer}} --auth login").
-		AsTemplate(map[string]interface{}{
-			"StorageAccount":   t.azureStorageAccount,
-			"StorageContainer": t.plan.ClusterName,
-		}).WithoutStreaming().Run()
+	return azure.Cmd("storage", "container", "delete",
+		"--account-name", t.azureStorageAccount, "--name", t.plan.ClusterName, "--auth", "login").
+		WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) persistInstallerState() error {
 	log.Println("Persisting installer state to Azure storage container")
-	return exec.NewCommand(`az storage azcopy blob sync -c {{.StorageContainer}} --account-name {{.StorageAccount}} -s "{{.InstallerStateDir}}"`).
-		AsTemplate(map[string]interface{}{
-			"StorageAccount":    t.azureStorageAccount,
-			"StorageContainer":  t.plan.ClusterName,
-			"InstallerStateDir": t.installerStateDirPath,
-		}).WithoutStreaming().Run()
+	return azure.Cmd("storage", "azcopy", "blob", "sync",
+		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount, "-s", t.installerStateDirPath).
+		WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) restoreInstallerState() error {
 	log.Println("Restoring installer state from storage container if any")
-	return exec.NewCommand(`az storage azcopy blob download -c {{.StorageContainer}} --account-name {{.StorageAccount}} -s '*' -d "{{.InstallerStateDir}}" --recursive`).
-		AsTemplate(map[string]interface{}{
-			"StorageAccount":    t.azureStorageAccount,
-			"StorageContainer":  t.plan.ClusterName,
-			"InstallerStateDir": t.installerStateDirPath,
-		}).WithoutStreaming().Run()
+	return azure.Cmd("storage", "azcopy", "blob", "download",
+		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
+		"-s", "'*'", "-d", t.installerStateDirPath, "--recursive").
+		WithoutStreaming().Run()
 }
 
 var _ Driver = &TanzuDriver{}
