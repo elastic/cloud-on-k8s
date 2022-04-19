@@ -18103,11 +18103,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.5.1
-Time    : 2021-09-22T20:26:12Z
+Version : v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
+Time    : 2022-01-06T19:14:15Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.6.0-dev.0.20220106191415-9b9b3d81d5e3/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -18362,11 +18362,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.1.8
-Time    : 2021-12-02T03:25:35Z
+Version : v0.1.10
+Time    : 2022-03-15T13:54:34Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.1.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.1.10/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 

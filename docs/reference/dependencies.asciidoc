@@ -170,14 +170,14 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.6.0 | MIT
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20200224162631-6cc2880d07d6 | BSD-3-Clause
 | link:https://golang.org/x/lint[$$golang.org/x/lint$$] | v0.0.0-20210508222113-6edffad5e616 | BSD-3-Clause
-| link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.5.1 | BSD-3-Clause
+| link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220412020605-290c469a71a5 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220411215720-9780585627b5 | BSD-3-Clause
 | link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220412211240-33da011f77ad | BSD-3-Clause
 | link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210927222741-03fcf44c2211 | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.7 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20210723032227-1f47c861a9ac | BSD-3-Clause
-| link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.1.8 | BSD-3-Clause
+| link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.1.10 | BSD-3-Clause
 | link:https://golang.org/x/xerrors[$$golang.org/x/xerrors$$] | v0.0.0-20220411194840-2f41105eb62f | BSD-3-Clause
 | link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.2.0 | Apache-2.0
 | link:https://github.com/gonum/gonum[$$gonum.org/v1/gonum$$] | v0.0.0-20181121035319-3f7ecaa7e8ca | BSD-3-Clause
