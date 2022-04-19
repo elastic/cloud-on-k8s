@@ -31,7 +31,7 @@ type EnterpriseLicense struct {
 	License LicenseSpec `json:"license"`
 }
 
-type LicenseSpec struct {
+type LicenseSpec struct { //nolint:revive
 	Status             string                 `json:"status,omitempty"`
 	UID                string                 `json:"uid"`
 	Type               OperatorLicenseType    `json:"type"`
@@ -118,7 +118,7 @@ func (l *EnterpriseLicense) GetOperatorLicenseType() OperatorLicenseType {
 }
 
 // LicenseStatus expresses the validity status of a license.
-type LicenseStatus string
+type LicenseStatus string //nolint:revive
 
 // Supported LicenseStatus values.
 const (

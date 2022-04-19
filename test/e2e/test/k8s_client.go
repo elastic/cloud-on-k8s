@@ -149,8 +149,8 @@ func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOptio
 	if err != nil {
 		return err
 	}
-	actualCount := len(pods)
-	if expectedCount != actualCount {
+
+	if actualCount := len(pods); expectedCount != actualCount {
 		return fmt.Errorf("invalid node count: expected %d, got %d", expectedCount, actualCount)
 	}
 	return nil

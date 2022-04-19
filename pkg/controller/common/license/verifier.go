@@ -267,8 +267,7 @@ func writeInt(buffer *bytes.Buffer, i int) error {
 
 func readInt(r io.Reader, i *uint32) error {
 	out := make([]byte, 4)
-	_, err := io.ReadFull(r, out)
-	if err != nil {
+	if _, err := io.ReadFull(r, out); err != nil {
 		return err
 	}
 	*i = binary.BigEndian.Uint32(out)
