@@ -27,6 +27,14 @@ func TestNewFileWatcher(t *testing.T) {
 		}
 	}
 
+	allowOptionalEvent := func(c chan []string, expected []string, timeout time.Duration) {
+		select {
+		case event := <-c:
+			require.ElementsMatch(t, expected, event)
+		case <-time.After(timeout):
+		}
+	}
+
 	requireNoEvent := func(c chan []string, timeout time.Duration) {
 		select {
 		case event := <-c:
@@ -72,10 +80,14 @@ func TestNewFileWatcher(t *testing.T) {
 	// create a new file 4 once the watcher has been started
 	require.NoError(t, ioutil.WriteFile(file4, []byte("contents"), 0644))
 	requireEventEquals(events, []string{file4}, 1*time.Second)
+	// sometimes mtime is changed more than once on write apparently
+	allowOptionalEvent(events, []string{file4}, 100*time.Millisecond)
 
 	// update file 2
 	require.NoError(t, ioutil.WriteFile(file2, []byte("new contents"), 0644))
 	requireEventEquals(events, []string{file2}, 1*time.Second)
+	// sometimes mtime is changed more than once on write apparently
+	allowOptionalEvent(events, []string{file2}, 100*time.Millisecond)
 
 	// remove file1
 	require.NoError(t, os.Remove(file1))
