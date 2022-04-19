@@ -50,7 +50,7 @@ internal:
   createOperatorNamespace: false
   kubeVersion: {{ .KubernetesVersion }}
 
-# mount an empty secret for tests that exercise the shared CA functionality
+# mount an empty secret for tests that exercise the globally shared CA functionality
 # tests can then update the secret contents as needed and reconfigure the operator
 volumes:
   - name: ca-placeholder

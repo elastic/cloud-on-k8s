@@ -511,7 +511,7 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	// Retrieve shared CA if any
+	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
 	if err != nil {
 		log.Error(err, "Invalid CA")

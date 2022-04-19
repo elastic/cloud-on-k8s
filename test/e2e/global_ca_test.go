@@ -34,7 +34,7 @@ import (
 
 func TestGlobalCA(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
-	name := "shared-ca"
+	name := "global-ca"
 	es := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithGlobalCA(true)
