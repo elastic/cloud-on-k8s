@@ -13,7 +13,7 @@ require (
 	github.com/go-test/deep v1.0.8
 	github.com/gobuffalo/flect v0.2.5
 	github.com/google/go-cmp v0.5.7
-	github.com/google/go-containerregistry v0.8.0
+	github.com/google/go-containerregistry v0.8.1-0.20220414154538-570ba6c88a50
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/vault/api v1.5.0
@@ -57,7 +57,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/dgryski/go-gk v0.0.0-20140819190930-201884a44051 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/elastic/go-licenser v0.3.1 // indirect

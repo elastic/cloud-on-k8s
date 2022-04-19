@@ -29,7 +29,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/go-test/deep[$$github.com/go-test/deep$$] | v1.0.8 | MIT
 | link:https://github.com/gobuffalo/flect[$$github.com/gobuffalo/flect$$] | v0.2.5 | MIT
 | link:https://github.com/google/go-cmp[$$github.com/google/go-cmp$$] | v0.5.7 | BSD-3-Clause
-| link:https://github.com/google/go-containerregistry[$$github.com/google/go-containerregistry$$] | v0.8.0 | Apache-2.0
+| link:https://github.com/google/go-containerregistry[$$github.com/google/go-containerregistry$$] | v0.8.1-0.20220414154538-570ba6c88a50 | Apache-2.0
 | link:https://github.com/google/uuid[$$github.com/google/uuid$$] | v1.3.0 | BSD-3-Clause
 | link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.1.1 | MPL-2.0
 | link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.5.0 | MPL-2.0
@@ -70,7 +70,6 @@ This page lists the third-party dependencies used to build {n}.
 |===
 | Name | Version | Licence
 
-| link:https://cloud.google.com/go[$$cloud.google.com/go$$] | v0.100.2 | Apache-2.0
 | link:https://cloud.google.com/go/compute[$$cloud.google.com/go/compute$$] | v1.5.0 | Apache-2.0
 | link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.1 | Apache-2.0
 | link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.1.1 | MIT
@@ -78,14 +77,12 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/armon/go-radix[$$github.com/armon/go-radix$$] | v1.0.0 | MIT
 | link:https://github.com/benbjohnson/clock[$$github.com/benbjohnson/clock$$] | v1.1.0 | MIT
 | link:https://github.com/beorn7/perks[$$github.com/beorn7/perks$$] | v1.0.1 | MIT
-| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.1+incompatible | MIT
 | link:https://github.com/bmizerany/perks[$$github.com/bmizerany/perks$$] | v0.0.0-20141205001514-d9a9656a3a4b | MIT
 | link:https://github.com/cenkalti/backoff[$$github.com/cenkalti/backoff/v3$$] | v3.0.0 | MIT
-| link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash$$] | v1.1.0 | MIT
 | link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash/v2$$] | v2.1.2 | MIT
 | link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20200319235926-a69029f61654 | MIT
 | link:https://github.com/docker/cli[$$github.com/docker/cli$$] | v20.10.12+incompatible | Apache-2.0
-| link:https://github.com/docker/distribution[$$github.com/docker/distribution$$] | v2.7.1+incompatible | Apache-2.0
+| link:https://github.com/docker/distribution[$$github.com/docker/distribution$$] | v2.8.0+incompatible | Apache-2.0
 | link:https://github.com/docker/docker[$$github.com/docker/docker$$] | v20.10.12+incompatible | Apache-2.0
 | link:https://github.com/docker/docker-credential-helpers[$$github.com/docker/docker-credential-helpers$$] | v0.6.4 | MIT
 | link:https://github.com/elastic/go-licenser[$$github.com/elastic/go-licenser$$] | v0.3.1 | Apache-2.0
@@ -142,6 +139,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/moby/spdystream[$$github.com/moby/spdystream$$] | v0.2.0 | Apache-2.0
 | link:https://github.com/modern-go/concurrent[$$github.com/modern-go/concurrent$$] | v0.0.0-20180306012644-bacd9c7ef1dd | Apache-2.0
 | link:https://github.com/modern-go/reflect2[$$github.com/modern-go/reflect2$$] | v1.0.2 | Apache-2.0
+| link:https://github.com/niemeyer/pretty[$$github.com/niemeyer/pretty$$] | v0.0.0-20200227124842-a10e7caefd8e | MIT
 | link:https://github.com/nxadm/tail[$$github.com/nxadm/tail$$] | v1.4.8 | MIT
 | link:https://github.com/oklog/run[$$github.com/oklog/run$$] | v1.0.0 | Apache-2.0
 | link:https://github.com/onsi/ginkgo[$$github.com/onsi/ginkgo$$] | v1.16.5 | MIT
@@ -161,7 +159,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/spf13/cast[$$github.com/spf13/cast$$] | v1.4.1 | MIT
 | link:https://github.com/spf13/jwalterweatherman[$$github.com/spf13/jwalterweatherman$$] | v1.1.0 | MIT
 | link:https://github.com/streadway/quantile[$$github.com/streadway/quantile$$] | v0.0.0-20150917103942-b0c588724d25 | BSD-2-Clause
-| link:https://github.com/stretchr/objx[$$github.com/stretchr/objx$$] | v0.2.0 | MIT
+| link:https://github.com/stretchr/objx[$$github.com/stretchr/objx$$] | v0.1.1 | MIT
 | link:https://github.com/subosito/gotenv[$$github.com/subosito/gotenv$$] | v1.2.0 | MIT
 | link:https://go.elastic.co/apm/module/apmhttp[$$go.elastic.co/apm/module/apmhttp$$] | v1.15.0 | Apache-2.0
 | link:https://go.elastic.co/fastjson[$$go.elastic.co/fastjson$$] | v1.1.0 | MIT
@@ -185,12 +183,11 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://google.golang.org/genproto[$$google.golang.org/genproto$$] | v0.0.0-20220407144326-9054f6ed7bac | Apache-2.0
 | link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.45.0 | Apache-2.0
 | link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.28.0 | BSD-3-Clause
-| link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause
+| link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20200227125254-8fa46927fb4f | BSD-2-Clause
 | link:https://gopkg.in/inf.v0[$$gopkg.in/inf.v0$$] | v0.9.1 | BSD-3-Clause
 | link:https://gopkg.in/ini.v1[$$gopkg.in/ini.v1$$] | v1.66.4 | Apache-2.0
 | link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.5.1 | Apache-2.0
 | link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
-| link:https://gotest.tools[$$gotest.tools$$] | v2.2.0+incompatible | Apache-2.0
 | link:https://gotest.tools/v3[$$gotest.tools/v3$$] | v3.0.3 | Apache-2.0
 | link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
 | link:https://github.com/kubernetes/apiextensions-apiserver[$$k8s.io/apiextensions-apiserver$$] | v0.23.5 | Apache-2.0
