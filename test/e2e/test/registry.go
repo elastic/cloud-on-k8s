@@ -119,7 +119,7 @@ func getDigest(image container.Image, tag string) (string, error) {
 		Path:   fmt.Sprintf("/v2/%s/manifests/%s", image, tag),
 	}
 
-	req, err := http.NewRequest("GET", uri.String(), nil)
+	req, err := http.NewRequest("GET", uri.String(), nil) //nolint:noctx
 	if err != nil {
 		return "", err
 	}
@@ -131,6 +131,7 @@ func getDigest(image container.Image, tag string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
 	// Assert that we get a 200, otherwise attempt to parse body as a structured error.
 	if err := transport.CheckError(resp, http.StatusOK); err != nil {
