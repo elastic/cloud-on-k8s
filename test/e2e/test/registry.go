@@ -16,12 +16,13 @@ import (
 	"k8s.io/client-go/util/retry"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 var imagesDigestsSingleton *imagesDigests
