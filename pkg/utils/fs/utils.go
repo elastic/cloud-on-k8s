@@ -7,8 +7,7 @@ package fs
 import "os"
 
 func FileExists(file string) (bool, error) {
-	_, err := os.Stat(file)
-	if err != nil && os.IsNotExist(err) {
+	if _, err := os.Stat(file); err != nil && os.IsNotExist(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err

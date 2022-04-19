@@ -170,8 +170,8 @@ func Test_detectCAFileNames(t *testing.T) {
 				t.Errorf(fmt.Sprintf("want err %v got %v,files: %v ", tt.wantErr, err, tt.files))
 			}
 			if err == nil {
-				assert.Equalf(t, tt.wantCert, filepath.Base(cert), "detectCAFileNames(), files: %v", tt.files)
-				assert.Equalf(t, tt.wantKey, filepath.Base(key), "detectCAFileNames(), files: %v", tt.files)
+				assert.Equalf(t, filepath.Join(dir, tt.wantCert), cert, "detectCAFileNames(), files: %v", tt.files)
+				assert.Equalf(t, filepath.Join(dir, tt.wantKey), key, "detectCAFileNames(), files: %v", tt.files)
 			}
 		})
 	}

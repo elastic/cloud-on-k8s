@@ -259,7 +259,7 @@ func detectCAFileNames(path string) (string, string, error) {
 	case (existsInDirectory[CertFileName] || existsInDirectory[KeyFileName]) && existsInDirectory[CAKeyFileName]:
 		return "", "", fmt.Errorf("both tls.* and ca.* files exist, configuration error")
 	case existsInDirectory[CAFileName] && existsInDirectory[CAKeyFileName]:
-		return filepath.Join(path, CAFileName), filepath.Join(CAKeyFileName), nil
+		return filepath.Join(path, CAFileName), filepath.Join(path, CAKeyFileName), nil
 	case existsInDirectory[CertFileName] && existsInDirectory[KeyFileName]:
 		return filepath.Join(path, CertFileName), filepath.Join(path, KeyFileName), nil
 	}
