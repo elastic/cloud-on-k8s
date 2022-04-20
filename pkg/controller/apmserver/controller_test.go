@@ -6,6 +6,7 @@ package apmserver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -501,7 +502,11 @@ func withAssociationConf(apm apmv1.ApmServer, conf commonv1.AssociationConf) *ap
 		association.AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"elastic", "caSecretName": "ca-secret", "url":"https://es.svc:9200"}`,
 	})
 	associated := association.Associated()
-	return associated.(*apmv1.ApmServer)
+	apmserver, ok := associated.(*apmv1.ApmServer)
+	if !ok {
+		panic(fmt.Sprintf("expected *apmv1.ApmServer, got: %T", associated))
+	}
+	return apmserver
 }
 
 func withName(apm apmv1.ApmServer, name string) *apmv1.ApmServer {
