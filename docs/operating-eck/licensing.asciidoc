@@ -110,7 +110,8 @@ The operator periodically writes the total amount of Elastic resources under man
   "enterprise_resource_units": "1",
   "max_enterprise_resource_units": "10",
   "timestamp": "2020-01-03T23:38:20Z",
-  "total_managed_memory": "3.22GB"
+  "total_managed_memory": "64GiB",
+  "total_managed_memory_bytes": "68719476736"
 }
 ----
 

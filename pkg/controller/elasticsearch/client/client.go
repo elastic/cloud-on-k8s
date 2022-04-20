@@ -73,7 +73,7 @@ type Client interface {
 	EnableShardAllocation(ctx context.Context) error
 	// RemoveTransientAllocationSettings removes allocation filters and enablement settings.
 	RemoveTransientAllocationSettings(ctx context.Context) error
-	//nolint:gocritic
+
 	// SyncedFlush requests a synced flush on the cluster. Deprecated in 7.6, removed in 8.0.
 	// This is "best-effort", see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush.html.
 	SyncedFlush(ctx context.Context) error

@@ -107,6 +107,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			ems.Status.Selector = ""
+			ems.Status.ObservedGeneration = 0
 
 			// don't check the association status that may vary across tests
 			ems.Status.AssociationStatus = ""

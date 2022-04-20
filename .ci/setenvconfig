@@ -124,7 +124,7 @@ write_stack_version_def <<ENV
     "kind": "FleetServer",
     "image": "${FLEET_SERVER_IMAGE:-}",
     "version": "${FLEET_SERVER_VERSION:-}"
-  }
+  },
   {
     "kind": "EnterpriseSearch",
     "image": "${ENTERPRISE_SEARCH_IMAGE:-}",

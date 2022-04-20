@@ -41,7 +41,7 @@ func GetTemplateHashLabel(labels map[string]string) string {
 // and the spew library to print the object (see WriteHashObject).
 // This is inspired by controller revisions in StatefulSets:
 // https://github.com/kubernetes/kubernetes/blob/8de1569ddae62e8fab559fe6bd210a5d6100a277/pkg/controller/history/controller_history.go#L89-L101
-func HashObject(object interface{}) string {
+func HashObject(object interface{}) string { //nolint:revive
 	objHash := fnv.New32a()
 	WriteHashObject(objHash, object)
 	return fmt.Sprint(objHash.Sum32())

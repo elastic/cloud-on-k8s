@@ -99,8 +99,7 @@ func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, err
 		return nil, err
 	}
 
-	secrets := append(userSecrets.Items, serviceAccountSecrets.Items...)
-	return secrets, nil
+	return append(userSecrets.Items, serviceAccountSecrets.Items...), nil
 }
 
 // DoGarbageCollection runs the User garbage collector.

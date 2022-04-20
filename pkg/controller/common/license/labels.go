@@ -21,7 +21,7 @@ const (
 	LicenseInvalidAnnotation = "license.k8s.elastic.co/invalid"
 )
 
-type LicenseScope string
+type LicenseScope string //nolint:revive
 
 const (
 	LicenseScopeOperator      LicenseScope = "operator"

@@ -12,6 +12,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
 )
 
 const (
@@ -42,9 +45,9 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key" //nolint:gosec
-	credentialsTemplate = `[default]
+	awsAccessKeyID     = "aws_access_key_id"
+	awsSecretAccessKey = "aws_secret_access_key" //nolint:gosec
+	awsAuthTemplate    = `[default]
 %s = %s
 %s = %s`
 )
@@ -61,12 +64,12 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 		plan: plan,
 		ctx: map[string]interface{}{
 			"ClusterName":       plan.ClusterName,
-			"Region":            plan.EKS.Region,
+			"Region":            plan.Eks.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"NodeCount":         plan.EKS.NodeCount,
+			"NodeCount":         plan.Eks.NodeCount,
 			"MachineType":       plan.MachineType,
-			"NodeAMI":           plan.EKS.NodeAMI,
-			"WorkDir":           plan.EKS.WorkDir,
+			"NodeAMI":           plan.Eks.NodeAMI,
+			"WorkDir":           plan.Eks.WorkDir,
 		},
 	}, nil
 }
@@ -79,8 +82,8 @@ type EKSDriver struct {
 	ctx     map[string]interface{}
 }
 
-func (e *EKSDriver) newCmd(cmd string) *Command {
-	return NewCommand(cmd).
+func (e *EKSDriver) newCmd(cmd string) *exec.Command {
+	return exec.NewCommand(cmd).
 		AsTemplate(e.ctx)
 }
 
@@ -111,7 +114,7 @@ func (e *EKSDriver) Execute() error {
 			if err := template.Must(template.New("").Parse(clusterCreationTemplate)).Execute(&createCfg, e.ctx); err != nil {
 				return fmt.Errorf("while formatting cluster create cfg %w", err)
 			}
-			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
+			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
@@ -186,7 +189,7 @@ func (e *EKSDriver) auth() error {
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
 func (e *EKSDriver) fetchSecrets() error {
-	client, err := NewClient(*e.plan.VaultInfo)
+	client, err := vault.NewClient(*e.plan.VaultInfo)
 	if err != nil {
 		return err
 	}
@@ -223,7 +226,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 		return nil
 	}
 	log.Printf("Writing aws credentials")
-	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
+	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
 	return ioutil.WriteFile(file, []byte(fileContents), 0600)
 }
 

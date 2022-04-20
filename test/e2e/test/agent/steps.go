@@ -266,7 +266,3 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.Agent, k, isMutated, agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation))
 }
-
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
-}

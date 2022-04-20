@@ -67,7 +67,7 @@ func HTTPCertSecretVolume(namer name.Namer, name string) volume.SecretVolume {
 	)
 }
 
-type CertificatesSecret struct {
+type CertificatesSecret struct { //nolint:revive
 	v1.Secret
 	ca *CA
 }

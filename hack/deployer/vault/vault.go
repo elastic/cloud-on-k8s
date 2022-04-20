@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package runner
+package vault
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-type VaultClient struct {
+type Client struct {
 	client      *api.Client
 	roleID      string
 	secretID    string
@@ -20,14 +20,22 @@ type VaultClient struct {
 	clientToken string
 }
 
-func NewClient(info VaultInfo) (*VaultClient, error) {
+type Info struct {
+	Address     string `yaml:"address"`
+	RoleId      string `yaml:"roleId"`   //nolint:revive
+	SecretId    string `yaml:"secretId"` //nolint:revive
+	Token       string `yaml:"token"`
+	ClientToken string `yaml:"clientToken"`
+}
+
+func NewClient(info Info) (*Client, error) {
 	// Timeout is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 	client, err := api.NewClient(&api.Config{Address: info.Address, Timeout: 120 * time.Second})
 	if err != nil {
 		return nil, err
 	}
 
-	return &VaultClient{
+	return &Client{
 		client:      client,
 		roleID:      info.RoleId,
 		secretID:    info.SecretId,
@@ -37,7 +45,7 @@ func NewClient(info VaultInfo) (*VaultClient, error) {
 }
 
 // auth fetches the auth token using approle (with role id and secret id) or github (with token)
-func (v *VaultClient) auth() error {
+func (v *Client) auth() error {
 	if v.client.Token() != "" {
 		return nil
 	}
@@ -80,7 +88,7 @@ func (v *VaultClient) auth() error {
 }
 
 // ReadIntoFile is a helper function used to read from Vault into file
-func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error {
+func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 	if err := v.auth(); err != nil {
 		return err
 	}
@@ -104,7 +112,7 @@ func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error
 }
 
 // Get fetches contents of a single field at a specified path in Vault
-func (v *VaultClient) Get(secretPath string, fieldName string) (string, error) {
+func (v *Client) Get(secretPath string, fieldName string) (string, error) {
 	result, err := v.GetMany(secretPath, fieldName)
 	if err != nil {
 		return "", err
@@ -115,7 +123,7 @@ func (v *VaultClient) Get(secretPath string, fieldName string) (string, error) {
 
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
-func (v *VaultClient) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
+func (v *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
 	if err := v.auth(); err != nil {
 		return nil, err
 	}

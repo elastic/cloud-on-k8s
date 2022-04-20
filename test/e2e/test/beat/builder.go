@@ -6,17 +6,18 @@ package beat
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	ghodssyaml "github.com/ghodss/yaml"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/stretchr/testify/require"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
@@ -50,6 +51,8 @@ type Builder struct {
 
 	// Suffix is the suffix that is added to e2e test resources
 	Suffix string
+
+	MutatedFrom *Builder
 }
 
 func (b Builder) SkipTest() bool {
@@ -110,7 +113,7 @@ func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
 	// for Beats we have to use the specific type as there are different Beats images within the one CRD kind.
 	// capitalize the Beat name to be consistent in spelling with the other CRD kinds.
-	def := test.Ctx().ImageDefinitionFor(strings.Title(typeStr))
+	def := test.Ctx().ImageDefinitionFor(cases.Title(language.Und).String(typeStr))
 	b.Beat.Spec.Type = typeStr
 	b.Beat.Spec.Version = def.Version
 	b.Beat.Spec.Image = def.Image
@@ -216,6 +219,11 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.Beat.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
 	return b
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -109,10 +110,16 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k).
+	var entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
+
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.EMS, k, &entSearchGenerationBeforeMutation, &entSearchObservedGenerationBeforeMutation),
+	}.WithSteps(test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.EMS, k, isMutated, entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation))
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

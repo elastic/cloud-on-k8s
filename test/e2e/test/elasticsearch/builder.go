@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -171,6 +173,9 @@ func (b Builder) WithNamespace(namespace string) Builder {
 
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
+	if strings.HasSuffix(version, "-SNAPSHOT") {
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	}
 	return b
 }
 

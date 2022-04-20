@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"k8s.io/client-go/tools/remotecommand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -148,8 +149,8 @@ func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOptio
 	if err != nil {
 		return err
 	}
-	actualCount := len(pods)
-	if expectedCount != actualCount {
+
+	if actualCount := len(pods); expectedCount != actualCount {
 		return fmt.Errorf("invalid node count: expected %d, got %d", expectedCount, actualCount)
 	}
 	return nil
@@ -350,8 +351,10 @@ func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
-func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
+func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
 	for _, obj := range objs {
+		// create a copy to ensure that the original object is not modified
+		obj := k8s.DeepCopyObject(obj)
 		// optimistic creation
 		err := k.Client.Create(context.Background(), obj)
 		if err != nil {

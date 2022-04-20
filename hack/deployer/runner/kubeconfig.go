@@ -11,6 +11,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
 func mergeKubeconfig(kubeConfig string) error {
@@ -25,7 +27,7 @@ func mergeKubeconfig(kubeConfig string) error {
 		return copyFile(kubeConfig, hostKubeconfig)
 	}
 	// 3. if there is existing configuration  attempt to merge both
-	merged, err := NewCommand("kubectl config view --flatten").
+	merged, err := exec.NewCommand("kubectl config view --flatten").
 		WithLog("Merging kubeconfig with").
 		WithoutStreaming().
 		WithVariable("KUBECONFIG", fmt.Sprintf("%s:%s", hostKubeconfig, kubeConfig)).
@@ -40,24 +42,24 @@ func removeKubeconfig(context, clusterName, userName string) error {
 	params := map[string]interface{}{
 		"Context": context,
 	}
-	if err := NewCommand("kubectl config get-contexts {{.Context}}").
+	if err := exec.NewCommand("kubectl config get-contexts {{.Context}}").
 		AsTemplate(params).Run(); err != nil {
 		// skip because the admin context does not exist in the kube config
 		return nil //nolint:nilerr
 	}
 
 	log.Printf("Removing context, user and cluster entry from kube config")
-	if err := NewCommand("kubectl config delete-context {{.Context}}").
+	if err := exec.NewCommand("kubectl config delete-context {{.Context}}").
 		AsTemplate(params).Run(); err != nil {
 		return err
 	}
-	if err := NewCommand("kubectl config unset users.{{.User}}").
+	if err := exec.NewCommand("kubectl config unset users.{{.User}}").
 		AsTemplate(map[string]interface{}{
 			"User": userName,
 		}).Run(); err != nil {
 		return err
 	}
-	return NewCommand("kubectl config delete-cluster {{.ClusterName}}").
+	return exec.NewCommand("kubectl config delete-cluster {{.ClusterName}}").
 		AsTemplate(map[string]interface{}{"ClusterName": clusterName}).
 		Run()
 }
@@ -67,5 +69,5 @@ func copyFile(src, tgt string) error {
 		return err
 	}
 	cmd := fmt.Sprintf("cp %s %s", src, tgt)
-	return NewCommand(cmd).WithoutStreaming().WithLog("Copying kubeconfig").Run()
+	return exec.NewCommand(cmd).WithoutStreaming().WithLog("Copying kubeconfig").Run()
 }

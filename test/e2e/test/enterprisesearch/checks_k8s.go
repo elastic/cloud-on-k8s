@@ -117,7 +117,9 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				}); err != nil {
 				return err
 			}
+			// don't check status fields that may vary across tests
 			ent.Status.Selector = ""
+			ent.Status.ObservedGeneration = 0
 
 			expected := entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{

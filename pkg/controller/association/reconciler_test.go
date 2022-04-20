@@ -108,8 +108,9 @@ var (
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: kibanaNamespace,
-				Name:      "kbname",
+				Namespace:         kibanaNamespace,
+				Name:              "kbname",
+				CreationTimestamp: metav1.Now(),
 			},
 		}
 	}
@@ -635,9 +636,9 @@ func TestReconciler_Reconcile_CustomServiceRef(t *testing.T) {
 	require.Empty(t, r.watches.ReferencedResources.Registrations())
 	// run the reconciliation
 	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	// expect an error due to the missing service
-	require.Error(t, err)
-	// also expect a re-queue to be scheduled
+	// don't expect an error due to the missing service
+	require.NoError(t, err)
+	// expect a re-queue to be scheduled
 	require.Equal(t, defaultRequeue, results)
 
 	// create the missing service

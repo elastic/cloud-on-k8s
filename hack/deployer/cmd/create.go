@@ -33,21 +33,21 @@ func CreateCommand() *cobra.Command {
 			}
 			var cfgData string
 			switch provider {
-			case runner.GkeDriverID:
+			case runner.GKEDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
 				}
 
-				cfgData = fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
-			case runner.AksDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultGKERunConfigTemplate, user, gCloudProject)
+			case runner.AKSDriverID:
 				resourceGroup, err := GetEnvVar("RESOURCE_GROUP")
 				if err != nil {
 					return err
 				}
 
-				cfgData = fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
-			case runner.OcpDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultAKSRunConfigTemplate, user, resourceGroup)
+			case runner.OCPDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
@@ -58,7 +58,7 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				cfgData = fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
+				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject, pullSecret)
 			case runner.EKSDriverID:
 				// optional variable for local dev use
 				token, _ := os.LookupEnv("GITHUB_TOKEN")

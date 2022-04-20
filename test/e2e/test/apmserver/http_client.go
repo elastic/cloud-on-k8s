@@ -137,12 +137,12 @@ func (c *ApmClient) request(
 
 // ApmServerInfo is a partial encoding of the Server Info response.
 // See https://www.elastic.co/guide/en/apm/server/current/server-info.html for more details.
-type ApmServerInfo struct {
+type ApmServerInfo struct { //nolint:revive
 	// Version is the version of the Apm Server
 	Version string `json:"version"`
 }
 
-type ApmServerInfo6 struct {
+type ApmServerInfo6 struct { //nolint:revive
 	// OK contains the ApmServerInfo
 	OK ApmServerInfo `json:"ok"`
 }
