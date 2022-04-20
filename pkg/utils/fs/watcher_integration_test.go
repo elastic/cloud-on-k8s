@@ -61,7 +61,7 @@ func TestNewFileWatcher(t *testing.T) {
 		events <- paths
 	}
 
-	// file 2 exists before is setup
+	// file 2 exists before watcher is set up
 	require.NoError(t, ioutil.WriteFile(file2, []byte("contents"), 0644))
 
 	// setup watcher

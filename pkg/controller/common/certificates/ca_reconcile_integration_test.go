@@ -85,14 +85,12 @@ func TestBuildCAFromFile(t *testing.T) {
 				key: "tls.key",
 			},
 			want:       nil,
-			wantErrMsg: "did not contain any certificates",
+			wantErrMsg: "does not contain any certificates",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir, err := ioutil.TempDir("testdata", "ca-from-file")
-			defer os.RemoveAll(tempDir)
-			require.NoError(t, err)
+			tempDir := t.TempDir()
 			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.ca), filepath.Join(tempDir, CertFileName)))
 			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.key), filepath.Join(tempDir, KeyFileName)))
 
@@ -158,9 +156,7 @@ func Test_detectCAFileNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "detect_ca_file_names")
-			require.NoError(t, err)
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 			for _, f := range tt.files {
 				require.NoError(t, ioutil.WriteFile(filepath.Join(dir, f), []byte("contents"), 0644))
 			}

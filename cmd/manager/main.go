@@ -143,7 +143,7 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.CADirFlag,
 		"",
-		"Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation options.",
+		"Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation and validity options.",
 	)
 	cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
@@ -514,7 +514,7 @@ func startOperator(ctx context.Context) error {
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
 	if err != nil {
-		log.Error(err, "Invalid CA")
+		log.Error(err, "Cannot read global CA")
 		return err
 	}
 

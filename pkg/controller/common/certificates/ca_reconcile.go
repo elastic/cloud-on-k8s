@@ -271,6 +271,8 @@ func detectCAFileNames(path string) (string, string, error) {
 			strings.Join(tlsFiles, ","))
 }
 
+// BuildCAFromFile reads and parses a CA and its associated private from files under path. Two naming conventions are supported:
+// tls.key and tls.crt or ca.key and ca.crt for private key and certificate respectively.
 func BuildCAFromFile(path string) (*CA, error) {
 	certFile, privateKeyFile, err := detectCAFileNames(path)
 	if err != nil {
@@ -287,7 +289,7 @@ func BuildCAFromFile(path string) (*CA, error) {
 	}
 
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("PEM %s file did not contain any certificates", certFile)
+		return nil, fmt.Errorf("PEM %s file does not contain any certificates", certFile)
 	}
 
 	if len(certs) > 1 {
