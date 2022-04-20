@@ -111,11 +111,11 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch-sample
-    config:
-      xpack.security.authc.providers:
-        saml.saml1:
-          order: 0
-          realm: "saml1"
+  config:
+    xpack.security.authc.providers:
+      saml.saml1:
+        order: 0
+        realm: "saml1"
 ----
 
 IMPORTANT: Your SAML users cannot login to Kibana until they are assigned roles. For more information, refer to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html#saml-role-mapping[the Configuring role mapping section] in the Stack SAML guide.
