@@ -2052,11 +2052,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.33.0
-Time    : 2022-03-28T12:03:30Z
+Version : v0.34.0
+Time    : 2022-04-19T15:11:58Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.33.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.34.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
