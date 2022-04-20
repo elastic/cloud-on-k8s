@@ -52,3 +52,4 @@ USER 1001
 
 ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]
+
