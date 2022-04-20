@@ -9,7 +9,7 @@ func RoundUp(numToRound, multiple int64) int64 {
 	if multiple == 0 {
 		return numToRound
 	}
-	r := numToRound % multiple //nolint:ifshort
+	r := numToRound % multiple
 	if r == 0 {
 		return numToRound
 	}

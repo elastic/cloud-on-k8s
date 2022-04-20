@@ -160,6 +160,56 @@ func TestWebhook(t *testing.T) {
 				`spec.version: Forbidden: Version downgrades are not supported`,
 			),
 		},
+		{
+			Name:      "named-es-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns", ServiceName: "essvc"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "secret-named-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-kibana-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Name: "kbname"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.kibanaRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-namespace",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
+			),
+		},
 	}
 
 	validator := &apmv1.ApmServer{}

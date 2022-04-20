@@ -172,8 +172,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allObjects := append(tt.args.objects, tt.args.es)
-			k8sClient := k8s.NewFakeClient(allObjects...)
+			k8sClient := k8s.NewFakeClient(append(tt.args.objects, tt.args.es)...)
 			got := annotatePodsWithNodeLabels(tt.args.ctx, k8sClient, *tt.args.es)
 			_, err := got.Aggregate()
 			if tt.wantErrMsg != "" {

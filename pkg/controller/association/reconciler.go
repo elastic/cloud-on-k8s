@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,7 +43,7 @@ var (
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
-type AssociationInfo struct {
+type AssociationInfo struct { //nolint:revive
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
 	// elasticsearch for Beat to Elasticsearch association)
 	AssociationType commonv1.AssociationType
@@ -70,7 +71,7 @@ type AssociationInfo struct {
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
-	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
+	ReferencedResourceVersion func(c k8s.Client, referencedResource commonv1.ObjectSelector) (string, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
 	// Beat resource).
@@ -209,12 +210,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	// we want to attempt a status update even in the presence of errors
-	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
-		if apierrors.IsConflict(err) {
-			log.V(1).Info("Conflict while updating status")
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
-		}
-		return defaultRequeue, tracing.CaptureError(ctx, err)
+	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil && apierrors.IsConflict(err) {
+		log.V(1).Info(
+			"Conflict while updating status",
+			"namespace", associatedKey.Namespace,
+			"name", associatedKey.Name)
+		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+	} else if err != nil {
+		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
@@ -223,7 +226,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), r.ReferencedObjTemplate())
+	assocRef := association.AssociationRef()
+
+	// the referenced object can be an Elastic resource or a custom Secret
+	referencedObj := r.ReferencedObjTemplate()
+	if assocRef.IsExternal() {
+		referencedObj = &corev1.Secret{}
+	}
+
+	// check if the referenced object exists
+	exists, err := k8s.ObjectExists(r.Client, assocRef.NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
@@ -232,13 +244,21 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	associationRef := association.AssociationRef()
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
+	if assocRef.IsExternal() {
+		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+		// external reference, update association conf to associate the unmanaged resource
+		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
+		if err != nil {
+			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
+			return commonv1.AssociationFailed, err
+		}
+		return r.updateAssocConf(ctx, &expectedAssocConf, association)
+	}
 
 	caSecret, err := r.ReconcileCASecret(
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
-		associationRef.NamespacedName(),
+		assocRef.NamespacedName(),
 	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
@@ -246,12 +266,17 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
 	if err != nil {
-		return commonv1.AssociationPending, err // maybe not created yet
+		// the Service may not have been created by the resource controller yet
+		if apierrors.IsNotFound(err) {
+			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+			return commonv1.AssociationPending, nil
+		}
+		return commonv1.AssociationPending, err
 	}
 
-	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
+	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
-	ver, err := r.ReferencedResourceVersion(r.Client, associationRef.NamespacedName())
+	ver, err := r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}
@@ -270,18 +295,27 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
 
-	// retrieve the Elasticsearch resource
-	// since it can be a transitive reference we need to use the provided ElasticsearchRef function
-	found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
+	// since Elasticsearch can be a transitive reference we need to use the provided ElasticsearchRef function
+	found, esAssocRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-	// the Elasticsearch resource does not exist yet, set status to Pending
+	// the Elasticsearch ref does not exist yet, set status to Pending
 	if !found {
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
 	}
 
-	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
+	if esAssocRef.IsExternal() {
+		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
+			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
+		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
+		expectedAssocConf.AuthSecretName = esAssocRef.SecretName
+		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
+	}
+
+	// retrieve the Elasticsearch resource
+	es, associationStatus, err := r.getElasticsearch(ctx, association, esAssocRef)
 	if associationStatus != "" || err != nil {
 		return associationStatus, err
 	}
@@ -297,6 +331,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 	// Detect if we should use a service account. If it is the case create the related Secrets and update the association
 	// configuration on the associated resource.
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
 	if len(serviceAccount) > 0 {
 		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
 		r.log(k8s.ExtractNamespacedName(association)).V(1).Info("Ensure service account exists", "sa", serviceAccount)

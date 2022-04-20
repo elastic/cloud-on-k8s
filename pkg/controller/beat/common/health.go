@@ -9,8 +9,8 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
-// CalculateHealth returns health of the Beat based on association status, desired count and ready count.
-func CalculateHealth(associations []v1.Association, ready, desired int32) (beatv1beta1.BeatHealth, error) {
+// calculateHealth returns health of the Beat based on association status, desired count and ready count.
+func calculateHealth(associations []v1.Association, ready, desired int32) (beatv1beta1.BeatHealth, error) {
 	for _, assoc := range associations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {

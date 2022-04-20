@@ -10,6 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
+
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +23,7 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultInfo *VaultInfo, vaultPath string, serviceAccountVaultFieldName string,
+	vaultInfo *vault.Info, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	//nolint:nestif
@@ -31,7 +34,7 @@ func authToGCP(
 
 		log.Println("Authenticating as service account...")
 
-		client, err := NewClient(*vaultInfo)
+		client, err := vault.NewClient(*vaultInfo)
 		if err != nil {
 			return err
 		}
@@ -47,23 +50,23 @@ func authToGCP(
 		}
 
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
-		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
+		if err := exec.NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
 			return err
 		}
 
-		if err := NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run(); err != nil {
+		if err := exec.NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run(); err != nil {
 			return err
 		}
 
 		if configureDocker {
-			return NewCommand("gcloud auth configure-docker").Run()
+			return exec.NewCommand("gcloud auth configure-docker").Run()
 		}
 
 		return nil
 	}
 
 	log.Println("Authenticating as user...")
-	accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
+	accounts, err := exec.NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
 	if err != nil {
 		return err
 	}
@@ -71,9 +74,9 @@ func authToGCP(
 		return nil
 	}
 
-	if err := NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
+	if err := exec.NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
 		return err
 	}
 
-	return NewCommand("gcloud auth login").Run()
+	return exec.NewCommand("gcloud auth login").Run()
 }

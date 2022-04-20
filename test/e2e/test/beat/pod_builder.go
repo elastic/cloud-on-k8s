@@ -263,8 +263,4 @@ func (pb PodBuilder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	panic("implement me")
 }
 
-func (pb PodBuilder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
-}
-
 var _ test.Builder = Builder{}

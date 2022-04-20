@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 )
@@ -169,4 +170,10 @@ func labelPod(client k8s.Client, name, namespace, key, value string) error {
 
 	pod.Labels[key] = value
 	return client.Update(context.Background(), &pod)
+}
+
+// IsGKE returns if the current Kubernetes cluster is a GKE cluster based on the Kubernetes version of the current test context.
+func IsGKE(v version.Version) bool {
+	// cloud providers append the name of the k8s platform in the version prefix (e.g.: 1.21.6-gke.1503)
+	return strings.Contains(v.String(), "gke")
 }

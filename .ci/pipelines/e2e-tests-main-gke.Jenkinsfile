@@ -15,6 +15,11 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
 
+    parameters {
+        string(name: "TESTS_MATCH", defaultValue: "^Test", description: "Regular expression to select which test cases to run")
+        string(name: "E2E_TAGS", defaultValue: "e2e", description: "Go build constraint to select a group of e2e tests. Supported values are: e2e, es, kb, beat, agent, ems, ent")
+    }
+
     environment {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
@@ -50,6 +55,10 @@ pipeline {
                 expression {
                     notOnlyDocs()
                 }
+            }
+            environment {
+                TESTS_MATCH = lib.extractValueByKey(env.ghprbCommentBody, "match", params.TESTS_MATCH)
+                E2E_TAGS = lib.extractValueByKey(env.ghprbCommentBody, "tags", params.E2E_TAGS)
             }
             steps {
                 sh '.ci/setenvconfig e2e/main'

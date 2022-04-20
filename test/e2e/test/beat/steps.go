@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -116,6 +117,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				// don't check association statuses that may vary across tests
 				beat.Status.ElasticsearchAssociationStatus = ""
 				beat.Status.KibanaAssociationStatus = ""
+				beat.Status.ObservedGeneration = 0
 
 				expected := beatv1beta1.BeatStatus{
 					Version: b.Beat.Spec.Version,
@@ -238,11 +240,13 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return b.UpgradeTestSteps(k).
-		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
-}
+	var beatGenerationBeforeMutation, beatObservedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.Beat, k, &beatGenerationBeforeMutation, &beatObservedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.Beat, k, isMutated, beatGenerationBeforeMutation, beatObservedGenerationBeforeMutation))
 }

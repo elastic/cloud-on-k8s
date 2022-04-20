@@ -360,8 +360,7 @@ type fakeClient struct {
 }
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	err := f.errors[key]
-	if err != nil {
+	if err := f.errors[key]; err != nil {
 		return err
 	}
 	return f.Client.Get(context.Background(), key, obj)

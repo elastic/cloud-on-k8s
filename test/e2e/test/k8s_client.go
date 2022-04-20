@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"k8s.io/client-go/tools/remotecommand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -148,8 +149,8 @@ func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOptio
 	if err != nil {
 		return err
 	}
-	actualCount := len(pods)
-	if expectedCount != actualCount {
+
+	if actualCount := len(pods); expectedCount != actualCount {
 		return fmt.Errorf("invalid node count: expected %d, got %d", expectedCount, actualCount)
 	}
 	return nil
@@ -265,7 +266,7 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
-// GetPVsByPods returns all the PersistentVolumeClaims associated to a list of pods
+// GetPVCsByPods returns all the PersistentVolumeClaims associated to a list of pods
 func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeClaim, error) {
 	pvcs := make([]corev1.PersistentVolumeClaim, len(pods))
 	for i, pod := range pods {
@@ -350,8 +351,10 @@ func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
-func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
+func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
 	for _, obj := range objs {
+		// create a copy to ensure that the original object is not modified
+		obj := k8s.DeepCopyObject(obj)
 		// optimistic creation
 		err := k.Client.Create(context.Background(), obj)
 		if err != nil {
@@ -482,4 +485,28 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 		}
 	}
 	return err
+}
+
+// GetFirstNodeExternalIP gets the external IP address of the first k8s node in the current k8s cluster.
+func (k K8sClient) GetFirstNodeExternalIP() (string, error) {
+	var nodes corev1.NodeList
+	if err := k.Client.List(context.Background(), &nodes); err != nil {
+		return "", err
+	}
+	if len(nodes.Items) < 1 {
+		return "", errors.New("no node found while listing nodes")
+	}
+
+	externalIP := ""
+	for _, adr := range nodes.Items[0].Status.Addresses {
+		if adr.Type == corev1.NodeExternalIP {
+			externalIP = adr.Address
+			break
+		}
+	}
+	if externalIP == "" {
+		return "", errors.New("no external IP found")
+	}
+
+	return externalIP, nil
 }

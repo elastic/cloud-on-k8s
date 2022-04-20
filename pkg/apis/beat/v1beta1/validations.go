@@ -23,6 +23,7 @@ var (
 		checkBeatType,
 		checkSingleConfigSource,
 		checkSpec,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -103,4 +104,10 @@ func checkSpec(b *Beat) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkAssociations(b *Beat) field.ErrorList {
+	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
+	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), b.Spec.KibanaRef)
+	return append(err1, err2...)
 }

@@ -31,9 +31,11 @@ import (
 )
 
 const (
+	// FleetServerPort is the standard Elastic Fleet Server port.
 	FleetServerPort int32 = 8220
 )
 
+// Params are a set of parameters used during internal reconciliation of Elastic Agents.
 type Params struct {
 	Context context.Context
 
@@ -41,23 +43,28 @@ type Params struct {
 	EventRecorder record.EventRecorder
 	Watches       watches.DynamicWatches
 
-	Agent agentv1alpha1.Agent
+	Agent  agentv1alpha1.Agent
+	Status agentv1alpha1.AgentStatus
 
 	OperatorParams operator.Parameters
 }
 
+// K8sClient returns the Kubernetes client.
 func (p Params) K8sClient() k8s.Client {
 	return p.Client
 }
 
+// Recorder returns the Kubernetes event recorder.
 func (p Params) Recorder() record.EventRecorder {
 	return p.EventRecorder
 }
 
+// DynamicWatches returns the set of stateful dynamic watches used during reconciliation.
 func (p Params) DynamicWatches() watches.DynamicWatches {
 	return p.Watches
 }
 
+// GetPodTemplate returns the configured pod template for the associated Elastic Agent.
 func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 	if p.Agent.Spec.DaemonSet != nil {
 		return p.Agent.Spec.DaemonSet.PodTemplate
@@ -66,29 +73,36 @@ func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
 	return p.Agent.Spec.Deployment.PodTemplate
 }
 
+// Logger returns the configured logger for use during reconciliation.
 func (p *Params) Logger() logr.Logger {
 	return log.FromContext(p.Context)
 }
 
-func internalReconcile(params Params) *reconciler.Results {
+func newStatus(agent agentv1alpha1.Agent) agentv1alpha1.AgentStatus {
+	status := agent.Status
+	status.ObservedGeneration = agent.Generation
+	return status
+}
+
+func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
 	agentVersion, err := version.Parse(params.Agent.Spec.Version)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	assocAllowed, err := association.AllowVersion(agentVersion, &params.Agent, params.Logger(), params.EventRecorder)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 	if !assocAllowed {
-		return results // will eventually retry
+		return results, params.Status // will eventually retry
 	}
 
 	svc, err := reconcileService(params)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	configHash := fnv.New32a()
@@ -110,24 +124,24 @@ func internalReconcile(params Params) *reconciler.Results {
 			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("*.%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
 		}.ReconcileCAAndHTTPCerts(params.Context)
 		if caResults.HasError() {
-			return results.WithResults(caResults)
+			return results.WithResults(caResults), params.Status
 		}
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
 	}
 	if res := reconcileConfig(params, configHash); res.HasError() {
-		return results.WithResults(res)
+		return results.WithResults(res), params.Status
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Agent will not be rolled on content changes
 	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Agent.GetAssociations(), configHash); err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
 
 	podTemplate, err := buildPodTemplate(params, fleetCerts, configHash)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), params.Status
 	}
-	return results.WithResults(reconcilePodVehicle(params, podTemplate))
+	return reconcilePodVehicle(params, podTemplate)
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {

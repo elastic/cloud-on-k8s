@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -134,6 +136,13 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
+func (b Builder) LocalRef() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
+		Name:      b.Elasticsearch.Name,
+		Namespace: b.Elasticsearch.Namespace,
+	}
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Elasticsearch.Name,
@@ -155,7 +164,7 @@ func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
 		append(b.Elasticsearch.Spec.RemoteClusters,
 			esv1.RemoteCluster{
 				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.Ref(),
+				ElasticsearchRef: remoteEs.LocalRef(),
 			})
 	return b
 }
@@ -167,6 +176,9 @@ func (b Builder) WithNamespace(namespace string) Builder {
 
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
+	if strings.HasSuffix(version, "-SNAPSHOT") {
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	}
 	return b
 }
 

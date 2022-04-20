@@ -13,17 +13,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	commonhash "github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// WriteAssocsToConfigHash dereferences auth and CA secrets (if any) to include it in the configHash.
+// WriteAssocsToConfigHash dereferences auth, CA and custom secrets (if any) to include it in the configHash.
 func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Association, configHash hash.Hash) error {
 	for _, assoc := range associations {
 		if err := writeAuthSecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
 		if err := writeCASecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
+		if err := writeUnmanagedSecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
 	}
@@ -82,5 +87,19 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 
 	_, _ = configHash.Write(certPem)
 
+	return nil
+}
+
+func writeUnmanagedSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
+	if !assoc.AssociationRef().IsExternal() {
+		return nil
+	}
+
+	info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, assoc.AssociationRef())
+	if err != nil {
+		return err
+	}
+
+	commonhash.WriteHashObject(configHash, info)
 	return nil
 }

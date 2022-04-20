@@ -90,7 +90,7 @@ func (psb *AutoscalingPolicyStatusBuilder) Build() AutoscalingPolicyStatus {
 			Type:     v.Type,
 			Messages: v.Messages,
 		}
-		i++ //nolint:wastedassign
+		i++
 	}
 	return AutoscalingPolicyStatus{
 		Name:                   psb.policyName,
@@ -158,7 +158,7 @@ func (psb *AutoscalingStatusBuilder) Build() Status {
 	i := 0
 	for _, policyStateBuilder := range psb.policyStatusBuilder {
 		policyStates[i] = policyStateBuilder.Build()
-		i++ //nolint:wastedassign
+		i++
 	}
 
 	return Status{

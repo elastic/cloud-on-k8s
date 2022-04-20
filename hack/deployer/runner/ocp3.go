@@ -11,15 +11,19 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
+
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	Ocp3DriverID = "ocp3"
+	OCP3DriverID = "ocp3"
 
 	// Field names of the SSH keys for GCP stored in Vault
-	Ocp3GCloudPrivateSSHKeyFieldName = "gcloud-ssh-private-key"
-	Ocp3GCloudPublicSSHKeyFieldName  = "gcloud-ssh-public-key"
+	OCP3GCloudPrivateSSHKeyFieldName = "gcloud-ssh-private-key"
+	OCP3GCloudPublicSSHKeyFieldName  = "gcloud-ssh-public-key"
 
 	// Ansible Docker image to manage OCP3 environments
 	AnsibleDockerImage = "eu.gcr.io/elastic-cloud-dev/ansible:d4910de"
@@ -30,25 +34,25 @@ const (
 	AnsibleOutputDirname      = "output"
 	AnsibleKubeconfigFilename = "config.openshift"
 
-	// Default OCP3 configuration for the k8s master
+	// Default Ocp3 configuration for the k8s master
 	MasterCount    = 1
 	MasterInstance = "n1-standard-2"
 )
 
 func init() {
-	drivers[Ocp3DriverID] = &Ocp3DriverFactory{}
+	drivers[OCP3DriverID] = &OCP3DriverFactory{}
 }
 
-type Ocp3DriverFactory struct {
+type OCP3DriverFactory struct {
 }
 
-type Ocp3Driver struct {
+type OCP3Driver struct {
 	plan Plan
 	ctx  map[string]interface{}
 }
 
-func (Ocp3DriverFactory) Create(plan Plan) (Driver, error) {
-	return &Ocp3Driver{
+func (OCP3DriverFactory) Create(plan Plan) (Driver, error) {
+	return &OCP3Driver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"ClusterName": plan.ClusterName,
@@ -56,11 +60,11 @@ func (Ocp3DriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-func (d Ocp3Driver) Execute() error {
+func (d OCP3Driver) Execute() error {
 	var err error
 
 	if err := authToGCP(
-		d.plan.VaultInfo, OcpVaultPath, OcpServiceAccountVaultFieldName,
+		d.plan.VaultInfo, OCPVaultPath, OCPServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, true, d.plan.Ocp3.GCloudProject,
 	); err != nil {
 		return err
@@ -102,26 +106,26 @@ func (d Ocp3Driver) Execute() error {
 	return err
 }
 
-func writeGCloudSSHKey(vaultInfo VaultInfo) error {
+func writeGCloudSSHKey(vaultInfo vault.Info) error {
 	log.Printf("Setting GCP SSH keys...")
 	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
 	_ = os.MkdirAll(sshDir, os.ModePerm)
 
-	client, err := NewClient(vaultInfo)
+	client, err := vault.NewClient(vaultInfo)
 	if err != nil {
 		return err
 	}
 
 	keyFileName := filepath.Join(sshDir, "google_compute_engine")
-	if err := client.ReadIntoFile(keyFileName, OcpVaultPath, Ocp3GCloudPrivateSSHKeyFieldName); err != nil {
+	if err := client.ReadIntoFile(keyFileName, OCPVaultPath, OCP3GCloudPrivateSSHKeyFieldName); err != nil {
 		return err
 	}
 	pubKeyFileName := filepath.Join(sshDir, "google_compute_engine.pub")
 
-	return client.ReadIntoFile(pubKeyFileName, OcpVaultPath, Ocp3GCloudPublicSSHKeyFieldName)
+	return client.ReadIntoFile(pubKeyFileName, OCPVaultPath, OCP3GCloudPublicSSHKeyFieldName)
 }
 
-func (d Ocp3Driver) writeAnsibleVarsFile() error {
+func (d OCP3Driver) writeAnsibleVarsFile() error {
 	log.Printf("Setting Ansible vars...")
 
 	vars := struct {
@@ -151,12 +155,12 @@ func (d Ocp3Driver) writeAnsibleVarsFile() error {
 	return nil
 }
 
-func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
-	log.Printf("Creating OCP3 cluster with Ansible in Docker...")
+func (d OCP3Driver) runAnsibleDockerContainer(action string) error {
+	log.Printf("Creating Ocp3 cluster with Ansible in Docker...")
 
 	params := map[string]interface{}{
 		"User":                AnsibleUser,
-		"HomeVolumeName":      SharedVolumeName(),
+		"HomeVolumeName":      env.SharedVolumeName(),
 		"HomeVolumeMountPath": AnsibleHomePath,
 		"GCloudCredsPath":     filepath.Join(AnsibleHomePath, GCPDir, ServiceAccountFilename),
 		"GCloudSDKPath":       filepath.Join(AnsibleHomePath, GCPDir),
@@ -167,7 +171,7 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 	}
 
 	// CLOUDSDK_CONFIG env var is passed as-is to make gcloud sdk directory consistent between the host and the container
-	return NewCommand(`docker run --rm \
+	return exec.NewCommand(`docker run --rm \
 		-e FORCED_GROUP_ID=1000 \
 		-e FORCED_USER_ID=1000 \
 		-e USER={{.User}} \
@@ -182,12 +186,12 @@ func (d Ocp3Driver) runAnsibleDockerContainer(action string) error {
 		{{.AnsibleDockerImage}}`).AsTemplate(params).Run()
 }
 
-func (Ocp3Driver) GetCredentials() error {
+func (OCP3Driver) GetCredentials() error {
 	kubeConfig := filepath.Join(os.Getenv("HOME"), AnsibleOutputDirname, AnsibleKubeconfigFilename)
 	log.Printf("copying %s to ~/.kube/config", kubeConfig)
 	if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".kube"), os.ModePerm); err != nil {
 		return err
 	}
 	cmd := fmt.Sprintf("cp %s ~/.kube/config", kubeConfig)
-	return NewCommand(cmd).WithoutStreaming().Run()
+	return exec.NewCommand(cmd).WithoutStreaming().Run()
 }

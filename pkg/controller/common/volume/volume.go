@@ -10,7 +10,7 @@ var (
 	defaultOptional = false
 )
 
-type VolumeLike interface {
+type VolumeLike interface { //nolint:revive
 	Name() string
 	Volume() corev1.Volume
 	VolumeMount() corev1.VolumeMount

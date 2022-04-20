@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -121,6 +122,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				agent.Status.ElasticsearchAssociationsStatus = nil
 				agent.Status.KibanaAssociationStatus = ""
 				agent.Status.FleetServerAssociationStatus = ""
+				agent.Status.ObservedGeneration = 0
 
 				expected := agentv1alpha1.AgentStatus{
 					Version: b.Agent.Spec.Version,
@@ -253,11 +255,14 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return b.UpgradeTestSteps(k).
-		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
-}
+	var agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation int64
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
+	isMutated := b.MutatedFrom != nil
+
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.Agent, k, isMutated, agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation))
 }

@@ -43,6 +43,8 @@ type Builder struct {
 	ValidationsOutputs []string
 	AdditionalObjects  []k8sclient.Object
 
+	MutatedFrom *Builder
+
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
 
@@ -104,6 +106,11 @@ type ValidationFunc func(client.Client) error
 
 func (b Builder) WithVersion(version string) Builder {
 	b.Agent.Spec.Version = version
+	return b
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
 	return b
 }
 

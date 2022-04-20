@@ -183,14 +183,14 @@ func (f *PodForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, f.viaErr
 	}
 
-	log.V(1).Info("Redirecting dial call", "addr", f.addr, "via", f.viaAddr)
+	log.V(2).Info("Redirecting dial call", "addr", f.addr, "via", f.viaAddr)
 	return f.dialerFunc(ctx, f.network, f.viaAddr)
 }
 
 // Run starts a port forwarder and blocks until either the port forwarding fails or the context is done.
 func (f *PodForwarder) Run(ctx context.Context) error {
-	log.Info("Running port-forwarder for", "addr", f.addr)
-	defer log.Info("No longer running port-forwarder for", "addr", f.addr)
+	log.V(2).Info("Running port-forwarder for", "addr", f.addr)
+	defer log.V(2).Info("No longer running port-forwarder for", "addr", f.addr)
 
 	// used as a safeguard to ensure we only close the init channel once
 	initCloser := sync.Once{}
@@ -207,7 +207,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 	defer runCtxCancel()
 
 	if f.clientset != nil {
-		log.V(1).Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
+		log.V(2).Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
 		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(ctx, metav1.ListOptions{
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
@@ -221,7 +221,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 				select {
 				case evt := <-w.ResultChan():
 					if evt.Type == watch.Deleted || evt.Type == watch.Error || evt.Type == "" {
-						log.V(1).Info(
+						log.V(2).Info(
 							"Pod is deleted or watch failed/closed, closing pod forwarder",
 							"namespace", f.podNSN.Namespace,
 							"pod_name", f.podNSN.Name,
@@ -266,7 +266,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 		case <-readyChan:
 			f.viaAddr = "127.0.0.1:" + localPort
 
-			log.Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
+			log.V(2).Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
 
 			// wrap this in a sync.Once because it will panic if it happens more than once, which it may if our
 			// outer function returned just as readyChan was closed.
