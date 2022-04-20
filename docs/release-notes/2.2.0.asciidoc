@@ -13,6 +13,7 @@
 
 * Report total managed memory in GiB and raw bytes {pull}5527[#5527] (issue: {issue}5465[#5465])
 * Use service accounts for Kibana and Fleet Server {pull}5468[#5468] (issue: {issue}5244[#5244])
+* Support custom Secret for associating external Elastic resources not managed by ECK {pull}5240[#5240] (issue: {issue}5078[#5078])
 
 [[bug-2.2.0]]
 [float]

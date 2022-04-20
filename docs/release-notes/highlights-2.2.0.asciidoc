@@ -9,6 +9,33 @@ New and notable changes in version 2.2.0 of {n}. Check <<release-notes-2.2.0>> f
 
 
 [float]
+[id="{p}-220-custom-secret-"]
+==== Associations with external Elastic Stack components
+
+ECK offers a convenient way to associate Elastic Stack resources together, but it requires them all to be managed by ECK in the same Kubernetes cluster.
+ECK 2.2.0 makes it possible to associate with external Elastic resources not managed by ECK using a custom Secret containing the connection information to this external resource.
+
+For example, you can now use an Elastic Cloud Elasticsearch cluster to monitor Elasticsearch clusters and Kibana instances managed by ECK by combining Stack Monitoring and this new feature.
+
+[source,yaml]
+----
+spec:
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - secretName: external-cloud-es-monitoring-ref
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: external-cloud-es-monitoring-ref
+stringData:
+  url: https://monitoring.es.abc-0.xyz.com:1234
+  username: monitoring-user
+  password: REDACTED
+----
+
+[float]
 [id="{p}-220-erus-calculation-updated"]
 ==== ERU report and calculation
 
