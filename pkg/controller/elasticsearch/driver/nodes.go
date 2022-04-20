@@ -82,6 +82,13 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
+	if esClient.IsDesiredNodesSupported() {
+		results.WithResults(d.updateDesiredNodes(ctx, d.Client, esClient, esReachable, expectedResources))
+		if results.HasError() {
+			return results
+		}
+	}
+
 	esState := NewMemoizingESState(ctx, esClient)
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{

@@ -22,6 +22,7 @@ import (
 
 // Resources contain per-NodeSet resources to be created.
 type Resources struct {
+	NodeSet         string
 	StatefulSet     appsv1.StatefulSet
 	HeadlessService corev1.Service
 	Config          settings.CanonicalConfig
@@ -80,6 +81,7 @@ func BuildExpectedResources(
 		headlessSvc := HeadlessService(&es, statefulSet.Name)
 
 		nodesResources = append(nodesResources, Resources{
+			NodeSet:         nodeSpec.Name,
 			StatefulSet:     statefulSet,
 			HeadlessService: headlessSvc,
 			Config:          cfg,
