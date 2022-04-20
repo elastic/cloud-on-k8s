@@ -80,6 +80,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/bmizerany/perks[$$github.com/bmizerany/perks$$] | v0.0.0-20141205001514-d9a9656a3a4b | MIT
 | link:https://github.com/cenkalti/backoff[$$github.com/cenkalti/backoff/v3$$] | v3.0.0 | MIT
 | link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash/v2$$] | v2.1.2 | MIT
+| link:https://github.com/containerd/stargz-snapshotter[$$github.com/containerd/stargz-snapshotter/estargz$$] | v0.11.1 | Apache-2.0
 | link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20200319235926-a69029f61654 | MIT
 | link:https://github.com/docker/cli[$$github.com/docker/cli$$] | v20.10.12+incompatible | Apache-2.0
 | link:https://github.com/docker/distribution[$$github.com/docker/distribution$$] | v2.8.0+incompatible | Apache-2.0
@@ -125,6 +126,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/joeshaw/multierror[$$github.com/joeshaw/multierror$$] | v0.0.0-20140124173710-69b34d4ec901 | MIT
 | link:https://github.com/josharian/intern[$$github.com/josharian/intern$$] | v1.0.0 | MIT
 | link:https://github.com/json-iterator/go[$$github.com/json-iterator/go$$] | v1.1.12 | MIT
+| link:https://github.com/klauspost/compress[$$github.com/klauspost/compress$$] | v1.14.4 | Apache-2.0
 | link:https://github.com/kr/pretty[$$github.com/kr/pretty$$] | v0.2.1 | MIT
 | link:https://github.com/kr/text[$$github.com/kr/text$$] | v0.2.0 | MIT
 | link:https://github.com/mailru/easyjson[$$github.com/mailru/easyjson$$] | v0.7.6 | MIT
@@ -144,6 +146,8 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/oklog/run[$$github.com/oklog/run$$] | v1.0.0 | Apache-2.0
 | link:https://github.com/onsi/ginkgo[$$github.com/onsi/ginkgo$$] | v1.16.5 | MIT
 | link:https://github.com/onsi/gomega[$$github.com/onsi/gomega$$] | v1.17.0 | MIT
+| link:https://github.com/opencontainers/go-digest[$$github.com/opencontainers/go-digest$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/opencontainers/image-spec[$$github.com/opencontainers/image-spec$$] | v1.0.2 | Apache-2.0
 | link:https://github.com/pascaldekloe/goe[$$github.com/pascaldekloe/goe$$] | v0.1.0 | Public Domain
 | link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml$$] | v1.9.4 | Apache-2.0
 | link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml/v2$$] | v2.0.0-beta.8 | MIT
@@ -161,6 +165,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/streadway/quantile[$$github.com/streadway/quantile$$] | v0.0.0-20150917103942-b0c588724d25 | BSD-2-Clause
 | link:https://github.com/stretchr/objx[$$github.com/stretchr/objx$$] | v0.1.1 | MIT
 | link:https://github.com/subosito/gotenv[$$github.com/subosito/gotenv$$] | v1.2.0 | MIT
+| link:https://github.com/vbatts/tar-split[$$github.com/vbatts/tar-split$$] | v0.11.2 | BSD-3-Clause
 | link:https://go.elastic.co/apm/module/apmhttp[$$go.elastic.co/apm/module/apmhttp$$] | v1.15.0 | Apache-2.0
 | link:https://go.elastic.co/fastjson[$$go.elastic.co/fastjson$$] | v1.1.0 | MIT
 | link:https://go.uber.org/atomic[$$go.uber.org/atomic$$] | v1.9.0 | MIT
@@ -171,6 +176,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220412020605-290c469a71a5 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220411215720-9780585627b5 | BSD-3-Clause
+| link:https://golang.org/x/sync[$$golang.org/x/sync$$] | v0.0.0-20210220032951-036812b2e83c | BSD-3-Clause
 | link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220412211240-33da011f77ad | BSD-3-Clause
 | link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210927222741-03fcf44c2211 | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.7 | BSD-3-Clause

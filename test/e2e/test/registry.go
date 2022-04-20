@@ -6,20 +6,13 @@ package test
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -56,7 +49,7 @@ var retriable = func(err error) bool {
 }
 
 // WithDigestOrDie returns a fully qualified image name with the version (tag) replaced by the image digest.
-// Retries are attempted on a best effort basis. This function panic once the maximum retries is reached.
+// Retries are attempted on a best effort basis. This function panics once the maximum retries is reached.
 func WithDigestOrDie(image container.Image, tag string) (withDigest string) {
 	err := retry.OnError(
 		backoff,
@@ -95,54 +88,10 @@ func getDigest(image container.Image, tag string) (string, error) {
 		return imageDigest, nil
 	}
 
-	repo, err := name.NewRepository(fmt.Sprintf("%s/%s", container.DefaultContainerRegistry, image))
+	withRegistry := fmt.Sprintf("%s/%s", container.DefaultContainerRegistry, taggedImage)
+	digest, err := crane.Digest(withRegistry)
 	if err != nil {
 		return "", err
-	}
-
-	auth, err := authn.DefaultKeychain.Resolve(repo.Registry)
-	if err != nil {
-		return "", err
-	}
-
-	// Construct an http.Client that is authorized to pull images
-	scopes := []string{repo.Scope(transport.PullScope)}
-	t, err := transport.New(repo.Registry, auth, http.DefaultTransport, scopes)
-	if err != nil {
-		return "", err
-	}
-	client := &http.Client{Transport: t}
-
-	// URL to fetch the image manifest.
-	uri := &url.URL{
-		Scheme: repo.Registry.Scheme(),
-		Host:   repo.Registry.RegistryStr(),
-		Path:   fmt.Sprintf("/v2/%s/manifests/%s", image, tag),
-	}
-
-	req, err := http.NewRequest("GET", uri.String(), nil) //nolint:noctx
-	if err != nil {
-		return "", err
-	}
-
-	// Adding "application/vnd.docker.distribution.manifest.v2+json" is required to get the correct image Digest.
-	req.Header.Add("Accept", string(types.DockerManifestSchema2))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	// Assert that we get a 200, otherwise attempt to parse body as a structured error.
-	if err := transport.CheckError(resp, http.StatusOK); err != nil {
-		return "", err
-	}
-
-	// Digest is not in the response body, it's in the header "Docker-Content-Digest"
-	digest := resp.Header.Get("Docker-Content-Digest")
-	if digest == "" {
-		return "", errors.New("No image digest in response")
 	}
 
 	// Keep the digest in cache.
