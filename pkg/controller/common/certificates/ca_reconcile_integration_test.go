@@ -90,7 +90,11 @@ func TestBuildCAFromFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir := t.TempDir()
+			// creating a temp dir inside testdata so that we can simply link to the test files
+			tempDir, err := ioutil.TempDir("testdata", "ca-from-file")
+			require.NoError(t, err)
+			defer os.RemoveAll(tempDir)
+
 			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.ca), filepath.Join(tempDir, CertFileName)))
 			require.NoError(t, os.Link(filepath.Join("testdata", tt.args.key), filepath.Join(tempDir, KeyFileName)))
 
