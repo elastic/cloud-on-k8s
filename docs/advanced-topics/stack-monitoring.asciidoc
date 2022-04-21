@@ -103,6 +103,7 @@ spec:
 <2> The `namespace` and `serviceName` attributes can only be used in conjunction with `name`, not with `secretName`.
 
 The referenced Secret must contain the following connection information:
+
 - `url`: the URL to reach the Elasticsearch cluster
 - `username`: the username of the user to be authenticated to the Elasticsearch cluster
 - `password`: the password of the user to be authenticated to the Elasticsearch cluster
