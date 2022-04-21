@@ -27,7 +27,7 @@
 * Avoid unnecessary DELETE calls to manage legacy transport secret {pull}5461[#5461] (issue: {issue}5450[#5450])
 * Avoid unnecessary UPDATE calls when reconciling PVC owner refs {pull}5459[#5459] (issue: {issue}5451[#5451])
 * Do not upgrade all Elasticsearch nodes of a given tier at once {pull}5452[#5452] (issue: {issue}1753[#1753])
-* Operatorhub: Ensure local yaml files have a proper "end of directives" marker {pull}5447[#5447]
+* Operatorhub: Ensure local YAML files have a proper "end of directives" marker {pull}5447[#5447]
 
 [[docs-2.2.0]]
 [float]
