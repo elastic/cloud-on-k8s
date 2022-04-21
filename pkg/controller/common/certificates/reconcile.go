@@ -39,6 +39,8 @@ type Reconciler struct {
 	Labels   map[string]string // to set on the reconciled cert secrets
 	Services []corev1.Service  // to be used for TLS SANs
 
+	GlobalCA *CA // if configured on the operator level supersedes self-signed CAs but not per-resource custom CAs
+
 	CACertRotation RotationParams // to requeue a reconciliation before CA cert expiration
 	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
 
@@ -67,10 +69,13 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	}
 
 	var httpCa *CA
-	if customCerts.HasCAPrivateKey() {
+	switch {
+	case customCerts.HasCAPrivateKey():
 		// if we have user-provided CA cert + key use that
 		httpCa = customCerts.CA()
-	} else {
+	case r.GlobalCA != nil:
+		httpCa = r.GlobalCA
+	default:
 		// if not then reconcile self-signed CA
 		httpCa, err = ReconcileCAForOwner(
 			r.K8sClient,

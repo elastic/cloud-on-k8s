@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -83,6 +82,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
@@ -124,10 +124,6 @@ func Command() *cobra.Command {
 				if err := viper.ReadInConfig(); err != nil {
 					return fmt.Errorf("failed to read config file %s: %w", configFile, err)
 				}
-
-				if !viper.GetBool(operator.DisableConfigWatch) {
-					viper.WatchConfig()
-				}
 			}
 
 			logconf.ChangeVerbosity(viper.GetInt(logconf.FlagName))
@@ -143,6 +139,11 @@ func Command() *cobra.Command {
 		false,
 		"Enables automatic port-forwarding "+
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
+	)
+	cmd.Flags().String(
+		operator.CADirFlag,
+		"",
+		"Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation and validity options.",
 	)
 	cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
@@ -316,27 +317,39 @@ func Command() *cobra.Command {
 
 func doRun(_ *cobra.Command, _ []string) error {
 	ctx := signals.SetupSignalHandler()
-	disableConfigWatch := viper.GetBool(operator.DisableConfigWatch)
 
-	// no config file to watch so start the operator directly
-	if configFile == "" || disableConfigWatch {
-		return startOperator(ctx)
+	// receive config/CA file update events over a channel
+	confUpdateChan := make(chan struct{}, 1)
+	var toWatch []string
+
+	// watch for config file changes
+	if !viper.GetBool(operator.DisableConfigWatch) && configFile != "" {
+		toWatch = append(toWatch, configFile)
 	}
 
-	// receive config file update events over a channel
-	confUpdateChan := make(chan struct{}, 1)
+	// watch for CA files if configured
+	caDir := viper.GetString(operator.CADirFlag)
+	if caDir != "" {
+		toWatch = append(toWatch,
+			filepath.Join(caDir, certificates.KeyFileName),
+			filepath.Join(caDir, certificates.CertFileName),
+			filepath.Join(caDir, certificates.CAKeyFileName),
+			filepath.Join(caDir, certificates.CAFileName),
+		)
+	}
 
-	viper.OnConfigChange(func(evt fsnotify.Event) {
-		if evt.Op&fsnotify.Write == fsnotify.Write || evt.Op&fsnotify.Create == fsnotify.Create {
-			confUpdateChan <- struct{}{}
-		}
-	})
+	onConfChange := func(_ []string) {
+		confUpdateChan <- struct{}{}
+	}
+	watcher := fs.NewFileWatcher(ctx, toWatch, onConfChange, 15*time.Second)
+	go watcher.Run()
 
-	// start the operator in a goroutine
+	// set up channels and context for the operator
 	errChan := make(chan error, 1)
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 
+	// start the operator in a goroutine
 	go func() {
 		err := startOperator(ctx)
 		if err != nil {
@@ -350,15 +363,12 @@ func doRun(_ *cobra.Command, _ []string) error {
 		select {
 		case err := <-errChan: // operator failed
 			log.Error(err, "Shutting down due to error")
-
 			return err
 		case <-ctx.Done(): // signal received
 			log.Info("Shutting down due to signal")
-
 			return nil
 		case <-confUpdateChan: // config file updated
 			log.Info("Shutting down to apply updated configuration")
-
 			return nil
 		}
 	}
@@ -501,6 +511,13 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// Retrieve globally shared CA if any
+	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
+	if err != nil {
+		log.Error(err, "Cannot read global CA")
+		return err
+	}
+
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore, err := validateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
 	if err != nil {
@@ -562,6 +579,7 @@ func startOperator(ctx context.Context) error {
 		IPFamily:          ipFamily,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
+		GlobalCA:          ca,
 		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,
@@ -634,6 +652,13 @@ func startOperator(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+func readOptionalCA(caDir string) (*certificates.CA, error) {
+	if caDir == "" {
+		return nil, nil
+	}
+	return certificates.BuildCAFromFile(caDir)
 }
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected

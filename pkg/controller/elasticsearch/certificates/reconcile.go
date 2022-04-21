@@ -32,6 +32,7 @@ func ReconcileHTTP(
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	services []corev1.Service,
+	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
 ) ([]*x509.Certificate, *reconciler.Results) {
@@ -61,6 +62,7 @@ func ReconcileHTTP(
 		Namer:          esv1.ESNamer,
 		Labels:         certsLabels,
 		Services:       services,
+		GlobalCA:       globalCA,
 		CACertRotation: caRotation,
 		CertRotation:   certRotation,
 		// ES is able to hot-reload TLS certificates: let's keep secrets around even though TLS is disabled.
@@ -86,6 +88,7 @@ func ReconcileTransport(
 	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
+	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
 ) *reconciler.Results {
@@ -102,6 +105,7 @@ func ReconcileTransport(
 		driver,
 		es,
 		certsLabels,
+		globalCA,
 		caRotation,
 	)
 	if err != nil {
