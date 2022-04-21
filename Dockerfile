@@ -45,7 +45,5 @@ COPY config/eck.yaml /conf/eck.yaml
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/
 
-USER 1001
-
 ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]
