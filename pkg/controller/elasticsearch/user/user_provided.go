@@ -7,6 +7,8 @@ package user
 import (
 	"context"
 	"fmt"
+	pkgerrors "github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -139,6 +141,28 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 		aggregated = aggregated.MergeWith(realm)
 	}
 	return aggregated, nil
+}
+
+func userFromBasicAuthSecret(secret corev1.Secret) (filerealm.Realm, error) {
+	realm := filerealm.New()
+	nsn := k8s.ExtractNamespacedName(&secret)
+	username := k8s.GetSecretEntry(secret, corev1.BasicAuthUsernameKey)
+	if username == nil {
+		return realm, fmt.Errorf("username is required but was empty: %v", nsn)
+	}
+	password := k8s.GetSecretEntry(secret, corev1.BasicAuthPasswordKey)
+	if password == nil {
+		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
+	}
+	passwordHash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		return realm, pkgerrors.Wrap(err, "while generating password hash from "+nsn.String())
+	}
+	roles, err := filerealm.FromSecret(secret)
+	if err != nil {
+		return realm, err
+	}
+	return realm.WithUser(string(username), passwordHash).MergeWith(roles), nil
 }
 
 func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string) {
