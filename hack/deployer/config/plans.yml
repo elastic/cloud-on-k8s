@@ -112,7 +112,6 @@ plans:
   eks:
     region: ap-northeast-3
     nodeCount: 3
-    nodeAMI: auto
 - id: eks-arm-ci
   operation: create
   clusterName: arm-ci
@@ -124,7 +123,6 @@ plans:
   eks:
     region: eu-west-1
     nodeCount: 3
-    nodeAMI: auto
 - id: eks-dev
   operation: create
   clusterName: dev
@@ -135,7 +133,6 @@ plans:
   eks:
     region: eu-west-2
     nodeCount: 3
-    nodeAMI: auto
 - id: e2e-monitor
   operation: create
   clusterName: e2e-monitor

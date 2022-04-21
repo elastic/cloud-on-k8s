@@ -84,7 +84,6 @@ type OCP3Settings struct {
 
 // EKSSettings are specific to Amazon EKS.
 type EKSSettings struct {
-	NodeAMI   string `yaml:"nodeAMI"`
 	NodeCount int    `yaml:"nodeCount"`
 	Region    string `yaml:"region"`
 	WorkDir   string `yaml:"workDir"`

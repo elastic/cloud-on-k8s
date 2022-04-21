@@ -33,14 +33,10 @@ metadata:
   name: {{.ClusterName}}
   region: {{.Region}}
   version: "{{.KubernetesVersion}}"
-nodeGroups:
+managedNodeGroups:
   - name: ng-1
     instanceType: {{.MachineType}}
     desiredCapacity: {{.NodeCount}}
-    ami: {{.NodeAMI}}
-    iam:
-      instanceProfileARN: {{.InstanceProfileARN}}
-      instanceRoleARN: {{.InstanceRoleARN}}
 iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
@@ -68,7 +64,6 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"KubernetesVersion": plan.KubernetesVersion,
 			"NodeCount":         plan.Eks.NodeCount,
 			"MachineType":       plan.MachineType,
-			"NodeAMI":           plan.Eks.NodeAMI,
 			"WorkDir":           plan.Eks.WorkDir,
 		},
 	}, nil
@@ -194,11 +189,9 @@ func (e *EKSDriver) fetchSecrets() error {
 		return err
 	}
 	for vaultKey, ctxKey := range map[string]string{
-		"instance-profile": "InstanceProfileARN",
-		"instance-role":    "InstanceRoleARN",
-		"service-role":     "ServiceRoleARN",
-		"access-key":       awsAccessKeyID,
-		"secret-key":       awsSecretAccessKey,
+		"service-role": "ServiceRoleARN",
+		"access-key":   awsAccessKeyID,
+		"secret-key":   awsSecretAccessKey,
 	} {
 		val, err := client.Get(EKSVaultPath, vaultKey)
 		if err != nil {
