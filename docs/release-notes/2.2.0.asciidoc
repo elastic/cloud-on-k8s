@@ -36,7 +36,7 @@
 * Update license usage data example {pull}5569[#5569]
 * Fix YAML example in custom HTTP certificate doc {pull}5529[#5529]
 * Update the license documentation {pull}5509[#5509] (issue: {issue}5475[#5475])
-* Remove ECK 1.7 from list of versions that cause a restart on upgrade {pull}5503[#5503]
+* Remove ECK 1.7 from the list of versions that cause a restart on upgrade {pull}5503[#5503]
 * Add known issue for Red Hat certified operator upgrades {pull}5492[#5492]
 * Update example with init container to increase vm.max_map_count {pull}5469[#5469] (issue: {issue}5410[#5410])
 * Fix latinisms occurrences {pull}5456[#5456] (issue: {issue}5306[#5306])
