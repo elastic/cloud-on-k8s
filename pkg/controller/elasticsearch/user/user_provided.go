@@ -133,7 +133,13 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 			}
 			return filerealm.Realm{}, err
 		}
-		realm, err := filerealm.FromSecret(secret)
+		var realm filerealm.Realm
+		var err error
+		if k8s.HasSecretEntries(secret, corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey) {
+			realm, err = realmFromBasicAuthSecret(secret)
+		} else {
+			realm, err = filerealm.FromSecret(secret)
+		}
 		if err != nil {
 			handleInvalidSecretData(recorder, es, fileRealmSource.SecretName, err)
 			continue
@@ -143,7 +149,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 	return aggregated, nil
 }
 
-func userFromBasicAuthSecret(secret corev1.Secret) (filerealm.Realm, error) {
+func realmFromBasicAuthSecret(secret corev1.Secret) (filerealm.Realm, error) {
 	realm := filerealm.New()
 	nsn := k8s.ExtractNamespacedName(&secret)
 	username := k8s.GetSecretEntry(secret, corev1.BasicAuthUsernameKey)
