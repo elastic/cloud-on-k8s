@@ -45,6 +45,7 @@ func TestGlobalCA(t *testing.T) {
 	ent := enterprisesearch.NewBuilder(name).
 		WithNodeCount(1).
 		WithElasticsearchRef(es.Ref()).
+		WithRestrictedSecurityContext().
 		WithGlobalCA(true)
 	testPod := beat.NewPodBuilder(name)
 	agent := elasticagent.NewBuilder(name).
