@@ -34,7 +34,7 @@
 === Documentation improvements
 
 * Update license usage data example {pull}5569[#5569]
-* Fix yaml example in custom http certificate doc {pull}5529[#5529]
+* Fix YAML example in custom HTTP certificate doc {pull}5529[#5529]
 * Update the license documentation {pull}5509[#5509] (issue: {issue}5475[#5475])
 * Remove ECK 1.7 from list of versions that cause a restart on upgrade {pull}5503[#5503]
 * Add known issue for Red Hat certified operator upgrades {pull}5492[#5492]
