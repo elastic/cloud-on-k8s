@@ -39,7 +39,7 @@ stringData:
 [id="{p}-220-erus-calculation-updated"]
 ==== ERU report and calculation
 
-To avoid some confusion, the Enterprise Resource Units (ERU) is reported in raw bytes and in Gibibyte (GiB) instead of Gigabyte (GB).
+To avoid some confusion, the Enterprise Resource Units (ERU) are reported in raw bytes and in Gibibyte (GiB) instead of Gigabyte (GB).
 The ERU calculation has been aligned so that 1 ERU equals to 64 GiB.
 
 [float]
