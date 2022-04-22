@@ -4,7 +4,7 @@ plans:
   clusterName: ci
   provider: gke
   kubernetesVersion: 1.20
-  machineType: n2-standard-8
+  machineType: n1-standard-8
   serviceAccount: true
   psp: true
   # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
