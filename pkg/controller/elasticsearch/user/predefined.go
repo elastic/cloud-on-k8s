@@ -35,7 +35,16 @@ const (
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
-func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm, userProvidedFileRealm filerealm.Realm) (users, error) {
+	secretName := esv1.ElasticUserSecret(es.Name)
+	// if user has set up elastic user via the file realm do not create the operator managed secret to avoid confusion
+	if userProvidedFileRealm.PasswordHashForUser(ElasticUserName) != nil {
+		return nil, k8s.DeleteSecretIfExists(c, types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      secretName,
+		})
+	}
+	// regular reconciliation if user did not choose to set a password for the elastic user
 	return reconcilePredefinedUsers(
 		c,
 		es,
@@ -43,7 +52,7 @@ func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm
 		users{
 			{Name: ElasticUserName, Roles: []string{SuperUserBuiltinRole}},
 		},
-		esv1.ElasticUserSecret(es.Name),
+		secretName,
 		// Don't set an ownerRef for the elastic user secret, likely to be copied into different namespaces.
 		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
 		false,
@@ -84,7 +93,7 @@ func reconcilePredefinedUsers(
 	if err != nil {
 		return nil, err
 	}
-	users, err = reuseOrGenerateHash(users, existingFileRealm)
+	users, err = reuseOrGenerateHashes(users, existingFileRealm)
 	if err != nil {
 		return nil, err
 	}
@@ -138,21 +147,29 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 	return users, nil
 }
 
-// reuseOrGenerateHash updates the users with existing hashes from the given file realm, or generates new ones.
-func reuseOrGenerateHash(users users, fileRealm filerealm.Realm) (users, error) {
+// reuseOrGenerateHashes updates the users with existing hashes from the given file realm, or generates new ones.
+func reuseOrGenerateHashes(users users, fileRealm filerealm.Realm) (users, error) {
 	for i, u := range users {
-		existingHash := fileRealm.PasswordHashForUser(u.Name)
-		if bcrypt.CompareHashAndPassword(existingHash, u.Password) == nil {
-			users[i].PasswordHash = existingHash
-		} else {
-			hash, err := bcrypt.GenerateFromPassword(u.Password, bcrypt.DefaultCost)
-			if err != nil {
-				return nil, err
-			}
-			users[i].PasswordHash = hash
+		hash, err := reuseOrGenerateHash(u, fileRealm)
+		if err != nil {
+			return nil, err
 		}
+		users[i].PasswordHash = hash
 	}
 	return users, nil
+}
+
+func reuseOrGenerateHash(u user, fileRealm filerealm.Realm) ([]byte, error) {
+	existingHash := fileRealm.PasswordHashForUser(u.Name)
+	if bcrypt.CompareHashAndPassword(existingHash, u.Password) == nil {
+		return existingHash, nil
+	} else {
+		hash, err := bcrypt.GenerateFromPassword(u.Password, bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		return hash, nil
+	}
 }
 
 func GetMonitoringUserPassword(c k8s.Client, nsn types.NamespacedName) (string, error) {

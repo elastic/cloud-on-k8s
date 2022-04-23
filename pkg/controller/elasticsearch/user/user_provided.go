@@ -7,9 +7,6 @@ package user
 import (
 	"context"
 	"fmt"
-	pkgerrors "github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +34,7 @@ func UserProvidedRolesWatchName(es types.NamespacedName) string { //nolint:reviv
 func reconcileUserProvidedFileRealm(
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	existing filerealm.Realm,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 ) (filerealm.Realm, error) {
@@ -56,7 +54,7 @@ func reconcileUserProvidedFileRealm(
 	); err != nil {
 		return filerealm.Realm{}, err
 	}
-	return retrieveUserProvidedFileRealm(c, es, recorder)
+	return retrieveUserProvidedFileRealm(c, es, existing, recorder)
 }
 
 // reconcileUserProvidedRoles returns aggregate roles from the referenced sources in the es spec.
@@ -119,7 +117,7 @@ func retrieveUserProvidedRoles(
 }
 
 // retrieveUserProvidedFileRealm builds a Realm from aggregated user-provided secrets specified in the es spec.
-func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder record.EventRecorder) (filerealm.Realm, error) {
+func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, existing filerealm.Realm, recorder record.EventRecorder) (filerealm.Realm, error) {
 	aggregated := filerealm.New()
 	for _, fileRealmSource := range es.Spec.Auth.FileRealm {
 		if fileRealmSource.SecretName == "" {
@@ -136,7 +134,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 		var realm filerealm.Realm
 		var err error
 		if k8s.HasSecretEntries(secret, corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey) {
-			realm, err = realmFromBasicAuthSecret(secret)
+			realm, err = realmFromBasicAuthSecret(secret, existing)
 		} else {
 			realm, err = filerealm.FromSecret(secret)
 		}
@@ -149,7 +147,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 	return aggregated, nil
 }
 
-func realmFromBasicAuthSecret(secret corev1.Secret) (filerealm.Realm, error) {
+func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (filerealm.Realm, error) {
 	realm := filerealm.New()
 	nsn := k8s.ExtractNamespacedName(&secret)
 	username := k8s.GetSecretEntry(secret, corev1.BasicAuthUsernameKey)
@@ -160,10 +158,15 @@ func realmFromBasicAuthSecret(secret corev1.Secret) (filerealm.Realm, error) {
 	if password == nil {
 		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
 	}
-	passwordHash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+
+	passwordHash, err := reuseOrGenerateHash(user{
+		Name:     string(username),
+		Password: password,
+	}, existing)
 	if err != nil {
-		return realm, pkgerrors.Wrap(err, "while generating password hash from "+nsn.String())
+		return filerealm.Realm{}, err
 	}
+
 	roles, err := filerealm.FromSecret(secret)
 	if err != nil {
 		return realm, err
