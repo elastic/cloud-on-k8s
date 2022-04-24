@@ -23,11 +23,10 @@ import (
 func Test_reconcileElasticUser(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	tests := []struct {
-		name                 string
-		existingSecrets      []runtime.Object
-		existingFileRealm    filerealm.Realm
-		userDefinedFileRealm filerealm.Realm
-		assertions           func(t *testing.T, u users)
+		name              string
+		existingSecrets   []runtime.Object
+		existingFileRealm filerealm.Realm
+		assertions        func(t *testing.T, u users)
 	}{
 		{
 			name:              "create a new elastic user if it does not exist yet",
@@ -111,7 +110,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(c, es, tt.existingFileRealm, tt.userDefinedFileRealm)
+			got, err := reconcileElasticUser(c, es, tt.existingFileRealm, filerealm.New())
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -126,6 +125,45 @@ func Test_reconcileElasticUser(t *testing.T) {
 			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, user.Password, secret.Data[ElasticUserName])
+		})
+	}
+}
+
+func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	tests := []struct {
+		name              string
+		existingFileRealm filerealm.Realm
+		userFileReam      filerealm.Realm
+		wantUser          bool
+	}{
+		{
+			name:              "create a new elastic user if it is not define by the user",
+			existingFileRealm: filerealm.New(),
+			wantUser:          true,
+		},
+		{
+			name:         "do not create the elastic user secret if defined by the user",
+			userFileReam: filerealm.New().WithUser(ElasticUserName, []byte("some-hash")),
+			wantUser:     false,
+		},
+		{
+			name:         "do create the elastic user if other non-empty filerealm users are defined by user",
+			userFileReam: filerealm.New().WithUser("other", []byte("some-hash")),
+			wantUser:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient()
+			got, err := reconcileElasticUser(c, es, filerealm.New(), tt.userFileReam)
+			require.NoError(t, err)
+			// check returned user
+			wantLen := 1
+			if !tt.wantUser {
+				wantLen = 0
+			}
+			require.Len(t, got, wantLen)
 		})
 	}
 }
