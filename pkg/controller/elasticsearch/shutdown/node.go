@@ -68,6 +68,15 @@ func (ns *NodeShutdown) lookupNodeID(podName string) (string, error) {
 	return nodeID, nil
 }
 
+func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
+	for _, id := range ns.podToNodeID {
+		if id == nodeID {
+			return true
+		}
+	}
+	return false
+}
+
 // ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
 // shutdowns.
 func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
@@ -142,13 +151,17 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
 // Depending on the progress of the shutdown in question this means either a cancellation of the shutdown or a clean-up
-// after shutdown completion.
+// after shutdown completion. Restart shutdowns will only be deleted once the corresponding node is back in the cluster.
 func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStatus) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
+			if ns.typ == esclient.Restart && !ns.nodeInCluster(s.NodeID) {
+				ns.log.V(1).Info("Skipping deletion of shutdown because node is not back in the cluster yet", "type", ns.typ, "node_id", s.NodeID)
+				continue
+			}
 			ns.log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)

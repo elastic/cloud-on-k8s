@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	singleShutdownFixture = `{
+	singleRestartShutdownFixture = `{
   "nodes": [
     {
       "node_id": "txXw-Kd2Q6K0PbYMAPzH-Q",
-      "type": "REMOVE",
+      "type": "RESTART",
       "reason": "111800357",
       "shutdown_startedmillis": 1626780145861,
       "status": "COMPLETE",
@@ -112,11 +112,12 @@ func TestNodeShutdown_Clear(t *testing.T) {
 		status *esclient.ShutdownStatus
 	}
 	tests := []struct {
-		name       string
-		args       args
-		fixture    string
-		wantErr    bool
-		wantDelete bool
+		name        string
+		args        args
+		fixture     string
+		podToNodeID map[string]string
+		wantErr     bool
+		wantDelete  bool
 	}{
 		{
 			name:    "Respect type when deleting shutdowns",
@@ -159,6 +160,29 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			wantDelete: true,
 		},
 		{
+			name: "Should not delete restart shutdowns if node not in cluster",
+			args: args{
+				typ:    esclient.Restart,
+				status: nil,
+			},
+			fixture:    singleRestartShutdownFixture,
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
+			name: "Should delete restart shutdowns once node back in cluster",
+			args: args{
+				typ:    esclient.Restart,
+				status: nil,
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
 			name: "Should bubble up errors",
 			args: args{
 				typ:    esclient.Remove,
@@ -184,9 +208,10 @@ func TestNodeShutdown_Clear(t *testing.T) {
 				}
 			})
 			ns := &NodeShutdown{
-				c:   client,
-				typ: tt.args.typ,
-				log: log.Log.WithName("test"),
+				c:           client,
+				typ:         tt.args.typ,
+				podToNodeID: tt.podToNodeID,
+				log:         log.Log.WithName("test"),
 			}
 
 			if err := ns.Clear(context.Background(), tt.args.status); (err != nil) != tt.wantErr {
@@ -335,7 +360,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			fixtures: []string{
 				noShutdownFixture,
 				ackFixture,
-				singleShutdownFixture,
+				singleRestartShutdownFixture,
 			},
 			wantErr:     false,
 			wantMethods: []string{"GET", "PUT", "GET"},
@@ -353,11 +378,11 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			fixtures: []string{
 				noShutdownFixture,
 				ackFixture,
-				singleShutdownFixture,
+				singleRestartShutdownFixture,
 				ackFixture,
 				// technically incorrect as we are returning the same shutdown fixture as before. But we don't verify
 				// the responses, so good enough for this test.
-				singleShutdownFixture,
+				singleRestartShutdownFixture,
 			},
 			wantErr:     false,
 			wantMethods: []string{"GET", "PUT", "GET", "PUT", "GET"},
