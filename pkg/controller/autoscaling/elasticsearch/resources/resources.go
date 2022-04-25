@@ -316,20 +316,20 @@ func (nr NodeResources) ToInt64() NodeResourcesInt64 {
 		Requests: make(ResourceListInt64),
 		Limits:   make(ResourceListInt64),
 	}
-	for resource, value := range nr.Requests {
-		switch resource {
+	for res, value := range nr.Requests {
+		switch res {
 		case corev1.ResourceCPU:
-			rs64.Requests[resource] = value.MilliValue()
+			rs64.Requests[res] = value.MilliValue()
 		default:
-			rs64.Requests[resource] = value.Value()
+			rs64.Requests[res] = value.Value()
 		}
 	}
-	for resource, value := range nr.Limits {
-		switch resource {
+	for res, value := range nr.Limits {
+		switch res {
 		case corev1.ResourceCPU:
-			rs64.Requests[resource] = value.MilliValue()
+			rs64.Limits[res] = value.MilliValue()
 		default:
-			rs64.Requests[resource] = value.Value()
+			rs64.Limits[res] = value.Value()
 		}
 	}
 	return rs64
