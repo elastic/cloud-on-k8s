@@ -33,7 +33,7 @@ You can create custom users in the link:https://www.elastic.co/guide/en/elastics
 === File realm
 
 Custom users can also be created by providing the desired link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm content]
-in Kubernetes secrets, referenced in the Elasticsearch resource.
+or a username and password in Kubernetes secrets, referenced in the Elasticsearch resource.
 
 [source,yaml,subs="attributes"]
 ----
@@ -55,7 +55,30 @@ spec:
 You can reference several secrets in the Elasticsearch specification.
 ECK aggregates their content into a single secret, mounted in every Elasticsearch Pod.
 
-Referenced secrets may be composed of 2 entries. You can provide either entry or both entry in each secret:
+Referenced secrets may be of one of two types:
+
+
+. a combination of username and password as in link:https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret[Kuberenetes basic authentication secrets]
+. a raw file realm content secret
+
+A basic authentication secret can optionally also contain a `users_roles` file.  To associate one or more roles with the user, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation]. The following example illustrates this combination:
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-basic-auth
+type: kubernetes.io/basic-auth
+stringData:
+  username: redeniro   # required field for kubernetes.io/basic-auth
+  password: mypassword # required field for kubernetes.io/basic-auth
+  users_roles: |-
+    admin:rdeniro  # optional not part of kubernetes.io/basic-auth
+----
+
+NOTE: If you specify the password for the `elastic` user through such a basic authentication secret then the secret holding the password described in <<Default elastic user>> will not be created by the operator.
+
+The second option, a file realm secret, is composed of 2 entries. You can provide either one entry or both entries in each secret:
 
 - `users`: content of the `users` file. It specifies user names and password hashes, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
 - `users_roles`: content of the `users_roles` file. It associates each role to a list of users, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
