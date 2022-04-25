@@ -159,17 +159,13 @@ func reuseOrGenerateHashes(users users, fileRealm filerealm.Realm) (users, error
 	return users, nil
 }
 
+// reuseOrGenerateHash updates the user with an existing hash from the given file realm, or generates a new one.
 func reuseOrGenerateHash(u user, fileRealm filerealm.Realm) ([]byte, error) {
 	existingHash := fileRealm.PasswordHashForUser(u.Name)
 	if bcrypt.CompareHashAndPassword(existingHash, u.Password) == nil {
 		return existingHash, nil
-	} else {
-		hash, err := bcrypt.GenerateFromPassword(u.Password, bcrypt.DefaultCost)
-		if err != nil {
-			return nil, err
-		}
-		return hash, nil
 	}
+	return bcrypt.GenerateFromPassword(u.Password, bcrypt.DefaultCost)
 }
 
 func GetMonitoringUserPassword(c k8s.Client, nsn types.NamespacedName) (string, error) {
