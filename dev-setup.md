@@ -102,6 +102,6 @@ Starting the operator with the `--development` flag enables the development mode
 
 ## Recommended reading
 
-* [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)
-* [Controllers](https://book.kubebuilder.io/basics/what_is_a_controller.html)
-* [Controller Managers](https://book.kubebuilder.io/basics/what_is_the_controller_manager.html)
+* [Resources](https://book-v1.book.kubebuilder.io/basics/what_is_a_resource.html)
+* [Controllers](https://book-v1.book.kubebuilder.io/basics/what_is_a_controller.html)
+* [Controller Managers](https://book-v1.book.kubebuilder.io/basics/what_is_the_controller_manager.html)
