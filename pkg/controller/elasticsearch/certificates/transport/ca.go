@@ -29,6 +29,7 @@ func ReconcileOrRetrieveCA(
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	labels map[string]string,
+	globalCA *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) (*certificates.CA, error) {
 	esNSN := k8s.ExtractNamespacedName(&es)
@@ -51,7 +52,12 @@ func ReconcileOrRetrieveCA(
 		return nil, err
 	}
 	// 1. No custom certs are specified, reconcile our internal self-signed CA instead (probably the common case)
+	// or return the shared global CA
 	if customCASecret == nil {
+		if globalCA != nil {
+			return globalCA, nil
+		}
+
 		return certificates.ReconcileCAForOwner(
 			driver.K8sClient(),
 			esv1.ESNamer,

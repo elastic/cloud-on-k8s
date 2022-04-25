@@ -7,6 +7,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Run APM Server on ECK
 
+WARNING: As of version 8.0.0, the standalone APM Server binary is deprecated and will be removed in a future release. Consider using <<{p}-elastic-agent-fleet,Elastic Agent in Fleet-managed mode with ECK>>. Refer to the link:https://www.elastic.co/guide/en/apm/guide/current/apm-quick-start.html[Elastic APM integration] for additional details.
+
 This section describes how to deploy, configure and access an APM Server with ECK.
 
 * <<{p}-apm-eck-managed-es,Use an Elasticsearch cluster managed by ECK>>

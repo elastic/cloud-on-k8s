@@ -149,8 +149,8 @@ func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOptio
 	if err != nil {
 		return err
 	}
-	actualCount := len(pods)
-	if expectedCount != actualCount {
+
+	if actualCount := len(pods); expectedCount != actualCount {
 		return fmt.Errorf("invalid node count: expected %d, got %d", expectedCount, actualCount)
 	}
 	return nil
@@ -438,6 +438,14 @@ func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		common.TypeLabelName: maps.Type,
 		maps.NameLabelName:   emsName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func OperatorPodListOptions(opNs string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(opNs)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		"control-plane": "elastic-operator",
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

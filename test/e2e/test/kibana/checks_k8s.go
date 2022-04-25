@@ -90,14 +90,6 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
 				test.ExpectedSecret{
-					Name: kbName + "-kb-http-ca-internal",
-					Keys: []string{"tls.crt", "tls.key"},
-					Labels: map[string]string{
-						"kibana.k8s.elastic.co/name": kbName,
-						"common.k8s.elastic.co/type": "kibana",
-					},
-				},
-				test.ExpectedSecret{
 					Name: kbName + "-kb-http-certs-internal",
 					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
 					Labels: map[string]string{
@@ -115,6 +107,19 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			)
 		}
+		if b.Kibana.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: kbName + "-kb-http-ca-internal",
+					Keys: []string{"tls.crt", "tls.key"},
+					Labels: map[string]string{
+						"kibana.k8s.elastic.co/name": kbName,
+						"common.k8s.elastic.co/type": "kibana",
+					},
+				},
+			)
+		}
+
 		return expected
 	})
 }

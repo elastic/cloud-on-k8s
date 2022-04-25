@@ -343,7 +343,7 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {
-				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
+				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name) //nolint:forcetypeassert
 			}
 		})
 	}
@@ -419,7 +419,7 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {
-				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
+				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name) //nolint:forcetypeassert
 			}
 			if tt.assert != nil {
 				tt.assert(t, c)

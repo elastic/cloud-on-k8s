@@ -135,7 +135,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events
+				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning ReconciliationError Elastic Maps Server is an enterprise feature. Enterprise features are disabled", e)
 
 				// observedGeneration should have been updated
@@ -192,7 +192,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				recorder:       record.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events
+				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
 
 				// observedGeneration should have been updated
@@ -225,7 +225,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				recorder:       record.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events
+				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
 
 				// observedGeneration should have been updated

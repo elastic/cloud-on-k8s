@@ -395,7 +395,7 @@ func withAssociationConf(kibana *kibanav1.Kibana, conf commonv1.AssociationConf)
 		association.AssociationConfAnnotationName(): string(b),
 	})
 	associated := association.Associated()
-	return associated.(*kibanav1.Kibana)
+	return associated.(*kibanav1.Kibana) //nolint:forcetypeassert
 }
 
 func withTLSDisabled(kibana *kibanav1.Kibana) *kibanav1.Kibana {

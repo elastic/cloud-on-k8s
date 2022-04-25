@@ -67,8 +67,9 @@ func buildVolumes(
 		})
 	}
 
-	volumes := append(
-		persistentVolumes, // includes the data volume, unless specified differently in the pod template
+	volumes := persistentVolumes
+	volumes = append(
+		volumes, // includes the data volume, unless specified differently in the pod template
 		append(
 			initcontainer.PluginVolumes.Volumes(),
 			esvolume.DefaultLogsVolume,

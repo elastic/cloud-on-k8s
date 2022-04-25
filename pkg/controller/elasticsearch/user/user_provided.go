@@ -21,12 +21,12 @@ import (
 )
 
 // UserProvidedFileRealmWatchName returns the watch registered for user-provided file realm secrets.
-func UserProvidedFileRealmWatchName(es types.NamespacedName) string {
+func UserProvidedFileRealmWatchName(es types.NamespacedName) string { //nolint:revive
 	return fmt.Sprintf("%s-%s-user-file-realm", es.Namespace, es.Name)
 }
 
 // UserProvidedRolesWatchName returns the watch registered for user-provided roles secrets.
-func UserProvidedRolesWatchName(es types.NamespacedName) string {
+func UserProvidedRolesWatchName(es types.NamespacedName) string { //nolint:revive
 	return fmt.Sprintf("%s-%s-user-roles", es.Namespace, es.Name)
 }
 
