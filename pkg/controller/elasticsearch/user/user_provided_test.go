@@ -290,6 +290,17 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "users file specified",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"users": nil,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "reuses existing hash",
 			args: args{
 				secret: basicAuthSecretFixture,

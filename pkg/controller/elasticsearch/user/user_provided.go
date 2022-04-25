@@ -158,6 +158,10 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (f
 	if password == nil {
 		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
 	}
+	if k8s.GetSecretEntry(secret, filerealm.UsersFile) != nil {
+		// there is no strict technical requirement for this. This is meant as a precaution against confusing configuration errors
+		return realm, fmt.Errorf("combining file realm users file with clear text password in one secret is not supported: %v", nsn)
+	}
 
 	passwordHash, err := reuseOrGenerateHash(user{
 		Name:     string(username),
