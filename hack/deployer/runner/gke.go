@@ -175,7 +175,7 @@ func (d *GKEDriver) create() error {
 
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
-		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
+		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
