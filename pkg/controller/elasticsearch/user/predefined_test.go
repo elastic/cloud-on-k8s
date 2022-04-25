@@ -132,23 +132,21 @@ func Test_reconcileElasticUser(t *testing.T) {
 func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	tests := []struct {
-		name              string
-		existingFileRealm filerealm.Realm
-		userFileReam      filerealm.Realm
-		wantUser          bool
+		name         string
+		userFileReam filerealm.Realm
+		wantUser     bool
 	}{
 		{
-			name:              "create a new elastic user if it is not define by the user",
-			existingFileRealm: filerealm.New(),
-			wantUser:          true,
+			name:     "create a new elastic user if it is not in the user's file realm",
+			wantUser: true,
 		},
 		{
-			name:         "do not create the elastic user secret if defined by the user",
+			name:         "do not create the elastic user secret if the elastic user is already defined by the user",
 			userFileReam: filerealm.New().WithUser(ElasticUserName, []byte("some-hash")),
 			wantUser:     false,
 		},
 		{
-			name:         "do create the elastic user if other non-empty filerealm users are defined by user",
+			name:         "do create the elastic user if other non-empty file realm users are defined by user",
 			userFileReam: filerealm.New().WithUser("other", []byte("some-hash")),
 			wantUser:     true,
 		},

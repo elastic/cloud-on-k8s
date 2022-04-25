@@ -5,11 +5,11 @@
 package user
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -249,7 +249,6 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 	realmPtr := func(r filerealm.Realm) *filerealm.Realm {
 		return &r
 	}
-
 	type args struct {
 		secret   corev1.Secret
 		existing filerealm.Realm
@@ -276,7 +275,6 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 						"password": nil,
 					},
 				},
-				existing: filerealm.Realm{},
 			},
 			wantErr: true,
 		},
@@ -294,11 +292,13 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 		{
 			name: "reuses existing hash",
 			args: args{
-				secret:   basicAuthSecretFixture,
-				existing: filerealm.New().WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776")),
+				secret: basicAuthSecretFixture,
+				existing: filerealm.New().
+					WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776")),
 			},
-			wantEqual: realmPtr(filerealm.New().WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776"))),
-			wantErr:   false,
+			wantEqual: realmPtr(filerealm.New().
+				WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776"))),
+			wantErr: false,
 		},
 		{
 			name: "supports user role definition",

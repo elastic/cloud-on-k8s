@@ -282,3 +282,74 @@ func TestObjectExists(t *testing.T) {
 		})
 	}
 }
+
+func TestHasSecretEntries(t *testing.T) {
+	secretFixture := corev1.Secret{Data: map[string][]byte{
+		"a": nil,
+		"b": nil,
+		"c": nil,
+	}}
+	type args struct {
+		secret corev1.Secret
+		keys   []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty secret",
+			args: args{
+				secret: corev1.Secret{},
+				keys:   []string{"a"},
+			},
+			want: false,
+		},
+		{
+			name: "empty keys",
+			args: args{
+				secret: secretFixture,
+				keys:   nil,
+			},
+			want: true, // admittedly not very useful but analogous to the empty set
+		},
+		{
+			name: "single key",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a"},
+			},
+			want: true,
+		},
+		{
+			name: "multiple keys",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "c"},
+			},
+			want: true,
+		},
+		{
+			name: "no match single",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"d"},
+			},
+			want: false,
+		},
+		{
+			name: "no match multiple",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "f"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, HasSecretEntries(tt.args.secret, tt.args.keys...), "HasSecretEntries(%v, %v)", tt.args.secret, tt.args.keys)
+		})
+	}
+}

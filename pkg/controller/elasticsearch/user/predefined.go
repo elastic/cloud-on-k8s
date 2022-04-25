@@ -37,7 +37,7 @@ const (
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
 func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm, userProvidedFileRealm filerealm.Realm) (users, error) {
 	secretName := esv1.ElasticUserSecret(es.Name)
-	// if user has set up elastic user via the file realm do not create the operator managed secret to avoid confusion
+	// if user has set up the elastic user via the file realm do not create the operator managed secret to avoid confusion
 	if userProvidedFileRealm.PasswordHashForUser(ElasticUserName) != nil {
 		return nil, k8s.DeleteSecretIfExists(c, types.NamespacedName{
 			Namespace: es.Namespace,
