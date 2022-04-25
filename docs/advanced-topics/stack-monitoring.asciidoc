@@ -97,12 +97,13 @@ spec:
     count: 1
     config:
       node.store.allow_mmap: false
----
+----
 
 <1> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
 <2> The `namespace` and `serviceName` attributes can only be used in conjunction with `name`, not with `secretName`.
 
 The referenced Secret must contain the following connection information:
+
 - `url`: the URL to reach the Elasticsearch cluster
 - `username`: the username of the user to be authenticated to the Elasticsearch cluster
 - `password`: the password of the user to be authenticated to the Elasticsearch cluster
@@ -118,7 +119,7 @@ stringData:
   url: https://mon1.es.abcd-42.xyz.elastic-cloud.com:9243
   username: monitoring-user
   password: REDACTED
----
+----
 
 The user referenced in the Secret must have been created beforehand.
 

@@ -64,9 +64,8 @@ func TestBeatVersionUpgradeToLatest7x(t *testing.T) {
 	)
 }
 
-func TestBeatVersionUpgradeToLatest8x(t *testing.T) {
-	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestSnapshotVersion8x
+func TestVersionUpgradeToLatest8x(t *testing.T) {
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 

@@ -157,6 +157,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d,
 		d.ES,
 		[]corev1.Service{*externalService, *internalService},
+		d.OperatorParameters.GlobalCA,
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
@@ -193,6 +194,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		ctx,
 		d,
 		d.ES,
+		d.OperatorParameters.GlobalCA,
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)

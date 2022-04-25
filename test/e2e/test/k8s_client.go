@@ -442,6 +442,14 @@ func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
 	return []k8sclient.ListOption{ns, matchLabels}
 }
 
+func OperatorPodListOptions(opNs string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(opNs)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		"control-plane": "elastic-operator",
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
 func EventListOptions(namespace, name string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(namespace)
 	matchFields := k8sclient.MatchingFields(map[string]string{

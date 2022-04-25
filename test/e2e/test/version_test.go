@@ -41,3 +41,21 @@ func TestIsValidUpgrade(t *testing.T) {
 		require.Equal(t, tt.isValid, isValid)
 	}
 }
+
+func TestGetUpgradePathTo8x(t *testing.T) {
+	tests := []struct {
+		current string
+		src     string
+		dst     string
+	}{
+		{current: "7.17.0", src: "7.17.0", dst: LatestReleasedVersion8x},
+		{current: "8.0.0", src: "8.0.0", dst: LatestReleasedVersion8x},
+		{current: "8.99.0-SNAPSHOT", src: LatestReleasedVersion8x, dst: "8.99.0-SNAPSHOT"},
+	}
+
+	for _, tt := range tests {
+		src, dst := GetUpgradePathTo8x(tt.current)
+		require.Equal(t, tt.src, src)
+		require.Equal(t, tt.dst, dst)
+	}
+}
