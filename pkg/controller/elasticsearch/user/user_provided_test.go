@@ -355,7 +355,6 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 			if tt.wantEqual == nil && bcrypt.CompareHashAndPassword(got.PasswordHashForUser(testUser), []byte(tt.wantPassword)) != nil {
 				t.Errorf("realmFromBasicAuthSecret() got = %v, does not match %v", got, tt.wantPassword)
 			}
-
 		})
 	}
 }
