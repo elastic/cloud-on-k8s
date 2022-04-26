@@ -455,8 +455,7 @@ type NodeShutdown struct {
 	NodeID                string          `json:"node_id"`
 	Type                  string          `json:"type"`
 	Reason                string          `json:"reason"`
-	AllocationDelay       string          `json:"allocation_delay,omitempty"`
-	ShutdownStartedMillis int64           `json:"shutdown_startedmillis"` // missing _ is a serialization inconsistency in Elasticsearch
+	ShutdownStartedMillis int             `json:"shutdown_startedmillis"` // missing _ is a serialization inconsistency in Elasticsearch
 	Status                ShutdownStatus  `json:"status"`
 	ShardMigration        ShardMigration  `json:"shard_migration"`
 	PersistentTasks       PersistentTasks `json:"persistent_tasks"`
@@ -467,21 +466,6 @@ type NodeShutdown struct {
 func (ns NodeShutdown) Is(t ShutdownType) bool {
 	// API returns type in capital letters currently
 	return strings.EqualFold(ns.Type, string(t))
-}
-
-// HasExpiredAllocationDelay returns true if the allocation delay as returned from Elasticsearch is in the past compared
-// to the time in now.
-func (ns NodeShutdown) HasExpiredAllocationDelay(now time.Time) (bool, error) {
-	if !ns.Is(Restart) {
-		return false, nil
-	}
-	allocationDelay, err := time.ParseDuration(ns.AllocationDelay)
-	if err != nil {
-		return false, err
-	}
-	shutdownStarted := time.Unix(0, ns.ShutdownStartedMillis*int64(time.Millisecond))
-	expiry := shutdownStarted.Add(allocationDelay)
-	return now.After(expiry), nil
 }
 
 // ShutdownRequest is the body of a node shutdown request.
