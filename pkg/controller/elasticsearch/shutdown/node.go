@@ -151,7 +151,7 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
 // Depending on the progress of the shutdown in question this means either a cancellation of the shutdown or a clean-up
-// after shutdown completion. Restart shutdowns will only be deleted once the corresponding node is back in the cluster.
+// after shutdown completion. Restart shutdown records will only be deleted once the corresponding node is back in the cluster.
 func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStatus) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
