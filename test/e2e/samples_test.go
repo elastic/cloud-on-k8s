@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/rand"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -20,8 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func TestSamples(t *testing.T) {
@@ -71,7 +72,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
-				WithPodLabel(run.TestNameLabel, fullTestName)
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithoutIntegrationCheck()
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
