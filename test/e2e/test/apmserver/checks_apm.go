@@ -133,6 +133,10 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 	return test.Step{
 		Name: "ApmServer should accept event and write data to Elasticsearch",
 		Test: test.Eventually(func() error {
+			// All APM Server tests do not have an Elasticsearch reference.
+			if !apm.Spec.ElasticsearchRef.IsDefined() {
+				return nil
+			}
 			if err := c.checkEventsAPI(apm); err != nil {
 				return err
 			}
