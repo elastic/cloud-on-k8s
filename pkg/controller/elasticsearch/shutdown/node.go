@@ -8,11 +8,14 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
+
+var restartAutoDeleteSafetyMargin = 5 * time.Minute
 
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
 // on this struct concurrently from multiple go-routines.
@@ -158,11 +161,26 @@ func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStat
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
-			if ns.typ == esclient.Restart && !ns.nodeInCluster(s.NodeID) {
+			// garbage collect left over restarts for nodes that never rejoined the cluster with a 30-minute safety margin to account for clock skew
+			expiredAllocationDelay, err := s.HasExpiredAllocationDelay(time.Now().Add(-restartAutoDeleteSafetyMargin))
+			if err != nil {
+				// if the duration returned from the ES API cannot be parsed we still want to continue with shutdown clean up
+				// so let's log the error and consider the allocation delay not expired.
+				ns.log.Error(err, "while calculating restart delayed allocation expired", "type", ns.typ, "node_id")
+			}
+			restartedNodeNotInCluster := s.Is(esclient.Restart) && !ns.nodeInCluster(s.NodeID)
+
+			if restartedNodeNotInCluster && !expiredAllocationDelay {
 				ns.log.V(1).Info("Skipping deletion of shutdown because node is not back in the cluster yet", "type", ns.typ, "node_id", s.NodeID)
 				continue
 			}
-			ns.log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
+
+			msg := "Deleting shutdown"
+			if restartedNodeNotInCluster && expiredAllocationDelay {
+				msg = "Garbage collecting restart shutdown due to expired allocation delay"
+			}
+
+			ns.log.V(1).Info(msg, "type", ns.typ, "node_id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}

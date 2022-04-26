@@ -7,6 +7,7 @@ package client
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -207,4 +208,77 @@ func TestShutdownResponse(t *testing.T) {
 	var actual ShutdownResponse
 	require.NoError(t, json.Unmarshal([]byte(nodeShudownSample), &actual))
 	require.Equal(t, expected, actual)
+}
+
+func TestNodeShutdown_HasExpiredAllocationDelay(t *testing.T) {
+	nowFixture := time.UnixMilli(1650970983631)
+	type fields struct {
+		Type                  string
+		AllocationDelay       string
+		ShutdownStartedMillis int64
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "not a restart",
+			fields: fields{
+				Type:                  "REMOVE",
+				AllocationDelay:       "",
+				ShutdownStartedMillis: 0,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "garbage duration",
+			fields: fields{
+				Type:                  "RESTART",
+				AllocationDelay:       "not a duration",
+				ShutdownStartedMillis: 0,
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "not expired",
+			fields: fields{
+				Type:                  "RESTART",
+				AllocationDelay:       "5m",
+				ShutdownStartedMillis: nowFixture.Add(-1 * time.Minute).UnixMilli(),
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "expired",
+			fields: fields{
+				Type:                  "RESTART",
+				AllocationDelay:       "1m",
+				ShutdownStartedMillis: nowFixture.Add(-61 * time.Second).UnixMilli(),
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ns := NodeShutdown{
+				NodeID:                "test",
+				Type:                  tt.fields.Type,
+				Reason:                "test",
+				AllocationDelay:       tt.fields.AllocationDelay,
+				ShutdownStartedMillis: tt.fields.ShutdownStartedMillis,
+			}
+			got, err := ns.HasExpiredAllocationDelay(nowFixture)
+			if tt.wantErr != (err != nil) {
+				t.Errorf("HasExpiredAllocationDelay, wantErr: %v, got: %v", tt.wantErr, err)
+				return
+			}
+			assert.Equalf(t, tt.want, got, "HasExpiredAllocationDelay(%v)", nowFixture)
+		})
+	}
 }
