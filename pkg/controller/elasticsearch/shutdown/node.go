@@ -161,7 +161,7 @@ func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStat
 	}
 	for _, s := range ns.shutdowns {
 		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
-			// garbage collect left over restarts for nodes that never rejoined the cluster with a 30-minute safety margin to account for clock skew
+			// garbage collect left over restarts for nodes that never rejoined the cluster with a safety margin to account for clock skew
 			expiredAllocationDelay, err := s.HasExpiredAllocationDelay(time.Now().Add(-restartAutoDeleteSafetyMargin))
 			if err != nil {
 				// if the duration returned from the ES API cannot be parsed we still want to continue with shutdown clean up
