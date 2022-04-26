@@ -172,7 +172,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			args: args{
 				typ: esclient.Restart,
 				conditions: func(shutdown *NodeShutdown) []ClearCondition {
-					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.IsInCluster}
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.OnlyNodesInCluster}
 				},
 			},
 			fixture:    singleRestartShutdownFixture,
@@ -184,7 +184,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			args: args{
 				typ: esclient.Restart,
 				conditions: func(shutdown *NodeShutdown) []ClearCondition {
-					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.IsInCluster}
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.OnlyNodesInCluster}
 				},
 			},
 			fixture: singleRestartShutdownFixture,

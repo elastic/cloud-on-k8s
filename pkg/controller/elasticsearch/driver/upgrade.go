@@ -319,7 +319,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	// is back in the cluster to avoid completed shutdowns from accumulating
 	if supportsNodeShutdown(esClient.Version()) {
 		// clear all shutdowns of type restart that have completed
-		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.IsInCluster))
+		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
 	}
 
 	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
