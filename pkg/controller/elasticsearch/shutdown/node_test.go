@@ -107,9 +107,15 @@ var (
 )
 
 func TestNodeShutdown_Clear(t *testing.T) {
+	statusCondition := func(status esclient.ShutdownStatus) func(*NodeShutdown) []ClearCondition {
+		return func(*NodeShutdown) []ClearCondition {
+			return []ClearCondition{status.Applies}
+		}
+	}
+
 	type args struct {
-		typ    esclient.ShutdownType
-		status *esclient.ShutdownStatus
+		typ        esclient.ShutdownType
+		conditions func(shutdown *NodeShutdown) []ClearCondition
 	}
 	tests := []struct {
 		name        string
@@ -123,8 +129,8 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			name:    "Respect type when deleting shutdowns",
 			fixture: shutdownFixture,
 			args: args{
-				typ:    esclient.Restart,
-				status: &esclient.ShutdownComplete,
+				typ:        esclient.Restart,
+				conditions: statusCondition(esclient.ShutdownComplete),
 			},
 			wantErr:    false,
 			wantDelete: false,
@@ -133,8 +139,8 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			name:    "Respect status when deleting shutdowns",
 			fixture: shutdownFixture,
 			args: args{
-				typ:    esclient.Remove,
-				status: &esclient.ShutdownInProgress,
+				typ:        esclient.Remove,
+				conditions: statusCondition(esclient.ShutdownInProgress),
 			},
 			wantErr:    false,
 			wantDelete: false,
@@ -143,8 +149,10 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			name:    "Allow all status values when deleting shutdowns",
 			fixture: shutdownFixture,
 			args: args{
-				typ:    esclient.Remove,
-				status: nil,
+				typ: esclient.Remove,
+				conditions: func(_ *NodeShutdown) []ClearCondition {
+					return nil
+				},
 			},
 			wantErr:    false,
 			wantDelete: true,
@@ -153,8 +161,8 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			name:    "Should delete shutdowns",
 			fixture: shutdownFixture,
 			args: args{
-				typ:    esclient.Remove,
-				status: &esclient.ShutdownComplete,
+				typ:        esclient.Remove,
+				conditions: statusCondition(esclient.ShutdownComplete),
 			},
 			wantErr:    false,
 			wantDelete: true,
@@ -162,8 +170,10 @@ func TestNodeShutdown_Clear(t *testing.T) {
 		{
 			name: "Should not delete restart shutdowns if node not in cluster",
 			args: args{
-				typ:    esclient.Restart,
-				status: nil,
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.IsInCluster}
+				},
 			},
 			fixture:    singleRestartShutdownFixture,
 			wantErr:    false,
@@ -172,8 +182,10 @@ func TestNodeShutdown_Clear(t *testing.T) {
 		{
 			name: "Should delete restart shutdowns once node back in cluster",
 			args: args{
-				typ:    esclient.Restart,
-				status: nil,
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.IsInCluster}
+				},
 			},
 			fixture: singleRestartShutdownFixture,
 			podToNodeID: map[string]string{
@@ -185,8 +197,8 @@ func TestNodeShutdown_Clear(t *testing.T) {
 		{
 			name: "Should bubble up errors",
 			args: args{
-				typ:    esclient.Remove,
-				status: &esclient.ShutdownComplete,
+				typ:        esclient.Remove,
+				conditions: statusCondition(esclient.ShutdownComplete),
 			},
 			fixture:    `{not json`,
 			wantErr:    true,
@@ -214,7 +226,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 				log:         log.Log.WithName("test"),
 			}
 
-			if err := ns.Clear(context.Background(), tt.args.status); (err != nil) != tt.wantErr {
+			if err := ns.Clear(context.Background(), tt.args.conditions(ns)...); (err != nil) != tt.wantErr {
 				t.Errorf("Clear() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantDelete != deleteCalled {

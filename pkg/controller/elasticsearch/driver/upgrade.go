@@ -117,10 +117,7 @@ func (d *defaultDriver) handleUpgrades(
 	}
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	res := d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)
-	results.WithResults(res)
-
-	return results
+	return results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown))
 }
 
 type upgradeCtx struct {
@@ -307,16 +304,50 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
 ) *reconciler.Results {
+	results := &reconciler.Results{}
+	// Make sure all pods scheduled for upgrade have been upgraded.
+	done, reason, err := d.expectationsSatisfied()
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !done {
+		reason := fmt.Sprintf("Completing node upgrade: %s", reason)
+		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
+	}
+
+	// small optimisation: once expectations are satisfied we can already delete shutdowns that are complete and where the node
+	// is back in the cluster to avoid completed shutdowns from accumulating
+	if supportsNodeShutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed
+		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.IsInCluster))
+	}
+
+	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Make sure all nodes scheduled for upgrade are back into the cluster.
+	nodesInCluster, err := esState.NodesInCluster(statefulSets.PodNames())
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !nodesInCluster {
+		log.V(1).Info(
+			"Some upgraded nodes are not back in the cluster yet, cannot complete node upgrade",
+			"namespace", d.ES.Namespace,
+			"es_name", d.ES.Name,
+		)
+		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade: some nodes are not back in the cluster yet"))
+	}
+
 	// we still have to enable shard allocation in cases where we just upgraded from
 	// a version that did not support node shutdown to a supported version.
-	results := d.maybeEnableShardsAllocation(ctx, esClient, esState)
-	if !results.HasError() && supportsNodeShutdown(esClient.Version()) {
-		// clear all shutdowns of type restart that have completed
-		// this relies on the fact the maybeEnableShardsAllocation checks expectations
-		err := nodeShutdown.Clear(ctx, &esclient.ShutdownComplete)
-		if err != nil {
-			results = results.WithError(err)
-		}
+	results = results.WithResults(d.maybeEnableShardsAllocation(ctx, esClient, esState))
+	if supportsNodeShutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed including those where the node is no longer in the cluster
+		// or node state was lost due to an external event
+		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies))
 	}
 	return results
 }
@@ -338,35 +369,6 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 	}
 	if alreadyEnabled {
 		return results
-	}
-
-	// Make sure all pods scheduled for upgrade have been upgraded.
-	done, reason, err := d.expectationsSatisfied()
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !done {
-		reason := fmt.Sprintf("Enabling shards allocation: %s", reason)
-		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
-	}
-
-	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	// Make sure all nodes scheduled for upgrade are back into the cluster.
-	nodesInCluster, err := esState.NodesInCluster(statefulSets.PodNames())
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !nodesInCluster {
-		log.V(1).Info(
-			"Some upgraded nodes are not back in the cluster yet, keeping shard allocations disabled",
-			"namespace", d.ES.Namespace,
-			"es_name", d.ES.Name,
-		)
-		return results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade: some nodes are not back in the cluster yet"))
 	}
 
 	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
