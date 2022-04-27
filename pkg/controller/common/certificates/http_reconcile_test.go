@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
@@ -53,7 +54,7 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
-	pemCert           []byte
+	cert, pemTLS      []byte
 	testES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testSvc           = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,8 +101,10 @@ func init() {
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
+	cert = certData
+	// pemCert contains the certificate and the CA certificate
+	pemTLS = EncodePEMCert(certData, testCA.Cert.Raw)
 
-	pemCert = EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
 func TestReconcilePublicHTTPCerts(t *testing.T) {
@@ -477,7 +480,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	}
 }
 
-func Test_shouldIssueNewCertificate(t *testing.T) {
+func Test_getHTTPCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
 	esWithSAN.Spec.HTTP = commonv1.HTTPConfig{
 		TLS: commonv1.TLSOptions{
@@ -499,7 +502,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want []byte
 	}{
 		{
 			name: "missing cert in secret",
@@ -508,7 +511,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "invalid cert data",
@@ -521,51 +524,51 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "valid cert",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: false,
+			want: cert,
 		},
 		{
 			name: "should be rotated soon",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           testES,
 				rotateBefore: DefaultCertValidity, // rotate before the same duration as total validity
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "with different SAN",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           *esWithSAN,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewHTTPCertificate(
+			if got := getHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
@@ -574,7 +577,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				[]corev1.Service{testSvc},
 				testCA,
 				tt.args.rotateBefore,
-			); got != tt.want {
+			); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})

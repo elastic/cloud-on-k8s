@@ -191,7 +191,8 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// check if the existing cert should be re-issued
-	if shouldIssueNewHTTPCertificate(owner, namer, tls, controllerSANs, secret, svcs, ca, rotationParam.RotateBefore) {
+	certificate := getHTTPCertificate(owner, namer, tls, controllerSANs, secret, svcs, ca, rotationParam.RotateBefore)
+	if certificate == nil {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"namespace", secret.Namespace,
@@ -216,7 +217,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 			owner, namer, tls, controllerSANs, svcs, parsedCSR, rotationParam.Validity,
 		)
 		// sign the certificate
-		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
+		certificate, err = ca.CreateCertificate(*validatedCertificateTemplate)
 		if err != nil {
 			return secretWasChanged, err
 		}
@@ -224,21 +225,38 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		secretWasChanged = true
 		// store certificate and signed certificate in a secret mounted into the pod
 		secret.Data[CAFileName] = EncodePEMCert(ca.Cert.Raw)
-		secret.Data[CertFileName] = EncodePEMCert(certData, ca.Cert.Raw)
+		secret.Data[CertFileName] = EncodePEMCert(certificate, ca.Cert.Raw)
+	}
+
+	// The CA certificate may need to be updated.
+	caPem := EncodePEMCert(ca.Cert.Raw)
+	certPem := EncodePEMCert(certificate, ca.Cert.Raw)
+	if !reflect.DeepEqual(secret.Data[CAFileName], caPem) || !reflect.DeepEqual(secret.Data[CertFileName], certPem) {
+		log.Info(
+			"Updating CA certificate",
+			"current_ca_subject", ca.Cert.Subject,
+			"secret_name", secret.Name,
+			"namespace", secret.Namespace,
+			"owner_name", owner.Name,
+		)
+		secretWasChanged = true
+		secret.Data[CAFileName] = caPem
+		secret.Data[CertFileName] = certPem
 	}
 
 	return secretWasChanged, nil
 }
 
-// shouldIssueNewHTTPCertificate returns true if we should issue a new HTTP certificate.
+// getHTTPCertificate returns the HTTP certificate from the provided Secret. It returns nil if the certificate does not
+// exist or is not valid, in which case we should issue a new HTTP certificate.
 //
-// Reasons for reissuing a certificate:
+// Reasons for considering a certificate as invalid:
 //
 //   - no certificate yet
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
-func shouldIssueNewHTTPCertificate(
+func getHTTPCertificate(
 	owner types.NamespacedName,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
@@ -247,7 +265,7 @@ func shouldIssueNewHTTPCertificate(
 	svcs []corev1.Service,
 	ca *CA,
 	certReconcileBefore time.Duration,
-) bool {
+) []byte {
 	validatedTemplate := createValidatedHTTPCertificateTemplate(
 		owner, namer, tls, controllerSANs, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
@@ -256,12 +274,12 @@ func shouldIssueNewHTTPCertificate(
 
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
-		return true
+		return nil
 	}
 	certs, err := ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
-		return true
+		return nil
 	}
 
 	// look for the certificate based on the CommonName
@@ -273,11 +291,11 @@ func shouldIssueNewHTTPCertificate(
 	}
 
 	if certificate == nil {
-		return true
+		return nil
 	}
 
 	pool := x509.NewCertPool()
-	pool.AddCert(ca.Cert)
+	pool.AddCert(ca.Cert) // We should use the CA from the Secret: CA in this function and CA in the Secret may not be in sync
 	verifyOpts := x509.VerifyOptions{
 		DNSName:       validatedTemplate.Subject.CommonName,
 		Roots:         pool,
@@ -294,27 +312,27 @@ func shouldIssueNewHTTPCertificate(
 			"namespace", secret.Namespace,
 			"owner_name", owner.Name,
 		)
-		return true
+		return nil
 	}
 
 	if time.Now().After(certificate.NotAfter.Add(-certReconcileBefore)) {
 		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "secret_name", secret.Name)
-		return true
+		return nil
 	}
 
 	if certificate.Subject.String() != validatedTemplate.Subject.String() {
-		return true
+		return nil
 	}
 
 	if !reflect.DeepEqual(certificate.IPAddresses, validatedTemplate.IPAddresses) {
-		return true
+		return nil
 	}
 
 	if !reflect.DeepEqual(certificate.DNSNames, validatedTemplate.DNSNames) {
-		return true
+		return nil
 	}
 
-	return false
+	return certificate.Raw
 }
 
 // createValidatedHTTPCertificateTemplate validates a CSR and creates a certificate template.
