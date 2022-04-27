@@ -150,7 +150,7 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 }
 
 // ClearCondition predicate that can be used to limit the Clear function.
-type ClearCondition func(s esclient.NodeShutdown) bool
+type ClearCondition func(esclient.NodeShutdown) bool
 
 // OnlyNodesInCluster is a predicate to limit the shutdowns to delete to nodes that are currently in the cluster.
 func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
