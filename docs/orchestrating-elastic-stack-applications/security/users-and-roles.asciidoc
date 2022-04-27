@@ -8,6 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Users and roles
 
+[id={p}-default-elastic-user]
 == Default elastic user
 
 When the Elasticsearch resource is created, a default user named `elastic` is created automatically, and is assigned the `superuser` role.
@@ -76,7 +77,7 @@ stringData:
     admin:rdeniro  # optional not part of kubernetes.io/basic-auth
 ----
 
-NOTE: If you specify the password for the `elastic` user through such a basic authentication secret then the secret holding the password described in <<Default elastic user>> will not be created by the operator.
+NOTE: If you specify the password for the `elastic` user through such a basic authentication secret then the secret holding the password described in <<{p}-default-elastic-user>> will not be created by the operator.
 
 The second option, a file realm secret, is composed of 2 entries. You can provide either one entry or both entries in each secret:
 
