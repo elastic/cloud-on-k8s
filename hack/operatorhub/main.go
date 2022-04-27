@@ -331,18 +331,17 @@ func normalizeTrailingNewlines(yamlBytes []byte) []byte {
 }
 
 type RenderParams struct {
-	NewVersion        string
-	ShortVersion      string
-	PrevVersion       string
-	StackVersion      string
-	OperatorRepo      string
-	OperatorRBAC      string
-	AdditionalArgs    []string
-	CRDList           []*CRD
-	OperatorWebhooks  string
-	PackageName       string
-	UbiOnly           bool
-	CertifiedOperator bool
+	NewVersion       string
+	ShortVersion     string
+	PrevVersion      string
+	StackVersion     string
+	OperatorRepo     string
+	OperatorRBAC     string
+	AdditionalArgs   []string
+	CRDList          []*CRD
+	OperatorWebhooks string
+	PackageName      string
+	UbiOnly          bool
 }
 
 func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
@@ -474,9 +473,6 @@ func renderCSVFile(params *RenderParams, templatesDir, outDir string) error {
 	templateFile := filepath.Join(templatesDir, csvTemplateFile)
 	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
 
-	if strings.Contains(outDir, "certified-operators") {
-		params.CertifiedOperator = true
-	}
 	return renderTemplate(params, templateFile, csvFile)
 }
 
