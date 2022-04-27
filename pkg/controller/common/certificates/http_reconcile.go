@@ -229,19 +229,18 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// Ensure that the CA certificate is up-to-date.
-	caPem := EncodePEMCert(ca.Cert.Raw)
-	certPem := EncodePEMCert(certificate, ca.Cert.Raw)
-	if !reflect.DeepEqual(secret.Data[CAFileName], caPem) || !reflect.DeepEqual(secret.Data[CertFileName], certPem) {
+	expectedCaPem := EncodePEMCert(ca.Cert.Raw)
+	expectedCertPem := EncodePEMCert(certificate, ca.Cert.Raw)
+	if !reflect.DeepEqual(secret.Data[CAFileName], expectedCaPem) || !reflect.DeepEqual(secret.Data[CertFileName], expectedCertPem) {
 		log.Info(
 			"Updating CA certificate",
-			"current_ca_subject", ca.Cert.Subject,
 			"secret_name", secret.Name,
 			"namespace", secret.Namespace,
 			"owner_name", owner.Name,
 		)
 		secretWasChanged = true
-		secret.Data[CAFileName] = caPem
-		secret.Data[CertFileName] = certPem
+		secret.Data[CAFileName] = expectedCaPem
+		secret.Data[CertFileName] = expectedCertPem
 	}
 
 	return secretWasChanged, nil
@@ -295,7 +294,7 @@ func getHTTPCertificate(
 	}
 
 	pool := x509.NewCertPool()
-	pool.AddCert(ca.Cert) // We should use the CA from the Secret: CA in this function and CA in the Secret may not be in sync
+	pool.AddCert(ca.Cert)
 	verifyOpts := x509.VerifyOptions{
 		DNSName:       validatedTemplate.Subject.CommonName,
 		Roots:         pool,
