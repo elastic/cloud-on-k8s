@@ -71,7 +71,6 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
-				WithoutIntegrationCheck().
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
