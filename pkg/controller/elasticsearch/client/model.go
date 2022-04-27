@@ -420,6 +420,11 @@ var (
 // ShutdownStatus is the set of different status a shutdown requests can have.
 type ShutdownStatus string
 
+// Applies is a predicate that checks this status against a given shutdown struct and returns true if they are the same status.
+func (status ShutdownStatus) Applies(shutdown NodeShutdown) bool {
+	return shutdown.Status == status
+}
+
 var (
 	// ShutdownInProgress means a shutdown request has been accepted and is being processed in Elasticsearch.
 	ShutdownInProgress ShutdownStatus = "IN_PROGRESS"

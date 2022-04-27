@@ -68,6 +68,15 @@ func (ns *NodeShutdown) lookupNodeID(podName string) (string, error) {
 	return nodeID, nil
 }
 
+func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
+	for _, id := range ns.podToNodeID {
+		if id == nodeID {
+			return true
+		}
+	}
+	return false
+}
+
 // ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
 // shutdowns.
 func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
@@ -76,7 +85,7 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []s
 	}
 	// cancel all ongoing shutdowns for the current shutdown type
 	if len(leavingNodes) == 0 {
-		return ns.Clear(ctx, nil)
+		return ns.Clear(ctx)
 	}
 
 	for _, node := range leavingNodes {
@@ -140,20 +149,38 @@ func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdow
 	}
 }
 
+// ClearCondition predicate that can be used to limit the Clear function.
+type ClearCondition func(esclient.NodeShutdown) bool
+
+// OnlyNodesInCluster is a predicate to limit the shutdowns to delete to nodes that are currently in the cluster.
+func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
+	return ns.nodeInCluster(s.NodeID)
+}
+
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
 // Depending on the progress of the shutdown in question this means either a cancellation of the shutdown or a clean-up
 // after shutdown completion.
-func (ns *NodeShutdown) Clear(ctx context.Context, status *esclient.ShutdownStatus) error {
+func (ns *NodeShutdown) Clear(ctx context.Context, conditions ...ClearCondition) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
-	for _, s := range ns.shutdowns {
-		if s.Is(ns.typ) && (status == nil || s.Status == *status) {
+	for k, s := range ns.shutdowns {
+		if s.Is(ns.typ) && allApply(conditions, s) {
 			ns.log.V(1).Info("Deleting shutdown", "type", ns.typ, "node_id", s.NodeID)
 			if err := ns.c.DeleteShutdown(ctx, s.NodeID); err != nil {
 				return fmt.Errorf("while deleting shutdown for %s: %w", s.NodeID, err)
 			}
+			delete(ns.shutdowns, k)
 		}
 	}
 	return nil
+}
+
+func allApply(conditions []ClearCondition, s esclient.NodeShutdown) bool {
+	for _, c := range conditions {
+		if !c(s) {
+			return false
+		}
+	}
+	return true
 }
