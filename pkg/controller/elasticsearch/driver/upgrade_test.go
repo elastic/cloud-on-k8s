@@ -16,6 +16,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -367,6 +374,201 @@ func Test_isVersionUpgrade(t *testing.T) {
 				t.Errorf("wantErr %v got %v", tt.wantErr, err)
 			}
 			assert.Equalf(t, tt.want, got, "isVersionUpgrade(%v)", tt.es)
+		})
+	}
+}
+
+func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
+	esVersion := "8.1.0"
+	clusterName = "test-cluster"
+	namespace := "ns"
+	es = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: namespace,
+		},
+	}
+
+	testSset := sset.TestSset{
+		Namespace:   namespace,
+		Name:        "es",
+		ClusterName: clusterName,
+		Version:     esVersion,
+		Replicas:    2,
+	}
+	shutdownFixture := map[string]esclient.NodeShutdown{
+		"node-id-0": {
+			NodeID: "node-id-0",
+			Type:   "RESTART",
+			Status: "COMPLETE",
+		},
+	}
+	leftOverShutdownFixture := map[string]esclient.NodeShutdown{
+		"node-id-99": {
+			NodeID: "node-id-99",
+			Type:   "RESTART",
+			Status: "COMPLETE",
+		},
+	}
+	disabledAllocationFixture := esclient.ClusterRoutingAllocation{
+		Transient: esclient.AllocationSettings{
+			Cluster: esclient.ClusterRoutingSettings{
+				Routing: esclient.RoutingSettings{
+					Allocation: esclient.RoutingAllocationSettings{
+						Enable: "none",
+					},
+				},
+			},
+		},
+	}
+	tests := []struct {
+		name              string
+		es                esv1.Elasticsearch
+		nodesInCluster    map[string]esclient.Node
+		shutdowns         map[string]esclient.NodeShutdown
+		routingAllocation esclient.ClusterRoutingAllocation
+		runtimeObjects    []runtime.Object
+		expectations      func(*expectations.Expectations)
+		assertions        func(*reconciler.Results, *fakeESClient)
+	}{
+		{
+			name: "unsatisfied expectations: no shutdown clean up",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+			},
+			shutdowns:      shutdownFixture,
+			runtimeObjects: append(testSset.Pods(), testSset.BuildPtr()),
+			expectations: func(e *expectations.Expectations) {
+				e.ExpectDeletion(sset.TestPod{Namespace: namespace, Name: "es-0", ClusterName: clusterName}.Build())
+			},
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.False(t, esClient.DeleteShutdownCalled)
+				require.False(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.False(t, reconciled)
+			},
+		},
+		{
+			name: "expectations satisfied: restarted node back in cluster but not all nodes",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+			},
+			shutdowns:      shutdownFixture,
+			runtimeObjects: append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.True(t, esClient.DeleteShutdownCalled)
+				require.False(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.False(t, reconciled)
+			},
+		},
+		{
+			name: "not all nodes in cluster, routing disabled, left over shutdown: no calls",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+			},
+			shutdowns:         leftOverShutdownFixture,
+			routingAllocation: disabledAllocationFixture,
+			runtimeObjects:    append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.False(t, esClient.DeleteShutdownCalled)
+				require.False(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.False(t, reconciled)
+			},
+		},
+		{
+			name: "all nodes in cluster, left over shutdown cleaned up",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+				"node-id-1": {Name: "es-1"},
+			},
+			shutdowns:      leftOverShutdownFixture,
+			runtimeObjects: append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.True(t, esClient.DeleteShutdownCalled)
+				require.False(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.True(t, reconciled)
+			},
+		},
+		{
+			name: "all nodes in cluster, routing allocation re-enabled",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+				"node-id-1": {Name: "es-1"},
+			},
+			routingAllocation: disabledAllocationFixture,
+			runtimeObjects:    append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.False(t, esClient.DeleteShutdownCalled)
+				require.True(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.True(t, reconciled)
+			},
+		},
+		{
+			name: "all nodes in cluster, orchestration hint set: no call",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      clusterName,
+					Namespace: namespace,
+					Annotations: map[string]string{
+						hints.OrchestrationsHintsAnnotation: `{"no_transient_settings": true}`,
+					},
+				},
+			},
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+				"node-id-1": {Name: "es-1"},
+			},
+			runtimeObjects: append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.False(t, esClient.DeleteShutdownCalled)
+				require.False(t, esClient.EnableShardAllocationCalled)
+				require.Equal(t, 0, esClient.GetClusterRoutingAllocationCallCount)
+				reconciled, _ := results.IsReconciled()
+				require.True(t, reconciled)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := k8s.NewFakeClient(tt.runtimeObjects...)
+			esClient := &fakeESClient{
+				version:                  version.MustParse(esVersion),
+				nodes:                    esclient.Nodes{Nodes: tt.nodesInCluster},
+				Shutdowns:                tt.shutdowns,
+				clusterRoutingAllocation: tt.routingAllocation,
+			}
+			esState := NewMemoizingESState(context.Background(), esClient)
+
+			reconcileState, err := reconcile.NewState(tt.es)
+			require.NoError(t, err)
+
+			d := &defaultDriver{
+				DefaultDriverParameters: DefaultDriverParameters{
+					Client:         client,
+					ES:             tt.es,
+					Expectations:   expectations.NewExpectations(client),
+					ReconcileState: reconcileState,
+				},
+			}
+			if tt.expectations != nil {
+				tt.expectations(d.Expectations)
+			}
+
+			nodeNameToID, err := esState.NodeNameToID()
+			require.NoError(t, err)
+
+			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", log)
+			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n)
+			tt.assertions(results, esClient)
 		})
 	}
 }

@@ -44,7 +44,8 @@ type fakeESClient struct { //nolint:maligned
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
 	GetClusterRoutingAllocationCallCount int
 
-	Shutdowns map[string]esclient.NodeShutdown
+	Shutdowns            map[string]esclient.NodeShutdown
+	DeleteShutdownCalled bool
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -124,7 +125,8 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 	return esclient.ShutdownResponse{Nodes: ns}, nil
 }
 
-func (f *fakeESClient) DeleteShutdown(ctx context.Context, nodeID string) error {
+func (f *fakeESClient) DeleteShutdown(_ context.Context, _ string) error {
+	f.DeleteShutdownCalled = true
 	return nil
 }
 
