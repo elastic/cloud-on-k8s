@@ -228,7 +228,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		secret.Data[CertFileName] = EncodePEMCert(certificate, ca.Cert.Raw)
 	}
 
-	// The CA certificate may need to be updated.
+	// Ensure that the CA certificate is up-to-date.
 	caPem := EncodePEMCert(ca.Cert.Raw)
 	certPem := EncodePEMCert(certificate, ca.Cert.Raw)
 	if !reflect.DeepEqual(secret.Data[CAFileName], caPem) || !reflect.DeepEqual(secret.Data[CertFileName], certPem) {

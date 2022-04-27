@@ -246,12 +246,20 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
+	testCA2, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-common-name"},
+		PrivateKey: testRSAPrivateKey,
+	})
+	assert.NoError(t, err, "Failed to create new self signed CA")
+	testPrivateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
+	assert.NoError(t, err, "Failed to encode private key")
 
 	type args struct {
-		es        esv1.Elasticsearch
-		ca        *CA
-		custCerts *CertificatesSecret
-		services  []corev1.Service
+		es             esv1.Elasticsearch
+		ca             *CA
+		custCerts      *CertificatesSecret
+		services       []corev1.Service
+		initialObjects []runtime.Object
 	}
 	tests := []struct {
 		name    string
@@ -259,6 +267,47 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		want    func(t *testing.T, c k8s.Client, cs *CertificatesSecret)
 		wantErr bool
 	}{
+		{
+			name: "should update CA in es-http-certs-public",
+			args: args{
+				initialObjects: []runtime.Object{
+					// es-http-ca-internal uses a new CA
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-ca-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": EncodePEMCert(testCA2.Cert.Raw), // new CA
+						},
+					},
+					// es-http-certs-internal holds the old CA
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-certs-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA
+						},
+					},
+				},
+				es:       testES,
+				ca:       testCA2, // es-http-certs-internal should be updated with the new CA
+				services: []corev1.Service{testSvc},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				assert.NotNil(t, cs)
+				if cs != nil {
+					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
+					assert.Equal(t, EncodePEMCert(cert, testCA2.Cert.Raw), cs.Data["tls.crt"], "Unexpected tls.crt content in *-es-http-certs-public")
+					assert.Equal(t, EncodePEMCert(testCA2.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+				}
+			},
+		},
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
@@ -359,7 +408,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
-			c := k8s.NewFakeClient()
+			c := k8s.NewFakeClient(tt.args.initialObjects...)
 			got, err := Reconciler{
 				K8sClient:      c,
 				DynamicWatches: w,
