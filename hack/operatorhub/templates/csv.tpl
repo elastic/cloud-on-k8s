@@ -271,15 +271,15 @@ spec:
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
-    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.10+{{ else }}6.8+, 7.1+{{ end }}
+    * Elasticsearch, Kibana, APM Server: {{ if .UbiOnly }}7.10+{{ else }}6.8+, 7.1+{{ end }}, 8+
 
-    * Enterprise Search: {{ if .UbiOnly }}7.10+{{ else }}7.7+{{ end }}
+    * Enterprise Search: {{ if .UbiOnly }}7.10+{{ else }}7.7+{{ end }}, 8+
 
-    * Beats: {{ if .UbiOnly }}7.10+{{ else }}7.0+{{ end }}
+    * Beats: {{ if .UbiOnly }}7.10+{{ else }}7.0+{{ end }}, 8+
 
-    * Elastic Agent: 7.10+
+    * Elastic Agent: 7.10+, 8+
 
-    * Elastic Maps Server: 7.11+
+    * Elastic Maps Server: 7.11+, 8+
 
 
     ECK should work with all conformant installers as listed in these [FAQs](https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer). Distributions include source patches and so may not work as-is with ECK.
