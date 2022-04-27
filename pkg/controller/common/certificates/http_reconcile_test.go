@@ -104,7 +104,6 @@ func init() {
 	cert = certData
 	// pemCert contains the certificate and the CA certificate
 	pemTLS = EncodePEMCert(certData, testCA.Cert.Raw)
-
 }
 
 func TestReconcilePublicHTTPCerts(t *testing.T) {
