@@ -458,7 +458,8 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 			shutdowns:      shutdownFixture,
 			runtimeObjects: append(testSset.Pods(), testSset.BuildPtr()),
 			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
-				require.False(t, esClient.DeleteShutdownCalled) // will be called outside now TODO fix test
+				// shutdown will be cleaned up already outside of completeNodeUpgrades
+				require.False(t, esClient.DeleteShutdownCalled)
 				require.False(t, esClient.EnableShardAllocationCalled)
 				reconciled, _ := results.IsReconciled()
 				require.False(t, reconciled)
