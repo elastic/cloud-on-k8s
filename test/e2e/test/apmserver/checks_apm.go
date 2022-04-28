@@ -137,10 +137,12 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 			if !apm.Spec.ElasticsearchRef.IsDefined() {
 				return nil
 			}
-			if err := c.checkEventsAPI(apm); err != nil {
-				return err
-			}
-			return c.checkEventsInElasticsearch(apm, k)
+			return retry.UntilSuccess(func() error {
+				if err := c.checkEventsAPI(apm); err != nil {
+					return err
+				}
+				return c.checkEventsInElasticsearch(apm, k)
+			}, 5*time.Minute, 10*time.Second)
 		}),
 	}
 }
@@ -240,13 +242,11 @@ func (c *apmClusterChecks) checkEventsInElasticsearch(apm apmv1.ApmServer, k *te
 		return err
 	}
 
-	return retry.UntilSuccess(func() error {
-		if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
-			return err
-		}
+	if err := assertCountIndexEqual(c.esClient, metricIndex, c.metricIndexCount+1); err != nil {
+		return err
+	}
 
-		return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
-	}, 5*time.Minute, 10*time.Second)
+	return assertCountIndexEqual(c.esClient, errorIndex, c.errorIndexCount+1)
 }
 
 // getIndexNames will return the names of the metric, and error indexes, depending on
