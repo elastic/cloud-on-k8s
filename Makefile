@@ -364,6 +364,8 @@ switch-tanzu:
 ##  --    Docker images    --  ##
 #################################
 
+BUILD_PLATFORM ?= "linux/amd64,linux/arm64"
+
 docker-multiarch-build: go-generate generate-config-file 
 ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
@@ -373,7 +375,7 @@ ifeq ($(SNAPSHOT),false)
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
-		--platform linux/amd64,linux/arm64 \
+		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
 		--push
@@ -384,7 +386,7 @@ else
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
-		--platform linux/amd64,linux/arm64 \
+		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		--push
 endif
@@ -458,7 +460,7 @@ e2e-docker-multiarch-build: go-generate
 		--file test/e2e/Dockerfile \
 		--build-arg E2E_JSON=$(E2E_JSON) \
 		--build-arg E2E_TAGS='$(E2E_TAGS)' \
-		--platform linux/amd64,linux/arm64 \
+		--platform $(BUILD_PLATFORM) \
 		--push \
 		-t $(E2E_IMG) .
 
@@ -526,6 +528,9 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+
+set-kubeconfig:
+	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
