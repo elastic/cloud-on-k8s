@@ -332,7 +332,7 @@ spec:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.operatorNamespace']
                 - name: OPERATOR_IMAGE
-                  value: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi{{ end }}:{{ .NewVersion }}
+                  value: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi8{{ end }}:{{ .NewVersion }}
                 resources:
                   limits:
                     cpu: 1
