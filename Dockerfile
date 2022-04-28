@@ -28,16 +28,19 @@ FROM gcr.io/distroless/static:nonroot
 
 ARG VERSION
 
-# Add required ECK labels and override labels from base image
-LABEL name="Elastic Cloud on Kubernetes" \
+# Add common ECK labels and OCI annotations to image
+LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       io.k8s.display-name="Elastic Cloud on Kubernetes" \
-      maintainer="eck@elastic.co" \
-      vendor="Elastic" \
-      version="$VERSION" \
-      url="https://www.elastic.co/guide/en/cloud-on-k8s/" \
-      summary="Run Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats on Kubernetes and OpenShift" \
-      description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
-      io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes"
+      org.opencontainers.image.authors="eck@elastic.co" \
+      org.opencontainers.image.base.name="docker.io/library/golang:1.17.8" \
+      org.opencontainers.image.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
+      org.opencontainers.image.documentation="https://www.elastic.co/guide/en/cloud-on-k8s/" \
+      org.opencontainers.image.licenses="Elastic-2.0" \
+      org.opencontainers.image.source="https://github.com/elastic/cloud-on-k8s/" \
+      org.opencontainers.image.title="Elastic Cloud on Kubernetes" \
+      org.opencontainers.image.vendor="Elastic" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
 COPY config/eck.yaml /conf/eck.yaml
