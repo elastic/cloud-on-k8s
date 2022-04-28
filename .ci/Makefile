@@ -44,7 +44,7 @@ ci:
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal:
+ci-internal: ci-build-image
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
 	  docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
