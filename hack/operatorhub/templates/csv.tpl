@@ -312,7 +312,7 @@ spec:
             spec:
               serviceAccountName: elastic-operator
               containers:
-              - image: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi{{ end }}:{{ .NewVersion }}
+              - image: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi8{{ end }}:{{ .NewVersion }}
                 name: manager
                 args:
                   - "manager"
