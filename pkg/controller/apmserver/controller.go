@@ -176,7 +176,6 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "apmserver")
 	defer tracing.EndTransaction(tx)
-	result := reconcile.Result{}
 
 	var as apmv1.ApmServer
 	if err := r.Client.Get(ctx, request.NamespacedName, &as); err != nil {
@@ -186,22 +185,22 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 				Name:      request.Name,
 			})
 		}
-		return result, tracing.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if common.IsUnmanaged(&as) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
-		return result, nil
+		return reconcile.Result{}, nil
 	}
 
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
-		return result, err
+		return reconcile.Result{}, err
 	}
 
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, clean up resources
-		return result, r.onDelete(k8s.ExtractNamespacedName(&as))
+		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
 	results, state := r.doReconcile(ctx, &as)
@@ -215,7 +214,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 
 	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
 	if err != nil {
-		return results.WithError(err), state
+		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 	if !areAssocsConfigured {
 		return results, state
@@ -257,7 +256,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
 	assocAllowed, err := association.AllowVersion(asVersion, as, logger, r.recorder)
 	if err != nil {
-		return results.WithError(err), state
+		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 	if !assocAllowed {
 		return results, state // will eventually retry
@@ -272,7 +271,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			return results.WithResult(reconcile.Result{Requeue: true}), state
 		}
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
-		return results.WithError(err), state
+		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
