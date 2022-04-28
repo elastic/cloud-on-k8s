@@ -47,6 +47,9 @@ testParams:
   - name: v200
     operatorVersion: 2.0.0
     stackVersion: 8.0.0
-  - name: upcoming
+  - name: v210
     operatorVersion: 2.1.0
-    stackVersion: 8.1.0-SNAPSHOT
+    stackVersion: 8.1.0
+  - name: upcoming
+    operatorVersion: 2.2.0
+    stackVersion: 8.2.0-SNAPSHOT

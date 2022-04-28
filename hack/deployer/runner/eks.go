@@ -45,9 +45,9 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key" //nolint:gosec
-	credentialsTemplate = `[default]
+	awsAccessKeyID     = "aws_access_key_id"
+	awsSecretAccessKey = "aws_secret_access_key" //nolint:gosec
+	awsAuthTemplate    = `[default]
 %s = %s
 %s = %s`
 )
@@ -114,7 +114,7 @@ func (e *EKSDriver) Execute() error {
 			if err := template.Must(template.New("").Parse(clusterCreationTemplate)).Execute(&createCfg, e.ctx); err != nil {
 				return fmt.Errorf("while formatting cluster create cfg %w", err)
 			}
-			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
+			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
@@ -226,7 +226,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 		return nil
 	}
 	log.Printf("Writing aws credentials")
-	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
+	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
 	return ioutil.WriteFile(file, []byte(fileContents), 0600)
 }
 

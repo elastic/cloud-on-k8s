@@ -173,8 +173,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 		return []byte{}, nil
 	}
 	var out untypedDict
-	err := c.asUCfg().Unpack(&out)
-	if err != nil {
+	if err := c.asUCfg().Unpack(&out); err != nil {
 		return []byte{}, err
 	}
 	return yaml.Marshal(out)

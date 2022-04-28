@@ -53,7 +53,7 @@ func main() {
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
 	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
 	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")
-	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 300*time.Second, "Time limit for retries")
+	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 15*time.Minute, "Time limit for retries")
 	cmd.Flags().BoolVar(&opts.skipCleanup, "skip-cleanup", false, "Skip cleaning up after test run")
 	cmd.Flags().StringVar(&opts.toRelease, "to-release", "upcoming", "Release to finish with (alpha, beta, v101, v112, upcoming)")
 	cmd.Flags().StringVar(&opts.upcomingReleaseCRDs, "upcoming-release-crds", "../../config/crds.yaml", "YAML file for installing the CRDs for the upcoming release")

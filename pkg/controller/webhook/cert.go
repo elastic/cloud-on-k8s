@@ -19,7 +19,7 @@ import (
 )
 
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
-type WebhookCertificates struct {
+type WebhookCertificates struct { //nolint:revive
 	caCert []byte
 
 	serverKey  []byte
@@ -139,7 +139,7 @@ func extractDNSNames(webhookServices Services) []string {
 
 	for n := range svcNames {
 		dnsNames[i] = n
-		i++ //nolint:wastedassign
+		i++
 	}
 
 	return dnsNames

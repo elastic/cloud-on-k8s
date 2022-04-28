@@ -117,6 +117,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			Namer:                 Namer,
 			Labels:                NewLabels(params.Agent),
 			Services:              []corev1.Service{*svc},
+			GlobalCA:              params.OperatorParams.GlobalCA,
 			CACertRotation:        params.OperatorParams.CACertRotation,
 			CertRotation:          params.OperatorParams.CertRotation,
 			GarbageCollectSecrets: true,

@@ -127,6 +127,7 @@ func (d *driver) Reconcile(
 		Namer:                 kbv1.KBNamer,
 		Labels:                NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
+		GlobalCA:              params.GlobalCA,
 		CACertRotation:        params.CACertRotation,
 		CertRotation:          params.CertRotation,
 		GarbageCollectSecrets: true,

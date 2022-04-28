@@ -26,7 +26,7 @@ const (
 	AppSearchPrivateKey = "private-key"
 )
 
-type EnterpriseSearchClient struct {
+type EnterpriseSearchClient struct { //nolint:revive
 	httpClient *http.Client
 	endpoint   string
 	username   string

@@ -79,6 +79,7 @@ Upgrading the operator results in a one-time update to existing managed resource
 * 1.6
 * 1.9
 * 2.0
+* 2.1
 
 If you have a very large Elasticsearch cluster or multiple Elastic Stack deployments, this rolling restart might be disruptive or inconvenient. To have more control over when the pods belonging to a particular deployment should be restarted, you can <<{p}-exclude-resource,add an annotation>> to the corresponding resources to temporarily exclude them from being managed by the operator. When the time is convenient, you can remove the annotation and let the rolling restart go through.
 

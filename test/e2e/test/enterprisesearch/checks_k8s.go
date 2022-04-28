@@ -65,7 +65,8 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			)
 		}
-		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() {
+
+		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: entName + "-ent-http-ca-internal",
@@ -75,6 +76,11 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"common.k8s.elastic.co/type":           "enterprise-search",
 					},
 				},
+			)
+		}
+
+		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() {
+			expected = append(expected,
 				test.ExpectedSecret{
 					Name: entName + "-ent-http-certs-internal",
 					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
