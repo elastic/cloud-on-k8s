@@ -32,7 +32,7 @@ ARG VERSION
 LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       io.k8s.display-name="Elastic Cloud on Kubernetes" \
       org.opencontainers.image.authors="eck@elastic.co" \
-      org.opencontainers.image.base.name="docker.io/library/golang:1.17.8" \
+      org.opencontainers.image.base.name="gcr.io/distroless/static:nonroot" \
       org.opencontainers.image.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
       org.opencontainers.image.documentation="https://www.elastic.co/guide/en/cloud-on-k8s/" \
       org.opencontainers.image.licenses="Elastic-2.0" \
