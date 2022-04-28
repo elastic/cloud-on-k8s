@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
@@ -53,7 +54,7 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
-	pemCert           []byte
+	cert, pemTLS      []byte
 	testES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testSvc           = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,8 +101,9 @@ func init() {
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
-
-	pemCert = EncodePEMCert(certData, testCA.Cert.Raw)
+	cert = certData
+	// pemCert contains the certificate and the CA certificate
+	pemTLS = EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
 func TestReconcilePublicHTTPCerts(t *testing.T) {
@@ -243,12 +245,20 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
+	testCA2, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-common-name"},
+		PrivateKey: testRSAPrivateKey,
+	})
+	assert.NoError(t, err, "Failed to create new self signed CA")
+	testPrivateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
+	assert.NoError(t, err, "Failed to encode private key")
 
 	type args struct {
-		es        esv1.Elasticsearch
-		ca        *CA
-		custCerts *CertificatesSecret
-		services  []corev1.Service
+		es             esv1.Elasticsearch
+		ca             *CA
+		custCerts      *CertificatesSecret
+		services       []corev1.Service
+		initialObjects []runtime.Object
 	}
 	tests := []struct {
 		name    string
@@ -256,6 +266,47 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		want    func(t *testing.T, c k8s.Client, cs *CertificatesSecret)
 		wantErr bool
 	}{
+		{
+			name: "should update CA in es-http-certs-public",
+			args: args{
+				initialObjects: []runtime.Object{
+					// es-http-ca-internal uses a new CA
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-ca-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": EncodePEMCert(testCA2.Cert.Raw), // new CA
+						},
+					},
+					// es-http-certs-internal holds the old CA
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      testES.Name + "-es-http-certs-internal",
+							Namespace: testES.Namespace,
+						},
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA
+						},
+					},
+				},
+				es:       testES,
+				ca:       testCA2, // es-http-certs-internal should be updated with the new CA
+				services: []corev1.Service{testSvc},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				assert.NotNil(t, cs)
+				if cs != nil {
+					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
+					assert.Equal(t, EncodePEMCert(cert, testCA2.Cert.Raw), cs.Data["tls.crt"], "Unexpected tls.crt content in *-es-http-certs-public")
+					assert.Equal(t, EncodePEMCert(testCA2.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+				}
+			},
+		},
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
@@ -356,7 +407,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
-			c := k8s.NewFakeClient()
+			c := k8s.NewFakeClient(tt.args.initialObjects...)
 			got, err := Reconciler{
 				K8sClient:      c,
 				DynamicWatches: w,
@@ -477,7 +528,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	}
 }
 
-func Test_shouldIssueNewCertificate(t *testing.T) {
+func Test_getHTTPCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
 	esWithSAN.Spec.HTTP = commonv1.HTTPConfig{
 		TLS: commonv1.TLSOptions{
@@ -499,7 +550,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want []byte
 	}{
 		{
 			name: "missing cert in secret",
@@ -508,7 +559,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "invalid cert data",
@@ -521,51 +572,51 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "valid cert",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           testES,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: false,
+			want: cert,
 		},
 		{
 			name: "should be rotated soon",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           testES,
 				rotateBefore: DefaultCertValidity, // rotate before the same duration as total validity
 			},
-			want: true,
+			want: nil,
 		},
 		{
 			name: "with different SAN",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						CertFileName: pemTLS,
 					},
 				},
 				es:           *esWithSAN,
 				rotateBefore: DefaultRotateBefore,
 			},
-			want: true,
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewHTTPCertificate(
+			if got := getHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
@@ -574,7 +625,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				[]corev1.Service{testSvc},
 				testCA,
 				tt.args.rotateBefore,
-			); got != tt.want {
+			); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
