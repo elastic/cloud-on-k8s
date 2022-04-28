@@ -30,7 +30,7 @@ pipeline {
                 }
             }
         }
-        // latest 4.9.x is taken care of by a separate job
+        // latest 4.x is taken care of by a separate job
         // individual build jobs will report error but we want to run all jobs in all cases so we catch the errors
         // and fail only the stage
         stage("4.6.x "){
@@ -39,7 +39,7 @@ pipeline {
                     build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.6.55"),
+                                        string(name: 'OCP_VERSION', value: "4.6.57"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
@@ -52,7 +52,7 @@ pipeline {
                     build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.7.44"),
+                                        string(name: 'OCP_VERSION', value: "4.7.49"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
@@ -65,7 +65,20 @@ pipeline {
                     build job: 'cloud-on-k8s-e2e-tests-ocp',
                                     parameters: [
                                         string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
-                                        string(name: 'OCP_VERSION', value: "4.8.33"),
+                                        string(name: 'OCP_VERSION', value: "4.8.39"),
+                                        string(name: 'branch_specifier', value: GIT_COMMIT)
+                                    ],
+                                    wait: true
+                }
+            }
+        }
+        stage("4.9.x "){
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    build job: 'cloud-on-k8s-e2e-tests-ocp',
+                                    parameters: [
+                                        string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: JKS_PARAM_OPERATOR_IMAGE),
+                                        string(name: 'OCP_VERSION', value: "4.9.31"),
                                         string(name: 'branch_specifier', value: GIT_COMMIT)
                                     ],
                                     wait: true
