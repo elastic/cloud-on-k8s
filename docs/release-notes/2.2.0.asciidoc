@@ -19,6 +19,7 @@
 [float]
 === Bug fixes
 
+* Delete old shutdowns before creating new ones {pull}5629[#5629] (issue: {issue}5628[#5628])
 * Do not delete restart shutdowns before node rejoins cluster {pull}5618[#5618] (issue: {issue}5617[#5617])
 * Update operator Pod to speed up secret propagation {pull}5519[#5519] (issue: {issue}3321[#3321])
 * Reset phase on each reconciliation in Elasticsearch status {pull}5507[#5507] (issue: {issue}5506[#5506])
