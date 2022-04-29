@@ -71,10 +71,10 @@ metadata:
   name: secret-basic-auth
 type: kubernetes.io/basic-auth
 stringData:
-  username: redeniro   # required field for kubernetes.io/basic-auth
+  username: rdeniro    # required field for kubernetes.io/basic-auth
   password: mypassword # required field for kubernetes.io/basic-auth
   users_roles: |-
-    admin:rdeniro  # optional not part of kubernetes.io/basic-auth
+    admin:rdeniro  # optional, not part of kubernetes.io/basic-auth
 ----
 
 NOTE: If you specify the password for the `elastic` user through such a basic authentication secret then the secret holding the password described in <<{p}-default-elastic-user>> will not be created by the operator.
