@@ -45,9 +45,11 @@ TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG                 := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
-OPERATOR_IMAGE           ?= $(BASE_IMG):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
+BASE_IMG                     := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
+OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
+OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi:$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
@@ -378,6 +380,18 @@ ifeq ($(SNAPSHOT),false)
 		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
+		--push
+	# The following UBI build should already have the binary cached, and should
+	# be a quick operation.
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		-f Dockerfile.ubi \
+		-t $(OPERATOR_IMAGE_UBI) \
+		-t $(OPERATOR_DOCKERHUB_IMAGE_UBI) \
 		--push
 else
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)

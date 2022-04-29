@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build mixed || e2e
 // +build mixed e2e
 
 package e2e
@@ -12,6 +13,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/rand"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -20,8 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func TestSamples(t *testing.T) {

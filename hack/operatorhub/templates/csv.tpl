@@ -5,7 +5,7 @@ metadata:
     capabilities: Full Lifecycle
     categories: Database
     certified: 'false'
-    containerImage: {{ .OperatorRepo }}:{{ .NewVersion }}
+    containerImage: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi8{{ end }}:{{ .NewVersion }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
     description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
@@ -312,7 +312,7 @@ spec:
             spec:
               serviceAccountName: elastic-operator
               containers:
-              - image: {{ .OperatorRepo }}:{{ .NewVersion }}
+              - image: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi8{{ end }}:{{ .NewVersion }}
                 name: manager
                 args:
                   - "manager"
@@ -332,7 +332,7 @@ spec:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.operatorNamespace']
                 - name: OPERATOR_IMAGE
-                  value: {{ .OperatorRepo }}:{{ .NewVersion }}
+                  value: {{ .OperatorRepo }}{{ if .UbiOnly }}-ubi8{{ end }}:{{ .NewVersion }}
                 resources:
                   limits:
                     cpu: 1
