@@ -238,6 +238,14 @@ spec:
       cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
     podTemplate:
       spec:
+        # The initContainers section is only required if using secureSettings in conjunction with zone awareness.
+        # initContainers:
+        # - name: elastic-internal-init-keystore
+        #   env:
+        #   - name: ZONE
+        #     valueFrom:
+        #       fieldRef:
+        #         fieldPath: metadata.annotations['topology.kubernetes.io/zone']
         containers:
         - name: elasticsearch
           env:
