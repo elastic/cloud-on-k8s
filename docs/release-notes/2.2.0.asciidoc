@@ -19,6 +19,8 @@
 [float]
 === Bug fixes
 
+* Delete old shutdowns before creating new ones {pull}5629[#5629] (issue: {issue}5628[#5628])
+* Do not delete restart shutdowns before node rejoins cluster {pull}5618[#5618] (issue: {issue}5617[#5617])
 * Update operator Pod to speed up secret propagation {pull}5519[#5519] (issue: {issue}3321[#3321])
 * Reset phase on each reconciliation in Elasticsearch status {pull}5507[#5507] (issue: {issue}5506[#5506])
 * Make nodes field in status optional {pull}5496[#5496] (issue: {issue}5493[#5493])
@@ -33,6 +35,9 @@
 [float]
 === Documentation improvements
 
+* Add 8+ to supported versions list to avoid confusion {pull}5612[#5612] (issue: {issue}5609[#5609])
+* Fix Stack Monitoring doc example rendering {pull}5602[#5602]
+* Remove "experimental" from Helm chart description {pull}5588[#5588] (issue: {issue}4796[#4796])
 * Update license usage data example {pull}5569[#5569]
 * Fix YAML example in custom HTTP certificate doc {pull}5529[#5529]
 * Update the license documentation {pull}5509[#5509] (issue: {issue}5475[#5475])
@@ -46,6 +51,7 @@
 [float]
 === Misc
 
+* Update dependency golang to v1.17.9 {pull}5597[#5597]
 * Update module go.uber.org/automaxprocs to v1.5.0 {pull}5552[#5552]
 * Update module github.com/gobuffalo/flect to v0.2.5 {pull}5550[#5550]
 * Update module sigs.k8s.io/controller-runtime to v0.11.2 {pull}5541[#5541]
