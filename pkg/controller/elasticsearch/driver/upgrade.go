@@ -67,6 +67,14 @@ func (d *defaultDriver) handleUpgrades(
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
 
+	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
+	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
+	// in Elasticsearch for example for indices with `auto_expand_replicas` setting.
+	if supportsNodeShutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed
+		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
+	}
+
 	// Get the list of pods currently existing in the StatefulSetList
 	currentPods, err := statefulSets.GetActualPods(d.Client)
 	if err != nil {
@@ -313,13 +321,6 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	if !done {
 		reason := fmt.Sprintf("Completing node upgrade: %s", reason)
 		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
-	}
-
-	// small optimisation: once expectations are satisfied we can already delete shutdowns that are complete and where the node
-	// is back in the cluster to avoid completed shutdowns from accumulating
-	if supportsNodeShutdown(esClient.Version()) {
-		// clear all shutdowns of type restart that have completed
-		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
 	}
 
 	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
