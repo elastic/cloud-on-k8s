@@ -152,31 +152,40 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	res, err := r.doReconcile(ctx, beat).Aggregate()
+	results, status := r.doReconcile(ctx, beat)
+	statusErr := beatcommon.UpdateStatus(beat, r.Client, status)
+	if statusErr != nil {
+		if apierrors.IsConflict(statusErr) {
+			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+		}
+		results.WithError(statusErr)
+	}
+
+	res, err := results.Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, &beat, events.EventReconciliationError, "Reconciliation error: %v", err)
 
 	return res, err
 }
 
-func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) *reconciler.Results {
+func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) (*reconciler.Results, *beatv1beta1.BeatStatus) {
 	results := reconciler.NewResult(ctx)
+	status := newStatus(beat)
+
 	areAssocsConfigured, err := association.AreConfiguredIfSet(beat.GetAssociations(), r.recorder)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), &status
 	}
 	if !areAssocsConfigured {
-		return results
+		return results, &status
 	}
 
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, &beat); err != nil {
-		return results.WithError(err)
+		return results.WithError(err), &status
 	}
 
-	driverResults := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, beat).Reconcile()
-	results.WithResults(driverResults)
-
-	return results
+	driverResults, updatedStatus := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, beat, status).Reconcile()
+	return results.WithResults(driverResults), updatedStatus
 }
 
 func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) error {
@@ -204,6 +213,7 @@ func newDriver(
 	client k8s.Client,
 	dynamicWatches watches.DynamicWatches,
 	beat beatv1beta1.Beat,
+	status beatv1beta1.BeatStatus,
 ) beatcommon.Driver {
 	dp := beatcommon.DriverParams{
 		Client:        client,
@@ -211,6 +221,7 @@ func newDriver(
 		Logger:        log,
 		Watches:       dynamicWatches,
 		EventRecorder: recorder,
+		Status:        &status,
 		Beat:          beat,
 	}
 
@@ -230,4 +241,12 @@ func newDriver(
 	default:
 		return otherbeat.NewDriver(dp)
 	}
+}
+
+// newStatus will generate a new status, ensuring status.ObservedGeneration
+// follows the generation of the Beat object.
+func newStatus(beat beatv1beta1.Beat) beatv1beta1.BeatStatus {
+	status := beat.Status
+	status.ObservedGeneration = beat.Generation
+	return status
 }

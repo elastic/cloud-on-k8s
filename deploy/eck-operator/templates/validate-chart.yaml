@@ -21,3 +21,9 @@
   {{- fail "Storage class validation cannot be enabled when cluster-scoped resource creation is disabled" -}}
   {{- end -}}
 {{- end -}}
+
+{{- if (not .Values.config.enableLeaderElection) -}}
+  {{- if gt (int .Values.replicaCount) 1 -}}
+  {{- fail "Leader election must be enabled with more than one replica" -}}
+  {{- end -}}
+{{- end -}}

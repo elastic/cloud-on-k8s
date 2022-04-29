@@ -11,6 +11,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,6 +25,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -232,6 +236,78 @@ func internalSecretForCA(
 	}, nil
 }
 
+func detectCAFileNames(path string) (string, string, error) {
+	dirExists, err := fs.FileExists(path)
+	if err != nil {
+		return "", "", err
+	}
+	if !dirExists {
+		return "", "", fmt.Errorf("global CA directory %s does not exist", path)
+	}
+
+	caFiles := []string{CAFileName, CAKeyFileName}
+	tlsFiles := []string{CertFileName, KeyFileName}
+	existsInDirectory := map[string]bool{}
+	for _, f := range append(caFiles, tlsFiles...) {
+		exists, err := fs.FileExists(filepath.Join(path, f))
+		if err != nil {
+			return "", "", err
+		}
+		existsInDirectory[f] = exists
+	}
+	switch {
+	case (existsInDirectory[CertFileName] || existsInDirectory[KeyFileName]) && existsInDirectory[CAKeyFileName]:
+		return "", "", fmt.Errorf("both tls.* and ca.* files exist, configuration error")
+	case existsInDirectory[CAFileName] && existsInDirectory[CAKeyFileName]:
+		return filepath.Join(path, CAFileName), filepath.Join(path, CAKeyFileName), nil
+	case existsInDirectory[CertFileName] && existsInDirectory[KeyFileName]:
+		return filepath.Join(path, CertFileName), filepath.Join(path, KeyFileName), nil
+	}
+	return "", "",
+		fmt.Errorf(
+			"no CA certificate files found in %s, expecting one of the following key pair: (%s) or (%s)",
+			path,
+			strings.Join(caFiles, ","),
+			strings.Join(tlsFiles, ","))
+}
+
+// BuildCAFromFile reads and parses a CA and its associated private from files under path. Two naming conventions are supported:
+// tls.key and tls.crt or ca.key and ca.crt for private key and certificate respectively.
+func BuildCAFromFile(path string) (*CA, error) {
+	certFile, privateKeyFile, err := detectCAFileNames(path)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, err
+	}
+	certs, err := ParsePEMCerts(bytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot parse PEM cert from %s", certFile)
+	}
+
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("PEM %s file does not contain any certificates", certFile)
+	}
+
+	if len(certs) > 1 {
+		return nil, fmt.Errorf("more than one certificate in PEM file %s", certFile)
+	}
+	cert := certs[0]
+
+	privateKeyBytes, err := ioutil.ReadFile(privateKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot parse private key from PEM file %s", privateKeyFile)
+	}
+	return NewCA(privateKey, cert), nil
+}
+
 // BuildCAFromSecret parses the given secret into a CA.
 // It returns nil if the secrets could not be parsed into a CA.
 func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
@@ -244,7 +320,7 @@ func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	certs, err := ParsePEMCerts(caBytes)
 	if err != nil {
-		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
+		log.Error(err, "cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil
 	}
 	if len(certs) == 0 {

@@ -68,7 +68,7 @@ type logWriter struct {
 }
 
 func (w *logWriter) Write(p []byte) (n int, err error) {
-	log.Info(strings.TrimSpace(string(p)), w.keysAndValues...)
+	log.V(2).Info(strings.TrimSpace(string(p)), w.keysAndValues...)
 
 	return len(p), nil
 }

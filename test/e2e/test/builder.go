@@ -25,10 +25,6 @@ type Builder interface {
 	// We expect the resource to be already created and running.
 	// If the resource to mutate to is the same as the original resource, then all tests should still pass.
 	MutationTestSteps(k *K8sClient) StepList
-	// MutationReversalTestContext returns a context struct to test changes on a resource that are immediately reverted.
-	// We assume the resource to be ready and running.
-	// We assume the resource to be the same as the original resource after reversion.
-	MutationReversalTestContext() ReversalTestContext
 	// Skip the test if true.
 	SkipTest() bool
 }
@@ -93,10 +89,6 @@ func (w WrappedBuilder) MutationTestSteps(k *K8sClient) StepList {
 		steps = append(steps, w.PostMutationSteps(k)...)
 	}
 	return steps
-}
-
-func (w WrappedBuilder) MutationReversalTestContext() ReversalTestContext {
-	return w.BuildingThis.MutationReversalTestContext()
 }
 
 func (w WrappedBuilder) SkipTest() bool {

@@ -28,7 +28,7 @@ func DeepCopyObject(obj client.Object) client.Object {
 	}
 
 	if newObj := obj.DeepCopyObject(); newObj != nil {
-		return newObj.(client.Object)
+		return newObj.(client.Object) //nolint:forcetypeassert
 	}
 
 	return nil

@@ -68,8 +68,7 @@ func (es *Elasticsearch) WebhookPath() string {
 }
 
 func (es *Elasticsearch) validateElasticsearch() error {
-	errs := es.check(validations)
-	if len(errs) > 0 {
+	if errs := es.check(validations); len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
 			es.Name,

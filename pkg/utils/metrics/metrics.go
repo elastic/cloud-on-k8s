@@ -59,7 +59,7 @@ func registerGauge(gauge *prometheus.GaugeVec) *prometheus.GaugeVec {
 	if err != nil {
 		existsErr := new(prometheus.AlreadyRegisteredError)
 		if errors.As(err, &existsErr) {
-			return existsErr.ExistingCollector.(*prometheus.GaugeVec)
+			return existsErr.ExistingCollector.(*prometheus.GaugeVec) //nolint:forcetypeassert
 		}
 
 		panic(fmt.Errorf("failed to register gauge: %w", err))
