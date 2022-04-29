@@ -435,9 +435,9 @@ func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		for j, container := range nodeSet.PodTemplate.Spec.Containers {
 			var update bool
-			for _, e := range container.Env {
+			for k, e := range container.Env {
 				if e.Name == name {
-					e.Value = value
+					container.Env[k].Value = value
 					update = true
 				}
 			}
