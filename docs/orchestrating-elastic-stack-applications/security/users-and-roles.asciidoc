@@ -59,10 +59,10 @@ ECK aggregates their content into a single secret, mounted in every Elasticsearc
 Referenced secrets may be of one of two types:
 
 
-. a combination of username and password as in link:https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret[Kuberenetes basic authentication secrets]
+. a combination of username and password as in link:https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret[Kubernetes basic authentication secrets]
 . a raw file realm content secret
 
-A basic authentication secret can optionally also contain a `users_roles` file.  To associate one or more roles with the user, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation]. The following example illustrates this combination:
+A basic authentication secret can optionally also contain a `users_roles` file. To associate one or more roles with the user, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation]. The following example illustrates this combination:
 [source,yaml]
 ----
 apiVersion: v1
