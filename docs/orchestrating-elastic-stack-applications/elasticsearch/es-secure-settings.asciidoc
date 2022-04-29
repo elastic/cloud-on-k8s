@@ -72,4 +72,4 @@ data:
 
 Check <<{p}-snapshots,How to create automated snapshots>> for an example use case.
 
-WARNING: If using <<{p}-advanced-node-scheduling>> in conjunction with secure settings, ensure you add an `initContainers` section to the `podTemplate` to ensure all the required environment variables exist for the initialization of the keystore.  Refer to <<{p}-availability-zone-awareness-example,Zone Awareness>> for a complete example.
+WARNING: If using <<{p}-advanced-node-scheduling>> in conjunction with secure settings, you have to add an `initContainers` section to the `podTemplate` to ensure all the required environment variables exist for the initialization of the keystore.  Refer to <<{p}-availability-zone-awareness-example,Zone Awareness>> for a complete example.
