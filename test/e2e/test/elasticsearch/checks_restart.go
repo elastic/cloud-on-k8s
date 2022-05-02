@@ -1,0 +1,63 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License
+// 2.0; you may not use this file except in compliance with the Elastic License
+// 2.0.
+
+package elasticsearch
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+)
+
+func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
+	var observedErrors []error
+	maxConcurrentRestarts := int(*es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault())
+	return test.NewConditionalWatcher("watch for correct node shutdown API usage",
+		1*time.Second,
+		func(k *test.K8sClient, t *testing.T) {
+			client, err := NewElasticsearchClient(es, k)
+			defer client.Close()
+			if err != nil {
+				fmt.Printf("error while creating the Elasticsearch client: %s", err)
+				if !errors.As(err, &PotentialNetworkError) {
+					// explicit API server error, consider as a failure
+					observedErrors = append(observedErrors, err)
+				}
+				return
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
+			defer cancel()
+			shutdowns, err := client.GetShutdown(ctx, nil)
+			if err != nil {
+				// allow a certain amount of errors here?
+				return
+			}
+			var restarts []esclient.NodeShutdown
+			for _, s := range shutdowns.Nodes {
+				if s.Is(esclient.Restart) {
+					restarts = append(restarts, s)
+				}
+			}
+			if len(restarts) > maxConcurrentRestarts {
+				observedErrors = append(observedErrors, fmt.Errorf("expected %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
+			}
+		},
+		func(k *test.K8sClient, t *testing.T) {
+			require.Empty(t, observedErrors)
+		},
+		func() bool {
+			return version.MustParse(es.Spec.Version).LT(version.MinFor(7, 15, 2))
+		},
+	)
+}

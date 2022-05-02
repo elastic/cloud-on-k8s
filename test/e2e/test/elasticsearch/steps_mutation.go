@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -75,6 +74,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
+	// var shutdownCheck *continuousNodeRestartCheck
 	mutatedFrom := b.MutatedFrom
 	isMutated := true
 	if mutatedFrom == nil {
@@ -83,13 +83,16 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		isMutated = false
 	}
 
-	var watchers []test.Watcher
+	watchers := []test.Watcher{
+		newNodeShutdownWatcher(b.Elasticsearch),
+	}
+
 	isNonHAUpgrade := IsNonHAUpgrade(b)
 	if !isNonHAUpgrade {
-		watchers = []test.Watcher{
+		watchers = append(watchers,
 			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
 			NewMasterChangeBudgetWatcher(b.Elasticsearch),
-		}
+		)
 	}
 
 	//nolint:thelper
@@ -121,7 +124,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	}
 
 	for _, watcher := range watchers {
-		steps = steps.WithStep(watcher.StartStep(k))
+		// avoid closure over loop iteration variable which will become the receiver of StartStep
+		// leading only watchFn being executed
+		w := watcher
+		steps = steps.WithStep(w.StartStep(k))
 	}
 
 	//nolint:thelper
@@ -157,7 +163,8 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 
 	for _, watcher := range watchers {
-		steps = steps.WithStep(watcher.StopStep(k))
+		w := watcher
+		steps = steps.WithStep(w.StopStep(k))
 	}
 	return steps
 }
@@ -225,18 +232,10 @@ func (hc *ContinuousHealthCheck) Start() {
 				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
 				client, err := hc.esClientFactory()
 				if err != nil {
-					// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
-					// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
-					// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
-					// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
-					// so here we do the opposite: catch expected apiserver errors, and consider the rest are network errors.
-					switch err.(type) { //nolint:errorlint
-					case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
+					fmt.Printf("error while creating the Elasticsearch client: %s", err)
+					if !errors.As(err, &PotentialNetworkError) {
 						// explicit apiserver error, consider as healthcheck failure
 						hc.AppendErr(err)
-					default:
-						// likely a network error, log and ignore
-						fmt.Printf("error while creating the Elasticsearch client: %s", err)
 					}
 					continue
 				}
