@@ -256,7 +256,6 @@ func (hc *ContinuousHealthCheck) Start() {
 				clusterUnavailability.markAvailable()
 				if health.Status == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
-					printShardsAndAllocation(hc.esClientFactory)()
 					continue
 				}
 				hc.SuccessCount++
