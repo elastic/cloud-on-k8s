@@ -154,6 +154,7 @@ func TestFleetMode(t *testing.T) {
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
+		WithFleetImage().
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithKibanaRef(kbBuilder.Ref()).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).

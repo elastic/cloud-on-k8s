@@ -98,7 +98,6 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
@@ -147,7 +146,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
@@ -172,7 +170,6 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithFleetImage().
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.apm_server", "default")).
