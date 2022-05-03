@@ -159,6 +159,10 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (f
 	if password == nil {
 		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
 	}
+	const minPasswordLength = 6
+	if len(password) < minPasswordLength {
+		return realm, fmt.Errorf("password must be at least %d characters long", minPasswordLength)
+	}
 	if k8s.GetSecretEntry(secret, filerealm.UsersFile) != nil {
 		// there is no strict technical requirement for this. This is meant as a precaution against confusing configuration errors
 		return realm, fmt.Errorf("combining file realm users file with clear text password in one secret is not supported: %v", nsn)
@@ -189,5 +193,5 @@ func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, 
 func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
+	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s (%s): %s/%s", msg, err.Error(), es.Namespace, secretName))
 }
