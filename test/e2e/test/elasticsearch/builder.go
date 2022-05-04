@@ -463,7 +463,8 @@ func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	return b
 }
 
-// WithPreStopAdditionalWaitSeconds allows speeding up the test by shortening the pre-stop hook runtime.
+// WithPreStopAdditionalWaitSeconds updates the PRE_STOP_ADDITIONAL_WAIT_SECONDS environment variable in the Elasticsearch container.
+// It can be used to speed up the test by shortening the pre-stop hook runtime.
 // Don't use if you want to test that Elasticsearch is not dropping connections.
 func (b Builder) WithPreStopAdditionalWaitSeconds(s int32) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
