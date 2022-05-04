@@ -316,9 +316,9 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						"username":    []byte(testUser),
-						"password":    []byte("my-user-pass"),
-						"users_roles": filerealm.New().WithRole("superuser", []string{testUser}).FileBytes()[filerealm.UsersRolesFile],
+						"username": []byte(testUser),
+						"password": []byte("my-user-pass"),
+						"roles":    []byte("superuser"),
 					},
 				},
 				existing: filerealm.New().

@@ -62,7 +62,7 @@ Referenced secrets may be of one of two types:
 . a combination of username and password as in link:https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret[Kubernetes basic authentication secrets]
 . a raw file realm content secret
 
-A basic authentication secret can optionally also contain a `users_roles` file. To associate one or more roles with the user, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation]. The following example illustrates this combination:
+A basic authentication secret can optionally also contain a `roles` file. It must contain a comma separated list of roles to be associated with the user. The following example illustrates this combination:
 [source,yaml]
 ----
 apiVersion: v1
@@ -73,8 +73,7 @@ type: kubernetes.io/basic-auth
 stringData:
   username: rdeniro    # required field for kubernetes.io/basic-auth
   password: mypassword # required field for kubernetes.io/basic-auth
-  users_roles: |-      # optional, not part of kubernetes.io/basic-auth
-    admin:rdeniro  
+  roles: kibana_admin,ingest_admin  # optional, not part of kubernetes.io/basic-auth
 ----
 
 NOTE: If you specify the password for the `elastic` user through such a basic authentication secret then the secret holding the password described in <<{p}-default-elastic-user>> will not be created by the operator.

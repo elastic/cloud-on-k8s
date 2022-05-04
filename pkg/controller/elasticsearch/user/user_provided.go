@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +21,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+const userProvidedBasicAuthRolesKey = "roles"
 
 // UserProvidedFileRealmWatchName returns the watch registered for user-provided file realm secrets.
 func UserProvidedFileRealmWatchName(es types.NamespacedName) string { //nolint:revive
@@ -166,28 +169,27 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (f
 	if password == nil {
 		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
 	}
-	const minPasswordLength = 6
-	if len(password) < minPasswordLength {
-		return realm, fmt.Errorf("password must be at least %d characters long", minPasswordLength)
-	}
-	if k8s.GetSecretEntry(secret, filerealm.UsersFile) != nil {
-		// there is no strict technical requirement for this. This is meant as a precaution against confusing configuration errors
-		return realm, fmt.Errorf("combining file realm users file with clear text password in one secret is not supported: %v", nsn)
-	}
 
-	passwordHash, err := reuseOrGenerateHash(user{
+	user := user{
 		Name:     string(username),
 		Password: password,
-	}, existing)
+	}
+
+	if roles := k8s.GetSecretEntry(secret, userProvidedBasicAuthRolesKey); roles != nil {
+		roles := strings.Split(string(roles), ",")
+		user.Roles = roles
+	}
+
+	if err := user.Validate(); err != nil {
+		return realm, err
+	}
+
+	passwordHash, err := reuseOrGenerateHash(user, existing)
 	if err != nil {
 		return filerealm.Realm{}, err
 	}
-
-	roles, err := filerealm.FromSecret(secret)
-	if err != nil {
-		return realm, err
-	}
-	return realm.WithUser(string(username), passwordHash).MergeWith(roles), nil
+	user.PasswordHash = passwordHash
+	return user.fileRealm(), nil
 }
 
 func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string) {
