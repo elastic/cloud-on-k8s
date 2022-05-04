@@ -152,13 +152,12 @@ func (c Context) ImageDefinitionFor(kind string) ElasticStackImageDefinition {
 
 // ImageDefinitionOrNil returns a specific override for the given kind of resource. Returns nil if no override exists.
 func (c Context) ImageDefinitionOrNil(kind string) *ElasticStackImageDefinition {
-	var result *ElasticStackImageDefinition
 	for _, def := range c.ElasticStackImages {
 		if kind == def.Kind {
-			result = &def
+			return &def
 		}
 	}
-	return result
+	return nil
 }
 
 // ClusterResource is a generic cluster resource.
