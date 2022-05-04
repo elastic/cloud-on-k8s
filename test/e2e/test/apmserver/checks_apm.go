@@ -137,10 +137,10 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 			if !apm.Spec.ElasticsearchRef.IsDefined() {
 				return nil
 			}
+			if err := c.checkEventsAPI(apm); err != nil {
+				return err
+			}
 			return retry.UntilSuccess(func() error {
-				if err := c.checkEventsAPI(apm); err != nil {
-					return err
-				}
 				return c.checkEventsInElasticsearch(apm, k)
 			}, 30*time.Second, 2*time.Second)
 		}),
