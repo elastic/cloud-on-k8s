@@ -204,8 +204,8 @@ func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearc
 }
 func handlePotentialMisconfiguration(recorder record.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
 	expected := []string{corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey}
-	var keys []string
-	for k, _ := range secret.Data {
+	keys := make([]string, 0, len(secret.Data))
+	for k := range secret.Data {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
