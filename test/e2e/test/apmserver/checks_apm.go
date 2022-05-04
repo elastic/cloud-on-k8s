@@ -142,7 +142,7 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 					return err
 				}
 				return c.checkEventsInElasticsearch(apm, k)
-			}, 5*time.Minute, 10*time.Second)
+			}, 30*time.Second, 2*time.Second)
 		}),
 	}
 }
