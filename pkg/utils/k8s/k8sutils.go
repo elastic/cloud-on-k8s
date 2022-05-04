@@ -153,17 +153,18 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 	return content
 }
 
-// HasSecretEntries returns true if secret contains all keys.
-func HasSecretEntries(secret corev1.Secret, keys ...string) bool {
+// HasSecretEntries returns the number of matching keys found in secret.
+func HasSecretEntries(secret corev1.Secret, keys ...string) int {
 	if secret.Data == nil {
-		return false
+		return 0
 	}
+	var hits int
 	for _, k := range keys {
-		if _, exists := secret.Data[k]; !exists {
-			return false
+		if _, exists := secret.Data[k]; exists {
+			hits++
 		}
 	}
-	return true
+	return hits
 }
 
 // DeleteSecretMatching deletes the Secret matching the provided selectors.

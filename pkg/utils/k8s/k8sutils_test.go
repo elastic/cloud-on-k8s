@@ -296,7 +296,7 @@ func TestHasSecretEntries(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want int
 	}{
 		{
 			name: "empty secret",
@@ -304,7 +304,7 @@ func TestHasSecretEntries(t *testing.T) {
 				secret: corev1.Secret{},
 				keys:   []string{"a"},
 			},
-			want: false,
+			want: 0,
 		},
 		{
 			name: "empty keys",
@@ -312,7 +312,7 @@ func TestHasSecretEntries(t *testing.T) {
 				secret: secretFixture,
 				keys:   nil,
 			},
-			want: true, // admittedly not very useful but analogous to the empty set
+			want: 0,
 		},
 		{
 			name: "single key",
@@ -320,7 +320,7 @@ func TestHasSecretEntries(t *testing.T) {
 				secret: secretFixture,
 				keys:   []string{"a"},
 			},
-			want: true,
+			want: 1,
 		},
 		{
 			name: "multiple keys",
@@ -328,7 +328,7 @@ func TestHasSecretEntries(t *testing.T) {
 				secret: secretFixture,
 				keys:   []string{"a", "c"},
 			},
-			want: true,
+			want: 2,
 		},
 		{
 			name: "no match single",
@@ -336,15 +336,23 @@ func TestHasSecretEntries(t *testing.T) {
 				secret: secretFixture,
 				keys:   []string{"d"},
 			},
-			want: false,
+			want: 0,
 		},
 		{
-			name: "no match multiple",
+			name: "partial match multiple",
 			args: args{
 				secret: secretFixture,
 				keys:   []string{"a", "f"},
 			},
-			want: false,
+			want: 1,
+		},
+		{
+			name: "match all",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "b", "c"},
+			},
+			want: 3,
 		},
 	}
 	for _, tt := range tests {
