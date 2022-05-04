@@ -193,5 +193,5 @@ func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, 
 func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
 	log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
-	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s (%s): %s/%s", msg, err.Error(), es.Namespace, secretName))
+	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
 }
