@@ -343,7 +343,7 @@ type UpdateStrategy struct {
 type Restart struct {
 	// AllocationDelay controls how long Elasticsearch will wait for the node to restart and join the cluster before
 	// reassigning its shards to other nodes. Only valid during restarts as part of a rolling upgrade of Elasticsearch
-	// 7.15.2 or newer.
+	// 7.15.2 or newer. Values are expected to be Elasticsearch time units https://www.elastic.co/guide/en/elasticsearch/reference/8.1/api-conventions.html#time-units
 	AllocationDelay string `json:"allocationDelay,omitempty"`
 }
 

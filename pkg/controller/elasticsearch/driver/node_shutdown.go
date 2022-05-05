@@ -28,6 +28,7 @@ func newShutdownInterface(
 			return nil, err
 		}
 		logger := log.WithValues("namespace", es.Namespace, "es_name", es.Name)
+		// we are not setting allocationDelay here as it is only valid for restarts
 		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, "", logger)
 	} else {
 		shutdownService = migration.NewShardMigration(es, client, client)
