@@ -2,6 +2,8 @@ module github.com/elastic/cloud-on-k8s
 
 go 1.17
 
+replace google.golang.org/protobuf => google.golang.org/protobuf v1.28.0
+
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/blang/semver/v4 v4.0.0
