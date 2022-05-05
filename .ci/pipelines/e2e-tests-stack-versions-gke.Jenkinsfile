@@ -46,17 +46,6 @@ pipeline {
                         }
                     }
                 }
-                stage("7.10.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-710-${BUILD_NUMBER}-e2e", "7.10.2")
-                        }
-                    }
-                }
                 stage("7.11.2") {
                     agent {
                         label 'linux'
@@ -156,6 +145,17 @@ pipeline {
                         }
                     }
                }
+               stage("8.2.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, "eck-820-${BUILD_NUMBER}-e2e", "8.2.0")
+                        }
+                    }
+               }
             }
         }
     }
@@ -186,7 +186,6 @@ pipeline {
             script {
                 clusters = [
                     "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-710-${BUILD_NUMBER}-e2e",
                     "eck-711-${BUILD_NUMBER}-e2e",
                     "eck-712-${BUILD_NUMBER}-e2e",
                     "eck-713-${BUILD_NUMBER}-e2e",
@@ -195,7 +194,8 @@ pipeline {
                     "eck-716-${BUILD_NUMBER}-e2e",
                     "eck-717-${BUILD_NUMBER}-e2e",
                     "eck-800-${BUILD_NUMBER}-e2e",
-                    "eck-810-${BUILD_NUMBER}-e2e"
+                    "eck-810-${BUILD_NUMBER}-e2e",
+                    "eck-820-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
