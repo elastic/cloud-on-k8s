@@ -7,6 +7,8 @@ package shutdown
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -336,16 +338,19 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 
 func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 	type args struct {
-		typ          esclient.ShutdownType
-		podToNodeID  map[string]string
-		leavingNodes []string
+		typ             esclient.ShutdownType
+		podToNodeID     map[string]string
+		leavingNodes    []string
+		allocationDelay string
+		reason          string
 	}
 	tests := []struct {
-		name        string
-		args        args
-		fixtures    []string
-		wantErr     bool
-		wantMethods []string
+		name             string
+		args             args
+		fixtures         []string
+		requestAssertion func(esclient.ShutdownRequest)
+		wantErr          bool
+		wantMethods      []string
 	}{
 		{
 			name: "no node leaving",
@@ -363,16 +368,23 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 		{
 			name: "one node leaving",
 			args: args{
-				typ: esclient.Remove,
+				typ: esclient.Restart,
 				podToNodeID: map[string]string{
 					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
 				},
-				leavingNodes: []string{"pod-1"},
+				leavingNodes:    []string{"pod-1"},
+				allocationDelay: "10m",
+				reason:          "test-reason",
 			},
 			fixtures: []string{
 				noShutdownFixture,
 				ackFixture,
 				singleRestartShutdownFixture,
+			},
+			requestAssertion: func(request esclient.ShutdownRequest) {
+				require.Equal(t, "10m", request.AllocationDelay)
+				require.Equal(t, esclient.Restart, request.Type)
+				require.Equal(t, "test-reason", request.Reason)
 			},
 			wantErr:     false,
 			wantMethods: []string{"GET", "PUT", "GET"},
@@ -380,7 +392,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 		{
 			name: "two nodes leaving",
 			args: args{
-				typ: esclient.Remove,
+				typ: esclient.Restart,
 				podToNodeID: map[string]string{
 					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
 					"pod-2": "sh013PAoQFqkF92fBv1fzg",
@@ -395,6 +407,11 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				// technically incorrect as we are returning the same shutdown fixture as before. But we don't verify
 				// the responses, so good enough for this test.
 				singleRestartShutdownFixture,
+			},
+			requestAssertion: func(request esclient.ShutdownRequest) {
+				require.Equal(t, "", request.AllocationDelay)
+				require.Equal(t, esclient.Restart, request.Type)
+				require.Equal(t, "", request.Reason)
 			},
 			wantErr:     false,
 			wantMethods: []string{"GET", "PUT", "GET", "PUT", "GET"},
@@ -435,6 +452,13 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				defer func() {
 					i++
 				}()
+				if tt.requestAssertion != nil && req.Method == "PUT" {
+					bytes, err := ioutil.ReadAll(req.Body)
+					require.NoError(t, err)
+					var r esclient.ShutdownRequest
+					require.NoError(t, json.Unmarshal(bytes, &r))
+					tt.requestAssertion(r)
+				}
 				methodsCalled = append(methodsCalled, req.Method)
 				return &http.Response{
 					StatusCode: 200,
@@ -444,10 +468,12 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				}
 			})
 			ns := &NodeShutdown{
-				c:           client,
-				typ:         tt.args.typ,
-				podToNodeID: tt.args.podToNodeID,
-				log:         log.Log.WithName("test"),
+				c:               client,
+				typ:             tt.args.typ,
+				podToNodeID:     tt.args.podToNodeID,
+				log:             log.Log.WithName("test"),
+				allocationDelay: tt.args.allocationDelay,
+				reason:          tt.args.reason,
 			}
 			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileShutdowns() error = %v, wantErr %v", err, tt.wantErr)

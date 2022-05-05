@@ -184,7 +184,7 @@ func (c *clientV6) GetShutdown(context.Context, *string) (ShutdownResponse, erro
 	return ShutdownResponse{}, errNotSupportedInEs6x
 }
 
-func (c *clientV6) PutShutdown(context.Context, string, ShutdownType, string) error {
+func (c *clientV6) PutShutdown(context.Context, string, ShutdownType, string, string) error {
 	return errNotSupportedInEs6x
 }
 

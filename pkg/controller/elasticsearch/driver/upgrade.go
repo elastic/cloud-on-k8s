@@ -65,7 +65,14 @@ func (d *defaultDriver) handleUpgrades(
 		results.WithError(err)
 	}
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
+	nodeShutdown := shutdown.NewNodeShutdown(
+		esClient,
+		nodeNameToID,
+		esclient.Restart,
+		d.ES.ResourceVersion,
+		d.ES.Spec.UpdateStrategy.Restart.AllocationDelay,
+		logger,
+	)
 
 	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
 	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations

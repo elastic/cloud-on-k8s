@@ -110,7 +110,7 @@ type Client interface {
 	GetShutdown(ctx context.Context, nodeID *string) (ShutdownResponse, error)
 	// PutShutdown initiates a node shutdown procedure for the given node.
 	// Introduced in: Elasticsearch 7.14.0
-	PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string) error
+	PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string, allocationDelay string) error
 	// DeleteShutdown attempts to cancel an ongoing node shutdown.
 	// Introduced in: Elasticsearch 7.14.0
 	DeleteShutdown(ctx context.Context, nodeID string) error

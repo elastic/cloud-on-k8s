@@ -4625,6 +4625,20 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  restart:
+                    description: Restart defines settings applicable during Elasticsearch
+                      node restarts.
+                    properties:
+                      allocationDelay:
+                        description: AllocationDelay controls how long Elasticsearch
+                          will wait for the node to restart and join the cluster before
+                          reassigning its shards to other nodes. Only valid during
+                          restarts as part of a rolling upgrade of Elasticsearch 7.15.2
+                          or newer.
+                        type: string
+                    type: object
+                required:
+                - restart
                 type: object
               version:
                 description: Version of Elasticsearch.

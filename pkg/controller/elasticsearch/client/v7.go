@@ -68,10 +68,11 @@ func (c *clientV7) GetShutdown(ctx context.Context, nodeID *string) (ShutdownRes
 	return r, err
 }
 
-func (c *clientV7) PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string) error {
+func (c *clientV7) PutShutdown(ctx context.Context, nodeID string, shutdownType ShutdownType, reason string, allocationDelay string) error {
 	request := ShutdownRequest{
-		Type:   shutdownType,
-		Reason: reason,
+		Type:            shutdownType,
+		Reason:          reason,
+		AllocationDelay: allocationDelay,
 	}
 	return c.put(ctx, fmt.Sprintf("/_nodes/%s/shutdown", nodeID), request, nil)
 }

@@ -28,7 +28,7 @@ func newShutdownInterface(
 			return nil, err
 		}
 		logger := log.WithValues("namespace", es.Namespace, "es_name", es.Name)
-		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger)
+		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, "", logger)
 	} else {
 		shutdownService = migration.NewShardMigration(es, client, client)
 	}

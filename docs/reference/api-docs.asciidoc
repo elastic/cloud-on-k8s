@@ -1232,6 +1232,23 @@ RemoteCluster declares a remote Elasticsearch cluster connection.
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-restart"]
+=== Restart 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy[$$UpdateStrategy$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`allocationDelay`* __string__ | AllocationDelay controls how long Elasticsearch will wait for the node to restart and join the cluster before reassigning its shards to other nodes. Only valid during restarts as part of a rolling upgrade of Elasticsearch 7.15.2 or newer.
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-rolesource"]
 === RoleSource 
 
@@ -1302,6 +1319,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 | Field | Description
 | *`changeBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-changebudget[$$ChangeBudget$$]__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+| *`restart`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-restart[$$Restart$$]__ | Restart defines settings applicable during Elasticsearch node restarts.
 |===
 
 

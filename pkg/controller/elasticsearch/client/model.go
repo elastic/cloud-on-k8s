@@ -475,9 +475,9 @@ func (ns NodeShutdown) Is(t ShutdownType) bool {
 
 // ShutdownRequest is the body of a node shutdown request.
 type ShutdownRequest struct {
-	Type            ShutdownType  `json:"type"`
-	Reason          string        `json:"reason"`
-	AllocationDelay time.Duration `json:"allocation_delay,omitempty"`
+	Type            ShutdownType `json:"type"`
+	Reason          string       `json:"reason"`
+	AllocationDelay string       `json:"allocation_delay,omitempty"`
 }
 
 // ShutdownResponse is the response wrapper for retrieving the status of ongoing node shutdowns from Elasticsearch.

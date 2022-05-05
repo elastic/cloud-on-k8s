@@ -1161,7 +1161,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			}
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
 			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
-			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", log)
+			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", "", log)
 			es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
 			ctx := upgradeCtx{
 				parentCtx:       context.Background(),

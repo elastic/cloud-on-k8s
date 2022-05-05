@@ -336,6 +336,15 @@ func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 type UpdateStrategy struct {
 	// ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 	ChangeBudget ChangeBudget `json:"changeBudget,omitempty"`
+	// Restart defines settings applicable during Elasticsearch node restarts.
+	Restart Restart `json:"restart"`
+}
+
+type Restart struct {
+	// AllocationDelay controls how long Elasticsearch will wait for the node to restart and join the cluster before
+	// reassigning its shards to other nodes. Only valid during restarts as part of a rolling upgrade of Elasticsearch
+	// 7.15.2 or newer.
+	AllocationDelay string `json:"allocationDelay,omitempty"`
 }
 
 // ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.

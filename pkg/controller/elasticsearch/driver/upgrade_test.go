@@ -567,7 +567,7 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 			nodeNameToID, err := esState.NodeNameToID()
 			require.NoError(t, err)
 
-			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", log)
+			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", "", log)
 			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n)
 			tt.assertions(results, esClient)
 		})
