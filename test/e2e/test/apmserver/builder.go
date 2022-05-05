@@ -22,6 +22,8 @@ import (
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmv1.ApmServer
+
+	MutatedFrom *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -112,6 +114,17 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) DeepCopy() *Builder {
+	apm := b.ApmServer.DeepCopy()
+	builderCopy := Builder{
+		ApmServer: *apm,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
 		b.ApmServer.Spec.Config = &commonv1.Config{
@@ -120,10 +133,12 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 		return b
 	}
 
+	newBuilder := b.DeepCopy()
+
 	for k, v := range cfg {
-		b.ApmServer.Spec.Config.Data[k] = v
+		newBuilder.ApmServer.Spec.Config.Data[k] = v
 	}
-	return b
+	return *newBuilder
 }
 
 func (b Builder) WithRUM(enabled bool) Builder {
@@ -169,6 +184,11 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	return b.WithConfig(map[string]interface{}{
 		"apm-server.data_streams.wait_for_integration": false,
 	})
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
+	return b
 }
 
 func (b Builder) NSN() types.NamespacedName {

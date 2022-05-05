@@ -14,14 +14,15 @@ import (
 	"testing"
 	"time"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/assert"
 	vegeta "github.com/tsenart/vegeta/lib"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
 // TestMutationHTTPToHTTPS creates a 3 node cluster running without TLS on the HTTP layer,

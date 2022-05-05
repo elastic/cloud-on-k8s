@@ -117,6 +117,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			// don't check association statuses that may vary across tests
 			as.Status.ElasticsearchAssociationStatus = ""
 			as.Status.KibanaAssociationStatus = ""
+			as.Status.ObservedGeneration = 0
 
 			// Selector is a string built from a map, it is validated with a dedicated function.
 			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels

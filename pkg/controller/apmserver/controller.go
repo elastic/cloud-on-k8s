@@ -88,9 +88,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
-	client := mgr.GetClient()
 	return &ReconcileApmServer{
-		Client:         client,
+		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -153,14 +152,18 @@ type ReconcileApmServer struct {
 	iteration uint64
 }
 
+// K8sClient returns the kubernetes client from the APM Server reconciler.
 func (r *ReconcileApmServer) K8sClient() k8s.Client {
 	return r.Client
 }
 
+// DynamicWatches returns the set of dynamic watches from the APM Server reconciler.
 func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
+// Recorder returns the Kubernetes recorder that is responsible for recording and reporting
+// events from the APM Server reconciler.
 func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
 }
@@ -200,30 +203,34 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
 	}
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
-	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-	if !areAssocsConfigured {
-		return reconcile.Result{}, nil
-	}
+	results, state := r.doReconcile(ctx, &as)
 
-	return r.doReconcile(ctx, request, &as)
+	return results.WithError(r.updateStatus(ctx, state)).Aggregate()
 }
 
-func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServer) (*reconciler.Results, State) {
+	state := NewState(as)
+	results := reconciler.NewResult(ctx)
+
+	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(tracing.CaptureError(ctx, err)), state
+	}
+	if !areAssocsConfigured {
+		return results, state
+	}
+
 	// Run validation in case the webhook is disabled
 	if err := r.validate(ctx, as); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 
-	state := NewState(request, as)
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 
-	_, results := certificates.Reconciler{
+	_, results = certificates.Reconciler{
 		K8sClient:             r.K8sClient(),
 		DynamicWatches:        r.DynamicWatches(),
 		Owner:                 as,
@@ -237,22 +244,22 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
-		res, err := results.Aggregate()
+		_, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return res, err
+		return results, state
 	}
 
 	asVersion, err := version.Parse(as.Spec.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err), state
 	}
 	logger := log.WithValues("namespace", as.Namespace, "as_name", as.Name)
 	assocAllowed, err := association.AllowVersion(asVersion, as, logger, r.recorder)
 	if err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 	if !assocAllowed {
-		return reconcile.Result{}, nil // will eventually retry
+		return results, state // will eventually retry
 	}
 
 	r.warnIfDeprecated(asVersion, as)
@@ -261,23 +268,17 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
-			return reconcile.Result{Requeue: true}, nil
+			return results.WithResult(reconcile.Result{Requeue: true}), state
 		}
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
-		return state.Result, tracing.CaptureError(ctx, err)
+		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
-	// update status
-	err = r.updateStatus(ctx, state)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
-		return reconcile.Result{Requeue: true}, nil
-	}
-	res, err := results.WithError(err).Aggregate()
+	_, err = results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
-	return res, err
+	return results, state
 }
 
 func (r *ReconcileApmServer) warnIfDeprecated(version semver.Version, as *apmv1.ApmServer) {
@@ -345,12 +346,12 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
-	current := state.originalApmServer
-	if reflect.DeepEqual(current.Status, state.ApmServer.Status) {
+	original := state.originalApmServer
+	if reflect.DeepEqual(original.Status, state.ApmServer.Status) {
 		return nil
 	}
-	if state.ApmServer.Status.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
+	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
+		r.recorder.Event(original, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
@@ -361,6 +362,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 	return common.UpdateStatus(r.Client, state.ApmServer)
 }
 
+// NewService returns the service used by the APM Server.
 func NewService(as apmv1.ApmServer) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,

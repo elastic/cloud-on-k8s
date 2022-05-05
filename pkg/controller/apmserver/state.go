@@ -7,7 +7,6 @@ package apmserver
 import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -16,17 +15,16 @@ import (
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an ApmServer
 // resource for status updates.
 type State struct {
-	ApmServer *apmv1.ApmServer
-	Result    reconcile.Result
-	Request   reconcile.Request
-
+	ApmServer         *apmv1.ApmServer
 	originalApmServer *apmv1.ApmServer
 }
 
-// NewState creates a new reconcile state based on the given request and ApmServer resource with the resource
-// state reset to empty.
-func NewState(request reconcile.Request, as *apmv1.ApmServer) State {
-	return State{Request: request, ApmServer: as, originalApmServer: as.DeepCopy()}
+// NewState creates a new reconcile state based on the given request and ApmServer resource, with the
+// ApmServer's Status.ObservedGeneration set from the current generation of the ApmServer's specification.
+func NewState(as *apmv1.ApmServer) State {
+	current := as.DeepCopy()
+	current.Status.ObservedGeneration = as.Generation
+	return State{ApmServer: current, originalApmServer: as}
 }
 
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
