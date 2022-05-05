@@ -1,7 +1,6 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License
-// 2.0; you may not use this file except in compliance with the Elastic License
-// 2.0.
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
 
 package elasticsearch
 
@@ -25,9 +24,8 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 	maxConcurrentRestarts := int(*es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault())
 	return test.NewConditionalWatcher("watch for correct node shutdown API usage",
 		1*time.Second,
-		func(k *test.K8sClient, t *testing.T) {
+		func(k *test.K8sClient, t *testing.T) { //nolint:thelper
 			client, err := NewElasticsearchClient(es, k)
-			defer client.Close()
 			if err != nil {
 				fmt.Printf("error while creating the Elasticsearch client: %s", err)
 				if !errors.As(err, &PotentialNetworkError) {
@@ -36,6 +34,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 				}
 				return
 			}
+			defer client.Close()
 			ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
 			defer cancel()
 			shutdowns, err := client.GetShutdown(ctx, nil)
@@ -54,7 +53,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 				observedErrors = append(observedErrors, fmt.Errorf("expected %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
 			}
 		},
-		func(k *test.K8sClient, t *testing.T) {
+		func(k *test.K8sClient, t *testing.T) { //nolint:thelper
 			require.Empty(t, observedErrors)
 		},
 		func() bool {
