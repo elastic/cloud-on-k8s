@@ -110,7 +110,7 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, reason string) error {
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, reason string, allocationDelay string) error {
 	return nil
 }
 
