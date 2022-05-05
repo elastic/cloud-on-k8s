@@ -16,9 +16,9 @@ const (
 	// LatestReleasedVersion6x is the latest released version for 6.x
 	LatestReleasedVersion6x = "6.8.23"
 	// LatestReleasedVersion7x is the latest released version for 7.x
-	LatestReleasedVersion7x = "7.17.1"
+	LatestReleasedVersion7x = "7.17.3"
 	// LatestReleasedVersion8x is the latest release version for 8.x
-	LatestReleasedVersion8x = "8.1.1"
+	LatestReleasedVersion8x = "8.2.0"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
