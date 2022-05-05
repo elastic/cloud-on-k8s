@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +59,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 			require.Empty(t, observedErrors)
 		},
 		func() bool {
-			return version.MustParse(es.Spec.Version).LT(version.MinFor(7, 15, 2))
+			return version.MustParse(es.Spec.Version).LT(shutdown.MinVersion)
 		},
 	)
 }
