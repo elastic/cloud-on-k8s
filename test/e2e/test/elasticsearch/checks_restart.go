@@ -40,7 +40,8 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 			defer cancel()
 			shutdowns, err := client.GetShutdown(ctx, nil)
 			if err != nil {
-				// allow a certain amount of errors here?
+				// we allow errors here, we are not testing for ES availability
+				fmt.Printf("error while getting node shutdowns: %s", err)
 				return
 			}
 			var restarts []esclient.NodeShutdown

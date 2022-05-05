@@ -125,7 +125,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 
 	for _, watcher := range watchers {
 		// avoid closure over loop iteration variable which will become the receiver of StartStep
-		// leading only watchFn being executed
+		// leading to only one watchFn being executed
 		w := watcher
 		steps = steps.WithStep(w.StartStep(k))
 	}

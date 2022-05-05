@@ -306,7 +306,8 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	nodeShutdown *shutdown.NodeShutdown,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
-	// Make sure all pods scheduled for upgrade have been upgraded. TODO this is redundant in the current call hierarchy
+	// Make sure all pods scheduled for upgrade have been upgraded.
+	// This is a redundant check in the current call hierarchy but makes the invariant explicit and testing easier.
 	done, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
