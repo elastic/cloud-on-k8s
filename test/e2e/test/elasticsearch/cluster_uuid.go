@@ -6,11 +6,8 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -53,11 +50,18 @@ func CompareClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, previousCl
 	//nolint:thelper
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
 			newClusterUUID, err := clusterUUID(es, k)
-			require.NoError(t, err)
-			require.NotEmpty(t, *previousClusterUUID)
-			require.Equal(t, *previousClusterUUID, newClusterUUID)
-		},
+			if err != nil {
+				return err
+			}
+			if previousClusterUUID == nil || *previousClusterUUID == "" {
+				return errors.New("test setup error previousClusterUUID is empty or nil")
+			}
+			if *previousClusterUUID != newClusterUUID {
+				return fmt.Errorf("cluster state lost, prev cluster UUID %s, current %s", *previousClusterUUID, newClusterUUID)
+			}
+			return nil
+		}),
 	}
 }
