@@ -35,8 +35,9 @@ const (
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
-func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileElasticUser(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
 	return reconcilePredefinedUsers(
+		ctx,
 		c,
 		es,
 		existingFileRealm,
@@ -51,8 +52,9 @@ func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm
 }
 
 // reconcileInternalUsers reconciles a single secret holding the internal users passwords.
-func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileInternalUsers(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
 	return reconcilePredefinedUsers(
+		ctx,
 		c,
 		es,
 		existingFileRealm,
@@ -69,6 +71,7 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
 // It attempts to reuse passwords from pre-existing secrets, and reuse hashes from pre-existing file realms.
 func reconcilePredefinedUsers(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	existingFileRealm filerealm.Realm,
@@ -105,9 +108,9 @@ func reconcilePredefinedUsers(
 	}
 
 	if setOwnerRef {
-		_, err = reconciler.ReconcileSecret(c, expected, &es)
+		_, err = reconciler.ReconcileSecret(ctx, c, expected, &es)
 	} else {
-		_, err = reconciler.ReconcileSecretNoOwnerRef(c, expected, &es)
+		_, err = reconciler.ReconcileSecretNoOwnerRef(ctx, c, expected, &es)
 	}
 	return users, err
 }

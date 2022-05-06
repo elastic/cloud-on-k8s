@@ -30,9 +30,10 @@ const (
 
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
-func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner client.Object) (corev1.Secret, error) {
+func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) (corev1.Secret, error) {
 	var reconciled corev1.Secret
 	if err := ReconcileResource(Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      owner,
 		Expected:   &expected,
@@ -90,7 +91,7 @@ func SoftOwnerRefFromLabels(labels map[string]string) (SoftOwnerRef, bool) {
 //
 // Since they won't have an ownerReference specified, reconciled secrets will not be deleted automatically on parent deletion.
 // To account for that, we add labels to reference the "soft owner", for garbage collection by the operator on parent resource deletion.
-func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner runtime.Object) (corev1.Secret, error) {
+func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev1.Secret, softOwner runtime.Object) (corev1.Secret, error) {
 	// this function is similar to "ReconcileSecret", but:
 	// - we don't pass an owner
 	// - we remove the existing owner
@@ -108,6 +109,7 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 
 	var reconciled corev1.Secret
 	if err := ReconcileResource(Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      nil,
 		Expected:   &expected,
@@ -138,9 +140,9 @@ func ReconcileSecretNoOwnerRef(c k8s.Client, expected corev1.Secret, softOwner r
 
 // GarbageCollectSoftOwnedSecrets deletes all secrets whose labels reference a soft owner.
 // To be called once that owner gets deleted.
-func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
+func GarbageCollectSoftOwnedSecrets(ctx context.Context, c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
 	var secrets corev1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&secrets,
 		// restrict to secrets in the parent namespace, we don't want to delete
 		// secrets users may have manually copied into other namespaces
@@ -159,7 +161,7 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 		log.Info("Garbage collecting secret",
 			"namespace", deletedOwner.Namespace, "secret_name", s.Name,
 			"owner_name", deletedOwner.Name, "owner_kind", ownerKind)
-		err := c.Delete(context.Background(), &s, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &s.UID}})
+		err := c.Delete(ctx, &s, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &s.UID}})
 		if apierrors.IsNotFound(err) {
 			// already deleted, all good
 			continue
@@ -176,10 +178,10 @@ func GarbageCollectSoftOwnedSecrets(c k8s.Client, deletedOwner types.NamespacedN
 // Should be called on operator startup, after cache warm-up, to cover cases where
 // the operator is down when the owner is deleted.
 // If the operator is up, garbage collection is already handled by GarbageCollectSoftOwnedSecrets on owner deletion.
-func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string]client.Object) error {
+func GarbageCollectAllSoftOwnedOrphanSecrets(ctx context.Context, c k8s.Client, ownerKinds map[string]client.Object) error {
 	// retrieve all secrets that reference a soft owner
 	var secrets corev1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&secrets,
 		client.HasLabels{SoftOwnerNamespaceLabel, SoftOwnerNameLabel, SoftOwnerKindLabel},
 	); err != nil {
@@ -203,7 +205,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 			continue
 		}
 		owner = k8s.DeepCopyObject(owner)
-		err := c.Get(context.Background(), types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
+		err := c.Get(ctx, types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}, owner)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// owner doesn't exit anymore
@@ -212,7 +214,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(c k8s.Client, ownerKinds map[string
 					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)
 				options := client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
-				if err := c.Delete(context.Background(), &secret, &options); err != nil && !apierrors.IsNotFound(err) {
+				if err := c.Delete(ctx, &secret, &options); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 				continue

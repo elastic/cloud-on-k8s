@@ -613,7 +613,7 @@ func startOperator(ctx context.Context) error {
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
 	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval)
+	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -663,6 +663,7 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 
 // asyncTasks schedules some tasks to be started when this instance of the operator is elected
 func asyncTasks(
+	ctx context.Context,
 	mgr manager.Manager,
 	cfg *rest.Config,
 	managedNamespaces []string,
@@ -670,6 +671,7 @@ func asyncTasks(
 	operatorInfo about.OperatorInfo,
 	disableTelemetry bool,
 	telemetryInterval time.Duration,
+	tracer *apm.Tracer,
 ) {
 	<-mgr.Elected() // wait for this operator instance to be elected
 
@@ -681,23 +683,29 @@ func asyncTasks(
 
 	// Start the resource reporter
 	go func() {
-		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
-		r.Start(licensing.ResourceReporterFrequency)
+		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer)
+		r.Start(ctx, licensing.ResourceReporterFrequency)
 	}()
 
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval)
-			tr.Start()
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval, tracer)
+			tr.Start(ctx)
 		}()
 	}
 
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
-	garbageCollectUsers(cfg, managedNamespaces)
+	gcCtx := tracing.NewContextTransaction(ctx, tracer, "garbage-collection", "on_operator_start", nil)
+	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
+	if err != nil {
+		log.Error(err, "user garbage collector failed")
+		os.Exit(1)
+	}
 	// - soft-owned secrets
-	garbageCollectSoftOwnedSecrets(mgr.GetClient())
+	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
+	tracing.EndContextTransaction(gcCtx)
 }
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -826,11 +834,13 @@ func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 	return certValidity, certRotateBefore, nil
 }
 
-func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
+func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespaces []string) error {
+	span, ctx := apm.StartSpan(ctx, "gc_users", tracing.SpanTypeApp)
+	defer span.End()
+
 	ugc, err := association.NewUsersGarbageCollector(cfg, managedNamespaces)
 	if err != nil {
-		log.Error(err, "user garbage collector creation failed")
-		os.Exit(1)
+		return fmt.Errorf("user garbage collector creation failed: %w", err)
 	}
 	err = ugc.
 		For(&apmv1.ApmServerList{}, associationctl.ApmAssociationLabelNamespace, associationctl.ApmAssociationLabelName).
@@ -839,15 +849,18 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		For(&emsv1alpha1.ElasticMapsServerList{}, associationctl.MapsESAssociationLabelNamespace, associationctl.MapsESAssociationLabelName).
-		DoGarbageCollection()
+		DoGarbageCollection(ctx)
 	if err != nil {
-		log.Error(err, "user garbage collector failed")
-		os.Exit(1)
+		return fmt.Errorf("user garbage collector failed: %w", err)
 	}
+	return nil
 }
 
-func garbageCollectSoftOwnedSecrets(k8sClient k8s.Client) {
-	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(k8sClient, map[string]client.Object{
+func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
+	span, ctx := apm.StartSpan(ctx, "gc_soft_owned_secrets", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(ctx, k8sClient, map[string]client.Object{
 		esv1.Kind:          &esv1.Elasticsearch{},
 		apmv1.Kind:         &apmv1.ApmServer{},
 		kbv1.Kind:          &kbv1.Kibana{},

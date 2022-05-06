@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -125,7 +126,7 @@ func Test_validatePodTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePodTemplate(tt.args.c, tt.args.parent, tt.args.sset)
+			err := validatePodTemplate(context.Background(), tt.args.c, tt.args.parent, tt.args.sset)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("validatePodTemplate() error = %v, wantErr %v", err, tt.wantErr)
 			}

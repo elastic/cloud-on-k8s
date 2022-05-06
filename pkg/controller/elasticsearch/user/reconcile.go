@@ -48,7 +48,7 @@ func ReconcileUsersAndRoles(
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 ) (esclient.BasicAuth, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
@@ -56,7 +56,7 @@ func ReconcileUsersAndRoles(
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched, recorder)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -68,7 +68,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm, saTokens); err != nil {
+	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -113,6 +113,7 @@ func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm,
 
 // aggregateFileRealm builds a single file realm from multiple ones, and returns the controller user credentials.
 func aggregateFileRealm(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
@@ -128,11 +129,11 @@ func aggregateFileRealm(
 	}
 
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(c, es, existingFileRealm)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(c, es, existingFileRealm)
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
@@ -186,6 +187,7 @@ func RolesFileRealmSecretKey(es esv1.Elasticsearch) types.NamespacedName {
 
 // reconcileRolesFileRealmSecret creates or updates the single secret holding the file realm and the file-based roles.
 func reconcileRolesFileRealmSecret(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	roles RolesFileContent,
@@ -211,6 +213,7 @@ func reconcileRolesFileRealmSecret(
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      &es,
 		Expected:   &expected,

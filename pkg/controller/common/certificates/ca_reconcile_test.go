@@ -237,7 +237,7 @@ func Test_renewCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := renewCA(tt.client, testNamer, &testCluster, nil, tt.expireIn, TransportCAType)
+			ca, err := renewCA(context.Background(), tt.client, testNamer, &testCluster, nil, tt.expireIn, TransportCAType)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
@@ -314,6 +314,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca, err := ReconcileCAForOwner(
+				context.Background(),
 				tt.cl, testNamer, &testCluster, nil, TransportCAType, RotationParams{
 					Validity:     tt.caCertValidity,
 					RotateBefore: DefaultRotateBefore,

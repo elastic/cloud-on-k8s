@@ -32,6 +32,7 @@ var (
 
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(
+	ctx context.Context,
 	c k8s.Client,
 	podListOptions ...client.ListOption,
 ) {
@@ -44,7 +45,7 @@ func MarkPodsAsUpdated(
 	}
 	// Update annotation
 	for _, pod := range podList.Items {
-		MarkPodAsUpdated(c, pod)
+		MarkPodAsUpdated(ctx, c, pod)
 	}
 }
 
@@ -53,6 +54,7 @@ func MarkPodsAsUpdated(
 // This is done as a best effort, some pods may not be updated, errors are only logged.
 // This could be fixed in kubelet at some point, see https://github.com/kubernetes/kubernetes/issues/30189
 func MarkPodAsUpdated(
+	ctx context.Context,
 	c k8s.Client,
 	pod corev1.Pod,
 ) {
@@ -67,7 +69,7 @@ func MarkPodAsUpdated(
 	}
 	pod.Annotations[UpdateAnnotation] =
 		time.Now().Format(time.RFC3339Nano) // nano should be enough to avoid collisions and keep it readable by a human.
-	if err := c.Update(context.Background(), &pod); err != nil {
+	if err := c.Update(ctx, &pod); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)

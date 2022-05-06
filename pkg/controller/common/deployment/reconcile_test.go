@@ -66,7 +66,7 @@ func TestReconcile(t *testing.T) {
 	owner := esv1.Elasticsearch{} // can be any type
 
 	// should create a new deployment
-	reconciled, err := Reconcile(k8sClient, expected, &owner)
+	reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// reconciled should match expected spec, and have the hash label set
 	require.Equal(t, pointer.Int32(2), reconciled.Spec.Replicas)
@@ -79,13 +79,13 @@ func TestReconcile(t *testing.T) {
 	comparison.RequireEqual(t, &reconciled, &retrieved)
 
 	// reconciling the same should be a no-op
-	reconciledAgain, err := Reconcile(k8sClient, expected, &owner)
+	reconciledAgain, err := Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &reconciledAgain)
 
 	// update with a new spec
 	expected.Spec.Replicas = pointer.Int32(3)
-	reconciled, err = Reconcile(k8sClient, expected, &owner)
+	reconciled, err = Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
 	require.Equal(t, 3, int(*reconciled.Spec.Replicas))

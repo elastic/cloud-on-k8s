@@ -92,7 +92,7 @@ func ReconcileTransport(
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
 ) *reconciler.Results {
-	span, _ := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
@@ -102,6 +102,7 @@ func ReconcileTransport(
 
 	// reconcile transport CA and certs
 	transportCA, err := transport.ReconcileOrRetrieveCA(
+		ctx,
 		driver,
 		es,
 		certsLabels,
@@ -119,12 +120,13 @@ func ReconcileTransport(
 	)
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA); err != nil {
 		return results.WithError(err)
 	}
 
 	// reconcile transport certificates
 	transportResults := transport.ReconcileTransportCertificatesSecrets(
+		ctx,
 		driver.K8sClient(),
 		transportCA,
 		es,
@@ -132,7 +134,7 @@ func ReconcileTransport(
 	)
 
 	// reconcile remote clusters certificate authorities
-	if err := remoteca.Reconcile(driver.K8sClient(), es, *transportCA); err != nil {
+	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA); err != nil {
 		results.WithError(err)
 	}
 

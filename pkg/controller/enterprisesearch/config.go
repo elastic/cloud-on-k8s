@@ -56,7 +56,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // The secret contains 2 entries:
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
-func ReconcileConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
+func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -85,7 +85,7 @@ func ReconcileConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFami
 		},
 	}
 
-	return reconciler.ReconcileSecret(driver.K8sClient(), expectedConfigSecret, &ent)
+	return reconciler.ReconcileSecret(ctx, driver.K8sClient(), expectedConfigSecret, &ent)
 }
 
 // partialConfigWithESAuth helps parsing the configuration file to retrieve ES credentials.

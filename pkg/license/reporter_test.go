@@ -37,7 +37,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -72,7 +72,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -106,7 +106,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -126,7 +126,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -160,7 +160,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
 			TotalManagedMemoryGiB:   200.00,
@@ -190,7 +190,7 @@ func TestGet(t *testing.T) {
 				},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
 			TotalManagedMemoryGiB:   190.73,
@@ -229,7 +229,7 @@ func Test_Start(t *testing.T) {
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
-	go NewResourceReporter(k8sClient, operatorNs).Start(refreshPeriod)
+	go NewResourceReporter(k8sClient, operatorNs, nil).Start(context.Background(), refreshPeriod)
 
 	// check that the licensing config map exists
 	assert.Eventually(t, func() bool {
@@ -301,7 +301,7 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 		Name:      "eck-trial",
 	}
 	// simulate user kicking off the trial activation
-	require.NoError(t, commonlicense.CreateTrialLicense(wrappedClient, licenseNSN))
+	require.NoError(t, commonlicense.CreateTrialLicense(context.Background(), wrappedClient, licenseNSN))
 	// fetch user created license
 	licenseSecret, license, err := commonlicense.TrialLicense(wrappedClient, licenseNSN)
 	require.NoError(t, err)
@@ -312,5 +312,5 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 	// persist status
 	require.NoError(t, wrappedClient.Create(context.Background(), &status))
 	// persist updated license
-	require.NoError(t, commonlicense.UpdateEnterpriseLicense(wrappedClient, licenseSecret, license))
+	require.NoError(t, commonlicense.UpdateEnterpriseLicense(context.Background(), wrappedClient, licenseSecret, license))
 }

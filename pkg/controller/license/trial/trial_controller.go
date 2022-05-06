@@ -84,11 +84,11 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 
 	validationMsg := validateEULA(secret)
 	if validationMsg != "" {
-		return r.invalidOperation(secret, validationMsg)
+		return r.invalidOperation(ctx, secret, validationMsg)
 	}
 
 	// 1. reconcile trial status secret
-	if err := r.reconcileTrialStatus(request.NamespacedName, license); err != nil {
+	if err := r.reconcileTrialStatus(ctx, request.NamespacedName, license); err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while reconciling trial status")
 	}
 
@@ -98,23 +98,23 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 	switch {
 	case !trialLicensePopulated && r.trialState.IsTrialStarted():
 		// user wants to start a trial for the second time
-		return r.invalidOperation(secret, trialOnlyOnceMsg)
+		return r.invalidOperation(ctx, secret, trialOnlyOnceMsg)
 	case !trialLicensePopulated && !r.trialState.IsTrialStarted():
 		// user wants to init a trial for the first time
-		return r.initTrialLicense(secret, license)
+		return r.initTrialLicense(ctx, secret, license)
 	case trialLicensePopulated && !validLicense(licenseStatus):
 		// existing license is invalid (expired or tampered with)
-		return r.invalidOperation(secret, userFriendlyMsgs[licenseStatus])
+		return r.invalidOperation(ctx, secret, userFriendlyMsgs[licenseStatus])
 	case trialLicensePopulated && validLicense(licenseStatus) && !r.trialState.IsTrialStarted():
 		// valid license, let's consider the trial started and complete the activation
-		return r.completeTrialActivation(request.NamespacedName)
+		return r.completeTrialActivation(ctx, request.NamespacedName)
 	case trialLicensePopulated && validLicense(licenseStatus) && r.trialState.IsTrialStarted():
 		// all good nothing to do
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
+func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
 	var trialStatus corev1.Secret
 	err := r.Get(context.Background(), types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
@@ -130,7 +130,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
 		}
-		return r.Create(context.Background(), &trialStatus)
+		return r.Create(ctx, &trialStatus)
 	}
 	if err != nil {
 		return fmt.Errorf("while fetching trial status %w", err)
@@ -156,7 +156,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 		return nil
 	}
 	trialStatus.Data = expected.Data
-	return r.Update(context.Background(), &trialStatus)
+	return r.Update(ctx, &trialStatus)
 }
 
 func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret) (licensing.TrialState, error) {
@@ -180,28 +180,28 @@ func (r *ReconcileTrials) startTrialActivation() error {
 	return nil
 }
 
-func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) (reconcile.Result, error) {
+func (r *ReconcileTrials) completeTrialActivation(ctx context.Context, license types.NamespacedName) (reconcile.Result, error) {
 	if r.trialState.CompleteTrialActivation() {
 		expectedStatus, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		_, err = reconciler.ReconcileSecret(r, expectedStatus, nil)
+		_, err = reconciler.ReconcileSecret(ctx, r, expectedStatus, nil)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileTrials) initTrialLicense(secret corev1.Secret, license licensing.EnterpriseLicense) (reconcile.Result, error) {
+func (r *ReconcileTrials) initTrialLicense(ctx context.Context, secret corev1.Secret, license licensing.EnterpriseLicense) (reconcile.Result, error) {
 	if err := r.trialState.InitTrialLicense(&license); err != nil {
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
+	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(ctx, r, secret, license)
 }
 
-func (r *ReconcileTrials) invalidOperation(secret corev1.Secret, msg string) (reconcile.Result, error) {
+func (r *ReconcileTrials) invalidOperation(ctx context.Context, secret corev1.Secret, msg string) (reconcile.Result, error) {
 	setValidationMsg(&secret, msg)
-	return reconcile.Result{}, r.Update(context.Background(), &secret)
+	return reconcile.Result{}, r.Update(ctx, &secret)
 }
 
 func validLicense(status licensing.LicenseStatus) bool {

@@ -33,7 +33,7 @@ func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
 	return remoteClusters
 }
 
-func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]struct{}) error {
+func annotateWithCreatedRemoteClusters(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]struct{}) error {
 	if len(remoteClusters) == 0 {
 		// if there are no annotations, there's nothing to do
 		if len(es.Annotations) == 0 {
@@ -43,7 +43,7 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 		// if the annotation exists, delete it
 		if _, ok := es.Annotations[ManagedRemoteClustersAnnotationName]; ok {
 			delete(es.Annotations, ManagedRemoteClustersAnnotationName)
-			return c.Update(context.Background(), &es)
+			return c.Update(ctx, &es)
 		}
 
 		return nil
@@ -61,5 +61,5 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 	sort.Strings(annotation)
 	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
 
-	return c.Update(context.Background(), &es)
+	return c.Update(ctx, &es)
 }

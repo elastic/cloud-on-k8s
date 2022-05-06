@@ -128,7 +128,7 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			trackedClient := trackingK8sClient{Client: tt.args.c}
-			if err := reconcilePVCOwnerRefs(&trackedClient, tt.args.es); (err != nil) != tt.wantErr {
+			if err := reconcilePVCOwnerRefs(context.Background(), &trackedClient, tt.args.es); (err != nil) != tt.wantErr {
 				t.Errorf("reconcilePVCOwnerRefs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var pvcs corev1.PersistentVolumeClaimList

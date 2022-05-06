@@ -112,11 +112,11 @@ func deleteCertificateAuthorities(
 	r *ReconcileRemoteCa,
 	local, remote types.NamespacedName,
 ) error {
-	span, _ := apm.StartSpan(ctx, "delete_certificate_authorities", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "delete_certificate_authorities", tracing.SpanTypeApp)
 	defer span.End()
 
 	// Delete local secret
-	if err := r.Client.Delete(context.Background(), &corev1.Secret{
+	if err := r.Client.Delete(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: local.Namespace,
 			Name:      remoteCASecretName(local.Name, remote),
@@ -125,7 +125,7 @@ func deleteCertificateAuthorities(
 		return err
 	}
 	// Delete remote secret
-	if err := r.Client.Delete(context.Background(), &corev1.Secret{
+	if err := r.Client.Delete(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: remote.Namespace,
 			Name:      remoteCASecretName(remote.Name, local),
@@ -149,7 +149,7 @@ func reconcileRemoteCA(
 	source types.NamespacedName,
 	sourceCA []byte,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_remote_ca", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
 
 	// Define the expected source CA object, it lives in the target namespace with the content of the source cluster CA
@@ -160,6 +160,6 @@ func reconcileRemoteCA(
 		},
 	}
 
-	_, err := reconciler.ReconcileSecret(c, expected, target)
+	_, err := reconciler.ReconcileSecret(ctx, c, expected, target)
 	return err
 }

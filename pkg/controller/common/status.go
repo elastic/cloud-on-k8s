@@ -57,9 +57,9 @@ func LowestVersionFromPods(currentVersion string, pods []corev1.Pod, versionLabe
 }
 
 // UpdateStatus updates the status sub-resource of the given object.
-func UpdateStatus(client k8s.Client, obj client.Object) error {
-	err := client.Status().Update(context.Background(), obj)
-	return workaroundStatusUpdateError(err, client, obj)
+func UpdateStatus(ctx context.Context, client k8s.Client, obj client.Object) error {
+	err := client.Status().Update(ctx, obj)
+	return workaroundStatusUpdateError(ctx, err, client, obj)
 }
 
 // workaroundStatusUpdateError handles a bug on k8s < 1.15 that prevents status subresources updates
@@ -67,7 +67,7 @@ func UpdateStatus(client k8s.Client, obj client.Object) error {
 // (eg. storedVersion=v1beta1 vs. resource version=v1).
 // This is fixed by https://github.com/kubernetes/kubernetes/pull/78713 in k8s 1.15.
 // In case that happens here, let's retry the update on the full resource instead of the status subresource.
-func workaroundStatusUpdateError(err error, client k8s.Client, obj client.Object) error {
+func workaroundStatusUpdateError(ctx context.Context, err error, client k8s.Client, obj client.Object) error {
 	if !apierrors.IsInvalid(err) {
 		// not the case we're looking for here
 		return err
@@ -81,5 +81,5 @@ func workaroundStatusUpdateError(err error, client k8s.Client, obj client.Object
 		"namespace", accessor.GetNamespace(),
 		"name", accessor.GetName(),
 	)
-	return client.Update(context.Background(), obj)
+	return client.Update(ctx, obj)
 }

@@ -70,7 +70,7 @@ func ReconcileConfigSecret(
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
 
 	settingsYamlBytes, err := kbSettings.Render()
@@ -102,7 +102,7 @@ func ReconcileConfigSecret(
 		Data: data,
 	}
 
-	_, err = reconciler.ReconcileSecret(client, expected, &kb)
+	_, err = reconciler.ReconcileSecret(ctx, client, expected, &kb)
 	return err
 }
 

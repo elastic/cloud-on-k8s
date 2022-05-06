@@ -378,7 +378,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, got.EsAssociation(), newAssocConf)
+	err = UpdateAssociationConf(context.Background(), client, got.EsAssociation(), newAssocConf)
 	require.NoError(t, err)
 
 	err = client.Get(context.Background(), request.NamespacedName, &got)
@@ -417,7 +417,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, expectedAssocConf, assocConf)
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, got.EsAssociation())
+	err = RemoveAssociationConf(context.Background(), client, got.EsAssociation())
 	require.NoError(t, err)
 
 	err = client.Get(context.Background(), request.NamespacedName, &got)
@@ -613,7 +613,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.associated)
 
-			require.NoError(t, RemoveObsoleteAssociationConfs(client, tt.associated, "association.k8s.elastic.co/es-conf"))
+			require.NoError(t, RemoveObsoleteAssociationConfs(context.Background(), client, tt.associated, "association.k8s.elastic.co/es-conf"))
 
 			var got agentv1alpha1.Agent
 			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.associated), &got))

@@ -5,6 +5,8 @@
 package transport
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -18,6 +20,7 @@ import (
 // ReconcileTransportCertsPublicSecret reconciles the Secret containing the publicly available transport CA
 // information.
 func ReconcileTransportCertsPublicSecret(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	ca *certificates.CA,
@@ -35,7 +38,7 @@ func ReconcileTransportCertsPublicSecret(
 
 	// Don't set an ownerRef for public transport certs secrets, likely to be copied into different namespaces.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
-	_, err := reconciler.ReconcileSecretNoOwnerRef(c, expected, &es)
+	_, err := reconciler.ReconcileSecretNoOwnerRef(ctx, c, expected, &es)
 	return err
 }
 

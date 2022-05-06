@@ -75,6 +75,7 @@ func buildPodTemplate(
 	podTemplate := params.GetPodTemplate()
 
 	keystoreResources, err := keystore.ReconcileResources(
+		params.Context,
 		params,
 		&params.Beat,
 		namer,

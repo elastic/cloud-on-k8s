@@ -30,7 +30,7 @@ import (
 
 // ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
 // the certificate if available.
-func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) error {
+func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts *CertificatesSecret) error {
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,12 +48,12 @@ func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) 
 
 	// Don't set an ownerRef for public http certs secrets, likely to be copied into different namespaces.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
-	_, err := reconciler.ReconcileSecretNoOwnerRef(r.K8sClient, expected, r.Owner)
+	_, err := reconciler.ReconcileSecretNoOwnerRef(ctx, r.K8sClient, expected, r.Owner)
 	return err
 }
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
-func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
+func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 
 	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
@@ -136,12 +136,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA, customCertificates *Certi
 	if needsUpdate {
 		if shouldCreateSecret {
 			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Create(context.Background(), &secret); err != nil {
+			if err := r.K8sClient.Create(ctx, &secret); err != nil {
 				return nil, err
 			}
 		} else {
 			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := r.K8sClient.Update(context.Background(), &secret); err != nil {
+			if err := r.K8sClient.Update(ctx, &secret); err != nil {
 				return nil, err
 			}
 		}

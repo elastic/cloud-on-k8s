@@ -30,14 +30,14 @@ func deleteOrphanedResources(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
 ) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 
 	var associatedLabels client.MatchingLabels = info.Labels(associated)
 
 	// List all the Secrets involved in an association (users and ca)
 	var secrets corev1.SecretList
-	if err := c.List(context.Background(), &secrets, associatedLabels); err != nil {
+	if err := c.List(ctx, &secrets, associatedLabels); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func deleteOrphanedResources(
 
 		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
 		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
-		if err := c.Delete(context.Background(), &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
+		if err := c.Delete(ctx, &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 

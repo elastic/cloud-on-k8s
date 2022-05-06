@@ -84,7 +84,7 @@ func reconcileEsUserSecret(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 
 	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
@@ -115,7 +115,7 @@ func reconcileEsUserSecret(
 	}
 	expectedSecret.Data[usrKey.Name] = password
 
-	if _, err := reconciler.ReconcileSecret(c, expectedSecret, association.Associated()); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, c, expectedSecret, association.Associated()); err != nil {
 		return err
 	}
 
@@ -164,6 +164,6 @@ func reconcileEsUserSecret(
 	expectedEsUser.Data[esuser.PasswordHashField] = bcryptHash
 
 	owner := es // user is owned by the es resource in es namespace
-	_, err = reconciler.ReconcileSecret(c, expectedEsUser, &owner)
+	_, err = reconciler.ReconcileSecret(ctx, c, expectedEsUser, &owner)
 	return err
 }

@@ -59,7 +59,7 @@ func HandleDownscale(
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
-	if err := deleteStatefulSets(deletions, downscaleCtx.k8sClient, downscaleCtx.es); err != nil {
+	if err := deleteStatefulSets(downscaleCtx.parentCtx, deletions, downscaleCtx.k8sClient, downscaleCtx.es); err != nil {
 		return results.WithError(err)
 	}
 
@@ -103,9 +103,9 @@ func podsToDownscale(
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
-func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+func deleteStatefulSets(ctx context.Context, toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	for _, toDelete := range toDelete {
-		if err := deleteStatefulSetResources(k8sClient, es, toDelete); err != nil {
+		if err := deleteStatefulSetResources(ctx, k8sClient, es, toDelete); err != nil {
 			return err
 		}
 	}
@@ -201,25 +201,25 @@ func attemptDownscale(
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service, configuration and transport certificates secret.
-func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
-	err := k8sClient.Delete(context.Background(), &headlessSvc)
+	err := k8sClient.Delete(ctx, &headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	err = settings.DeleteConfig(k8sClient, es.Namespace, statefulSet.Name)
+	err = settings.DeleteConfig(ctx, k8sClient, es.Namespace, statefulSet.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	err = transport.DeleteStatefulSetTransportCertificate(k8sClient, es.Namespace, statefulSet.Name)
+	err = transport.DeleteStatefulSetTransportCertificate(ctx, k8sClient, es.Namespace, statefulSet.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
 	ssetLogger(statefulSet).Info("Deleting statefulset")
-	return k8sClient.Delete(context.Background(), &statefulSet)
+	return k8sClient.Delete(ctx, &statefulSet)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
@@ -298,7 +298,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 	}
 
 	nodespec.UpdateReplicas(&downscale.statefulSet, &downscale.targetReplicas)
-	if err := downscaleCtx.k8sClient.Update(context.Background(), &downscale.statefulSet); err != nil {
+	if err := downscaleCtx.k8sClient.Update(downscaleCtx.parentCtx, &downscale.statefulSet); err != nil {
 		return err
 	}
 

@@ -63,7 +63,7 @@ func UpdateSettings(
 		return false, nil
 	}
 
-	return updateSettingsInternal(remoteClustersInSpec, c, esClient, es)
+	return updateSettingsInternal(ctx, remoteClustersInSpec, c, esClient, es)
 }
 
 // updateSettingsInternal updates remote clusters in Elasticsearch. It also keeps track of any remote clusters which
@@ -78,6 +78,7 @@ func UpdateSettings(
 // 4. Update the annotation on the Elasticsearch object
 // 5. Apply the settings through the Elasticsearch API
 func updateSettingsInternal(
+	ctx context.Context,
 	remoteClustersInSpec map[string]esv1.RemoteCluster,
 	c k8s.Client,
 	esClient esclient.Client,
@@ -86,7 +87,7 @@ func updateSettingsInternal(
 	remoteClustersInAnnotation := getRemoteClustersInAnnotation(es)
 
 	// Retrieve the remote clusters currently declared in Elasticsearch
-	remoteClustersInEs, err := getRemoteClustersInElasticsearch(esClient)
+	remoteClustersInEs, err := getRemoteClustersInElasticsearch(ctx, esClient)
 	if err != nil {
 		return true, err
 	}
@@ -127,7 +128,7 @@ func updateSettingsInternal(
 	}
 
 	// Update the annotation
-	if err := annotateWithCreatedRemoteClusters(c, es, remoteClustersInAnnotation); err != nil {
+	if err := annotateWithCreatedRemoteClusters(ctx, c, es, remoteClustersInAnnotation); err != nil {
 		return true, err
 	}
 
@@ -144,15 +145,15 @@ func updateSettingsInternal(
 			"updated_remote_clusters", remoteClustersToUpdate,
 			"deleted_remote_clusters", remoteClustersToDelete,
 		)
-		return requeue, updateSettings(esClient, remoteClustersToApply)
+		return requeue, updateSettings(ctx, esClient, remoteClustersToApply)
 	}
 	return requeue, nil
 }
 
 // getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
-func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
+func getRemoteClustersInElasticsearch(ctx context.Context, esClient esclient.Client) (map[string]struct{}, error) {
 	remoteClustersInEs := make(map[string]struct{})
-	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(context.Background())
+	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(ctx)
 	if err != nil {
 		return remoteClustersInEs, err
 	}
@@ -177,8 +178,8 @@ func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluste
 }
 
 // updateSettings makes a call to an Elasticsearch cluster to apply a persistent setting.
-func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
-	return esClient.UpdateRemoteClusterSettings(context.Background(), esclient.RemoteClustersSettings{
+func updateSettings(ctx context.Context, esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
+	return esClient.UpdateRemoteClusterSettings(ctx, esclient.RemoteClustersSettings{
 		PersistentSettings: &esclient.SettingsGroup{
 			Cluster: esclient.RemoteClusters{
 				RemoteClusters: remoteClusters,

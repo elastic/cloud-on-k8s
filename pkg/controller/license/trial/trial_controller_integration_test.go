@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build integration
 // +build integration
 
 package trial
@@ -44,7 +45,7 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, test.EnsureNamespace(c, operatorNs))
 
 	// Create trial initialisation is controlled via config
-	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
+	require.NoError(t, license.CreateTrialLicense(context.Background(), c, testLicenseNSN))
 	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
 	validateTrialStatus(t, checker, true)
@@ -79,7 +80,7 @@ func TestReconcile(t *testing.T) {
 	// Delete the trial license
 	require.NoError(t, deleteTrial(c))
 	// recreate it with modified validity + 1 year
-	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
+	require.NoError(t, license.CreateTrialLicense(context.Background(), c, testLicenseNSN))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here

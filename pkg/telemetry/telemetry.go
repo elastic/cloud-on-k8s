@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +25,7 @@ import (
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -58,6 +60,7 @@ func NewReporter(
 	operatorNamespace string,
 	managedNamespaces []string,
 	telemetryInterval time.Duration,
+	tracer *apm.Tracer,
 ) Reporter {
 	if len(managedNamespaces) == 0 {
 		// treat no managed namespaces as managing all namespaces, ie. set empty string for namespace filtering
@@ -70,6 +73,7 @@ func NewReporter(
 		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
 		telemetryInterval: telemetryInterval,
+		tracer:            tracer,
 	}
 }
 
@@ -79,16 +83,20 @@ type Reporter struct {
 	operatorNamespace string
 	managedNamespaces []string
 	telemetryInterval time.Duration
+	tracer            *apm.Tracer
 }
 
-func (r *Reporter) Start() {
+func (r *Reporter) Start(ctx context.Context) {
 	ticker := time.NewTicker(r.telemetryInterval)
 	for range ticker.C {
-		r.report()
+		r.report(ctx)
 	}
 }
 
-func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+	span, _ := apm.StartSpan(ctx, "marshal_telemetry", tracing.SpanTypeApp)
+	defer span.End()
+
 	return yaml.Marshal(ECKTelemetry{
 		ECK: ECK{
 			OperatorInfo: info,
@@ -98,7 +106,10 @@ func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}, lic
 	})
 }
 
-func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
+func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}, error) {
+	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
+	defer span.End()
+
 	stats := map[string]interface{}{}
 	for _, f := range []getStatsFn{
 		esStats,
@@ -119,20 +130,23 @@ func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
 	return stats, nil
 }
 
-func (r *Reporter) report() {
-	stats, err := r.getResourceStats()
+func (r *Reporter) report(ctx context.Context) {
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, "telemetry-reporter", "report", nil)
+	defer tracing.EndContextTransaction(ctx)
+
+	stats, err := r.getResourceStats(ctx)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
 		return
 	}
 
-	licenseInfo, err := r.getLicenseInfo()
+	licenseInfo, err := r.getLicenseInfo(ctx)
 	if err != nil {
 		log.Error(err, "failed to get operator license secret")
 		// it's ok to go on
 	}
 
-	telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats, licenseInfo)
+	telemetryBytes, err := marshalTelemetry(ctx, r.operatorInfo, stats, licenseInfo)
 	if err != nil {
 		log.Error(err, "failed to marshal telemetry data")
 		return
@@ -145,29 +159,39 @@ func (r *Reporter) report() {
 			continue
 		}
 		for _, kb := range kibanaList.Items {
-			var secret corev1.Secret
-			nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
-			if err := r.client.Get(context.Background(), nsName, &secret); err != nil {
-				log.Error(err, "failed to get Kibana secret")
-				continue
-			}
-
-			if secret.Data == nil {
-				// should not happen, but just to be safe
-				secret.Data = make(map[string][]byte)
-			}
-
-			secret.Data[kibana.TelemetryFilename] = telemetryBytes
-
-			if _, err := reconciler.ReconcileSecret(r.client, secret, nil); err != nil {
-				log.Error(err, "failed to reconcile Kibana secret")
-				continue
-			}
+			r.reconcileKibanaSecret(ctx, kb, telemetryBytes)
 		}
 	}
 }
 
-func (r *Reporter) getLicenseInfo() (map[string]string, error) {
+func (r *Reporter) reconcileKibanaSecret(ctx context.Context, kb kbv1.Kibana, telemetryBytes []byte) {
+	span, ctx := apm.StartSpan(ctx, "reconcile_kibana_secret", tracing.SpanTypeApp)
+	defer span.End()
+
+	var secret corev1.Secret
+	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
+	if err := r.client.Get(context.Background(), nsName, &secret); err != nil {
+		log.Error(err, "failed to get Kibana secret")
+		return
+	}
+
+	if secret.Data == nil {
+		// should not happen, but just to be safe
+		secret.Data = make(map[string][]byte)
+	}
+
+	secret.Data[kibana.TelemetryFilename] = telemetryBytes
+
+	if _, err := reconciler.ReconcileSecret(ctx, r.client, secret, nil); err != nil {
+		log.Error(err, "failed to reconcile Kibana secret")
+		return
+	}
+}
+
+func (r *Reporter) getLicenseInfo(ctx context.Context) (map[string]string, error) {
+	span, _ := apm.StartSpan(ctx, "get_license_info", tracing.SpanTypeApp)
+	defer span.End()
+
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNamespace,
 		Name:      license.LicensingCfgMapName,

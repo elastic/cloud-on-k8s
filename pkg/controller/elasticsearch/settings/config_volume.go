@@ -89,18 +89,18 @@ func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte) cor
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig) error {
+func ReconcileConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err
 	}
 	expected := ConfigSecret(es, ssetName, rendered)
-	_, err = reconciler.ReconcileSecret(client, expected, &es)
+	_, err = reconciler.ReconcileSecret(ctx, client, expected, &es)
 	return err
 }
 
 // DeleteConfig removes the configuration Secret corresponding to the given Statefulset.
-func DeleteConfig(client k8s.Client, namespace string, ssetName string) error {
+func DeleteConfig(ctx context.Context, client k8s.Client, namespace string, ssetName string) error {
 	// build a dummy config with no data but the correct Namespace & Name,
 	// to target the correct resource for deletion
 	cfgSecret := corev1.Secret{
@@ -109,5 +109,5 @@ func DeleteConfig(client k8s.Client, namespace string, ssetName string) error {
 			Name:      ConfigSecretName(ssetName),
 		},
 	}
-	return client.Delete(context.Background(), &cfgSecret)
+	return client.Delete(ctx, &cfgSecret)
 }

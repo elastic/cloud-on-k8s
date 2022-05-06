@@ -35,6 +35,7 @@ var log = ulog.Log.WithName("transport")
 // cluster.
 // Secrets which are not used anymore are deleted as part of the downscale process.
 func ReconcileTransportCertificatesSecrets(
+	ctx context.Context,
 	c k8s.Client,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
@@ -55,7 +56,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	for ssetName := range ssets {
-		if err := reconcileNodeSetTransportCertificatesSecrets(c, ca, es, ssetName, rotationParams); err != nil {
+		if err := reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, es, ssetName, rotationParams); err != nil {
 			results.WithError(err)
 		}
 	}
@@ -63,25 +64,26 @@ func ReconcileTransportCertificatesSecrets(
 }
 
 // DeleteStatefulSetTransportCertificate removes the Secret which contains the transport certificates of a given Statefulset.
-func DeleteStatefulSetTransportCertificate(client k8s.Client, namespace string, ssetName string) error {
+func DeleteStatefulSetTransportCertificate(ctx context.Context, client k8s.Client, namespace string, ssetName string) error {
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
 		},
 	}
-	return client.Delete(context.Background(), &secret)
+	return client.Delete(ctx, &secret)
 }
 
 // DeleteLegacyTransportCertificate ensures that the former Secret which used to contain the transport certificates is deleted.
-func DeleteLegacyTransportCertificate(client k8s.Client, es esv1.Elasticsearch) error {
+func DeleteLegacyTransportCertificate(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) error {
 	nsn := types.NamespacedName{Namespace: es.Namespace, Name: esv1.LegacyTransportCertsSecretSuffix(es.Name)}
-	return k8s.DeleteSecretIfExists(client, nsn)
+	return k8s.DeleteSecretIfExists(ctx, client, nsn)
 }
 
 // reconcileNodeSetTransportCertificatesSecrets reconciles the secret which contains the transport certificates for
 // a given StatefulSet.
 func reconcileNodeSetTransportCertificatesSecrets(
+	ctx context.Context,
 	c k8s.Client,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
@@ -97,7 +99,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		return errors.WithStack(err)
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(c, es, ssetName)
+	secret, err := ensureTransportCertificatesSecretExists(ctx, c, es, ssetName)
 	if err != nil {
 		return err
 	}
@@ -158,11 +160,11 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	}
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
-		if err := c.Update(context.Background(), secret); err != nil {
+		if err := c.Update(ctx, secret); err != nil {
 			return err
 		}
 		for _, pod := range pods.Items {
-			annotation.MarkPodAsUpdated(c, pod)
+			annotation.MarkPodAsUpdated(ctx, c, pod)
 		}
 	}
 
@@ -172,6 +174,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 // ensureTransportCertificatesSecretExists ensures the existence and labels of the Secret that at a later point
 // in time will contain the transport certificates for a nodeSet.
 func ensureTransportCertificatesSecretExists(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	ssetName string,
@@ -194,6 +197,7 @@ func ensureTransportCertificatesSecretExists(
 	// - do not touch the existing data as it probably already contains certificates - it will be reconciled later on
 	var reconciled corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      &es,
 		Expected:   &expected,

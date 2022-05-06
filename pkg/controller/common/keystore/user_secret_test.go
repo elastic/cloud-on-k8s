@@ -5,6 +5,7 @@
 package keystore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,7 +102,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 				Watches:      tt.w,
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kbNamer)
+			vol, version, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, nil, kbNamer)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
 			assert.Equal(t, tt.wantVersion, version)
@@ -301,7 +302,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileSecureSettings(tt.args.c, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
+			got, err := reconcileSecureSettings(context.Background(), tt.args.c, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

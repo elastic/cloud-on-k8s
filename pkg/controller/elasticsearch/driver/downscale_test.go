@@ -1094,7 +1094,7 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.resources...)
-			err := deleteStatefulSetResources(k8sClient, es, sset)
+			err := deleteStatefulSetResources(context.Background(), k8sClient, es, sset)
 			require.NoError(t, err)
 			// sset, cfg and headless services should not be there anymore
 			require.True(t, apierrors.IsNotFound(k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&sset), &sset)))
@@ -1153,7 +1153,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.objs...)
-			err := deleteStatefulSets(tt.toDelete, client, es)
+			err := deleteStatefulSets(context.Background(), tt.toDelete, client, es)
 			if tt.wantErr != nil {
 				require.True(t, tt.wantErr(err))
 			} else {

@@ -65,14 +65,14 @@ func HandleUpscaleAndSpecChanges(
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
-		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
+		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
 			return results, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
+			recreateSset, err := handleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
@@ -82,7 +82,7 @@ func HandleUpscaleAndSpecChanges(
 				continue
 			}
 		}
-		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
+		reconciled, err := sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return results, fmt.Errorf("reconcile StatefulSet: %w", err)
 		}
@@ -124,19 +124,19 @@ func adjustResources(
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
-	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
+	if err := adjustZenConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, adjustedResources); err != nil {
 		return nil, fmt.Errorf("adjust discovery config: %w", err)
 	}
 	return adjustedResources, nil
 }
 
-func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
+func adjustZenConfig(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
 	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes
-	return zen2.SetupInitialMasterNodes(es, k8sClient, resources)
+	return zen2.SetupInitialMasterNodes(ctx, es, k8sClient, resources)
 }
 
 // adjustStatefulSetReplicas updates the replicas count in expected according to

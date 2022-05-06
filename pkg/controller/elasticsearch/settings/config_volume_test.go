@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -149,7 +150,7 @@ func TestReconcileConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReconcileConfig(tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
+			if err := ReconcileConfig(context.Background(), tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// config in the apiserver should be the expected one

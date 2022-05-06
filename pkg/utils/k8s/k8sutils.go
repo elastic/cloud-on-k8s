@@ -154,14 +154,14 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 }
 
 // DeleteSecretMatching deletes the Secret matching the provided selectors.
-func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
+func DeleteSecretMatching(ctx context.Context, c Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList
 	if err := c.List(context.Background(), &secrets, opts...); err != nil {
 		return err
 	}
 	for _, s := range secrets.Items {
 		secret := s
-		if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
+		if err := c.Delete(ctx, &secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
@@ -169,15 +169,15 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 }
 
 // DeleteSecretIfExists deletes the secret identified by key if exists.
-func DeleteSecretIfExists(c Client, key types.NamespacedName) error {
+func DeleteSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) error {
 	var secret corev1.Secret
-	err := c.Get(context.Background(), key, &secret)
+	err := c.Get(ctx, key, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	err = c.Delete(context.Background(), &secret)
+	err = c.Delete(ctx, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil
 	}

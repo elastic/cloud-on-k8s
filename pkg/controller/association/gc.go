@@ -103,7 +103,7 @@ func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, err
 }
 
 // DoGarbageCollection runs the User garbage collector.
-func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
+func (ugc *UsersGarbageCollector) DoGarbageCollection(ctx context.Context) error {
 	// Shortcut execution if there's no resources to garbage collect
 	if len(ugc.registeredResources) == 0 {
 		return nil
@@ -135,7 +135,7 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 			_, found := parents[expectedParent]
 			if !found {
 				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-				err = ugc.client.Delete(context.Background(), &secret)
+				err = ugc.client.Delete(ctx, &secret)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}

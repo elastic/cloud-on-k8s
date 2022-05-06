@@ -39,7 +39,7 @@ func IsTooYoungForGC(object metav1.Object) bool {
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
 func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
 	defer span.End()
 
 	var secrets corev1.SecretList
@@ -52,12 +52,12 @@ func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	for i := range secrets.Items {
 		resources[i] = &secrets.Items[i]
 	}
-	return cleanupFromPodReference(c, es.Namespace, resources)
+	return cleanupFromPodReference(ctx, c, es.Namespace, resources)
 }
 
 // cleanupFromPodReference deletes objects having a reference to
 // a pod which does not exist anymore.
-func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Object) error {
+func cleanupFromPodReference(ctx context.Context, c k8s.Client, namespace string, objects []client.Object) error {
 	for _, runtimeObj := range objects {
 		obj, err := meta.Accessor(runtimeObj)
 		if err != nil {
@@ -82,7 +82,7 @@ func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Ob
 			}
 			// pod does not exist anymore, delete the object
 			log.Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
-			if deleteErr := c.Delete(context.Background(), runtimeObj); deleteErr != nil {
+			if deleteErr := c.Delete(ctx, runtimeObj); deleteErr != nil {
 				return deleteErr
 			}
 		} else if err != nil {

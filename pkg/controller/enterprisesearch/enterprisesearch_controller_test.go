@@ -530,7 +530,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}
 			status, err := r.generateStatus(tt.ent, tt.deploy, tt.svcName)
 			require.NoError(t, err)
-			err = r.updateStatus(tt.ent, status)
+			err = r.updateStatus(context.Background(), tt.ent, status)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.wantStatusUpdateCalled, c.updateCalled)

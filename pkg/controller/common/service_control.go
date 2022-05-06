@@ -34,6 +34,7 @@ func ReconcileService(
 
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      owner,
 		Expected:   expected,

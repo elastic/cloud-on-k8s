@@ -143,7 +143,7 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerToken(tt.c, apm)
+			got, err := reconcileApmServerToken(context.Background(), tt.c, apm)
 			require.NoError(t, err)
 			require.NotEmpty(t, got.Data[SecretTokenKey])
 			if tt.reuseToken != nil {

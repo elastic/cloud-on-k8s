@@ -192,7 +192,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjs...)
-			garbageCollectSoftOwnedSecrets(c)
+			garbageCollectSoftOwnedSecrets(context.Background(), c)
 			tt.assert(c, t)
 		})
 	}

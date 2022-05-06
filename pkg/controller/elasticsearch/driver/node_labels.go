@@ -48,12 +48,12 @@ func annotatePodsWithNodeLabels(ctx context.Context, c k8s.Client, es esv1.Elast
 		return results.WithError(err)
 	}
 	for _, pod := range actualPods {
-		results.WithError(annotatePodWithNodeLabels(c, pod, es))
+		results.WithError(annotatePodWithNodeLabels(ctx, c, pod, es))
 	}
 	return results
 }
 
-func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsearch) error {
+func annotatePodWithNodeLabels(ctx context.Context, c k8s.Client, pod corev1.Pod, es esv1.Elasticsearch) error {
 	scheduled, nodeName := isPodScheduled(&pod)
 	if !scheduled {
 		return nil
@@ -80,7 +80,7 @@ func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsear
 	if err != nil {
 		return err
 	}
-	if err := c.Patch(context.Background(), &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !errors.IsNotFound(err) {
+	if err := c.Patch(ctx, &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil

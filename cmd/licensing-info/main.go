@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -40,7 +41,7 @@ func main() {
 	var operatorNamespace string
 	flag.StringVar(&operatorNamespace, "operator-namespace", "elastic-system", "indicates the namespace where the operator is deployed")
 	flag.Parse()
-	licensingInfo, err := license.NewResourceReporter(newK8sClient(), operatorNamespace).Get()
+	licensingInfo, err := license.NewResourceReporter(newK8sClient(), operatorNamespace, nil).Get(context.Background())
 	if err != nil {
 		log.Fatal(err, "Failed to get licensing info")
 	}

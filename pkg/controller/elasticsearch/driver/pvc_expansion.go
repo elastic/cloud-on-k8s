@@ -37,6 +37,7 @@ const (
 // (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
 // This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
 func handleVolumeExpansion(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	expectedSset appsv1.StatefulSet,
@@ -53,14 +54,14 @@ func handleVolumeExpansion(
 	}
 
 	// resize all PVCs that can be resized
-	err := resizePVCs(k8sClient, es, expectedSset, actualSset)
+	err := resizePVCs(ctx, k8sClient, es, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
 
 	// schedule the StatefulSet for recreation if needed
 	if needsRecreate(expectedSset, actualSset) {
-		return true, annotateForRecreation(k8sClient, es, actualSset, expectedSset.Spec.VolumeClaimTemplates)
+		return true, annotateForRecreation(ctx, k8sClient, es, actualSset, expectedSset.Spec.VolumeClaimTemplates)
 	}
 
 	return false, nil
@@ -70,6 +71,7 @@ func handleVolumeExpansion(
 // according to their storage class and what's specified in the expected claim.
 // It returns an error if the requested storage size is incompatible with the PVC.
 func resizePVCs(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	expectedSset appsv1.StatefulSet,
@@ -100,7 +102,7 @@ func resizePVCs(
 				"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
 
 			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
-			if err := k8sClient.Update(context.Background(), &pvc); err != nil {
+			if err := k8sClient.Update(ctx, &pvc); err != nil {
 				return err
 			}
 		}
@@ -111,6 +113,7 @@ func resizePVCs(
 // annotateForRecreation stores the StatefulSet spec with updated storage requirements
 // in an annotation of the Elasticsearch resource, to be recreated at the next reconciliation.
 func annotateForRecreation(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	actualSset appsv1.StatefulSet,
@@ -129,7 +132,7 @@ func annotateForRecreation(
 	}
 	es.Annotations[RecreateStatefulSetAnnotationPrefix+actualSset.Name] = string(asJSON)
 
-	return k8sClient.Update(context.Background(), &es)
+	return k8sClient.Update(ctx, &es)
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
@@ -156,7 +159,7 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 // 3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
 // 4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
 //    a different UID: the re-creation is over, remove the annotation.
-func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
+func recreateStatefulSets(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
 	recreateList, err := ssetsToRecreate(es)
 	if err != nil {
 		return 0, err
@@ -177,10 +180,10 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 			log.Info("Deleting StatefulSet to account for resized PVCs, it will be recreated automatically",
 				"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", existing.Name)
 			// mark the Pod as owned by the ES resource while the StatefulSet is removed
-			if err := updatePodOwners(k8sClient, es, existing); err != nil {
+			if err := updatePodOwners(ctx, k8sClient, es, existing); err != nil {
 				return recreations, err
 			}
-			if err := deleteStatefulSet(k8sClient, existing); err != nil {
+			if err := deleteStatefulSet(ctx, k8sClient, existing); err != nil {
 				return recreations, err
 			}
 
@@ -188,19 +191,19 @@ func recreateStatefulSets(k8sClient k8s.Client, es esv1.Elasticsearch) (int, err
 		case err != nil && apierrors.IsNotFound(err):
 			log.Info("Re-creating StatefulSet to account for resized PVCs",
 				"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", toRecreate.Name)
-			if err := recreateStatefulSet(k8sClient, toRecreate); err != nil {
+			if err := recreateStatefulSet(ctx, k8sClient, toRecreate); err != nil {
 				return recreations, err
 			}
 
 		// already recreated (existing.UID != toRecreate.UID): we're done
 		default:
 			// remove the temporary pod owner set before the StatefulSet was deleted
-			if err := removeESPodOwner(k8sClient, es, existing); err != nil {
+			if err := removeESPodOwner(ctx, k8sClient, es, existing); err != nil {
 				return recreations, err
 			}
 			// remove the annotation
 			delete(es.Annotations, annotation)
-			if err := k8sClient.Update(context.Background(), &es); err != nil {
+			if err := k8sClient.Update(ctx, &es); err != nil {
 				return recreations, err
 			}
 			// one less recreation
@@ -228,7 +231,7 @@ func ssetsToRecreate(es esv1.Elasticsearch) (map[string]appsv1.StatefulSet, erro
 	return toRecreate, nil
 }
 
-func deleteStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
+func deleteStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	opts := client.DeleteOptions{}
 	// ensure we are not deleting the StatefulSet that was already recreated with a different UID
 	opts.Preconditions = &metav1.Preconditions{UID: &sset.UID}
@@ -236,10 +239,10 @@ func deleteStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	orphanPolicy := metav1.DeletePropagationOrphan
 	opts.PropagationPolicy = &orphanPolicy
 
-	return k8sClient.Delete(context.Background(), &sset, &opts)
+	return k8sClient.Delete(ctx, &sset, &opts)
 }
 
-func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
+func recreateStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 	// don't keep metadata inherited from the old StatefulSet
 	newObjMeta := metav1.ObjectMeta{
 		Name:            sset.Name,
@@ -250,23 +253,23 @@ func recreateStatefulSet(k8sClient k8s.Client, sset appsv1.StatefulSet) error {
 		Finalizers:      sset.Finalizers,
 	}
 	sset.ObjectMeta = newObjMeta
-	return k8sClient.Create(context.Background(), &sset)
+	return k8sClient.Create(ctx, &sset)
 }
 
 // updatePodOwners marks all Pods managed by the given StatefulSet as owned by the Elasticsearch resource.
 // Pods are already owned by the StatefulSet resource, but when we'll (temporarily) delete that StatefulSet
 // they won't be owned anymore. At this point if the Elasticsearch resource is deleted (before the StatefulSet
 // is re-created), we also want the Pods to be deleted automatically.
-func updatePodOwners(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func updatePodOwners(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	log.V(1).Info("Setting an owner ref to the Elasticsearch resource on the future orphan Pods",
 		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
-	return updatePods(k8sClient, statefulSet, func(p *corev1.Pod) error {
+	return updatePods(ctx, k8sClient, statefulSet, func(p *corev1.Pod) error {
 		return controllerutil.SetOwnerReference(&es, p, scheme.Scheme)
 	})
 }
 
 // removeESPodOwner removes any reference to the ES resource from the Pods, that was set in updatePodOwners.
-func removeESPodOwner(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func removeESPodOwner(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	log.V(1).Info("Removing any Pod owner ref set to the Elasticsearch resource after StatefulSet re-creation",
 		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
 	updateFunc := func(p *corev1.Pod) error {
@@ -279,11 +282,11 @@ func removeESPodOwner(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet a
 		}
 		return nil
 	}
-	return updatePods(k8sClient, statefulSet, updateFunc)
+	return updatePods(ctx, k8sClient, statefulSet, updateFunc)
 }
 
 // updatePods applies updateFunc on all existing Pods from the StatefulSet, then update those Pods.
-func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc func(p *corev1.Pod) error) error {
+func updatePods(ctx context.Context, k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc func(p *corev1.Pod) error) error {
 	pods, err := sset.GetActualPodsForStatefulSet(k8sClient, k8s.ExtractNamespacedName(&statefulSet))
 	if err != nil {
 		return err
@@ -292,7 +295,7 @@ func updatePods(k8sClient k8s.Client, statefulSet appsv1.StatefulSet, updateFunc
 		if err := updateFunc(&pods[i]); err != nil {
 			return err
 		}
-		if err := k8sClient.Update(context.Background(), &pods[i]); err != nil {
+		if err := k8sClient.Update(ctx, &pods[i]); err != nil {
 			return err
 		}
 	}

@@ -576,7 +576,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -757,7 +757,7 @@ secret_session_key: alreadysetsessionkey
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol)
 			require.NoError(t, err)
 			cfg, err := settings.ParseConfig(got.Data["enterprise-search.yml"])
 			require.NoError(t, err)
@@ -891,7 +891,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

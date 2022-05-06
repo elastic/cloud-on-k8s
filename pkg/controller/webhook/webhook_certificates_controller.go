@@ -55,7 +55,7 @@ func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request recon
 
 func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reconciler.Results {
 	res := &reconciler.Results{}
-	wh, err := r.webhookParams.NewAdmissionControllerInterface(context.Background(), r.clientset)
+	wh, err := r.webhookParams.NewAdmissionControllerInterface(ctx, r.clientset)
 	if err != nil {
 		return res.WithError(err)
 	}

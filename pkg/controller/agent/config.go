@@ -48,7 +48,7 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 		},
 	}
 
-	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Agent); err != nil {
+	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Agent); err != nil {
 		return results.WithError(err)
 	}
 

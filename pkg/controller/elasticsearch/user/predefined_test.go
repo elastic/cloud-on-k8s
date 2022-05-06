@@ -110,7 +110,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(c, es, tt.existingFileRealm)
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -224,7 +224,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileInternalUsers(c, es, tt.existingFileRealm)
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned users
 			require.Len(t, got, 3)

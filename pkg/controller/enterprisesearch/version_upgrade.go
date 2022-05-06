@@ -127,7 +127,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		r.ent.Annotations = map[string]string{}
 	}
 	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(context.Background(), &r.ent)
+	return r.k8sClient.Update(ctx, &r.ent)
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
@@ -149,7 +149,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
 	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(context.Background(), &r.ent)
+	return r.k8sClient.Update(ctx, &r.ent)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,

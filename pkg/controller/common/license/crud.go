@@ -74,8 +74,8 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 }
 
 // CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
-func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
-	return c.Create(context.Background(), &corev1.Secret{
+func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedName) error {
+	return c.Create(ctx, &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
@@ -91,7 +91,7 @@ func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
 }
 
 // UpdateEnterpriseLicense updates an Enterprise license wrapped in a secret.
-func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
+func UpdateEnterpriseLicense(ctx context.Context, c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal license")
@@ -100,5 +100,5 @@ func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLic
 		FileName: bytes,
 	}
 	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
-	return c.Update(context.Background(), &secret)
+	return c.Update(ctx, &secret)
 }

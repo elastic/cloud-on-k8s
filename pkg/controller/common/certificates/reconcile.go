@@ -53,13 +53,13 @@ type Reconciler struct {
 // - a Secret containing the public-facing HTTP certificates (same as the internal one, but without the key)
 // If TLS is disabled, self-signed certificates are still reconciled, for simplicity/consistency, but not used.
 func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesSecret, *reconciler.Results) {
-	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
 
 	if !r.TLSOptions.Enabled() && r.GarbageCollectSecrets {
-		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets())
+		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets(ctx))
 	}
 
 	// check for custom certificates first
@@ -78,6 +78,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	default:
 		// if not then reconcile self-signed CA
 		httpCa, err = ReconcileCAForOwner(
+			ctx,
 			r.K8sClient,
 			r.Namer,
 			r.Owner,
@@ -97,7 +98,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	}
 
 	// reconcile http customCerts: either self-signed or user-provided
-	httpCertificates, err := r.ReconcileInternalHTTPCerts(httpCa, customCerts)
+	httpCertificates, err := r.ReconcileInternalHTTPCerts(ctx, httpCa, customCerts)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
@@ -112,26 +113,26 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	)
 
 	// reconcile http public cert secret, which does not contain the private key
-	results.WithError(r.ReconcilePublicHTTPCerts(httpCertificates))
+	results.WithError(r.ReconcilePublicHTTPCerts(ctx, httpCertificates))
 	return httpCertificates, results
 }
 
-func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
+func (r *Reconciler) removeCAAndHTTPCertsSecrets(ctx context.Context) error {
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	// remove public certs secret
-	if err := k8s.DeleteSecretIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(ctx, r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: PublicCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
-	if err := k8s.DeleteSecretIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(ctx, r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: InternalCertsSecretName(r.Namer, owner.Name)},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
-	if err := k8s.DeleteSecretIfExists(r.K8sClient,
+	if err := k8s.DeleteSecretIfExists(ctx, r.K8sClient,
 		types.NamespacedName{Namespace: owner.Namespace, Name: CAInternalSecretName(r.Namer, owner.Name, HTTPCAType)},
 	); err != nil {
 		return err

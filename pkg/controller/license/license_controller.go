@@ -51,7 +51,7 @@ var log = ulog.Log.WithName(name)
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	results := r.reconcileInternal(request)
+	results := r.reconcileInternal(ctx, request)
 	current, err := results.Aggregate()
 	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
 	return current, err
@@ -156,6 +156,7 @@ func findLicense(c k8s.Client, checker license.Checker, minVersion *version.Vers
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(
+	ctx context.Context,
 	c k8s.Client,
 	cluster esv1.Elasticsearch,
 	parent string,
@@ -184,13 +185,13 @@ func reconcileSecret(
 		},
 	}
 	// create/update a secret in the cluster's namespace containing the same data
-	_, err = reconciler.ReconcileSecret(c, expected, &cluster)
+	_, err = reconciler.ReconcileSecret(ctx, c, expected, &cluster)
 	return err
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 // Returns time to next reconciliation, bool whether a license is configured at all and optional error.
-func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, bool, error) {
+func (r *ReconcileLicenses) reconcileClusterLicense(ctx context.Context, cluster esv1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
 	minVersion, err := r.minVersion(cluster)
 	if err != nil {
@@ -201,12 +202,12 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 		// no matching license found, delete cluster level license if it exists to revert to basic
 		clusterLicenseNSN := types.NamespacedName{Namespace: cluster.Namespace, Name: esv1.LicenseSecretName(cluster.Name)}
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
-		err := k8s.DeleteSecretIfExists(r.Client, clusterLicenseNSN)
+		err := k8s.DeleteSecretIfExists(ctx, r.Client, clusterLicenseNSN)
 		return noResult, false, err
 	}
 	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
-	if err := reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
+	if err := reconcileSecret(ctx, r, cluster, parent, matchingSpec); err != nil {
 		return noResult, false, err
 	}
 	return matchingSpec.ExpiryTime(), false, nil
@@ -231,7 +232,7 @@ func (r *ReconcileLicenses) minVersion(cluster esv1.Elasticsearch) (*version.Ver
 	return minVersion, nil
 }
 
-func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
+func (r *ReconcileLicenses) reconcileInternal(ctx context.Context, request reconcile.Request) *reconciler.Results {
 	res := &reconciler.Results{}
 
 	// Fetch the cluster to ensure it still exists
@@ -250,7 +251,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 		return res
 	}
 
-	newExpiry, noLicense, err := r.reconcileClusterLicense(cluster)
+	newExpiry, noLicense, err := r.reconcileClusterLicense(ctx, cluster)
 	if err != nil {
 		return res.WithError(err)
 	}

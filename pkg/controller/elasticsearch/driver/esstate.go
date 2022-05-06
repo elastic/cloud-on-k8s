@@ -106,7 +106,7 @@ type memoizingShardsAllocationEnabled struct {
 
 // initialize requests Elasticsearch for shards allocation information, only once.
 func (s *memoizingShardsAllocationEnabled) initialize() error {
-	allocationSettings, err := s.esClient.GetClusterRoutingAllocation(context.Background())
+	allocationSettings, err := s.esClient.GetClusterRoutingAllocation(s.ctx)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ type memoizingHealth struct {
 func (h *memoizingHealth) initialize() error {
 	// get cluster health but make sure we have no pending shard initializations
 	// by requiring the event queue to be empty
-	health, err := h.esClient.GetClusterHealthWaitForAllEvents(context.Background())
+	health, err := h.esClient.GetClusterHealthWaitForAllEvents(h.ctx)
 	if err != nil {
 		return err
 	}

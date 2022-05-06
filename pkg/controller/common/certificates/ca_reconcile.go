@@ -55,6 +55,7 @@ func CAInternalSecretName(namer name.Namer, ownerName string, caType CAType) str
 //
 // The CA cert and private key are rotated if they become invalid (or soon to expire).
 func ReconcileCAForOwner(
+	ctx context.Context,
 	cl k8s.Client,
 	namer name.Namer,
 	owner client.Object,
@@ -74,24 +75,24 @@ func ReconcileCAForOwner(
 	}
 	if apierrors.IsNotFound(err) {
 		log.Info("No internal CA certificate Secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
 
 	// build CA
 	ca := BuildCAFromSecret(caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
 
 	// renew or recreate from private key if cannot reuse
 	if !CanReuseCA(ca, rotationParams.RotateBefore) {
 		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
 			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-			return renewCAFromExisting(cl, namer, owner, labels, rotationParams.Validity, caType, ca.PrivateKey)
+			return renewCAFromExisting(ctx, cl, namer, owner, labels, rotationParams.Validity, caType, ca.PrivateKey)
 		}
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
 
 	// reuse existing CA
@@ -105,6 +106,7 @@ func ReconcileCAForOwner(
 // 1. The given CA is nil
 // 2. The CA's private key interface type cannot be asserted to be a *rsa.PrivateKey
 func renewCAFromExisting(
+	ctx context.Context,
 	client k8s.Client,
 	namer name.Namer,
 	owner client.Object,
@@ -122,7 +124,7 @@ func renewCAFromExisting(
 			"name", owner.GetName(),
 			"type", fmt.Sprintf("%T", signer),
 		)
-		return renewCA(client, namer, owner, labels, expireIn, caType)
+		return renewCA(ctx, client, namer, owner, labels, expireIn, caType)
 	}
 
 	log.Info(
@@ -130,7 +132,7 @@ func renewCAFromExisting(
 		"namespace", owner.GetNamespace(),
 		"name", owner.GetName(),
 	)
-	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
+	return renewCAWithOptions(ctx, client, namer, owner, labels, caType, CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
@@ -142,6 +144,7 @@ func renewCAFromExisting(
 
 // renewCA creates and stores a new CA to replace one that might exist using a set of default builder options.
 func renewCA(
+	ctx context.Context,
 	client k8s.Client,
 	namer name.Namer,
 	owner client.Object,
@@ -149,7 +152,7 @@ func renewCA(
 	expireIn time.Duration,
 	caType CAType,
 ) (*CA, error) {
-	return renewCAWithOptions(client, namer, owner, labels, caType, CABuilderOptions{
+	return renewCAWithOptions(ctx, client, namer, owner, labels, caType, CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
@@ -161,6 +164,7 @@ func renewCA(
 // renewCAWithOptions will create and store a new CA to replace one that might exist using a set of given builder options
 // instead of accepting the defaults.
 func renewCAWithOptions(
+	ctx context.Context,
 	client k8s.Client,
 	namer name.Namer,
 	owner client.Object,
@@ -178,7 +182,7 @@ func renewCAWithOptions(
 	}
 
 	// create or update internal secret
-	if _, err := reconciler.ReconcileSecret(client, caInternalSecret, owner); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, client, caInternalSecret, owner); err != nil {
 		return nil, err
 	}
 

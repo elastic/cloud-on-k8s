@@ -175,7 +175,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
+	if err := RemoveObsoleteAssociationConfs(ctx, r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -241,7 +241,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 	if !exists {
 		// the associated resource does not exist (yet), set status to Pending and remove the existing association conf
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+		return commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
 	}
 
 	if assocRef.IsExternal() {
@@ -256,6 +256,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	caSecret, err := r.ReconcileCASecret(
+		ctx,
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
 		assocRef.NamespacedName(),
@@ -302,7 +303,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 	// the Elasticsearch ref does not exist yet, set status to Pending
 	if !found {
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+		return commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
 	}
 
 	if esAssocRef.IsExternal() {
@@ -388,7 +389,7 @@ func (r *Reconciler) getElasticsearch(
 	association commonv1.Association,
 	elasticsearchRef commonv1.ObjectSelector,
 ) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
 	var es esv1.Elasticsearch
@@ -398,7 +399,7 @@ func (r *Reconciler) getElasticsearch(
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(r.Client, association); err != nil && !apierrors.IsConflict(err) {
+			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {
 				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
@@ -410,9 +411,10 @@ func (r *Reconciler) getElasticsearch(
 }
 
 // Unbind removes the association resources.
-func (r *Reconciler) Unbind(association commonv1.Association) error {
+func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
 	if err := k8s.DeleteSecretMatching(
+		ctx,
 		r.Client,
 		r.userLabelSelector(
 			k8s.ExtractNamespacedName(association),
@@ -421,7 +423,7 @@ func (r *Reconciler) Unbind(association commonv1.Association) error {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(r.Client, association)
+	return RemoveAssociationConf(ctx, r.Client, association)
 }
 
 // updateAssocConf updates associated with the expected association conf.
@@ -430,7 +432,7 @@ func (r *Reconciler) updateAssocConf(
 	expectedAssocConf *commonv1.AssociationConf,
 	association commonv1.Association,
 ) (commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
 	defer span.End()
 
 	assocConf, err := association.AssociationConf()
@@ -439,7 +441,7 @@ func (r *Reconciler) updateAssocConf(
 	}
 	if !reflect.DeepEqual(expectedAssocConf, assocConf) {
 		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
-		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
+		if err := UpdateAssociationConf(ctx, r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}

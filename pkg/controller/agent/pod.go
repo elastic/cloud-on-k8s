@@ -269,7 +269,7 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 		if err := cleanupEnvVarsSecret(params); err != nil {
 			return nil, err
 		}
-	} else if _, err := reconciler.ReconcileSecret(params.Client, envVarsSecret, &params.Agent); err != nil {
+	} else if _, err := reconciler.ReconcileSecret(params.Context, params.Client, envVarsSecret, &params.Agent); err != nil {
 		return nil, err
 	}
 

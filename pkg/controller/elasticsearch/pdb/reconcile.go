@@ -26,13 +26,13 @@ import (
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
+func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
 	expected, err := expectedPDB(es, statefulSets)
 	if err != nil {
 		return err
 	}
 	if expected == nil {
-		return deleteDefaultPDB(k8sClient, es)
+		return deleteDefaultPDB(ctx, k8sClient, es)
 	}
 
 	// label the PDB with a hash of its content, for comparison purposes
@@ -40,9 +40,9 @@ func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.St
 
 	// reconcile actual vs. expected
 	var actual v1beta1.PodDisruptionBudget
-	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(expected), &actual)
+	err = k8sClient.Get(ctx, k8s.ExtractNamespacedName(expected), &actual)
 	if err != nil && apierrors.IsNotFound(err) {
-		return k8sClient.Create(context.Background(), expected)
+		return k8sClient.Create(ctx, expected)
 	}
 
 	if hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(actual.Labels) {
@@ -50,17 +50,17 @@ func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.St
 		// PDB Spec cannot be updated, we'll have to delete then recreate.
 		// Which means there is a time window in between where we don't have a PDB anymore.
 		// TODO: this is not true anymore starting k8s 1.15+ and this PR https://github.com/kubernetes/kubernetes/pull/69867
-		if err := deleteDefaultPDB(k8sClient, es); err != nil {
+		if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
 			return err
 		}
-		return k8sClient.Create(context.Background(), expected)
+		return k8sClient.Create(ctx, expected)
 	}
 
 	return nil
 }
 
 // deleteDefaultPDB deletes the default pdb if it exists.
-func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
+func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
 	pdb := v1beta1.PodDisruptionBudget{
@@ -69,13 +69,13 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
 		},
 	}
-	if err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	} else if apierrors.IsNotFound(err) {
 		// already deleted, which is fine
 		return nil
 	}
-	if err := k8sClient.Delete(context.Background(), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil

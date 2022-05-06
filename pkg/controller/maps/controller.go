@@ -154,10 +154,11 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	var ems emsv1alpha1.ElasticMapsServer
 	if err := r.Client.Get(ctx, request.NamespacedName, &ems); err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
-				Namespace: request.Namespace,
-				Name:      request.Name,
-			})
+			return reconcile.Result{}, r.onDelete(ctx,
+				types.NamespacedName{
+					Namespace: request.Namespace,
+					Name:      request.Name,
+				})
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -169,12 +170,12 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 
 	// MapsServer will be deleted nothing to do other than remove the watches
 	if ems.IsMarkedForDeletion() {
-		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&ems))
+		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&ems))
 	}
 
 	// main reconciliation logic
 	results, status := r.doReconcile(ctx, ems)
-	if err := r.updateStatus(ems, status); err != nil {
+	if err := r.updateStatus(ctx, ems, status); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
@@ -252,7 +253,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results, status
 	}
 
-	configSecret, err := reconcileConfig(r, ems, r.IPFamily)
+	configSecret, err := reconcileConfig(ctx, r, ems, r.IPFamily)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -356,7 +357,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	return deployment.Reconcile(r.K8sClient(), deploy, &ems)
+	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ems)
 }
 
 func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string) (deployment.Params, error) {
@@ -398,7 +399,7 @@ func (r *ReconcileMapsServer) getStatus(ems emsv1alpha1.ElasticMapsServer, deplo
 	return status, nil
 }
 
-func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, status emsv1alpha1.MapsStatus) error {
+func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, status emsv1alpha1.MapsStatus) error {
 	if reflect.DeepEqual(status, ems.Status) {
 		return nil // nothing to do
 	}
@@ -412,13 +413,13 @@ func (r *ReconcileMapsServer) updateStatus(ems emsv1alpha1.ElasticMapsServer, st
 		"status", status,
 	)
 	ems.Status = status
-	return common.UpdateStatus(r.Client, &ems)
+	return common.UpdateStatus(ctx, r.Client, &ems)
 }
 
-func (r *ReconcileMapsServer) onDelete(obj types.NamespacedName) error {
+func (r *ReconcileMapsServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(EMSNamer, obj.Name))
 	// same for the configRef secret
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, emsv1alpha1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, emsv1alpha1.Kind)
 }

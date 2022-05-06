@@ -64,7 +64,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	return false, annotateWithUUID(k8sClient, cluster, clusterUUID)
+	return false, annotateWithUUID(ctx, k8sClient, cluster, clusterUUID)
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
@@ -82,7 +82,7 @@ func isUUIDValid(uuid string) bool {
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
-func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
+func annotateWithUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
 	log.Info(
 		"Annotating bootstrapped cluster with its UUID",
 		"namespace", cluster.Namespace,
@@ -93,5 +93,5 @@ func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid st
 		cluster.Annotations = make(map[string]string)
 	}
 	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(context.Background(), cluster)
+	return k8sClient.Update(ctx, cluster)
 }

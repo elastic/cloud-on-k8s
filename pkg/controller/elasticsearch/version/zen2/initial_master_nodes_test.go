@@ -210,7 +210,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, tt.k8sClient.Create(context.Background(), &tt.es))
-			err := SetupInitialMasterNodes(tt.es, tt.k8sClient, tt.nodeSpecResources)
+			err := SetupInitialMasterNodes(context.Background(), tt.es, tt.k8sClient, tt.nodeSpecResources)
 			require.NoError(t, err)
 			// nodeSpecResources configurations should be updated accordingly
 			for i := 0; i < len(tt.nodeSpecResources); i++ {
@@ -277,7 +277,7 @@ func Test_setInitialMasterNodesAnnotation(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	k8sClient := k8s.NewFakeClient(&es)
 	initialMasterNodes := []string{"node-0", "node-1", "node-2"}
-	err := setInitialMasterNodesAnnotation(k8sClient, es, initialMasterNodes)
+	err := setInitialMasterNodesAnnotation(context.Background(), k8sClient, es, initialMasterNodes)
 	require.NoError(t, err)
 	var updatedEs esv1.Elasticsearch
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es), &updatedEs)

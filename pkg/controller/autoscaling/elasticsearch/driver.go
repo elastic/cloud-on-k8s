@@ -116,7 +116,7 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	autoscalingSpec esv1.AutoscalingSpec,
 	results *reconciler.Results,
 ) (reconcile.Result, error) {
-	span, _ := apm.StartSpan(ctx, "online_reconciliation", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "online_reconciliation", tracing.SpanTypeApp)
 	defer span.End()
 	log := logconf.FromContext(ctx)
 	log.V(1).Info("Starting online autoscaling reconciliation")
@@ -212,7 +212,7 @@ func (r *ReconcileElasticsearch) attemptOnlineReconciliation(
 	}
 
 	// Apply the update Elasticsearch manifest
-	if err := r.Client.Update(context.Background(), &autoscalingSpec.Elasticsearch); err != nil {
+	if err := r.Client.Update(ctx, &autoscalingSpec.Elasticsearch); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
@@ -254,7 +254,7 @@ func (r *ReconcileElasticsearch) doOfflineReconciliation(
 	}
 
 	// Apply the updated Elasticsearch manifest
-	if err := r.Client.Update(context.Background(), &autoscalingSpec.Elasticsearch); err != nil {
+	if err := r.Client.Update(ctx, &autoscalingSpec.Elasticsearch); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
