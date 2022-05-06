@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -47,7 +48,6 @@ func RetrieveClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, futureClu
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
 // and fails if they don't match
 func CompareClusterUUIDStep(es esv1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
-	//nolint:thelper
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",
 		Test: test.Eventually(func() error {
