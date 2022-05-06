@@ -161,13 +161,15 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, existing
 func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (filerealm.Realm, error) {
 	realm := filerealm.New()
 	nsn := k8s.ExtractNamespacedName(&secret)
+	// errors on GetSecretEntry for username/password are really programmer errors here as we check the key presence
+	// from the calling method
 	username := k8s.GetSecretEntry(secret, corev1.BasicAuthUsernameKey)
 	if username == nil {
-		return realm, fmt.Errorf("username is required but was empty: %v", nsn)
+		return realm, fmt.Errorf("username missing: %v", nsn)
 	}
 	password := k8s.GetSecretEntry(secret, corev1.BasicAuthPasswordKey)
 	if password == nil {
-		return realm, fmt.Errorf("password is required but was empty: %v", nsn)
+		return realm, fmt.Errorf("password missing: %v", nsn)
 	}
 
 	user := user{
