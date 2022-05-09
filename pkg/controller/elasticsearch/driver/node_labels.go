@@ -59,7 +59,7 @@ func annotatePodWithNodeLabels(ctx context.Context, c k8s.Client, pod corev1.Pod
 		return nil
 	}
 	node := &corev1.Node{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: nodeName}, node); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
 		return err
 	}
 	// Get the missing annotations.

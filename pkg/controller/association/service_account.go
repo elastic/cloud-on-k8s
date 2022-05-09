@@ -68,7 +68,7 @@ func reconcileApplicationSecret(
 	defer span.End()
 
 	applicationStore := corev1.Secret{}
-	err := client.Get(context.Background(), applicationSecretName, &applicationStore)
+	err := client.Get(ctx, applicationSecretName, &applicationStore)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, err
 	}

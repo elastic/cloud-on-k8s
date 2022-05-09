@@ -53,7 +53,7 @@ func applyLinkedLicense(
 	// namespace of this cluster following the cluster-license naming
 	// convention
 	var license corev1.Secret
-	err := c.Get(context.Background(),
+	err := c.Get(ctx,
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),

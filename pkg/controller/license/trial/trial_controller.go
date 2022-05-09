@@ -116,7 +116,7 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 
 func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
 	var trialStatus corev1.Secret
-	err := r.Get(context.Background(), types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		if r.trialState.IsEmpty() {
 			// we have no state in memory nor in the status secret: start the activation process

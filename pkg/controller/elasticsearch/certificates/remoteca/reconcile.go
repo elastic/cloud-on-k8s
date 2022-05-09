@@ -42,7 +42,7 @@ func Reconcile(
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		Labels(es.Name),

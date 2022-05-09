@@ -27,7 +27,7 @@ func reconcilePVCOwnerRefs(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
-	if err := c.List(context.Background(), &pvcs, ns, labelSelector); err != nil {
+	if err := c.List(ctx, &pvcs, ns, labelSelector); err != nil {
 		return fmt.Errorf("while listing pvcs to reconcile owner refs: %w", err)
 	}
 

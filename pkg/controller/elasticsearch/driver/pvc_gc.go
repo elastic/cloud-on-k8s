@@ -35,7 +35,7 @@ func GarbageCollectPVCs(
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := k8sClient.List(context.Background(), &pvcs, ns, matchLabels); err != nil {
+	if err := k8sClient.List(ctx, &pvcs, ns, matchLabels); err != nil {
 		return err
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {

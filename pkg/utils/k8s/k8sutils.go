@@ -156,7 +156,7 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 // DeleteSecretMatching deletes the Secret matching the provided selectors.
 func DeleteSecretMatching(ctx context.Context, c Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList
-	if err := c.List(context.Background(), &secrets, opts...); err != nil {
+	if err := c.List(ctx, &secrets, opts...); err != nil {
 		return err
 	}
 	for _, s := range secrets.Items {

@@ -237,7 +237,7 @@ func (r *ReconcileLicenses) reconcileInternal(ctx context.Context, request recon
 
 	// Fetch the cluster to ensure it still exists
 	cluster := esv1.Elasticsearch{}
-	err := r.Get(context.Background(), request.NamespacedName, &cluster)
+	err := r.Get(ctx, request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// nothing to do no cluster

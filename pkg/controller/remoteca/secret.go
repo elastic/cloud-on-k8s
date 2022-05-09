@@ -84,7 +84,7 @@ func copyCertificateAuthority(
 	sourceKey := k8s.ExtractNamespacedName(source)
 	// Check if CA of the source cluster exists
 	sourceCA := &corev1.Secret{}
-	if err := r.Client.Get(context.Background(), transport.PublicCertsSecretRef(sourceKey), sourceCA); err != nil {
+	if err := r.Client.Get(ctx, transport.PublicCertsSecretRef(sourceKey), sourceCA); err != nil {
 		return err
 	}
 

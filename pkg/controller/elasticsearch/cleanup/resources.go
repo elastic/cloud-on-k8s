@@ -45,7 +45,7 @@ func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := c.List(context.Background(), &secrets, ns, matchLabels); err != nil {
+	if err := c.List(ctx, &secrets, ns, matchLabels); err != nil {
 		return err
 	}
 	resources := make([]client.Object, len(secrets.Items))
@@ -70,7 +70,7 @@ func cleanupFromPodReference(ctx context.Context, c k8s.Client, namespace string
 		// this secret applies to a particular pod
 		// remove it if the pod does not exist anymore
 		var pod corev1.Pod
-		err = c.Get(context.Background(), types.NamespacedName{
+		err = c.Get(ctx, types.NamespacedName{
 			Namespace: namespace,
 			Name:      podName,
 		}, &pod)

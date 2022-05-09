@@ -154,7 +154,7 @@ func (r *Reporter) report(ctx context.Context) {
 
 	for _, ns := range r.managedNamespaces {
 		var kibanaList kbv1.KibanaList
-		if err := r.client.List(context.Background(), &kibanaList, client.InNamespace(ns)); err != nil {
+		if err := r.client.List(ctx, &kibanaList, client.InNamespace(ns)); err != nil {
 			log.Error(err, "failed to list Kibanas")
 			continue
 		}
@@ -170,7 +170,7 @@ func (r *Reporter) reconcileKibanaSecret(ctx context.Context, kb kbv1.Kibana, te
 
 	var secret corev1.Secret
 	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
-	if err := r.client.Get(context.Background(), nsName, &secret); err != nil {
+	if err := r.client.Get(ctx, nsName, &secret); err != nil {
 		log.Error(err, "failed to get Kibana secret")
 		return
 	}
@@ -198,7 +198,7 @@ func (r *Reporter) getLicenseInfo(ctx context.Context) (map[string]string, error
 	}
 
 	var licenseConfigMap corev1.ConfigMap
-	if err := r.client.Get(context.Background(), nsn, &licenseConfigMap); err != nil {
+	if err := r.client.Get(ctx, nsn, &licenseConfigMap); err != nil {
 		return nil, err
 	}
 

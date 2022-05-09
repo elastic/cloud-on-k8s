@@ -169,7 +169,7 @@ func recreateStatefulSets(ctx context.Context, k8sClient k8s.Client, es esv1.Ela
 	for annotation, toRecreate := range recreateList {
 		toRecreate := toRecreate
 		var existing appsv1.StatefulSet
-		err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&toRecreate), &existing)
+		err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&toRecreate), &existing)
 		switch {
 		// error case
 		case err != nil && !apierrors.IsNotFound(err):

@@ -38,7 +38,7 @@ func MarkPodsAsUpdated(
 ) {
 	// Get all pods
 	var podList corev1.PodList
-	err := c.List(context.Background(), &podList, podListOptions...)
+	err := c.List(ctx, &podList, podListOptions...)
 	if err != nil {
 		log.Error(err, "failed to list pods for annotation update")
 		return

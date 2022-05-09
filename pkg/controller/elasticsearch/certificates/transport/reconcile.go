@@ -95,7 +95,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
 	ns := client.InNamespace(es.Namespace)
-	if err := c.List(context.Background(), &pods, matchLabels, ns); err != nil {
+	if err := c.List(ctx, &pods, matchLabels, ns); err != nil {
 		return errors.WithStack(err)
 	}
 
