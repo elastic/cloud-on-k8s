@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
@@ -30,6 +32,9 @@ type Params struct {
 // ReconcileResources reconciles the certificates used by the webhook client and the webhook server.
 // It also returns the duration after which a certificate rotation should be scheduled.
 func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.Interface, webhookConfiguration AdmissionControllerInterface) error {
+	span, ctx := apm.StartSpan(ctx, "reconcile_resources", tracing.SpanTypeApp)
+	defer span.End()
+
 	// retrieve current webhook server cert secret
 	webhookServerSecret, err := clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
 	if err != nil {

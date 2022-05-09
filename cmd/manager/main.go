@@ -595,7 +595,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces)
+		setupWebhook(ctx, mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -678,8 +678,8 @@ func asyncTasks(
 	// Report this instance as elected through Prometheus
 	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
 
-	time.Sleep(10 * time.Second)                          // wait some arbitrary time for the manager to start
-	mgr.GetCache().WaitForCacheSync(context.Background()) // wait until k8s client cache is initialized
+	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+	mgr.GetCache().WaitForCacheSync(ctx) // wait until k8s client cache is initialized
 
 	// Start the resource reporter
 	go func() {
@@ -876,38 +876,18 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 }
 
 func setupWebhook(
+	ctx context.Context,
 	mgr manager.Manager,
 	certRotation certificates.RotationParams,
 	validateStorageClass bool,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
-	managedNamespaces []string) {
+	managedNamespaces []string,
+	tracer *apm.Tracer) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
-		log.Info("Automatic management of the webhook certificates enabled")
-		// Ensure that all the certificates needed by the webhook server are already created
-		webhookParams := webhook.Params{
-			Name:       viper.GetString(operator.WebhookNameFlag),
-			Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
-			SecretName: viper.GetString(operator.WebhookSecretFlag),
-			Rotation:   certRotation,
-		}
-
-		// retrieve the current webhook configuration interface
-		wh, err := webhookParams.NewAdmissionControllerInterface(context.Background(), clientset)
-		if err != nil {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, certRotation, clientset, tracer); err != nil {
 			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
-		}
-
-		// Force a first reconciliation to create the resources before the server is started
-		if err := webhookParams.ReconcileResources(context.Background(), clientset, wh); err != nil {
-			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
-		}
-
-		if err := webhook.Add(mgr, webhookParams, clientset, wh); err != nil {
-			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
 			os.Exit(1)
 		}
 	}
@@ -966,4 +946,30 @@ func setupWebhook(
 		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
 		os.Exit(1)
 	}
+}
+
+func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
+	ctx = tracing.NewContextTransaction(ctx, tracer, "webhook", "reconcile", nil)
+	defer tracing.EndContextTransaction(ctx)
+	log.Info("Automatic management of the webhook certificates enabled")
+	// Ensure that all the certificates needed by the webhook server are already created
+	webhookParams := webhook.Params{
+		Name:       viper.GetString(operator.WebhookNameFlag),
+		Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
+		SecretName: viper.GetString(operator.WebhookSecretFlag),
+		Rotation:   certRotation,
+	}
+
+	// retrieve the current webhook configuration interface
+	wh, err := webhookParams.NewAdmissionControllerInterface(ctx, clientset)
+	if err != nil {
+		return err
+	}
+
+	// Force a first reconciliation to create the resources before the server is started
+	if err := webhookParams.ReconcileResources(ctx, clientset, wh); err != nil {
+		return err
+	}
+
+	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
 }

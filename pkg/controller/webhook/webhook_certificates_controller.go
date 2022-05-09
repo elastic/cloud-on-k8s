@@ -6,9 +6,11 @@ package webhook
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
@@ -45,10 +48,16 @@ type ReconcileWebhookResources struct {
 	webhookParams Params
 	// resources are updated with a native Kubernetes client
 	clientset kubernetes.Interface
+
+	// APM tracer
+	tracer *apm.Tracer
 }
 
 func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, "webhook", "reconcile", map[string]string{"iteration": strconv.FormatUint(r.iteration, 10)})
+	defer tracing.EndContextTransaction(ctx)
+
 	res := r.reconcileInternal(ctx)
 	return res.Aggregate()
 }
@@ -82,18 +91,19 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) *ReconcileWebhookResources {
+func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, tracer *apm.Tracer) *ReconcileWebhookResources {
 	c := mgr.GetClient()
 	return &ReconcileWebhookResources{
 		Client:        c,
 		webhookParams: webhookParams,
 		clientset:     clientset,
+		tracer:        tracer,
 	}
 }
 
 // Add adds a new Controller to mgr with r as the reconcile.Reconciler
-func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface) error {
-	r := newReconciler(mgr, webhookParams, clientset)
+func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, tracer *apm.Tracer) error {
+	r := newReconciler(mgr, webhookParams, clientset, tracer)
 	// Create a new controller
 	c, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
