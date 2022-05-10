@@ -70,7 +70,7 @@ func Test_validUserOrRoleName(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "NOK startwith whitespace",
+			name: "NOK starts with whitespace",
 			args: args{
 				name: " elastic",
 			},

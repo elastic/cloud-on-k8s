@@ -142,7 +142,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, existing
 		case 2:
 			realm, err = realmFromBasicAuthSecret(secret, existing)
 		case 1:
-			// at least one of the expected keys for basic auth was present. This could be a user mistake let's create
+			// At least one of the expected keys for basic auth was present. This could be a user mistake let's create
 			// an event and log it.
 			handlePotentialMisconfiguration(recorder, es, secret)
 			realm, err = filerealm.FromSecret(secret)
@@ -213,7 +213,7 @@ func handlePotentialMisconfiguration(recorder record.EventRecorder, es esv1.Elas
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	msg := fmt.Sprintf("potential misconfiguration in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, expected)
+	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, expected)
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 }

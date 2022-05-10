@@ -277,13 +277,24 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		{
+			name: "Invalid User",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"username": []byte(testUser),
+						"password": []byte(""),
+					},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "missing password",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						"username": nil,
+						"username": []byte(testUser),
 					},
 				},
 			},
@@ -333,6 +344,16 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 			name: "creates new password hash in absence of existing file realm",
 			args: args{
 				secret: basicAuthSecretFixture,
+			},
+			wantPassword: "my-user-pass",
+			wantErr:      false,
+		},
+		{
+			name: "Generate new hash without error if current one is invalid",
+			args: args{
+				secret: basicAuthSecretFixture,
+				existing: filerealm.New().
+					WithUser(testUser, []byte("$2a$10$invalidhash.invalidhash")),
 			},
 			wantPassword: "my-user-pass",
 			wantErr:      false,
