@@ -2,7 +2,7 @@ module github.com/elastic/cloud-on-k8s
 
 go 1.17
 
-# Force version to get the fix for CVE-2015-5237
+// Force version to get the fix for CVE-2015-5237
 replace google.golang.org/protobuf => google.golang.org/protobuf v1.28.0
 
 require (
