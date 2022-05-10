@@ -22,7 +22,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-const userProvidedBasicAuthRolesKey = "roles"
+const BasicAuthSecretRolesKey = "roles"
+
+var basicAuthSecretKeys = []string{corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey}
 
 // UserProvidedFileRealmWatchName returns the watch registered for user-provided file realm secrets.
 func UserProvidedFileRealmWatchName(es types.NamespacedName) string { //nolint:revive
@@ -138,7 +140,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, existing
 		}
 		var realm filerealm.Realm
 		var err error
-		switch k8s.HasSecretEntries(secret, corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey) {
+		switch k8s.GetSecretEntriesCount(secret, basicAuthSecretKeys...) {
 		case 2:
 			realm, err = realmFromBasicAuthSecret(secret, existing)
 		case 1:
@@ -177,7 +179,7 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (f
 		Password: password,
 	}
 
-	if roles := k8s.GetSecretEntry(secret, userProvidedBasicAuthRolesKey); roles != nil {
+	if roles := k8s.GetSecretEntry(secret, BasicAuthSecretRolesKey); roles != nil {
 		roles := strings.Split(string(roles), ",")
 		user.Roles = roles
 	}
@@ -207,13 +209,12 @@ func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearc
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s %s/%s: %s", msg, es.Namespace, secretName, err.Error()))
 }
 func handlePotentialMisconfiguration(recorder record.EventRecorder, es esv1.Elasticsearch, secret corev1.Secret) {
-	expected := []string{corev1.BasicAuthPasswordKey, corev1.BasicAuthUsernameKey}
 	keys := make([]string, 0, len(secret.Data))
 	for k := range secret.Data {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, expected)
+	msg := fmt.Sprintf("potential misconfigured custom user in secret %s/%s: found keys %s expected keys %s", secret.Namespace, secret.Name, keys, basicAuthSecretKeys)
 	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 }

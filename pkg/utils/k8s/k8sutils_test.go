@@ -283,7 +283,7 @@ func TestObjectExists(t *testing.T) {
 	}
 }
 
-func TestHasSecretEntries(t *testing.T) {
+func TestGetSecretEntriesCount(t *testing.T) {
 	secretFixture := corev1.Secret{Data: map[string][]byte{
 		"a": nil,
 		"b": nil,
@@ -357,7 +357,7 @@ func TestHasSecretEntries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, HasSecretEntries(tt.args.secret, tt.args.keys...), "HasSecretEntries(%v, %v)", tt.args.secret, tt.args.keys)
+			assert.Equalf(t, tt.want, GetSecretEntriesCount(tt.args.secret, tt.args.keys...), "GetSecretEntriesCount(%v, %v)", tt.args.secret, tt.args.keys)
 		})
 	}
 }

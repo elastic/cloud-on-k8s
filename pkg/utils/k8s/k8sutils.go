@@ -153,8 +153,8 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 	return content
 }
 
-// HasSecretEntries returns the number of matching keys found in secret.
-func HasSecretEntries(secret corev1.Secret, keys ...string) int {
+// GetSecretEntriesCount returns the number of matching keys found in secret.
+func GetSecretEntriesCount(secret corev1.Secret, keys ...string) int {
 	if secret.Data == nil {
 		return 0
 	}

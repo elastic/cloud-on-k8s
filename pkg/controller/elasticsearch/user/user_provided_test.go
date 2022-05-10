@@ -277,8 +277,9 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		},
 		{
-			name: "Invalid User",
+			name: "invalid user",
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{

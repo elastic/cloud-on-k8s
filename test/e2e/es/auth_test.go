@@ -175,9 +175,9 @@ func TestESUserProvidedAuth(t *testing.T) {
 					}
 					existingSecret.Data = nil
 					existingSecret.StringData = map[string]string{
-						corev1.BasicAuthUsernameKey: sampleUser,
-						corev1.BasicAuthPasswordKey: samplePasswordCleartext,
-						filerealm.UsersRolesFile:    sampleUsersRolesFile,
+						corev1.BasicAuthUsernameKey:  sampleUser,
+						corev1.BasicAuthPasswordKey:  samplePasswordCleartext,
+						user.BasicAuthSecretRolesKey: "test_role",
 					}
 					return k.Client.Update(context.Background(), &existingSecret)
 				}),
