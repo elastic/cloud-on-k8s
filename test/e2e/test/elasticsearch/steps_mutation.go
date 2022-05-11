@@ -74,7 +74,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
-	// var shutdownCheck *continuousNodeRestartCheck
 	mutatedFrom := b.MutatedFrom
 	isMutated := true
 	if mutatedFrom == nil {

@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 

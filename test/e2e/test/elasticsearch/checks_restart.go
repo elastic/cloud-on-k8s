@@ -10,13 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -52,7 +51,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 				}
 			}
 			if len(restarts) > maxConcurrentRestarts {
-				observedErrors = append(observedErrors, fmt.Errorf("expected %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
+				observedErrors = append(observedErrors, fmt.Errorf("expected less than %d, got %d, restarts: %v", maxConcurrentRestarts, len(restarts), restarts))
 			}
 		},
 		func(k *test.K8sClient, t *testing.T) { //nolint:thelper
