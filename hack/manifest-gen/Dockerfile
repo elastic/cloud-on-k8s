@@ -1,4 +1,4 @@
-FROM golang:1.18.1 as builder
+FROM golang:1.18.2 as builder
 ADD . /manifest-gen
 WORKDIR /manifest-gen
 ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux 
