@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build es || e2e
 // +build es e2e
 
 package es
@@ -37,6 +38,7 @@ const (
 	samplePasswordHash        = "$2a$10$qrurU7ju08g0eCXgh5qZmOWfKLhWMs/ca3uXz1l6.eFf09UH6YXFy" // nolint
 	samplePasswordUpdated     = "mypasswordupdated"
 	samplePasswordUpdatedHash = "$2a$10$ckqhC0BB5OdXJhR1J7vbiu21e9BxJU1V6HHLOqbSo.TlZAocWWnie" // nolint
+	samplePasswordCleartext   = "my-cleartext-password"
 	sampleUsersFile           = sampleUser + ":" + samplePasswordHash
 	sampleUsersFileUpdated    = sampleUser + ":" + samplePasswordUpdatedHash
 	sampleUsersRolesFile      = "test_role:" + sampleUser
@@ -160,6 +162,30 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "ES API should eventually be accessible using the updated password and the updated role",
 				Test: test.Eventually(func() error {
 					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordUpdated}
+					expectedStatusCode := 201
+					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
+				}),
+			},
+			test.Step{
+				Name: "Update the secret to be a basic auth secret with a clear text password",
+				Test: test.Eventually(func() error {
+					var existingSecret corev1.Secret
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
+						return err
+					}
+					existingSecret.Data = nil
+					existingSecret.StringData = map[string]string{
+						corev1.BasicAuthUsernameKey:  sampleUser,
+						corev1.BasicAuthPasswordKey:  samplePasswordCleartext,
+						user.BasicAuthSecretRolesKey: "test_role",
+					}
+					return k.Client.Update(context.Background(), &existingSecret)
+				}),
+			},
+			test.Step{
+				Name: "ES API should eventually be accessible using the updated password and the updated role",
+				Test: test.Eventually(func() error {
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordCleartext}
 					expectedStatusCode := 201
 					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
 				}),

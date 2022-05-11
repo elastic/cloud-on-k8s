@@ -153,6 +153,20 @@ func GetSecretEntry(secret corev1.Secret, key string) []byte {
 	return content
 }
 
+// GetSecretEntriesCount returns the number of matching keys found in secret.
+func GetSecretEntriesCount(secret corev1.Secret, keys ...string) int {
+	if secret.Data == nil {
+		return 0
+	}
+	var hits int
+	for _, k := range keys {
+		if _, exists := secret.Data[k]; exists {
+			hits++
+		}
+	}
+	return hits
+}
+
 // DeleteSecretMatching deletes the Secret matching the provided selectors.
 func DeleteSecretMatching(ctx context.Context, c Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList

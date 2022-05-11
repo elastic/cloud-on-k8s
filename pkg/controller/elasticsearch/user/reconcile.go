@@ -128,8 +128,14 @@ func aggregateFileRealm(
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
+	// watch & fetch user-provided file realm & roles
+	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, existingFileRealm, watched, recorder)
+	if err != nil {
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
+	}
+
 	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm)
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
@@ -140,12 +146,6 @@ func aggregateFileRealm(
 
 	// fetch associated users
 	associatedUsers, err := retrieveAssociatedUsers(c, es)
-	if err != nil {
-		return filerealm.Realm{}, esclient.BasicAuth{}, err
-	}
-
-	// watch & fetch user-provided file realm & roles
-	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, watched, recorder)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
