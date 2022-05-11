@@ -293,9 +293,24 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 			metrics.Close()
 			bytes, _ := json.Marshal(metrics)
 			msgAndArgs := []interface{}{"metrics: ", string(bytes)}
-			assert.Equal(t, 1, len(metrics.StatusCodes), msgAndArgs)
-			if _, ok := metrics.StatusCodes["401"]; !ok {
-				assert.Fail(t, "all status codes should be 401", msgAndArgs)
+			switch len(metrics.StatusCodes) {
+			case 1:
+				if _, ok := metrics.StatusCodes["401"]; !ok {
+					assert.Fail(t, "all status codes should be 401", msgAndArgs)
+				}
+			case 2:
+				// allow 5 or less network errors during load testing, as we randomly see these during testing.
+				if metrics.StatusCodes["0"] > 5 {
+					assert.Fail(t, "large number of network errors while mutating and load testing", msgAndArgs)
+				}
+				for k := range metrics.StatusCodes {
+					if k == "0" || k == "401" {
+						continue
+					}
+					assert.Fail(t, "only '401', and '0' error codes are allowed while mutating during load testing", msgAndArgs)
+				}
+			default:
+				assert.Fail(t, "large number of errors while mutating and load testing", msgAndArgs)
 			}
 		})
 
