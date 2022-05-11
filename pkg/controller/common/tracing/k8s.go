@@ -7,7 +7,7 @@ package tracing
 import (
 	"net/http"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"k8s.io/client-go/transport"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing/apmclientgo"

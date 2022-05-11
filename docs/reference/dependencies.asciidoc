@@ -44,9 +44,9 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.11.0 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.7.1 | MIT
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
-| link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.15.0 | Apache-2.0
-| link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.15.0 | Apache-2.0
-| link:https://go.elastic.co/apm/module/apmhttp[$$go.elastic.co/apm/module/apmhttp$$] | v1.15.0 | Apache-2.0
+| link:https://go.elastic.co/apm/module/apmelasticsearch/v2[$$go.elastic.co/apm/module/apmelasticsearch/v2$$] | v2.0.0 | Apache-2.0
+| link:https://go.elastic.co/apm/module/apmhttp/v2[$$go.elastic.co/apm/module/apmhttp/v2$$] | v2.0.0 | Apache-2.0
+| link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.0.0 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.1 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.21.0 | MIT
 | link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20220411220226-7b82a4e95df4 | BSD-3-Clause
@@ -87,9 +87,9 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/docker/distribution[$$github.com/docker/distribution$$] | v2.8.0+incompatible | Apache-2.0
 | link:https://github.com/docker/docker[$$github.com/docker/docker$$] | v20.10.12+incompatible | Apache-2.0
 | link:https://github.com/docker/docker-credential-helpers[$$github.com/docker/docker-credential-helpers$$] | v0.6.4 | MIT
-| link:https://github.com/elastic/go-licenser[$$github.com/elastic/go-licenser$$] | v0.3.1 | Apache-2.0
-| link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.1.1 | Apache-2.0
-| link:https://github.com/elastic/go-windows[$$github.com/elastic/go-windows$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/elastic/go-licenser[$$github.com/elastic/go-licenser$$] | v0.4.0 | Apache-2.0
+| link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.7.1 | Apache-2.0
+| link:https://github.com/elastic/go-windows[$$github.com/elastic/go-windows$$] | v1.0.1 | Apache-2.0
 | link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
 | link:https://github.com/evanphx/json-patch[$$github.com/evanphx/json-patch$$] | v4.12.0+incompatible | BSD-3-Clause
 | link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.13.0 | MIT
@@ -173,7 +173,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.1.12 | MIT
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.6.0 | MIT
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20200224162631-6cc2880d07d6 | BSD-3-Clause
-| link:https://golang.org/x/lint[$$golang.org/x/lint$$] | v0.0.0-20210508222113-6edffad5e616 | BSD-3-Clause
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220412020605-290c469a71a5 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220411215720-9780585627b5 | BSD-3-Clause
@@ -195,7 +194,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.5.1 | Apache-2.0
 | link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
 | link:https://gotest.tools/v3[$$gotest.tools/v3$$] | v3.0.3 | Apache-2.0
-| link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
+| link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v1.0.0 | BSD-2-Clause
 | link:https://github.com/kubernetes/apiextensions-apiserver[$$k8s.io/apiextensions-apiserver$$] | v0.23.5 | Apache-2.0
 | link:https://github.com/kubernetes/component-base[$$k8s.io/component-base$$] | v0.23.5 | Apache-2.0
 | link:https://github.com/kubernetes/kube-openapi[$$k8s.io/kube-openapi$$] | v0.0.0-20211115234752-e816edb12b65 | Apache-2.0

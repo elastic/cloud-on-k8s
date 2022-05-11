@@ -7,7 +7,7 @@ package enterprisesearch
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"

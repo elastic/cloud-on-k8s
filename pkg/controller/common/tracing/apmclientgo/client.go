@@ -12,8 +12,8 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"go.elastic.co/apm"
-	"go.elastic.co/apm/module/apmhttp"
+	"go.elastic.co/apm/module/apmhttp/v2"
+	"go.elastic.co/apm/v2"
 )
 
 // WrapRoundTripper returns a http.Roundtripper wrapping r, reporting each

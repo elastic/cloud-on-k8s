@@ -19,7 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

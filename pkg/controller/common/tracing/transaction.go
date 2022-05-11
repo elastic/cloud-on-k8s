@@ -7,7 +7,7 @@ package tracing
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"k8s.io/apimachinery/pkg/types"
 )
 

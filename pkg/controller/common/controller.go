@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
