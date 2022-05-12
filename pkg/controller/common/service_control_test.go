@@ -285,7 +285,7 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled ClusterIP[s] is not used if the reconciled ClusterIP[s] are not valid IPs",
+			name: "Reconciled ClusterIP[s] is also used if the reconciled ClusterIP[s] are not valid IPs",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
@@ -297,6 +297,8 @@ func Test_applyServerSideValues(t *testing.T) {
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:            corev1.ServiceTypeClusterIP,
+				ClusterIP:       "None",
+				ClusterIPs:      []string{"None"},
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 			}},
 		},

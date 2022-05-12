@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"net"
 	"reflect"
 
 	"go.elastic.co/apm"
@@ -94,7 +93,7 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	// but might have been set after creation by k8s on the actual resource.
 	// In such case, we want to use these values for comparison.
 	// But only if we are not changing the type of service and the api server has assigned an IP
-	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" && net.ParseIP(reconciled.Spec.ClusterIP) != nil {
+	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" {
 		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
 
@@ -102,7 +101,7 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	// but might have been set after creation by k8s on the actual resource.
 	// In such case, we want to use these values for comparison.
 	// But only if we are not changing the type of service and the api server has assigned IPs
-	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 && validClusterIPs(reconciled.Spec.ClusterIPs) {
+	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 {
 		expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
 	}
 
@@ -140,15 +139,6 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.IPFamilyPolicy == nil {
 		expected.Spec.IPFamilyPolicy = reconciled.Spec.IPFamilyPolicy
 	}
-}
-
-func validClusterIPs(clusterIPs []string) bool {
-	for _, ip := range clusterIPs {
-		if net.ParseIP(ip) == nil {
-			return false
-		}
-	}
-	return true
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
