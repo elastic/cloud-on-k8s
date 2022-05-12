@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/blang/semver/v4 v4.0.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/elastic/go-ucfg v0.8.4
+	github.com/elastic/go-ucfg v0.8.5
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.3
 	github.com/go-test/deep v1.0.8
