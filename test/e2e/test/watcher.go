@@ -21,6 +21,7 @@ type Watcher struct {
 	interval  time.Duration
 	watchFn   func(k *K8sClient, t *testing.T)
 	checkFn   func(k *K8sClient, t *testing.T)
+	skipFn    func() bool
 	stopChan  chan struct{}
 	watchOnce bool
 }
@@ -34,6 +35,12 @@ func NewWatcher(name string, interval time.Duration, watchFn func(k *K8sClient, 
 		stopChan:  make(chan struct{}),
 		watchOnce: false,
 	}
+}
+
+func NewConditionalWatcher(name string, interval time.Duration, watchFn func(k *K8sClient, t *testing.T), checkFn func(k *K8sClient, t *testing.T), skipFn func() bool) Watcher {
+	watcher := NewWatcher(name, interval, watchFn, checkFn)
+	watcher.skipFn = skipFn
+	return watcher
 }
 
 func NewOnceWatcher(name string, watchFn func(k *K8sClient, t *testing.T), checkFn func(k *K8sClient, t *testing.T)) Watcher {
@@ -69,7 +76,7 @@ func (w *Watcher) StartStep(k *K8sClient) Step {
 				}
 			}()
 		},
-		Skip: nil,
+		Skip: w.skipFn,
 	}
 }
 
@@ -83,6 +90,7 @@ func (w *Watcher) StopStep(k *K8sClient) Step {
 				w.checkFn(k, t)
 			}
 		},
+		Skip: w.skipFn,
 	}
 }
 
