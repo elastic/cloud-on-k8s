@@ -19,8 +19,8 @@ retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
 # source variables if present
 if [[ -f ${REGISTRY_ENV} ]]; then
-    # shellcheck disable=SC2046
     echo "potentially overwriting environment variables using contents of .registry.env file"
+    # shellcheck disable=SC2046
     export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
 
