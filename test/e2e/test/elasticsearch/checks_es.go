@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
@@ -204,9 +205,14 @@ func (e *esClusterChecks) compareTopology(es esv1.Elasticsearch, topoElem esv1.N
 }
 
 func compareRoles(expected *esv1.Node, actualRoles []string) error {
-	for _, r := range actualRoles {
-		if !expected.IsConfiguredWithRole(esv1.NodeRole(r)) {
-			return fmt.Errorf("actual role %s not expected", r)
+	for _, role := range []esv1.NodeRole{esv1.MasterRole, esv1.DataRole} {
+		nodeHasRole := stringsutil.StringInSlice(string(role), actualRoles)
+		roleIsInConfig := expected.HasRole(role)
+		if nodeHasRole && !roleIsInConfig {
+			return fmt.Errorf("node has unexpected role %s", role)
+		}
+		if !nodeHasRole && roleIsInConfig {
+			return fmt.Errorf("node is expected to have role %s", role)
 		}
 	}
 	return nil
