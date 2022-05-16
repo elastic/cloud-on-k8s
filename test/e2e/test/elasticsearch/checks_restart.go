@@ -58,7 +58,8 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 			require.Empty(t, observedErrors)
 		},
 		func() bool {
-			return version.MustParse(es.Spec.Version).LT(shutdown.MinVersion)
+			// do not run this check on versions that do not support node shutdown or non-HA clusters where we restart all nodes at once
+			return version.MustParse(es.Spec.Version).LT(shutdown.MinVersion) || IsNonHASpec(es)
 		},
 	)
 }
