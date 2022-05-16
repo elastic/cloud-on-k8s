@@ -55,7 +55,7 @@ The minimal set of permissions required are as follows:
 |===
 
 
-Assuming that the Kubernetes API server IP address is `10.0.0.1`, the following network policy implements the rules above.
+Assuming that the Kubernetes API server IP address is `10.0.0.1`, the following network policy implements the set of permissions required for Egress and Ingress.
 
 NOTE: Run `kubectl cluster-info | grep master` to obtain the API server IP address for your cluster.
 

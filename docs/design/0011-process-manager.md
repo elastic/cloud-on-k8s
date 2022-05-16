@@ -81,10 +81,10 @@ Where to run the keystore updater?
 How to perform cluster restart?
 * Destroy the pod and recreate it
     * -- depending on storage class we might not be able to recreate the pod where the volume resides. Only recovery at this point is manual restore from snapshot. 
-    Considering volumes local to a node: during the interval between the pod being delete and a new pod being scheduled to reuse the same volume, there is no guarantee
+    Considering volumes local to a node: during the interval between the pod being deleted and a new pod being scheduled to reuse the same volume, there is no guarantee
     that no other pod will be scheduled on that node, taking up all resources available on the node, preventing the replacing pod to be scheduled.
 * Inject a process manager into the standard Elasticsearch container/image
-    * ++ would allow us to restart without recreating the pod, unless we need to change pod resources or environment variables, in which case the above applies
+    * ++ would allow us to restart without recreating the pod, unless we need to change pod resources or environment variables, in which case you have to destroy the pod and recreate it
     * ~ has the disadvantage of being fairly intrusive and complex (copying binaries through initcontainers, overriding command etc)
 * Use a liveness probe to make Kubernetes restart the container
     * -- hard to coordinate across an ES cluster

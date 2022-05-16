@@ -71,7 +71,7 @@ kubectl get secret cluster-one-es-transport-certs-public \
 -o go-template='{{index .data "ca.crt" | base64decode}}' > remote.ca.crt
 ----
 
-You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
+You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, take the CA certificate that you have just extracted and add it to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
 
 NOTE: Beware of copying the source Secret as-is into a different namespace. Check <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
@@ -115,7 +115,7 @@ spec:
   version: {version}
 ----
 
-. Repeat the above steps to add the CA of `cluster-two` to `cluster-one` as well.
+. Repeat step 2 to add the CA of `cluster-two` to `cluster-one` as well.
 
 === Configure the remote cluster connection through the Elasticsearch REST API
 
@@ -154,4 +154,4 @@ PUT _cluster/settings
 }
 ----
 <1> Use "proxy" mode as `cluster-two` will be connecting to `cluster-one` through the Kubernetes service abstraction.
-<2> Replace `${LOADBALANCER_IP}` with the IP address assigned to the `LoadBalancer` configured above. If you have configured a DNS entry for the service, you can use the DNS name instead of the IP address as well.
+<2> Replace `${LOADBALANCER_IP}` with the IP address assigned to the `LoadBalancer` configured in the previous code sample. If you have configured a DNS entry for the service, you can use the DNS name instead of the IP address as well.

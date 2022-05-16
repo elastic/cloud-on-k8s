@@ -64,7 +64,7 @@ oc new-project elastic # creates the elastic project
 oc adm policy add-role-to-user elastic-operator developer -n elastic
 ----
 +
-In the example above the user `developer` is allowed to manage Elastic resources in the namespace `elastic`.
+In this example the user `developer` is allowed to manage Elastic resources in the namespace `elastic`.
 
 [id="{p}-openshift-deploy-elasticsearch"]
 == Deploy an Elasticsearch instance with a route

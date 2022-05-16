@@ -141,7 +141,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
             * Check if ES is stopped (`GET /es/status`), or re-queue
             * Annotate pod with `restart-phase: start`
         * If annotated with `stop-coordinated`
-            * Apply the same steps as above, but:
+            * Apply the same steps as for the `stop` annotation, but:
                 * wait for all ES processes to be stopped instead of only the current pod one
                 * annotate pod with `restart-phase: start-coordinated`
      * Handle pods in a `start` phase
@@ -154,16 +154,16 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
             * Enable shards allocations
             * Remove the `restart-phase` annotation from the pod
         * If annotated with `start-coordinated`:
-            * Perform the same steps as above, but wait until *all* ES processes are started before enabling shards allocations
+            * Perform the same steps as for the `start` annotation, but wait until *all* ES processes are started before enabling shards allocations
 * Garbage-collect useless resources
     * Configuration secrets that do not match any pod and existed for more than for ex. 15min are safe to delete
 
 #### State machine specifics
 
-It is important in the algorithm outlined above that:
+In the reconciliation loop algorithm, it is important to note that:
 
-* any step in a given phase is idempotent. For instance, it should be ok to run steps of the `stop` phase over and over again.
-* transition to the next step is resilient to stale cache. If a pod is annotated with the `start` phase, it should be ok to perform all steps of the `stop` phase again (no-op). However the cache cannot go back in time: once we reach the `start` phase we must not perform the `stop` phase at the next iteration. Our apiserver and cache implementation consistency model guarantee this behaviour.
+* Any step in a given phase is idempotent. For instance, it should be OK to run steps of the `stop` phase over and over again.
+* Transition to the next step is resilient to stale cache. If a pod is annotated with the `start` phase, it should be OK to perform all steps of the `stop` phase again (no-op). However the cache cannot go back in time: once we reach the `start` phase we must not perform the `stop` phase at the next iteration. Our apiserver and cache implementation consistency model guarantee this behaviour.
 * the operator can restart at any point: on restart it should get back to the current phase.
 * a pod that should be reused will be reflected in the results of the comparison algorithm. However, once its configuration has been updated (but before it is actually restarted), it might not be reflected anymore. The comparison would then be based on the "new" configuration (not yet applied to the ES process), and the pod would require no change. That's OK: the ES process will still eventually be restarted with this correct new configuration, since annotated in the `start` phase.
 * if a pod is no longer requested for reuse (for ex. user changed their mind and reverted ES spec to the previous version) but is in the middle of a restart process, it will still go through that restart process. Depending on when the user reverted back the ES spec, compared to the pod current phase in the state machine:
@@ -181,10 +181,10 @@ It is important in the algorithm outlined above that:
  
 #### Extensions to other use cases (TBD if worth implementing)
 
-* We **don't** need rolling restarts in the context of TLS and license switch, but it seems easy to implement in the algorithm outlined above, to cover other use cases.
+* We **don't** need rolling restarts in the context of TLS and license switch, but it seems easy to implement in the reconciliation loop algorithm, to cover other use cases.
 * We could catch any `restart-phase: schedule-rolling` set by the user on the Elasticsearch resource, and apply it to all pods of this cluster. This would allow the user to request a cluster restart himself. The user can also apply the annotation to the pods directly: this is the operator "restart API".
 * Applying the same annotations mechanism with something such as `stop: true` could allow us (or the user) to stop a particular node that misbehaves.
-* Out of scope: it should be possible to adapt the algorithm above to replace a "pod reuse" by a "persistent volume reuse". Pods eligible for reuse at the end of the comparison are also eligible for persistent volume reuse. In such case, we'd need to stop the entire pod instead of stopping the ES process. The new pod would be created at the next reconciliation iteration, with a new config, but would reuse one of the available persistent volumes out there. The choice between pod reuse or PV reuse could be specified in the ES resource spec?
+* Out of scope: it should be possible to adapt the reconciliation loop algorithm to replace a "pod reuse" by a "persistent volume reuse". Pods eligible for reuse at the end of the comparison are also eligible for persistent volume reuse. In such case, we'd need to stop the entire pod instead of stopping the ES process. The new pod would be created at the next reconciliation iteration, with a new config, but would reuse one of the available persistent volumes out there. The choice between pod reuse or PV reuse could be specified in the ES resource spec?
 
 ## Decision Outcome
 

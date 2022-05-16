@@ -233,7 +233,7 @@ spec:
       snapshot-provider: my-provider
 ```
 
-  Using the above provider we can stamp out instances of the following resource for each matched cluster, and we can potentially keep it up to date with changes to the provider config as well.
+  Using the `SnapshotRepositoryProvider` we can stamp out instances of the following resource for each matched cluster, and we can potentially keep it up-to-date with changes to the provider config as well.
 
 ```yaml
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1

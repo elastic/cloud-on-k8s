@@ -47,7 +47,7 @@ The license controller MUST create controller licenses only when either a valid
 Enterprise license or a valid Enterprise trial license is present in the system. It CAN
 issue controller licenses with shorter lifetimes than the Enterprise license and 
 auto-extend them as needed to limit the impact of accidental license leaks. But license leaks 
-are currently understood to be much less a concern than  cluster licenses leaks as controller licenses have no validity 
+are currently understood to be much less a concern than cluster licenses leaks as controller licenses have no validity 
 outside of the operator installation that has created them.  
 
 
@@ -86,7 +86,7 @@ secret would need to be deployed into the managed namespace not into
 the control plane namespace. Unless of course we run everything in one
 namespace anyway or we implement a custom client
 that has access to the control plane namespace of the namespace
-operator (the latter is the underlying assumption for the graph above).
+operator (the latter is the underlying assumption for the license controller graph).
 
 ### Positive Consequences 
 

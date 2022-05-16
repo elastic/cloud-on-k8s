@@ -90,12 +90,12 @@ kubectl create secret -n elastic-system generic elastic-webhook-server-custom-ce
 - Install the operator with the following options:
 +
 * Set `manage-webhook-certs` to `false`
-* Set `webhook-secret` to the name of the secret created above (`elastic-webhook-server-custom-cert`)
+* Set `webhook-secret` to the name of the secret you have just created (`elastic-webhook-server-custom-cert`)
 
 [NOTE]
 ====
 
-If you are using the <<{p}-install-helm,Helm chart installation method>>, the above can be accomplished by the following command:
+If you are using the <<{p}-install-helm,Helm chart installation method>>, you can install the operator by running this command:
 
 [source, sh]
 ----
@@ -157,7 +157,7 @@ webhooks:
 [NOTE]
 ====
 
-If you are using the <<{p}-install-helm,Helm chart installation method>>, the above can be accomplished by the following command:
+If you are using the <<{p}-install-helm,Helm chart installation method>>, you can install the operator by running the following command:
 
 [source, sh]
 ----
@@ -203,7 +203,7 @@ If you get this error, try re-running the command with a higher request timeout 
 kubectl --request-timeout=1m apply -f elasticsearch.yaml
 ----
 
-As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource.
+As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, this command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource.
 
 On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may have to add a firewall rule allowing access to port 9443 from the API server so that it can contact the webhook. Check the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on firewall rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more details.
 
