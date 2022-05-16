@@ -96,13 +96,8 @@ func (l ResourcesList) ToDesiredNodes(
 ) ([]client.DesiredNode, bool, error) {
 	span, ctx := apm.StartSpan(ctx, "compute_desired_nodes", tracing.SpanTypeApp)
 	defer span.End()
-	// Pre-compute the size of the desired nodes slice.
-	var nodesCount int32
-	for _, resources := range l {
-		nodesCount += sset.GetReplicas(resources.StatefulSet)
-	}
 	requeue := false
-	desiredNodes := make([]client.DesiredNode, 0, nodesCount)
+	desiredNodes := make([]client.DesiredNode, 0, l.ExpectedNodeCount())
 	for _, resources := range l {
 		sts := resources.StatefulSet
 		esContainer := getElasticsearchContainer(sts.Spec.Template.Spec.Containers)

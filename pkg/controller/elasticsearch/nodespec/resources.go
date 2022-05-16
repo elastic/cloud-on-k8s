@@ -47,6 +47,10 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
+func (l ResourcesList) ExpectedNodeCount() int32 {
+	return l.StatefulSets().ExpectedNodeCount()
+}
+
 func BuildExpectedResources(
 	client k8s.Client,
 	es esv1.Elasticsearch,
