@@ -36,16 +36,6 @@ func (r ResourceNotAvailable) Error() string {
 	return fmt.Sprintf("cannot compute resources for NodeSet \"%s\": %s", r.nodeSet, strings.Join(r.reasons, ", "))
 }
 
-func (r ResourceNotAvailable) WithReason(reason string) ResourceNotAvailable {
-	if reason == "" {
-		return r
-	}
-	return ResourceNotAvailable{
-		nodeSet: r.nodeSet,
-		reasons: append(r.reasons, reason),
-	}
-}
-
 type nodeResources []nodeResource
 
 func (n nodeResources) requeue() bool {
