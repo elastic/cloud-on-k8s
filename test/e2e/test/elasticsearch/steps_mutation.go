@@ -168,7 +168,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	return steps
 }
 
-// IsNonHASpec return true if the cluster specified as highly available.
+// IsNonHASpec return true if the cluster specified as not highly available.
 // A cluster of less than 3 nodes is by definition not HA and will see some downtime during upgrades.
 // A cluster with just one data node will also see some index-level unavailability.
 // We have this as a separate function in tests because in production code we base this decision on actually existing
