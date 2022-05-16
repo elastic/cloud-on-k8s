@@ -212,17 +212,49 @@ func (h *helper) initTestContext() error {
 	return nil
 }
 
+func extractJSON(input string) (prefix, suffix, json string, err error) {
+	// Search first {
+	begin := strings.Index(input, "{")
+	if begin == -1 {
+		return "", "", "", errors.Errorf("cannot find '{' in input string")
+	}
+	prefix = strings.TrimSpace(input[:begin])
+
+	// Search last }
+	end := strings.LastIndex(input, "}")
+	if end == -1 {
+		return "", "", "", errors.Errorf("cannot find '}' in input string")
+	}
+	if len(input) > (end + 1) {
+		// There is something after last }
+		suffix = strings.TrimSpace(input[end+1 : len(input)-1])
+	}
+	json = strings.TrimSpace(input[begin : end+1])
+	return
+}
+
 func getKubernetesVersion(h *helper) version.Version {
 	out, err := h.kubectl("version", "--output=json")
 	if err != nil {
 		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
 	}
 
+	// JSON document may be surrounded by warnings
+	prefix, suffix, versionDocument, err := extractJSON(out)
+	if err != nil {
+		panic(fmt.Sprintf("can't extract JSON from Kubernetes version, err %s", err))
+	}
+	if prefix != "" {
+		log.Error(nil, "unexpected prefix before JSON document", "prefix", prefix)
+	}
+	if suffix != "" {
+		log.Error(nil, "unexpected suffix before JSON document", "suffix", suffix)
+	}
 	kubectlVersionResponse := struct {
 		ServerVersion map[string]string `json:"serverVersion"`
 	}{}
 
-	if err := json.Unmarshal([]byte(out), &kubectlVersionResponse); err != nil {
+	if err := json.Unmarshal([]byte(versionDocument), &kubectlVersionResponse); err != nil {
 		panic(fmt.Sprintf("can't determine Kubernetes version, err %s", err))
 	}
 
