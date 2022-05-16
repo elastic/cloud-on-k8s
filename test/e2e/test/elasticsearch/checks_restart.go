@@ -58,7 +58,7 @@ func newNodeShutdownWatcher(es esv1.Elasticsearch) test.Watcher {
 			require.Empty(t, observedErrors)
 		},
 		func() bool {
-			return version.MustParse(es.Spec.Version).LT(shutdown.MinVersion)
+			return version.MustParse(es.Spec.Version).LT(shutdown.MinVersion) && es.Spec.NodeCount() > 2
 		},
 	)
 }
