@@ -213,11 +213,13 @@ func (h *helper) initTestContext() error {
 }
 
 func getKubernetesVersion(h *helper) version.Version {
-	out, err := h.kubectl("version", "--output=json")
+	out, stdErr, err := h.kubectl("version", "--output=json")
 	if err != nil {
 		panic(fmt.Sprintf("can't determine kubernetes version, err %s", err))
 	}
-
+	if stdErr != "" {
+		log.Error(nil, "stderr is not empty", "stderr", stdErr)
+	}
 	kubectlVersionResponse := struct {
 		ServerVersion map[string]string `json:"serverVersion"`
 	}{}
@@ -236,14 +238,14 @@ func getKubernetesVersion(h *helper) version.Version {
 }
 
 func isOcpCluster(h *helper) bool {
-	_, err := h.kubectl("get", "clusterversion")
+	_, _, err := h.kubectl("get", "clusterversion")
 	isOCP4 := err == nil
 	isOCP3 := isOcp3Cluster(h)
 	return isOCP4 || isOCP3
 }
 
 func isOcp3Cluster(h *helper) bool {
-	_, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
+	_, _, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
 	return err == nil
 }
 
@@ -322,7 +324,7 @@ func (h *helper) installOperatorUnderTest() error {
 		return err
 	}
 
-	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
 		return fmt.Errorf("failed to apply operator manifest: %w", err)
 	}
 
@@ -344,7 +346,7 @@ func (h *helper) installMonitoringOperator() error {
 		return err
 	}
 
-	if _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
 		return fmt.Errorf("failed to apply monitoring operator manifest: %w", err)
 	}
 
@@ -367,7 +369,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		fmt.Sprintf("--values=%s", values),
 	).Build()
 
-	manifestBytes, err := cmd.Execute(context.Background())
+	manifestBytes, _, err := cmd.Execute(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
 	}
@@ -381,7 +383,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	_, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
+	_, _, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
 	return err
 }
 
@@ -717,7 +719,7 @@ func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interfa
 		return "", err
 	}
 
-	_, err = h.kubectl("apply", "-f", outFilePath)
+	_, _, err = h.kubectl("apply", "-f", outFilePath)
 	return outFilePath, err
 }
 
@@ -731,16 +733,16 @@ func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templatePa
 	return nil
 }
 
-func (h *helper) kubectl(command string, args ...string) (string, error) {
+func (h *helper) kubectl(command string, args ...string) (string, string, error) {
 	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
-func (h *helper) exec(cmd *command.Command) (string, error) {
+func (h *helper) exec(cmd *command.Command) (string, string, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
-	out, err := cmd.Execute(ctx)
+	out, stdErr, err := cmd.Execute(ctx)
 	outString := string(out)
 	if err != nil {
 		// suppress the stacktrace when the command fails naturally
@@ -751,14 +753,14 @@ func (h *helper) exec(cmd *command.Command) (string, error) {
 		}
 
 		fmt.Fprintln(os.Stderr, outString)
-		return "", errors.Wrapf(err, "command failed: [%s]", cmd)
+		return "", string(stdErr), errors.Wrapf(err, "command failed: [%s]", cmd)
 	}
 
 	if log.V(1).Enabled() {
 		fmt.Println(outString)
 	}
 
-	return outString, nil
+	return outString, string(stdErr), nil
 }
 
 func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
@@ -783,7 +785,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 func (h *helper) deleteResources(file string) func() {
 	return func() {
 		log.Info("Deleting resources", "file", file)
-		if _, err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
+		if _, _, err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
 			log.Error(err, "Failed to delete resources", "file", file)
 		}
 	}
