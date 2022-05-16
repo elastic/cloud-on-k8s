@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
-var desiredNodesMinVersion = version.MustParse("8.1.0")
+var desiredNodesMinVersion = version.MinFor(8, 1, 0)
 
 type DesiredNodesClient interface {
 	IsDesiredNodesSupported() bool
@@ -42,7 +42,7 @@ func (c *baseClient) DeleteDesiredNodes(_ context.Context) error {
 }
 
 func (c *baseClient) desiredNodesNotAvailable() error {
-	return fmt.Errorf("the desired node API is not available in Elasticsearch %s, it requires %s", c.version, desiredNodesMinVersion)
+	return fmt.Errorf("the desired nodes API is not available in Elasticsearch %s, it requires %s", c.version, desiredNodesMinVersion)
 }
 
 func (c *baseClient) IsDesiredNodesSupported() bool {
