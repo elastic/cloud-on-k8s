@@ -215,17 +215,17 @@ func Test_stdTimestampParser(t *testing.T) {
 
 func Test_extractJSON(t *testing.T) {
 	tests := []struct {
-		name                            string
-		input                           string
-		wantPrefix, wantSufix, wantJson string
-		wantErr                         bool
+		name                             string
+		input                            string
+		wantPrefix, wantSuffix, wantJSON string
+		wantErr                          bool
 	}{
 		{
 			name:       "Empty document",
 			input:      "{}",
-			wantJson:   "{}",
+			wantJSON:   "{}",
 			wantPrefix: "",
-			wantSufix:  "",
+			wantSuffix: "",
 		},
 		{
 			name: "With non JSON before and after document",
@@ -257,8 +257,8 @@ func Test_extractJSON(t *testing.T) {
 WARNING: version difference between client (1.23) and server (1.20) exceeds the supported minor version skew of +/-1
 `,
 			wantPrefix: "Kubeconfig user entry is using deprecated API version client.authentication.k8s.io/v1alpha1. Run 'aws eks update-kubeconfig' to update.",
-			wantSufix:  "WARNING: version difference between client (1.23) and server (1.20) exceeds the supported minor version skew of +/-1",
-			wantJson: `{
+			wantSuffix: "WARNING: version difference between client (1.23) and server (1.20) exceeds the supported minor version skew of +/-1",
+			wantJSON: `{
   "clientVersion": {
     "major": "1",
     "minor": "23",
@@ -293,8 +293,8 @@ WARNING: version difference between client (1.23) and server (1.20) exceeds the 
 				return
 			}
 			assert.Equal(t, tt.wantPrefix, prefix)
-			assert.Equal(t, tt.wantJson, json)
-			assert.Equal(t, tt.wantSufix, suffix)
+			assert.Equal(t, tt.wantJSON, json)
+			assert.Equal(t, tt.wantSuffix, suffix)
 		})
 	}
 }
