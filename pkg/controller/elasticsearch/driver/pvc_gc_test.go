@@ -177,7 +177,7 @@ func TestGarbageCollectPVCs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := GarbageCollectPVCs(tt.args.k8sClient, tt.args.es, tt.args.actualStatefulSets, tt.args.expectedStatefulSets); (err != nil) != tt.wantErr {
+			if err := GarbageCollectPVCs(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.actualStatefulSets, tt.args.expectedStatefulSets); (err != nil) != tt.wantErr {
 				t.Errorf("GarbageCollectPVCs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var retrievedPVCs corev1.PersistentVolumeClaimList

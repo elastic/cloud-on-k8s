@@ -192,7 +192,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := handleVolumeExpansion(k8sClient, es, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
+			recreate, err := handleVolumeExpansion(context.Background(), k8sClient, es, tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -392,7 +392,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(append(tt.args.runtimeObjs, &tt.args.es)...)
-			got, err := recreateStatefulSets(k8sClient, tt.args.es)
+			got, err := recreateStatefulSets(context.Background(), k8sClient, tt.args.es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRecreations, got)
 
@@ -491,7 +491,7 @@ func Test_updatePodOwners(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := updatePodOwners(tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
+			err := updatePodOwners(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList
@@ -577,7 +577,7 @@ func Test_removeESPodOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := removeESPodOwner(tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
+			err := removeESPodOwner(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.statefulSet)
 			require.NoError(t, err)
 
 			var retrievedPods corev1.PodList

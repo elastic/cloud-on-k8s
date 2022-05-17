@@ -58,7 +58,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// recreate any StatefulSet that needs to account for PVC expansion
-	recreations, err := recreateStatefulSets(d.K8sClient(), d.ES)
+	recreations, err := recreateStatefulSets(ctx, d.K8sClient(), d.ES)
 	if err != nil {
 		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
 	}
@@ -113,25 +113,25 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	actualStatefulSets = upscaleResults.ActualStatefulSets
 
 	// Once all the StatefulSets have been updated we can ensure that the former version of the transport certificates Secret is deleted.
-	if err := transport.DeleteLegacyTransportCertificate(d.Client, d.ES); err != nil {
+	if err := transport.DeleteLegacyTransportCertificate(ctx, d.Client, d.ES); err != nil {
 		results.WithError(err)
 	}
 
 	// Update PDB to account for new replicas.
-	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
+	if err := pdb.Reconcile(ctx, d.Client, d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := reconcilePVCOwnerRefs(d.K8sClient(), d.ES); err != nil {
+	if err := reconcilePVCOwnerRefs(ctx, d.K8sClient(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
+	if err := GarbageCollectPVCs(ctx, d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
 		return results.WithError(err)
 	}
 
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
-	attempted, err := d.MaybeForceUpgrade(actualStatefulSets)
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets)
 	if err != nil || attempted {
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.

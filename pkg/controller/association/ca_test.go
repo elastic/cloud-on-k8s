@@ -180,6 +180,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			caSecretServiceLabelName := "elasticsearch.k8s.elastic.co/cluster-name"
 
 			got, err := r.ReconcileCASecret(
+				context.Background(),
 				tt.kibana.EsAssociation(),
 				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),

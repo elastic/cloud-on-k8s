@@ -34,12 +34,12 @@ func CACertSecretName(association commonv1.Association, associationName string) 
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.
 // It is the responsibility of the association controller to set a watch on this CA.
-func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(ctx context.Context, association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName) (CASecret, error) {
 	associatedPublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, associatedResource)
 
 	// retrieve the HTTP certificates from the associatedResource namespace
 	var associatedPublicHTTPCertificatesSecret corev1.Secret
-	if err := r.Get(context.Background(), associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
+	if err := r.Get(ctx, associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
@@ -57,7 +57,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 		},
 		Data: associatedPublicHTTPCertificatesSecret.Data,
 	}
-	if _, err := reconciler.ReconcileSecret(r, expectedSecret, association.Associated()); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, r, expectedSecret, association.Associated()); err != nil {
 		return CASecret{}, err
 	}
 

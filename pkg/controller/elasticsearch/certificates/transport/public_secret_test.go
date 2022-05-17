@@ -131,7 +131,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileTransportCertsPublicSecret(client, *owner, ca)
+			err := ReconcileTransportCertsPublicSecret(context.Background(), client, *owner, ca)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

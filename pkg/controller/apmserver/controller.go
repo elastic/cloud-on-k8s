@@ -180,7 +180,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	var as apmv1.ApmServer
 	if err := r.Client.Get(ctx, request.NamespacedName, &as); err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
@@ -194,13 +194,13 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 	}
 
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
-	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
+	if err := finalizer.RemoveAll(ctx, r.Client, &as); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, clean up resources
-		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&as))
+		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&as))
 	}
 
 	results, state := r.doReconcile(ctx, &as)
@@ -306,17 +306,17 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	return nil
 }
 
-func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) error {
+func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, apmv1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, apmv1.Kind)
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
 // It reuses the existing token if possible.
-func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -327,7 +327,7 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret
-	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
+	err := c.Get(ctx, k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return corev1.Secret{}, err
 	}
@@ -339,7 +339,7 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 
 	// Don't set an ownerRef for the APM token secret, likely to be copied into different namespaces.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
-	return reconciler.ReconcileSecretNoOwnerRef(c, expectedApmServerSecret, as)
+	return reconciler.ReconcileSecretNoOwnerRef(ctx, c, expectedApmServerSecret, as)
 }
 
 func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
@@ -359,7 +359,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		"as_name", state.ApmServer.Name,
 		"status", state.ApmServer.Status,
 	)
-	return common.UpdateStatus(r.Client, state.ApmServer)
+	return common.UpdateStatus(ctx, r.Client, state.ApmServer)
 }
 
 // NewService returns the service used by the APM Server.

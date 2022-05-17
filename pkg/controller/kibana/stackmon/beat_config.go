@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	_ "embed" // for the beats config files
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -24,7 +25,7 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, kb kbv1.Kibana) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
 	if err != nil {
 		return err
@@ -39,7 +40,7 @@ func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &kb); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &kb); err != nil {
 			return err
 		}
 	}
@@ -50,7 +51,7 @@ func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &kb); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &kb); err != nil {
 			return err
 		}
 	}

@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -363,7 +364,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(kb)
+			got, err := d.deploymentParams(context.Background(), kb)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

@@ -479,7 +479,7 @@ func Test_adjustZenConfig(t *testing.T) {
 				pods = tt.statefulSet.Pods()
 			}
 			client := k8s.NewFakeClient(append(pods, &tt.es)...)
-			err := adjustZenConfig(client, tt.es, resources)
+			err := adjustZenConfig(context.Background(), client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
 				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{esv1.DiscoveryZenMinimumMasterNodes})) > 0

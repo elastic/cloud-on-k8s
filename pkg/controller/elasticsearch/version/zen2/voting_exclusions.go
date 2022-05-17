@@ -29,7 +29,7 @@ func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient cli
 	}
 
 	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
-	return esClient.AddVotingConfigExclusions(context.Background(), excludeNodes)
+	return esClient.AddVotingConfigExclusions(ctx, excludeNodes)
 }
 
 // canClearVotingConfigExclusions returns true if it is safe to clear voting config exclusions.

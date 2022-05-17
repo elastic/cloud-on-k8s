@@ -67,7 +67,7 @@ func TestGlobalCA(t *testing.T) {
 	// update the pre-created secret mounted into the operator with the CA
 	secret, err := operatorSecretForCA(ca)
 	require.NoError(t, err)
-	_, err = reconciler.ReconcileSecret(k.Client, secret, nil)
+	_, err = reconciler.ReconcileSecret(context.Background(), k.Client, secret, nil)
 	require.NoError(t, err)
 	// reconfigure the operator to use the CA
 	require.NoError(t, addToOperatorConfig(k.Client, "ca", "/tmp/ca-certs"))

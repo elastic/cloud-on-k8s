@@ -25,6 +25,7 @@ import (
 // * leftover PVCs created for StatefulSets that do not exist anymore
 // * leftover PVCs created for StatefulSets replicas that don't exist anymore (eg. downscale from 5 to 3 nodes)
 func GarbageCollectPVCs(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	actualStatefulSets sset.StatefulSetList,
@@ -34,13 +35,13 @@ func GarbageCollectPVCs(
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := k8sClient.List(context.Background(), &pvcs, ns, matchLabels); err != nil {
+	if err := k8sClient.List(ctx, &pvcs, ns, matchLabels); err != nil {
 		return err
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {
 		pvc := pvc
 		log.Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
-		if err := k8sClient.Delete(context.Background(), &pvc); err != nil {
+		if err := k8sClient.Delete(ctx, &pvc); err != nil {
 			return err
 		}
 	}

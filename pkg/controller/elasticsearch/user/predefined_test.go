@@ -110,7 +110,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileElasticUser(c, es, tt.existingFileRealm, filerealm.New())
+			got, err := reconcileElasticUser(context.Background(), c, es, tt.existingFileRealm, filerealm.New())
 			require.NoError(t, err)
 			// check returned user
 			require.Len(t, got, 1)
@@ -154,7 +154,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient()
-			got, err := reconcileElasticUser(c, es, filerealm.New(), tt.userFileReam)
+			got, err := reconcileElasticUser(context.Background(), c, es, filerealm.New(), tt.userFileReam)
 			require.NoError(t, err)
 			// check returned user
 			wantLen := 1
@@ -261,7 +261,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			got, err := reconcileInternalUsers(c, es, tt.existingFileRealm)
+			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm)
 			require.NoError(t, err)
 			// check returned users
 			require.Len(t, got, 3)

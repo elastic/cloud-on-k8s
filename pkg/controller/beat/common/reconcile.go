@@ -54,6 +54,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
+		ctx:         params.Context,
 		client:      params.Client,
 		beat:        params.Beat,
 		podTemplate: podTemplate,
@@ -63,11 +64,11 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	}
 
 	// clean up the other one
-	if err := params.Client.Get(context.Background(), types.NamespacedName{
+	if err := params.Client.Get(params.Context, types.NamespacedName{
 		Namespace: params.Beat.Namespace,
 		Name:      name,
 	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(context.Background(), toDelete))
+		results.WithError(params.Client.Delete(params.Context, toDelete))
 	} else if !apierrors.IsNotFound(err) {
 		results.WithError(err)
 	}
@@ -81,6 +82,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 }
 
 type ReconciliationParams struct {
+	ctx         context.Context
 	client      k8s.Client
 	beat        beatv1beta1.Beat
 	podTemplate corev1.PodTemplateSpec
@@ -100,7 +102,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		return 0, 0, err
 	}
 
-	reconciled, err := deployment.Reconcile(rp.client, d, &rp.beat)
+	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -122,7 +124,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		return 0, 0, err
 	}
 
-	reconciled, err := daemonset.Reconcile(rp.client, ds, &rp.beat)
+	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, ds, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -152,10 +154,10 @@ func newStatus(params DriverParams, ready, desired int32) (*beatv1beta1.BeatStat
 }
 
 // UpdateStatus will update the Elastic Beat's status within the k8s cluster, using the given Elastic Beat and status.
-func UpdateStatus(beat beatv1beta1.Beat, client client.Client, status *beatv1beta1.BeatStatus) error {
+func UpdateStatus(ctx context.Context, beat beatv1beta1.Beat, client client.Client, status *beatv1beta1.BeatStatus) error {
 	if status == nil || reflect.DeepEqual(beat.Status, *status) {
 		return nil
 	}
 	beat.Status = *status
-	return common.UpdateStatus(client, &beat)
+	return common.UpdateStatus(ctx, client, &beat)
 }

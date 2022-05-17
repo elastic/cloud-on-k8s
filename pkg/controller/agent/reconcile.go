@@ -58,6 +58,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
+		ctx:         params.Context,
 		client:      params.Client,
 		agent:       params.Agent,
 		podTemplate: podTemplate,
@@ -68,11 +69,11 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	}
 
 	// clean up the other one
-	if err := params.Client.Get(context.Background(), types.NamespacedName{
+	if err := params.Client.Get(params.Context, types.NamespacedName{
 		Namespace: params.Agent.Namespace,
 		Name:      name,
 	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(context.Background(), toDelete))
+		results.WithError(params.Client.Delete(params.Context, toDelete))
 	} else if !apierrors.IsNotFound(err) {
 		results.WithError(err)
 	}
@@ -99,7 +100,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		return 0, 0, err
 	}
 
-	reconciled, err := deployment.Reconcile(rp.client, d, &rp.agent)
+	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -121,7 +122,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		return 0, 0, err
 	}
 
-	reconciled, err := daemonset.Reconcile(rp.client, ds, &rp.agent)
+	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, ds, &rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -131,6 +132,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.
 type ReconciliationParams struct {
+	ctx         context.Context
 	client      k8s.Client
 	agent       agentv1alpha1.Agent
 	podTemplate corev1.PodTemplateSpec
@@ -159,10 +161,10 @@ func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentS
 }
 
 // updateStatus will update the Elastic Agent's status within the k8s cluster, using the given Elastic Agent and status.
-func updateStatus(agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) error {
+func updateStatus(ctx context.Context, agent agentv1alpha1.Agent, client client.Client, status agentv1alpha1.AgentStatus) error {
 	if reflect.DeepEqual(agent.Status, status) {
 		return nil
 	}
 	agent.Status = status
-	return common.UpdateStatus(client, &agent)
+	return common.UpdateStatus(ctx, client, &agent)
 }

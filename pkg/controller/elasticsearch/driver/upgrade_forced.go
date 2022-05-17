@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"context"
+
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
@@ -14,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bool, error) {
+func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -24,13 +26,13 @@ func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bo
 	if err != nil {
 		return false, err
 	}
-	return d.maybeForceUpgradePods(actualPods, podsToUpgrade)
+	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
-func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
+func (d *defaultDriver) maybeForceUpgradePods(ctx context.Context, actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
 	actualBySset := podsByStatefulSetName(actualPods)
 	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade)
 
@@ -51,7 +53,7 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 			"pod_count", len(podsToUpgrade),
 		)
 		for _, pod := range toUpgrade {
-			if err := deletePod(d.Client, d.ES, pod, d.Expectations, d.ReconcileState, "Deleting Pod for forced rolling upgrade"); err != nil {
+			if err := deletePod(ctx, d.Client, d.ES, pod, d.Expectations, d.ReconcileState, "Deleting Pod for forced rolling upgrade"); err != nil {
 				return attempted, err
 			}
 		}

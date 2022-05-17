@@ -35,13 +35,14 @@ func Labels(esName string) client.MatchingLabels {
 
 // Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
 func Reconcile(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	transportCA certificates.CA,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		Labels(es.Name),
@@ -77,6 +78,6 @@ func Reconcile(
 			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
 		},
 	}
-	_, err := reconciler.ReconcileSecret(c, expected, &es)
+	_, err := reconciler.ReconcileSecret(ctx, c, expected, &es)
 	return err
 }

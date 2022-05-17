@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
 )
@@ -110,7 +113,9 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 
 // Save updates or creates licensing information in a config map
 // This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
-func (r LicensingResolver) Save(info LicensingInfo) error {
+func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
+	span, ctx := apm.StartSpan(ctx, "save_license_info", tracing.SpanTypeApp)
+	defer span.End()
 	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNs,
@@ -129,6 +134,7 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     r.client,
 		Expected:   &expected,
 		Reconciled: reconciled,

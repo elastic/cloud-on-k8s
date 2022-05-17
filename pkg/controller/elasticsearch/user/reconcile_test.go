@@ -59,7 +59,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 			FullyQualifiedServiceAccountName: "fqsa1",
 			HashedSecret:                     "hash1",
 		})
-	err := reconcileRolesFileRealmSecret(c, es, roles, realm, saTokens)
+	err := reconcileRolesFileRealmSecret(context.Background(), c, es, roles, realm, saTokens)
 	require.NoError(t, err)
 	// retrieve reconciled secret
 	var secret corev1.Secret
@@ -74,7 +74,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 
 func Test_aggregateFileRealm(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-	fileRealm, controllerUser, err := aggregateFileRealm(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()

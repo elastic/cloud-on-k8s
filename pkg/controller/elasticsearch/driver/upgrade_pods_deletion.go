@@ -81,7 +81,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 			return deletedPods, err
 		}
 
-		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting pod for rolling upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting pod for rolling upgrade"); err != nil {
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -123,7 +123,7 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 
 	var deletedPods []corev1.Pod //nolint:prealloc
 	for _, podToDelete := range ctx.podsToUpgrade {
-		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting Pod for full cluster upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting Pod for full cluster upgrade"); err != nil {
 			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
@@ -209,6 +209,7 @@ func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 }
 
 func deletePod(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	pod corev1.Pod,
@@ -225,7 +226,7 @@ func deletePod(
 		UID:             &pod.UID,
 		ResourceVersion: &pod.ResourceVersion,
 	}
-	err := k8sClient.Delete(context.Background(), &pod, opt)
+	err := k8sClient.Delete(ctx, &pod, opt)
 	if err != nil {
 		return err
 	}

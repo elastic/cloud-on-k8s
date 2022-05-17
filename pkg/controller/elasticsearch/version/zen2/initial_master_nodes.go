@@ -32,7 +32,7 @@ const (
 // This is only necessary when bootstrapping a new zen2 cluster, or when upgrading a single zen1 master.
 // Rolling upgrades from eg. v6 to v7 do not need that setting.
 // It ensures `cluster.initial_master_nodes` does not vary over time, when this function gets called multiple times.
-func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) error {
+func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) error {
 	// if the cluster is annotated with `cluster.initial_master_nodes` (zen2 bootstrap in progress),
 	// make sure we reuse that value since it is not supposed to vary over time
 	if initialMasterNodes := getInitialMasterNodesAnnotation(es); initialMasterNodes != nil {
@@ -62,7 +62,7 @@ func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSp
 		return err
 	}
 	// keep the computed value in an annotation for reuse in subsequent reconciliations
-	return setInitialMasterNodesAnnotation(k8sClient, es, initialMasterNodes)
+	return setInitialMasterNodesAnnotation(ctx, k8sClient, es, initialMasterNodes)
 }
 
 func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) (bool, error) {
@@ -106,7 +106,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 	)
 	// remove the annotation to indicate we're done with zen2 bootstrapping
 	delete(es.Annotations, initialMasterNodesAnnotation)
-	return false, k8sClient.Update(context.Background(), &es)
+	return false, k8sClient.Update(ctx, &es)
 }
 
 // patchInitialMasterNodesConfig mutates the configuration of zen2-compatible master nodes
@@ -189,10 +189,10 @@ func getInitialMasterNodesAnnotation(es esv1.Elasticsearch) []string {
 
 // setInitialMasterNodesAnnotation sets initialMasterNodesAnnotation on the given es resource to initialMasterNodes,
 // and updates the es resource in the apiserver.
-func setInitialMasterNodesAnnotation(k8sClient k8s.Client, es esv1.Elasticsearch, initialMasterNodes []string) error {
+func setInitialMasterNodesAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, initialMasterNodes []string) error {
 	if es.Annotations == nil {
 		es.Annotations = map[string]string{}
 	}
 	es.Annotations[initialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
-	return k8sClient.Update(context.Background(), &es)
+	return k8sClient.Update(ctx, &es)
 }

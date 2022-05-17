@@ -64,11 +64,11 @@ func reconcileApplicationSecret(
 	tokenName string,
 	serviceAccount commonv1.ServiceAccountName,
 ) (*Token, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_application", tracing.SpanTypeApp)
 	defer span.End()
 
 	applicationStore := corev1.Secret{}
-	err := client.Get(context.Background(), applicationSecretName, &applicationStore)
+	err := client.Get(ctx, applicationSecretName, &applicationStore)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func reconcileApplicationSecret(
 		},
 	}
 
-	if _, err := reconciler.ReconcileSecret(client, applicationStore, nil); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, client, applicationStore, nil); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func reconcileElasticsearchSecret(
 	commonLabels map[string]string,
 	token Token,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_sa_token_elasticsearch", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_sa_token_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 	fullyQualifiedName := token.ServiceAccountName + "/" + token.TokenName
 	labels := esSecretsLabels(es)
@@ -155,7 +155,7 @@ func reconcileElasticsearchSecret(
 			esuser.ServiceAccountHashField:      []byte(token.Hash),
 		},
 	}
-	_, err := reconciler.ReconcileSecret(client, esSecret, &es)
+	_, err := reconciler.ReconcileSecret(ctx, client, esSecret, &es)
 	return err
 }
 
