@@ -48,14 +48,15 @@ func (n nodeResources) requeue() bool {
 }
 
 type nodeResource struct {
-	nodeName             string
-	cpu, memory, storage int64
-	requeue              bool
+	nodeName        string
+	memory, storage int64
+	cpu             client.ProcessorsRange
+	requeue         bool
 }
 
 type nodeSetResourcesBuilder struct {
 	nodeSet string
-	cpu     int64
+	cpu     client.ProcessorsRange
 	memory  int64
 	reasons []string
 }
@@ -121,11 +122,11 @@ func (l ResourcesList) ToDesiredNodes(
 			})
 
 			node := client.DesiredNode{
-				NodeVersion: version,
-				Processors:  int(nodeResource.cpu), // we assume the number of CPU does not overflow an int64
-				Memory:      fmt.Sprintf("%db", nodeResource.memory),
-				Storage:     fmt.Sprintf("%db", nodeResource.storage),
-				Settings:    settings,
+				NodeVersion:     version,
+				ProcessorsRange: nodeResource.cpu,
+				Memory:          fmt.Sprintf("%db", nodeResource.memory),
+				Storage:         fmt.Sprintf("%db", nodeResource.storage),
+				Settings:        settings,
 			}
 			desiredNodes = append(desiredNodes, node)
 		}
@@ -166,8 +167,7 @@ func (n nodeSetResourcesBuilder) withProcessors(resources corev1.ResourceRequire
 		if limit.IsZero() {
 			return n.addReason("CPU limit is set but value is 0")
 		}
-		n.cpu = limit.Value()
-		return n
+		n.cpu.Max = limit.AsApproximateFloat64()
 	}
 	// Try to get the request
 	request, hasRequest := resources.Requests[corev1.ResourceCPU]
@@ -175,7 +175,11 @@ func (n nodeSetResourcesBuilder) withProcessors(resources corev1.ResourceRequire
 		if request.IsZero() {
 			return n.addReason("CPU request is set but value is 0")
 		}
-		n.cpu = request.Value()
+		n.cpu.Min = request.AsApproximateFloat64()
+		return n
+	} else if hasLimit {
+		// If a limit is set without any request, then Kubernetes copies the limit as the requested value.
+		n.cpu.Min = n.cpu.Max
 		return n
 	}
 	// Neither the limit nor the request is set

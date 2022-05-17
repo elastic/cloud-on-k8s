@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
-var desiredNodesMinVersion = version.MinFor(8, 1, 0)
+var desiredNodesMinVersion = version.MinFor(8, 3, 0)
 
 type DesiredNodesClient interface {
 	IsDesiredNodesSupported() bool
@@ -26,11 +26,16 @@ type DesiredNodes struct {
 }
 
 type DesiredNode struct {
-	Settings    map[string]interface{} `json:"settings"`
-	Processors  int                    `json:"processors"`
-	Memory      string                 `json:"memory"`
-	Storage     string                 `json:"storage"`
-	NodeVersion string                 `json:"node_version"`
+	Settings        map[string]interface{} `json:"settings"`
+	ProcessorsRange ProcessorsRange        `json:"processors_range"`
+	Memory          string                 `json:"memory"`
+	Storage         string                 `json:"storage"`
+	NodeVersion     string                 `json:"node_version"`
+}
+
+type ProcessorsRange struct {
+	Min float64 `json:"min"`
+	Max float64 `json:"max,omitempty"`
 }
 
 func (c *baseClient) UpdateDesiredNodes(_ context.Context, _ string, _ int64, _ DesiredNodes) error {
