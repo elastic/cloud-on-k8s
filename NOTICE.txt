@@ -1803,11 +1803,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.12.1
-Time    : 2022-01-29T14:48:34Z
+Version : v1.12.2
+Time    : 2022-05-13T10:05:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.12.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.12.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
