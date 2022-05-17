@@ -700,7 +700,7 @@ func asyncTasks(
 	gcCtx := tracing.NewContextTransaction(ctx, tracer, "garbage-collection", "on_operator_start", nil)
 	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
 	if err != nil {
-		log.Error(err, "user garbage collector failed")
+		log.Error(err, "exiting due to unrecoverable error")
 		os.Exit(1)
 	}
 	// - soft-owned secrets
