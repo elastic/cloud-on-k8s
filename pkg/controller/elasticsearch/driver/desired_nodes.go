@@ -63,7 +63,7 @@ func (d *defaultDriver) updateDesiredNodes(
 		return results.WithError(err)
 	}
 	if requeue {
-		results.WithReconciliationState(defaultRequeue.WithReason("Desired nodes API must be updated"))
+		results.WithReconciliationState(defaultRequeue.WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"))
 	}
 	if esReachable {
 		err := esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), d.ES.Generation, esclient.DesiredNodes{DesiredNodes: nodes})

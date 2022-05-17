@@ -80,15 +80,16 @@ const (
 )
 
 // ToDesiredNodes returns the desired nodes, as expected by the desired nodes API, from an expected resources list.
+// A boolean is also returned to indicate whether a requeue should be done to set a more accurate state of the
+// storage capacity.
 func (l ResourcesList) ToDesiredNodes(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	version string,
-) ([]client.DesiredNode, bool, error) {
+) (desiredNodes []client.DesiredNode, requeue bool, err error) {
 	span, ctx := apm.StartSpan(ctx, "compute_desired_nodes", tracing.SpanTypeApp)
 	defer span.End()
-	requeue := false
-	desiredNodes := make([]client.DesiredNode, 0, l.ExpectedNodeCount())
+	desiredNodes = make([]client.DesiredNode, 0, l.ExpectedNodeCount())
 	for _, resources := range l {
 		sts := resources.StatefulSet
 		esContainer := getElasticsearchContainer(sts.Spec.Template.Spec.Containers)
