@@ -28,6 +28,13 @@ docker-login() {
     local image=$1
     local registry=${image%%"/"*}
 
+    # Since this check doesn't work very well in Jenkins, and Jenkins sets
+    # environment variable 'CI' only perform this check when not in Jenkins.
+    if [[ -z "${CI}" && -f ~/.docker/config.json && `grep $registry ~/.docker/config.json` ]]; then
+        echo "not authenticating to ${registry} as configuration block already exists in ~/.docker/config.json"
+        return
+    fi
+
     case "$image" in
 
         docker.elastic.co/*)
