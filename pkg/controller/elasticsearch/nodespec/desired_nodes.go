@@ -289,7 +289,7 @@ func (n nodeSetResourcesBuilder) withStorage(
 		if storageInSpec, exists := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; exists {
 			nodeResources[i].storage = storageInSpec.Value()
 		} else {
-			// fall back to claimed storage
+			// PVC does exist, but Spec.Resources.Requests is empty, this is unlikely to happen for a PVC, fall back to claimed storage.
 			nodeResources[i].storage = *claimedStorage
 		}
 	}
