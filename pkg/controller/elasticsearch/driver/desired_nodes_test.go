@@ -46,8 +46,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 		esReachable bool
 	}
 	type wantCondition struct {
-		status  corev1.ConditionStatus
-		message string
+		status   corev1.ConditionStatus
+		messages []string
 	}
 	type want struct {
 		testdata     string // expected captured request
@@ -139,8 +139,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					),
 				testdata: "happy_path.json",
 				condition: &wantCondition{
-					status:  corev1.ConditionTrue,
-					message: "Successfully calculated compute and storage resources from Elasticsearch resource generation ",
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
 				},
 			},
 		},
@@ -184,8 +184,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					),
 				testdata: "happy_path.json",
 				condition: &wantCondition{
-					status:  corev1.ConditionTrue,
-					message: "Successfully calculated compute and storage resources from Elasticsearch resource generation ",
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
 				},
 			},
 		},
@@ -208,8 +208,35 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				results:      &reconciler.Results{},
 				deleteCalled: true,
 				condition: &wantCondition{
-					status:  corev1.ConditionFalse,
-					message: "Elasticsearch path.data must be a string, multiple paths is not supported",
+					status:   corev1.ConditionFalse,
+					messages: []string{"Elasticsearch path.data must be a string, multiple paths is not supported"},
+				},
+			},
+		},
+		{
+			name: "0 values are not allowed",
+			args: args{
+				esReachable: true,
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("default", 3).
+						withCPU("0", "").
+						withMemory("0", "0").
+						withStorage("1Gi", "1Gi").
+						withNodeCfg(map[string]interface{}{
+							"path.data": "/usr/share/elasticsearch/data",
+						}),
+				),
+			want: want{
+				results:      &reconciler.Results{},
+				deleteCalled: true,
+				condition: &wantCondition{
+					status: corev1.ConditionFalse,
+					messages: []string{
+						"CPU request is set but value is 0",
+						"Memory limit is set but value is 0",
+					},
 				},
 			},
 		},
@@ -229,8 +256,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				results:      &reconciler.Results{},
 				deleteCalled: true,
 				condition: &wantCondition{
-					status:  corev1.ConditionFalse,
-					message: "memory limit is not set",
+					status:   corev1.ConditionFalse,
+					messages: []string{"memory limit is not set"},
 				},
 			},
 		},
@@ -250,8 +277,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				results:      &reconciler.Results{},
 				deleteCalled: true,
 				condition: &wantCondition{
-					status:  corev1.ConditionFalse,
-					message: "memory request and limit do not have the same value",
+					status:   corev1.ConditionFalse,
+					messages: []string{"memory request and limit do not have the same value"},
 				},
 			},
 		},
@@ -298,10 +325,13 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			condition := d.ReconcileState.Index(esv1.ResourcesAwareManagement)
 			hasCondition := condition >= 0
 			assert.True(t, hasCondition, "ResourcesAwareManagement condition should be set")
-			if hasCondition {
-				c := d.ReconcileState.Conditions[condition]
-				assert.Equal(t, tt.want.condition.status, c.Status)
-				assert.True(t, strings.Contains(c.Message, tt.want.condition.message), "expected message in condition: \"%s\", got \"%s\" ", tt.want.condition.message, c.Message)
+			if !hasCondition {
+				return
+			}
+			c := d.ReconcileState.Conditions[condition]
+			assert.Equal(t, tt.want.condition.status, c.Status)
+			for _, expectedMessage := range tt.want.condition.messages {
+				assert.True(t, strings.Contains(c.Message, expectedMessage), "expected message in condition: \"%s\", got \"%s\" ", expectedMessage, c.Message)
 			}
 		})
 	}
