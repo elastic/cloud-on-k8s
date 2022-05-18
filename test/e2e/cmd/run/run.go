@@ -287,9 +287,10 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("unmarshal %v, %w", h.monitoringSecrets, err)
 		}
 
-		h.testSecrets["monitoring_url"] = monitoringSecrets.MonitoringURL
-		h.testSecrets["monitoring_user"] = monitoringSecrets.MonitoringUser
-		h.testSecrets["monitoring_pass"] = monitoringSecrets.MonitoringPass
+		// use expected keys for external associations through elasticsearchRef
+		h.testSecrets["url"] = monitoringSecrets.MonitoringURL
+		h.testSecrets["username"] = monitoringSecrets.MonitoringUser
+		h.testSecrets["password"] = monitoringSecrets.MonitoringPass
 
 		h.operatorSecrets = map[string]string{}
 		h.operatorSecrets["apm_secret_token"] = monitoringSecrets.APMSecretToken

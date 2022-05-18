@@ -5,7 +5,9 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 8.2.0
+  version: 7.15.1 # needs to less or equal to e2e-monitor version
+  elasticsearchRefs:
+    - secretName: eck-{{ .TestRun }}
   daemonSet:
     podTemplate:
       spec:
@@ -63,13 +65,6 @@ spec:
     providers.kubernetes:
       node: ${NODE_NAME}
       scope: node
-    outputs:
-      default:
-        type: elasticsearch
-        hosts:
-        - '${monitoring_url}'
-        username: ${monitoring_user}
-        password: ${monitoring_pass}
     inputs:
     - name: kubernetes-1
       revision: 1
