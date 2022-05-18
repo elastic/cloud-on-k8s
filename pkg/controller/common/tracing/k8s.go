@@ -14,9 +14,9 @@ import (
 )
 
 func ClientGoTransportWrapper(o ...apmclientgo.ClientOption) transport.WrapperFunc {
-	return transport.WrapperFunc(func(rt http.RoundTripper) http.RoundTripper {
+	return func(rt http.RoundTripper) http.RoundTripper {
 		return apmclientgo.WrapRoundTripper(rt, o...)
-	})
+	}
 }
 
 // ClientGoCacheTx creates a new apm.Transaction for cache refresh requests. If no APM transaction is running

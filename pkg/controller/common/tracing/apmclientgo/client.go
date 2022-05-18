@@ -42,7 +42,9 @@ func (r roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	tx := apm.TransactionFromContext(ctx)
 	if tx == nil && r.defaultTxFn != nil {
 		tx = r.defaultTxFn()
-		defer tx.End()
+		if tx != nil {
+			defer tx.End()
+		}
 	}
 	if tx == nil {
 		return r.r.RoundTrip(req)
@@ -171,6 +173,8 @@ func requestName(req *http.Request) string {
 // ClientOption sets options for tracing client requests.
 type ClientOption func(*roundTripper)
 
+// WithDefaultTransaction configures the roundtripper to start a new APM transaction if no transaction is currently running
+// using the factory function f.
 func WithDefaultTransaction(f func() *apm.Transaction) ClientOption {
 	return ClientOption(func(rt *roundTripper) {
 		rt.defaultTxFn = f

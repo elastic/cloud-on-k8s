@@ -462,11 +462,11 @@ func startOperator(ctx context.Context) error {
 	var tracer *apm.Tracer
 	if viper.GetBool(operator.EnableTracingFlag) {
 		tracer = tracing.NewTracer("elastic-operator")
+		// set up APM tracing for client-go
+		cfg.Wrap(tracing.ClientGoTransportWrapper(
+			apmclientgo.WithDefaultTransaction(tracing.ClientGoCacheTx(tracer)),
+		))
 	}
-	// set up APM tracing for client-go
-	cfg.WrapTransport = tracing.ClientGoTransportWrapper(
-		apmclientgo.WithDefaultTransaction(tracing.ClientGoCacheTx(tracer)),
-	)
 
 	// set the timeout for API client
 	cfg.Timeout = viper.GetDuration(operator.KubeClientTimeout)
