@@ -67,8 +67,6 @@ func (d *defaultDriver) updateDesiredNodes(
 	}
 	if esReachable {
 		return results.WithError(esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), d.ES.Generation, esclient.DesiredNodes{DesiredNodes: nodes}))
-	} else {
-		results.WithReconciliationState(defaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
 	}
-	return results
+	return results.WithReconciliationState(defaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
 }

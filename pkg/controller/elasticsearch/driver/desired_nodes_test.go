@@ -426,7 +426,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			es := tt.esBuilder.toEs()
 			reconcileState, err := reconcile.NewState(es)
 			if err != nil {
