@@ -82,7 +82,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						}),
 				).withNodeSet(
 				nodeSet("hot", 3).
-					withCPU("", "1").
+					withCPU("", "1"). // Setting only limits if fine.
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
 					withNodeCfg(map[string]interface{}{
@@ -186,6 +186,30 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				condition: &wantCondition{
 					status:  corev1.ConditionTrue,
 					message: "Successfully calculated compute and storage resources from Elasticsearch resource generation ",
+				},
+			},
+		},
+		{
+			name: "Multi data path",
+			args: args{
+				esReachable: true,
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("default", 3).
+						withCPU("2", "4").
+						withMemory("2Gi", "2Gi").
+						withStorage("1Gi", "1Gi").
+						withNodeCfg(map[string]interface{}{
+							"path.data": []string{"/usr/share/elasticsearch/data1", "/usr/share/elasticsearch/data2"},
+						}),
+				),
+			want: want{
+				results:      &reconciler.Results{},
+				deleteCalled: true,
+				condition: &wantCondition{
+					status:  corev1.ConditionFalse,
+					message: "Elasticsearch path.data must be a string, multiple paths is not supported",
 				},
 			},
 		},

@@ -224,6 +224,9 @@ func (n nodeSetResourcesBuilder) withStorage(
 	if err := config.CanonicalConfig.Unpack(&p); err != nil {
 		return nil, err
 	}
+	if p.PathData == nil {
+		return nil, n.addReason("Elasticsearch path.data must be a set").toError()
+	}
 	pathData, ok := p.PathData.(string)
 	if !ok {
 		return nil, n.addReason("Elasticsearch path.data must be a string, multiple paths is not supported").toError()
