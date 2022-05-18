@@ -12,6 +12,9 @@
 
 set -euo pipefail
 
+# ensure environment variable is set before testing if it's a zero value.
+CI=${CI:-}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
 
