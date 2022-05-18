@@ -7,6 +7,7 @@ package driver
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -42,8 +43,9 @@ import (
 
 func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	type args struct {
-		esReachable   bool
-		esClientError bool
+		esReachable    bool
+		esClientError  bool
+		k8sClientError bool
 	}
 	type wantCondition struct {
 		status   corev1.ConditionStatus
@@ -256,6 +258,34 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			},
 		},
 		{
+			name: "Kubernetes client returned an error",
+			args: args{
+				esReachable:    true,
+				k8sClientError: true,
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("default", 3).
+						withCPU("2", "4").
+						withMemory("2Gi", "2Gi").
+						withStorage("1Gi", "1Gi").
+						pvcCreated(true).
+						withNodeCfg(map[string]interface{}{
+							"path.data": "/usr/share/elasticsearch/data",
+						}),
+				),
+			want: want{
+				result: wantResult{
+					error:  true,
+					reason: "k8s client failed",
+				},
+				condition: &wantCondition{
+					status:   corev1.ConditionUnknown,
+					messages: []string{"Error while calculating compute and storage resources from Elasticsearch resource generation "},
+				},
+			},
+		},
+		{
 			name: "0 values are not allowed",
 			args: args{
 				esReachable: true,
@@ -327,13 +357,22 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			existingResources := tt.esBuilder.toResources()
+
 			es := tt.esBuilder.toEs()
 			reconcileState, err := reconcile.NewState(es)
 			if err != nil {
 				assert.FailNow(t, "fatal: %s", err)
 			}
-			k8sClient := k8s.NewFakeClient(existingResources...)
+
+			var k8sClient k8s.Client
+
+			if tt.args.k8sClientError {
+				k8sClient = k8s.NewFailingClient(errors.New("k8s client failed"))
+			} else {
+				existingResources := tt.esBuilder.toResources()
+				k8sClient = k8s.NewFakeClient(existingResources...)
+			}
+
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					ReconcileState: reconcileState,
@@ -362,7 +401,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			assert.Equal(t, tt.want.result.requeue, result.Requeue, "updateDesiredNodes(...): unexpected requeue result")
 			assert.Equal(t, tt.want.result.requeueAfter, result.RequeueAfter, "updateDesiredNodes(...): unexpected result.RequeueAfter value")
 			_, gotReason := got.IsReconciled()
-			assert.True(t, strings.Contains(gotReason, tt.want.result.reason), gotReason, "updateDesiredNodes(...): unexpected reconciled reason")
+			assert.True(t, strings.Contains(gotReason, tt.want.result.reason), "updateDesiredNodes(...): unexpected reconciled reason")
 
 			// Check if the Elasticsearch client has been called as expected
 			assert.Equal(t, tt.want.deleteCalled, esClient.deleted)
