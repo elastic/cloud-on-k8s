@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.8.1-0.20220414154538-570ba6c88a50
-Time    : 2022-04-14T15:45:38Z
+Version : v0.9.0
+Time    : 2022-05-17T14:02:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.8.1-0.20220414154538-570ba6c88a50/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.9.0/LICENSE:
 
 
                                  Apache License
@@ -4869,11 +4869,11 @@ Indirect dependencies
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/compute
-Version : v1.5.0
-Time    : 2022-02-23T23:28:47Z
+Version : v1.6.1
+Time    : 2022-04-21T16:56:15Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/compute@v1.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/compute@v1.6.1/LICENSE:
 
 
                                  Apache License
@@ -5611,11 +5611,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/containerd/stargz-snapshotter/estargz
-Version : v0.11.1
-Time    : 2022-02-22T05:23:47Z
+Version : v0.11.4
+Time    : 2022-04-13T23:38:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.11.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.11.4/LICENSE:
 
 
                                  Apache License
@@ -5854,11 +5854,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v20.10.12+incompatible
-Time    : 2021-12-12T06:28:24Z
+Version : v20.10.16+incompatible
+Time    : 2022-05-11T16:22:17Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v20.10.12+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v20.10.16+incompatible/LICENSE:
 
 
                                  Apache License
@@ -6055,11 +6055,11 @@ Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v20.10.12+in
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/distribution
-Version : v2.8.0+incompatible
-Time    : 2022-01-21T12:46:32Z
+Version : v2.8.1+incompatible
+Time    : 2022-03-08T17:52:36Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/distribution@v2.8.0+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/distribution@v2.8.1+incompatible/LICENSE:
 
 Apache License
                            Version 2.0, January 2004
@@ -6267,11 +6267,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v20.10.12+incompatible
-Time    : 2021-12-12T10:11:51Z
+Version : v20.10.16+incompatible
+Time    : 2022-05-12T07:33:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v20.10.12+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v20.10.16+incompatible/LICENSE:
 
 
                                  Apache License
@@ -15711,11 +15711,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.14.4
-Time    : 2022-02-22T11:00:37Z
+Version : v1.15.4
+Time    : 2022-05-10T09:09:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.14.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.15.4/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -17187,35 +17187,6 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
---------------------------------------------------------------------------------
-Module  : github.com/niemeyer/pretty
-Version : v0.0.0-20200227124842-a10e7caefd8e
-Time    : 2020-02-27T12:48:42Z
-Licence : MIT
-
-Contents of probable licence file $GOMODCACHE/github.com/niemeyer/pretty@v0.0.0-20200227124842-a10e7caefd8e/License:
-
-Copyright 2012 Keith Rarick
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
@@ -19694,11 +19665,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20220412020605-290c469a71a5
-Time    : 2022-04-12T02:06:05Z
+Version : v0.0.0-20220516155154-20f960328961
+Time    : 2022-05-16T15:51:54Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220412020605-290c469a71a5/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220516155154-20f960328961/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19768,11 +19739,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.0.0-20210220032951-036812b2e83c
-Time    : 2021-02-20T03:29:51Z
+Version : v0.0.0-20220513210516-0976fa681c29
+Time    : 2022-05-13T21:05:16Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20210220032951-036812b2e83c/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20220513210516-0976fa681c29/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19805,11 +19776,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20220412211240-33da011f77ad
-Time    : 2022-04-12T21:12:40Z
+Version : v0.0.0-20220513210249-45d2b4557a2a
+Time    : 2022-05-13T21:02:49Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20220412211240-33da011f77ad/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20220513210249-45d2b4557a2a/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20446,11 +20417,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/appengine@v1.6.7
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto
-Version : v0.0.0-20220407144326-9054f6ed7bac
-Time    : 2022-04-07T14:43:26Z
+Version : v0.0.0-20220421151946-72621c1f0bd3
+Time    : 2022-04-21T15:19:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-20220407144326-9054f6ed7bac/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-20220421151946-72621c1f0bd3/LICENSE:
 
 
                                  Apache License
@@ -20907,11 +20878,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/check.v1
-Version : v1.0.0-20200227125254-8fa46927fb4f
-Time    : 2020-02-27T12:52:54Z
+Version : v1.0.0-20201130134442-10cb98267c6c
+Time    : 2020-11-30T13:44:42Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/check.v1@v1.0.0-20200227125254-8fa46927fb4f/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/check.v1@v1.0.0-20201130134442-10cb98267c6c/LICENSE:
 
 Gocheck - A rich testing framework for Go
  
