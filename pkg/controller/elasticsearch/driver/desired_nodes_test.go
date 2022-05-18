@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -43,16 +42,23 @@ import (
 
 func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	type args struct {
-		esReachable bool
+		esReachable   bool
+		esClientError bool
 	}
 	type wantCondition struct {
 		status   corev1.ConditionStatus
 		messages []string
 	}
+	type wantResult struct {
+		error        bool
+		reason       string
+		requeue      bool
+		requeueAfter time.Duration
+	}
 	type want struct {
 		testdata     string // expected captured request
 		deleteCalled bool
-		results      *reconciler.Results
+		result       wantResult
 		condition    *wantCondition
 	}
 	tests := []struct {
@@ -82,7 +88,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						}),
 				).withNodeSet(
 				nodeSet("hot", 3).
-					withCPU("", "1"). // Setting only limits if fine.
+					withCPU("", "1"). // Setting only limits is also fine.
 					withMemory("", "4Gi").
 					withStorage("10Gi", "50Gi").pvcCreated(true).
 					withNodeCfg(map[string]interface{}{
@@ -95,8 +101,12 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					}),
 			),
 			want: want{
-				results:  &reconciler.Results{},
+				result:   wantResult{},
 				testdata: "happy_path.json",
+				condition: &wantCondition{
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
+				},
 			},
 		},
 		{
@@ -109,7 +119,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					nodeSet("master", 3).
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
-						withStorage("1Gi", "").pvcCreated(false).
+						withStorage("1Gi", "").
+						pvcCreated(false). // PVC does not exist yet
 						withNodeCfg(map[string]interface{}{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
@@ -122,7 +133,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				nodeSet("hot", 3).
 					withCPU("", "1").
 					withMemory("", "4Gi").
-					withStorage("50Gi", "").pvcCreated(false).
+					withStorage("50Gi", "").
+					pvcCreated(false). // PVC does not exist yet
 					withNodeCfg(map[string]interface{}{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
@@ -133,10 +145,11 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					}),
 			),
 			want: want{
-				results: (&reconciler.Results{}).
-					WithReconciliationState(defaultRequeue.
-						WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"),
-					),
+				result: wantResult{
+					requeueAfter: defaultRequeue.RequeueAfter,
+					requeue:      defaultRequeue.Requeue, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
+				},
 				testdata: "happy_path.json",
 				condition: &wantCondition{
 					status:   corev1.ConditionTrue,
@@ -154,7 +167,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					nodeSet("master", 3).
 						withCPU("2222m", "3141m").
 						withMemory("2333Mi", "2333Mi").
-						withStorage("1Gi", "").pvcCreated(true).
+						withStorage("1Gi", "" /* No capacity in PVC status */).pvcCreated(true).
 						withNodeCfg(map[string]interface{}{
 							"node.roles":              []string{"master"},
 							"node.name":               "${POD_NAME}",
@@ -167,7 +180,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				nodeSet("hot", 3).
 					withCPU("", "1").
 					withMemory("", "4Gi").
-					withStorage("50Gi", "").pvcCreated(true).
+					withStorage("50Gi", "" /* No capacity in PVC status */).pvcCreated(true).
 					withNodeCfg(map[string]interface{}{
 						"node.roles":              []string{"data", "ingest"},
 						"node.name":               "${POD_NAME}",
@@ -178,10 +191,11 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					}),
 			),
 			want: want{
-				results: (&reconciler.Results{}).
-					WithReconciliationState(defaultRequeue.
-						WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"),
-					),
+				result: wantResult{
+					requeueAfter: defaultRequeue.RequeueAfter,
+					requeue:      defaultRequeue.Requeue, // requeue is expected to get a more accurate storage capacity from the PVC status later
+					reason:       "Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API",
+				},
 				testdata: "happy_path.json",
 				condition: &wantCondition{
 					status:   corev1.ConditionTrue,
@@ -205,11 +219,39 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						}),
 				),
 			want: want{
-				results:      &reconciler.Results{},
+				result:       wantResult{},
 				deleteCalled: true,
 				condition: &wantCondition{
 					status:   corev1.ConditionFalse,
 					messages: []string{"Elasticsearch path.data must be a string, multiple paths is not supported"},
+				},
+			},
+		},
+		{
+			name: "Elasticsearch client returned an error",
+			args: args{
+				esReachable:   true,
+				esClientError: true,
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("default", 3).
+						withCPU("2", "4").
+						withMemory("2Gi", "2Gi").
+						withStorage("1Gi", "1Gi").
+						pvcCreated(true).
+						withNodeCfg(map[string]interface{}{
+							"path.data": "/usr/share/elasticsearch/data",
+						}),
+				),
+			want: want{
+				result: wantResult{
+					error:  true,
+					reason: "elasticsearch client failed",
+				},
+				condition: &wantCondition{
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
 				},
 			},
 		},
@@ -229,7 +271,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						}),
 				),
 			want: want{
-				results:      &reconciler.Results{},
+				result:       wantResult{},
 				deleteCalled: true,
 				condition: &wantCondition{
 					status: corev1.ConditionFalse,
@@ -253,7 +295,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						withStorage("1Gi", "1Gi"),
 				),
 			want: want{
-				results:      &reconciler.Results{},
+				result:       wantResult{},
 				deleteCalled: true,
 				condition: &wantCondition{
 					status:   corev1.ConditionFalse,
@@ -274,7 +316,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						withStorage("1Gi", "1Gi"),
 				),
 			want: want{
-				results:      &reconciler.Results{},
+				result:       wantResult{},
 				deleteCalled: true,
 				condition: &wantCondition{
 					status:   corev1.ConditionFalse,
@@ -299,7 +341,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					Client:         k8sClient, // TODO: duplicate
 				},
 			}
-			expectedResources := tt.esBuilder.toExpectedResources()
 
 			wantClient := wantClient{}
 			if tt.want.testdata != "" {
@@ -312,10 +353,18 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				wantClient.version = es.Generation
 			}
 
-			esClient := fakeEsClient(t, "8.3.0", false, wantClient)
-			if got := d.updateDesiredNodes(context.TODO(), k8sClient, esClient, tt.args.esReachable, expectedResources); !reflect.DeepEqual(*got, *tt.want.results) {
-				t.Errorf("defaultDriver.updateDesiredNodes() = %v, want %v", *got, *tt.want.results)
-			}
+			esClient := fakeEsClient(t, "8.3.0", tt.args.esClientError, wantClient)
+			got := d.updateDesiredNodes(context.TODO(), k8sClient, esClient, tt.args.esReachable, tt.esBuilder.toExpectedResources())
+
+			// Check reconcile result
+			result, err := got.Aggregate()
+			assert.Equal(t, tt.want.result.error, err != nil, "updateDesiredNodes(...): unexpected error result")
+			assert.Equal(t, tt.want.result.requeue, result.Requeue, "updateDesiredNodes(...): unexpected requeue result")
+			assert.Equal(t, tt.want.result.requeueAfter, result.RequeueAfter, "updateDesiredNodes(...): unexpected result.RequeueAfter value")
+			_, gotReason := got.IsReconciled()
+			assert.True(t, strings.Contains(gotReason, tt.want.result.reason), gotReason, "updateDesiredNodes(...): unexpected reconciled reason")
+
+			// Check if the Elasticsearch client has been called as expected
 			assert.Equal(t, tt.want.deleteCalled, esClient.deleted)
 
 			// Check that the status has been updated accordingly.
@@ -580,24 +629,24 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 			statusCode = 500
 		}
 
-		var (
-			gotHistoryID types.UID
-			gotVersion   int64
-		)
-		match := expectedPath.FindStringSubmatch(req.URL.Path)
-		if len(match) > 2 {
-			gotHistoryID = types.UID(match[1])
-			parsedVersion, err := strconv.ParseInt(match[2], 10, 64)
-			assert.NoError(t, err)
-			gotVersion = parsedVersion
-		}
-
-		// Compare history and version
-		assert.Equal(t, want.historyID, gotHistoryID)
-		assert.Equal(t, want.version, gotVersion)
-
-		// Compare the request
 		if want.request != "" {
+			var (
+				gotHistoryID types.UID
+				gotVersion   int64
+			)
+			match := expectedPath.FindStringSubmatch(req.URL.Path)
+			if len(match) > 2 {
+				gotHistoryID = types.UID(match[1])
+				parsedVersion, err := strconv.ParseInt(match[2], 10, 64)
+				assert.NoError(t, err)
+				gotVersion = parsedVersion
+			}
+
+			// Compare history and version
+			assert.Equal(t, want.historyID, gotHistoryID)
+			assert.Equal(t, want.version, gotVersion)
+
+			// Compare the request
 			gotRequest, err := ioutil.ReadAll(req.Body)
 			assert.NoError(t, err)
 			require.JSONEq(t, want.request, string(gotRequest))
