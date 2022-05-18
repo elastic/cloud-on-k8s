@@ -474,7 +474,7 @@ func startOperator(ctx context.Context) error {
 		Scheme:                     clientgoscheme.Scheme,
 		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
-		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock, // TODO: Revert to ConfigMapsLeases when support for 1.13 is dropped
+		LeaderElectionResourceLock: resourcelock.ConfigMapsLeasesResourceLock, // TODO: use 'lease' after operator is released with 'configmapsleases'
 		LeaderElectionID:           LeaderElectionConfigMapName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
