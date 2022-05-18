@@ -45,10 +45,15 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	type args struct {
 		esReachable bool
 	}
+	type wantCondition struct {
+		status  corev1.ConditionStatus
+		message string
+	}
 	type want struct {
 		testdata     string // expected captured request
 		deleteCalled bool
 		results      *reconciler.Results
+		condition    *wantCondition
 	}
 	tests := []struct {
 		name      string
@@ -133,6 +138,10 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"),
 					),
 				testdata: "happy_path.json",
+				condition: &wantCondition{
+					status:  corev1.ConditionTrue,
+					message: "Successfully calculated compute and storage resources from Elasticsearch resource generation ",
+				},
 			},
 		},
 		{
@@ -174,6 +183,10 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 						WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"),
 					),
 				testdata: "happy_path.json",
+				condition: &wantCondition{
+					status:  corev1.ConditionTrue,
+					message: "Successfully calculated compute and storage resources from Elasticsearch resource generation ",
+				},
 			},
 		},
 		{
@@ -191,6 +204,31 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			want: want{
 				results:      &reconciler.Results{},
 				deleteCalled: true,
+				condition: &wantCondition{
+					status:  corev1.ConditionFalse,
+					message: "memory limit is not set",
+				},
+			},
+		},
+		{
+			name: "Memory request and limit should be the same",
+			args: args{
+				esReachable: true,
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("default", 3).
+						withCPU("2222m", "3141m").
+						withMemory("2333Mi", "2334Mi").
+						withStorage("1Gi", "1Gi"),
+				),
+			want: want{
+				results:      &reconciler.Results{},
+				deleteCalled: true,
+				condition: &wantCondition{
+					status:  corev1.ConditionFalse,
+					message: "memory request and limit do not have the same value",
+				},
 			},
 		},
 	}
@@ -228,6 +266,19 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				t.Errorf("defaultDriver.updateDesiredNodes() = %v, want %v", *got, *tt.want.results)
 			}
 			assert.Equal(t, tt.want.deleteCalled, esClient.deleted)
+
+			// Check that the status has been updated accordingly.
+			if tt.want.condition == nil {
+				return
+			}
+			condition := d.ReconcileState.Index(esv1.ResourcesAwareManagement)
+			hasCondition := condition >= 0
+			assert.True(t, hasCondition, "ResourcesAwareManagement condition should be set")
+			if hasCondition {
+				c := d.ReconcileState.Conditions[condition]
+				assert.Equal(t, tt.want.condition.status, c.Status)
+				assert.True(t, strings.Contains(c.Message, tt.want.condition.message), "expected message in condition: \"%s\", got \"%s\" ", tt.want.condition.message, c.Message)
+			}
 		})
 	}
 }
