@@ -17,12 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func (d *defaultDriver) updateDesiredNodes(
 	ctx context.Context,
-	k8sClient k8s.Client,
 	esClient esclient.Client,
 	esReachable bool,
 	expectedResources nodespec.ResourcesList,
@@ -32,7 +30,7 @@ func (d *defaultDriver) updateDesiredNodes(
 	results := &reconciler.Results{}
 	// We compute the desired nodes state to update the condition
 	var resourceNotAvailableErr *nodespec.ResourceNotAvailable
-	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, k8sClient, d.ES.Spec.Version)
+	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, d.Client, d.ES.Spec.Version)
 	switch {
 	case err == nil:
 		d.ReconcileState.ReportCondition(

@@ -83,7 +83,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	if esClient.IsDesiredNodesSupported() {
-		results.WithResults(d.updateDesiredNodes(ctx, d.Client, esClient, esReachable, expectedResources))
+		results.WithResults(d.updateDesiredNodes(ctx, esClient, esReachable, expectedResources))
 		if results.HasError() {
 			return results
 		}

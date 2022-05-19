@@ -444,8 +444,8 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					ReconcileState: reconcileState,
-					ES:             es,        // TODO: duplicate
-					Client:         k8sClient, // TODO: duplicate
+					ES:             es,
+					Client:         k8sClient,
 				},
 			}
 
@@ -461,7 +461,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			}
 
 			esClient := fakeEsClient(t, "8.3.0", tt.args.esClientError, wantClient)
-			got := d.updateDesiredNodes(context.TODO(), k8sClient, esClient, tt.args.esReachable, tt.esBuilder.toExpectedResources())
+			got := d.updateDesiredNodes(context.TODO(), esClient, tt.args.esReachable, tt.esBuilder.toExpectedResources())
 
 			// Check reconcile result
 			result, err := got.Aggregate()
