@@ -122,6 +122,9 @@ func (e *EKSDriver) Execute() error {
 			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
+			if err := e.GetCredentials(); err != nil {
+				return err
+			}
 		} else {
 			log.Printf("Not creating cluster as it already exists")
 		}
@@ -163,7 +166,8 @@ func (e *EKSDriver) GetCredentials() error {
 		return err
 	}
 	log.Printf("Writing kubeconfig")
-	return e.newCmd("eksctl utils write-kubeconfig --cluster {{.ClusterName}} --region {{.Region}}").Run()
+	// call `aws eks update-kubeconfig` instead of `eksctl utils write-kubeconfig` to write a valid kubeconfig for k8s >= 1.24 (https://github.com/aws/aws-cli/issues/6920)
+	return e.newCmd("aws eks update-kubeconfig --name {{.ClusterName}} --region {{.Region}}").Run()
 }
 
 func (e *EKSDriver) clusterExists() (bool, error) {
