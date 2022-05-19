@@ -15,10 +15,18 @@ var desiredNodesMinVersion = version.MinFor(8, 3, 0)
 
 type DesiredNodesClient interface {
 	IsDesiredNodesSupported() bool
+	// GetLatestDesiredNodes returns the latest desired nodes.
+	GetLatestDesiredNodes(ctx context.Context) (LatestDesiredNodes, error)
 	// UpdateDesiredNodes updates the desired nodes API.
 	UpdateDesiredNodes(ctx context.Context, historyID string, version int64, desiredNodes DesiredNodes) error
 	// DeleteDesiredNodes deletes the desired nodes from the cluster state.
 	DeleteDesiredNodes(ctx context.Context) error
+}
+
+type LatestDesiredNodes struct {
+	HistoryID    string        `json:"history_id"`
+	Version      int64         `json:"version"`
+	DesiredNodes []DesiredNode `json:"nodes"`
 }
 
 type DesiredNodes struct {
@@ -38,6 +46,10 @@ type ProcessorsRange struct {
 	Max float64 `json:"max,omitempty"`
 }
 
+func (c *baseClient) GetLatestDesiredNodes(_ context.Context) (LatestDesiredNodes, error) {
+	return LatestDesiredNodes{}, c.desiredNodesNotAvailable()
+}
+
 func (c *baseClient) UpdateDesiredNodes(_ context.Context, _ string, _ int64, _ DesiredNodes) error {
 	return c.desiredNodesNotAvailable()
 }
@@ -52,6 +64,12 @@ func (c *baseClient) desiredNodesNotAvailable() error {
 
 func (c *baseClient) IsDesiredNodesSupported() bool {
 	return c.version.GTE(desiredNodesMinVersion)
+}
+
+func (c *clientV8) GetLatestDesiredNodes(ctx context.Context) (LatestDesiredNodes, error) {
+	var latestDesiredNodes LatestDesiredNodes
+	err := c.get(ctx, "/_internal/desired_nodes/_latest", &latestDesiredNodes)
+	return latestDesiredNodes, err
 }
 
 func (c *clientV8) UpdateDesiredNodes(ctx context.Context, historyID string, version int64, desiredNodes DesiredNodes) error {

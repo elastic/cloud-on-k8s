@@ -63,7 +63,7 @@ func ObjectExists(c Client, ref types.NamespacedName, typedReceiver client.Objec
 	return true, nil
 }
 
-// IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
+// IsPodReady checks if both conditions ContainersReady and PodReady of a Pod are true.
 func IsPodReady(pod corev1.Pod) bool {
 	conditionsTrue := 0
 	for _, cond := range pod.Status.Conditions {
