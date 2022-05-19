@@ -15,6 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 )
@@ -30,7 +31,11 @@ func (d *defaultDriver) updateDesiredNodes(
 	results := &reconciler.Results{}
 	// We compute the desired nodes state to update the condition
 	var resourceNotAvailableErr *nodespec.ResourceNotAvailable
-	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, d.Client, d.ES.Spec.Version)
+	esVersion, err := version.Parse(d.ES.Spec.Version)
+	if err != nil {
+		return results.WithError(err)
+	}
+	nodes, requeue, err := expectedResources.ToDesiredNodes(ctx, d.Client, esVersion.FinalizeVersion())
 	switch {
 	case err == nil:
 		d.ReconcileState.ReportCondition(

@@ -112,6 +112,48 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			},
 		},
 		{
+			name: "Discard prerelease and build number",
+			args: args{
+				esReachable: true,
+			},
+			esBuilder: newEs("8.3.0-SNAPSHOT").
+				withNodeSet(
+					nodeSet("master", 3).
+						withCPU("2222m", "3141m").
+						withMemory("2333Mi", "2333Mi").
+						withStorage("1Gi", "1Gi").pvcCreated(true).
+						withNodeCfg(map[string]interface{}{
+							"node.roles":              []string{"master"},
+							"node.name":               "${POD_NAME}",
+							"path.data":               "/usr/share/elasticsearch/data",
+							"network.publish_host":    "${POD_IP}",
+							"http.publish_host":       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
+							"node.attr.k8s_node_name": "${NODE_NAME}",
+						}),
+				).withNodeSet(
+				nodeSet("hot", 3).
+					withCPU("", "1"). // Setting only limits is also fine.
+					withMemory("", "4Gi").
+					withStorage("10Gi", "50Gi").pvcCreated(true).
+					withNodeCfg(map[string]interface{}{
+						"node.roles":              []string{"data", "ingest"},
+						"node.name":               "${POD_NAME}",
+						"path.data":               "/usr/share/elasticsearch/data",
+						"network.publish_host":    "${POD_IP}",
+						"http.publish_host":       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
+						"node.attr.k8s_node_name": "${NODE_NAME}",
+					}),
+			),
+			want: want{
+				result:   wantResult{},
+				testdata: "happy_path.json",
+				condition: &wantCondition{
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
+				},
+			},
+		},
+		{
 			name: "Expected resources are calculated but Elasticsearch is not reachable",
 			args: args{
 				esReachable: false,
