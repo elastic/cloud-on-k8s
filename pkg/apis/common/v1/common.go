@@ -339,3 +339,12 @@ type HasObservedGeneration interface {
 	client.Object
 	GetObservedGeneration() int64
 }
+
+// DisableDowngradeValidationAnnotation allows circumventing downgrade/upgrade checks.
+const DisableDowngradeValidationAnnotation = "eck.k8s.elastic.co/disable-downgrade-validation"
+
+// IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
+func IsConfiguredToAllowDowngrades(o metav1.Object) bool {
+	val, exists := o.GetAnnotations()[DisableDowngradeValidationAnnotation]
+	return exists && val == "true"
+}

@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 )
@@ -133,6 +134,26 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
 			),
+		},
+		{
+			Name:      "version-downgrade-with-override",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.7.1"
+				return serialize(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.7.0"
+				ent.Annotations = map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
 		},
 	}
 
