@@ -20,9 +20,14 @@ REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
 
 retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
+if [[ -f "${REGISTRY_ENV}" && "${DOCKER_LOGIN:-}" != "" ]]; then
+    echo "error: setting DOCKER_LOGIN/DOCKER_PASSWORD is incompatible the '.registry.env' file"
+    echo "either unset the environment variables, or remove the '.registry.env' file"
+    exit
+fi
+
 # source variables if present
 if [[ -f ${REGISTRY_ENV} ]]; then
-    echo "potentially overwriting environment variables using contents of .registry.env file"
     # shellcheck disable=SC2046
     export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
