@@ -89,7 +89,7 @@ func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Req
 
 	// Fetch the local Elasticsearch spec
 	es := esv1.Elasticsearch{}
-	err := r.Get(context.Background(), request.NamespacedName, &es)
+	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
@@ -160,7 +160,7 @@ func doReconcile(
 	for remoteEsKey := range expectedRemoteClusters {
 		// Get the remote Elasticsearch cluster associated with this remote CA
 		remoteEs := &esv1.Elasticsearch{}
-		if err := r.Client.Get(context.Background(), remoteEsKey, remoteEs); err != nil {
+		if err := r.Client.Get(ctx, remoteEsKey, remoteEs); err != nil {
 			if errors.IsNotFound(err) {
 				// Remote cluster does not exist, skip it
 				continue
@@ -220,7 +220,7 @@ func getExpectedRemoteClusters(
 	}
 
 	var list esv1.ElasticsearchList
-	if err := c.List(context.Background(), &list, &client.ListOptions{}); err != nil {
+	if err := c.List(ctx, &list, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +260,7 @@ func remoteClustersInvolvedWith(
 
 	// 1. Get clusters whose CA has been copied into the local namespace.
 	var remoteCAList corev1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		remoteca.Labels(es.Name),
@@ -277,7 +277,7 @@ func remoteClustersInvolvedWith(
 	}
 
 	// 2. Get clusters for which the CA of the local cluster has been copied.
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
 			common.TypeLabelName:            remoteca.TypeLabelValue,

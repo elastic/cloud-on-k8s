@@ -78,7 +78,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := UpdateEnterpriseLicense(tt.args.c, tt.args.secret, tt.args.l); (err != nil) != tt.wantErr {
+			if err := UpdateEnterpriseLicense(context.Background(), tt.args.c, tt.args.secret, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateEnterpriseLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.assertion != nil {

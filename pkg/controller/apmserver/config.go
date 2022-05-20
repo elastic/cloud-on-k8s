@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -41,7 +42,7 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
 	cfg, err := newConfigFromSpec(client, as)
 	if err != nil {
@@ -64,7 +65,7 @@ func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Se
 			ApmCfgSecretKey: cfgBytes,
 		},
 	}
-	return reconciler.ReconcileSecret(client, expectedConfigSecret, as)
+	return reconciler.ReconcileSecret(ctx, client, expectedConfigSecret, as)
 }
 
 func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {

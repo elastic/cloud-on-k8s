@@ -150,10 +150,11 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	var ent entv1.EnterpriseSearch
 	if err := r.Client.Get(ctx, request.NamespacedName, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
-				Namespace: request.Namespace,
-				Name:      request.Name,
-			})
+			return reconcile.Result{}, r.onDelete(ctx,
+				types.NamespacedName{
+					Namespace: request.Namespace,
+					Name:      request.Name,
+				})
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -164,7 +165,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	}
 
 	results, status := r.doReconcile(ctx, ent)
-	if err := r.updateStatus(ent, status); err != nil {
+	if err := r.updateStatus(ctx, ent, status); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
@@ -173,12 +174,12 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	return results.Aggregate()
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) error {
+func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, entv1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, entv1.Kind)
 }
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.EnterpriseSearch) (*reconciler.Results, entv1.EnterpriseSearchStatus) {
@@ -235,7 +236,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results, status // will eventually retry once updated
 	}
 
-	configSecret, err := ReconcileConfig(r, ent, r.IPFamily)
+	configSecret, err := ReconcileConfig(ctx, r, ent, r.IPFamily)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -301,7 +302,7 @@ func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, d
 	return status, err
 }
 
-func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, status entv1.EnterpriseSearchStatus) error {
+func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.EnterpriseSearch, status entv1.EnterpriseSearchStatus) error {
 	if reflect.DeepEqual(status, ent.Status) {
 		return nil // nothing to do
 	}
@@ -315,7 +316,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1.EnterpriseSearch, sta
 		"status", status,
 	)
 	ent.Status = status
-	return common.UpdateStatus(r.Client, &ent)
+	return common.UpdateStatus(ctx, r.Client, &ent)
 }
 
 func NewService(ent entv1.EnterpriseSearch) *corev1.Service {

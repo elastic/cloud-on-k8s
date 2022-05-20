@@ -21,7 +21,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ent entv1.EnterpriseSearch,
 	configHash string,
 ) (appsv1.Deployment, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
 	deployParams, err := r.deploymentParams(ent, configHash)
@@ -29,7 +29,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
+	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ent)
 }
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) (deployment.Params, error) {

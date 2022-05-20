@@ -5,6 +5,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -21,12 +22,20 @@ type Command struct {
 }
 
 // Execute runs the command and returns the output.
-func (c *Command) Execute(ctx context.Context) ([]byte, error) {
+func (c *Command) Execute(ctx context.Context) ([]byte, []byte, error) {
 	cmd := exec.CommandContext(ctx, c.executable, c.args...) //nolint:gosec
 	cmd.Dir = c.workDir
 	cmd.Env = append(os.Environ(), c.env...)
 
-	return cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		// We add stderr to the original error for convenience.
+		err = fmt.Errorf("%w, stderr: %s", err, stderr.String())
+	}
+	return stdout, stderr.Bytes(), err
 }
 
 func (c *Command) String() string {

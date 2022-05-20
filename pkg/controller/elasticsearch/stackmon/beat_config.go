@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	_ "embed" // for the beats config files
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -24,7 +25,7 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return err
@@ -39,7 +40,7 @@ func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &es); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &es); err != nil {
 			return err
 		}
 	}
@@ -50,7 +51,7 @@ func ReconcileConfigSecrets(client k8s.Client, es esv1.Elasticsearch) error {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &es); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &es); err != nil {
 			return err
 		}
 	}

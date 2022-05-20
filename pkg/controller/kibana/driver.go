@@ -157,7 +157,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = stackmon.ReconcileConfigSecrets(d.client, *kb)
+	err = stackmon.ReconcileConfigSecrets(ctx, d.client, *kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -165,13 +165,13 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(kb)
+	deploymentParams, err := d.deploymentParams(ctx, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := deployment.Reconcile(d.client, expectedDp, kb)
+	reconciledDp, err := deployment.Reconcile(ctx, d.client, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -212,13 +212,14 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deployment.Params, error) {
 	initContainersParameters, err := newInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
 	}
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.ReconcileResources(
+		ctx,
 		d,
 		kb,
 		kbv1.KBNamer,
@@ -254,7 +255,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	if kb.Spec.HTTP.TLS.Enabled() {
 		// fetch the secret to calculate the checksum
 		var httpCerts corev1.Secret
-		err := d.client.Get(context.Background(), types.NamespacedName{
+		err := d.client.Get(ctx, types.NamespacedName{
 			Namespace: kb.Namespace,
 			Name:      certificates.InternalCertsSecretName(kbv1.KBNamer, kb.Name),
 		}, &httpCerts)
@@ -268,7 +269,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err = d.client.Get(context.Background(), types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(ctx, types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return deployment.Params{}, err
 	}

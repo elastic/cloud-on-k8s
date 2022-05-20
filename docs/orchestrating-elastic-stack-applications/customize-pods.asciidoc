@@ -58,8 +58,8 @@ spec:
       containers:
         - name: kibana
           env:
-            - name: LOGGING_VERBOSE
-              value: "true"
+            - name: NODE_OPTIONS
+              value:  "--max-old-space-size=2048"
 ----
 
 NOTE: Configuration for other Elastic stack applications, like APM Server, Enterprise Search or Beats, is identical to the Kibana configuration except for the `apiVersion` and `kind` fields.

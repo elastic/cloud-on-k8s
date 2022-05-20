@@ -305,9 +305,12 @@ func (b Builder) WithFleetServer() Builder {
 }
 
 func (b Builder) WithFleetImage() Builder {
-	def := test.Ctx().ImageDefinitionFor(FleetServerPseudoKind)
-	b.Agent.Spec.Image = def.Image
-	b.Agent.Spec.Version = def.Version
+	// do not override image or version unless an explicit override exists as builder might already have been configured
+	// with a specific version which we do want to preserve.
+	if def := test.Ctx().ImageDefinitionOrNil(FleetServerPseudoKind); def != nil {
+		b.Agent.Spec.Image = def.Image
+		b.Agent.Spec.Version = def.Version
+	}
 	return b
 }
 

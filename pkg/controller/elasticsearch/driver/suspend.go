@@ -29,7 +29,7 @@ import (
 // - If the Pod is suspended in the initContainer but should be running we update the Pods metadata to accelerate the
 //   propagation of the configMap values. This is just an optimisation and not essential for the correct operation of
 //   the feature.
-func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations.Expectations) error {
+func reconcileSuspendedPods(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, e *expectations.Expectations) error {
 	// let's make sure we observe any deletions in the cache to avoid redundant deletion
 	pendingPodDeletions, err := e.PendingPodDeletions()
 	if err != nil {
@@ -66,7 +66,7 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 						UID:             &pod.UID,
 						ResourceVersion: &pod.ResourceVersion,
 					}
-					if err := c.Delete(context.Background(), &knownPods[i], preconditions, client.GracePeriodSeconds(0)); err != nil {
+					if err := c.Delete(ctx, &knownPods[i], preconditions, client.GracePeriodSeconds(0)); err != nil {
 						return err
 					}
 					// record the expected deletion
@@ -77,7 +77,7 @@ func reconcileSuspendedPods(c k8s.Client, es esv1.Elasticsearch, e *expectations
 			// Pod is suspended. But it should not be. Try to speed up propagation of config map entries so that it can
 			// start up again. Without this it can take minutes until the config map file in the Pod's filesystem is
 			// updated with the current state.
-			annotation.MarkPodAsUpdated(c, pod)
+			annotation.MarkPodAsUpdated(ctx, c, pod)
 		}
 	}
 	return nil

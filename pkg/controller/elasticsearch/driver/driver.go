@@ -289,6 +289,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.ReconcileResources(
+		ctx,
 		d,
 		&d.ES,
 		esv1.ESNamer,
@@ -309,7 +310,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	err = stackmon.ReconcileConfigSecrets(d.Client, d.ES)
+	err = stackmon.ReconcileConfigSecrets(ctx, d.Client, d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -326,7 +327,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// we want to reconcile suspended Pods before we start reconciling node specs as this is considered a debugging and
 	// troubleshooting tool that does not follow the change budget restrictions
-	if err := reconcileSuspendedPods(d.Client, d.ES, d.Expectations); err != nil {
+	if err := reconcileSuspendedPods(ctx, d.Client, d.ES, d.Expectations); err != nil {
 		return results.WithError(err)
 	}
 

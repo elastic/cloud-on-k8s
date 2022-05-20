@@ -5,6 +5,7 @@
 package keystore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/magiconair/properties/assert"
@@ -226,7 +227,7 @@ echo "Keystore initialization successful."
 				Watches:      watches2.NewDynamicWatches(),
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			resources, err := ReconcileResources(testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
+			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

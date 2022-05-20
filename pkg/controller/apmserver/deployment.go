@@ -27,19 +27,20 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	state State,
 	as *apmv1.ApmServer,
 ) (State, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	tokenSecret, err := reconcileApmServerToken(r.Client, as)
+	tokenSecret, err := reconcileApmServerToken(ctx, r.Client, as)
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := reconcileApmServerConfig(r.Client, as)
+	reconciledConfigSecret, err := reconcileApmServerConfig(ctx, r.Client, as)
 	if err != nil {
 		return state, err
 	}
 
 	keystoreResources, err := keystore.ReconcileResources(
+		ctx,
 		r,
 		as,
 		Namer,
@@ -67,7 +68,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := deployment.Reconcile(r.K8sClient(), deploy, as)
+	result, err := deployment.Reconcile(ctx, r.K8sClient(), deploy, as)
 	if err != nil {
 		return state, err
 	}

@@ -40,8 +40,7 @@ seccompProfiles:
 supplementalGroups:
   type: RunAsAny
 users:
-- system:serviceaccount:{{ .E2ENamespace }}:filebeat
-- system:serviceaccount:{{ .E2ENamespace }}:metricbeat
+- system:serviceaccount:{{ .E2ENamespace }}:e2e-agent
 groups:
   {{- range .Operator.ManagedNamespaces }}
 - system:serviceaccounts:{{ . }}

@@ -63,14 +63,25 @@ type ApmServerSpec struct {
 // ApmServerStatus defines the observed state of ApmServer
 type ApmServerStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// ExternalService is the name of the service the agents should connect to.
 	ExternalService string `json:"service,omitempty"`
+
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
+
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
 	// KibanaAssociationStatus is the status of any auto-linking to Kibana.
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
+
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the APM Server
+	// controller has not yet processed the changes contained in the APM Server specification.
+	// +kubebuilder:validation:Optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -184,6 +195,11 @@ func (as *ApmServer) SetAssociationStatusMap(typ commonv1.AssociationType, statu
 	default:
 		return fmt.Errorf("association type %s not known", typ)
 	}
+}
+
+// GetObservedGeneration will return the observedGeneration from the Elastic APM Server's status.
+func (as *ApmServer) GetObservedGeneration() int64 {
+	return as.Status.ObservedGeneration
 }
 
 // ApmEsAssociation helps to manage the APMServer / Elasticsearch association

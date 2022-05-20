@@ -135,7 +135,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	err := r.Client.Get(ctx, request.NamespacedName, &beat)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			return reconcile.Result{}, r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
@@ -153,7 +153,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	}
 
 	results, status := r.doReconcile(ctx, beat)
-	statusErr := beatcommon.UpdateStatus(beat, r.Client, status)
+	statusErr := beatcommon.UpdateStatus(ctx, beat, r.Client, status)
 	if statusErr != nil {
 		if apierrors.IsConflict(statusErr) {
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
@@ -201,10 +201,10 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
+func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, beatv1beta1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, beatv1beta1.Kind)
 }
 
 func newDriver(

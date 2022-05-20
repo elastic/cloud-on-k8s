@@ -52,7 +52,7 @@ func Test_workaroundStatusUpdateError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(&initialPod)
-			err := workaroundStatusUpdateError(tt.err, client, &updatedPod)
+			err := workaroundStatusUpdateError(context.Background(), tt.err, client, &updatedPod)
 			require.Equal(t, tt.wantErr, err)
 			// get back the pod to check if it was updated
 			var pod corev1.Pod

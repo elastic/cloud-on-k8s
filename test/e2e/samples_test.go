@@ -73,7 +73,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
-				WithPodLabel(run.TestNameLabel, fullTestName)
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithoutIntegrationCheck()
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).

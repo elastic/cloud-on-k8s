@@ -185,6 +185,7 @@ func SingleAssociationOfType(
 // RemoveObsoleteAssociationConfs removes all no longer needed annotations on `associated` matching
 // `associationConfAnnotationNameBase` prefix.
 func RemoveObsoleteAssociationConfs(
+	ctx context.Context,
 	client k8s.Client,
 	associated commonv1.Associated,
 	associationConfAnnotationNameBase string,
@@ -216,11 +217,11 @@ func RemoveObsoleteAssociationConfs(
 		return err
 	}
 
-	return client.Update(context.Background(), associated)
+	return client.Update(ctx, associated)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
-func RemoveAssociationConf(client k8s.Client, association commonv1.Association) error {
+func RemoveAssociationConf(ctx context.Context, client k8s.Client, association commonv1.Association) error {
 	associated := association.Associated()
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(associated)
@@ -242,11 +243,12 @@ func RemoveAssociationConf(client k8s.Client, association commonv1.Association) 
 		return err
 	}
 
-	return client.Update(context.Background(), associated)
+	return client.Update(ctx, associated)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
 func UpdateAssociationConf(
+	ctx context.Context,
 	client k8s.Client,
 	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
@@ -276,7 +278,7 @@ func UpdateAssociationConf(
 	}
 
 	// persist the changes
-	return client.Update(context.Background(), obj)
+	return client.Update(ctx, obj)
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.

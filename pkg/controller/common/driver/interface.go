@@ -25,14 +25,18 @@ type TestDriver struct {
 	FakeRecorder *record.FakeRecorder
 }
 
+// K8sClient returns the kubernetes client from the APM Server reconciler.
 func (t TestDriver) K8sClient() k8s.Client {
 	return t.Client
 }
 
+// DynamicWatches returns the set of dynamic watches from the APM Server reconciler.
 func (t TestDriver) DynamicWatches() watches.DynamicWatches {
 	return t.Watches
 }
 
+// Recorder returns the Kubernetes recorder that is responsible for recording and reporting
+// events from the APM Server reconciler.
 func (t TestDriver) Recorder() record.EventRecorder {
 	return t.FakeRecorder
 }

@@ -5,6 +5,8 @@
 package deployment
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,8 +53,9 @@ func New(params Params) appsv1.Deployment {
 	}
 }
 
-// ReconcileDeployment creates or updates the given deployment for the specified owner.
+// Reconcile creates or updates the given deployment for the specified owner.
 func Reconcile(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	expected appsv1.Deployment,
 	owner client.Object,
@@ -62,6 +65,7 @@ func Reconcile(
 
 	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     k8sClient,
 		Owner:      owner,
 		Expected:   &expected,

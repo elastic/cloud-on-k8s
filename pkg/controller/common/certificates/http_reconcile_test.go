@@ -226,7 +226,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 				Owner:     owner,
 				Namer:     esv1.ESNamer,
 				Labels:    labels,
-			}.ReconcilePublicHTTPCerts(certificate)
+			}.ReconcilePublicHTTPCerts(context.Background(), certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return
@@ -420,7 +420,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					Validity:     DefaultCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},
-			}.ReconcileInternalHTTPCerts(tt.args.ca, tt.args.custCerts)
+			}.ReconcileInternalHTTPCerts(context.Background(), tt.args.ca, tt.args.custCerts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileInternalHTTPCerts() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -122,7 +122,7 @@ func TestReconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.secrets...)
-			if err := Reconcile(k8sClient, tt.args.es, tt.args.transportCA); (err != nil) != tt.wantErr {
+			if err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.transportCA); (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			remoteCaList := v1.Secret{}

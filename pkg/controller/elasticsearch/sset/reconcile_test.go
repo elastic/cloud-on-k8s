@@ -122,7 +122,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			want := tt.want()
 			exp := expectations.NewExpectations(client)
 
-			returned, err := ReconcileStatefulSet(client, es, expected, exp)
+			returned, err := ReconcileStatefulSet(context.Background(), client, es, expected, exp)
 			require.NoError(t, err)
 
 			// returned sset should be the one we want

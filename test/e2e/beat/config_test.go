@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build beat || e2e
 // +build beat e2e
 
 package beat
@@ -208,6 +209,12 @@ processors:
 }
 
 func TestAuditbeatConfig(t *testing.T) {
+
+	// TODO: Remove once https://github.com/elastic/cloud-on-k8s/issues/5666 is fixed
+	if test.Ctx().ElasticStackVersion == "8.3.0-SNAPSHOT" {
+		t.SkipNow()
+	}
+
 	if test.Ctx().Provider == "kind" {
 		// kind doesn't support configuring required settings
 		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context

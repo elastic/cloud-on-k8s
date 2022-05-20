@@ -77,7 +77,7 @@ func TestRemoveAll(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := RemoveAll(tt.args.c, tt.args.obj); (err != nil) != tt.wantErr {
+			if err := RemoveAll(context.Background(), tt.args.c, tt.args.obj); (err != nil) != tt.wantErr {
 				t.Errorf("RemoveAll() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			savedObject := &kbv1.Kibana{}

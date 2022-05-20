@@ -282,3 +282,82 @@ func TestObjectExists(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSecretEntriesCount(t *testing.T) {
+	secretFixture := corev1.Secret{Data: map[string][]byte{
+		"a": nil,
+		"b": nil,
+		"c": nil,
+	}}
+	type args struct {
+		secret corev1.Secret
+		keys   []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "empty secret",
+			args: args{
+				secret: corev1.Secret{},
+				keys:   []string{"a"},
+			},
+			want: 0,
+		},
+		{
+			name: "empty keys",
+			args: args{
+				secret: secretFixture,
+				keys:   nil,
+			},
+			want: 0,
+		},
+		{
+			name: "single key",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a"},
+			},
+			want: 1,
+		},
+		{
+			name: "multiple keys",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "c"},
+			},
+			want: 2,
+		},
+		{
+			name: "no match single",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"d"},
+			},
+			want: 0,
+		},
+		{
+			name: "partial match multiple",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "f"},
+			},
+			want: 1,
+		},
+		{
+			name: "match all",
+			args: args{
+				secret: secretFixture,
+				keys:   []string{"a", "b", "c"},
+			},
+			want: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, GetSecretEntriesCount(tt.args.secret, tt.args.keys...), "GetSecretEntriesCount(%v, %v)", tt.args.secret, tt.args.keys)
+		})
+	}
+}

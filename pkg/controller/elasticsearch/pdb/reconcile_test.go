@@ -115,7 +115,7 @@ func TestReconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Reconcile(tt.args.k8sClient, tt.args.es, tt.args.statefulSets)
+			err := Reconcile(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget

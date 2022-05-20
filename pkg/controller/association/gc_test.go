@@ -102,7 +102,7 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
 	ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
 
-	err := ugc.DoGarbageCollection()
+	err := ugc.DoGarbageCollection(context.Background())
 	if err != nil {
 		t.Errorf("UsersGarbageCollector.DoGarbageCollection() error = %v", err)
 		return
@@ -179,7 +179,7 @@ func TestServiceAccountsGarbageCollector_GC(t *testing.T) {
 	ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
 	ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
 
-	err := ugc.DoGarbageCollection()
+	err := ugc.DoGarbageCollection(context.Background())
 	if err != nil {
 		t.Errorf("UsersGarbageCollector.DoGarbageCollection() error = %v", err)
 		return

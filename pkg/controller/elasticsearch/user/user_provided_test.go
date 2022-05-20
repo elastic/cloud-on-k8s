@@ -5,9 +5,11 @@
 package user
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,6 +87,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		name          string
 		es            esv1.Elasticsearch
 		secrets       []runtime.Object
+		existingRealm filerealm.Realm
 		watched       watches.DynamicWatches
 		wantWatched   []string
 		wantFileRealm filerealm.Realm
@@ -154,7 +157,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
-			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, tt.watched, recorder)
+			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, filerealm.New(), tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantFileRealm, gotFileRealm)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
@@ -238,6 +241,142 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 			require.Equal(t, tt.wantRoles, gotRoles)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
 			require.Len(t, recorder.Events, tt.wantEvents)
+		})
+	}
+}
+
+func Test_realmFromBasicAuthSecret(t *testing.T) {
+	realmPtr := func(r filerealm.Realm) *filerealm.Realm {
+		return &r
+	}
+	type args struct {
+		secret   corev1.Secret
+		existing filerealm.Realm
+	}
+	testUser := "my-user"
+	basicAuthSecretFixture := corev1.Secret{
+		Data: map[string][]byte{
+			"username": []byte(testUser),
+			"password": []byte("my-user-pass"),
+		},
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantEqual    *filerealm.Realm
+		wantPassword string
+		wantErr      bool
+	}{
+		{
+			name: "missing username",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"password": nil,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid user",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"username": []byte(testUser),
+						"password": []byte(""),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing password",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"username": []byte(testUser),
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "users file specified",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"users": nil,
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "reuses existing hash",
+			args: args{
+				secret: basicAuthSecretFixture,
+				existing: filerealm.New().
+					WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776")),
+			},
+			wantEqual: realmPtr(filerealm.New().
+				WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776"))),
+			wantErr: false,
+		},
+		{
+			name: "supports user role definition",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						"username": []byte(testUser),
+						"password": []byte("my-user-pass"),
+						"roles":    []byte("superuser"),
+					},
+				},
+				existing: filerealm.New().
+					WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776")),
+			},
+			wantEqual: realmPtr(filerealm.New().
+				WithRole("superuser", []string{testUser}).
+				WithUser(testUser, []byte("$2a$10$aQlJpc7r/5SMPaXJil8tyOUr3pPOrhyyPVRMIDdUDkbGS.T0kU776"))),
+			wantErr: false,
+		},
+		{
+			name: "creates new password hash in absence of existing file realm",
+			args: args{
+				secret: basicAuthSecretFixture,
+			},
+			wantPassword: "my-user-pass",
+			wantErr:      false,
+		},
+		{
+			name: "Generate new hash without error if current one is invalid",
+			args: args{
+				secret: basicAuthSecretFixture,
+				existing: filerealm.New().
+					WithUser(testUser, []byte("$2a$10$invalidhash.invalidhash")),
+			},
+			wantPassword: "my-user-pass",
+			wantErr:      false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := realmFromBasicAuthSecret(tt.args.secret, tt.args.existing)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("realmFromBasicAuthSecret() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return // no need to compare resulting realm in presence of errors
+			}
+
+			if tt.wantEqual != nil && !reflect.DeepEqual(got, *tt.wantEqual) {
+				t.Errorf("realmFromBasicAuthSecret() got = %v, want %v", got, tt.wantEqual)
+			}
+			if tt.wantEqual == nil && bcrypt.CompareHashAndPassword(got.PasswordHashForUser(testUser), []byte(tt.wantPassword)) != nil {
+				t.Errorf("realmFromBasicAuthSecret() got = %v, does not match %v", got, tt.wantPassword)
+			}
 		})
 	}
 }

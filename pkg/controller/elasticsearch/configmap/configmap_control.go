@@ -5,6 +5,7 @@
 package configmap
 
 import (
+	"context"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,7 @@ import (
 
 // ReconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.
 func ReconcileConfigMap(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	expected corev1.ConfigMap,
@@ -23,6 +25,7 @@ func ReconcileConfigMap(
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(
 		reconciler.Params{
+			Context:    ctx,
 			Client:     c,
 			Owner:      &es,
 			Expected:   &expected,

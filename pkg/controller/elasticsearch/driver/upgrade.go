@@ -67,13 +67,8 @@ func (d *defaultDriver) handleUpgrades(
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, d.ES.ResourceVersion, logger)
 
-	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
-	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
-	// in Elasticsearch for example for indices with `auto_expand_replicas` setting.
-	if supportsNodeShutdown(esClient.Version()) {
-		// clear all shutdowns of type restart that have completed
-		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
-	}
+	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
+	results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown))
 
 	// Get the list of pods currently existing in the StatefulSetList
 	currentPods, err := statefulSets.GetActualPods(d.Client)
@@ -123,9 +118,7 @@ func (d *defaultDriver) handleUpgrades(
 		// Some Pods have not been updated, ensure that we retry later
 		results.WithReconciliationState(defaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
-
-	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	return results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown))
+	return results
 }
 
 type upgradeCtx struct {
@@ -314,6 +307,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	// Make sure all pods scheduled for upgrade have been upgraded.
+	// This is a redundant check in the current call hierarchy but makes the invariant explicit and testing easier.
 	done, reason, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
@@ -321,6 +315,13 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	if !done {
 		reason := fmt.Sprintf("Completing node upgrade: %s", reason)
 		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
+	}
+	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
+	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
+	// in Elasticsearch for example for indices with `auto_expand_replicas` setting.
+	if supportsNodeShutdown(esClient.Version()) {
+		// clear all shutdowns of type restart that have completed
+		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
 	}
 
 	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))

@@ -193,7 +193,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				checker: commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
-			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn}).Aggregate()
+			res, err := r.reconcileInternal(context.Background(), reconcile.Request{NamespacedName: nsn}).Aggregate()
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 				return

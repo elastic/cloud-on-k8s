@@ -329,12 +329,12 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		if b.Elasticsearch.Spec.NodeSets[i].Name == nodeSet.Name {
 			b.Elasticsearch.Spec.NodeSets[i] = nodeSet
-			return b.WithDefaultPersistentVolumes()
+			return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 		}
 	}
 
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
-	return b.WithDefaultPersistentVolumes()
+	return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
@@ -447,11 +447,37 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		for j, container := range nodeSet.PodTemplate.Spec.Containers {
-			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			var update bool
+			for k, e := range container.Env {
+				if e.Name == name {
+					container.Env[k].Value = value
+					update = true
+				}
+			}
+			if !update {
+				container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			}
 			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = container.Env
 		}
 	}
 	return b
+}
+
+// WithPreStopAdditionalWaitSeconds updates the PRE_STOP_ADDITIONAL_WAIT_SECONDS environment variable in the Elasticsearch container.
+// It can be used to speed up the test by shortening the pre-stop hook runtime.
+// Don't use if you want to test that Elasticsearch is not dropping connections.
+func (b Builder) WithPreStopAdditionalWaitSeconds(s int32) Builder {
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		containers := b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers
+		if len(containers) == 0 {
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers = []corev1.Container{
+				{
+					Name: "elasticsearch",
+				},
+			}
+		}
+	}
+	return b.WithEnvironmentVariable("PRE_STOP_ADDITIONAL_WAIT_SECONDS", fmt.Sprintf("%d", s))
 }
 
 func (b Builder) WithLabel(key, value string) Builder {

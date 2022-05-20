@@ -141,7 +141,7 @@ func reconcileConfig(
 		},
 	}
 
-	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Beat); err != nil {
+	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Beat); err != nil {
 		return err
 	}
 

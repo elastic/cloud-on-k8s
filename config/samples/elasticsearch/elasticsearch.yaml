@@ -7,7 +7,7 @@ metadata:
   #  eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: elasticsearch-sample
 spec:
-  version: 8.1.1
+  version: 8.2.0
   nodeSets:
   - name: default
     config:

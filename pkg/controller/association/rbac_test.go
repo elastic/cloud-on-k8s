@@ -33,7 +33,7 @@ type fakeUnbinder struct {
 	called bool
 }
 
-func (f *fakeUnbinder) Unbind(_ commonv1.Association) error {
+func (f *fakeUnbinder) Unbind(_ context.Context, _ commonv1.Association) error {
 	f.called = true
 	return nil
 }

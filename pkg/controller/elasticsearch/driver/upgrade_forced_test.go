@@ -174,7 +174,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 				},
 			}
 
-			attempted, err := d.maybeForceUpgradePods(tt.actualPods, tt.podsToUpgrade)
+			attempted, err := d.maybeForceUpgradePods(context.Background(), tt.actualPods, tt.podsToUpgrade)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList

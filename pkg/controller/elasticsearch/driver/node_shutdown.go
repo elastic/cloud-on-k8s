@@ -36,7 +36,7 @@ func newShutdownInterface(
 }
 
 func supportsNodeShutdown(v version.Version) bool {
-	return v.GTE(version.MustParse("7.15.2"))
+	return v.GTE(shutdown.MinVersion)
 }
 
 // maybeRemoveTransientSettings removes left-over transient settings if we are using node shutdown and have not removed
