@@ -115,7 +115,7 @@ spec:
   version: {version}
 ----
 
-. Repeat step 2 to add the CA of `cluster-two` to `cluster-one` as well.
+. Repeat steps 1 and 2 to add the CA of `cluster-two` to `cluster-one` as well.
 
 === Configure the remote cluster connection through the Elasticsearch REST API
 
