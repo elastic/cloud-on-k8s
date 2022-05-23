@@ -1,0 +1,37 @@
+---
+# notify:
+#   - github_commit_status:
+#       context: "ci/tests"
+
+# agents:
+#   image: "docker.elastic.co/eck-dev/bk-agent:latest"
+
+steps:
+  - label: ":wave: Greetings"
+    command: "echo 42"
+
+# steps:
+#   - group: build
+#     steps:
+#       - command: "make e2e-docker-multiarch-build"
+#       - command: "make build-operator-image"
+#       #- command: "make run-deployer apply-psp"
+
+#   - group: checks
+#     steps:
+#     - command: "make clean lint check-local-changes"
+#     - command: "make generate check-local-changes"
+#     - command: "make check-license-header"
+#     - command: "make check-predicates"
+#     - command: "make shellcheck"
+#     - command: "make reattach-pv"
+
+#   - group: tests
+#     steps:
+#     - command: "make unit-xml"
+#     - command: "make integration-xml"
+
+  # - command: make "set-kubeconfig e2e-run"
+  # - wait: ~
+  #   continue_on_failure: tru
+  # - command: make "e2e-generate-xml"
