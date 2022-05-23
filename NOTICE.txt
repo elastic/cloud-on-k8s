@@ -3332,11 +3332,11 @@ Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.4.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/yaml.v3
-Version : v3.0.0-20210107192922-496545a6307b
-Time    : 2021-01-07T19:29:22Z
+Version : v3.0.0
+Time    : 2022-05-21T10:33:21Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v3@v3.0.0-20210107192922-496545a6307b/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v3@v3.0.0/LICENSE:
 
 
 This project is covered by two different licenses: MIT and Apache.
