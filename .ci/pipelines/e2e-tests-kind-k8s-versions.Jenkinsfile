@@ -36,17 +36,6 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-                stage("1.19.11") {
-                    agent {
-                        label 'eck'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runTests(lib, failedTests, "kindest/node:v1.19.11@sha256:07db187ae84b4b7de440a73886f008cf903fcf5764ba8106a9fd5243d6f32729", "0.11.1", "ipv4")
-                        }
-                    }
-                }
                 stage("1.20.7") {
                     agent {
                         label 'eck'
@@ -110,6 +99,28 @@ pipeline {
                         unstash "source"
                         script {
                             runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv6")
+                        }
+                    }
+                }
+                stage("1.24.0 IPv4") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.24.0@sha256:0866296e693efe1fed79d5e6c7af8df71fc73ae45e3679af05342239cdc5bc8e", "0.14.0", "ipv4")
+                        }
+                    }
+                }
+                stage("1.24.0 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.24.0@sha256:0866296e693efe1fed79d5e6c7af8df71fc73ae45e3679af05342239cdc5bc8e", "0.14.0", "ipv6")
                         }
                     }
                 }
