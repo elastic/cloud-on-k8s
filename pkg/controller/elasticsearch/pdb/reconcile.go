@@ -7,7 +7,7 @@ package pdb
 import (
 	"context"
 
-	"k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -39,7 +39,7 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
 	// reconcile actual vs. expected
-	var actual v1beta1.PodDisruptionBudget
+	var actual policyv1.PodDisruptionBudget
 	err = k8sClient.Get(ctx, k8s.ExtractNamespacedName(expected), &actual)
 	if err != nil && apierrors.IsNotFound(err) {
 		return k8sClient.Create(ctx, expected)
@@ -63,7 +63,7 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
-	pdb := v1beta1.PodDisruptionBudget{
+	pdb := policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
@@ -83,7 +83,7 @@ func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elastic
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*policyv1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
@@ -92,7 +92,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1b
 		template = &commonv1.PodDisruptionBudgetTemplate{}
 	}
 
-	expected := v1beta1.PodDisruptionBudget{
+	expected := policyv1.PodDisruptionBudget{
 		ObjectMeta: template.ObjectMeta,
 	}
 
@@ -119,7 +119,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1b
 
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
-func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
+func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) policyv1.PodDisruptionBudgetSpec {
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
@@ -127,7 +127,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1be
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
-	return v1beta1.PodDisruptionBudgetSpec{
+	return policyv1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
