@@ -157,7 +157,7 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 ** A cluster version upgrade is in progress and some Pods are not up to date.
 ** There are no initializing or relocating shards.
 
-If the above conditions are met, then ECK can delete a Pod for upgrade even if the cluster health is yellow, as long as the Pod is not holding the last available replica of a shard.
+If these conditions are met, then ECK can delete a Pod for upgrade even if the cluster health is yellow, as long as the Pod is not holding the last available replica of a shard.
 
 The health of the cluster is deliberately ignored in the following cases:
 

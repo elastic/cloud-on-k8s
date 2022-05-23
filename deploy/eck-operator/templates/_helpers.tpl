@@ -127,6 +127,22 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   verbs:
   - create
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - elastic-operator-leader
+  verbs:
+  - get
+  - watch
+  - update
+- apiGroups:
   - ""
   resources:
   - endpoints

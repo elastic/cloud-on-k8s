@@ -27,6 +27,14 @@ processors:
   automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   containers:
   - name: filebeat
+    # increase memory by +50% compared to the default value
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        cpu: 100m
+        memory: 300Mi
     volumeMounts:
     - mountPath: /var/lib/docker/containers
       name: varlibdockercontainers

@@ -32,7 +32,8 @@ func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Dur
 
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
-			RootCAs: certPool,
+			RootCAs:    certPool,
+			MinVersion: tls.VersionTLS12, // this is the default as of Go 1.18 we are just restating this here for clarity.
 
 			// We use our own certificate verification because we permit users to provide their own certificates, which may not
 			// be valid for the k8s service URL (though our self-signed certificates are). For instance, users may use a certificate

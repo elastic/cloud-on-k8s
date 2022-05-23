@@ -118,7 +118,7 @@ spec:
   secureSettings:
   - secretName: gcs-credentials
 ----
-If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. Check <<{p}-es-secure-settings,Secure Settings>> for details.
+If you haven't followed these instructions and named your GCS credentials file differently, you can still map it to the expected name now. Check <<{p}-es-secure-settings,Secure Settings>> for details.
 . Apply the modifications:
 +
 [source,bash]
@@ -170,7 +170,7 @@ If you are running older versions of Elasticsearch without the snapshot lifecycl
 [source,yaml]
 ----
 # snapshotter.yml
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: elasticsearch-sample-snapshotter

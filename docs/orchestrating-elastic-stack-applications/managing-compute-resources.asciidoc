@@ -303,7 +303,7 @@ spec:
     type: Container
 ----
 
-With the above restriction in place, if you create an Elasticsearch object without defining the `resources` section, you will get the following error:
+With this limit range in place, if you create an Elasticsearch object without defining the `resources` section, you will get the following error:
 
 ...................................
 Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
