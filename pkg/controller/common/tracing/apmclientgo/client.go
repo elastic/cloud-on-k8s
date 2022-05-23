@@ -19,7 +19,7 @@ import (
 // WrapRoundTripper returns a http.Roundtripper wrapping r, reporting each
 // request as a span to Elastic APM, if the request's context contains a sampled transaction
 // Allows an optional default transaction to be configured for requests where context cannot be controlled
-// e.g. client-go's cache management
+// for example client-go's cache management
 func WrapRoundTripper(r http.RoundTripper, o ...ClientOption) http.RoundTripper {
 	if r == nil {
 		r = http.DefaultTransport
