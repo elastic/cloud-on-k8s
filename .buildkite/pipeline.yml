@@ -1,0 +1,65 @@
+
+agents:
+  image: "docker.elastic.co/eck-dev/bk-agent:latest"
+  cpu: "4"
+  memory: "2G"
+
+steps:
+  - group: build
+    steps:
+
+      - label: ":docker: operator container image"
+        commands:
+          - .ci/setenvconfig pr bk
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make operator-buildah
+
+      - label: ":docker: e2e-tests container image"
+        commands:
+          - .ci/setenvconfig pr bk
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make e2e-buildah
+
+  - group: checks
+    steps:
+
+      - label: ":go: lint"
+        command: "make lint check-local-changes"
+        agents:
+          cpu: "6"
+          memory: "6G"
+
+      - label: ":go: generate"
+        command: "make generate check-local-changes"
+
+      - label: ":go: checks"
+        commands:
+          - .ci/setenvconfig pr bk
+          - make check-license-header check-predicates shellcheck reattach-pv
+
+  - group: tests
+    steps:
+
+      - label: ":go: unit-tests"
+        command: "make unit-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: integration-tests"
+        command: "make integration-xml"
+        agents:
+          memory: "4G"
+
+  - group: e2e-tests
+    steps:
+
+      - label: ":k8s: e2e-tests on Kind"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
+        commands:
+            - .ci/setenvconfig pr
+            - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
+        artifact_paths:
+          - "eck-diagnostic-*.zip"
