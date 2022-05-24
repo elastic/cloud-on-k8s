@@ -695,16 +695,10 @@ github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1
 github.com/yuin/goldmark v1.4.0/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-go.elastic.co/apm/module/apmelasticsearch/v2 v2.0.0 h1:5UaI4agfuGoGRhpFVb6s63Hj/9xtqYxF7kd6T77tNAw=
-go.elastic.co/apm/module/apmelasticsearch/v2 v2.0.0/go.mod h1:GmYz+KDp2LDAa2nd/qJ+OkrjWVEoCRIPAWarbUvyt6Y=
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.1.0 h1:fM29oVjmdwN07KB/sesNH2AfGEeYz8rVEEPdV/8FA/Y=
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.1.0/go.mod h1:9BTZi9SRWtcA1JR0Tf6B182Aza9dY8Q24Fi0eLfnS/0=
-go.elastic.co/apm/module/apmhttp/v2 v2.0.0 h1:GNfmK1LD4nE5fYqbLxROCpg1ucyjSFG5iwulxwAJ+3o=
-go.elastic.co/apm/module/apmhttp/v2 v2.0.0/go.mod h1:5KmxcNN7hkJh8sVW3Ggl/pYgnwiNenygE46bZoUb9RE=
 go.elastic.co/apm/module/apmhttp/v2 v2.1.0 h1:3knDFopO6LmgrqY5z9HlmCaIG+PtM9HwZGhByFCCjh4=
 go.elastic.co/apm/module/apmhttp/v2 v2.1.0/go.mod h1:cKGRK1snYy5Sl/zs0GD+msE9b/amcM0CWbZn8XXBa9s=
-go.elastic.co/apm/v2 v2.0.0 h1:5BeBh+oIrVbMwPrW3uO9Uxm4w7HpKy92lYl5Rfj69Kg=
-go.elastic.co/apm/v2 v2.0.0/go.mod h1:KGQn56LtRmkQjt2qw4+c1Jz8gv9rCBUU/m21uxrqcps=
 go.elastic.co/apm/v2 v2.1.0 h1:rkJSHE4ggekHhUR5v0KKkoMbrRSJN8YoBiEgQnkV1OY=
 go.elastic.co/apm/v2 v2.1.0/go.mod h1:KGQn56LtRmkQjt2qw4+c1Jz8gv9rCBUU/m21uxrqcps=
 go.elastic.co/fastjson v1.1.0 h1:3MrGBWWVIxe/xvsbpghtkFoPciPhOCmjsR/HfwEeQR4=
