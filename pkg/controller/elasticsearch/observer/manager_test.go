@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -262,8 +262,8 @@ func TestSettingsComparison(t *testing.T) {
 		},
 		{
 			name: "same settings (non nil tracer)",
-			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
-			s2:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer()},
+			s2:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer()},
 			want: true,
 		},
 		{
@@ -274,7 +274,7 @@ func TestSettingsComparison(t *testing.T) {
 		},
 		{
 			name: "different tracers",
-			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer},
+			s1:   Settings{ObservationInterval: 1 * time.Second, Tracer: apm.DefaultTracer()},
 			s2:   Settings{ObservationInterval: 1 * time.Second},
 			want: false,
 		},

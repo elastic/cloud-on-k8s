@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 )
 
 // NewLogAdapter returns an implementation of the log interface expected by the APM agent.
@@ -36,4 +36,3 @@ func (l *logAdapter) Debugf(format string, args ...interface{}) {
 }
 
 var _ apm.Logger = &logAdapter{}
-var _ apm.WarningLogger = &logAdapter{}

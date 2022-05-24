@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"

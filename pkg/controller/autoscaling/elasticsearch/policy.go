@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
