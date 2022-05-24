@@ -528,7 +528,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			c := d.ReconcileState.Conditions[condition]
 			assert.Equal(t, tt.want.condition.status, c.Status)
 			for _, expectedMessage := range tt.want.condition.messages {
-				assert.True(t, strings.Contains(c.Message, expectedMessage), "expected message in condition: \"%s\", got \"%s\" ", expectedMessage, c.Message)
+				assert.True(t, strings.Contains(c.Message, expectedMessage), "expected message in condition: %q, got %q", expectedMessage, c.Message)
 			}
 		})
 	}
