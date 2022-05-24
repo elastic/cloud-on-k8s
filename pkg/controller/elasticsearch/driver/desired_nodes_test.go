@@ -393,7 +393,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 					status: corev1.ConditionFalse,
 					messages: []string{
 						"CPU request is set but value is 0",
-						"Memory limit is set but value is 0",
+						"memory limit is set but value is 0",
 					},
 				},
 			},
