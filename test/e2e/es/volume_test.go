@@ -2,6 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+//go:build es || e2e
 // +build es e2e
 
 package es
@@ -13,7 +14,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -76,11 +76,6 @@ func TestVolumeRetention(t *testing.T) {
 }
 
 func TestVolumeMultiDataPath(t *testing.T) {
-	// remove when https://github.com/elastic/elasticsearch/issues/78525 is resolved
-	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 0, 0)) {
-		t.SkipNow()
-	}
-
 	b := elasticsearch.NewBuilder("test-es-multi-data-path").
 		WithNodeSet(esv1.NodeSet{
 			Name: "default",
