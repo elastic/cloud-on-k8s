@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,14 +29,14 @@ import (
 )
 
 func TestReconcile(t *testing.T) {
-	defaultPDB := func() *policyv1.PodDisruptionBudget {
-		return &policyv1.PodDisruptionBudget{
+	defaultPDB := func() *v1beta1.PodDisruptionBudget {
+		return &v1beta1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
 				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 			},
-			Spec: policyv1.PodDisruptionBudgetSpec{
+			Spec: v1beta1.PodDisruptionBudgetSpec{
 				MinAvailable: intStrPtr(intstr.FromInt(3)),
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
@@ -56,7 +56,7 @@ func TestReconcile(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		wantPDB *policyv1.PodDisruptionBudget
+		wantPDB *v1beta1.PodDisruptionBudget
 	}{
 		{
 			name: "no existing pdb: should create one",
@@ -83,13 +83,13 @@ func TestReconcile(t *testing.T) {
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
 			},
-			wantPDB: &policyv1.PodDisruptionBudget{
+			wantPDB: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
-				Spec: policyv1.PodDisruptionBudgetSpec{
+				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(5)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -118,7 +118,7 @@ func TestReconcile(t *testing.T) {
 			err := Reconcile(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
-			var retrieved policyv1.PodDisruptionBudget
+			var retrieved v1beta1.PodDisruptionBudget
 			err = tt.args.k8sClient.Get(context.Background(), pdbNsn, &retrieved)
 			if tt.wantPDB == nil {
 				require.True(t, errors.IsNotFound(err))
@@ -132,12 +132,12 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func withHashLabel(pdb *policyv1.PodDisruptionBudget) *policyv1.PodDisruptionBudget {
+func withHashLabel(pdb *v1beta1.PodDisruptionBudget) *v1beta1.PodDisruptionBudget {
 	pdb.Labels = hash.SetTemplateHashLabel(pdb.Labels, pdb)
 	return pdb
 }
 
-func withOwnerRef(pdb *policyv1.PodDisruptionBudget, es esv1.Elasticsearch) *policyv1.PodDisruptionBudget {
+func withOwnerRef(pdb *v1beta1.PodDisruptionBudget, es esv1.Elasticsearch) *v1beta1.PodDisruptionBudget {
 	if err := controllerutil.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
 		panic(err)
 	}
@@ -156,7 +156,7 @@ func Test_expectedPDB(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *policyv1.PodDisruptionBudget
+		want *v1beta1.PodDisruptionBudget
 	}{
 		{
 			name: "PDB disabled in the spec",
@@ -172,13 +172,13 @@ func Test_expectedPDB(t *testing.T) {
 				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
-			want: &policyv1.PodDisruptionBudget{
+			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
-				Spec: policyv1.PodDisruptionBudgetSpec{
+				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -203,13 +203,13 @@ func Test_expectedPDB(t *testing.T) {
 				},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
-			want: &policyv1.PodDisruptionBudget{
+			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
-				Spec: policyv1.PodDisruptionBudgetSpec{
+				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -227,18 +227,18 @@ func Test_expectedPDB(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec: esv1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
-							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
+							Spec: v1beta1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
 					},
 				},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
-			want: &policyv1.PodDisruptionBudget{
+			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
-				Spec: policyv1.PodDisruptionBudgetSpec{
+				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(42)),
 				},
 			},

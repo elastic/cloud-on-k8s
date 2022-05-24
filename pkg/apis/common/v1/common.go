@@ -10,7 +10,7 @@ import (
 	"reflect"
 
 	v1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -257,7 +257,7 @@ type PodDisruptionBudgetTemplate struct {
 
 	// Spec is the specification of the PDB.
 	// +kubebuilder:validation:Optional
-	Spec policyv1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
+	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }
 
 // IsDisabled returns true if the PodDisruptionBudget is explicitly disabled (not nil, but empty).
