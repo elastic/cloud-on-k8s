@@ -139,6 +139,11 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.IPFamilyPolicy == nil {
 		expected.Spec.IPFamilyPolicy = reconciled.Spec.IPFamilyPolicy
 	}
+	
+	// InternalTrafficPolicy may be defaulted by the api server starting K8S v1.22
+	if expected.Spec.InternalTrafficPolicy == nil {
+		expected.Spec.InternalTrafficPolicy = reconciled.Spec.InternalTrafficPolicy
+	}
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
