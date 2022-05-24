@@ -1,0 +1,37 @@
+{{- if .Values.elasticsearch.enabled }}
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ required "A name for the Elasticsearch cluster is required" .Values.elasticsearch.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eck-resources.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.global.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- range $key, $value := .Values.elasticsearch.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  annotations:
+    {{- range $key, $value := .Values.global.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- range $key, $value := .Values.elasticsearch.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  version: {{ required "An Elasticsearch version is required" .Values.elasticsearch.version }}
+  {{- if eq (len .Values.elasticsearch.topology.enabledTiers) 0 }}
+  {{ fail "At least one enabled tier is required" }}
+  {{- end }}
+  {{- $nodeSets := list }}
+  nodeSets:
+  {{- range $i, $tier := .Values.elasticsearch.topology.enabledTiers }}
+  {{- range $ii, $v := $.Values.elasticsearch.topology.configurations }}
+  {{- if eq $v.name $tier }}
+  {{- $nodeSets = append $nodeSets $v }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- toYaml $nodeSets | nindent 2 }}
+{{- end }}
