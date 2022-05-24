@@ -51,7 +51,7 @@ func (d *defaultDriver) updateDesiredNodes(
 			fmt.Sprintf("Cannot get compute and storage resources from Elasticsearch resource generation %d: %s", d.ES.Generation, err.Error()),
 		)
 		// It is fine to continue, error is only reported through the condition.
-		// We should however clear the desired nodes API since we are a degraded (not resources aware) mode.
+		// We should however clear the desired nodes API since we are in a degraded (not resources aware) mode.
 		if esReachable {
 			return results.WithError(esClient.DeleteDesiredNodes(ctx))
 		}

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"go.elastic.co/apm"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -71,91 +70,6 @@ func (n nodeSetResourcesBuilder) toError() error {
 		return nil
 	}
 	return &ResourceNotAvailable{nodeSet: n.nodeSet, reasons: n.reasons}
-}
-
-const (
-	envPodName             = "${" + settings.EnvPodName + "}"
-	envNamespace           = "${" + settings.EnvNamespace + "}"
-	envHeadlessServiceName = "${" + settings.HeadlessServiceName + "}"
-)
-
-// ToDesiredNodes returns the desired nodes, as expected by the desired nodes API, from an expected resources list.
-// A boolean is also returned to indicate whether a requeue should be done to set a more accurate state of the
-// storage capacity.
-func (l ResourcesList) ToDesiredNodes(
-	ctx context.Context,
-	k8sClient k8s.Client,
-	version string,
-) (desiredNodes []client.DesiredNode, requeue bool, err error) {
-	span, ctx := apm.StartSpan(ctx, "compute_desired_nodes", tracing.SpanTypeApp)
-	defer span.End()
-	desiredNodes = make([]client.DesiredNode, 0, l.ExpectedNodeCount())
-	for _, resources := range l {
-		sts := resources.StatefulSet
-		esContainer := getElasticsearchContainer(sts.Spec.Template.Spec.Containers)
-		if esContainer == nil {
-			return nil, false, fmt.Errorf("cannot find Elasticsearch container in StatefulSet %s/%s", sts.Namespace, sts.Name)
-		}
-
-		nodeResources, err := nodeSetResourcesBuilder{nodeSet: resources.NodeSet}.
-			withProcessors(esContainer.Resources).
-			withMemory(esContainer.Resources).
-			withStorage(ctx, k8sClient, sts, resources.Config, esContainer)
-		if err != nil {
-			return nil, false, err
-		}
-
-		requeue = requeue || nodeResources.requeue()
-
-		for _, nodeResource := range nodeResources {
-			// Replace variable in the configuration
-			knownVariablesReplacer := strings.NewReplacer(
-				envPodName, nodeResource.nodeName,
-				envNamespace, sts.Namespace,
-				envHeadlessServiceName, resources.HeadlessService.Name,
-			)
-			var settings map[string]interface{}
-			if err := resources.Config.CanonicalConfig.Unpack(&settings); err != nil {
-				return nil, false, err
-			}
-			visit(nil, settings, func(s string) string {
-				return knownVariablesReplacer.Replace(s)
-			})
-
-			node := client.DesiredNode{
-				NodeVersion:     version,
-				ProcessorsRange: nodeResource.cpu,
-				Memory:          fmt.Sprintf("%db", nodeResource.memory),
-				Storage:         fmt.Sprintf("%db", nodeResource.storage),
-				Settings:        settings,
-			}
-			desiredNodes = append(desiredNodes, node)
-		}
-	}
-
-	return desiredNodes, requeue, nil
-}
-
-// visit recursively visits a map holding a tree structure and apply a function to nodes that hold a string.
-func visit(keys []string, m map[string]interface{}, apply func(string) string) {
-	for k, v := range m {
-		if childMap, isMap := v.(map[string]interface{}); isMap {
-			visit(append(keys, k), childMap, apply)
-		}
-		if value, isString := v.(string); isString {
-			m[k] = apply(value)
-		}
-	}
-}
-
-// getElasticsearchContainer returns the Elasticsearch container, or nil if not found.
-func getElasticsearchContainer(containers []corev1.Container) *corev1.Container {
-	for _, c := range containers {
-		if c.Name == esv1.ElasticsearchContainerName {
-			return &c
-		}
-	}
-	return nil
 }
 
 // withProcessors computes the available CPU resource for the Elasticsearch container.
@@ -298,6 +212,93 @@ func (n nodeSetResourcesBuilder) withStorage(
 	}
 
 	return nodeResources, nil
+}
+
+const (
+	envPodName             = "${" + settings.EnvPodName + "}"
+	envNamespace           = "${" + settings.EnvNamespace + "}"
+	envHeadlessServiceName = "${" + settings.HeadlessServiceName + "}"
+)
+
+// ToDesiredNodes returns the desired nodes, as expected by the desired nodes API, from an expected resources list.
+// A boolean is also returned to indicate whether a requeue should be done to set a more accurate state of the
+// storage capacity.
+func (l ResourcesList) ToDesiredNodes(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	version string,
+) (desiredNodes []client.DesiredNode, requeue bool, err error) {
+	span, ctx := apm.StartSpan(ctx, "compute_desired_nodes", tracing.SpanTypeApp)
+	defer span.End()
+	desiredNodes = make([]client.DesiredNode, 0, l.ExpectedNodeCount())
+	for _, resources := range l {
+		sts := resources.StatefulSet
+		esContainer := getElasticsearchContainer(sts.Spec.Template.Spec.Containers)
+		if esContainer == nil {
+			return nil, false, fmt.Errorf("cannot find Elasticsearch container in StatefulSet %s/%s", sts.Namespace, sts.Name)
+		}
+
+		nodeResources, err := nodeSetResourcesBuilder{nodeSet: resources.NodeSet}.
+			withProcessors(esContainer.Resources).
+			withMemory(esContainer.Resources).
+			withStorage(ctx, k8sClient, sts, resources.Config, esContainer)
+		if err != nil {
+			return nil, false, err
+		}
+
+		requeue = requeue || nodeResources.requeue()
+
+		for _, nodeResource := range nodeResources {
+			// We replace the environment variables in the Elasticsearch configuration with their values if they can be
+			// evaluated before scheduling. This is for example required for node.name, which must be evaluated before
+			// calling the desired nodes API.
+			knownVariablesReplacer := strings.NewReplacer(
+				envPodName, nodeResource.nodeName,
+				envNamespace, sts.Namespace,
+				envHeadlessServiceName, resources.HeadlessService.Name,
+			)
+			var settings map[string]interface{}
+			if err := resources.Config.CanonicalConfig.Unpack(&settings); err != nil {
+				return nil, false, err
+			}
+			visit(nil, settings, func(s string) string {
+				return knownVariablesReplacer.Replace(s)
+			})
+
+			node := client.DesiredNode{
+				NodeVersion:     version,
+				ProcessorsRange: nodeResource.cpu,
+				Memory:          fmt.Sprintf("%db", nodeResource.memory),
+				Storage:         fmt.Sprintf("%db", nodeResource.storage),
+				Settings:        settings,
+			}
+			desiredNodes = append(desiredNodes, node)
+		}
+	}
+
+	return desiredNodes, requeue, nil
+}
+
+// visit recursively visits a map holding a tree structure and apply a function to nodes that hold a string.
+func visit(keys []string, m map[string]interface{}, apply func(string) string) {
+	for k, v := range m {
+		if childMap, isMap := v.(map[string]interface{}); isMap {
+			visit(append(keys, k), childMap, apply)
+		}
+		if value, isString := v.(string); isString {
+			m[k] = apply(value)
+		}
+	}
+}
+
+// getElasticsearchContainer returns the Elasticsearch container, or nil if not found.
+func getElasticsearchContainer(containers []corev1.Container) *corev1.Container {
+	for _, c := range containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			return &c
+		}
+	}
+	return nil
 }
 
 func getClaimedStorage(claim corev1.PersistentVolumeClaim) *int64 {
