@@ -3,7 +3,6 @@
 // you may not use this file except in compliance with the Elastic License 2.0.
 
 //go:build es || e2e
-// +build es e2e
 
 package es
 
