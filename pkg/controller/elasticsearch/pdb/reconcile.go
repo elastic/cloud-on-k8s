@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -38,25 +39,22 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 	// label the PDB with a hash of its content, for comparison purposes
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
-	// reconcile actual vs. expected
-	var actual policyv1.PodDisruptionBudget
-	err = k8sClient.Get(ctx, k8s.ExtractNamespacedName(expected), &actual)
-	if err != nil && apierrors.IsNotFound(err) {
-		return k8sClient.Create(ctx, expected)
-	}
-
-	if hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(actual.Labels) {
-		// Actual does not match expected, let's update the PDB.
-		// PDB Spec cannot be updated, we'll have to delete then recreate.
-		// Which means there is a time window in between where we don't have a PDB anymore.
-		// TODO: this is not true anymore starting k8s 1.15+ and this PR https://github.com/kubernetes/kubernetes/pull/69867
-		if err := deleteDefaultPDB(ctx, k8sClient, es); err != nil {
-			return err
-		}
-		return k8sClient.Create(ctx, expected)
-	}
-
-	return nil
+	reconciled := &policyv1.PodDisruptionBudget{}
+	return reconciler.ReconcileResource(
+		reconciler.Params{
+			Context:    ctx,
+			Client:     k8sClient,
+			Owner:      &es,
+			Expected:   expected,
+			Reconciled: reconciled,
+			NeedsUpdate: func() bool {
+				return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
+			},
+			UpdateReconciled: func() {
+				expected.DeepCopyInto(reconciled)
+			},
+		},
+	)
 }
 
 // deleteDefaultPDB deletes the default pdb if it exists.
