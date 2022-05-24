@@ -257,6 +257,9 @@ func Test_needsDelete(t *testing.T) {
 }
 
 func Test_applyServerSideValues(t *testing.T) {
+	ptr := func(policyType corev1.ServiceInternalTrafficPolicyType) *corev1.ServiceInternalTrafficPolicyType {
+		return &policyType
+	}
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -515,6 +518,32 @@ func Test_applyServerSideValues(t *testing.T) {
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
+			}},
+		},
+		{
+			name: "Reconciled InternalTrafficPolicy is used if empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+			}},
+		},
+		{
+			name: "Provided InternalTrafficPolicy is used if not empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
 			}},
 		},
 	}
