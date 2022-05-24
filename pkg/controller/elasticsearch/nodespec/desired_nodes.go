@@ -32,7 +32,7 @@ type ResourceNotAvailable struct {
 }
 
 func (r ResourceNotAvailable) Error() string {
-	return fmt.Sprintf("cannot compute resources for NodeSet \"%s\": %s", r.nodeSet, strings.Join(r.reasons, ", "))
+	return fmt.Sprintf("cannot compute resources for NodeSet %q: %s", r.nodeSet, strings.Join(r.reasons, ", "))
 }
 
 type nodeResources []nodeResource
@@ -74,7 +74,7 @@ func (n nodeSetResourcesBuilder) toError() error {
 
 // withProcessors computes the available CPU resource for the Elasticsearch container.
 // It uses the limit if provided, otherwise fallback to the requirement.
-// It returns nil if the neither the request nor a limit is set.
+// It returns nil if neither the request nor a limit is set.
 func (n nodeSetResourcesBuilder) withProcessors(resources corev1.ResourceRequirements) nodeSetResourcesBuilder {
 	// Try to get the limit
 	limit, hasLimit := resources.Limits[corev1.ResourceCPU]
@@ -115,13 +115,13 @@ func (n nodeSetResourcesBuilder) withMemory(resources corev1.ResourceRequirement
 		return n.addReason("memory request and limit do not have the same value")
 	}
 	if limit.IsZero() {
-		return n.addReason("Memory limit is set but value is 0")
+		return n.addReason("memory limit is set but value is 0")
 	}
 	n.memory = limit.Value()
 	return n
 }
 
-// getStorage attempts to detect the storage capacity of the Elasticsearch nodes.
+// withStorage attempts to detect the storage capacity of the Elasticsearch nodes.
 // 1. Attempt to detect path settings, an error is raised if multiple data paths are set.
 // 2. Detect the data volume name. If none can be detected an error is raised.
 // 3. Lookup for the corresponding volume claim.
@@ -167,12 +167,12 @@ func (n nodeSetResourcesBuilder) withStorage(
 	}
 
 	if esDataVolumeClaim == nil {
-		return nil, n.addReason(fmt.Sprintf("Volume claim with name \"%s\" not found in Spec.VolumeClaimTemplates ", pathData)).toError()
+		return nil, n.addReason(fmt.Sprintf("Volume claim with name %q not found in Spec.VolumeClaimTemplates ", volumeName)).toError()
 	}
 
 	claimedStorage := getClaimedStorage(*esDataVolumeClaim)
 	if claimedStorage == nil {
-		return nil, n.addReason(fmt.Sprintf("No storage request in claim \"%s\"", esDataVolumeClaim.Name)).toError()
+		return nil, n.addReason(fmt.Sprintf("no storage request in claim %q", esDataVolumeClaim.Name)).toError()
 	}
 
 	// Stop here if there is at least one reason to not compute the desired state.
@@ -308,7 +308,7 @@ func getClaimedStorage(claim corev1.PersistentVolumeClaim) *int64 {
 	return nil
 }
 
-// pathSetting captures secrets settings in the Kibana configuration that we want to reuse.
+// pathSetting captures secrets settings in the Elasticsearch configuration that we want to reuse.
 type pathSetting struct {
 	PathData interface{} `config:"path.data"`
 }
