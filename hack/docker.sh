@@ -38,7 +38,7 @@ docker-login() {
 
     # Since this check doesn't work very well in Jenkins, and Jenkins sets
     # environment variable 'CI' only perform this check when not in Jenkins.
-    if [[ -z "${CI}" && -f ~/.docker/config.json && $(grep -q "${registry}" ~/.docker/config.json) ]]; then
+    if [[ -z "${CI}" && -f ~/.docker/config.json ]] && grep -q "${registry}" ~/.docker/config.json; then
         echo "not authenticating to ${registry} as configuration block already exists in ~/.docker/config.json"
         return
     fi
