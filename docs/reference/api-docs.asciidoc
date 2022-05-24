@@ -513,7 +513,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | Field | Description
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#poddisruptionbudgetspec-v1beta1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#poddisruptionbudgetspec-v1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
 |===
 
 
