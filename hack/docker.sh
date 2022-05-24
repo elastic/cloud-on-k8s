@@ -12,10 +12,19 @@
 
 set -euo pipefail
 
+# ensure environment variable is set before testing if it's a zero value.
+CI=${CI:-}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
 
 retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
+
+if [[ -f "${REGISTRY_ENV}" && "${DOCKER_LOGIN:-}" != "" ]]; then
+    echo "error: setting DOCKER_LOGIN/DOCKER_PASSWORD is incompatible the '.registry.env' file"
+    echo "either unset the environment variables, or remove the '.registry.env' file"
+    exit
+fi
 
 # source variables if present
 if [[ -f ${REGISTRY_ENV} ]]; then
@@ -26,6 +35,13 @@ fi
 docker-login() {
     local image=$1
     local registry=${image%%"/"*}
+
+    # Since this check doesn't work very well in Jenkins, and Jenkins sets
+    # environment variable 'CI' only perform this check when not in Jenkins.
+    if [[ -z "${CI}" && -f ~/.docker/config.json ]] && grep -q "${registry}" ~/.docker/config.json; then
+        echo "not authenticating to ${registry} as configuration block already exists in ~/.docker/config.json"
+        return
+    fi
 
     case "$image" in
 
