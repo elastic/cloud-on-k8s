@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -111,7 +112,10 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 				return err
 			}
 
-			expectDesiredNodesAPI := expectDesiredNodesAPI(&expectedEs)
+			expectDesiredNodesAPI, err := expectDesiredNodesAPI(&expectedEs)
+			if err != nil {
+				return err
+			}
 			latestDesiredNodes, err := esClient.GetLatestDesiredNodes(context.Background())
 			if err != nil {
 				if !expectDesiredNodesAPI && client.IsNotFound(err) {
@@ -136,18 +140,31 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 	}
 }
 
+type PathDataSetting struct {
+	PathData interface{} `config:"path.data"`
+}
+
 // expectDesiredNodesAPI attempts to detect when the desired nodes state is expected to be set.
-func expectDesiredNodesAPI(es *esv1.Elasticsearch) bool {
+func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 	if usesEmptyDir(*es) {
-		return false
+		return false, nil
 	}
 	for _, nodeSet := range es.Spec.NodeSets {
-		if nodeSet.Config != nil {
-			cfgPathData := nodeSet.Config.Data["path.data"]
+		if nodeSet.Config != nil && nodeSet.Config.Data != nil {
+			canonicalConfig, err := settings.NewCanonicalConfigFrom(nodeSet.Config.Data)
+			if err != nil {
+				return false, err
+			}
+			dataPathSetting := &PathDataSetting{}
+			if err := canonicalConfig.Unpack(dataPathSetting); err != nil {
+				return false, err
+			}
+
+			cfgPathData := dataPathSetting.PathData
 			pathData, ok := cfgPathData.(string)
 			if (cfgPathData != nil && !ok) || strings.Contains(pathData, ",") {
 				// Multi data path
-				return false
+				return false, nil
 			}
 		}
 
@@ -160,25 +177,25 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) bool {
 		}
 		if esResources == nil {
 			// Elasticsearch container not found, very unlikely to happen in an E2E test.
-			return false
+			return false, nil
 		}
 		memReq, hasMemReq := esResources.Requests[corev1.ResourceMemory]
 		memLimit, hasMemLimit := esResources.Limits[corev1.ResourceMemory]
 		if !hasMemLimit {
-			return false
+			return false, nil
 		}
 		if hasMemReq && !memReq.Equal(memLimit) {
-			return false
+			return false, nil
 		}
 
 		_, hasCPULimit := esResources.Limits[corev1.ResourceCPU]
 		_, hasCPUReq := esResources.Requests[corev1.ResourceCPU]
 		if !hasCPULimit && !hasCPUReq {
 			// We need either the CPU req. or the CPU limit
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {
