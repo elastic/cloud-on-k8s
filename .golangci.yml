@@ -47,6 +47,7 @@ linters:
     - nlreturn
     - paralleltest
     - rowserrcheck
+    - scopelint
     - sqlclosecheck
     - stylecheck
     - testpackage
@@ -108,5 +109,4 @@ issues:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
         - goconst
-        - scopelint
         - unparam
