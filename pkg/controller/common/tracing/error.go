@@ -7,7 +7,7 @@ package tracing
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 )
 
 // CaptureError wraps APM agent func of the same name and auto-sends, returning the original error.

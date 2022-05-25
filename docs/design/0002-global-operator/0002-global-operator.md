@@ -54,7 +54,7 @@ Examples of the "placeholder" controllers (additional controllers) that would be
 
 ### Hybrid approach
 
-Allow for a hybrid approach where it is possible to enable the components of both operators (global and namespaced) in a single operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern above with the drawback that it might not be identical to a production-style deployment.
+Allow for a hybrid approach where it is possible to enable the components of both operators (global and namespaced) in a single operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern with the drawback that it might not be identical to a production-style deployment.
 
 
 ## Decision Outcome

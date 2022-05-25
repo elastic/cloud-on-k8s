@@ -81,7 +81,7 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 [NOTE]
 ====
 
-The `eck-operator` chart contains several pre-defined profiles to help you install the operator in different configurations. These profiles can be found in the root of the chart directory, prefixed with `profile-`. For example, the restricted configuration shown above is defined in the `profile-restricted.yaml` file, and can be used as follows:
+The `eck-operator` chart contains several pre-defined profiles to help you install the operator in different configurations. These profiles can be found in the root of the chart directory, prefixed with `profile-`. For example, the restricted configuration illustrated in the previous code extract is defined in the `profile-restricted.yaml` file, and can be used as follows:
 
 [source,sh]
 ----

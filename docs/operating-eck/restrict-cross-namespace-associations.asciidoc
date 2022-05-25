@@ -78,7 +78,7 @@ spec:
   serviceAccountName: associated-resource-sa
 ----
 
-In the above example, `associated-resource` can be of any `Kind` that requires an association to be created, for example `Kibana` or `ApmServer`.
+In this example, `associated-resource` can be of any `Kind` that requires an association to be created, for example `Kibana` or `ApmServer`.
 You can find link:{eck_github}/blob/{eck_release_branch}/config/recipes/associations-rbac/apm_es_kibana_rbac.yaml[a complete example in the ECK GitHub repository].
 
 NOTE: If the `serviceAccountName` is not set, ECK uses the default service account assigned to the pod by the link:https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#service-account-admission-controller[Service Account Admission Controller].

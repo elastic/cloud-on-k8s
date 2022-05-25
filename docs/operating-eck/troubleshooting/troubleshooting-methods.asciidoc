@@ -20,7 +20,7 @@ Most common issues can be identified and resolved by following these instruction
 - <<{p}-suspend-elasticsearch>>
 - <<{p}-capture-jvm-heap-dumps>>
 
-If you are still unable to find a solution to your problem after following the above instructions, ask for help:
+If you are still unable to find a solution to your problem, ask for help:
 
 include::../../help.asciidoc[]
 
