@@ -3,7 +3,6 @@
 // you may not use this file except in compliance with the Elastic License 2.0.
 
 //go:build beat || e2e
-// +build beat e2e
 
 package beat
 
