@@ -89,20 +89,17 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.Type == "" {
 		expected.Spec.Type = reconciled.Spec.Type
 	}
-	// ClusterIP might not exist in the expected service,
+	// ClusterIPs might not exist in the expected service,
 	// but might have been set after creation by k8s on the actual resource.
 	// In such case, we want to use these values for comparison.
 	// But only if we are not changing the type of service and the api server has assigned an IP
-	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" {
-		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
-	}
-
-	// ClusterIPs also might not exist in the expected service,
-	// but might have been set after creation by k8s on the actual resource.
-	// In such case, we want to use these values for comparison.
-	// But only if we are not changing the type of service and the api server has assigned IPs
-	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 {
-		expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+	if expected.Spec.Type == reconciled.Spec.Type {
+		if expected.Spec.ClusterIP == "" {
+			expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
+		}
+		if len(expected.Spec.ClusterIPs) == 0 {
+			expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+		}
 	}
 
 	// SessionAffinity may be defaulted by the api server
