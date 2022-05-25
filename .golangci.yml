@@ -85,7 +85,6 @@ linters:
     - prealloc
     - predeclared
     - revive
-    - exportloopref
     - staticcheck
     - structcheck
     - thelper
