@@ -108,5 +108,4 @@ issues:
   exclude-rules:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
-        - goconst
         - unparam
