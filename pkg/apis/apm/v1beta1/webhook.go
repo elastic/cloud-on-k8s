@@ -112,5 +112,8 @@ func checkSupportedVersion(as *ApmServer) field.ErrorList {
 }
 
 func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {
+	if commonv1.IsConfiguredToAllowDowngrades(curr) {
+		return nil
+	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }

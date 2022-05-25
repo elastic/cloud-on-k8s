@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
@@ -158,6 +160,50 @@ func Test_checkAssociations(t *testing.T) {
 			if (len(errs) != 0) != tt.wantErr {
 				t.Errorf("checkAssociationst() errors = %v, wantErr %v", errs, tt.wantErr)
 			}
+		})
+	}
+}
+
+func Test_checkNoDowngrade(t *testing.T) {
+	type args struct {
+		prev *Beat
+		curr *Beat
+	}
+	tests := []struct {
+		name string
+		args args
+		want field.ErrorList
+	}{
+		{
+			name: "No downgrade",
+			args: args{
+				prev: &Beat{Spec: BeatSpec{Version: "7.17.0"}},
+				curr: &Beat{Spec: BeatSpec{Version: "8.2.0"}},
+			},
+			want: nil,
+		},
+		{
+			name: "Downgrade NOK",
+			args: args{
+				prev: &Beat{Spec: BeatSpec{Version: "8.2.0"}},
+				curr: &Beat{Spec: BeatSpec{Version: "8.1.0"}},
+			},
+			want: field.ErrorList{&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.version", BadValue: "", Detail: "Version downgrades are not supported"}},
+		},
+		{
+			name: "Downgrade with override OK",
+			args: args{
+				prev: &Beat{Spec: BeatSpec{Version: "8.2.0"}},
+				curr: &Beat{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}}, Spec: BeatSpec{Version: "8.1.0"}},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, checkNoDowngrade(tt.args.prev, tt.args.curr), "checkNoDowngrade(%v, %v)", tt.args.prev, tt.args.curr)
 		})
 	}
 }
