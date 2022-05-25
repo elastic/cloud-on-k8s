@@ -178,7 +178,7 @@ spec:
               - sh
               - -c
               - |
-                bin/elasticsearch-plugin install --batch repository-gcs
+                bin/elasticsearch-plugin install --batch analysis-icu
 ----
 
 <1> Plugins are downloaded over the HTTPS port (443) and needs to be allowed when Istio CNI is installed.
