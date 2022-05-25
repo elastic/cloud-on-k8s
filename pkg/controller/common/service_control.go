@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"net"
 	"reflect"
 
 	"go.elastic.co/apm/v2"
@@ -91,20 +90,17 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.Type == "" {
 		expected.Spec.Type = reconciled.Spec.Type
 	}
-	// ClusterIP might not exist in the expected service,
+	// ClusterIPs might not exist in the expected service,
 	// but might have been set after creation by k8s on the actual resource.
 	// In such case, we want to use these values for comparison.
 	// But only if we are not changing the type of service and the api server has assigned an IP
-	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" && net.ParseIP(reconciled.Spec.ClusterIP) != nil {
-		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
-	}
-
-	// ClusterIPs also might not exist in the expected service,
-	// but might have been set after creation by k8s on the actual resource.
-	// In such case, we want to use these values for comparison.
-	// But only if we are not changing the type of service and the api server has assigned IPs
-	if expected.Spec.Type == reconciled.Spec.Type && len(expected.Spec.ClusterIPs) == 0 && validClusterIPs(reconciled.Spec.ClusterIPs) {
-		expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+	if expected.Spec.Type == reconciled.Spec.Type {
+		if expected.Spec.ClusterIP == "" {
+			expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
+		}
+		if len(expected.Spec.ClusterIPs) == 0 {
+			expected.Spec.ClusterIPs = reconciled.Spec.ClusterIPs
+		}
 	}
 
 	// SessionAffinity may be defaulted by the api server
@@ -141,15 +137,11 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 	if expected.Spec.IPFamilyPolicy == nil {
 		expected.Spec.IPFamilyPolicy = reconciled.Spec.IPFamilyPolicy
 	}
-}
 
-func validClusterIPs(clusterIPs []string) bool {
-	for _, ip := range clusterIPs {
-		if net.ParseIP(ip) == nil {
-			return false
-		}
+	// InternalTrafficPolicy may be defaulted by the api server starting K8S v1.22
+	if expected.Spec.InternalTrafficPolicy == nil {
+		expected.Spec.InternalTrafficPolicy = reconciled.Spec.InternalTrafficPolicy
 	}
-	return true
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
