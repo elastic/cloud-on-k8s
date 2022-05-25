@@ -521,7 +521,7 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled InternalTrafficPolicy is used if empty",
+			name: "Reconciled InternalTrafficPolicy is used if the expected one is empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
@@ -533,7 +533,7 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Provided InternalTrafficPolicy is used if not empty",
+			name: "Expected InternalTrafficPolicy is used if not empty",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
