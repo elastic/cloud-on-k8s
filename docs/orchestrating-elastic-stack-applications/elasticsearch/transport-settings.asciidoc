@@ -30,6 +30,8 @@ Check the https://kubernetes.io/docs/concepts/services-networking/service/#publi
 
 NOTE: When you change the `clusterIP` setting of the service, ECK deletes and re-creates the service, as `clusterIP` is an immutable field. This will cause a short network disruption, but in most cases it should not affect existing connections as the transport module uses long-lived TCP connections.
 
+NOTE: When modifying transport service settings such as `spec.ports[*].targetPort`, you'll also need to adjust the Elasticsearch `nodeSets` configuration `transport.port` for the network settings to be fully functional.
+
 [id="{p}-transport-ca"]
 == Configure a custom Certificate Authority
 
