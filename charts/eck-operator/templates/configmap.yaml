@@ -1,0 +1,48 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eck-operator.labels" . | nindent 4 }}
+data:
+  eck.yaml: |-
+    log-verbosity: {{ int .Values.config.logVerbosity }}
+    metrics-port: {{ int .Values.config.metricsPort }}
+    container-registry: {{ .Values.config.containerRegistry }}
+    max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
+    ca-cert-validity: {{ .Values.config.caValidity }}
+    ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
+    cert-validity: {{ .Values.config.certificatesValidity }}
+    cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
+    {{- if .Values.config.exposedNodeLabels }}
+    exposed-node-labels: [{{ join "," .Values.config.exposedNodeLabels  }}]
+    {{- end }}
+    set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
+    kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
+    elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    disable-telemetry: {{ .Values.telemetry.disabled }}
+    distribution-channel: {{ .Values.telemetry.distributionChannel }}
+    {{- if .Values.telemetry.interval }}
+    telemetry-interval: {{ .Values.telemetry.interval }}
+    {{- end }}
+    validate-storage-class: {{ .Values.config.validateStorageClass }}
+    {{- if .Values.tracing.enabled }}
+    enable-tracing: true
+    {{- end }}
+    {{- if .Values.refs.enforceRBAC }}
+    enforce-rbac-on-refs: true
+    {{- end }}
+    enable-webhook: {{ .Values.webhook.enabled }}
+    {{- if .Values.webhook.enabled }}
+    webhook-name: {{ include "eck-operator.webhookName" . }}
+      {{- if not .Values.webhook.manageCerts }}
+    manage-webhook-certs: false
+    webhook-cert-dir: {{ .Values.webhook.certsDir }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.managedNamespaces }}
+    namespaces: [{{ join "," .Values.managedNamespaces  }}]
+    {{- end }}
+    enable-leader-election: {{ .Values.config.enableLeaderElection }}

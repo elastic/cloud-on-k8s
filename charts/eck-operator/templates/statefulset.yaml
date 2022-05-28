@@ -1,0 +1,131 @@
+{{- $metricsPort := int .Values.config.metricsPort -}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eck-operator.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "eck-operator.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "eck-operator.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      annotations:
+        # Rename the fields "error" to "error.message" and "source" to "event.source"
+        # This is to avoid a conflict with the ECS "error" and "source" documents.
+        "co.elastic.logs/raw": "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
+        "checksum/config": {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "eck-operator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: manager
+          args:
+            - "manager"
+            - "--config=/conf/eck.yaml"
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- if .Values.webhook.enabled }}
+            - name: WEBHOOK_SECRET
+              value: {{ include "eck-operator.webhookSecretName" . }}
+            {{- end }}
+            {{- with .Values.env }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.tracing.enabled -}}
+            {{- range $name, $value :=  .Values.tracing.config }}
+            - name: {{ $name }}
+              value: {{ $value }}
+            {{- end }}
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or (gt $metricsPort 0) .Values.webhook.enabled }}
+          ports:
+            {{- if (gt $metricsPort 0) }}
+            - containerPort: {{ .Values.config.metricsPort }}
+              name: metrics
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.webhook.enabled }}
+            - containerPort: 9443
+              name: https-webhook
+              protocol: TCP
+            {{- end }}  
+          {{- end }}
+          volumeMounts:
+            - mountPath: "/conf"
+              name: conf
+              readOnly: true
+            {{- if .Values.webhook.enabled }}
+            - mountPath: {{ .Values.webhook.certsDir }}
+              name: cert
+              readOnly: true
+            {{- end }}
+            {{- with .Values.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: conf
+          configMap:
+            name: {{ include "eck-operator.fullname" . }}
+        {{- if .Values.webhook.enabled }}
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: {{ include "eck-operator.webhookSecretName" . }}
+        {{- end }}
+        {{- with .Values.volumes }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 12 }}
+      {{- end }}

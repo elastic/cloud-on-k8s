@@ -1,0 +1,59 @@
+{{- if .Values.softMultiTenancy.enabled -}}
+{{- $kubeAPIServerIP := (required "kubeAPIServerIP is required" .Values.kubeAPIServerIP) -}}
+{{- $metricsPort := int .Values.config.metricsPort -}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "eck-operator.fullname" . }}
+  namespace: {{ .Release.Namespace}}
+  labels:
+    {{- include "eck-operator.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "eck-operator.selectorLabels" . | nindent 6 }}
+  egress:
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+    # API server
+    - ports:
+        - port: 443
+      to:
+        - ipBlock:
+            cidr: "{{ $kubeAPIServerIP }}/32"
+    # Elasticsearch
+    - ports:
+        - port: 9200
+      to:
+        - namespaceSelector:
+            matchExpressions:
+              - key: "eck.k8s.elastic.co/tenant"
+                operator: In
+                values:
+                {{- range .Values.managedNamespaces }}
+                  - {{ . }}
+                {{- end }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+{{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
+  ingress:
+{{- if .Values.webhook.enabled }}
+    - ports:
+        - port: 9443
+      from:
+        - ipBlock:
+            cidr: "{{ $kubeAPIServerIP }}/32"
+{{- end }}
+{{- if gt $metricsPort 0 }}
+    # Metrics
+    - ports:
+        - port: {{ $metricsPort }}
+      from: []
+{{- end }}
+{{- end }}
+{{- end -}}

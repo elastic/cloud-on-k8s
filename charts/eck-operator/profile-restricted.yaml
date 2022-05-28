@@ -1,0 +1,12 @@
+managedNamespaces: ["elastic-system"]
+
+createClusterScopedResources: false
+
+config:
+  # no RBAC access to cluster-wide storage classes, hence disable storage class validation
+  validateStorageClass: false
+
+installCRDs: false
+
+webhook:
+  enabled: false

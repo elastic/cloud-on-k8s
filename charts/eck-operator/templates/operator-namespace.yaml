@@ -1,0 +1,9 @@
+{{- if (and .Values.global.manifestGen .Values.global.createOperatorNamespace) -}}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    name: {{ .Release.Namespace }}
+{{- end -}}

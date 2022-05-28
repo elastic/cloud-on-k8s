@@ -1,0 +1,228 @@
+{{- if .Values.softMultiTenancy.enabled -}}
+{{- $fullName := include "eck-operator.fullname" . -}}
+{{- $name := include "eck-operator.name" . -}}
+{{- range .Values.managedNamespaces -}}
+{{- $namespace := . }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ $name }}-elasticsearch"
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "eck-operator.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: "elasticsearch"
+  egress:
+    # Transport port
+    - ports:
+        - port: 9300
+      to:
+        # Elasticsearch within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+  ingress:
+    # HTTP Port
+    - ports:
+        - port: 9200
+      from:
+        # Operator
+        - namespaceSelector:
+            matchLabels:
+              name: "{{ $.Release.Namespace }}"
+          podSelector:
+            matchLabels:
+              {{- include "eck-operator.selectorLabels" $ | nindent 14 }}
+        # Within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+    # Transport port
+    - ports:
+        - port: 9300
+      from:
+        # Within namespace (from other Elasticsearch nodes)
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ $name }}-kibana"
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "eck-operator.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: "kibana"
+  egress:
+    # Elasticsearch HTTP port
+    - ports:
+        - port: 9200
+      to:
+        # Elasticsearch within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+  ingress:
+    # HTTP Port
+    - ports:
+        - port: 5601
+      from:
+        # Within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ $name }}-apm-server"
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "eck-operator.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: "apm-server"
+  egress:
+    # Elasticsearch HTTP port
+    - ports:
+        - port: 9200
+      to:
+        # Elasticsearch within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+    # Kibana HTTP port
+    - ports:
+        - port: 5601
+      to:
+        # Kibana within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "kibana"
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+  ingress:
+    # HTTP Port
+    - ports:
+        - port: 8200
+      from:
+        # Within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ $name }}-enterprise-search"
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "eck-operator.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: "enterprise-search"
+  egress:
+    # Elasticsearch HTTP port
+    - ports:
+        - port: 9200
+      to:
+        # Elasticsearch within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+  ingress:
+    # HTTP Port
+    - ports:
+        - port: 3002
+      from:
+        # Within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ $name }}-beats"
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "eck-operator.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: "beat"
+  egress:
+    # Elasticsearch HTTP port
+    - ports:
+        - port: 9200
+      to:
+        # Elasticsearch within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "elasticsearch"
+    # Kibana HTTP port
+    - ports:
+        - port: 5601
+      to:
+        # Kibana within namespace
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: {{ $namespace }}
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: "kibana"
+    # DNS
+    - ports:
+      - port: 53
+        protocol: UDP
+      to: []
+{{- end }}
+{{- end -}}

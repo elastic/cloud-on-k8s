@@ -1,0 +1,29 @@
+{{- if .Values.softMultiTenancy.enabled -}}
+  {{- if has .Release.Namespace .Values.managedNamespaces -}}
+  {{- fail "Operator namespace cannot be in managed namespaces when soft multi-tenancy is enabled" -}}
+  {{- end -}}
+
+  {{- if empty .Values.managedNamespaces -}}
+  {{- fail "Managed namespaces must be defined when soft multi-tenancy is enabled" -}}
+  {{- end -}}
+
+  {{- if empty .Values.kubeAPIServerIP -}}
+  {{- fail "Soft multi-tenancy requires kubeAPIServerIP to be defined" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- if (not .Values.createClusterScopedResources) -}}
+  {{- if .Values.webhook.enabled -}}
+  {{- fail "Webhook cannot be enabled when cluster-scoped resource creation is disabled" -}}
+  {{- end -}}
+
+  {{- if .Values.config.validateStorageClass -}}
+  {{- fail "Storage class validation cannot be enabled when cluster-scoped resource creation is disabled" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- if (not .Values.config.enableLeaderElection) -}}
+  {{- if gt (int .Values.replicaCount) 1 -}}
+  {{- fail "Leader election must be enabled with more than one replica" -}}
+  {{- end -}}
+{{- end -}}
