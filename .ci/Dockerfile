@@ -10,10 +10,10 @@ ENV DOCKER_VERSION=19.03.14
 ENV DOCKER_BUILDX_VERSION=0.8.2
 ENV GOTESTSUM_VERSION=1.8.0
 ENV EKSCTL_VERSION=0.74.0
-ENV ECK_DIAG_VERSION=1.0.3
+ENV ECK_DIAG_VERSION=1.1.0
 
 # golangci-lint
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
+RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
 # kubebuilder to get required tools (etcd, apiserver, etc.)

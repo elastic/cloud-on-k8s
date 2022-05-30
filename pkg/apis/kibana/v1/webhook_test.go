@@ -136,6 +136,26 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "version-downgrade-with-override",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "7.6.1"
+				return serialize(t, k)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "7.5.1"
+				k.Annotations = map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "named-es-ref",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {

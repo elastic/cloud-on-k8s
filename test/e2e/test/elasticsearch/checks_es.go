@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,10 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -34,6 +37,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		e.CheckESNodesTopology(),
 		e.CheckESVersion(),
 		e.CheckESHealthGreen(),
+		e.CheckDesiredNodesAPI(k),
 		e.CheckTransportCertificatesStep(),
 	}
 }
@@ -86,6 +90,112 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 		}),
 		OnFailure: printShardsAndAllocation(e.newESClient),
 	}
+}
+
+// CheckDesiredNodesAPI validates that the desired nodes API has been called with the expected history ID and version.
+// If the desired nodes API cannot be called then the test only validates that the desired nodes state does not exist (404).
+func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Check desired nodes API state",
+		Test: test.Eventually(func() error {
+			esClient, err := e.newESClient()
+			if err != nil {
+				return err
+			}
+			if !esClient.IsDesiredNodesSupported() {
+				return nil
+			}
+
+			var es esv1.Elasticsearch
+			expectedEs := e.Builder.GetExpectedElasticsearch()
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&expectedEs), &es); err != nil {
+				return err
+			}
+
+			expectDesiredNodesAPI, err := expectDesiredNodesAPI(&expectedEs)
+			if err != nil {
+				return err
+			}
+			latestDesiredNodes, err := esClient.GetLatestDesiredNodes(context.Background())
+			if err != nil {
+				if !expectDesiredNodesAPI && client.IsNotFound(err) {
+					// It's ok to have a 404 if the desired nodes API can't be called
+					return nil
+				}
+				return err
+			}
+
+			if !expectDesiredNodesAPI {
+				return errors.New("desired nodes state should have been cleared")
+			}
+
+			if latestDesiredNodes.HistoryID != string(es.UID) {
+				return fmt.Errorf("expected desired nodes history ID %s, but got %s from the API", string(es.UID), latestDesiredNodes.HistoryID)
+			}
+			if es.Generation != latestDesiredNodes.Version {
+				return fmt.Errorf("expected desired nodes version %d, but got %d from the API", es.Generation, latestDesiredNodes.Version)
+			}
+			return nil
+		}),
+	}
+}
+
+type PathDataSetting struct {
+	PathData interface{} `config:"path.data"`
+}
+
+// expectDesiredNodesAPI attempts to detect when the desired nodes state is expected to be set.
+func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
+	if usesEmptyDir(*es) {
+		return false, nil
+	}
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.Config != nil && nodeSet.Config.Data != nil {
+			canonicalConfig, err := settings.NewCanonicalConfigFrom(nodeSet.Config.Data)
+			if err != nil {
+				return false, err
+			}
+			dataPathSetting := &PathDataSetting{}
+			if err := canonicalConfig.Unpack(dataPathSetting); err != nil {
+				return false, err
+			}
+
+			cfgPathData := dataPathSetting.PathData
+			pathData, ok := cfgPathData.(string)
+			if (cfgPathData != nil && !ok) || strings.Contains(pathData, ",") {
+				// Multi data path
+				return false, nil
+			}
+		}
+
+		var esResources *corev1.ResourceRequirements
+		for _, c := range nodeSet.PodTemplate.Spec.Containers {
+			if c.Name == "elasticsearch" {
+				c := c
+				esResources = &c.Resources
+			}
+		}
+		if esResources == nil {
+			// Elasticsearch container not found, very unlikely to happen in an E2E test.
+			return false, nil
+		}
+		memReq, hasMemReq := esResources.Requests[corev1.ResourceMemory]
+		memLimit, hasMemLimit := esResources.Limits[corev1.ResourceMemory]
+		if !hasMemLimit {
+			return false, nil
+		}
+		if hasMemReq && !memReq.Equal(memLimit) {
+			return false, nil
+		}
+
+		_, hasCPULimit := esResources.Limits[corev1.ResourceCPU]
+		_, hasCPUReq := esResources.Requests[corev1.ResourceCPU]
+		if !hasCPULimit && !hasCPUReq {
+			// We need either the CPU req. or the CPU limit
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {

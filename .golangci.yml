@@ -47,6 +47,7 @@ linters:
     - nlreturn
     - paralleltest
     - rowserrcheck
+    - scopelint
     - sqlclosecheck
     - stylecheck
     - testpackage
@@ -84,7 +85,6 @@ linters:
     - prealloc
     - predeclared
     - revive
-    - exportloopref
     - staticcheck
     - structcheck
     - thelper
@@ -107,6 +107,4 @@ issues:
   exclude-rules:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
-        - goconst
-        - scopelint
         - unparam
