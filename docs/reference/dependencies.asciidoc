@@ -44,6 +44,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.11.0 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.7.1 | MIT
 | link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
+| link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.15.0 | Apache-2.0
 | link:https://go.elastic.co/apm/module/apmelasticsearch/v2[$$go.elastic.co/apm/module/apmelasticsearch/v2$$] | v2.1.0 | Apache-2.0
 | link:https://go.elastic.co/apm/module/apmhttp/v2[$$go.elastic.co/apm/module/apmhttp/v2$$] | v2.1.0 | Apache-2.0
 | link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.1.0 | Apache-2.0
@@ -180,6 +181,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.1.12 | MIT
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.6.0 | MIT
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20200224162631-6cc2880d07d6 | BSD-3-Clause
+| link:https://golang.org/x/lint[$$golang.org/x/lint$$] | v0.0.0-20210508222113-6edffad5e616 | BSD-3-Clause
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220516155154-20f960328961 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220411215720-9780585627b5 | BSD-3-Clause
