@@ -1,6 +1,0 @@
-managedNamespaces: []
-
-createClusterScopedResources: true
-
-webhook:
-  enabled: true
