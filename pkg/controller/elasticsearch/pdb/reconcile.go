@@ -54,7 +54,7 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 				Client:     k8sClient,
 				Owner:      &es,
 				Expected:   expected,
-				Reconciled: &policyv1.PodDisruptionBudget{},
+				Reconciled: reconciled,
 				NeedsUpdate: func() bool {
 					return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
 				},
