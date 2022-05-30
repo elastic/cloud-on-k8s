@@ -1288,11 +1288,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.5.0
-Time    : 2022-03-24T20:40:32Z
+Version : v1.6.0
+Time    : 2022-05-25T17:48:21Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.6.0/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -11793,11 +11793,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-secure-stdlib/parseutil
-Version : v0.1.1
-Time    : 2021-07-15T00:09:05Z
+Version : v0.1.5
+Time    : 2022-04-27T22:31:02Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/parseutil@v0.1.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/parseutil@v0.1.5/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -12166,11 +12166,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-secure-stdlib/strutil
-Version : v0.1.1
-Time    : 2021-07-15T00:06:16Z
+Version : v0.1.2
+Time    : 2021-11-22T19:44:14Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/strutil@v0.1.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/strutil@v0.1.2/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -14395,11 +14395,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/sdk
-Version : v0.4.1
-Time    : 2022-02-25T18:26:34Z
+Version : v0.5.0
+Time    : 2022-05-25T16:09:45Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.4.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.5.0/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -16665,11 +16665,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/mitchellh/mapstructure
-Version : v1.4.3
-Time    : 2021-12-01T18:06:12Z
+Version : v1.5.0
+Time    : 2022-04-20T22:31:31Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/mitchellh/mapstructure@v1.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/mitchellh/mapstructure@v1.5.0/LICENSE:
 
 The MIT License (MIT)
 
