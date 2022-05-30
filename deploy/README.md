@@ -36,6 +36,6 @@ helm show values eck-operator
 
 Install a basic Elasticsearch instance in a cluster controlled by the ECK Operator.
 
-```shw
+```sh
 helm install resources eck-resources -n default
 ```
