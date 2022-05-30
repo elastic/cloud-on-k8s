@@ -57,6 +57,7 @@ type Role struct {
 type Client interface {
 	AllocationSetter
 	AutoscalingClient
+	DesiredNodesClient
 	ShardLister
 	LicenseClient
 	// Close idle connections in the underlying http client.

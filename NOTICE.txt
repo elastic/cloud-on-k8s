@@ -1661,11 +1661,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/imdario/mergo
-Version : v0.3.12
-Time    : 2021-03-03T22:10:52Z
+Version : v0.3.13
+Time    : 2022-05-25T20:08:08Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.12/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.13/LICENSE:
 
 Copyright (c) 2013 Dario Castañé. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
