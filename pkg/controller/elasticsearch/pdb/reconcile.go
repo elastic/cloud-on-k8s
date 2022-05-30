@@ -8,10 +8,12 @@ import (
 	"context"
 
 	policyv1 "k8s.io/api/policy/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -39,19 +41,45 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 	// label the PDB with a hash of its content, for comparison purposes
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
-	reconciled := &policyv1.PodDisruptionBudget{}
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return err
+	}
+
+	if v1Available {
+		reconciled := &policyv1.PodDisruptionBudget{}
+		return reconciler.ReconcileResource(
+			reconciler.Params{
+				Context:    ctx,
+				Client:     k8sClient,
+				Owner:      &es,
+				Expected:   expected,
+				Reconciled: &policyv1.PodDisruptionBudget{},
+				NeedsUpdate: func() bool {
+					return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
+				},
+				UpdateReconciled: func() {
+					expected.DeepCopyInto(reconciled)
+				},
+			},
+		)
+	}
+
+	// Fall back to v1beta1
+	reconciled := &policyv1beta1.PodDisruptionBudget{}
+	converted := convert(expected)
 	return reconciler.ReconcileResource(
 		reconciler.Params{
 			Context:    ctx,
 			Client:     k8sClient,
 			Owner:      &es,
-			Expected:   expected,
+			Expected:   converted,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
-				return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
+				return hash.GetTemplateHashLabel(converted.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
 			},
 			UpdateReconciled: func() {
-				expected.DeepCopyInto(reconciled)
+				converted.DeepCopyInto(reconciled)
 			},
 		},
 	)
@@ -61,19 +89,35 @@ func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch,
 func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
-	pdb := policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
-		},
+
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return err
 	}
-	if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	var pdb client.Object
+	if v1Available {
+		pdb = &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      esv1.DefaultPodDisruptionBudget(es.Name),
+			},
+		}
+	} else {
+		pdb = &policyv1beta1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      esv1.DefaultPodDisruptionBudget(es.Name),
+			},
+		}
+	}
+
+	if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(pdb), pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	} else if apierrors.IsNotFound(err) {
 		// already deleted, which is fine
 		return nil
 	}
-	if err := k8sClient.Delete(ctx, &pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Delete(ctx, pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil
