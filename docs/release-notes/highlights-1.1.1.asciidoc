@@ -16,7 +16,7 @@ This release contains three changes:
 
 ECK 1.1.0 changed the name of the Secret containing the Elasticsearch transport certificates. This release corrects the name to its pre-1.1.0 name: `<elasticsearch_name>-es-transport-certs-public`. In 1.1.0 it was named `<elasticsearch_name>-es-ca-certs-public`. Upgrading to 1.1.1 will leave the original Secret intact but also add the correct Secret.
 
-ECK 1.1.0 changed the Readiness probes for Kibana and APM resources to use `Exec` probes. This allows the Readiness probe to function in environments where the Kubernetes nodes cannot communicate with the Pods, but causes issues with Ingress resources that re-use the Readiness probe for its own health checks. ECK 1.1.1 reverts this behavior such that Kibana and APM resources now use HTTP probes. Users in restricted environments can modify the Readiness probe to use an Exec probe as described below:
+ECK 1.1.0 changed the Readiness probes for Kibana and APM resources to use `Exec` probes. This allows the Readiness probe to function in environments where the Kubernetes nodes cannot communicate with the Pods, but causes issues with Ingress resources that re-use the Readiness probe for its own health checks. ECK 1.1.1 reverts this behavior such that Kibana and APM resources now use HTTP probes. Users in restricted environments can modify the Readiness probe to use an Exec probe as described in this example:
 
 .Kibana
 [source,yaml,subs="attributes"]

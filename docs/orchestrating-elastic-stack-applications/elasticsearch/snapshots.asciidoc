@@ -15,7 +15,7 @@ To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 . Register the snapshot repository with the Elasticsearch API.
 . Set up a https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[CronJob] to take snapshots on a schedule.
 
-The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin].
+The examples described in the following sections use the https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin].
 
 NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by default from version 8.0.
 

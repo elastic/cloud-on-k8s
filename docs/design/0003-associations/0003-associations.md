@@ -199,7 +199,7 @@ If the user overwrites this section, it's expected that the association controll
 - Using an ES/Kibana association controller as a more composable alternative to the stack controller:
     - Requires being able to add users to an existing ElasticsearchCluster resource.
 
-- Adding certificates and/or trusted transport node names to clusters for CCR/CCS purposes. The example below is simplified as it does not deal with differences in required configuration between source and target clusters, nor deal with connectivity/discovery information.
+- Adding certificates and/or trusted transport node names to clusters for CCR/CCS purposes. The following example is simplified, as it does not deal with differences in required configuration between source and target clusters, nor deal with connectivity/discovery information.
 
 ```yaml
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
