@@ -19,7 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -65,6 +65,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonwebhook "github.com/elastic/cloud-on-k8s/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
@@ -457,9 +458,18 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// set up APM  tracing if configured
+	var tracer *apm.Tracer
+	if viper.GetBool(operator.EnableTracingFlag) {
+		tracer = tracing.NewTracer("elastic-operator")
+		// set up APM tracing for client-go
+		cfg.Wrap(tracing.ClientGoTransportWrapper(
+			apmclientgo.WithDefaultTransaction(tracing.ClientGoCacheTx(tracer)),
+		))
+	}
+
 	// set the timeout for API client
 	cfg.Timeout = viper.GetDuration(operator.KubeClientTimeout)
-
 	// set the timeout for Elasticsearch requests
 	esclient.DefaultESClientTimeout = viper.GetDuration(operator.ElasticsearchClientTimeout)
 
@@ -556,10 +566,6 @@ func startOperator(ctx context.Context) error {
 	}
 
 	log.Info("Setting up controllers")
-	var tracer *apm.Tracer
-	if viper.GetBool(operator.EnableTracingFlag) {
-		tracer = tracing.NewTracer("elastic-operator")
-	}
 
 	exposedNodeLabels, err := esvalidation.NewExposedNodeLabels(viper.GetStringSlice(operator.ExposedNodeLabels))
 	if err != nil {

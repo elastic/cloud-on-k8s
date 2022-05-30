@@ -45,7 +45,7 @@ func newUpscaleState(
 		createsAllowed: calculateCreatesAllowed(
 			ctx.es.Spec.UpdateStrategy.ChangeBudget.GetMaxSurgeOrDefault(),
 			actualStatefulSets.ExpectedNodeCount(),
-			expectedResources.StatefulSets().ExpectedNodeCount()),
+			expectedResources.ExpectedNodeCount()),
 		upscaleReporter: ctx.upscaleReporter,
 	}
 }

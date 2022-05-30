@@ -102,6 +102,9 @@ func checkESRefsNamed(a *Agent) field.ErrorList {
 }
 
 func checkNoDowngrade(prev, curr *Agent) field.ErrorList {
+	if commonv1.IsConfiguredToAllowDowngrades(curr) {
+		return nil
+	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 

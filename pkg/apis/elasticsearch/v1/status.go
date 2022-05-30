@@ -111,6 +111,7 @@ type ConditionType string
 const (
 	ElasticsearchIsReachable ConditionType = "ElasticsearchIsReachable"
 	ReconciliationComplete   ConditionType = "ReconciliationComplete"
+	ResourcesAwareManagement ConditionType = "ResourcesAwareManagement"
 	RunningDesiredVersion    ConditionType = "RunningDesiredVersion"
 )
 

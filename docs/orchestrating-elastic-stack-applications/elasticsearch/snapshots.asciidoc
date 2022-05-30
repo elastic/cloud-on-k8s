@@ -170,7 +170,7 @@ If you are running older versions of Elasticsearch without the snapshot lifecycl
 [source,yaml]
 ----
 # snapshotter.yml
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: elasticsearch-sample-snapshotter

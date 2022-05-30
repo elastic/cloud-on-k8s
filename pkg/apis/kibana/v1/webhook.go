@@ -116,6 +116,9 @@ func checkSupportedVersion(k *Kibana) field.ErrorList {
 }
 
 func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
+	if commonv1.IsConfiguredToAllowDowngrades(curr) {
+		return nil
+	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 
