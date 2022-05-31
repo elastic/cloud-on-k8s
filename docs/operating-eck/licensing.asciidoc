@@ -22,7 +22,7 @@ In this section, you are going to learn how to:
 [float]
 [id="{p}-start-trial"]
 == Start a trial
-If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial create a Kubernetes secret as shown below. Note that it must be in the same namespace as the operator:
+If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial, create a Kubernetes secret as shown in this example. Note that it must be in the same namespace as the operator:
 
 [source,yaml]
 ----

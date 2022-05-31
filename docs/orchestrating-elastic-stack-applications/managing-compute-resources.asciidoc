@@ -333,7 +333,7 @@ If link:{p}-stack-monitoring.html[stack monitoring] is enabled, the pressure app
 . On the *Stack Monitoring* page select the Elasticsearch node you want to monitor.
 . Select the *Advanced* tab.
 
-In the example below an Elasticsearch container is limited to 2 cores.
+In the following example, an Elasticsearch container is limited to 2 cores.
 
 [source,yaml]
 ----

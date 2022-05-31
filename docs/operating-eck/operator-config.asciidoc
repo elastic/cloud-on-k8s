@@ -102,7 +102,7 @@ You can edit the `elastic-operator` ConfigMap to change the operator configurati
 [id="{p}-{page_id}-olm"]
 == Configure ECK under Operator Lifecycle Manager
 
-If you use link:https://github.com/operator-framework/operator-lifecycle-manager[Operator Lifecycle Manager (OLM)] to install and run ECK, follow the steps below to configure the operator.
+If you use link:https://github.com/operator-framework/operator-lifecycle-manager[Operator Lifecycle Manager (OLM)] to install and run ECK, follow these steps to configure the operator:
 
 - Create a new ConfigMap in the same namespace as the operator. It should contain a key named `eck.yaml` pointing to the desired configuration values.
 +

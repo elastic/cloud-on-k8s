@@ -104,7 +104,7 @@ If you get an error with unbound persistent volume claims (PVCs), it means there
 [id="{p}-eck-debug-logs"]
 == Enable ECK debug logs
 
-To enable `DEBUG` level logs on the operator, edit the `elastic-operator` StatefulSet and set the `--log-verbosity` flag to `1` as illustrated below. Once your change is saved, the operator will be automatically restarted by the StatefulSet controller to apply the new settings.
+To enable `DEBUG` level logs on the operator, edit the `elastic-operator` StatefulSet and set the `--log-verbosity` flag to `1` as shown in this example:
 
 [source,sh]
 ----
@@ -122,6 +122,7 @@ change the `args` array as follows:
       - --log-verbosity=1
 ----
 
+Once your change is saved, the operator is automatically restarted by the StatefulSet controller to apply the new settings.
 
 [id="{p}-view-logs"]
 == View logs

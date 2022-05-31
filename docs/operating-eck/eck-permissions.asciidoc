@@ -8,8 +8,12 @@ endif::[]
 [id="{p}-{page_id}"]
 = Required RBAC permissions
 
-Installing and running ECK, as well as using ECK-managed resources requires certain Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]. These permissions are listed below, with a reason why they are needed.
+Installing and running ECK, as well as using ECK-managed resources requires the following Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]:
 
+* <<{p}-{page_id}-installing-crds,Installing CRDs>> 
+* <<{p}-{page_id}-installing-operator,Installing the ECK operator>> 
+* <<{p}-{page_id}-running,Running ECK operator>> 
+* <<{p}-{page_id}-using,Using ECK-managed resources>> 
 
 [float]
 [id="{p}-{page_id}-installing-crds"]
