@@ -10,10 +10,10 @@ endif::[]
 
 Installing and running ECK, as well as using ECK-managed resources requires the following Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]:
 
-* <<{p}-installing-crds,Installing CRDs>> 
-* <<{p}-installing-operator,Installing the ECK operator>> 
-* <<{p}-running,Running ECK operator>> 
-* <<{p}-using,Using ECK-managed resources>> 
+* <<{p}-{page_id}-installing-crds,Installing CRDs>> 
+* <<{p}-{page_id}-installing-operator,Installing the ECK operator>> 
+* <<{p}-{page_id}-running,Running ECK operator>> 
+* <<{p}-{page_id}-using,Using ECK-managed resources>> 
 
 [float]
 [id="{p}-{page_id}-installing-crds"]
