@@ -33,8 +33,8 @@ import (
 // TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
-	initialVersion := "7.17.3"
-	updatedVersion := "8.2.0"
+	initialVersion := test.LatestReleasedVersion7x
+	updatedVersion := test.LatestReleasedVersion8x
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
