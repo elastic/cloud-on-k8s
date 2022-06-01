@@ -112,14 +112,14 @@ pipeline {
                         }
                     }
                }
-               stage("7.17.3") {
+               stage("7.17.4") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-717-${BUILD_NUMBER}-e2e", "7.17.3")
+                            runWith(lib, failedTests, "eck-717-${BUILD_NUMBER}-e2e", "7.17.4")
                         }
                     }
                }
@@ -145,14 +145,14 @@ pipeline {
                         }
                     }
                }
-               stage("8.2.0") {
+               stage("8.2.2") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-820-${BUILD_NUMBER}-e2e", "8.2.0")
+                            runWith(lib, failedTests, "eck-820-${BUILD_NUMBER}-e2e", "8.2.2")
                         }
                     }
                }
