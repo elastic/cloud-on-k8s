@@ -44,7 +44,7 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     rm docker-${DOCKER_VERSION}.tgz
 
 # Docker buildx extension for building multi-arch images
-RUN mkdir -p ~/.docker/cli-plugins && \ 
+RUN mkdir -p ~/.docker/cli-plugins && \
     curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-amd64 && \
     chmod a+x ~/.docker/cli-plugins/docker-buildx
 
