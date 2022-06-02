@@ -208,12 +208,6 @@ processors:
 }
 
 func TestAuditbeatConfig(t *testing.T) {
-
-	// TODO: Remove once https://github.com/elastic/cloud-on-k8s/issues/5666 is fixed
-	if test.Ctx().ElasticStackVersion == "8.3.0-SNAPSHOT" {
-		t.SkipNow()
-	}
-
 	if test.Ctx().Provider == "kind" {
 		// kind doesn't support configuring required settings
 		// see https://github.com/elastic/cloud-on-k8s/issues/3328 for more context
