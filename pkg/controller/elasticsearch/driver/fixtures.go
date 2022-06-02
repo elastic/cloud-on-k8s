@@ -117,9 +117,7 @@ type upgradeTestPods []testPod
 
 func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	result := make(upgradeTestPods, len(pods))
-	for i := range pods {
-		result[i] = pods[i]
-	}
+	copy(result, pods)
 	return result
 }
 
