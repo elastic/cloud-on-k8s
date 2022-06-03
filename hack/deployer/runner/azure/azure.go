@@ -6,6 +6,7 @@ package azure
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
@@ -44,7 +45,7 @@ func Login(creds Credentials) error {
 }
 
 func ExistsCmd(cmd *exec.Command) (bool, error) {
-	str, err := cmd.WithoutStreaming().Output()
+	str, err := cmd.WithoutStreaming().StdoutOnly().Output()
 	if err != nil {
 		return false, err
 	}
@@ -53,7 +54,7 @@ func ExistsCmd(cmd *exec.Command) (bool, error) {
 	}
 	var r response
 	if err := json.Unmarshal([]byte(str), &r); err != nil {
-		return false, err
+		return false, fmt.Errorf("failure to parse %s:  %w", str, err)
 	}
 	return r.Exists, nil
 }
