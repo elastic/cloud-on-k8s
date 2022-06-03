@@ -168,23 +168,8 @@ func (t *TanzuDriver) copyKubeconfig() error {
 // prepareCLI prepares the tanzu/az CLI by installing the necessary plugins and setting up configuration
 func (t *TanzuDriver) prepareCLI() error {
 	log.Println("Installing Tanzu CLI plugins")
-	/*	err := t.dockerizedTanzuCmd("plugin", "source", "add", "-t", "local", "-u", "/", "-n", "local").Run()
-		if err != nil {
-			return err
-		}
-
-	*/
-	err := t.dockerizedTanzuCmd("init").Run()
-	if err != nil {
-		return err
-	}
-	err = t.dockerizedTanzuCmd("plugin source list").Run()
-	if err != nil {
-		return err
-	}
-
-	return t.dockerizedTanzuCmd("plugin", "sync").Run()
-	// return t.dockerizedTanzuCmd("plugin", "install", "--local", "/", "all").Run()
+	// init also syncs the plugins
+	return t.dockerizedTanzuCmd("init").Run()
 }
 
 // teardownCLI uninstall the plugins again mainly to make the footprint of the installer state smaller and to avoid
@@ -243,7 +228,7 @@ func (t *TanzuDriver) create() error {
 	defer t.suspend()
 
 	cfgPathInContainer := t.tanzuContainerPath(TanzuInstallConfig)
-	if err := t.dockerizedTanzuCmd("management-cluster", "create", "--file", cfgPathInContainer, "-v", "9").Run(); err != nil {
+	if err := t.dockerizedTanzuCmd("management-cluster", "create", "--file", cfgPathInContainer).Run(); err != nil {
 		return err
 	}
 
