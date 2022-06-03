@@ -1,0 +1,5 @@
+esOutofECK: # Enable it if you are want to connect Kibana to an Elasticsearch that's NOT managed by ECK
+  enabled: true
+  elasticsearch_hosts: "https://es.example.com:9200"
+  elasticsearch_username: elastic
+  secret_name: kibana-elasticsearch-credentials # Create a secret to store the elasticsearch credentias, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana-es.html#k8s-kibana-external-es

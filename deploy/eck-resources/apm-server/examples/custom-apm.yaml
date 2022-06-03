@@ -1,0 +1,6 @@
+custom:
+  config:
+    output:
+      elasticsearch:
+        headers:
+          X-My-Header: Just an example of a custom settings

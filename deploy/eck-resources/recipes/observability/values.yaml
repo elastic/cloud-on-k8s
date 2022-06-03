@@ -1,0 +1,67 @@
+---
+version: 8.2.0
+
+FleetServerName: "fleet-server-quickstart"
+
+KibanaRef: "quickstart"
+
+elasticsearchRef: "quickstart"
+
+mode: "fleet"
+
+fleetServerEnabled: "true"
+
+replicas: 1
+
+elasticAgentName: "elastic-agent-quickstart"
+
+fleetServerRef: "fleet-server-quickstart"
+---
+count: 1
+
+KibanaName: "quickstart"
+
+esOutofECK: {}
+
+KibanaSpec:
+  count: 1
+  elasticsearchRef:
+    name: quickstart # Make sure to use your own elasticsearch name resource, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-kibana.html
+    namespace: default
+
+secureSettings: {}
+---
+esName: "quickstart"
+
+labels: {}
+
+annotations: {}
+ 
+monitoring: {}
+
+transport: {}
+
+http: {}
+
+secureSettings: {}
+
+updateStrategy: {}
+
+esSpec: 
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.roles: ["master", "data", "ingest", "remote_cluster_client"]
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 1
+            limits:
+              memory: 1Gi
+
+remoteClusters: {}

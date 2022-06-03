@@ -1,0 +1,44 @@
+---
+version: 8.2.0
+
+esName: "quickstart"
+
+labels: {}
+
+annotations: {}
+ 
+monitoring: {}
+
+transport: {}
+
+http: {}
+
+secureSettings: {}
+
+updateStrategy: {}
+
+esSpec: 
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.roles: ["master", "data", "ingest", "remote_cluster_client"]
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 1
+            limits:
+              memory: 1Gi
+# Uncomment these lines in case you want to increase vm.max_map_count and/or use initContainers, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
+#        initContainers:
+#        - name: sysctl
+#          securityContext:
+#            privileged: true
+#            runAsUser: 0
+#          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+
+remoteClusters: {}

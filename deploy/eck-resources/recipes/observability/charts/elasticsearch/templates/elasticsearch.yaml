@@ -1,0 +1,35 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Values.esName }}
+  {{- if .Values.labels }}
+  labels:
+    {{ toYaml .Values.labels | indent 4 }}
+  {{- end }}
+  {{- if .Values.annotations }}
+  annotations:
+{{ toYaml .Values.annotations | indent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.updateStrategy }}
+  updateStrategy:
+{{ toYaml .Values.updateStrategy | indent 4 }}
+  {{- end }}
+  {{- if .Values.secureSettings }}
+  secureSettings:
+{{ toYaml .Values.secureSettings | indent 2 }}
+  {{- end }}
+  {{- if .Values.transport }}
+  transport:
+{{ toYaml .Values.transport | indent 4 }}
+  {{- end }}
+  version: {{ .Values.version }}
+  {{- if .Values.monitoring }}
+  monitoring:
+{{ toYaml .Values.monitoring | indent 4 }}
+  {{- end }}
+{{ toYaml .Values.esSpec | indent 2 }}
+{{- if .Values.remoteClusters }}
+  remoteClusters:
+{{ toYaml .Values.remoteClusters | indent 2 }}
+{{- end }}

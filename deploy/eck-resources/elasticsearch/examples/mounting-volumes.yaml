@@ -1,0 +1,21 @@
+---
+esSpec:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.roles: ["master", "data", "ingest"]
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          volumeMounts:
+          - name: my-volume
+            mountPath:  /usr/share/elasticsearch/config/metadata.xml
+            subPath: metadata.xml
+            readOnly: false
+        volumes:
+        - name: my-volume
+          configMap:
+            name: my-cm

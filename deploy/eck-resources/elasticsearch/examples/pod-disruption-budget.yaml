@@ -1,0 +1,14 @@
+---
+esSpec:
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.roles: ["master", "data", "ingest"]
+      node.store.allow_mmap: false
+  podDisruptionBudget:
+    spec:
+      minAvailable: 2
+      selector:
+        matchLabels:
+          elasticsearch.k8s.elastic.co/cluster-name: quickstart

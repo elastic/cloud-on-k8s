@@ -1,0 +1,2 @@
+secureSettings:
+  - secretName: apm-secret-settings

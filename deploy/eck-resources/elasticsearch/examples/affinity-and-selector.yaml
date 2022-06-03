@@ -1,0 +1,21 @@
+---
+esSpec:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        nodeSelector:
+          environment: production # Adjust to the corresponding node selector
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: environment
+                  operator: In
+                  values:
+                  - production
+

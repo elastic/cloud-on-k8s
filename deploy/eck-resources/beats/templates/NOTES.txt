@@ -1,0 +1,4 @@
+HAPPY BEATS!
+
+- Check the beats status
+  $ kubectl get beats --namespace={{ .Release.Namespace }}

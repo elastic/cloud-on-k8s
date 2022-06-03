@@ -1,0 +1,8 @@
+---
+transport:
+  service:
+    metadata:
+      labels:
+        my-custom: label
+    spec:
+      type: LoadBalancer

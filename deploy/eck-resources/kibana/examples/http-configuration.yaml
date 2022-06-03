@@ -1,0 +1,18 @@
+version: 8.2.0
+
+KibanaName: "quickstart"
+
+KibanaSpec:
+  count: 1
+  elasticsearchRef:
+    name: quickstart # Make sure to use your own elasticsearch name resource, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-kibana.html
+    namespace: default
+  http:
+    service:
+      spec:
+        type: LoadBalancer # default is ClusterIP
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - ip: 1.2.3.4
+        - dns: kibana.example.com

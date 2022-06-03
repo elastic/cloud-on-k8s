@@ -1,0 +1,23 @@
+KibanaSpec:
+  config: 
+     elasticsearch.requestHeadersWhitelist:
+     - authorization
+  elasticsearchRef:
+    name: quickstart # Make sure to use your own elasticsearch name resource, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-kibana.html
+    namespace: default
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        env:
+          - name: NODE_OPTIONS
+            value: "--max-old-space-size=2048"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
+          limits:
+            memory: 2.5Gi
+            cpu: 2
+      nodeSelector:
+        type: frontend

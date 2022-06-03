@@ -1,0 +1,4 @@
+---
+secureSettings: 
+  - secretName: one-secure-settings-secret
+  - secretName: two-secure-settings-secret

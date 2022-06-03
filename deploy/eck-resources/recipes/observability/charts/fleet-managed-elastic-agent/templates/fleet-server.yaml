@@ -1,0 +1,40 @@
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ .Values.FleetServerName }}
+spec:
+  version: {{ .Values.version }}
+  kibanaRef:
+    name: {{ .Values.KibanaRef }}
+  elasticsearchRefs:
+  - name: {{ .Values.elasticsearchRef }}
+  mode: {{ .Values.mode }}
+  fleetServerEnabled: {{ .Values.fleetServerEnabled }}
+  deployment:
+    replicas: {{ .Values.replicas }}
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ .Values.elasticAgentName }}
+spec:
+  version: {{ .Values.version }}
+  kibanaRef:
+    name: {{ .Values.KibanaRef }}
+  fleetServerRef:
+    name: {{ .Values.fleetServerRef }}
+  mode: {{ .Values.mode }}
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0

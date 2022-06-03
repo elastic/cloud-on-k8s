@@ -1,0 +1,2 @@
+2. Check Kibana resource status
+  $ kubectl get kibana --namespace={{ .Release.Namespace }}

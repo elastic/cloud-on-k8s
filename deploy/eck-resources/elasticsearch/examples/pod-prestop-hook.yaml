@@ -1,0 +1,12 @@
+---
+esSpec:
+  nodeSets:
+    - name: default
+      count: 1
+      podTemplate:
+        spec:
+          containers:
+          - name: elasticsearch
+            env:
+            - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
+              value: "5"

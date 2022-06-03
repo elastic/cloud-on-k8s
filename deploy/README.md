@@ -1,8 +1,8 @@
-# ECK Operator Helm Chart
+# ECK Operator and ECK resources Helm Chart
 
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
-This directory contains the Helm chart for deploying the ECK operator.
+This directory contains the Helm chart for deploying the ECK operator and the resources managed by the ECK Operator
 
 ## Usage
 
@@ -32,4 +32,6 @@ View the available settings for customizing the installation.
 helm show values eck-operator
 ```
 
+# ECK Resources Helm Charts Usage
 
+Go to `eck-resources/` to know how to do that.

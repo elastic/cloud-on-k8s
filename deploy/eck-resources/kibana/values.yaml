@@ -1,0 +1,16 @@
+---
+version: 8.2.0
+
+count: 1
+
+KibanaName: "quickstart"
+
+esOutofECK: {}
+
+KibanaSpec:
+  count: 1
+  elasticsearchRef:
+    name: quickstart # Make sure to use your own elasticsearch name resource, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-kibana.html
+    namespace: default
+
+secureSettings: {}

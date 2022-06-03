@@ -1,0 +1,7 @@
+monitoring:
+  metrics:
+    elasticsearchRefs:
+      - name: monitoring
+  logs:
+    elasticsearchRefs:
+      - name: monitoring

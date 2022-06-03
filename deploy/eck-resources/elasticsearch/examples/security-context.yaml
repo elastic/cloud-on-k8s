@@ -1,0 +1,10 @@
+---
+esSpec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 1234 
+          fsGroup: 1234 

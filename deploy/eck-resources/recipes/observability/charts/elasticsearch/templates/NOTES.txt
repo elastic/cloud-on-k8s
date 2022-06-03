@@ -1,0 +1,2 @@
+1. Check Elasticsearch cluster status
+  $ kubectl get es --namespace={{ .Release.Namespace }} -l common.k8s.elastic.co/type=elasticsearch

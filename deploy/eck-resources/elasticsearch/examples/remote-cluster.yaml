@@ -1,0 +1,5 @@
+---
+remoteClusters:
+  - name: cluster-two
+    elasticsearchRef:
+      name: cluster-two

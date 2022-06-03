@@ -1,0 +1,13 @@
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: {{ .Values.beatName }}
+spec:
+  type: {{ .Values.type }}
+  version: {{ .Values.version }}
+  elasticsearchRef:
+    name: {{ .Values.elasticsearchRef }}
+  config:
+{{ toYaml .Values.config | indent 4 }}
+  daemonSet:
+{{ toYaml .Values.daemonSet | indent 4 }}

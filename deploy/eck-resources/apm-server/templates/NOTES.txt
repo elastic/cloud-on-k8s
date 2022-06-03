@@ -1,0 +1,9 @@
+
+
+
+
+- Check APM resource status
+  $ kubectl get apmservers --namespace={{ .Release.Namespace }}
+
+- To retrieve the list of all the APM Services, use the following command:
+  $ kubectl get service --selector='common.k8s.elastic.co/type=apm-server'

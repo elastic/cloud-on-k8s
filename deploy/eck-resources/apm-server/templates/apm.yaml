@@ -1,0 +1,17 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: {{ .Values.APMServerName }}
+spec:
+  version: {{ .Values.version }}
+  count: {{ .Values.count }}
+  {{- if .Values.secureSettings }}
+  secureSettings:
+{{ toYaml .Values.secureSettings | indent 2  }}
+  {{- end }}
+  elasticsearchRef:
+    name: {{ .Values.elasticsearchRef }}
+{{- if .Values.config }}
+  config:
+{{ toYaml .Values.config | indent 2 }}
+{{- end }}

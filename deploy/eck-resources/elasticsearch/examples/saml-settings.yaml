@@ -1,0 +1,18 @@
+---
+esSpec:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.roles: ["master", "data", "ingest"]
+      node.store.allow_mmap: false
+      xpack.security.authc.realms: # Make sure to adjust the idp endpoints accordingly
+        saml:
+          saml1:
+            attributes.principal: nameid
+            idp.entity_id: urn:quickstart.eu.auth0.com
+            idp.metadata.path: https://quickstart.eu.auth0.com/samlp/metadata/nbNudmA4FTPI3kO6im0o5KPV3gugxxQI
+            order: 2
+            sp.acs: https://kibana.quickstart.co/api/security/v1/saml
+            sp.entity_id: https://quickstart.co
+            sp.logout: https://kibana.quickstart.co/logout

@@ -1,0 +1,18 @@
+---
+version: 8.2.0
+
+FleetServerName: "fleet-server"
+
+KibanaRef: "quickstart"
+
+elasticsearchRef: "quickstart"
+
+mode: "fleet"
+
+fleetServerEnabled: "true"
+
+replicas: 1
+
+elasticAgentName: "elastic-agent"
+
+fleetServerRef: "fleet-server"

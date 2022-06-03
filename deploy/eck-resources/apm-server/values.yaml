@@ -1,0 +1,12 @@
+---
+version: 8.2.0
+
+count: 1
+
+APMServerName: "quickstart"
+
+elasticsearchRef: "quickstart"
+
+config: {}
+
+secureSettings: {}

@@ -1,0 +1,5 @@
+- Monitor the status of Fleet Server and Elastic Agent.
+  $ kubectl get agent
+
+- List all the Pods belonging to a given Elastic Agent specification.
+  $ kubectl get pods --selector='agent.k8s.elastic.co/name=elastic-agent'

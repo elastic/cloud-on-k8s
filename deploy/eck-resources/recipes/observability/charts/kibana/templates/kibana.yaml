@@ -1,0 +1,20 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ .Values.KibanaName }}
+spec:
+  version: {{ .Values.version }}
+  count: {{ .Values.count }}
+  {{- if .Values.esOutofECK }}
+  config:
+    elasticsearch.hosts:
+      {{ .Values.esOutofECK.elasticsearch_hosts }}
+  secureSettings:
+    - secretName: {{ .Values.esOutofECK.secret_name }}
+  {{- else }}
+{{ toYaml .Values.KibanaSpec | indent 2 }}
+  {{- end }}
+{{- if .Values.secureSettings }}
+  secureSettings:
+{{ toYaml .Values.secureSettings | indent 2 }}
+{{- end }}

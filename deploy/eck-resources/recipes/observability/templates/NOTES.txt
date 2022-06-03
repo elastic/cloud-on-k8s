@@ -1,0 +1,16 @@
+HAPPY OBSERVABILITY!
+
+You've just installed ECK with Fleet and Kubernetes integration by default, to check the status of your resources, please run:
+
+- Elasticsearch status
+  $ kubectl get elasticsearch --namespace={{ .Release.Namespace }}
+
+- Kibana status
+  $ kubectl get kibana --namespace={{ .Release.Namespace }}
+
+- Agents status
+ $ kubectl get agents --namespace={{ .Release.Namespace } 
+   
+- Watch all cluster members come up.
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l common.k8s.elastic.co/type=elasticsearch
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l common.k8s.elastic.co/type=kibana
