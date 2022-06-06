@@ -34,8 +34,14 @@ helm show values eck-operator
 
 ## ECK Resources Helm Chart Usage
 
-Install a basic Elasticsearch instance in a cluster controlled by the ECK Operator.
+Install a basic Elasticsearch and Kibana instance in a cluster controlled by the ECK Operator.
 
 ```sh
 helm install resources eck-resources -n default
+```
+
+Install a quickstart Elasticsearch and Kibana instance in a cluster controlled by the ECK Operator using specific values files.
+
+```sh
+helm install resources eck-resources -n default --values ./examples/elasticsearch/quickstart.yaml --values ./examples/kibana/quickstart.yaml
 ```
