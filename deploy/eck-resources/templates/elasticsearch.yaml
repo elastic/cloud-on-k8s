@@ -19,84 +19,10 @@ metadata:
     {{- range $key, $value := .Values.elasticsearch.annotations }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
-    {{- if .Values.elasticsearch.zoneAwareness.enabled }}
-    {{- range $key, $value := .Values.elasticsearch.zoneAwareness.annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
-    {{- end }}
 spec:
-  version: {{ .Values.elasticsearch.version }}
-  image: {{ include "eck-resources.elasticsearch.image" . }}
-  {{- with .Values.elasticsearch.http | default dict }}  
-  http:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.http */}}
-  {{- with .Values.elasticsearch.transport | default dict }}  
-  transport:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.transport */}}
-  {{- with .Values.elasticsearch.updateStrategy | default dict }}  
-  updateStrategy:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.updateStrategy */}}
-  {{- with .Values.elasticsearch.podDisruptionBudget | default dict }}  
-  podDisruptionBudget:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.podDisruptionBudget */}}
-  {{- with .Values.elasticsearch.auth | default dict }}  
-  auth:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.auth */}}
-  {{- if gt (len .Values.elasticsearch.secureSettings) 0 }}
-  secureSettings: {{- toYaml .Values.elasticsearch.secureSettings | nindent 4 }}
-  {{- end }}
-  {{- if gt (len .Values.elasticsearch.remoteClusters) 0 }}
-  remoteClusters: {{- toYaml .Values.elasticsearch.remoteClusters | nindent 4 }}
-  {{- end }}
-  volumeClaimDeletePolicy: {{ .Values.elasticsearch.volumeClaimDeletePolicy }}
-  {{- with .Values.elasticsearch.monitoring | default dict }}  
-  monitoring:
-    {{- toYaml . | nindent 4 }}
-  {{- end }} {{- /* End with .Values.elasticsearch.monitoring */}}
-  {{- if .Values.elasticsearch.serviceAccount.name }}
-  serviceAccount: {{ .Values.elasticsearch.serviceAccount.name }}
-  {{- end }}
-  {{- if eq (len .Values.elasticsearch.nodeSets) 0 }}
+  version: {{ required "An Elasticsearch version is required" .Values.elasticsearch.version }}
+  {{- if eq (len .Values.elasticsearch.spec.nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}
-  nodeSets:
-  {{- range $i, $v := .Values.elasticsearch.nodeSets }}
-  {{- $finalNodeSet := $v }}
-  {{- $baseNodeSetConfig := $finalNodeSet.config }}
-  {{- if $.Values.elasticsearch.zoneAwareness.enabled }}
-  {{- $baseNodeSetConfig = mustMergeOverwrite (dict) $baseNodeSetConfig $.Values.elasticsearch.zoneAwareness.nodeSetConfiguration }}
-  {{- $mergedNodeSet := mustMergeOverwrite (dict) $finalNodeSet (dict "config" $baseNodeSetConfig) }}
-  {{- $containers := list }}
-  {{- $finalNodeSet = $mergedNodeSet }}
-  {{- range $j, $container := $mergedNodeSet.podTemplate.spec.containers }}
-  {{- if eq $container.name "elasticsearch" }}
-  {{- $env := $container.env }}
-  {{- range $k, $e := $.Values.elasticsearch.zoneAwareness.env }}
-  {{- $env = append $env $e }}
-  {{- end }}
-  {{- $containers = append (slice $mergedNodeSet.podTemplate.spec.containers 0 $j) (mustMergeOverwrite (dict) $container (dict "env" $env)) }}
-  {{- if not (eq (len $mergedNodeSet.podTemplate.spec.containers) (add $j 1)) }}
-  {{- $containers = append $containers (slice $mergedNodeSet.podTemplate.spec.containers (add $j 1) ) }}
-  {{- end }}
-  {{- $finalNodeSet = mustMergeOverwrite (dict) $mergedNodeSet (dict "podTemplate" (dict "spec" (dict "containers" $containers))) }}
-  {{- end }}
-  {{- end }}
-  {{- end }}
-  {{- if gt (len $.Values.global.imagePullSecrets) 0 }}
-  {{- if not $finalNodeSet.podTemplate }}
-  {{- $finalNodeSet = mustMergeOverwrite (dict) $finalNodeSet (dict "podTemplate" (dict "spec" (dict "imagePullSecrets" list ))) }}
-  {{- end }}
-  {{- $updatedImagePullSecrets := list }}
-  {{- range $l, $imagePullSecret := $.Values.global.imagePullSecrets }}
-  {{- $updatedImagePullSecrets = append ($finalNodeSet.podTemplate.spec.imagePullSecrets | default list) $imagePullSecret }}
-  {{- end }}
-  {{- $finalNodeSet = mustMergeOverwrite (dict) $finalNodeSet (dict "podTemplate" (dict "spec" (dict "imagePullSecrets" $updatedImagePullSecrets))) }}
-  {{- end }}
-  - {{- toYaml $finalNodeSet | nindent 4 }}
-  {{- end }} {{- /* End .Values.elasticsearch.nodeSets range. */}}
-{{- end}}
+  {{- toYaml .Values.elasticsearch.spec | nindent 2 }}
+{{- end }}
