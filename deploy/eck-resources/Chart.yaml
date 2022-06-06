@@ -4,6 +4,7 @@ description: |
   A Helm chart for all ECK resources managed by the ECK Operator.
   Current supported:
   * Elasticsearch
+  * Kibana
   Future Roadmap:
   * Agent
   * APM
