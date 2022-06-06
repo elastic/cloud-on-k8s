@@ -1,10 +1,10 @@
-# ECK Operator Helm Chart
+# ECK Operator, and ECK Resources Helm Charts
 
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
-This directory contains the Helm chart for deploying the ECK operator.
+This directory contains the Helm charts for deploying the ECK operator, and for the resources managed by the ECK Operator.
 
-## Usage
+## ECK Operator Helm Chart Usage
 
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
@@ -32,4 +32,16 @@ View the available settings for customizing the installation.
 helm show values eck-operator
 ```
 
+## ECK Resources Helm Chart Usage
 
+Install a basic Elasticsearch and Kibana instance in a cluster controlled by the ECK Operator.
+
+```sh
+helm install resources eck-resources -n default
+```
+
+Install a quickstart Elasticsearch and Kibana instance in a cluster controlled by the ECK Operator using specific values files.
+
+```sh
+helm install resources eck-resources -n default --values ./examples/elasticsearch/quickstart.yaml --values ./examples/kibana/quickstart.yaml
+```

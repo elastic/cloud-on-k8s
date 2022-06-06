@@ -1,0 +1,47 @@
+# TODO:
+# 1) Verify Openshift support
+# 2) Verify support of PSPs/SCCs
+
+# Whether to install an Elasticsearch cluster.
+#
+enabled: true
+
+# Name of the Elasticsearch cluster.
+#
+name: "quickstart"
+
+# Version of Elasticsearch.
+#
+version: 8.2.0
+
+# Labels that will be applied to Elasticsearch.
+#
+labels: {}
+  # key: value
+
+# Annotations that will be applied to Elasticsearch.
+#
+annotations: {}
+  # key: value
+
+# Additional Elasticsearch specification.
+# Reference examples in examples/elasticsearch directory.
+#
+# Elasticsearch example values for a single node "all-in-one" cluster, with 1Gi storage.
+#
+spec:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.roles: ["master", "data", "ingest"]
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 1
+            limits:
+              memory: 1Gi

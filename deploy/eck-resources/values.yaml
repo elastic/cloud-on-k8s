@@ -1,0 +1,5 @@
+elasticsearch:
+  enabled: true
+
+kibana:
+  enabled: true

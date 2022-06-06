@@ -1,0 +1,20 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ required "A name for the Elasticsearch cluster is required" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  annotations:
+    {{- range $key, $value := .Values.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  version: {{ required "An Elasticsearch version is required" .Values.version }}
+  {{- if eq (len .Values.spec.nodeSets) 0 }}
+  {{ fail "At least one nodeSet is required" }}
+  {{- end }}
+  {{- toYaml .Values.spec | nindent 2 }}
