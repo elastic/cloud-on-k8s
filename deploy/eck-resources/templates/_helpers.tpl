@@ -49,21 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "eck-resources.name" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "eck-resources.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "eck-resources.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create the name of the container image to use
-*/}}
-{{- define "eck-resources.elasticsearch.image" -}}
-{{- printf "%s:%s" (default "docker.elastic.co/elasticsearch/elasticsearch" .Values.elasticsearch.image.repository) (default .Values.elasticsearch.version .Values.elasticsearch.image.tag) }}
-{{- end }}
