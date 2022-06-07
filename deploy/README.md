@@ -4,7 +4,7 @@
 
 This directory contains the Helm chart for deploying the ECK operator.
 
-See also the [ECK helm install guide](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html).
+See also the [ECK Helm install guide](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html).
 
 ## Usage
 
