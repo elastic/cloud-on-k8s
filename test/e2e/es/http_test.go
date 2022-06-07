@@ -9,8 +9,8 @@ package es
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
 // TestHTTPWithoutTLS tests an Elasticsearch cluster with TLS disabled for the HTTP layer.

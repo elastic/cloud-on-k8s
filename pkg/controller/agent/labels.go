@@ -5,8 +5,8 @@
 package agent
 
 import (
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 )
 
 const (

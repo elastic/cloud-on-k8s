@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 )
 
 func TestNodeLabels_IsAllowed(t *testing.T) {

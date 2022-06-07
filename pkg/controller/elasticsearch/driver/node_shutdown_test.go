@@ -7,7 +7,7 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
 func Test_supportsNodeshutdown(t *testing.T) {

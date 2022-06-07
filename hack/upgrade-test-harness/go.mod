@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness
+module github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness
 
 go 1.17
 

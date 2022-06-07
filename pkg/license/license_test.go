@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
 func TestToMap(t *testing.T) {

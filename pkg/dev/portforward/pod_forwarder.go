@@ -20,8 +20,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	utilsnet "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	utilsnet "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
 // PodForwarder enables redirecting tcp connections through "kubectl port-forward" tooling

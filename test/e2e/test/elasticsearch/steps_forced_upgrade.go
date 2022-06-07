@@ -5,7 +5,7 @@
 package elasticsearch
 
 import (
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 // ForcedUpgradeTestSteps creates the initial cluster that is not expected to run, wait for conditions to be met,

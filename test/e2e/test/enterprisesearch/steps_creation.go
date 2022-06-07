@@ -10,9 +10,9 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {

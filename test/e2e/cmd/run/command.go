@@ -17,8 +17,8 @@ import (
 	"github.com/spf13/viper"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	logutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 type runFlags struct {

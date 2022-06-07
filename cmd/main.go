@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"github.com/elastic/cloud-on-k8s/cmd/manager"
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/v3/cmd/manager"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 )
 
 func main() {

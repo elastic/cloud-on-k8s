@@ -14,9 +14,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 type APIError struct {

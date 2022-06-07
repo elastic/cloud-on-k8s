@@ -9,7 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/vault"
 )
 
 // Plans encapsulates list of plans, expected to map to a file

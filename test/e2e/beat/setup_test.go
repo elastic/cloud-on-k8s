@@ -11,14 +11,14 @@ import (
 	"fmt"
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/heartbeat"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
 type kbSavedObjects struct {

@@ -7,8 +7,8 @@ package validation
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
 
 var warnings = []validation{

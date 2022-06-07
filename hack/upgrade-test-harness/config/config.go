@@ -10,10 +10,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness/fixture"
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness/fixture"
 )
 
 // File represents the structure of the configuration file.

@@ -7,8 +7,8 @@ package controller
 import (
 	"testing"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 func Test_getAPMElasticsearchRoles(t *testing.T) {

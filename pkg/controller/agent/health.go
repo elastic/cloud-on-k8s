@@ -5,8 +5,8 @@
 package agent
 
 import (
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 // CalculateHealth returns health of the Agent based on association status, desired count and ready count.

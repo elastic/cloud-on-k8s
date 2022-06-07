@@ -4,7 +4,7 @@
 
 package maps
 
-import "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+import "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 
 const (
 	httpServiceSuffix = "http"

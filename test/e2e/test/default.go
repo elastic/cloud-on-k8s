@@ -7,7 +7,7 @@ package test
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
 // DefaultSecurityContext returns a minimalist, restricted, security context.

@@ -8,10 +8,10 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
 // Parameters contain parameters to create new operators.

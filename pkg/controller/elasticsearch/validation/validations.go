@@ -11,14 +11,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	stackmon "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	stackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
 var log = ulog.Log.WithName("es-validation")

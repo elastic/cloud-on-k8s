@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
 
 const (

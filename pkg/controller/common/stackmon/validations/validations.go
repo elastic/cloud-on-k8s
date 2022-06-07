@@ -10,8 +10,8 @@ import (
 	"github.com/blang/semver/v4"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
 const (

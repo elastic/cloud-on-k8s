@@ -93,7 +93,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/elastic/go-licenser[$$github.com/elastic/go-licenser$$] | v0.4.0 | Apache-2.0
 | link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.7.1 | Apache-2.0
 | link:https://github.com/elastic/go-windows[$$github.com/elastic/go-windows$$] | v1.0.1 | Apache-2.0
-| link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
+| link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy$$] | v0.0.0-20180725130230-947c36da3153 | BSD-3-Clause
 | link:https://github.com/emicklei/go-restful[$$github.com/emicklei/go-restful$$] | v2.9.5+incompatible | MIT
 | link:https://github.com/evanphx/json-patch[$$github.com/evanphx/json-patch$$] | v4.12.0+incompatible | BSD-3-Clause
 | link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.13.0 | MIT
