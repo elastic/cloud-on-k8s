@@ -110,7 +110,7 @@ Here are some good practices for a good pull request:
 
 ### Backports
 
-New PRs should target the `master` branch, then be backported as necessary. The original PR to master should contain labels of the versions it will be backported to. The actual backport PR should be labeled `backport`. You can use https://github.com/sqren/backport to generate backport PRs easily. An example `.backportrc.json` may be:
+New PRs should target the `main` branch, then be backported as necessary. The original PR to main should contain labels of the versions it will be backported to. The actual backport PR should be labeled `backport`. You can use https://github.com/sqren/backport to generate backport PRs easily. An example `.backportrc.json` may be:
 
 ```json
 {
