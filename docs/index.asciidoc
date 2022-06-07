@@ -1,6 +1,6 @@
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/index.html[ECK Documentation]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/main/index.html[ECK Documentation]
 ****
 endif::[]
 = Elastic Cloud on Kubernetes

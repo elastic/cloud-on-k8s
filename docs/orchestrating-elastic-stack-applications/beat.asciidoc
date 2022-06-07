@@ -2,7 +2,7 @@
 :beats_url: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/beats
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/main/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-{page_id}"]

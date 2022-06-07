@@ -2,7 +2,7 @@
 :page_id: es-secure-settings
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/main/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-{page_id}"]
