@@ -192,7 +192,7 @@ func expectedDeploymentParams() testParams {
 						Resources: DefaultResources,
 					}},
 					AutomountServiceAccountToken: ptrFalse(),
-					EnableServiceLinks: ptrFalse(),
+					EnableServiceLinks:           ptrFalse(),
 				},
 			},
 			Replicas: 0,

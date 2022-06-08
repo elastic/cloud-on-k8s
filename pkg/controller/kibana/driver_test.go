@@ -583,7 +583,7 @@ func expectedDeploymentParams() deployment.Params {
 					Resources: DefaultResources,
 				}},
 				AutomountServiceAccountToken: &falseVal,
-				EnableServiceLinks: &falseVal,
+				EnableServiceLinks:           &falseVal,
 			},
 		},
 	}

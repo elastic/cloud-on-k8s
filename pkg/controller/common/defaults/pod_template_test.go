@@ -32,7 +32,7 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "mycontainer",
@@ -52,7 +52,7 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varTrue,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "mycontainer",
@@ -72,7 +72,7 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varTrue,
+					EnableServiceLinks:           &varTrue,
 					Containers: []corev1.Container{
 						{
 							Name: "mycontainer",
@@ -99,7 +99,7 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "usercontainer1",
@@ -1230,7 +1230,7 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "maincontainer",
@@ -1248,7 +1248,7 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "maincontainer",
@@ -1270,7 +1270,7 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: &varFalse,
-					EnableServiceLinks: &varFalse,
+					EnableServiceLinks:           &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name: "maincontainer",

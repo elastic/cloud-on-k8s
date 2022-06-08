@@ -315,7 +315,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			},
 			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 			AutomountServiceAccountToken:  &varFalse,
-			EnableServiceLinks:  &varFalse,
+			EnableServiceLinks:            &varFalse,
 			Affinity:                      DefaultAffinity(sampleES.Name),
 		},
 	}
