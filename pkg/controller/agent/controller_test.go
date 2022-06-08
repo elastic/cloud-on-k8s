@@ -149,7 +149,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testAgent-agent",
 						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "1678576940"),
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3577950992"),
 					},
 					Status: appsv1.DeploymentStatus{
 						AvailableReplicas: 1,
