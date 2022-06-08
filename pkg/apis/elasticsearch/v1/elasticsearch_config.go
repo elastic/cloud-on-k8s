@@ -71,16 +71,8 @@ func (n *Node) CanContainData() bool {
 // HasRole returns true if the node runs with the given role.
 func (n *Node) HasRole(role NodeRole) bool {
 	switch role {
-	case DataContentRole:
-		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataContentRole)
-	case DataHotRole:
-		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataHotRole)
-	case DataWarmRole:
-		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataWarmRole)
-	case DataColdRole:
-		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataColdRole)
-	case DataFrozenRole:
-		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(DataFrozenRole)
+	case DataContentRole, DataHotRole, DataWarmRole, DataColdRole, DataFrozenRole:
+		return n.IsConfiguredWithRole(DataRole) || n.IsConfiguredWithRole(role)
 	default:
 		return n.IsConfiguredWithRole(role)
 	}
