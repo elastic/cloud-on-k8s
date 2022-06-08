@@ -88,6 +88,10 @@ func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
 	if b.PodTemplate.Spec.AutomountServiceAccountToken == nil {
 		b.PodTemplate.Spec.AutomountServiceAccountToken = &varFalse
 	}
+	// disable injecting services information into pod's environment variables, unless explicitly enabled by the user
+	if b.PodTemplate.Spec.EnableServiceLinks == nil {
+		b.PodTemplate.Spec.EnableServiceLinks = &varFalse
+	}
 
 	return b
 }
