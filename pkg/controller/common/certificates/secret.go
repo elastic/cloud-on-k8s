@@ -169,14 +169,14 @@ func (s *CertificatesSecret) parse() error {
 	return nil
 }
 
-func GetSecretFromRef(c k8s.Client, owner types.NamespacedName, secretRef commonv1.SecretRef) (*v1.Secret, error) {
+func GetSecretFromRef(ctx context.Context, c k8s.Client, owner types.NamespacedName, secretRef commonv1.SecretRef) (*v1.Secret, error) {
 	secretName := secretRef.SecretName
 	if secretName == "" {
 		return nil, nil
 	}
 
 	var secret v1.Secret
-	if err := c.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: owner.Namespace}, &secret); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: secretName, Namespace: owner.Namespace}, &secret); err != nil {
 		return nil, err
 	}
 	return &secret, nil
@@ -184,11 +184,12 @@ func GetSecretFromRef(c k8s.Client, owner types.NamespacedName, secretRef common
 
 // validCustomCertificatesOrNil returns the custom certificates to use or nil if there is none specified
 func validCustomCertificatesOrNil(
+	ctx context.Context,
 	c k8s.Client,
 	owner types.NamespacedName,
 	tls commonv1.TLSOptions,
 ) (*CertificatesSecret, error) {
-	secret, err := GetSecretFromRef(c, owner, tls.Certificate)
+	secret, err := GetSecretFromRef(ctx, c, owner, tls.Certificate)
 	if err != nil || secret == nil {
 		return nil, err
 	}

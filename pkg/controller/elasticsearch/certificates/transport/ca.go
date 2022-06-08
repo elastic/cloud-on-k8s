@@ -46,7 +46,7 @@ func ReconcileOrRetrieveCA(
 		return nil, err
 	}
 
-	customCASecret, err := certificates.GetSecretFromRef(driver.K8sClient(), esNSN, es.Spec.Transport.TLS.Certificate)
+	customCASecret, err := certificates.GetSecretFromRef(ctx, driver.K8sClient(), esNSN, es.Spec.Transport.TLS.Certificate)
 	if err != nil {
 		// error should already contain enough context including the name of the secret
 		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
