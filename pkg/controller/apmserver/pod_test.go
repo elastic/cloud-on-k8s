@@ -91,6 +91,7 @@ func TestNewPodSpec(t *testing.T) {
 						configSecretVol.Volume(), configVolume.Volume(), httpCertsSecretVol.Volume(),
 					},
 					AutomountServiceAccountToken: &varFalse,
+					EnableServiceLinks: &varFalse,
 					Containers: []corev1.Container{
 						{
 							Name:  apmv1.ApmServerContainerName,
