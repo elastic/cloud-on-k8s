@@ -118,58 +118,46 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
-	esAssocConf, err := kb.EsAssociation().AssociationConf()
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	if !esAssocConf.IsConfigured() {
-		// merge the configuration with userSettings last so they take precedence
-		if err := cfg.MergeWith(
-			reusableSettings,
-			versionSpecificCfg,
-			kibanaTLSCfg,
-			entSearchCfg,
-			monitoringCfg,
-			userSettings); err != nil {
-			return CanonicalConfig{}, err
-		}
-		return CanonicalConfig{cfg}, nil
-	}
-
-	credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	var credentialsCfg *settings.CanonicalConfig
-	if credentials.HasServiceAccountToken() {
-		credentialsCfg =
-			settings.MustCanonicalConfig(
-				map[string]interface{}{
-					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
-				},
-			)
-	} else {
-		credentialsCfg =
-			settings.MustCanonicalConfig(
-				map[string]interface{}{
-					ElasticsearchUsername: credentials.Username,
-					ElasticsearchPassword: credentials.Password,
-				},
-			)
-	}
-
-	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
 		reusableSettings,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
-		monitoringCfg,
-		settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf)),
-		credentialsCfg,
-		userSettings,
-	)
+		monitoringCfg)
 	if err != nil {
+		return CanonicalConfig{}, err
+	}
+
+	// Elasticsearch configuration
+	esAssocConf, err := kb.EsAssociation().AssociationConf()
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	if esAssocConf.IsConfigured() {
+		credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+		if err != nil {
+			return CanonicalConfig{}, err
+		}
+		var esCreds map[string]interface{}
+		if credentials.HasServiceAccountToken() {
+			esCreds = map[string]interface{}{
+				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
+			}
+		} else {
+			esCreds = map[string]interface{}{
+				ElasticsearchUsername: credentials.Username,
+				ElasticsearchPassword: credentials.Password,
+			}
+		}
+		credentialsCfg := settings.MustCanonicalConfig(esCreds)
+		esAssocCfg := settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf))
+		if err = cfg.MergeWith(esAssocCfg, credentialsCfg); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+
+	// merge the configuration with userSettings last so they take precedence
+	if err = cfg.MergeWith(userSettings); err != nil {
 		return CanonicalConfig{}, err
 	}
 
