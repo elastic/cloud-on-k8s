@@ -28,6 +28,10 @@ func createValidatedCertificateTemplate(
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
+	if err := csr.CheckSignature(); err != nil {
+		return nil, err
+	}
+
 	generalNames, err := buildGeneralNames(cluster, pod)
 	if err != nil {
 		return nil, err
@@ -38,7 +42,6 @@ func createValidatedCertificateTemplate(
 		return nil, err
 	}
 
-	// TODO: csr signature is not checked
 	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         buildCertificateCommonName(pod, cluster),
