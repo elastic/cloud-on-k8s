@@ -59,13 +59,12 @@ func DoRequest(client *http.Client, ems v1alpha1.ElasticMapsServer, method, path
 	if err != nil {
 		return nil, fmt.Errorf("while making request: %w", err)
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, &APIError{
 			StatusCode: resp.StatusCode,
 			msg:        fmt.Sprintf("fail to request %s, status is %d)", path, resp.StatusCode),
 		}
 	}
-	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
