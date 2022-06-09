@@ -646,9 +646,6 @@ func conflictingShards(shards1, shards2 []client.Shard) bool {
 // only reliable if Status result was created with wait_for_events=languid
 // so that there are no pending initialisations in the task queue
 func isSafeToRoll(health client.Health) bool {
-	return !health.TimedOut && // make sure request did not time out (i.e. no pending events)
-		health.Status != esv1.ElasticsearchRedHealth && // all primaries allocated
-		health.NumberOfInFlightFetch == 0 && // no shards being fetched
-		health.InitializingShards == 0 && // no shards initializing
-		health.RelocatingShards == 0 // no shards relocating
+	return !health.HasShardActivity() && // no shard activity
+		health.Status != esv1.ElasticsearchRedHealth // all primaries allocated
 }

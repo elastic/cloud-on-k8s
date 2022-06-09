@@ -43,6 +43,15 @@ func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes [
 // ShutdownStatus returns the current shutdown status for a given Pod mimicking the node shutdown API to create a common
 // interface. "Complete" is returned if shard migration for the given Pod is finished.
 func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {
+	shardActivity, err := sm.s.HasShardActivity(ctx)
+	if err != nil {
+		return shutdown.NodeShutdownStatus{}, err
+	}
+	if shardActivity {
+		log.Info("Delaying node shutdown because of shard activity",
+			"namespace", sm.es.Namespace, "es_name", sm.es.Name, "pod_name", podName)
+		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownInProgress}, nil
+	}
 	migrating, err := nodeMayHaveShard(ctx, sm.es, sm.s, podName)
 	if err != nil {
 		return shutdown.NodeShutdownStatus{}, err

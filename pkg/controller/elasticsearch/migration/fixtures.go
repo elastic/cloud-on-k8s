@@ -23,15 +23,25 @@ func loadFileBytes(fileName string) []byte {
 }
 
 type fakeShardLister struct {
-	shards esclient.Shards
-	err    error
+	shards           esclient.Shards
+	hasShardActivity bool
+	err              error
+}
+
+func (f *fakeShardLister) HasShardActivity(_ context.Context) (bool, error) {
+	return f.hasShardActivity, nil
 }
 
 func (f *fakeShardLister) GetShards(_ context.Context) (esclient.Shards, error) {
 	return f.shards, f.err
 }
 
-func NewFakeShardLister(shards esclient.Shards) esclient.ShardLister {
+func (f fakeShardLister) WithShardActivity() *fakeShardLister {
+	f.hasShardActivity = true
+	return &f
+}
+
+func NewFakeShardLister(shards esclient.Shards) *fakeShardLister {
 	return &fakeShardLister{shards: shards}
 }
 
