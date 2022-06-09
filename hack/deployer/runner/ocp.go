@@ -32,7 +32,6 @@ overrides:
   clusterName: %s-dev-cluster
   ocp:
     gCloudProject: %s
-    pullSecret: '%s'
 `
 
 	OcpInstallerConfigTemplate = `apiVersion: v1

@@ -53,12 +53,7 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				pullSecret, err := GetEnvVar("OCP_PULL_SECRET")
-				if err != nil {
-					return err
-				}
-
-				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject, pullSecret)
+				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject)
 			case runner.EKSDriverID:
 				// optional variable for local dev use
 				token, _ := os.LookupEnv("GITHUB_TOKEN")
