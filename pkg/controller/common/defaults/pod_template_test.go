@@ -62,7 +62,7 @@ func TestPodTemplateBuilder_setDefaults(t *testing.T) {
 			},
 		},
 		{
-			name: "don't override user enable service links",
+			name: "don't override user enabled service links",
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					EnableServiceLinks: &varTrue,
