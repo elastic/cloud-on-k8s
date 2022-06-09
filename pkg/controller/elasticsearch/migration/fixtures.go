@@ -36,12 +36,14 @@ func (f *fakeShardLister) GetShards(_ context.Context) (esclient.Shards, error) 
 	return f.shards, f.err
 }
 
-func (f fakeShardLister) WithShardActivity() *fakeShardLister {
-	f.hasShardActivity = true
-	return &f
+func NewFakeShardListerWithShardActivity(shards esclient.Shards) esclient.ShardLister {
+	return &fakeShardLister{
+		shards:           shards,
+		hasShardActivity: true,
+	}
 }
 
-func NewFakeShardLister(shards esclient.Shards) *fakeShardLister {
+func NewFakeShardLister(shards esclient.Shards) esclient.ShardLister {
 	return &fakeShardLister{shards: shards}
 }
 

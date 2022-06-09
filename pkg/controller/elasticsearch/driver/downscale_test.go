@@ -761,7 +761,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			args: args{
 				ctx: downscaleContext{
 					reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-					nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{}).WithShardActivity()),
+					nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardListerWithShardActivity(esclient.Shards{})),
 				},
 				downscale: ssetDownscale{
 					initialReplicas: 3,
