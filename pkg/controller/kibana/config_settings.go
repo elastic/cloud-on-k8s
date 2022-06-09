@@ -89,7 +89,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	}
 
 	// hack to support pre-7.6.0 Kibana configs as it errors out with unsupported keys, ideally we would not unpack empty values and could skip this
-	filteredReusableSettings, err := filterConfigSettings(kb, reusableSettings)
+	err = filterConfigSettings(kb, reusableSettings)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -160,7 +160,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		filteredReusableSettings,
+		reusableSettings,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		entSearchCfg,
@@ -178,15 +178,15 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to
 // support older versions
-func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) (*settings.CanonicalConfig, error) {
+func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
-		return cfg, err
+		return err
 	}
 	if !ver.GTE(version.From(7, 6, 0)) {
 		_, err = (*ucfg.Config)(cfg).Remove(XpackEncryptedSavedObjects, -1, settings.Options...)
 	}
-	return cfg, err
+	return err
 }
 
 // VersionDefaults generates any version specific settings that should exist by default.
