@@ -1288,11 +1288,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.6.0
-Time    : 2022-05-25T17:48:21Z
+Version : v1.7.1
+Time    : 2022-06-08T18:14:55Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.7.1/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -11793,11 +11793,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-secure-stdlib/parseutil
-Version : v0.1.5
-Time    : 2022-04-27T22:31:02Z
+Version : v0.1.6
+Time    : 2022-06-02T20:00:35Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/parseutil@v0.1.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-secure-stdlib/parseutil@v0.1.6/LICENSE:
 
 Mozilla Public License, version 2.0
 
