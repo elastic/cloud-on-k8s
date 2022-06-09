@@ -70,7 +70,7 @@ func (d OCP3Driver) Execute() error {
 		return err
 	}
 
-	if err := writeGCloudSSHKey(*d.plan.VaultInfo); err != nil {
+	if err := writeGCloudSSHKey(d.plan.VaultInfo); err != nil {
 		return err
 	}
 

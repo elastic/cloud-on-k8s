@@ -39,9 +39,10 @@ type AKSDriver struct {
 
 func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 	var vaultClient *vault.Client
-	if plan.VaultInfo != nil {
+	// plan.ServiceAccount = true typically means a CI run vs a local run on a dev machine
+	if plan.ServiceAccount {
 		var err error
-		vaultClient, err = vault.NewClient(*plan.VaultInfo)
+		vaultClient, err = vault.NewClient(plan.VaultInfo)
 		if err != nil {
 			return nil, err
 		}

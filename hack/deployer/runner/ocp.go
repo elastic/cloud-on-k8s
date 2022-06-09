@@ -235,7 +235,7 @@ func (d *OCPDriver) ensureClientImage() error {
 
 func (d *OCPDriver) ensurePullSecret() error {
 	if d.plan.Ocp.PullSecret == "" {
-		client, err := vault.NewClient(*d.plan.VaultInfo)
+		client, err := vault.NewClient(d.plan.VaultInfo)
 		if err != nil {
 			return err
 		}
