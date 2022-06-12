@@ -77,7 +77,9 @@ fi
 # we are turning globbing off to allow for unescaped [] in case of IPv6
 ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://${LOOPBACK}:9200/"
 ORIGIN_HEADER="` + common.InternalProductRequestHeaderString + `"
-status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -H "${ORIGIN_HEADER}" -XGET -g -s -k ${BASIC_AUTH} $ENDPOINT)
+CERT_PATH="/usr/share/elasticsearch/config/http-certs"
+CERT_FLAGS="--cert ${CERT_PATH}/tls.crt --key ${CERT_PATH}/tls.key"
+status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -H "${ORIGIN_HEADER}" -XGET -g -s ${CERT_FLAGS} -k ${BASIC_AUTH} $ENDPOINT)
 curl_rc=$?
 
 if [[ ${curl_rc} -ne 0 ]]; then
