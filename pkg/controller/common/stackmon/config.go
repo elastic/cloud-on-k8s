@@ -77,7 +77,11 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 	}
 
 	configHash := fnv.New32a()
-	configHash.Write(configBytes)
+
+	_, err = configHash.Write(configBytes)
+	if err != nil {
+		return beatConfig{}, err
+	}
 
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
