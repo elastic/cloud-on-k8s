@@ -10,13 +10,17 @@
 [float]
 === New features
 
-* Allow providing cleartext passwords for creating ES users {pull}5613[#5613] (issue: {issue}3056[#3056])
+* Allow providing cleartext passwords for creating Elasticsearch users {pull}5613[#5613] (issue: {issue}3056[#3056])
 * Support a globally shared CA {pull}5539[#5539]
 
 [[enhancement-2.3.0]]
 [float]
 === Enhancements
 
+* Set `status.ObservedGeneration` from `metadata.Generation`:
+** Elastic Maps {pull}5536[#5536] (issue: {issue}3392[#3392])
+** EnterpriseSearch {pull}5526[#5526] (issue: {issue}3392[#3392])
+** Elastic APM Server {pull}5470[#5470] (issue: {issue}3392[#3392])
 * Upgrade PodDisruptionBudget from v1beta1 to v1 {pull}5709[#5709]
 * Support disable-downgrade-validation for all relevant apps {pull}5680[#5680] (issue: {issue}5531[#5531])
 * Allow non-IPs in service spec to avoid noop updates {pull}5663[#5663] (issue: {issue}5657[#5657])
@@ -24,10 +28,7 @@
 * Add support for the desired nodes API {pull}5650[#5650]
 * Base ECK docker image on distroless instead of UBI by default  {pull}5580[#5580] (issue: {issue}4561[#4561])
 * Added priority class and leader election to operator helm chart {pull}5538[#5538]
-* Elastic Maps: Set status.ObservedGeneration from metadata.Generation {pull}5536[#5536] (issue: {issue}3392[#3392])
 * Log info for service not found error when reconciling associations {pull}5533[#5533]
-* EnterpriseSearch: Set status.ObservedGeneration from metadata.Generation {pull}5526[#5526] (issue: {issue}3392[#3392])
-* Elastic APM Server: Set status.ObservedGeneration from metadata.Generation {pull}5470[#5470] (issue: {issue}3392[#3392])
 
 [[bug-2.3.0]]
 [float]
