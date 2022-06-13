@@ -77,7 +77,7 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	if err != nil {
 		return nil, errors.Wrap(err, "while doing request")
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, &APIError{
 			StatusCode: resp.StatusCode,
@@ -85,6 +85,5 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 		}
 	}
 
-	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
