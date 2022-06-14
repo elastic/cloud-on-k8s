@@ -1,3 +1,5 @@
+# Default values for eck-stack.
+# This is a YAML-formatted file.
 eck-elasticsearch:
   enabled: true
 
