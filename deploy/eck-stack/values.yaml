@@ -1,0 +1,5 @@
+eck-elasticsearch:
+  enabled: true
+
+eck-kibana:
+  enabled: false

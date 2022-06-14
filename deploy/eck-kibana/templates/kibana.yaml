@@ -1,0 +1,21 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ required "A name for the Kibana instance is required" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kibana.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  annotations:
+    {{- range $key, $value := .Values.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  version: {{ required "A Kibana version is required" .Values.version }}
+  {{- $finalSpec := .Values.spec }}
+  {{- if and .Values.spec.elasticsearchRef ( not .Values.spec.elasticsearchRef.namespace ) }}
+  {{- $finalSpec = mustMergeOverwrite (dict) .Values.spec (dict "elasticsearchRef" (dict "namespace" .Release.Namespace )) }}
+  {{- end }}
+  {{- toYaml $finalSpec | nindent 2 }}
