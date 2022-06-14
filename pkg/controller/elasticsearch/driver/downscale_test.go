@@ -756,6 +756,25 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				finalReplicas:   2,
 			},
 		},
+		{
+			name: "downscale not possible: pending shard activity",
+			args: args{
+				ctx: downscaleContext{
+					reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
+					nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardListerWithShardActivity(esclient.Shards{})),
+				},
+				downscale: ssetDownscale{
+					initialReplicas: 3,
+					targetReplicas:  2,
+					finalReplicas:   2,
+				},
+			},
+			want: ssetDownscale{
+				initialReplicas: 3,
+				targetReplicas:  3,
+				finalReplicas:   2,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
