@@ -6,7 +6,7 @@
 #   image: "docker.elastic.co/eck-dev/bk-agent:latest"
 
 steps:
-  - command: 'echo "hello world"'
+  - command: 'echo "hello world!"'
 
 # steps:
 #   - group: build
