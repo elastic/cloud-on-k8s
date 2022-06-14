@@ -60,7 +60,9 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				for k, v := range b.Elasticsearch.Annotations {
 					curEs.Annotations[k] = v
 				}
-				curEs.Spec = b.Elasticsearch.Spec
+				// defensive copy as the spec struct contains nested objects like ucfg.Config that don't marshal/unmarshal
+				// without losing type information making later comparisons with deepEqual fail.
+				curEs.Spec = *b.Elasticsearch.Spec.DeepCopy()
 				// may error-out with a conflict if the resource is updated concurrently
 				// hence the usage of `test.Eventually`
 				return k.Client.Update(context.Background(), &curEs)
@@ -140,7 +142,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
-					return IsNonHAUpgrade(b)
+					return isNonHAUpgrade
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
