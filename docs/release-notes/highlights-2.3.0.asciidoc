@@ -30,7 +30,7 @@ stringData:
 [id="{p}-230-observedGeneration-"]
 ==== Observed generation
 
-The last resource's generation processed by the operator, also known as the "observed generation", is now set and maintained in the status subresource on all kinds of Elastic resources. While in version 2.2 this enhancement was only available on Elasticsearch and Kibana, it is now also enabled on Agent, Beats, APM Server and Enterprise Search resources.
+The most recent generation of a resource processed by the operator, also known as the "observed generation", is now set and maintained in the status subresource on all kinds of Elastic resources. While in version 2.2 this enhancement was only available on Elasticsearch and Kibana, it is now also enabled on Agent, Beats, APM Server and Enterprise Search resources.
 
 [source,yaml]
 ----
