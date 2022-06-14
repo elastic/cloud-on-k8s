@@ -1,4 +1,3 @@
----
 # notify:
 #   - github_commit_status:
 #       context: "ci/tests"
@@ -7,8 +6,7 @@
 #   image: "docker.elastic.co/eck-dev/bk-agent:latest"
 
 steps:
-  - label: ":wave: Greetings"
-    command: "echo 42"
+  - command: 'echo "hello world"'
 
 # steps:
 #   - group: build
