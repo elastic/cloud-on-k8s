@@ -194,7 +194,7 @@ func (e *EKSDriver) auth() error {
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
 func (e *EKSDriver) fetchSecrets() error {
-	client, err := vault.NewClient(*e.plan.VaultInfo)
+	client, err := vault.NewClient(e.plan.VaultInfo)
 	if err != nil {
 		return err
 	}
