@@ -1,0 +1,56 @@
+---
+# Whether to install a Kibana instance.
+enabled: true
+
+# Version of Elasticsearch
+version: 8.2.0
+
+# Name of the Elasticsearch Instance
+name: "quickstart"
+
+# Labels that will be applied to Elasticsearch
+labels: {}
+
+# Annotations that will be applied to Elasticsearch
+annotations: {}
+
+# Monitoring settings
+monitoring: {}
+
+# Tranposrt settings
+transport: {}
+
+# http settings
+http: {}
+
+# secure settings
+secureSettings: {}
+
+# update settings
+updateStrategy: {}
+
+# Nodeset settings
+esSpec:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 1
+            limits:
+              memory: 1Gi
+#        initContainers: # Uncomment these lines in case you want to increase vm.max_map_count and/or use initContainers, see https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
+#        - name: sysctl
+#          securityContext:
+#            privileged: true
+#            runAsUser: 0
+#          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+
+# Remote cluster settings
+remoteClusters: {}
