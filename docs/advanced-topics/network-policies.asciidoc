@@ -12,6 +12,7 @@ endif::[]
 :es_http_port: 9200
 :es_transport_port: 9300
 :kb_port: 5601
+:fleet_server_port: 8220
 :webhook_port: 9443
 
 
@@ -57,7 +58,7 @@ The minimal set of permissions required are as follows:
 
 Assuming that the Kubernetes API server IP address is `10.0.0.1`, the following network policy implements this minimal set of permissions.
 
-NOTE: Run `kubectl cluster-info | grep master` to obtain the API server IP address for your cluster.
+NOTE: Run `kubectl get endpoints kubernetes -n default` to obtain the API server IP address for your cluster.
 
 [source,yaml,subs="attributes"]
 ----
@@ -100,7 +101,7 @@ spec:
       protocol: TCP
   podSelector:
     matchLabels:
-      control-plane: elastic-operator
+      app.kubernetes.io/name: elastic-operator
 ----
 
 
@@ -152,7 +153,7 @@ spec:
           eck.k8s.elastic.co/operator-name: elastic-operator
       podSelector:
         matchLabels:
-          control-plane: elastic-operator
+          app.kubernetes.io/name: elastic-operator
     - namespaceSelector:
         matchLabels:
           eck.k8s.elastic.co/tenant: team-a
@@ -223,6 +224,9 @@ spec:
   - ports:
     - port: {dns_port}
       protocol: UDP
+    # [Optional] If Agent is deployed, this is to allow Kibana to access the Elastic Package Registry (https://epr.elastic.co).
+    # - port: 443
+    #   protocol: TCP
   ingress:
   - from:
     - namespaceSelector:
@@ -424,4 +428,85 @@ spec:
   podSelector:
     matchLabels:
       common.k8s.elastic.co/type: beat
+----
+
+[float]
+[id="{p}-{page_id}-agent-isolation"]
+== Isolating {agent} and {fleet}
+
+
+NOTE: Some {agent} policies may require additional access rules than what is listed here.
+
+
+[cols="h,1"]
+|===
+| Egress (outgoing)  a|
+
+* TCP port {es_http_port} to {es} nodes in the namespace.
+* TCP port {kb_port} to {kib} instances in the namespace.
+* TCP port {fleet_server_port} to {fleet} instances in the namespace.
+* UDP port {dns_port} for DNS lookup.
+
+|===
+
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eck-agent
+  namespace: team-a
+spec:
+  egress:
+    - ports:
+        - port: {fleet_server_port}
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: team-a
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: agent
+    - ports:
+        - port: {kb_port}
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: team-a
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: kibana
+    - ports:
+        - port: {es_http_port}
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: team-a
+          podSelector:
+            matchLabels:
+              common.k8s.elastic.co/type: elasticsearch
+    - ports:
+        - port: {dns_port}
+          protocol: UDP
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: 10.0.0.1/32
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              eck.k8s.elastic.co/tenant: team-a
+      ports:
+        - port: {fleet_server_port}
+          protocol: TCP
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: agent
 ----
