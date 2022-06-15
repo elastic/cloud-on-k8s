@@ -1,6 +1,6 @@
 apiVersion: v2
 name: eck-elasticsearch
-description: A Helm chart for Kubernetes
+description: A Helm chart to deploy Elasticsearch managed by the ECK Operator.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -16,5 +16,6 @@ type: application
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
 version: 0.1.0
+sources:
   - https://github.com/elastic/cloud-on-k8s
 icon: https://helm.elastic.co/icons/elasticsearch.png

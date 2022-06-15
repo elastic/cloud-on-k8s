@@ -2,7 +2,8 @@
 
 ## TODO
 
-- [ ] Write documentation in the office ECK /docs directory.
+- [ ] Write documentation in the official ECK /docs directory.
+- [ ] Document using examples values.
 
 ECK Stack is a Helm chart to assist in the deployment of Elastic Stack components, which are
 managed by the [ECK Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)

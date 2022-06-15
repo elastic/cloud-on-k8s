@@ -1,3 +1,7 @@
+---
+# Default values for eck-kibana.
+# This is a YAML-formatted file.
+
 # Name of the Kibana instance.
 #
 name: "quickstart"
@@ -21,7 +25,7 @@ spec:
   #
   count: 1
 
-  # Reference to ECK-managed Elasticsearch instanced, ideally from {{ .Values.elasticsearch.name }}
+  # Reference to ECK-managed Elasticsearch instance.
   #
   elasticsearchRef:
     name: quickstart
