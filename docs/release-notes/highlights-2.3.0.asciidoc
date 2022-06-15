@@ -48,3 +48,9 @@ status:
   phase: Ready
   version: 8.2.0
 ----
+
+[float]
+[id="{p}-230-base-image-"]
+==== Distroless base image
+
+The default ECK operator container image is now based on the link:https://github.com/GoogleContainerTools/distroless[Distroless image]. A container image based on the RedHat UBI base image is however still published and is selected by default when the operator is installed through the OpenShift OperatorHub.
