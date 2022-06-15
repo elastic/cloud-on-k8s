@@ -7,5 +7,3 @@
 
 3. Expose Elasticsearch service
   $ kubectl port-forward svc/{{ .Values.name}}-es-http 9200
-
-

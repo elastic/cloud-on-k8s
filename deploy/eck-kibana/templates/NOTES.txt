@@ -7,5 +7,3 @@
 
 3. Expose Kibana service
   $ kubectl port-forward svc/{{ .Values.name}}-kb-http 9200
-
-
