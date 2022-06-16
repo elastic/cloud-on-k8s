@@ -162,7 +162,7 @@ plans:
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.11.1
+  clientVersion: 0.14.0
   provider: kind
   kubernetesVersion: 1.22.9
   kind:
