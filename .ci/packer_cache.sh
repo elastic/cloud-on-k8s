@@ -12,7 +12,7 @@ set -eou pipefail
 docker pull "$(make -C .ci --no-print-directory print-ci-image)"
 
 # Kind images (https://hub.docker.com/r/kindest/node/tags)
-# Pull exact images due to image incompatibility between kind 0.8 and 0.9 see https://github.com/kubernetes-sigs/kind/releases
+# Pull exact images to speed the Kind cluster startup and ensure images compatibility between kind versions, see https://github.com/kubernetes-sigs/kind/releases
 docker pull kindest/node:v1.20.15@sha256:6f2d011dffe182bad80b85f6c00e8ca9d86b5b8922cdf433d53575c4c5212248
 docker pull kindest/node:v1.21.12@sha256:f316b33dd88f8196379f38feb80545ef3ed44d9197dca1bfd48bcb1583210207
 docker pull kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105
