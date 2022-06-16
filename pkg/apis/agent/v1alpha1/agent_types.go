@@ -102,7 +102,8 @@ type Output struct {
 
 type DaemonSetSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate          corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
@@ -110,9 +111,9 @@ type DaemonSetSpec struct {
 
 type DeploymentSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	Replicas    *int32                 `json:"replicas,omitempty"`
-
+	PodTemplate          corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	Replicas             *int32                 `json:"replicas,omitempty"`
+	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
