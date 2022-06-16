@@ -8,7 +8,7 @@ name: "quickstart"
 
 # Version of Kibana.
 #
-version: 8.2.0
+version: 8.2.3
 
 # Labels that will be applied to Kibana.
 #

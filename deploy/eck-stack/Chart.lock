@@ -5,5 +5,5 @@ dependencies:
 - name: eck-kibana
   repository: file://../eck-kibana
   version: 0.1.0
-digest: sha256:881d38f11e9162a8fafc809e44fa26824610b853021a5cba7a0c0f7a6977eb07
-generated: "2022-06-14T09:54:03.683639-05:00"
+digest: sha256:5d22239d6c40d5b35b4242db0af9c37ff6c59f3ed2afdd2ab2956ce0992e4320
+generated: "2022-06-16T12:39:04.92918-05:00"

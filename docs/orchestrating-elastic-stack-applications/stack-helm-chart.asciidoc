@@ -1,0 +1,70 @@
+:page_id: stack-helm-chart
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Elastic Stack Helm Chart
+
+Starting from ECK 2.4.0, a Helm chart is available for managing Elastic Stack resources using the ECK Operator. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
+
+[source, sh]
+----
+helm repo add elastic https://helm.elastic.co
+helm repo update
+----
+
+NOTE: The minimum supported version of Helm is 3.2.0.
+
+[float]
+[id="{p}-install-elasticsearch-helm"]
+== Installing Elasticsearch using the eck-stack Helm Chart
+
+Similar to the <<{p}-deploy-elasticsearch,quickstart>>, the following section describe how to setup a simple Elasticsearch cluster specification, with one Elasticsearch node, managed by ECK, and how to customize an Elasticsearch deployment using the eck-stack Helm chart.
+
+[source,sh]
+----
+# Install an eck-managed Elasticsearch cluster using the default values, which deploys the quickstart example.
+helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace
+----
+
+[float]
+[id="{p}-elasticsearch-helm-customize"]
+=== Customizing Elasticsearch using eck-stack Helm Chart
+
+There are many example Helm values files for installing and managing a more advanced Elasticsearch cluster link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples/elasticsearch[in the project repository].
+
+To use one of these example configurations, use the `--values` Helm option, as seen in the following section.
+
+[source,sh]
+----
+# Install an eck-managed Elasticsearch cluster using the node roles example with hot, warm, and cold node groups.
+helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace --values https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/examples/elasticsearch/hot-warm-cold.yaml
+----
+
+[float]
+[id="{p}-install-kibana-helm"]
+== Installing Kibana using the eck-stack Helm Chart
+
+Similar to the <<{p}-deploy-kibana,quickstart>>, the following section describe how to setup a simple Kibana instance, along with a simple Elasticsearch cluster managed by ECK, and how to customize a Kibana deployment using the eck-stack Helm chart.
+
+[source,sh]
+----
+# Install an eck-managed Elasticsearch and Kibana using the default values, which deploys the quickstart example.
+helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace --set eck-kibana.enabled=true
+----
+
+[float]
+[id="{p}-kibana-helm-customize"]
+=== Customizing Kibana using eck-stack Helm Chart
+
+There are many example Helm values files for installing and managing a more advanced Kibana instance link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples/kibana[in the project repository].
+
+To use one of these example configurations, use the `--values` Helm option, as seen in the following section.
+
+[source,sh]
+----
+# Install an eck-managed Elasticsearch and Kibana using the Elasticsearch node roles example with hot, warm, and cold node groups, and the Kibana example customizing the http service.
+helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace --values https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/examples/elasticsearch/hot-warm-cold.yaml --set eck-kibana.enabled=true --values https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/examples/kibana/http-configuration.yaml
+----

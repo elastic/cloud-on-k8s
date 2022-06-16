@@ -17,13 +17,13 @@ version: 0.1.0
 
 dependencies:
   - name: eck-elasticsearch
-    condition: elasticsearch.enabled
+    condition: eck-elasticsearch.enabled
     version: "0.1.0"
     repository: "file://../eck-elasticsearch"
     # TODO: Before merge
     # repository: "https://helm.elastic.co"
   - name: eck-kibana
-    condition: kibana.enabled
+    condition: eck-kibana.enabled
     version: "0.1.0"
     repository: "file://../eck-kibana"
     # TODO: Before merge
