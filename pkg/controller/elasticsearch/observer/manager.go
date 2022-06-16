@@ -95,7 +95,7 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 	}
 
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
-	// exec observe first,it cou
+	// exec observe first,To set lastHealth right
 	observer.observe()
 	observer.Start()
 
