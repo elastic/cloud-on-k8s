@@ -36,7 +36,7 @@ type Plan struct {
 	Eks            *EKSSettings   `yaml:"eks,omitempty"`
 	Kind           *KindSettings  `yaml:"kind,omitempty"`
 	Tanzu          *TanzuSettings `yaml:"tanzu,omitempty"`
-	VaultInfo      *vault.Info    `yaml:"vaultInfo,omitempty"`
+	VaultInfo      vault.Info     `yaml:"vaultInfo,omitempty"`
 	ServiceAccount bool           `yaml:"serviceAccount"`
 	Psp            bool           `yaml:"psp"`
 	DiskSetup      string         `yaml:"diskSetup"`

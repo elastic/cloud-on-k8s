@@ -106,11 +106,9 @@ func newBuilder(name, randSuffix string) Builder {
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
-			Spec: esv1.ElasticsearchSpec{
-				Version: def.Version,
-			},
 		},
 	}.
+		WithVersion(def.Version).
 		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)

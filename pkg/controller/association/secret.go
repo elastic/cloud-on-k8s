@@ -130,11 +130,11 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("error requesting %q, statusCode = %d", url, resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	var obj interface{}
 	if err = json.NewDecoder(resp.Body).Decode(&obj); err != nil {
 		return "", err

@@ -17,6 +17,7 @@ endif::[]
 - <<{p}-maps>>
 - <<{p}-enterprise-search>>
 - <<{p}-beat>>
+- <<{p}-recipes>>
 - <<{p}-securing-stack>>
 - <<{p}-accessing-elastic-services>>
 - <<{p}-customize-pods>>
@@ -34,6 +35,7 @@ include::agent-fleet.asciidoc[leveloffset=+1]
 include::maps.asciidoc[leveloffset=+1]
 include::enterprise-search.asciidoc[leveloffset=+1]
 include::beat.asciidoc[leveloffset=+1]
+include::recipes.asciidoc[leveloffset=+1]
 include::securing-stack.asciidoc[leveloffset=+1]
 include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]

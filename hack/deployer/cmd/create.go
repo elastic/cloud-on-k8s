@@ -53,20 +53,11 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				pullSecret, err := GetEnvVar("OCP_PULL_SECRET")
-				if err != nil {
-					return err
-				}
-
-				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject, pullSecret)
+				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject)
 			case runner.EKSDriverID:
-				// optional variable for local dev use
+				// optional variables for local dev use: preferably login to vault external to deployer and export VAULT_ADDR
 				token, _ := os.LookupEnv("GITHUB_TOKEN")
-
-				vaultAddr, err := GetEnvVar("VAULT_ADDR")
-				if err != nil {
-					return err
-				}
+				vaultAddr, _ := GetEnvVar("VAULT_ADDR")
 
 				cfgData = fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 			case runner.KindDriverID:

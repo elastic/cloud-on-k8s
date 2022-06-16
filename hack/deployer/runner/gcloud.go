@@ -12,8 +12,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -23,18 +21,14 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultInfo *vault.Info, vaultPath string, serviceAccountVaultFieldName string,
+	vaultInfo vault.Info, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	//nolint:nestif
 	if asServiceAccount {
-		if vaultInfo == nil {
-			return errors.New("vault info not present in the plan to authenticate to GCP")
-		}
-
 		log.Println("Authenticating as service account...")
 
-		client, err := vault.NewClient(*vaultInfo)
+		client, err := vault.NewClient(vaultInfo)
 		if err != nil {
 			return err
 		}

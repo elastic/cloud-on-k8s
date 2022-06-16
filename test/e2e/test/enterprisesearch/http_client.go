@@ -76,11 +76,11 @@ func (e EnterpriseSearchClient) doRequest(request *http.Request) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, fmt.Errorf("http response status code is %d)", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
 

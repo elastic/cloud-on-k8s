@@ -1288,11 +1288,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.7.1
-Time    : 2022-06-08T18:14:55Z
+Version : v1.7.2
+Time    : 2022-06-09T20:15:18Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.7.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.7.2/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -14395,11 +14395,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/sdk
-Version : v0.5.0
-Time    : 2022-05-25T16:09:45Z
+Version : v0.5.1
+Time    : 2022-06-09T19:25:24Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.5.1/LICENSE:
 
 Mozilla Public License, version 2.0
 

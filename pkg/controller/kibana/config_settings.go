@@ -89,7 +89,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	}
 
 	// hack to support pre-7.6.0 Kibana configs as it errors out with unsupported keys, ideally we would not unpack empty values and could skip this
-	filteredReusableSettings, err := filterConfigSettings(kb, reusableSettings)
+	err = filterConfigSettings(kb, reusableSettings)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -118,58 +118,46 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 
+	err = cfg.MergeWith(
+		reusableSettings,
+		versionSpecificCfg,
+		kibanaTLSCfg,
+		entSearchCfg,
+		monitoringCfg)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+
+	// Elasticsearch configuration
 	esAssocConf, err := kb.EsAssociation().AssociationConf()
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
-	if !esAssocConf.IsConfigured() {
-		// merge the configuration with userSettings last so they take precedence
-		if err := cfg.MergeWith(
-			reusableSettings,
-			versionSpecificCfg,
-			kibanaTLSCfg,
-			entSearchCfg,
-			monitoringCfg,
-			userSettings); err != nil {
+	if esAssocConf.IsConfigured() {
+		credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+		if err != nil {
 			return CanonicalConfig{}, err
 		}
-		return CanonicalConfig{cfg}, nil
-	}
-
-	credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	var credentialsCfg *settings.CanonicalConfig
-	if credentials.HasServiceAccountToken() {
-		credentialsCfg =
-			settings.MustCanonicalConfig(
-				map[string]interface{}{
-					ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
-				},
-			)
-	} else {
-		credentialsCfg =
-			settings.MustCanonicalConfig(
-				map[string]interface{}{
-					ElasticsearchUsername: credentials.Username,
-					ElasticsearchPassword: credentials.Password,
-				},
-			)
+		var esCreds map[string]interface{}
+		if credentials.HasServiceAccountToken() {
+			esCreds = map[string]interface{}{
+				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
+			}
+		} else {
+			esCreds = map[string]interface{}{
+				ElasticsearchUsername: credentials.Username,
+				ElasticsearchPassword: credentials.Password,
+			}
+		}
+		credentialsCfg := settings.MustCanonicalConfig(esCreds)
+		esAssocCfg := settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf))
+		if err = cfg.MergeWith(esAssocCfg, credentialsCfg); err != nil {
+			return CanonicalConfig{}, err
+		}
 	}
 
 	// merge the configuration with userSettings last so they take precedence
-	err = cfg.MergeWith(
-		filteredReusableSettings,
-		versionSpecificCfg,
-		kibanaTLSCfg,
-		entSearchCfg,
-		monitoringCfg,
-		settings.MustCanonicalConfig(elasticsearchTLSSettings(*esAssocConf)),
-		credentialsCfg,
-		userSettings,
-	)
-	if err != nil {
+	if err = cfg.MergeWith(userSettings); err != nil {
 		return CanonicalConfig{}, err
 	}
 
@@ -178,15 +166,15 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 // Some previously-unsupported keys cause Kibana to error out even if the values are empty. ucfg cannot ignore fields easily so this is necessary to
 // support older versions
-func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) (*settings.CanonicalConfig, error) {
+func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
-		return cfg, err
+		return err
 	}
 	if !ver.GTE(version.From(7, 6, 0)) {
 		_, err = (*ucfg.Config)(cfg).Remove(XpackEncryptedSavedObjects, -1, settings.Options...)
 	}
-	return cfg, err
+	return err
 }
 
 // VersionDefaults generates any version specific settings that should exist by default.

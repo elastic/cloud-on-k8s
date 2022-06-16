@@ -7,7 +7,9 @@ package vault
 import (
 	"fmt"
 	"io/ioutil"
-	"time"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -29,19 +31,29 @@ type Info struct {
 }
 
 func NewClient(info Info) (*Client, error) {
-	// Timeout is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
-	client, err := api.NewClient(&api.Config{Address: info.Address, Timeout: 120 * time.Second})
+	config := api.DefaultConfig()
+	if err := config.ReadEnvironment(); err != nil {
+		return nil, err
+	}
+	if info.Address != "" {
+		config.Address = info.Address
+	}
+	client, err := api.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{
+	c := &Client{
 		client:      client,
 		roleID:      info.RoleId,
 		secretID:    info.SecretId,
 		token:       info.Token,
 		clientToken: info.ClientToken,
-	}, nil
+	}
+	if err := c.auth(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // auth fetches the auth token using approle (with role id and secret id) or github (with token)
@@ -52,6 +64,7 @@ func (v *Client) auth() error {
 
 	var data map[string]interface{}
 	var method string
+	var err error
 
 	var clientToken string
 
@@ -66,7 +79,13 @@ func (v *Client) auth() error {
 		method = "clientToken"
 		clientToken = v.clientToken
 	default:
-		return fmt.Errorf("vault auth info not present")
+		clientToken, err = readCachedToken()
+		if err != nil {
+			return fmt.Errorf("while attempting to read cached vault auth %w", err)
+		}
+		if clientToken == "" {
+			return fmt.Errorf("please export VAULT_ADDR and run `vault login` before running deployer")
+		}
 	}
 
 	if clientToken == "" {
@@ -87,12 +106,32 @@ func (v *Client) auth() error {
 	return nil
 }
 
-// ReadIntoFile is a helper function used to read from Vault into file
-func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
-	if err := v.auth(); err != nil {
-		return err
+// readCachedToken attempts to read cached vault auth info from the users home directory. This aims mostly at the local
+// dev mode and less at CI scenarios, so that users can log in with their vault credentials and deployer will pick up the
+// auth token
+func readCachedToken() (string, error) {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, ".vault-token")
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		return "", nil // no cached token present
+	}
+	if err != nil {
+		return "", err
 	}
 
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(bytes)), nil
+}
+
+// ReadIntoFile is a helper function used to read from Vault into file
+func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 	res, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return err
@@ -124,10 +163,6 @@ func (v *Client) Get(secretPath string, fieldName string) (string, error) {
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
 func (v *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
-	if err := v.auth(); err != nil {
-		return nil, err
-	}
-
 	secret, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return nil, err
