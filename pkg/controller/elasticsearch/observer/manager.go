@@ -95,6 +95,8 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 	}
 
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
+	// exec observe first,it cou
+	observer.observe()
 	observer.Start()
 
 	m.observers[cluster] = observer
