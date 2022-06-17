@@ -37,9 +37,9 @@ kubectl label namespace team-b eck.k8s.elastic.co/tenant=team-b
 
 To set up the network policies correctly you must know the operator Pod selector and the Kubernetes API server IP. They may vary depending on your environment and how the operator has been installed.
 
-=== Operator Ood selector
+=== Operator Pod selector
 
-The operator Pod labels depends on how the operator has been installed, refer to the following table to know what label name should be used in the network policies.
+The operator Pod label depends on how the operator has been installed, refer to the following table to know what label name should be used in the network policies.
 
 [cols="1,1"]
 |===
