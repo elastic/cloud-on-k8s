@@ -114,6 +114,7 @@ type DeploymentSpec struct {
 	PodTemplate          corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas             *int32                 `json:"replicas,omitempty"`
 	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
+
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }
