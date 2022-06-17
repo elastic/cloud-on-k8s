@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "eck-resources.name" -}}
+{{- define "eck-stack.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "eck-resources.fullname" -}}
+{{- define "eck-stack.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "eck-resources.chart" -}}
+{{- define "eck-stack.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "eck-resources.labels" -}}
-helm.sh/chart: {{ include "eck-resources.chart" . }}
-{{ include "eck-resources.selectorLabels" . }}
+{{- define "eck-stack.labels" -}}
+helm.sh/chart: {{ include "eck-stack.chart" . }}
+{{ include "eck-stack.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "eck-resources.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "eck-resources.name" . }}
+{{- define "eck-stack.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "eck-stack.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "eck-resources.serviceAccountName" -}}
+{{- define "eck-stack.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "eck-resources.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "eck-stack.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

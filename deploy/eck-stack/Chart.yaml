@@ -1,7 +1,7 @@
 apiVersion: v2
-name: eck-resources
+name: eck-stack
 description: |
-  A Parent Helm chart for all ECK resources managed by the ECK Operator.
+  A Parent Helm chart for all Elastic stack resources managed by the ECK Operator.
   Currently supported:
   * Elasticsearch
   * Kibana

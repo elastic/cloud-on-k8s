@@ -12,14 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 check() {
     local TEST_DIR="$1"
-
     cd ${TEST_DIR}
 
-    local CHART_NAME=$(basename "${TEST_DIR}")
-
-    echo "[TEST] $CHART_NAME"
     docker run -ti --rm -v $(pwd):/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
-    echo ""
     cd -
 }
 
