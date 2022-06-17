@@ -27,7 +27,7 @@
 * Add APM tracing for client-go requests to the Kubernetes API {pull}5651[#5651]
 * Add support for the desired nodes API {pull}5650[#5650]
 * Base ECK docker image on distroless instead of UBI by default  {pull}5580[#5580] (issue: {issue}4561[#4561])
-* Added priority class and leader election to operator helm chart {pull}5538[#5538]
+* Added priority class and leader election to operator Helm chart {pull}5538[#5538]
 * Log info for service not found error when reconciling associations {pull}5533[#5533]
 
 [[bug-2.3.0]]
@@ -46,9 +46,9 @@
 * Change references to the master branch to main in the CONTRIBUTING guide. {pull}5741[#5741]
 * Fix Helm command examples in docs {pull}5737[#5737]
 * Update list of ECK versions that triggers a rolling restart {pull}5715[#5715] (issue: {issue}5648[#5648])
-* Update doc pages that use the repository-gcs plugin {pull}5700[#5700] (issue: {issue}5457[#5457])
+* Update documentation pages that use the repository-gcs plugin {pull}5700[#5700] (issue: {issue}5457[#5457])
 * CronJob batch/v1beta1 no longer served in 1.25 {pull}5685[#5685]
-* Update doc to customize pods {pull}5660[#5660]
+* Update documentation to customize pods {pull}5660[#5660]
 * Wrong indentation of the kibana config {pull}5595[#5595]
 * Update recommended reading Kubebuilder links {pull}5593[#5593] (issue: {issue}5584[#5584])
 * Add APM Server Deprecation Message {pull}5575[#5575] (issue: {issue}5419[#5419])
