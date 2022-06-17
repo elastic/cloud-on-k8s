@@ -224,6 +224,8 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	defer esClient.Close()
 
 	esReachable, err := services.IsServiceReady(d.Client, *internalService)
+	// use unknown health as a proxy for a cluster not responding to requests
+	esReachable = esReachable && observedState() != esv1.ElasticsearchUnknownHealth
 	if err != nil {
 		return results.WithError(err)
 	}
