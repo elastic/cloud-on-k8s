@@ -36,6 +36,7 @@
 
 * Ensure CA is always updated in HTTP Secret {pull}5622[#5622] (issue: {issue}5621[#5621])
 * Fix resources limits conversion in ToInt64() used for logging {pull}5596[#5596]
+* Refactor request body closing {pull}5755[#5755]
 
 [[docs-2.3.0]]
 [float]
