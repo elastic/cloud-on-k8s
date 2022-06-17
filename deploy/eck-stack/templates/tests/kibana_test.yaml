@@ -1,0 +1,48 @@
+suite: test kibana
+templates:
+  - charts/eck-kibana/templates/kibana.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      eck-kibana.enabled: true
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: should render node roles properly
+    set:
+      eck-kibana.enabled: true
+    values:
+      - ../../examples/kibana/http-configuration.yaml
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.count
+          value: 1
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: quickstart
+      - equal:
+          path: spec.elasticsearchRef.namespace
+          value: default
+      - equal:
+          path: spec.http.service.spec.type
+          value: LoadBalancer
+      - equal:
+          path: spec.http.tls.selfSignedCertificate.subjectAltNames[0].ip
+          value: 1.2.3.4
+      - equal:
+          path: spec.http.tls.selfSignedCertificate.subjectAltNames[1].dns
+          value: kibana.example.com
