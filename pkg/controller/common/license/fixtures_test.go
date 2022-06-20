@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 )
 
 var (
@@ -87,7 +87,7 @@ func asRuntimeObject(l EnterpriseLicense) runtime.Object {
 			Namespace: "test-system",
 			Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
 			Labels: map[string]string{
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 				LicenseLabelScope:    string(LicenseScopeOperator),
 				LicenseLabelType:     string(l.License.Type),
 			},

@@ -17,7 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -54,7 +54,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		"kibana.k8s.elastic.co/namespace":            esFixture.Namespace,
 	}
 
-	userSecretLabels := maps.Merge(map[string]string{common.TypeLabelName: esuser.AssociatedUserType}, associationLabels)
+	userSecretLabels := maps.Merge(map[string]string{labels.TypeLabelName: esuser.AssociatedUserType}, associationLabels)
 
 	assertExpectObjectsExist := func(t *testing.T, c k8s.Client) {
 		t.Helper()
@@ -96,7 +96,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				Spec: kbv1.KibanaSpec{
 					ElasticsearchRef: commonv1.ObjectSelector{ // ElasticsearchRef without a namespace
 						Name: esFixture.Name,
-						//Namespace: esFixture.Namespace, No namespace on purpose
+						// Namespace: esFixture.Namespace, No namespace on purpose
 					},
 				},
 			},

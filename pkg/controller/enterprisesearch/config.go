@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -77,7 +78,7 @@ func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.Ent
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ent.Namespace,
 			Name:      ConfigName(ent.Name),
-			Labels:    common.AddCredentialsLabel(Labels(ent.Name)),
+			Labels:    labels.AddCredentialsLabel(Labels(ent.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename:         cfgBytes,

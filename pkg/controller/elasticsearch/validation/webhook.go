@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
@@ -31,11 +32,12 @@ const (
 var eslog = ulog.Log.WithName("es-validation")
 
 // RegisterWebhook will register the Elasticsearch validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string) {
 	wh := &validatingWebhook{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
 		exposedNodeLabels:    exposedNodeLabels,
+		licenseChecker:       licenseChecker,
 		managedNamespaces:    set.Make(managedNamespaces...),
 	}
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
@@ -47,6 +49,7 @@ type validatingWebhook struct {
 	decoder              *admission.Decoder
 	validateStorageClass bool
 	exposedNodeLabels    NodeLabels
+	licenseChecker       license.Checker
 	managedNamespaces    set.StringSet
 }
 
@@ -60,7 +63,7 @@ func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 
 func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(es, wh.exposedNodeLabels)
+	return ValidateElasticsearch(es, wh.licenseChecker, wh.exposedNodeLabels)
 }
 
 func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
@@ -76,7 +79,7 @@ func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.E
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			curr.Name, errs)
 	}
-	return ValidateElasticsearch(curr, wh.exposedNodeLabels)
+	return ValidateElasticsearch(curr, wh.licenseChecker, wh.exposedNodeLabels)
 }
 
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
@@ -118,8 +121,8 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 }
 
 // ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
-func ValidateElasticsearch(es esv1.Elasticsearch, exposedNodeLabels NodeLabels) error {
-	errs := check(es, validations(exposedNodeLabels))
+func ValidateElasticsearch(es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) error {
+	errs := check(es, validations(checker, exposedNodeLabels))
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},

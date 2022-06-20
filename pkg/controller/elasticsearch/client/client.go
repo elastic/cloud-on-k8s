@@ -15,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	commonhttp "github.com/elastic/cloud-on-k8s/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
@@ -151,7 +151,7 @@ func NewElasticsearchClient(
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
+		HTTP:     commonhttp.Client(dialer, caCerts, timeout),
 		es:       es,
 	}
 	return versioned(base, v)

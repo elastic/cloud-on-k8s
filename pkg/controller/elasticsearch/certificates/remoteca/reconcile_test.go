@@ -15,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -45,7 +45,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       TypeLabelValue,
+								labels.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
@@ -56,7 +56,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       TypeLabelValue,
+								labels.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
@@ -77,7 +77,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       TypeLabelValue,
+								labels.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
@@ -88,7 +88,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       "foo",
+								labels.TypeLabelName:       "foo",
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert3\n")},
@@ -99,7 +99,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       TypeLabelValue,
+								labels.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},

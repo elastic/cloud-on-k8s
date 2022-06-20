@@ -21,11 +21,11 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -244,7 +244,7 @@ func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*default
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      EnvVarsSecretName(params.Agent.Name),
 			Namespace: params.Agent.Namespace,
-			Labels:    common.AddCredentialsLabel(NewLabels(params.Agent)),
+			Labels:    labels.AddCredentialsLabel(NewLabels(params.Agent)),
 		},
 		Data: map[string][]byte{},
 	}

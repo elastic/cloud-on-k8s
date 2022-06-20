@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 )
 
 func Test_isLicenseType(t *testing.T) {
@@ -37,7 +37,7 @@ func Test_isLicenseType(t *testing.T) {
 				secret: corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{
 						Labels: map[string]string{
-							common.TypeLabelName: "foo",
+							labels.TypeLabelName: "foo",
 							LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
 						},
 					},
@@ -52,7 +52,7 @@ func Test_isLicenseType(t *testing.T) {
 				secret: corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{
 						Labels: map[string]string{
-							common.TypeLabelName: Type,
+							labels.TypeLabelName: Type,
 							LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
 						},
 					},
@@ -67,7 +67,7 @@ func Test_isLicenseType(t *testing.T) {
 				secret: corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{
 						Labels: map[string]string{
-							common.TypeLabelName: Type,
+							labels.TypeLabelName: Type,
 							LicenseLabelType:     string(LicenseTypeEnterprise),
 						},
 					},

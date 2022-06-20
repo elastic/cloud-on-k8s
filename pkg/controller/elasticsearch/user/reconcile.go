@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -85,7 +85,7 @@ func aggregateServiceAccountTokens(c k8s.Client, es esv1.Elasticsearch) (Service
 		client.MatchingLabels(
 			map[string]string{
 				label.ClusterNameLabelName: es.Name,
-				common.TypeLabelName:       ServiceAccountTokenType,
+				labels.TypeLabelName:       ServiceAccountTokenType,
 			},
 		),
 	); err != nil {

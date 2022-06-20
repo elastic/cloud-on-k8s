@@ -9,7 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
@@ -76,7 +76,7 @@ fi
 # request Elasticsearch on /
 # we are turning globbing off to allow for unescaped [] in case of IPv6
 ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://${LOOPBACK}:9200/"
-ORIGIN_HEADER="` + common.InternalProductRequestHeaderString + `"
+ORIGIN_HEADER="` + http.InternalProductRequestHeaderString + `"
 status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -H "${ORIGIN_HEADER}" -XGET -g -s -k ${BASIC_AUTH} $ENDPOINT)
 curl_rc=$?
 

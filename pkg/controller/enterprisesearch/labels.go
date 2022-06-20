@@ -6,7 +6,7 @@ package enterprisesearch
 
 import (
 	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 func Labels(entName string) map[string]string {
 	return map[string]string{
 		EnterpriseSearchNameLabelName: entName,
-		common.TypeLabelName:          Type,
+		labels.TypeLabelName:          Type,
 	}
 }
 

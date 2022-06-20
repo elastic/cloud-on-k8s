@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
@@ -28,29 +28,29 @@ const (
 	// StatefulSetNameLabelName used to store the name of the statefulset.
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
 	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
-	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
+	NodeTypesMasterLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
 	// NodeTypesDataLabelName is a label set to true on nodes with the data role
-	NodeTypesDataLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
+	NodeTypesDataLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
 	// NodeTypesIngestLabelName is a label set to true on nodes with the ingest role
-	NodeTypesIngestLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
+	NodeTypesIngestLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
-	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
+	NodeTypesMLLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
 	// NodeTypesTransformLabelName is a label set to true on nodes with the transform role
-	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
+	NodeTypesTransformLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 	// NodeTypesRemoteClusterClientLabelName is a label set to true on nodes with the remote_cluster_client role
-	NodeTypesRemoteClusterClientLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
+	NodeTypesRemoteClusterClientLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
 	// NodeTypesVotingOnlyLabelName is a label set to true on voting-only master-eligible nodes
-	NodeTypesVotingOnlyLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
+	NodeTypesVotingOnlyLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
 	// NodeTypesDataColdLabelName is a label set to true on nodes with the data_cold role.
-	NodeTypesDataColdLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
+	NodeTypesDataColdLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
 	// NodeTypesDataContentLabelName is a label set to true on nodes with the data_content role.
-	NodeTypesDataContentLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_content"
+	NodeTypesDataContentLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_content"
 	// NodeTypesDataHotLabelName is a label set to true on nodes with the data_hot role.
-	NodeTypesDataHotLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
+	NodeTypesDataHotLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
 	// NodeTypesDataWarmLabelName is a label set to true on nodes with the data_warm role.
-	NodeTypesDataWarmLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
+	NodeTypesDataWarmLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
 	// NodeTypesDataFrozenLabelName is a label set to true on nodes with the data_frozen role.
-	NodeTypesDataFrozenLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_frozen"
+	NodeTypesDataFrozenLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_frozen"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
@@ -59,7 +59,7 @@ const (
 )
 
 // NonMasterRoles are all Elasticsearch node roles except master or voting-only.
-var NonMasterRoles = []common.TrueFalseLabel{
+var NonMasterRoles = []labels.TrueFalseLabel{
 	NodeTypesDataLabelName,
 	NodeTypesDataHotLabelName,
 	NodeTypesDataColdLabelName,
@@ -116,7 +116,7 @@ func ExtractVersion(labels map[string]string) (version.Version, error) {
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{
 		ClusterNameLabelName: es.Name,
-		common.TypeLabelName: Type,
+		labels.TypeLabelName: Type,
 	}
 }
 

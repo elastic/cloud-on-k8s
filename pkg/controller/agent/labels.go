@@ -6,7 +6,7 @@ package agent
 
 import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 // NewLabels returns the set of common labels for an Elastic Agent.
 func NewLabels(agent agentv1alpha1.Agent) map[string]string {
 	return map[string]string{
-		common.TypeLabelName: TypeLabelValue,
+		labels.TypeLabelName: TypeLabelValue,
 		NameLabelName:        agent.Name,
 	}
 }

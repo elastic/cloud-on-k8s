@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonlabels "github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
@@ -55,10 +55,10 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 func newRequestsFromMatchedLabels() handler.MapFunc {
 	return func(obj client.Object) []reconcile.Request {
 		labels := obj.GetLabels()
-		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, common.TypeLabelName) {
+		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonlabels.TypeLabelName) {
 			return nil
 		}
-		if labels[common.TypeLabelName] != remoteca.TypeLabelValue {
+		if labels[commonlabels.TypeLabelName] != remoteca.TypeLabelValue {
 			return nil
 		}
 		return []reconcile.Request{
