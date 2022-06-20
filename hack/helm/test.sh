@@ -12,17 +12,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 check() {
     local TEST_DIR="$1"
-    cd ${TEST_DIR}
+    cd "${TEST_DIR}"
 
-    docker run -ti --rm -v $(pwd):/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
+    docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
     cd -
 }
 
-for i in `ls ${SCRIPT_DIR}/../../deploy/`; do
-    if [[ ! -d ${SCRIPT_DIR}/../../deploy/${i} ]]; then
+for i in `ls "${SCRIPT_DIR}"/../../deploy/`; do
+    if [[ ! -d "${SCRIPT_DIR}"/../../deploy/${i} ]]; then
         continue
     fi
-    if [[ -d ${SCRIPT_DIR}/../../deploy/${i}/templates/tests ]]; then
-        check ${SCRIPT_DIR}/../../deploy/${i}
+    if [[ -d "${SCRIPT_DIR}"/../../deploy/${i}/templates/tests ]]; then
+        check "${SCRIPT_DIR}"/../../deploy/${i}
     fi
 done
