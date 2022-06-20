@@ -2507,11 +2507,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.7.2
-Time    : 2022-06-06T09:52:45Z
+Version : v1.7.3
+Time    : 2022-06-20T10:32:41Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.3/LICENSE:
 
 MIT License
 
@@ -19368,11 +19368,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/objx
-Version : v0.1.1
-Time    : 2018-01-25T22:19:50Z
+Version : v0.4.0
+Time    : 2022-04-12T09:17:15Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.1.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.4.0/LICENSE:
 
 The MIT License
 
