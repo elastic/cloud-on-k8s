@@ -88,6 +88,9 @@ spec:
                       when created from a template
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  revisionHistoryLimit:
+                    format: int32
+                    type: integer
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -166,6 +169,9 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   replicas:
+                    format: int32
+                    type: integer
+                  revisionHistoryLimit:
                     format: int32
                     type: integer
                   strategy:

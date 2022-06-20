@@ -88,13 +88,14 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
-		Name:            Name(rp.agent.Name),
-		Namespace:       rp.agent.Namespace,
-		Selector:        NewLabels(rp.agent),
-		Labels:          NewLabels(rp.agent),
-		PodTemplateSpec: rp.podTemplate,
-		Replicas:        pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
-		Strategy:        rp.agent.Spec.Deployment.Strategy,
+		Name:                 Name(rp.agent.Name),
+		Namespace:            rp.agent.Namespace,
+		Selector:             NewLabels(rp.agent),
+		Labels:               NewLabels(rp.agent),
+		PodTemplateSpec:      rp.podTemplate,
+		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
+		RevisionHistoryLimit: pointer.Int32OrDefault(rp.agent.Spec.Deployment.RevisionHistoryLimit, int32(10)),
+		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
 		return 0, 0, err
@@ -110,12 +111,13 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	ds := daemonset.New(daemonset.Params{
-		PodTemplate: rp.podTemplate,
-		Name:        Name(rp.agent.Name),
-		Owner:       &rp.agent,
-		Labels:      NewLabels(rp.agent),
-		Selectors:   NewLabels(rp.agent),
-		Strategy:    rp.agent.Spec.DaemonSet.UpdateStrategy,
+		PodTemplate:          rp.podTemplate,
+		Name:                 Name(rp.agent.Name),
+		Owner:                &rp.agent,
+		Labels:               NewLabels(rp.agent),
+		Selectors:            NewLabels(rp.agent),
+		RevisionHistoryLimit: pointer.Int32OrDefault(rp.agent.Spec.DaemonSet.RevisionHistoryLimit, int32(10)),
+		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
 
 	if err := controllerutil.SetControllerReference(&rp.agent, &ds, scheme.Scheme); err != nil {

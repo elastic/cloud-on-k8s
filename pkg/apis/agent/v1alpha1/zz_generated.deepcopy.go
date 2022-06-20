@@ -226,6 +226,11 @@ func (in *AgentStatus) DeepCopy() *AgentStatus {
 func (in *DaemonSetSpec) DeepCopyInto(out *DaemonSetSpec) {
 	*out = *in
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
 }
 
@@ -245,6 +250,11 @@ func (in *DeploymentSpec) DeepCopyInto(out *DeploymentSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)
 		**out = **in
 	}
