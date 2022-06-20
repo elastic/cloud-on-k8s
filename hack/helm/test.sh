@@ -18,11 +18,12 @@ check() {
     cd -
 }
 
-for i in $(ls "${SCRIPT_DIR}"/../../deploy/); do
-    if [[ ! -d "${SCRIPT_DIR}"/../../deploy/"${i}" ]]; then
+# The following odd style is to resolve SC2045
+shopt -s dotglob; for i in "${SCRIPT_DIR}"/../../deploy/*; do
+    if [[ ! -d "${i}" ]]; then
         continue
     fi
-    if [[ -d "${SCRIPT_DIR}"/../../deploy/"${i}"/templates/tests ]]; then
-        check "${SCRIPT_DIR}"/../../deploy/"${i}"
+    if [[ -d "${i}"/templates/tests ]]; then
+        check "${i}"
     fi
 done
