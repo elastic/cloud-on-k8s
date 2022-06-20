@@ -18,11 +18,11 @@ check() {
     cd -
 }
 
-for i in `ls "${SCRIPT_DIR}"/../../deploy/`; do
-    if [[ ! -d "${SCRIPT_DIR}"/../../deploy/${i} ]]; then
+for i in $(ls "${SCRIPT_DIR}"/../../deploy/); do
+    if [[ ! -d "${SCRIPT_DIR}"/../../deploy/"${i}" ]]; then
         continue
     fi
-    if [[ -d "${SCRIPT_DIR}"/../../deploy/${i}/templates/tests ]]; then
-        check "${SCRIPT_DIR}"/../../deploy/${i}
+    if [[ -d "${SCRIPT_DIR}"/../../deploy/"${i}"/templates/tests ]]; then
+        check "${SCRIPT_DIR}"/../../deploy/"${i}"
     fi
 done
