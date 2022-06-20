@@ -20,4 +20,3 @@ spec:
   {{- $finalSpec = mustMergeOverwrite (dict) .Values.spec (dict "elasticsearchRef" (dict "namespace" .Release.Namespace )) }}
   {{- end }}
   {{- toYaml $finalSpec | nindent 2 }}
-  
