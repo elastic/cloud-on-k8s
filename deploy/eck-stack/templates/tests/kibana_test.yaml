@@ -14,7 +14,7 @@ tests:
       - equal:
           path: spec.version
           value: 8.2.3
-  - it: should render node roles properly
+  - it: should render http service properly
     set:
       eck-kibana.enabled: true
     values:

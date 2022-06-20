@@ -21,7 +21,7 @@ NOTE: The minimum supported version of Helm is 3.2.0.
 [id="{p}-install-elasticsearch-helm"]
 == Installing Elasticsearch using the eck-stack Helm Chart
 
-Similar to the <<{p}-deploy-elasticsearch,quickstart>>, the following section describe how to setup a simple Elasticsearch cluster specification, with one Elasticsearch node, managed by ECK, and how to customize an Elasticsearch deployment using the eck-stack Helm chart.
+Similar to the <<{p}-deploy-elasticsearch,quickstart>>, the following section describes how to setup a simple Elasticsearch cluster specification, with one Elasticsearch node, managed by ECK, and how to customize an Elasticsearch deployment using the eck-stack Helm chart.
 
 [source,sh]
 ----

@@ -13,12 +13,10 @@ version: 8.2.3
 # Labels that will be applied to Kibana.
 #
 labels: {}
-  # key: value
 
 # Annotations that will be applied to Kibana.
 #
 annotations: {}
-  # key: value
 
 spec:
   # Count of Kibana instances to create.

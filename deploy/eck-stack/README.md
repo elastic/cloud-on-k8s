@@ -2,8 +2,10 @@
 
 ## TODO
 
-- [ ] Write documentation in the official ECK /docs directory.
-- [ ] Document using examples values.
+- [ ] How do we release this/these charts independent of the eck-operator?
+- [ ] How do we use the dev helm charts repo with this/these charts?  The dependencies on the Chart.yaml in eck-stack doesn't support this.
+- [ ] Does the docker container for tests fail properly?
+- [ ] Do we want to document every single option in eck-ES, and eck-Kibana readme, similar to other charts?
 
 ECK Stack is a Helm chart to assist in the deployment of Elastic Stack components, which are
 managed by the [ECK Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
@@ -50,13 +52,11 @@ helm repo add elastic https://helm.elastic.co && helm repo update
 
 # Install the ECK-Stack helm chart
 # This will setup a 'quickstart' Elasticsearch cluster
-$ helm install my-release --namespace my-namespace elastic/eck-stack
+$ helm install my-release --namespace my-namespace elastic/eck-stack --create-namespace
 ```
 
 More information on the different ways to use the ECK Stack chart to deploy Elastic Stack resources
 can be found in [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html).
-
-> **Tip**: List all releases in all Kubernetes namespaces using `helm list -A`
 
 ## Uninstalling the Chart
 

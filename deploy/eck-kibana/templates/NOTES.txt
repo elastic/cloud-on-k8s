@@ -6,4 +6,4 @@
   $ kubectl get pods --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=kibana
 
 3. Expose Kibana service
-  $ kubectl port-forward svc/{{ .Values.name}}-kb-http 9200
+  $ kubectl port-forward svc/{{ .Values.name }}-kb-http 9200

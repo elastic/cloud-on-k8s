@@ -6,4 +6,4 @@
   $ kubectl get pods --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=elasticsearch
 
 3. Expose Elasticsearch service
-  $ kubectl port-forward svc/{{ .Values.name}}-es-http 9200
+  $ kubectl port-forward svc/{{ .Values.name }}-es-http 9200
