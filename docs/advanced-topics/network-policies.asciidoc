@@ -39,7 +39,7 @@ To set up the network policies correctly you must know the operator Pod selector
 
 === Operator Pod selector
 
-The operator Pod label depends on how the operator has been installed, refer to the following table to know what label name should be used in the network policies.
+The operator Pod label depends on how the operator has been installed. Check the following table to know which label name is used in the network policies.
 
 [cols="1,1"]
 |===
@@ -458,7 +458,7 @@ spec:
 == Isolating {agent} and {fleet}
 
 
-NOTE: Some {agent} policies may require additional access rules than what is listed here.
+NOTE: Some {agent} policies may require additional access rules other than those listed here.
 
 
 [cols="h,1"]
