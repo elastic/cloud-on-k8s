@@ -342,7 +342,7 @@ func validAssociations(es esv1.Elasticsearch) field.ErrorList {
 
 func validLicenseLevel(es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
 	var errs field.ErrorList
-	ok, err := license.HasRequestedLicenseLevel(&es, checker)
+	ok, err := license.HasRequestedLicenseLevel(es.Annotations, checker)
 	if err != nil {
 		log.Error(err, "while checking license level during validation")
 		return nil // ignore the error here

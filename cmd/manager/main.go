@@ -897,6 +897,7 @@ func setupWebhook(
 		}
 	}
 
+	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
 	webhookObjects := []interface {
 		runtime.Object
@@ -920,13 +921,13 @@ func setupWebhook(
 			WebhookPath:      obj.WebhookPath(),
 			ManagedNamespace: managedNamespaces,
 			Validator:        obj,
+			LicenseChecker:   checker,
 		}); err != nil {
 			gvk := obj.GetObjectKind().GroupVersionKind()
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
 		}
 	}
 
-	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 
