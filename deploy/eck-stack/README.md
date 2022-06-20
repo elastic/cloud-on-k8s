@@ -1,11 +1,5 @@
 # ECK-Stack
 
-## TODO
-
-- [ ] How do we release this/these charts independent of the eck-operator?  Do we see the need for this initially?  (just create issue for this in the future?)
-- [ ] How do we use the dev helm charts repo with this/these charts?  The dependencies on the Chart.yaml in eck-stack doesn't support this.
-- [ ] Do we want to document every single option in eck-ES, and eck-Kibana readme, similar to other charts?
-
 ECK Stack is a Helm chart to assist in the deployment of Elastic Stack components, which are
 managed by the [ECK Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
 
