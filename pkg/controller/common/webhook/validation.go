@@ -31,7 +31,7 @@ func hasRequestedLicenseLevel(obj runtime.Object, checker license.Checker) field
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
 		whlog.Error(err, "while accessing runtime object metadata")
-		return nil
+		return nil // we do not want to block admission because of it
 	}
 	var errs field.ErrorList
 	ok, err := license.HasRequestedLicenseLevel(annotations, checker)
