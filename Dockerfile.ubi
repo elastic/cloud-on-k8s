@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       go build \
       -mod readonly \
       -ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
-      -o elastic-operator github.com/elastic/cloud-on-k8s/cmd
+      -o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
 
 # Copy the operator binary into a lighter image
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6

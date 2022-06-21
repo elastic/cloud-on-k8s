@@ -134,7 +134,7 @@ generate-image-dependencies:
 	@hack/licence-detector/generate-image-deps.sh
 
 elastic-operator: generate
-	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
+	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
