@@ -183,7 +183,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
 	// add a listener that is only interested in cluster1
-	eventsCluster1 := make(chan types.NamespacedName)
+	var eventsCluster1 chan types.NamespacedName
 	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster1" {
 			eventsCluster1 <- cluster
@@ -191,13 +191,15 @@ func TestManager_AddObservationListener(t *testing.T) {
 	})
 
 	// add a 2nd listener that is only interested in cluster2
-	eventsCluster2 := make(chan types.NamespacedName)
+	var eventsCluster2 chan types.NamespacedName
 	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster2" {
 			eventsCluster2 <- cluster
 		}
 	})
 
+	eventsCluster1 = make(chan types.NamespacedName, len(m.listeners))
+	eventsCluster2 = make(chan types.NamespacedName, len(m.listeners))
 	// observe 2 clusters
 	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
