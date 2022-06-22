@@ -154,6 +154,8 @@ plans:
   clientVersion: 0.14.0
   provider: kind
   kubernetesVersion: 1.22.9
+  gatekeeper:
+    defaultConstraints: true
   kind:
     nodeCount: 3
     nodeImage: kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105
@@ -164,6 +166,8 @@ plans:
   clientVersion: 0.14.0
   provider: kind
   kubernetesVersion: 1.22.9
+  gatekeeper:
+    defaultConstraints: true
   kind:
     nodeCount: 3
     nodeImage: kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105

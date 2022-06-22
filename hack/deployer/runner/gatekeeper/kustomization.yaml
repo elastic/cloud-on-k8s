@@ -1,10 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-# - github.com/open-policy-agent/gatekeeper-library/library
-# You can optionally install a subset by specifying a subfolder, or specify a commit SHA
 - github.com/open-policy-agent/gatekeeper-library/library/general/automount-serviceaccount-token
-- github.com/open-policy-agent/gatekeeper-library/library/pod-security-policy/allow-privilege-escalation
 - github.com/open-policy-agent/gatekeeper-library/library/pod-security-policy/users
-# - github.com/open-policy-agent/gatekeeper-library/library/pod-security-policy
-# - constraints.yaml
+

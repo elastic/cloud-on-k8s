@@ -5,8 +5,8 @@ metadata:
   name: automount-sa-token-pod
 spec:
   match:
-    ## All namespaces whose name ends with '-system' (for example kube-system, )
-    excludedNamespaces: ["*-system"]
+    ## All namespaces whose name ends with '-system' and the local-volume provisioner
+    excludedNamespaces: ["*-system", "default"]
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
@@ -18,11 +18,11 @@ spec:
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sPSPAllowedUsers
 metadata:
-  name: psp-pods-allowed-user-ranges
+  name: must-run-as-non-root
 spec:
   match:
-    ## All namespaces whose name ends with '-system' (for example kube-system, )
-    excludedNamespaces: ["*-system"]
+    ## Nothing is expected to run as root on the cluster except Pods in kube-system and the local-volume provisioner
+    excludedNamespaces: ["*-system", "default"]
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
@@ -33,28 +33,3 @@ spec:
   parameters:
     runAsUser:
       rule: MustRunAsNonRoot
-    runAsGroup:
-      rule: RunAsAny
-    supplementalGroups:
-      rule: MustRunAs
-      ranges:
-        - min: 1000
-          max: 65535
-    fsGroup:
-      rule: MustRunAs
-      ranges:
-        - min: 1000
-          max: 65535
----
-## No privileged workload are allowed during our e2e tests
-apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sPSPAllowPrivilegeEscalationContainer
-metadata:
-  name: psp-allow-privilege-escalation-container
-spec:
-  match:
-    # default is required for local-volume-provisioner
-    excludedNamespaces: ["kube-system", "default"]
-    kinds:
-      - apiGroups: [""]
-        kinds: ["Pod"]
