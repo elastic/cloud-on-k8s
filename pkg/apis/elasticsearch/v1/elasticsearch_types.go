@@ -303,6 +303,9 @@ type NodeSet struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
 	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 	// Items defined here take precedence over any default claims added by the operator with the same name.

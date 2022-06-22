@@ -526,6 +526,11 @@ func (in *NodeSet) DeepCopyInto(out *NodeSet) {
 		*out = (*in).DeepCopy()
 	}
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	if in.VolumeClaimTemplates != nil {
 		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
 		*out = make([]corev1.PersistentVolumeClaim, len(*in))

@@ -1397,6 +1397,11 @@ spec:
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit sets the number of old revisions
+                  to keep in the k8s cluster for roll back
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for APM Server.
@@ -2146,6 +2151,9 @@ spec:
                       when created from a template
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  revisionHistoryLimit:
+                    format: int32
+                    type: integer
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -2224,6 +2232,9 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   replicas:
+                    format: int32
+                    type: integer
+                  revisionHistoryLimit:
                     format: int32
                     type: integer
                   strategy:
@@ -2973,6 +2984,11 @@ spec:
                   Server pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit sets the number of old revisions
+                  to keep in the k8s cluster for roll back
+                format: int32
+                type: integer
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (for ex. Elasticsearch) in a different namespace.
@@ -3663,6 +3679,11 @@ spec:
                         for the Pods belonging to this NodeSet.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    revisionHistoryLimit:
+                      description: RevisionHistoryLimit sets the number of old revisions
+                        to keep in the k8s cluster for roll back
+                      format: int32
+                      type: integer
                     volumeClaimTemplates:
                       description: VolumeClaimTemplates is a list of persistent volume
                         claims to be used by each Pod in this NodeSet. Every claim
@@ -6359,6 +6380,11 @@ spec:
                   Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit sets the number of old revisions
+                  to keep in the k8s cluster for roll back
+                format: int32
+                type: integer
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (for ex. Elasticsearch) in a different namespace.
@@ -7624,6 +7650,11 @@ spec:
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit sets the number of old revisions
+                  to keep in the k8s cluster for roll back
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.

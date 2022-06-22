@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(
@@ -93,13 +94,14 @@ func (r *ReconcileApmServer) deploymentParams(
 	}
 
 	return deployment.Params{
-		Name:            Deployment(as.Name),
-		Namespace:       as.Namespace,
-		Replicas:        as.Spec.Count,
-		Selector:        NewLabels(as.Name),
-		Labels:          NewLabels(as.Name),
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 Deployment(as.Name),
+		Namespace:            as.Namespace,
+		Replicas:             as.Spec.Count,
+		Selector:             NewLabels(as.Name),
+		Labels:               NewLabels(as.Name),
+		RevisionHistoryLimit: pointer.Int32OrDefault(as.Spec.RevisionHistoryLimit, int32(10)),
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }
 

@@ -56,6 +56,9 @@ type EnterpriseSearchSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional

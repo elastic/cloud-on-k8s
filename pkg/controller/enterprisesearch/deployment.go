@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
@@ -45,12 +46,13 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            DeploymentName(ent.Name),
-		Namespace:       ent.Namespace,
-		Replicas:        ent.Spec.Count,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 DeploymentName(ent.Name),
+		Namespace:            ent.Namespace,
+		Replicas:             ent.Spec.Count,
+		Selector:             deploymentLabels,
+		Labels:               deploymentLabels,
+		RevisionHistoryLimit: pointer.Int32OrDefault(ent.Spec.RevisionHistoryLimit, int32(10)),
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }

@@ -85,7 +85,8 @@ type DaemonSetSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	// +kubebuilder:validation:Optional
-	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
+	UpdateStrategy       appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
+	RevisionHistoryLimit *int32                         `json:"revisionHistoryLimit,omitempty"`
 }
 
 type DeploymentSpec struct {
@@ -93,7 +94,8 @@ type DeploymentSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
-	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+	Strategy             appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+	RevisionHistoryLimit *int32                    `json:"revisionHistoryLimit,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.

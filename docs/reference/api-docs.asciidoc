@@ -204,6 +204,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 | *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster. It allows APM agent central configuration management in Kibana.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
@@ -333,6 +334,7 @@ BeatSpec defines the desired state of a Beat.
 | Field | Description
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
 | *`updateStrategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
+| *`revisionHistoryLimit`* __integer__ | 
 |===
 
 
@@ -352,6 +354,7 @@ BeatSpec defines the desired state of a Beat.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
 | *`replicas`* __integer__ | 
 | *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
+| *`revisionHistoryLimit`* __integer__ | 
 |===
 
 
@@ -1210,6 +1213,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Elasticsearch configuration.
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy. If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
 | *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name.
 |===
 
@@ -1558,6 +1562,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
@@ -1666,6 +1671,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
@@ -1849,6 +1855,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration. Configuration settings are merged and have precedence over settings specified in `config`.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Elastic Maps Server.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
+| *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit sets the number of old revisions to keep in the k8s cluster for roll back
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 

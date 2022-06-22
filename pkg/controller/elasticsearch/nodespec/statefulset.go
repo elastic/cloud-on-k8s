@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
@@ -109,7 +110,7 @@ func BuildStatefulSet(
 			// so we're fine with the StatefulSet controller spawning all pods in parallel
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			// use default revision history limit
-			RevisionHistoryLimit: nil,
+			RevisionHistoryLimit: pointer.Int32OrDefault(es.Spec.RevisionHistoryLimit, int32(10)),
 			// build a headless service per StatefulSet, matching the StatefulSet labels
 			ServiceName: HeadlessServiceName(statefulSetName),
 			Selector: &metav1.LabelSelector{

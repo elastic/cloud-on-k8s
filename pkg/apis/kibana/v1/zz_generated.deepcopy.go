@@ -162,6 +162,11 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
 		*out = make([]commonv1.SecretSource, len(*in))

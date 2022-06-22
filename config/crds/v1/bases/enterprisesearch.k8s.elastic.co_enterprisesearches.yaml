@@ -7642,6 +7642,11 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit sets the number of old revisions
+                  to keep in the k8s cluster for roll back
+                format: int32
+                type: integer
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (for ex. Elasticsearch) in a different namespace.
