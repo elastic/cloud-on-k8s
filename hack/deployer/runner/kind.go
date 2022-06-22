@@ -15,6 +15,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
+
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
 
@@ -125,6 +127,12 @@ func (k *KindDriver) create() error {
 	tmpStorageClass, err := k.createTmpStorageClass()
 	if err != nil {
 		return err
+	}
+
+	if k.plan.Gatekeeper != nil {
+		if err := gatekeeper.Install(k.plan.Gatekeeper.DefaultConstraints, "--kubeconfig", kubeCfg.Name()); err != nil {
+			return err
+		}
 	}
 
 	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)

@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
@@ -27,15 +28,16 @@ var library string
 var defaultConstraints string
 
 const (
-	waitForAuditPod           = `kubectl wait deployment gatekeeper-audit -n gatekeeper-system --for condition=Available=True --timeout=60s`
-	waitForControllers        = `kubectl wait deployment gatekeeper-controller-manager -n gatekeeper-system --for condition=Available=True --timeout=60s`
-	createdConstraintTemplate = `kubectl get ConstraintTemplate -o go-template='{{range .items}}{{or .status.created "false"}}{{","}}{{end}}'`
+	waitForAuditPod           = `wait deployment gatekeeper-audit -n gatekeeper-system --for condition=Available=True --timeout=60s`
+	waitForControllers        = `wait deployment gatekeeper-controller-manager -n gatekeeper-system --for condition=Available=True --timeout=60s`
+	createdConstraintTemplate = `get ConstraintTemplate -o go-template='{{range .items}}{{or .status.created "false"}}{{","}}{{end}}'`
 
 	maxRetry          = 30
 	retryWaitDuration = 2 * time.Second
 )
 
-func Install(installDefaultConstraints bool) error {
+func Install(installDefaultConstraints bool, globalKubectlOptions ...string) error {
+	k := NewKubectl(globalKubectlOptions...)
 	// Gatekeeper related manifests are stored in a temporary directory
 	dir, err := ioutil.TempDir("", "gatekeeper")
 	if err != nil {
@@ -45,27 +47,27 @@ func Install(installDefaultConstraints bool) error {
 
 	// Install Gatekeeper
 	log.Println("Installing Gatekeeper...")
-	if err := apply(dir, install, "install.yaml"); err != nil {
+	if err := apply(k, dir, install, "install.yaml"); err != nil {
 		return err
 	}
 	log.Println("Waiting for Gatekeeper to be ready...")
-	if err := exec.NewCommand(waitForAuditPod).Run(); err != nil {
+	if err := k.NewCommand(waitForAuditPod).Run(); err != nil {
 		return err
 	}
-	if err := exec.NewCommand(waitForControllers).Run(); err != nil {
+	if err := k.NewCommand(waitForControllers).Run(); err != nil {
 		return err
 	}
 
 	// Install constraints templates library
 	log.Println("Installing Gatekeeper library")
-	if err := apply(dir, library, "library.yaml"); err != nil {
+	if err := apply(k, dir, library, "library.yaml"); err != nil {
 		return err
 	}
 
 	log.Println("Waiting for Gatekeeper library to be available")
 	retry := 0
 	for {
-		constraintTemplateNotCreated, err := exec.NewCommand(createdConstraintTemplate).WithoutStreaming().OutputContainsAny("false")
+		constraintTemplateNotCreated, err := k.NewCommand(createdConstraintTemplate).WithoutStreaming().OutputContainsAny("false")
 		if err != nil {
 			return nil
 		}
@@ -81,7 +83,7 @@ func Install(installDefaultConstraints bool) error {
 
 	if installDefaultConstraints {
 		log.Println("Installing default Gatekeeper constraints")
-		if err := apply(dir, defaultConstraints, "default-constraints.yaml"); err != nil {
+		if err := apply(k, dir, defaultConstraints, "default-constraints.yaml"); err != nil {
 			return err
 		}
 	}
@@ -89,10 +91,26 @@ func Install(installDefaultConstraints bool) error {
 	return nil
 }
 
-func apply(workDir string, content string, tmpFilename string) error {
+func apply(k *Kubectl, workDir string, content string, tmpFilename string) error {
 	path := filepath.Join(workDir, tmpFilename)
 	if err := ioutil.WriteFile(path, []byte(content), 0644); err != nil {
 		return err
 	}
-	return exec.NewCommand(fmt.Sprintf(`kubectl apply -f %s`, path)).Run()
+	return k.NewCommand(fmt.Sprintf(`apply -f %s`, path)).Run()
+}
+
+type Kubectl struct {
+	prefix string
+}
+
+func NewKubectl(globalKubectlOptions ...string) *Kubectl {
+	if len(globalKubectlOptions) == 0 {
+		return &Kubectl{prefix: "kubectl"}
+	}
+	return &Kubectl{prefix: fmt.Sprintf("%s %s", "kubectl", strings.Join(globalKubectlOptions, " "))}
+}
+
+func (k *Kubectl) NewCommand(command string) *exec.Command {
+	cmd := fmt.Sprintf("%s %s", k.prefix, command)
+	return exec.NewCommand(cmd)
 }
