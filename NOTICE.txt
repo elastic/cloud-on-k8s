@@ -4239,11 +4239,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.24.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.60.1
-Time    : 2022-03-20T11:07:08Z
+Version : v2.70.0
+Time    : 2022-06-22T13:33:44Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.60.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.70.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
