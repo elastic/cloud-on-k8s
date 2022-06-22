@@ -36,7 +36,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -293,7 +292,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 		Selector:             NewLabels(kb.Name),
 		Labels:               NewLabels(kb.Name),
 		PodTemplateSpec:      kibanaPodSpec,
-		RevisionHistoryLimit: pointer.Int32OrDefault(kb.Spec.RevisionHistoryLimit, int32(10)),
+		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }

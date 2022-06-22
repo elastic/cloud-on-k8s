@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
@@ -51,7 +50,7 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 		Replicas:             ent.Spec.Count,
 		Selector:             deploymentLabels,
 		Labels:               deploymentLabels,
-		RevisionHistoryLimit: pointer.Int32OrDefault(ent.Spec.RevisionHistoryLimit, int32(10)),
+		RevisionHistoryLimit: ent.Spec.RevisionHistoryLimit,
 		PodTemplateSpec:      podSpec,
 		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil

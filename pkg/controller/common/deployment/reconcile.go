@@ -24,8 +24,9 @@ type Params struct {
 	Selector             map[string]string
 	Labels               map[string]string
 	PodTemplateSpec      corev1.PodTemplateSpec
+	X                    appsv1.Deployment
 	Replicas             int32
-	RevisionHistoryLimit int32
+	RevisionHistoryLimit *int32
 	Strategy             appsv1.DeploymentStrategy
 }
 
@@ -38,7 +39,7 @@ func New(params Params) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			RevisionHistoryLimit: &params.RevisionHistoryLimit,
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},

@@ -23,7 +23,7 @@ type Params struct {
 	Owner                metav1.Object
 	Labels               map[string]string
 	Selectors            map[string]string
-	RevisionHistoryLimit int32
+	RevisionHistoryLimit *int32
 	Strategy             appsv1.DaemonSetUpdateStrategy
 }
 
@@ -39,7 +39,7 @@ func New(params Params) appsv1.DaemonSet {
 				MatchLabels: params.Selectors,
 			},
 			Template:             params.PodTemplate,
-			RevisionHistoryLimit: &params.RevisionHistoryLimit,
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			UpdateStrategy:       params.Strategy,
 		},
 	}
