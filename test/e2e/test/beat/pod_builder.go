@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	ptr "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -63,6 +64,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 					},
 				},
 				TerminationGracePeriodSeconds: pointer.Int64(0),
+				AutomountServiceAccountToken:  ptr.BoolPtr(false),
 				SecurityContext: &corev1.PodSecurityContext{
 					// Security policies forbid root user on secured clusters
 					RunAsUser: &uid1001,
