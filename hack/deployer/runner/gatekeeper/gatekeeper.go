@@ -93,7 +93,7 @@ func Install(installDefaultConstraints bool, globalKubectlOptions ...string) err
 
 func apply(k *Kubectl, workDir string, content string, tmpFilename string) error {
 	path := filepath.Join(workDir, tmpFilename)
-	if err := ioutil.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := ioutil.WriteFile(path, []byte(content), 0600); err != nil {
 		return err
 	}
 	return k.NewCommand(fmt.Sprintf(`apply -f %s`, path)).Run()
