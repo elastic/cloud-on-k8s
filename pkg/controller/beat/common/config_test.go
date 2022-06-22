@@ -16,6 +16,7 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -47,6 +48,37 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	)
 
+	clientWithMonitoringEnabled := k8s.NewFakeClient(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testes-es-internal-users",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"elastic-internal":            []byte("asdf"),
+				"elastic-internal-monitoring": []byte("asdfasdf"),
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "external-es-monitoring",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"url":      []byte("https://external-es.external.com"),
+				"username": []byte("monitoring-user"),
+				"password": []byte("asdfasdf"),
+				"ca.crt":   []byte("my_pem_encoded_cert"),
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testes",
+				Namespace: "ns",
+			},
+		},
+	)
+
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
@@ -58,6 +90,30 @@ func Test_buildBeatConfig(t *testing.T) {
     - url
     password: "123"
     username: elastic
+`))
+	monitoringYaml := settings.MustParseConfig([]byte(`monitoring:
+  enabled: true
+  elasticsearch:
+    hosts:
+    - "https://testes-es-internal-http.ns.svc:9200"
+    username: "elastic-internal-monitoring"
+    password: asdfasdf
+    ssl:
+      certificate_authorities:
+	  - "/etc/pki/root/tls.crt"
+	  verification_mode: "certificate
+`))
+	externalMonitoringYaml := settings.MustParseConfig([]byte(`monitoring:
+  enabled: true
+  elasticsearch:
+    hosts:
+    - "https://external-es.external.com"
+    username: "monitoring-user"
+    password: asdfasdf
+    ssl:
+      certificate_authorities:
+	  - "will_fail"
+	  verification_mode: "certificate
 `))
 
 	withAssoc := beatv1beta1.Beat{
@@ -104,6 +160,38 @@ func Test_buildBeatConfig(t *testing.T) {
 				Config: userCfg,
 			}},
 			want: userCanonicalCfg,
+		},
+		{
+			name:   "no association, user config, with monitoring enabled",
+			client: clientWithMonitoringEnabled,
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userCfg,
+				Monitoring: beatv1beta1.Monitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							Name:      "testes",
+							Namespace: "ns",
+						},
+					},
+				},
+			}},
+			want: merge(userCanonicalCfg, monitoringYaml),
+		},
+		{
+			name:   "no association, user config, with monitoring enabled, external es cluster",
+			client: clientWithMonitoringEnabled,
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userCfg,
+				Monitoring: beatv1beta1.Monitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							SecretName: "external-es-monitoring",
+							Namespace:  "ns",
+						},
+					},
+				},
+			}},
+			want: merge(userCanonicalCfg, externalMonitoringYaml),
 		},
 		{
 			name:          "no association, managed config",

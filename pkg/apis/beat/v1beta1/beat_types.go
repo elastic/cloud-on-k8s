@@ -79,6 +79,13 @@ type BeatSpec struct {
 	// Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
+
+	// Monitoring enables you to collect and ship log and monitoring data of this Beat.
+	// See https://www.elastic.co/guide/en/beats/filebeat/current/monitoring.html
+	// Internal Beat collectors are configured and sends data (metrics and logs) to one
+	// or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+	// +kubebuilder:validation:Optional
+	Monitoring Monitoring `json:"monitoring,omitempty"`
 }
 
 type DaemonSetSpec struct {
@@ -94,6 +101,21 @@ type DeploymentSpec struct {
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+}
+
+type Monitoring struct {
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+	// +kubebuilder:validation:Required
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+}
+
+// Enabled returns whether the Beat has stack monitoring enabled.
+func (m Monitoring) Enabled() bool {
+	return len(m.ElasticsearchRefs) > 0
+}
+
+type MetricsMonitoring struct {
 }
 
 // BeatStatus defines the observed state of a Beat.

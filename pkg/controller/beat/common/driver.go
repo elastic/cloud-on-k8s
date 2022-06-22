@@ -40,6 +40,8 @@ type DriverParams struct {
 
 	Status *beatv1beta1.BeatStatus
 	Beat   beatv1beta1.Beat
+
+	monitoringAssociationConnectionInfo *association.UnmanagedAssociationConnectionInfo
 }
 
 func (dp DriverParams) K8sClient() k8s.Client {

@@ -19,6 +19,7 @@ const (
 	invalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
 
 	InvalidKibanaElasticsearchRefForStackMonitoringMsg = "Kibana must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
+	InvalidBeatsElasticsearchRefForStackMonitoringMsg  = "Beats must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
 )
 
 var (
