@@ -64,7 +64,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 				},
 				TerminationGracePeriodSeconds: pointer.Int64(0),
 				SecurityContext: &corev1.PodSecurityContext{
-					// e2e PSP forbids root user on secured clusters
+					// Security policies forbid root user on secured clusters
 					RunAsUser: &uid1001,
 				},
 			},

@@ -24,7 +24,6 @@ import (
 func TestSystemIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
-			WithRoles(agent.PSPClusterRoleName).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
@@ -47,7 +46,6 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 func TestKubernetesIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
-			WithRoles(agent.PSPClusterRoleName).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
@@ -69,7 +67,6 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 func TestMultiOutputRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
-			WithRoles(agent.PSPClusterRoleName).
 			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
 			WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
@@ -91,7 +88,6 @@ func TestMultiOutputRecipe(t *testing.T) {
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.WithRoles(agent.PSPClusterRoleName)
 
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
@@ -139,8 +135,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 	loggingPod.Pod.Namespace = "default"
 
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.WithRoles(agent.PSPClusterRoleName)
-
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
 		}
@@ -163,8 +157,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.WithRoles(agent.PSPClusterRoleName)
-
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
 		}

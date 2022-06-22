@@ -36,7 +36,7 @@ func TestBeatVersionUpgradeToLatest7x(t *testing.T) {
 		WithVersion(dstVersion)
 
 	fbBuilder := beat.NewBuilder(name).
-		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+		WithRoles(beat.AutodiscoverClusterRoleName).
 		WithType(filebeat.Type).
 		WithDeploymentStrategy(appsv1.DeploymentStrategy{
 			Type: appsv1.RecreateDeploymentStrategyType,
@@ -74,7 +74,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 		WithVersion(dstVersion)
 
 	fbBuilder := beat.NewBuilder(name).
-		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+		WithRoles(beat.AutodiscoverClusterRoleName).
 		WithType(filebeat.Type).
 		WithDeploymentStrategy(appsv1.DeploymentStrategy{
 			Type: appsv1.RecreateDeploymentStrategyType,

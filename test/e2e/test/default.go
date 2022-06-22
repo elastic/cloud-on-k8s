@@ -11,8 +11,6 @@ import (
 )
 
 // DefaultSecurityContext returns a minimalist, restricted, security context.
-// Values should be inherited and checked against a PSP, but we provide some
-// default values if pods are started outside E2E tests, by a developer for example.
 func DefaultSecurityContext() *corev1.PodSecurityContext {
 	// OpenShift sets the security context automatically
 	if Ctx().OcpCluster {
