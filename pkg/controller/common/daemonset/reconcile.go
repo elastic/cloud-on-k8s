@@ -18,12 +18,13 @@ import (
 )
 
 type Params struct {
-	PodTemplate corev1.PodTemplateSpec
-	Name        string
-	Owner       metav1.Object
-	Labels      map[string]string
-	Selectors   map[string]string
-	Strategy    appsv1.DaemonSetUpdateStrategy
+	PodTemplate          corev1.PodTemplateSpec
+	Name                 string
+	Owner                metav1.Object
+	Labels               map[string]string
+	Selectors            map[string]string
+	RevisionHistoryLimit int32
+	Strategy             appsv1.DaemonSetUpdateStrategy
 }
 
 func New(params Params) appsv1.DaemonSet {
@@ -37,8 +38,9 @@ func New(params Params) appsv1.DaemonSet {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,
 			},
-			Template:       params.PodTemplate,
-			UpdateStrategy: params.Strategy,
+			Template:             params.PodTemplate,
+			RevisionHistoryLimit: &params.RevisionHistoryLimit,
+			UpdateStrategy:       params.Strategy,
 		},
 	}
 }

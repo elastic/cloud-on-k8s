@@ -36,91 +36,91 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-                stage("1.20.7") {
+                stage("1.20.15") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.20.7@sha256:cbeaf907fc78ac97ce7b625e4bf0de16e3ea725daf6b04f930bd14c67c671ff9", "0.11.1", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.20.15@sha256:6f2d011dffe182bad80b85f6c00e8ca9d86b5b8922cdf433d53575c4c5212248", "0.14.0", "ipv4")
                         }
                     }
                 }
-                stage("1.21.1") {
+                stage("1.21.12") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.21.1@sha256:69860bda5563ac81e3c0057d654b5253219618a22ec3a346306239bba8cfa1a6", "0.11.1", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.21.12@sha256:f316b33dd88f8196379f38feb80545ef3ed44d9197dca1bfd48bcb1583210207", "0.14.0", "ipv4")
                         }
                     }
                 }
-                stage("1.22.0 IPv4") {
+                stage("1.22.9 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047", "0.11.1", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105", "0.14.0", "ipv4")
                         }
                     }
                 }
-                stage("1.22.0 IPv6") {
+                stage("1.22.9 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.0@sha256:b8bda84bb3a190e6e028b1760d277454a72267a5454b57db34437c34a588d047", "0.11.1", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105", "0.14.0", "ipv6")
                         }
                     }
                 }
-                stage("1.23.3 IPv4") {
+                stage("1.23.6 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae", "0.14.0", "ipv4")
                         }
                     }
                 }
-                stage("1.23.3 IPv6") {
+                stage("1.23.6 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.23.3@sha256:0df8215895129c0d3221cda19847d1296c4f29ec93487339149333bd9d899e5a", "0.11.1", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae", "0.14.0", "ipv6")
                         }
                     }
                 }
-                stage("1.24.0 IPv4") {
+                stage("1.24.1 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.24.0@sha256:0866296e693efe1fed79d5e6c7af8df71fc73ae45e3679af05342239cdc5bc8e", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c", "0.14.0", "ipv4")
                         }
                     }
                 }
-                stage("1.24.0 IPv6") {
+                stage("1.24.1 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.24.0@sha256:0866296e693efe1fed79d5e6c7af8df71fc73ae45e3679af05342239cdc5bc8e", "0.14.0", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c", "0.14.0", "ipv6")
                         }
                     }
                 }
