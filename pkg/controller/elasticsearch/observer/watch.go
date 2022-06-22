@@ -17,9 +17,8 @@ import (
 // whose health has changed between 2 observations.
 // Aimed to be used for triggering a reconciliation.
 func WatchClusterHealthChange(m *Manager) *source.Channel {
-	var evtChan chan event.GenericEvent
+	evtChan := make(chan event.GenericEvent)
 	m.AddObservationListener(healthChangeListener(evtChan))
-	evtChan = make(chan event.GenericEvent, len(m.listeners))
 	return &source.Channel{
 		// Each event in Source will be consumed and turned into
 		// a reconciliation request.

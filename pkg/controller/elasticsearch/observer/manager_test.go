@@ -183,7 +183,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 	cluster2.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
 
 	// add a listener that is only interested in cluster1
-	var eventsCluster1 chan types.NamespacedName
+	eventsCluster1 := make(chan types.NamespacedName)
 	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster1" {
 			eventsCluster1 <- cluster
@@ -191,26 +191,27 @@ func TestManager_AddObservationListener(t *testing.T) {
 	})
 
 	// add a 2nd listener that is only interested in cluster2
-	var eventsCluster2 chan types.NamespacedName
+	eventsCluster2 := make(chan types.NamespacedName)
 	m.AddObservationListener(func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		if cluster.Name == "cluster2" {
 			eventsCluster2 <- cluster
 		}
 	})
-
-	eventsCluster1 = make(chan types.NamespacedName, len(m.listeners))
-	eventsCluster2 = make(chan types.NamespacedName, len(m.listeners))
+	doneCh := make(chan struct{})
+	go func() {
+		// events should be propagated to both listeners
+		<-eventsCluster1
+		<-eventsCluster2
+		<-eventsCluster1
+		<-eventsCluster2
+		doneCh <- struct{}{}
+	}()
 	// observe 2 clusters
 	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
 	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
-
-	// events should be propagated to both listeners
-	<-eventsCluster1
-	<-eventsCluster2
-	<-eventsCluster1
-	<-eventsCluster2
+	<-doneCh
 }
 
 func esObject(n types.NamespacedName) esv1.Elasticsearch {
