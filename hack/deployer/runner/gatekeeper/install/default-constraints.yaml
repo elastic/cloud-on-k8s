@@ -1,0 +1,60 @@
+## This constraint ensures that
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPAutomountServiceAccountTokenPod
+metadata:
+  name: automount-sa-token-pod
+spec:
+  match:
+    ## All namespaces whose name ends with '-system' (for example kube-system, )
+    excludedNamespaces: ["*-system"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    labelSelector:
+      matchExpressions:
+        ## Only Agent and Beat are allowed to automount the service account token in order to access the K8S API.
+        - { key: common.k8s.elastic.co/type, operator: NotIn, values: [ beat, agent ] }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPAllowedUsers
+metadata:
+  name: psp-pods-allowed-user-ranges
+spec:
+  match:
+    ## All namespaces whose name ends with '-system' (for example kube-system, )
+    excludedNamespaces: ["*-system"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    labelSelector:
+      matchExpressions:
+        ## Only Agent and Beat are allowed to run as root
+        - { key: common.k8s.elastic.co/type, operator: NotIn, values: [ beat, agent ] }
+  parameters:
+    runAsUser:
+      rule: MustRunAsNonRoot
+    runAsGroup:
+      rule: RunAsAny
+    supplementalGroups:
+      rule: MustRunAs
+      ranges:
+        - min: 1000
+          max: 65535
+    fsGroup:
+      rule: MustRunAs
+      ranges:
+        - min: 1000
+          max: 65535
+---
+## No privileged workload are allowed during our e2e tests
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPAllowPrivilegeEscalationContainer
+metadata:
+  name: psp-allow-privilege-escalation-container
+spec:
+  match:
+    # default is required for local-volume-provisioner
+    excludedNamespaces: ["kube-system", "default"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]

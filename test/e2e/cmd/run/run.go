@@ -155,7 +155,7 @@ func (h *helper) initTestContext() error {
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
-		E2ENamespace:        h.testRunName,
+		E2ENamespace:        fmt.Sprintf("%s-system", h.testRunName),
 		E2EServiceAccount:   h.testRunName,
 		ElasticStackVersion: h.elasticStackVersion,
 		ElasticStackImages:  stackImages,

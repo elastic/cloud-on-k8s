@@ -9,6 +9,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
+
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
 
@@ -136,6 +138,16 @@ func (d *GKEDriver) Execute() error {
 		if err := createStorageClass(); err != nil {
 			return err
 		}
+
+		if d.plan.Gatekeeper != nil {
+			defaultConstraints := true
+			if d.plan.Gatekeeper.DefaultConstraints != nil {
+				defaultConstraints = *d.plan.Gatekeeper.DefaultConstraints
+			}
+			if err := gatekeeper.Install(defaultConstraints); err != nil {
+				return err
+			}
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -159,9 +171,6 @@ func (d *GKEDriver) create() error {
 	log.Println("Creating cluster...")
 
 	opts := []string{}
-	if d.plan.Psp {
-		opts = append(opts, "--enable-pod-security-policy")
-	}
 
 	if d.plan.Gke.NetworkPolicy {
 		opts = append(opts, "--enable-network-policy")
@@ -174,7 +183,7 @@ func (d *GKEDriver) create() error {
 	}
 
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+		`--region {{.Region}} --no-enable-basic-auth ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
