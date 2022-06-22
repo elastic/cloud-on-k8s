@@ -223,16 +223,19 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 	defer esClient.Close()
 
-	esReachable, err := services.IsServiceReady(d.Client, *internalService)
-	// use unknown health as a proxy for a cluster not responding to requests
-	esReachable = esReachable && observedState() != esv1.ElasticsearchUnknownHealth
+	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	// use unknown health as a proxy for a cluster not responding to requests
+	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
+	esReachable := isServiceReady && hasKnownHealthState
+	// report condition in Pod status
 	if esReachable {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name))
+		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, esReachableConditionMessage(internalService, isServiceReady, hasKnownHealthState))
 	} else {
-		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, fmt.Sprintf("Service %s/%s has no endpoint", internalService.Namespace, internalService.Name))
+		d.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, esReachableConditionMessage(internalService, isServiceReady, hasKnownHealthState))
 	}
 
 	var currentLicense esclient.License
@@ -369,4 +372,16 @@ func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
 			}
 		}
 	}
+}
+
+func esReachableConditionMessage(internalService *corev1.Service, isServiceReady bool, isRespondingToRequests bool) string {
+	switch {
+	case !isServiceReady:
+		return fmt.Sprintf("Service %s/%s has no endpoint", internalService.Namespace, internalService.Name)
+	case isServiceReady && !isRespondingToRequests:
+		return fmt.Sprintf("Service %s/%s has endpoints but Elasticsearch is unavailable", internalService.Namespace, internalService.Name)
+	case isServiceReady && isRespondingToRequests:
+		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
+	}
+	return ""
 }
