@@ -15,12 +15,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
-
+	"github.com/blang/semver/v4"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
-
-	"github.com/blang/semver/v4"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
 )
 
 const (

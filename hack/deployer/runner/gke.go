@@ -9,9 +9,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
-
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/gatekeeper"
 )
 
 const (
