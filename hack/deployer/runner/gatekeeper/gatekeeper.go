@@ -69,7 +69,7 @@ func Install(installDefaultConstraints bool, globalKubectlOptions ...string) err
 	for {
 		constraintTemplateNotCreated, err := k.NewCommand(createdConstraintTemplate).WithoutStreaming().OutputContainsAny("false")
 		if err != nil {
-			return nil
+			return err
 		}
 		if !constraintTemplateNotCreated {
 			break
