@@ -278,7 +278,7 @@ If `resources` is not defined in the specification of an object, then the operat
 |APM Server |512Mi |512Mi
 |Elasticsearch |2Gi |2Gi
 |Kibana |1Gi |1Gi
-|Beat   |200Mi |200Mi
+|Beat   |300Mi |300Mi
 |Elastic Agent |350Mi |350Mi
 |Elastic Maps Sever |200Mi |200Mi
 |Enterprise Search |4Gi |4Gi
