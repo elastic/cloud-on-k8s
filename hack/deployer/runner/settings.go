@@ -38,12 +38,12 @@ type Plan struct {
 	Tanzu          *TanzuSettings     `yaml:"tanzu,omitempty"`
 	VaultInfo      vault.Info         `yaml:"vaultInfo,omitempty"`
 	ServiceAccount bool               `yaml:"serviceAccount"`
-	Gatekeeper     *GatekeeperSetting `yaml:"gatekeeper"`
+	Gatekeeper     *GatekeeperSetting `yaml:"gatekeeper,omitempty"`
 	DiskSetup      string             `yaml:"diskSetup"`
 }
 
 type GatekeeperSetting struct {
-	DefaultConstraints *bool `yaml:"defaultConstraints"`
+	DefaultConstraints bool `yaml:"defaultConstraints,omitempty"`
 }
 
 // GKESettings encapsulates settings specific to GKE

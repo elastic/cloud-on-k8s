@@ -6,11 +6,13 @@ package gatekeeper
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
 )
@@ -25,8 +27,12 @@ var library string
 var defaultConstraints string
 
 const (
-	waitForAuditPod    = `kubectl wait deployment gatekeeper-audit -n gatekeeper-system --for condition=Available=True --timeout=60s`
-	waitForControllers = `kubectl wait deployment gatekeeper-controller-manager -n gatekeeper-system --for condition=Available=True --timeout=60s`
+	waitForAuditPod           = `kubectl wait deployment gatekeeper-audit -n gatekeeper-system --for condition=Available=True --timeout=60s`
+	waitForControllers        = `kubectl wait deployment gatekeeper-controller-manager -n gatekeeper-system --for condition=Available=True --timeout=60s`
+	createdConstraintTemplate = `kubectl get ConstraintTemplate -o go-template='{{range .items}}{{or .status.created "false"}}{{","}}{{end}}'`
+
+	maxRetry          = 30
+	retryWaitDuration = 2 * time.Second
 )
 
 func Install(installDefaultConstraints bool) error {
@@ -50,10 +56,27 @@ func Install(installDefaultConstraints bool) error {
 		return err
 	}
 
-	// Install library ()
+	// Install constraints templates library
 	log.Println("Installing Gatekeeper library")
 	if err := apply(dir, library, "library.yaml"); err != nil {
 		return err
+	}
+
+	log.Println("Waiting for Gatekeeper library to be available")
+	retry := 0
+	for {
+		constraintTemplateNotCreated, err := exec.NewCommand(createdConstraintTemplate).WithoutStreaming().OutputContainsAny("false")
+		if err != nil {
+			return nil
+		}
+		if !constraintTemplateNotCreated {
+			break
+		}
+		retry++
+		if retry > maxRetry {
+			return errors.New("timeout while waiting for ConstraintTemplate to be installed")
+		}
+		time.Sleep(retryWaitDuration)
 	}
 
 	if installDefaultConstraints {

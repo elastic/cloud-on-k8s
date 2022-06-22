@@ -140,11 +140,7 @@ func (d *GKEDriver) Execute() error {
 		}
 
 		if d.plan.Gatekeeper != nil {
-			defaultConstraints := true
-			if d.plan.Gatekeeper.DefaultConstraints != nil {
-				defaultConstraints = *d.plan.Gatekeeper.DefaultConstraints
-			}
-			if err := gatekeeper.Install(defaultConstraints); err != nil {
+			if err := gatekeeper.Install(d.plan.Gatekeeper.DefaultConstraints); err != nil {
 				return err
 			}
 		}
