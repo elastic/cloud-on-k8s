@@ -53,3 +53,8 @@ ECK supports link:https://www.elastic.co/guide/en/elasticsearch/reference/curren
 ==== Elasticsearch Self Stack Monitoring
 
 The <<{p}-stack-monitoring,Stack Monitoring>> feature is fully operational to be used for Elasticsearch self-monitoring.
+
+[float]
+[id="{p}-220-known-issues"]
+=== Known issues
+- The migration to service account tokens can lead to unavailability of Kibana and Fleet Server which is especially noticeable on larger Elasticsearch clusters with many nodes. We are working on a fix to enable a migration without downtime in the next version of the ECK operator. If this is a concern we would recommend waiting with the upgrade until the fix is available.
