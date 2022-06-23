@@ -9,9 +9,9 @@ package ent
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
 )
 
 // TestEnterpriseSearchCrossNSAssociation tests associating Elasticsearch and Enterprise Search running in different namespaces.

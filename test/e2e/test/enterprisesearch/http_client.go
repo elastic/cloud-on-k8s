@@ -16,9 +16,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (

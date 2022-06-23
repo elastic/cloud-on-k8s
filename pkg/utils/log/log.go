@@ -19,8 +19,8 @@ import (
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 )
 
 const (

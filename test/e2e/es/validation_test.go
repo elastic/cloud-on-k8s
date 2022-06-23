@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 // TestElasticsearchCRDOpenAPIValidation tests that the CRD OpenAPI validation is correctly setup.

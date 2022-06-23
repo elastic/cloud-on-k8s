@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness/fixture"
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/fixture"
 )
 
 // File represents the structure of the configuration file.

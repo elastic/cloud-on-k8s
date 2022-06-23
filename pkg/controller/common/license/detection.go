@@ -7,7 +7,7 @@ package license
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 )
 
 func isLicenseType(secret corev1.Secret, licenseType OperatorLicenseType) bool {

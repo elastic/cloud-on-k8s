@@ -13,13 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (

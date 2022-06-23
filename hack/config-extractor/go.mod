@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/v3/hack/config-extractor
+module github.com/elastic/cloud-on-k8s/v2/hack/config-extractor
 
 go 1.17
 

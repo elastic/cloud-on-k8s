@@ -19,16 +19,16 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	elasticagent "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	e2e_agent "github.com/elastic/cloud-on-k8s/v2/test/e2e/agent"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	elasticagent "github.com/elastic/cloud-on-k8s/v2/test/e2e/test/agent"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 func TestGlobalCA(t *testing.T) {

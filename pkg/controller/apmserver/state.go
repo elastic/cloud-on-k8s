@@ -8,8 +8,8 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 )
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an ApmServer

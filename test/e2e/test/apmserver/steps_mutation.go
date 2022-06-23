@@ -7,10 +7,10 @@ package apmserver
 import (
 	"context"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {

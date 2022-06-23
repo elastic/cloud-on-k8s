@@ -9,13 +9,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func NewMetricBeatSidecar(

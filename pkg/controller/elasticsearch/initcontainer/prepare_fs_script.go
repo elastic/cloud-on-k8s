@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
 
 // TemplateParams are the parameters manipulated in the scriptTemplate

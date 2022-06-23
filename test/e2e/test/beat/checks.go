@@ -11,8 +11,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func HasEventFromBeat(name beatcommon.Type) ValidationFunc {

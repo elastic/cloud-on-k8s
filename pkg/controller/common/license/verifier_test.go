@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
 )
 
 func TestLicenseVerifier_ValidSignature(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/v3/hack/manifest-gen
+module github.com/elastic/cloud-on-k8s/v2/hack/manifest-gen
 
 go 1.17
 

@@ -7,7 +7,7 @@ package defaults
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 // AppendDefaultPVCs appends defaults PVCs to a set of existing ones.

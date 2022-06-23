@@ -7,8 +7,8 @@ package driver
 import (
 	"k8s.io/client-go/tools/record"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Interface describes attributes typically found on reconciler or 'driver' implementations.

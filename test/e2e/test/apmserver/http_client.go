@@ -18,10 +18,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (

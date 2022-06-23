@@ -16,8 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/license"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/license"
 )
 
 // Simple program that returns the licensing information, including the total memory of all Elastic managed components by

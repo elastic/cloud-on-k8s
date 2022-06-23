@@ -18,7 +18,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/util/retry"
 
-	"github.com/elastic/cloud-on-k8s/v3/hack/upgrade-test-harness/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/k8s"
 )
 
 const (

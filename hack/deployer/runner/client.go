@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 )
 
 const clientBaseImageName = "docker.elastic.co/eck-ci/deployer"

@@ -5,8 +5,8 @@
 package common
 
 import (
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 var desiredNodesMinVersion = version.MinFor(8, 3, 0)

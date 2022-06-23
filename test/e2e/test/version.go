@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 // Elastic Stack versions used in the E2E tests. These should be updated as new versions for each major are released.
