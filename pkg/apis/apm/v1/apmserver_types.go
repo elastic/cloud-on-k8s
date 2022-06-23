@@ -51,7 +51,7 @@ type ApmServerSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// RevisionHistoryLimit sets the number of old Deployment to retain to allow rollback.
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
