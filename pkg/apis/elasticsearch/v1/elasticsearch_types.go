@@ -113,6 +113,9 @@ type ElasticsearchSpec struct {
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type Monitoring struct {
@@ -302,9 +305,6 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-
-	// RevisionHistoryLimit sets the number of old StatefulSets to retain to allow rollback.
-	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
 	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.

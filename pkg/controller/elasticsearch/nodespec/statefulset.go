@@ -108,7 +108,7 @@ func BuildStatefulSet(
 			// we don't care much about pods creation ordering, and manage deletion ordering ourselves,
 			// so we're fine with the StatefulSet controller spawning all pods in parallel
 			PodManagementPolicy:  appsv1.ParallelPodManagement,
-			RevisionHistoryLimit: nodeSet.RevisionHistoryLimit,
+			RevisionHistoryLimit: es.Spec.RevisionHistoryLimit,
 			// build a headless service per StatefulSet, matching the StatefulSet labels
 			ServiceName: HeadlessServiceName(statefulSetName),
 			Selector: &metav1.LabelSelector{
