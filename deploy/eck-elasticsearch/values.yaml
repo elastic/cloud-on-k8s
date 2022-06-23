@@ -2,9 +2,19 @@
 # Default values for eck-elasticsearch.
 # This is a YAML-formatted file.
 
-# Name of the Elasticsearch instance.
+# Overridable names of the Elasticsearch instance.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-elasticsearch'.
 #
-name: "quickstart"
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: testing, would convert to '{{ Release.name }}-testing'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Elasticsearch instance exactly what is specified.
+#
+# fullnameOverride: "quickstart"
 
 # Version of Elasticsearch.
 #
@@ -64,6 +74,9 @@ remoteClusters: {}
 nodeSets:
 - name: default
   count: 1
+  # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+  #
   config:
     node.store.allow_mmap: false
   podTemplate:
@@ -75,12 +88,3 @@ nodeSets:
             cpu: 1
           limits:
             memory: 1Gi
-# Uncomment these lines in case you want to increase vm.max_map_count and/or use initContainers.
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
-#
-#        initContainers:
-#        - name: sysctl
-#          securityContext:
-#            privileged: true
-#            runAsUser: 0
-#          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']

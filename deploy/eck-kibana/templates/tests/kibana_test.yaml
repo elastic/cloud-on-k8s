@@ -1,6 +1,6 @@
 suite: test kibana
 templates:
-  - charts/eck-kibana/templates/kibana.yaml
+  - templates/kibana.yaml
 tests:
   - it: should render quickstart properly
     release:
@@ -16,7 +16,7 @@ tests:
           value: 8.2.3
   - it: name override should work properly
     set:
-      eck-kibana.nameOverride: override
+      nameOverride: override
     release:
       name: quickstart
     asserts:
@@ -27,7 +27,7 @@ tests:
           value: quickstart-override
   - it: fullname override should work properly
     set:
-      eck-kibana.fullnameOverride: override
+      fullnameOverride: override
     release:
       name: quickstart
     asserts:
@@ -40,7 +40,7 @@ tests:
     set:
       eck-kibana.enabled: true
     values:
-      - ../../examples/kibana/http-configuration.yaml
+      - ../../examples/http-configuration.yaml
     release:
       name: quickstart
     asserts:

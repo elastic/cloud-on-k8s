@@ -2,9 +2,19 @@
 # Default values for eck-kibana.
 # This is a YAML-formatted file.
 
-# Name of the Kibana instance.
+# Overridable names of the Kibana instance.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-kibana'.
 #
-name: "quickstart"
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: testing, would convert to '{{ Release.name }}-testing'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Kibana instance exactly what is specified.
+#
+# fullnameOverride: "quickstart"
 
 # Version of Kibana.
 #

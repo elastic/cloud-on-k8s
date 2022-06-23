@@ -1,6 +1,6 @@
 Elasticsearch ECK-Stack {{ .Chart.Version }} has been deployed successfully!
 
-More information on the Elastic ECK Operator, and it's Helm chart can be found
+More information on the Elastic ECK Operator, and its Helm chart can be found
 within our documentation.
 
 https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html

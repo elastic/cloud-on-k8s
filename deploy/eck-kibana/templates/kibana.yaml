@@ -2,17 +2,12 @@
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: {{ required "A name for the Kibana instance is required" .Values.name }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "kibana.fullname" . }}
   labels:
     {{- include "kibana.labels" . | nindent 4 }}
-    {{- range $key, $value := .Values.labels }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
   annotations:
-    {{- range $key, $value := .Values.annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    eck.k8s.elastic.co/license: enterprise
+    {{- toYaml .Values.annotations | indent 4 }}
 spec:
   version: {{ required "A Kibana version is required" .Values.version }}
   {{- $finalSpec := .Values.spec }}

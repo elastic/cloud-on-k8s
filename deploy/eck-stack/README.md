@@ -37,15 +37,15 @@ Additional ECK Operator Helm installation options can be found within the [our d
 
 ### Installing the ECK Stack Chart
 
-The following will install the ECK-Stack chart using the default values, which will deploy an Elasticsearch [Quickstart Cluster](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html)
+The following will install the ECK-Stack chart using the default values, which will deploy an Elasticsearch [Quickstart Cluster](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html), and a Kibana [Quickstart Instance](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-kibana.html)
 
 ```sh
 # Add the Elastic Helm Repository
 helm repo add elastic https://helm.elastic.co && helm repo update
 
 # Install the ECK-Stack helm chart
-# This will setup a 'quickstart' Elasticsearch cluster
-$ helm install my-release --namespace my-namespace elastic/eck-stack --create-namespace
+# This will setup a 'quickstart' Elasticsearch cluster, and Kibana instance
+$ helm install my-release -n my-namespace elastic/eck-stack --create-namespace
 ```
 
 More information on the different ways to use the ECK Stack chart to deploy Elastic Stack resources
@@ -68,7 +68,7 @@ The following table lists the configurable parameters of the cert-manager chart 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `eck-elasticsearch.enabled` | If `true`, create an Elasticsearch cluster (using the eck-elasticsearch Chart) | `true` |
-| `eck-kibana.enabled` | If `true`, create a Kibana instance (using the eck-kibana Chart) | `false` |
+| `eck-kibana.enabled` | If `true`, create a Kibana instance (using the eck-kibana Chart) | `true` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
 

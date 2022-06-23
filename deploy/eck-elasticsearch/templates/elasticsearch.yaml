@@ -2,14 +2,14 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: {{ required "A name for the Elasticsearch instance is required" .Values.name }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "elasticsearch.fullname" . }}
   {{- if .Values.labels }}
   labels:
-    {{- toYaml .Values.labels | indent 4 }}
+    {{- include "elasticsearch.labels" . | indent 4 }}
   {{- end }}
   {{- if .Values.annotations }}
   annotations:
+    eck.k8s.elastic.co/license: enterprise
     {{- toYaml .Values.annotations | indent 4 }}
   {{- end }}
 spec:
@@ -30,10 +30,10 @@ spec:
   monitoring:
     {{- toYaml .Values.monitoring | indent 4 }}
   {{- end }}
-{{- if .Values.remoteClusters }}
+  {{- if .Values.remoteClusters }}
   remoteClusters:
     {{- toYaml .Values.remoteClusters | indent 2 }}
-{{- end }}
+  {{- end }}
   {{- if eq (len .Values.nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}

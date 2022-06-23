@@ -10,4 +10,4 @@ eck-elasticsearch:
 # If enabled, will use the eck-kibana chart and deploy a Kibana instance.
 #
 eck-kibana:
-  enabled: false
+  enabled: true

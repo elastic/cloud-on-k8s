@@ -1,11 +1,10 @@
 suite: test elasticsearch
 templates:
-  - charts/eck-elasticsearch/templates/elasticsearch.yaml
+  - templates/elasticsearch.yaml
 tests:
   - it: should render quickstart properly
     set:
-      eck-elasticsearch.version: 8.2.0
-      eck-kibana.enabled: false
+      version: 8.2.0
     release:
       name: quickstart
     asserts:
@@ -19,8 +18,7 @@ tests:
           value: 8.2.0
   - it: name override should work properly
     set:
-      eck-elasticsearch.nameOverride: override
-      eck-kibana.enabled: false
+      nameOverride: override
     release:
       name: quickstart
     asserts:
@@ -31,8 +29,7 @@ tests:
           value: quickstart-override
   - it: fullname override should work properly
     set:
-      eck-elasticsearch.fullnameOverride: override
-      eck-kibana.enabled: false
+      fullnameOverride: override
     release:
       name: quickstart
     asserts:
@@ -42,10 +39,8 @@ tests:
           path: metadata.name
           value: override
   - it: should render node roles properly
-    set:
-      eck-kibana.enabled: false
     values:
-      - ../../examples/elasticsearch/hot-warm-cold.yaml
+      - ../../examples/hot-warm-cold.yaml
     release:
       name: quickstart
     asserts:

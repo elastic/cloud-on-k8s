@@ -44,7 +44,7 @@ eck-elasticsearch:
             storage: 1Ti
         # Adjust to your storage class name
         #
-        storageClassName: local-storage
+        # storageClassName: local-storage
   - name: warm
     count: 1
     config:
@@ -88,7 +88,7 @@ eck-elasticsearch:
             storage: 10Ti
         # Adjust to your storage class name
         #
-        storageClassName: local-storage
+        # storageClassName: local-storage
   - name: cold
     count: 1
     config:
@@ -132,4 +132,4 @@ eck-elasticsearch:
             storage: 20Ti
         # Adjust to your storage class name
         #
-        storageClassName: local-storage
+        # storageClassName: local-storage

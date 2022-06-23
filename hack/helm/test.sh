@@ -14,12 +14,17 @@ check() {
     local TEST_DIR="$1"
     cd "${TEST_DIR}"
 
+    echo "Running 'helm lint' on $(basename ${TEST_DIR}) chart."
+    helm lint --strict .
+
+    echo "Ensuring dependencies are updated for $(basename ${TEST_DIR}) chart."
+    helm dependency update . 1>/dev/null
+
     docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
     cd -
 }
 
-# The following odd style is to resolve SC2045
-shopt -s dotglob; for i in "${SCRIPT_DIR}"/../../deploy/*; do
+for i in "${SCRIPT_DIR}"/../../deploy/[a-zA-Z0-9]*; do
     if [[ ! -d "${i}" ]]; then
         continue
     fi
