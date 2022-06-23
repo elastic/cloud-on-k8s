@@ -103,7 +103,7 @@ type Output struct {
 type DaemonSetSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	// RevisionHistoryLimit sets the number of old DaemonSet to retain to allow rollback.
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
@@ -112,7 +112,7 @@ type DaemonSetSpec struct {
 type DeploymentSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	// RevisionHistoryLimit sets the number of old Deployment to retain to allow rollback.
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 	Replicas             *int32 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
