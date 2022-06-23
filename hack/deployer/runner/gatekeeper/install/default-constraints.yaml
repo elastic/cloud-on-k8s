@@ -6,7 +6,7 @@ metadata:
 spec:
   match:
     ## All namespaces whose name ends with '-system' and the local-volume provisioner
-    excludedNamespaces: ["*-system", "default"]
+    excludedNamespaces: ["*-system", "default", "local-path-storage"]
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
@@ -22,7 +22,7 @@ metadata:
 spec:
   match:
     ## Nothing is expected to run as root on the cluster except Pods in kube-system and the local-volume provisioner
-    excludedNamespaces: ["*-system", "default"]
+    excludedNamespaces: ["*-system", "default", "local-path-storage"]
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
