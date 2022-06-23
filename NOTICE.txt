@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.9.0
-Time    : 2022-05-17T14:02:43Z
+Version : v0.10.0
+Time    : 2022-06-21T17:53:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.10.0/LICENSE:
 
 
                                  Apache License
@@ -19665,11 +19665,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20220520000938-2e3eb7b945c2
-Time    : 2022-05-20T00:09:38Z
+Version : v0.0.0-20220524220425-1d687d428aca
+Time    : 2022-05-24T22:04:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220520000938-2e3eb7b945c2/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220524220425-1d687d428aca/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19702,11 +19702,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.0.0-20220411215720-9780585627b5
-Time    : 2022-04-11T21:57:20Z
+Version : v0.0.0-20220524215830-622c5d57e401
+Time    : 2022-05-24T21:58:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220411215720-9780585627b5/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220524215830-622c5d57e401/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
