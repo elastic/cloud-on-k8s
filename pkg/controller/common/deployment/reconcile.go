@@ -24,7 +24,6 @@ type Params struct {
 	Selector             map[string]string
 	Labels               map[string]string
 	PodTemplateSpec      corev1.PodTemplateSpec
-	X                    appsv1.Deployment
 	Replicas             int32
 	RevisionHistoryLimit *int32
 	Strategy             appsv1.DeploymentStrategy
