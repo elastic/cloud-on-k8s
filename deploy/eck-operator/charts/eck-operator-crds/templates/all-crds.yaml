@@ -89,8 +89,8 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   revisionHistoryLimit:
-                    description: RevisionHistoryLimit sets the number of old DaemonSet
-                      to retain to allow rollback.
+                    description: RevisionHistoryLimit is the number of revisions to
+                      retain to allow rollback in the underlying DaemonSet.
                     format: int32
                     type: integer
                   updateStrategy:
@@ -174,8 +174,8 @@ spec:
                     format: int32
                     type: integer
                   revisionHistoryLimit:
-                    description: RevisionHistoryLimit sets the number of old Deployment
-                      to retain to allow rollback.
+                    description: RevisionHistoryLimit is the number of revisions to
+                      retain to allow rollback in the underlying Deployment.
                     format: int32
                     type: integer
                   strategy:
@@ -2174,8 +2174,8 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   revisionHistoryLimit:
-                    description: RevisionHistoryLimit sets the number of old DaemonSet
-                      to retain to allow rollback.
+                    description: RevisionHistoryLimit is the number of revisions to
+                      retain to allow rollback in the underlying DaemonSet.
                     format: int32
                     type: integer
                   updateStrategy:
@@ -2259,8 +2259,8 @@ spec:
                     format: int32
                     type: integer
                   revisionHistoryLimit:
-                    description: RevisionHistoryLimit sets the number of old Deployment
-                      to retain to allow rollback.
+                    description: RevisionHistoryLimit is the number of revisions to
+                      retain to allow rollback in the underlying Deployment.
                     format: int32
                     type: integer
                   strategy:
@@ -3017,8 +3017,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               revisionHistoryLimit:
-                description: RevisionHistoryLimit sets the number of old Deployment
-                  to retain to allow rollback.
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
                 format: int32
                 type: integer
               serviceAccountName:
@@ -3717,11 +3717,6 @@ spec:
                         for the Pods belonging to this NodeSet.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
-                    revisionHistoryLimit:
-                      description: RevisionHistoryLimit sets the number of old StatefulSets
-                        to retain to allow rollback.
-                      format: int32
-                      type: integer
                     volumeClaimTemplates:
                       description: VolumeClaimTemplates is a list of persistent volume
                         claims to be used by each Pod in this NodeSet. Every claim
@@ -4189,6 +4184,11 @@ spec:
                   - name
                   type: object
                 type: array
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying StatefulSets.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.
@@ -6425,8 +6425,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               revisionHistoryLimit:
-                description: RevisionHistoryLimit sets the number of old Deployment
-                  to retain to allow rollback.
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
                 format: int32
                 type: integer
               serviceAccountName:
@@ -7701,8 +7701,8 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               revisionHistoryLimit:
-                description: RevisionHistoryLimit sets the number of old Deployment
-                  to retain to allow rollback.
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
                 format: int32
                 type: integer
               secureSettings:

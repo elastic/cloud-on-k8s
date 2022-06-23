@@ -8291,11 +8291,6 @@ spec:
                           type: object
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
-                    revisionHistoryLimit:
-                      description: RevisionHistoryLimit sets the number of old StatefulSets
-                        to retain to allow rollback.
-                      format: int32
-                      type: integer
                     volumeClaimTemplates:
                       description: VolumeClaimTemplates is a list of persistent volume
                         claims to be used by each Pod in this NodeSet. Every claim
@@ -8763,6 +8758,11 @@ spec:
                   - name
                   type: object
                 type: array
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying StatefulSets.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.
