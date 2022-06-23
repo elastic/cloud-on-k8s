@@ -14,10 +14,10 @@ check() {
     local TEST_DIR="$1"
     cd "${TEST_DIR}"
 
-    echo "Ensuring dependencies are updated for $(basename ${TEST_DIR}) chart."
+    echo "Ensuring dependencies are updated for $(basename "${TEST_DIR}") chart."
     helm dependency update . 1>/dev/null
     
-    echo "Running 'helm lint' on $(basename ${TEST_DIR}) chart."
+    echo "Running 'helm lint' on $(basename "${TEST_DIR}") chart."
     helm lint --strict .
 
     docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
