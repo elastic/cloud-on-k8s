@@ -7,6 +7,7 @@ package v1
 import (
 	"strings"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -40,6 +41,18 @@ const (
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
+
+// ServiceAccountMinVersion is the first version of Elasticsearch for which ECK supports service accounts.
+// It is however up to each association controller to ensure that a specific service account is available.
+var ServiceAccountMinVersion = semver.MustParse("7.17.0")
+
+func AreServiceAccountSupported(version string) (bool, error) {
+	esVersion, err := semver.Parse(version)
+	if err != nil {
+		return false, err
+	}
+	return esVersion.GTE(ServiceAccountMinVersion), nil
+}
 
 // +kubebuilder:object:root=true
 

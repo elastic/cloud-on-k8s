@@ -5,11 +5,19 @@
 package user
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ServiceAccountToken struct {
@@ -25,6 +33,48 @@ const (
 	ServiceAccountTokenNameField = "name"
 	ServiceAccountHashField      = "hash"
 )
+
+// NamespacedServices extracts the namespaced service accounts.
+func (s ServiceAccountTokens) NamespacedServices() set.StringSet {
+	result := set.Make()
+	for _, saToken := range s {
+		nameItems := strings.Split(saToken.FullyQualifiedServiceAccountName, "/")
+		if len(nameItems) != 3 {
+			// We are expecting 3 items: the namespace, the service name, and the token name.
+			// Ignore any entry that does not match this pattern.
+			continue
+		}
+		result.Add(fmt.Sprintf("%s/%s", nameItems[0], nameItems[1]))
+	}
+	return result
+}
+
+func GetServiceAccountTokens(c k8s.Client, es esv1.Elasticsearch) (ServiceAccountTokens, error) {
+	// list all associated user secrets
+	var serviceAccountSecrets corev1.SecretList
+	if err := c.List(context.Background(),
+		&serviceAccountSecrets,
+		client.InNamespace(es.Namespace),
+		client.MatchingLabels(
+			map[string]string{
+				label.ClusterNameLabelName: es.Name,
+				common.TypeLabelName:       ServiceAccountTokenType,
+			},
+		),
+	); err != nil {
+		return nil, err
+	}
+
+	var tokens ServiceAccountTokens
+	for _, secret := range serviceAccountSecrets.Items {
+		token, err := getServiceAccountToken(secret)
+		if err != nil {
+			return nil, err
+		}
+		tokens = tokens.Add(token)
+	}
+	return tokens, nil
+}
 
 // getServiceAccountToken reads a service account token from a secret.
 func getServiceAccountToken(secret corev1.Secret) (ServiceAccountToken, error) {

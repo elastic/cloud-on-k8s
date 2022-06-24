@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -26,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/optional"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(
@@ -212,11 +214,23 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results
 	}
 
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(actualStatefulSets, d.Client, results)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
-	if esReachable && d.isNodeSpecsReconciled(actualStatefulSets, d.Client, results) {
+	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
 			return results.WithError(err)
 		}
+	}
+
+	// Set or update an orchestration hint to let the association controller know of service account are supported.
+	if isNodeSpecsReconciled {
+		allNodesRunningServiceAccounts, err := esv1.AreServiceAccountSupported(d.ES.Spec.Version)
+		if err != nil {
+			return results.WithError(err)
+		}
+		d.ReconcileState.UpdateOrchestrationHints(
+			d.ReconcileState.OrchestrationHints().Merge(hints.OrchestrationsHints{ServiceAccounts: optional.NewBool(allNodesRunningServiceAccounts)}),
+		)
 	}
 
 	return results

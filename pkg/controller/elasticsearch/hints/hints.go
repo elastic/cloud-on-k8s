@@ -4,20 +4,26 @@
 
 package hints
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/optional"
+)
 
 const OrchestrationsHintsAnnotation string = "eck.k8s.elastic.co/orchestration-hints"
 
 // OrchestrationsHints represent hints to the reconciler about use or non-use of certain Elasticsearch feature for
 // orchestration purposes.
 type OrchestrationsHints struct {
-	NoTransientSettings bool `json:"no_transient_settings"`
+	NoTransientSettings bool           `json:"no_transient_settings"`
+	ServiceAccounts     *optional.Bool `json:"service_accounts,omitempty"`
 }
 
 // Merge merges the hints in other into the receiver.
 func (oh OrchestrationsHints) Merge(other OrchestrationsHints) OrchestrationsHints {
 	return OrchestrationsHints{
 		NoTransientSettings: oh.NoTransientSettings || other.NoTransientSettings,
+		ServiceAccounts:     oh.ServiceAccounts.Or(other.ServiceAccounts),
 	}
 }
 
