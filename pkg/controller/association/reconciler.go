@@ -340,7 +340,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			return commonv1.AssociationPending, err
 		}
 		if !esHints.ServiceAccounts.IsSet() {
-			r.log(k8s.ExtractNamespacedName(association)).Info("Waiting for Elasticsearch to report if service accounts are supported")
+			r.log(k8s.ExtractNamespacedName(association)).Info("Waiting for Elasticsearch to report if service accounts are fully rolled out")
 			return commonv1.AssociationPending, nil
 		}
 	}
