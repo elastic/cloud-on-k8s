@@ -8,12 +8,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/pointer"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/pointer"
 )
 
 func Test_allNodesRunningServiceAccounts(t *testing.T) {
@@ -36,7 +37,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 						FullyQualifiedServiceAccountName: "elastic/kibana/default_kibana-sample_token1",
 					},
 				},
-				securityClient: NewFakeSecurityClient().
+				securityClient: newFakeSecurityClient().
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-1", "elasticsearch-sample-es-default-0"),
 			},
@@ -50,7 +51,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 						FullyQualifiedServiceAccountName: "elastic/kibana/default_kibana-sample_token1",
 					},
 				},
-				securityClient: NewFakeSecurityClient().
+				securityClient: newFakeSecurityClient().
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"),
 			},
@@ -64,7 +65,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 						FullyQualifiedServiceAccountName: "elastic/kibana/default_kibana-sample_token1",
 					},
 				},
-				securityClient: NewFakeSecurityClient().
+				securityClient: newFakeSecurityClient().
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0"),
 			},
@@ -74,7 +75,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 			name: "No expected tokens",
 			args: args{
 				saTokens:       []user.ServiceAccountToken{},
-				securityClient: NewFakeSecurityClient(),
+				securityClient: newFakeSecurityClient(),
 				allPods:        set.Make("elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-0"),
 			},
 			want: nil,
@@ -87,7 +88,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 						FullyQualifiedServiceAccountName: "elastic/kibana/default_kibana-sample_token1",
 					},
 				},
-				securityClient: NewFakeSecurityClient().
+				securityClient: newFakeSecurityClient().
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make(),
 			},
@@ -100,9 +101,6 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("defaultDriver.isServiceAccountsReady() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if tt.want != nil {
-
 			}
 			assert.Equal(t, tt.want, got)
 		})
@@ -117,11 +115,11 @@ type fakeSecurityClient struct {
 var _ esclient.SecurityClient = &fakeSecurityClient{}
 
 func (f *fakeSecurityClient) GetServiceAccountCredentials(_ context.Context, namespacedService string) (client.ServiceAccountCredential, error) {
-	serviceAccountCredential, _ := f.serviceAccountCredentials[namespacedService]
+	serviceAccountCredential := f.serviceAccountCredentials[namespacedService]
 	return serviceAccountCredential, nil
 }
 
-func NewFakeSecurityClient() *fakeSecurityClient {
+func newFakeSecurityClient() *fakeSecurityClient {
 	return &fakeSecurityClient{
 		serviceAccountCredentials: make(map[string]esclient.ServiceAccountCredential),
 	}

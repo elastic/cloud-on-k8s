@@ -261,7 +261,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	}
 
-	// Update the service account orchestration hint. This done early in the reconciliation loop to unblock association
+	// Update the service account orchestration hint. This is done early in the reconciliation loop to unblock association
 	// controllers that may be waiting for the orchestration hint.
 	results.WithError(d.maybeSetServiceAccountsOrchestrationHint(ctx, esReachable, esClient, resourcesState))
 
@@ -377,7 +377,7 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 
 	// Case 1: New cluster, we can immediately set the orchestration hint.
 	if !bootstrap.AnnotatedForBootstrap(d.ES) {
-		allNodesRunningServiceAccounts, err := esv1.AreServiceAccountSupported(d.ES.Spec.Version)
+		allNodesRunningServiceAccounts, err := esv1.AreServiceAccountsSupported(d.ES.Spec.Version)
 		if err != nil {
 			return err
 		}
@@ -391,7 +391,7 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 	if d.ES.Status.Version == "" {
 		return nil
 	}
-	supportServiceAccounts, err := esv1.AreServiceAccountSupported(d.ES.Status.Version)
+	supportServiceAccounts, err := esv1.AreServiceAccountsSupported(d.ES.Status.Version)
 	if err != nil {
 		return err
 	}
@@ -402,11 +402,15 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 		return nil
 	}
 
-	// Cluster 3: cluster is already running with a version that does support service account and tokens have been created yet.
+	// Case 3: cluster is already running with a version that does support service account and tokens have been created yet.
 	// We don't however know if all nodes have been migrated and are running with the service_tokens file mounted from the configuration Secret.
 	// Let's try to detect that situation by comparing the existing nodes and the ones returned by the /_security/service API.
 	// Note that starting with this release the association controller does not create the service account token until Elasticsearch is annotated
-	// as compatible with service accounts.
+	// as compatible with service accounts. This is mostly to unblock situation described in https://github.com/elastic/cloud-on-k8s/issues/5684
+	if !esReachable {
+		// This requires the Elasticsearch API to be available
+		return nil
+	}
 	allPods := names(resourcesState.AllPods)
 	// Detect if some service tokens are expected
 	saTokens, err := user.GetServiceAccountTokens(d.Client, d.ES)

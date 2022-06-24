@@ -43,10 +43,11 @@ const (
 )
 
 // ServiceAccountMinVersion is the first version of Elasticsearch for which ECK supports service accounts.
-// It is however up to each association controller to ensure that a specific service account is available.
+// It is however up to each association controller to ensure that a specific service account is available
+// in the current Elasticsearch version.
 var ServiceAccountMinVersion = semver.MustParse("7.17.0")
 
-func AreServiceAccountSupported(version string) (bool, error) {
+func AreServiceAccountsSupported(version string) (bool, error) {
 	esVersion, err := semver.Parse(version)
 	if err != nil {
 		return false, err

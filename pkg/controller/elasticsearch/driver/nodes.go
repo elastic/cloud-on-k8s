@@ -224,7 +224,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Set or update an orchestration hint to let the association controller know of service account are supported.
 	if isNodeSpecsReconciled {
-		allNodesRunningServiceAccounts, err := esv1.AreServiceAccountSupported(d.ES.Spec.Version)
+		allNodesRunningServiceAccounts, err := esv1.AreServiceAccountsSupported(d.ES.Spec.Version)
 		if err != nil {
 			return results.WithError(err)
 		}
