@@ -378,10 +378,9 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	switch {
 	case !isServiceReady:
 		return fmt.Sprintf("Service %s/%s has no endpoint", internalService.Namespace, internalService.Name)
-	case isServiceReady && !isRespondingToRequests:
+	case !isRespondingToRequests:
 		return fmt.Sprintf("Service %s/%s has endpoints but Elasticsearch is unavailable", internalService.Namespace, internalService.Name)
-	case isServiceReady && isRespondingToRequests:
+	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
-	return ""
 }
