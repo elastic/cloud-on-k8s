@@ -7,6 +7,8 @@ package hints
 import (
 	"encoding/json"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/utils/optional"
 )
 
@@ -50,4 +52,12 @@ func NewFromAnnotations(ann map[string]string) (OrchestrationsHints, error) {
 		return OrchestrationsHints{}, err
 	}
 	return hs, nil
+}
+
+// NewFrom creates new orchestration hints from the Elasticsearch resource.
+func NewFrom(es esv1.Elasticsearch) (OrchestrationsHints, error) {
+	if es.Annotations == nil {
+		return OrchestrationsHints{}, nil
+	}
+	return NewFromAnnotations(es.Annotations)
 }

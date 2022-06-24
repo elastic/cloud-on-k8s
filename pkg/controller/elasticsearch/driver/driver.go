@@ -402,9 +402,11 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 		return nil
 	}
 
-	// Cluster 3: cluster is already running with a version that support service account, we don't however know if all nodes are running
-	// with the service_tokens file mounted from the configuration Secret.
+	// Cluster 3: cluster is already running with a version that does support service account and tokens have been created yet.
+	// We don't however know if all nodes have been migrated and are running with the service_tokens file mounted from the configuration Secret.
 	// Let's try to detect that situation by comparing the existing nodes and the ones returned by the /_security/service API.
+	// Note that starting with this release the association controller does not create the service account token until Elasticsearch is annotated
+	// as compatible with service accounts.
 	allPods := names(resourcesState.AllPods)
 	// Detect if some service tokens are expected
 	saTokens, err := user.GetServiceAccountTokens(d.Client, d.ES)

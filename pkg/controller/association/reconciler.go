@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/hints"
+
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
@@ -330,10 +332,23 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}
-	// Detect if we should use a service account. If it is the case create the related Secrets and update the association
-	// configuration on the associated resource.
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	// Detect if we should use a service account.
+	var esHints hints.OrchestrationsHints
 	if len(serviceAccount) > 0 {
+		// We must first ensure that the relevant orchestration hint is set on the Elasticsearch cluster.
+		esHints, err = hints.NewFrom(es)
+		if err != nil {
+			return commonv1.AssociationPending, err
+		}
+		if !esHints.ServiceAccounts.IsSet() {
+			r.log(k8s.ExtractNamespacedName(association)).Info("Waiting for Elasticsearch to report if service accounts are supported")
+			return commonv1.AssociationPending, nil
+		}
+	}
+
+	// If it is the case create the related Secrets and update the association configuration on the associated resource.
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
 		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
 		r.log(k8s.ExtractNamespacedName(association)).V(1).Info("Ensure service account exists", "sa", serviceAccount)
 		err := ReconcileServiceAccounts(
