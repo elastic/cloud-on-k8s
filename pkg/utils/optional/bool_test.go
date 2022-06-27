@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/optional"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 )
 
 func TestBool_UnmarshalJSON(t *testing.T) {

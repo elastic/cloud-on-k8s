@@ -14,7 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func Test_GetServiceAccountCredentials(t *testing.T) {

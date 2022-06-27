@@ -14,11 +14,11 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 type ServiceAccountToken struct {

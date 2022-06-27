@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 type ServiceAccountCredential struct {
