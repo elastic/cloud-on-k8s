@@ -176,9 +176,10 @@ func setupUpcomingRelease(installYAML, targetYAML string) error {
 }
 
 func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) ([]*fixture.Fixture, error) {
-	fixtures := []*fixture.Fixture{fixture.TestInstallOperator(to)}
+	isUpgrade := from != nil
+	fixtures := []*fixture.Fixture{fixture.TestInstallOperator(to, isUpgrade)}
 
-	if from != nil {
+	if isUpgrade {
 		testStatusOfResources, err := fixture.TestStatusOfResources(*from)
 		if err != nil {
 			return nil, err

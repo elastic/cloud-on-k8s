@@ -40,11 +40,11 @@ const (
 var (
 	defaultResources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceMemory: resource.MustParse("300Mi"),
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 		},
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceMemory: resource.MustParse("300Mi"),
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 		},
 	}
