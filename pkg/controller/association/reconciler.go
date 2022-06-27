@@ -32,7 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-    "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"

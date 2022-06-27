@@ -46,8 +46,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-    "github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
-    "github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 var (
