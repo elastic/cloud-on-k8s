@@ -19,8 +19,7 @@ func TestBool_UnmarshalJSON(t *testing.T) {
 		OptionalBoolean *optional.Bool `json:"optional_boolean,omitempty"`
 	}
 	type args struct {
-		optionalBool *optional.Bool
-		data         []byte
+		data []byte
 	}
 	tests := []struct {
 		name      string
@@ -77,9 +76,6 @@ func TestBool_UnmarshalJSON(t *testing.T) {
 }
 
 func TestBool_MarshalJSON(t *testing.T) {
-	type testStruct struct {
-		OptionalBoolean *optional.Bool `json:"optional_boolean,omitempty"`
-	}
 	type args struct {
 		optionalBool *optional.Bool
 	}
@@ -169,7 +165,6 @@ func TestBool_Or(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			if got := tt.fields.receiver.Or(tt.args.other); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Bool.Or() = %v, want %v", got, tt.want)
 			}
