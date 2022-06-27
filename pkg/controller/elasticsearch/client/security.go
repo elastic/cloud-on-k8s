@@ -24,6 +24,8 @@ type FileToken struct {
 }
 
 type SecurityClient interface {
+
+	// GetServiceAccountCredentials returns the service account credentials from the /_security/service API
 	GetServiceAccountCredentials(ctx context.Context, namespacedService string) (ServiceAccountCredential, error)
 }
 
