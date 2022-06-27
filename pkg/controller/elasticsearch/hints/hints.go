@@ -16,8 +16,15 @@ const OrchestrationsHintsAnnotation string = "eck.k8s.elastic.co/orchestration-h
 // OrchestrationsHints represent hints to the reconciler about use or non-use of certain Elasticsearch feature for
 // orchestration purposes.
 type OrchestrationsHints struct {
-	NoTransientSettings bool           `json:"no_transient_settings"`
-	ServiceAccounts     *optional.Bool `json:"service_accounts,omitempty"`
+	NoTransientSettings bool `json:"no_transient_settings"`
+
+	// ServiceAccounts is set to true if all the nodes in the Elasticsearch cluster can authenticate
+	// (Elasticsearch) service accounts. More specifically, it means that all the Elasticsearch nodes are running a
+	// version that supports service accounts, and all the nodes have been restarted at least once in order to create
+	// a symbolic link from the Secret that contains the tokens to the Elasticsearch configuration directory.
+	// Elasticsearch nodes cannot read the tokens created by the operator until that symbolic link exists, the association
+	// controllers should then rely on regular users until the value is true.
+	ServiceAccounts *optional.Bool `json:"service_accounts,omitempty"`
 }
 
 // Merge merges the hints in other into the receiver.
