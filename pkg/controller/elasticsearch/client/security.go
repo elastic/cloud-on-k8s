@@ -23,6 +23,17 @@ type FileToken struct {
 	Nodes []string `json:"nodes"`
 }
 
+// Nodes returns the list of nodes which are referenced in the API response.
+func (s *ServiceAccountCredential) Nodes() set.StringSet {
+	result := set.Make()
+	for _, fileToken := range s.NodesCredentials.FileTokens {
+		for _, nodeName := range fileToken.Nodes {
+			result.Add(nodeName)
+		}
+	}
+	return result
+}
+
 type SecurityClient interface {
 
 	// GetServiceAccountCredentials returns the service account credentials from the /_security/service API
@@ -40,15 +51,4 @@ func (c *clientV7) GetServiceAccountCredentials(ctx context.Context, namespacedS
 		return serviceAccountCredential, err
 	}
 	return serviceAccountCredential, nil
-}
-
-// Nodes returns the list of nodes which are referenced in the API response.
-func (s *ServiceAccountCredential) Nodes() set.StringSet {
-	result := set.Make()
-	for _, fileToken := range s.NodesCredentials.FileTokens {
-		for _, nodeName := range fileToken.Nodes {
-			result.Add(nodeName)
-		}
-	}
-	return result
 }
