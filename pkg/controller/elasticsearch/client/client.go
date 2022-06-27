@@ -60,6 +60,7 @@ type Client interface {
 	DesiredNodesClient
 	ShardLister
 	LicenseClient
+	SecurityClient
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.
