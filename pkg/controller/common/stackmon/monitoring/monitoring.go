@@ -7,7 +7,7 @@ package monitoring
 import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 // HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring

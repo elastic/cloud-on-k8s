@@ -7,7 +7,7 @@ package v1beta1
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 )
 
 var warnings = []validation{

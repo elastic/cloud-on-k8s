@@ -7,8 +7,8 @@ package hints
 import (
 	"encoding/json"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/optional"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 )
 
 const OrchestrationsHintsAnnotation string = "eck.k8s.elastic.co/orchestration-hints"

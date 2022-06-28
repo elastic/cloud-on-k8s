@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
 )
 
 func distributeFairly(nodeSets resources.NodeSetNodeCountList, expectedNodeCount int32) {

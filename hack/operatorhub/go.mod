@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/hack/operatorhub
+module github.com/elastic/cloud-on-k8s/v2/hack/operatorhub
 
 go 1.17
 

@@ -7345,11 +7345,11 @@ Contents of probable licence file $GOMODCACHE/github.com/elastic/go-windows@v1.0
 
 --------------------------------------------------------------------------------
 Module  : github.com/elazarl/goproxy
-Version : v0.0.0-20190711103511-473e67f1d7d2
-Time    : 2019-07-11T10:35:11Z
+Version : v0.0.0-20180725130230-947c36da3153
+Time    : 2018-07-25T13:02:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20190711103511-473e67f1d7d2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20180725130230-947c36da3153/LICENSE:
 
 Copyright (c) 2012 Elazar Leibovich. All rights reserved.
 
