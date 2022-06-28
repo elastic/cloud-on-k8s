@@ -10,7 +10,38 @@ endif::[]
 [id="{p}-{page_id}-operator-oom"]
 == Operator crashes on startup with `OOMKilled`
 
-On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting killed with a `OOMKilled` message. This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
+On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting killed with a `OOMKilled` message:
+
+```
+                "containerStatuses": [
+                    {
+                        "containerID": "<container_id>",
+                        "image": "<image_path>/eck-operator:1.6.0",
+                        "imageID": "<image_id>",
+                        "lastState": {
+                            "terminated": {
+                                "containerID": "<container_id>",
+                                "exitCode": 137,
+                                "finishedAt": "2022-06-06T13:23:55Z",
+                                "reason": "OOMKilled",
+                                "startedAt": "2022-06-06T13:23:24Z"
+                            }
+                        },
+                        "name": "manager",
+                        "ready": false,
+                        "restartCount": 16,
+                        "started": false,
+                        "state": {
+                            "waiting": {
+                                "message": "back-off 5m0s restarting failed container=manager pod=<pod_name>(<pod_id>)",
+                                "reason": "CrashLoopBackOff"
+                            }
+                        }
+                    }
+                ]
+```
+
+This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
 
 The default link:https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory[memory limit] for the operator pod is set to 1 Gi. You can increase (or decrease) this limit to a value suited to your cluster as follows:
 
