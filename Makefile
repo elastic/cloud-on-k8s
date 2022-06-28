@@ -54,10 +54,10 @@ OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildHash=$(TAG) \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
@@ -134,7 +134,7 @@ generate-image-dependencies:
 	@hack/licence-detector/generate-image-deps.sh
 
 elastic-operator: generate
-	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
+	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go

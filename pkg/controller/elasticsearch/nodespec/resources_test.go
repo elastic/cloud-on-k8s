@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 )
 
 func TestResourcesList_MasterNodesNames(t *testing.T) {

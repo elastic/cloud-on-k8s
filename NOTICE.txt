@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.9.0
-Time    : 2022-05-17T14:02:43Z
+Version : v0.10.0
+Time    : 2022-06-21T17:53:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.10.0/LICENSE:
 
 
                                  Apache License
@@ -2014,11 +2014,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.34.0
-Time    : 2022-04-19T15:11:58Z
+Version : v0.35.0
+Time    : 2022-06-17T14:47:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.34.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.35.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2255,11 +2255,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cobra
-Version : v1.4.0
-Time    : 2022-03-10T15:19:35Z
+Version : v1.5.0
+Time    : 2022-06-21T02:06:17Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.4.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.5.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -2507,11 +2507,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.7.2
-Time    : 2022-06-06T09:52:45Z
+Version : v1.7.3
+Time    : 2022-06-20T10:32:41Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.3/LICENSE:
 
 MIT License
 
@@ -4239,11 +4239,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.24.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.60.1
-Time    : 2022-03-20T11:07:08Z
+Version : v2.70.0
+Time    : 2022-06-22T13:33:44Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.60.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.70.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
@@ -4652,11 +4652,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220210201930
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.12.1
-Time    : 2022-05-17T13:32:27Z
+Version : v0.12.2
+Time    : 2022-06-23T14:27:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.12.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.12.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7345,11 +7345,11 @@ Contents of probable licence file $GOMODCACHE/github.com/elastic/go-windows@v1.0
 
 --------------------------------------------------------------------------------
 Module  : github.com/elazarl/goproxy
-Version : v0.0.0-20190711103511-473e67f1d7d2
-Time    : 2019-07-11T10:35:11Z
+Version : v0.0.0-20180725130230-947c36da3153
+Time    : 2018-07-25T13:02:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20190711103511-473e67f1d7d2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20180725130230-947c36da3153/LICENSE:
 
 Copyright (c) 2012 Elazar Leibovich. All rights reserved.
 
@@ -19368,11 +19368,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/objx
-Version : v0.1.1
-Time    : 2018-01-25T22:19:50Z
+Version : v0.4.0
+Time    : 2022-04-12T09:17:15Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.1.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/objx@v0.4.0/LICENSE:
 
 The MIT License
 
@@ -19665,11 +19665,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20220520000938-2e3eb7b945c2
-Time    : 2022-05-20T00:09:38Z
+Version : v0.0.0-20220524220425-1d687d428aca
+Time    : 2022-05-24T22:04:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220520000938-2e3eb7b945c2/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220524220425-1d687d428aca/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19702,11 +19702,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.0.0-20220411215720-9780585627b5
-Time    : 2022-04-11T21:57:20Z
+Version : v0.0.0-20220524215830-622c5d57e401
+Time    : 2022-05-24T21:58:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220411215720-9780585627b5/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220524215830-622c5d57e401/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -21494,11 +21494,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.24.0
-Time    : 2022-05-03T23:05:25Z
+Version : v0.24.2
+Time    : 2022-06-17T04:34:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.24.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.24.2/LICENSE:
 
 
                                  Apache License
@@ -21706,11 +21706,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.24.0
-Time    : 2022-05-03T22:43:43Z
+Version : v0.24.2
+Time    : 2022-06-17T04:07:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.2/LICENSE:
 
 
                                  Apache License

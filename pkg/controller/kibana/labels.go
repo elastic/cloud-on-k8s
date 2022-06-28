@@ -4,9 +4,7 @@
 
 package kibana
 
-import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
-)
+import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources

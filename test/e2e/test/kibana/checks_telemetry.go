@@ -10,9 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, error) {

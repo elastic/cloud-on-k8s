@@ -7,13 +7,14 @@ package v1
 import (
 	"strings"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 const (
@@ -40,6 +41,19 @@ const (
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
+
+// ServiceAccountMinVersion is the first version of Elasticsearch for which ECK supports service accounts.
+// It is however up to each association controller to ensure that a specific service account is available
+// in the current Elasticsearch version.
+var ServiceAccountMinVersion = semver.MustParse("7.17.0")
+
+func AreServiceAccountsSupported(version string) (bool, error) {
+	esVersion, err := semver.Parse(version)
+	if err != nil {
+		return false, err
+	}
+	return esVersion.GTE(ServiceAccountMinVersion), nil
+}
 
 // +kubebuilder:object:root=true
 

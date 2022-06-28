@@ -14,19 +14,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/labels"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 var log = ulog.Log.WithName("elasticsearch-user")
@@ -62,7 +60,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the service accounts
-	saTokens, err := aggregateServiceAccountTokens(c, es)
+	saTokens, err := GetServiceAccountTokens(c, es)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -74,33 +72,6 @@ func ReconcileUsersAndRoles(
 
 	// return the controller user for next reconciliation steps to interact with Elasticsearch
 	return controllerUser, nil
-}
-
-func aggregateServiceAccountTokens(c k8s.Client, es esv1.Elasticsearch) (ServiceAccountTokens, error) {
-	// list all associated user secrets
-	var serviceAccountSecrets corev1.SecretList
-	if err := c.List(context.Background(),
-		&serviceAccountSecrets,
-		client.InNamespace(es.Namespace),
-		client.MatchingLabels(
-			map[string]string{
-				label.ClusterNameLabelName: es.Name,
-				labels.TypeLabelName:       ServiceAccountTokenType,
-			},
-		),
-	); err != nil {
-		return nil, err
-	}
-
-	var tokens ServiceAccountTokens
-	for _, secret := range serviceAccountSecrets.Items {
-		token, err := getServiceAccountToken(secret)
-		if err != nil {
-			return nil, err
-		}
-		tokens = tokens.Add(token)
-	}
-	return tokens, nil
 }
 
 func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm, error) {

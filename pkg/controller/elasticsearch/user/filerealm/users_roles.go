@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 // usersRoles is a map {role name -> [] sorted user names}

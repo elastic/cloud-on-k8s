@@ -7,7 +7,7 @@ package labels
 import (
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (

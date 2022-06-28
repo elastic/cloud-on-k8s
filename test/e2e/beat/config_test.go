@@ -10,21 +10,22 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/journalbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/packetbeat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/auditbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/heartbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/journalbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/packetbeat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 func TestFilebeatDefaultConfig(t *testing.T) {

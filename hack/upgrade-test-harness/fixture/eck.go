@@ -51,16 +51,23 @@ func (tp TestParam) Suffixed(name string) string {
 }
 
 // TestInstallOperator is the fixture for installing an operator.
-func TestInstallOperator(param TestParam) *Fixture {
+func TestInstallOperator(param TestParam, isUpgrade bool) *Fixture {
 	crdPath := param.Path("crds.yaml")
+
+	var testSteps []*TestStep
+	if isUpgrade {
+		testSteps = []*TestStep{noRetry(param.Suffixed("ReplaceCRDs"), ifExists(crdPath, replaceManifests(crdPath)))}
+	} else {
+		testSteps = []*TestStep{noRetry(param.Suffixed("InstallCRDs"), ifExists(crdPath, applyManifests(crdPath)))}
+	}
+
 	return &Fixture{
 		Name: param.Suffixed("TestInstallOperator"),
-		Steps: []*TestStep{
-			noRetry(param.Suffixed("InstallCRDs"), ifExists(crdPath, replaceManifests(crdPath))),
+		Steps: append(testSteps,
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
-			pause(5 * time.Second),
+			pause(5*time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),
-		},
+		),
 	}
 }
 
