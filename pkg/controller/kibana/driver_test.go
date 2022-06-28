@@ -23,9 +23,9 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
@@ -771,7 +771,7 @@ func mkService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				KibanaNameLabelName:  "kibana-test",
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -784,7 +784,7 @@ func mkService() corev1.Service {
 			},
 			Selector: map[string]string{
 				KibanaNameLabelName:  "kibana-test",
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 			},
 		},
 	}

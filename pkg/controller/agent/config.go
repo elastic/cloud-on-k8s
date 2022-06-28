@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -41,7 +42,7 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Agent.Namespace,
 			Name:      ConfigSecretName(params.Agent.Name),
-			Labels:    common.AddCredentialsLabel(NewLabels(params.Agent)),
+			Labels:    labels.AddCredentialsLabel(NewLabels(params.Agent)),
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

@@ -19,7 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -91,7 +91,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				assert.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: userName, Namespace: "default"}, &esUser))
 				expectedLabels := map[string]string{
 					associationLabelName:       kibanaFixture.Name,
-					common.TypeLabelName:       esuser.AssociatedUserType,
+					labels.TypeLabelName:       esuser.AssociatedUserType,
 					label.ClusterNameLabelName: "es-foo",
 				}
 				for k, v := range expectedLabels {
@@ -192,7 +192,7 @@ func Test_reconcileEsUser(t *testing.T) {
 							Labels: map[string]string{
 								associationLabelName:       kibanaFixture.Name,
 								associationLabelNamespace:  kibanaFixture.Namespace,
-								common.TypeLabelName:       esuser.AssociatedUserType,
+								labels.TypeLabelName:       esuser.AssociatedUserType,
 								label.ClusterNameLabelName: esFixture.Name,
 							},
 						},

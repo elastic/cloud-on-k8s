@@ -25,6 +25,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
@@ -222,7 +223,7 @@ func mkService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				ApmServerNameLabelName: "apm-test",
-				common.TypeLabelName:   Type,
+				labels.TypeLabelName:   Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -235,7 +236,7 @@ func mkService() corev1.Service {
 			},
 			Selector: map[string]string{
 				ApmServerNameLabelName: "apm-test",
-				common.TypeLabelName:   Type,
+				labels.TypeLabelName:   Type,
 			},
 		},
 	}

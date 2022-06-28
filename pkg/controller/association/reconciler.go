@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -118,7 +119,7 @@ func (a AssociationInfo) userLabelSelector(
 	association types.NamespacedName,
 ) client.MatchingLabels {
 	return maps.Merge(
-		map[string]string{common.TypeLabelName: user.AssociatedUserType},
+		map[string]string{labels.TypeLabelName: user.AssociatedUserType},
 		a.AssociationResourceLabels(associated, association),
 	)
 }

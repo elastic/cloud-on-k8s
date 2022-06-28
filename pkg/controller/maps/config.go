@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
@@ -51,7 +52,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ems.Namespace,
 			Name:      Config(ems.Name),
-			Labels:    common.AddCredentialsLabel(labels(ems.Name)),
+			Labels:    commonlabels.AddCredentialsLabel(labels(ems.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

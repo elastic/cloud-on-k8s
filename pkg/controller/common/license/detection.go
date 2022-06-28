@@ -7,12 +7,12 @@ package license
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 )
 
 func isLicenseType(secret corev1.Secret, licenseType OperatorLicenseType) bool {
 	// is it a license at all (but be lenient if user omitted label)?
-	baseType, hasLabel := secret.Labels[common.TypeLabelName]
+	baseType, hasLabel := secret.Labels[labels.TypeLabelName]
 	if hasLabel && baseType != Type {
 		return false
 	}

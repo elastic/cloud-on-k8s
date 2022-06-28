@@ -601,7 +601,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		setupWebhook(ctx, mgr, params, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -884,20 +884,20 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 func setupWebhook(
 	ctx context.Context,
 	mgr manager.Manager,
-	certRotation certificates.RotationParams,
-	validateStorageClass bool,
+	params operator.Parameters,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
 	tracer *apm.Tracer) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, certRotation, clientset, tracer); err != nil {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
 			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 	}
 
+	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
 	webhookObjects := []interface {
 		runtime.Object
@@ -921,6 +921,7 @@ func setupWebhook(
 			WebhookPath:      obj.WebhookPath(),
 			ManagedNamespace: managedNamespaces,
 			Validator:        obj,
+			LicenseChecker:   checker,
 		}); err != nil {
 			gvk := obj.GetObjectKind().GroupVersionKind()
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
@@ -928,7 +929,7 @@ func setupWebhook(
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels, managedNamespaces)
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

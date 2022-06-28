@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	kibana2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -47,7 +47,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:        kibana2.Type,
+			labels.TypeLabelName:        kibana2.Type,
 			kibana2.KibanaNameLabelName: kbBuilder.Kibana.Name,
 		}),
 	}
@@ -96,7 +96,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder1.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:        kibana2.Type,
+			labels.TypeLabelName:        kibana2.Type,
 			kibana2.KibanaNameLabelName: kbBuilder1.Kibana.Name,
 		}),
 	}
@@ -153,7 +153,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:        kibana2.Type,
+			labels.TypeLabelName:        kibana2.Type,
 			kibana2.KibanaNameLabelName: kbBuilder.Kibana.Name,
 		}),
 	}
@@ -199,7 +199,7 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder1.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:        kibana2.Type,
+			labels.TypeLabelName:        kibana2.Type,
 			kibana2.KibanaNameLabelName: kbBuilder1.Kibana.Name,
 		}),
 	}

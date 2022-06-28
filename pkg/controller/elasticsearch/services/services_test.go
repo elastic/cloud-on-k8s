@@ -15,7 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
@@ -265,7 +265,7 @@ func mkHTTPService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -278,7 +278,7 @@ func mkHTTPService() corev1.Service {
 			},
 			Selector: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 	}
@@ -291,7 +291,7 @@ func mkTransportService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -307,7 +307,7 @@ func mkTransportService() corev1.Service {
 			},
 			Selector: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 	}

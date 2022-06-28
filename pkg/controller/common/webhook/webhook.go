@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -29,6 +30,7 @@ func SetupValidatingWebhookWithConfig(config *Config) error {
 		&webhook.Admission{
 			Handler: &validatingWebhook{
 				validator:         config.Validator,
+				licenseChecker:    config.LicenseChecker,
 				managedNamespaces: set.Make(config.ManagedNamespace...)}})
 	return nil
 }
@@ -38,12 +40,14 @@ type Config struct {
 	Manager          ctrl.Manager
 	WebhookPath      string
 	ManagedNamespace []string
+	LicenseChecker   license.Checker
 	Validator        admission.Validator
 }
 
 type validatingWebhook struct {
 	decoder           *admission.Decoder
 	managedNamespaces set.StringSet
+	licenseChecker    license.Checker
 	validator         admission.Validator
 }
 
@@ -66,6 +70,10 @@ func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) adm
 	if err != nil {
 		whlog.Error(err, "decoding object from webhook request into type (%T)", obj)
 		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	if err := v.commonValidations(req, obj); err != nil {
+		return admission.Denied(err.Error())
 	}
 
 	if req.Operation == admissionv1.Create {

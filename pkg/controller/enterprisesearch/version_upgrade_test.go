@@ -20,7 +20,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -56,7 +56,7 @@ func podWithVersion(name string, version string) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns", Name: name, Labels: map[string]string{
 				EnterpriseSearchNameLabelName: "ent",
-				common.TypeLabelName:          Type,
+				labels.TypeLabelName:          Type,
 				VersionLabelName:              version,
 			},
 		},

@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
@@ -138,7 +138,7 @@ func (c *baseClient) request(
 	if request.Header == nil {
 		request.Header = make(http.Header)
 	}
-	request.Header.Set(common.InternalProductRequestHeaderKey, common.InternalProductRequestHeaderValue)
+	request.Header.Set(commonhttp.InternalProductRequestHeaderKey, commonhttp.InternalProductRequestHeaderValue)
 
 	var skippedErr error
 	resp, err := c.doRequest(ctx, request)
