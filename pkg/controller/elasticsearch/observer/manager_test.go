@@ -204,7 +204,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 		<-eventsCluster2
 		<-eventsCluster1
 		<-eventsCluster2
-		doneCh <- struct{}{}
+		close(doneCh)
 	}()
 	// observe 2 clusters
 	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))

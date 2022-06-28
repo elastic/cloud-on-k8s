@@ -84,7 +84,7 @@ func TestNewObserver(t *testing.T) {
 		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
 		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
 		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
-		doneCh <- struct{}{}
+		close(doneCh)
 	}()
 	observer := createAndRunTestObserver(onObservation)
 	defer observer.Stop()
