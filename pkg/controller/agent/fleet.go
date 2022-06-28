@@ -36,6 +36,19 @@ func (e *APIError) Error() string {
 	return e.msg
 }
 
+// IsNotFound checks whether the error was an HTTP 404 error.
+func IsNotFound(err error) bool {
+	return isHTTPError(err, http.StatusNotFound)
+}
+
+func isHTTPError(err error, statusCode int) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		return apiErr.StatusCode == statusCode
+	}
+	return false
+}
+
 type EnrollmentAPIKeyResult struct {
 	Item EnrollmentAPIKey `json:"item"`
 }
@@ -55,6 +68,7 @@ type AgentPolicy struct {
 	ID                   string `json:"id"`
 	IsDefault            bool   `json:"is_default"`
 	IsDefaultFleetServer bool   `json:"is_default_fleet_server"`
+	Status               string `json:"status"`
 }
 
 type fleetAPI struct {
@@ -154,36 +168,47 @@ func (f fleetAPI) GetEnrollmentAPIKey(ctx context.Context, keyID string) (Enroll
 	return response.Item, err
 }
 
-func (f fleetAPI) ListAgentPolicies(ctx context.Context) (AgentPolicyList, error) {
-	var list AgentPolicyList
-	err := f.request(ctx, http.MethodGet, "agent_policies", nil, &list)
-	return list, err
+func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentPolicy) bool) (AgentPolicy, error) {
+	page := 1
+	for {
+		var list AgentPolicyList
+		err := f.request(ctx, http.MethodGet, fmt.Sprintf("agent_policies?perPage=20&page=%d", page), nil, &list)
+		if err != nil {
+			return AgentPolicy{}, err
+		}
+		if len(list.Items) == 0 {
+			// goto NOTFOUND
+			break
+		}
+		for _, p := range list.Items {
+			if filter(p) {
+				return p, nil
+			}
+		}
+		page++
+	}
+	// NOTFOUND:
+	return AgentPolicy{}, errors.New("no matching agent policy found")
 }
 
 func (f fleetAPI) DefaultFleetServerPolicyID(ctx context.Context) (string, error) {
-	policies, err := f.ListAgentPolicies(ctx)
+	policy, err := f.findAgentPolicy(ctx, func(policy AgentPolicy) bool {
+		return policy.IsDefaultFleetServer && policy.Status == "active"
+	})
 	if err != nil {
 		return "", err
 	}
-	for _, p := range policies.Items {
-		if p.IsDefaultFleetServer {
-			return p.ID, nil
-		}
-	}
-	return "", errors.New("no default fleet server policy found")
+	return policy.ID, nil
 }
 
 func (f fleetAPI) DefaultAgentPolicyID(ctx context.Context) (string, error) {
-	policies, err := f.ListAgentPolicies(ctx)
+	policy, err := f.findAgentPolicy(ctx, func(policy AgentPolicy) bool {
+		return policy.IsDefault && policy.Status == "active"
+	})
 	if err != nil {
 		return "", err
 	}
-	for _, p := range policies.Items {
-		if p.IsDefault {
-			return p.ID, nil
-		}
-	}
-	return "", errors.New("no default agent policy found")
+	return policy.ID, nil
 }
 
 func reconcileEnrollmentToken(
@@ -199,13 +224,19 @@ func reconcileEnrollmentToken(
 	}
 	if exists {
 		key, err := api.GetEnrollmentAPIKey(ctx, tokenName)
+		if err != nil && IsNotFound(err) {
+			goto CREATE
+		}
 		if err != nil {
 			return "", err
 		}
+		// TODO check token is for the correct policy
 		if key.Active {
 			return key.APIKey, nil
 		}
 	}
+
+CREATE:
 	key, err := api.CreateEnrollmentAPIKey(ctx, policyID)
 	if err != nil {
 		return "", err
