@@ -110,8 +110,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 			}),
 			assocType: commonv1.KibanaAssociationType,
 			wantConnectionSettings: connectionSettings{
-				host: "url",
-				ca:   "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
+				host:       "url",
+				caFileName: "/mnt/elastic-internal/kibana-association/ns/kibana/certs/ca.crt",
 				credentials: association.Credentials{
 					Username: "user",
 					Password: "password",
@@ -121,7 +121,7 @@ func TestExtractConnectionSettings(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotConnectionSettings, gotErr := extractConnectionSettings(tt.agent, tt.client, tt.assocType)
+			gotConnectionSettings, gotErr := extractPodConnectionSettings(tt.agent, tt.client, tt.assocType)
 
 			require.Equal(t, tt.wantConnectionSettings, gotConnectionSettings)
 			require.Equal(t, tt.wantErr, gotErr != nil)

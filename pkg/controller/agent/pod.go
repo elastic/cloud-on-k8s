@@ -5,12 +5,13 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"hash"
 	"path"
 	"sort"
-	"strconv"
 
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
@@ -63,9 +65,10 @@ const (
 	KibanaFleetCA       = "KIBANA_FLEET_CA"
 
 	// Below are the names of environment variables used to configure Elastic Agent to Fleet connection in Fleet mode.
-	FleetEnroll = "FLEET_ENROLL"
-	FleetCA     = "FLEET_CA"
-	FleetURL    = "FLEET_URL"
+	FleetEnroll          = "FLEET_ENROLL"
+	FleetEnrollmentToken = "FLEET_ENROLLMENT_TOKEN"
+	FleetCA              = "FLEET_CA"
+	FleetURL             = "FLEET_URL"
 
 	// Below are the names of environment variables used to configure Fleet Server and its connection to Elasticsearch
 	// in Fleet mode.
@@ -226,7 +229,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 }
 
 func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client)
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, params.OperatorParams.Dialer, params.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -370,8 +373,8 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 }
 
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
-	var vols []volume.VolumeLike //nolint:prealloc
-	for i, assoc := range associations {
+	var vols []volume.VolumeLike         //nolint:prealloc
+	for i, assoc := range associations { // TODO filter Kibana out
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
 			return nil, err
@@ -427,15 +430,15 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetModeEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, dialer netutil.Dialer, logger logr.Logger) (map[string]string, error) {
 	result := map[string]string{}
 
-	for _, f := range []func(agentv1alpha1.Agent, k8s.Client) (map[string]string, error){
+	for _, f := range []func(context.Context, agentv1alpha1.Agent, k8s.Client, netutil.Dialer, logr.Logger) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
 	} {
-		envVars, err := f(agent, client)
+		envVars, err := f(ctx, agent, client, dialer, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -445,32 +448,31 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[stri
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
-	if agent.Spec.KibanaRef.IsDefined() {
-		kbConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
-		if err != nil {
-			return nil, err
-		}
-
-		envVars := map[string]string{
-			KibanaFleetHost:     kbConnectionSettings.host,
-			KibanaFleetUsername: kbConnectionSettings.credentials.Username,
-			KibanaFleetPassword: kbConnectionSettings.credentials.Password,
-			KibanaFleetSetup:    strconv.FormatBool(agent.Spec.KibanaRef.IsDefined()),
-		}
-
-		// don't set ca key if ca is not available
-		if kbConnectionSettings.ca != "" {
-			envVars[KibanaFleetCA] = kbConnectionSettings.ca
-		}
-
-		return envVars, nil
+func getFleetSetupKibanaEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, dialer netutil.Dialer, logger logr.Logger) (map[string]string, error) {
+	if !agent.Spec.KibanaRef.IsDefined() {
+		return map[string]string{}, nil
 	}
 
-	return map[string]string{}, nil
+	kbConnectionSettings, err := extractClientConnectionSettings(agent, client, commonv1.KibanaAssociationType)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := reconcileEnrollmentToken(
+		ctx, agent, client,
+		newFleetAPI(dialer, kbConnectionSettings, logger.WithValues("namespace", agent.Namespace, "agent_name", agent.Name)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	envVars := map[string]string{
+		FleetEnrollmentToken: token,
+	}
+
+	return envVars, nil
 }
 
-func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ netutil.Dialer, _ logr.Logger) (map[string]string, error) {
 	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
@@ -512,7 +514,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ netutil.Dialer, _ logr.Logger) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
 		return map[string]string{}, nil
 	}
@@ -525,7 +527,7 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		esConnectionSettings, err := extractPodConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}
@@ -540,8 +542,8 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 		}
 
 		// don't set ca key if ca is not available
-		if esConnectionSettings.ca != "" {
-			fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.ca
+		if esConnectionSettings.caFileName != "" {
+			fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.caFileName
 		}
 	}
 

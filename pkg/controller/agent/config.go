@@ -5,6 +5,8 @@
 package agent
 
 import (
+	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"hash"
@@ -12,11 +14,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -24,8 +28,9 @@ import (
 )
 
 type connectionSettings struct {
-	host, ca    string
-	credentials association.Credentials
+	host, caFileName, version string
+	credentials               association.Credentials
+	caCerts                   []*x509.Certificate
 }
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
@@ -140,7 +145,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
 }
 
-func extractConnectionSettings(
+func extractPodConnectionSettings(
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
@@ -172,7 +177,52 @@ func extractConnectionSettings(
 
 	return connectionSettings{
 		host:        assocConf.GetURL(),
-		ca:          ca,
+		caFileName:  ca,
 		credentials: credentials,
 	}, err
+}
+
+func extractClientConnectionSettings(
+	agent agentv1alpha1.Agent,
+	client k8s.Client,
+	associationType commonv1.AssociationType,
+) (connectionSettings, error) {
+	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
+	if assoc == nil {
+		errTemplate := "association of type %s not found in %d associations"
+		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
+	}
+
+	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return connectionSettings{}, err
+	}
+	settings := connectionSettings{
+		host:        assocConf.GetURL(),
+		credentials: credentials,
+		version:     assocConf.Version,
+	}
+	if !assocConf.GetCACertProvided() {
+		return settings, nil
+	}
+	var caSecret corev1.Secret
+	if err := client.Get(context.Background(), types.NamespacedName{Name: assocConf.GetCASecretName(), Namespace: agent.Namespace}, &caSecret); err != nil {
+		return connectionSettings{}, err
+	}
+	bytes := caSecret.Data[CAFileName]
+	certs, err := certificates.ParsePEMCerts(bytes)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+	settings.caCerts = certs
+	return settings, nil
 }
