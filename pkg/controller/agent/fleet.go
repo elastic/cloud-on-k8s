@@ -42,7 +42,7 @@ type EnrollmentAPIKey struct {
 }
 
 // PolicyList is a wrapper for a list of agent policies as returned by the Fleet API.
-type PolicyList struct { //nolint:revive
+type PolicyList struct { 
 	Items []Policy `json:"items"`
 }
 
@@ -80,7 +80,6 @@ func (f fleetAPI) request(
 	pathWithQuery string,
 	requestObj,
 	responseObj interface{}) error {
-
 	var body io.Reader = http.NoBody
 	if requestObj != nil {
 		outData, err := json.Marshal(requestObj)
@@ -125,7 +124,6 @@ func (f fleetAPI) request(
 	}
 
 	return nil
-
 }
 
 func (f fleetAPI) enrollmentAPIKeyPath() string {
@@ -137,7 +135,6 @@ func (f fleetAPI) enrollmentAPIKeyPath() string {
 }
 
 func (f fleetAPI) createEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
-
 	var response EnrollmentAPIKeyResult
 	err := f.request(ctx, http.MethodPost, f.enrollmentAPIKeyPath(), EnrollmentAPIKey{PolicyID: policyID}, &response)
 	return response.Item, err
@@ -267,5 +264,4 @@ func reconcilePolicyID(ctx context.Context, agent agentv1alpha1.Agent, api fleet
 		return api.defaultFleetServerPolicyID(ctx)
 	}
 	return api.defaultAgentPolicyID(ctx)
-
 }
