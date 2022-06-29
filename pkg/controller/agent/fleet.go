@@ -28,29 +28,6 @@ import (
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token"
 
-// TODO common kibana/http client?
-type APIError struct {
-	StatusCode int
-	msg        string
-}
-
-func (e *APIError) Error() string {
-	return e.msg
-}
-
-// IsNotFound checks whether the error was an HTTP 404 error.
-func IsNotFound(err error) bool {
-	return isHTTPError(err, http.StatusNotFound)
-}
-
-func isHTTPError(err error, statusCode int) bool {
-	apiErr := new(APIError)
-	if errors.As(err, &apiErr) {
-		return apiErr.StatusCode == statusCode
-	}
-	return false
-}
-
 type EnrollmentAPIKeyResult struct {
 	Item EnrollmentAPIKey `json:"item"`
 }
@@ -134,11 +111,8 @@ func (f fleetAPI) request(
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return &APIError{
-			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("failed to request %s, status is %d)", request.URL.Redacted(), resp.StatusCode),
-		}
+	if err := commonhttp.MaybeAPIError(resp); err != nil {
+		return err
 	}
 	if responseObj != nil {
 		if err := json.NewDecoder(resp.Body).Decode(responseObj); err != nil {
@@ -216,7 +190,6 @@ func (f fleetAPI) DefaultAgentPolicyID(ctx context.Context) (string, error) {
 	return policy.ID, nil
 }
 
-// todo name
 func maybeReconcileFleetEnrollment(params Params) (string, error) {
 	if !params.Agent.Spec.KibanaRef.IsDefined() {
 		return "", nil
@@ -254,7 +227,7 @@ func reconcileEnrollmentToken(
 		// get the enrollment token identified by the annotation
 		key, err := api.GetEnrollmentAPIKey(ctx, tokenName)
 		// the annotation might contain corrupted or no longer valid information
-		if err != nil && IsNotFound(err) {
+		if err != nil && commonhttp.IsNotFound(err) {
 			goto CREATE
 		}
 		if err != nil {
