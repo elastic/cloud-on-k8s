@@ -55,13 +55,6 @@ const (
 	// VersionLabelName is a label used to track the version of a Agent Pod.
 	VersionLabelName = "agent.k8s.elastic.co/version"
 
-	// Below are the names of environment variables used to configure Elastic Agent to Kibana connection in Fleet mode.
-	KibanaFleetHost     = "KIBANA_FLEET_HOST"
-	KibanaFleetUsername = "KIBANA_FLEET_USERNAME"
-	KibanaFleetPassword = "KIBANA_FLEET_PASSWORD" //nolint:gosec
-	KibanaFleetSetup    = "KIBANA_FLEET_SETUP"
-	KibanaFleetCA       = "KIBANA_FLEET_CA"
-
 	// Below are the names of environment variables used to configure Elastic Agent to Fleet connection in Fleet mode.
 	FleetEnroll          = "FLEET_ENROLL"
 	FleetEnrollmentToken = "FLEET_ENROLLMENT_TOKEN"
@@ -112,8 +105,7 @@ var (
 	}
 
 	secretEnvVarNames = map[string]struct{}{
-		KibanaFleetUsername:              {},
-		KibanaFleetPassword:              {},
+		FleetEnrollmentToken:             {},
 		FleetServerElasticsearchUsername: {},
 		FleetServerElasticsearchPassword: {},
 	}
