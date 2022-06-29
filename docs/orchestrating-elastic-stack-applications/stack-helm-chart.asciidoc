@@ -17,6 +17,8 @@ helm repo update
 
 NOTE: The minimum supported version of Helm is 3.2.0.
 
+NOTE: ECK Stack Helm Charts are currently being released as an Enterprise-level licensing feature.
+
 [float]
 [id="{p}-install-elasticsearch-helm"]
 == Installing Elasticsearch using the eck-stack Helm Chart
