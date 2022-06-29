@@ -256,9 +256,9 @@ CREATE:
 }
 
 func reconcilePolicyID(ctx context.Context, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
-	/*if agent.Spec.PolicyID != "" {
-		return agent.Spec.PolicyID
-	}*/
+	if agent.Spec.PolicyID != "" {
+		return agent.Spec.PolicyID, nil
+	}
 	if agent.Spec.FleetServerEnabled {
 		return api.DefaultFleetServerPolicyID(ctx)
 	}

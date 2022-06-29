@@ -15683,6 +15683,11 @@ spec:
                 - standalone
                 - fleet
                 type: string
+              policyID:
+                description: PolicyID optionally determines into which Agent Policy
+                  this Agent will be enrolled. If left empty the default policy will
+                  be used.
+                type: string
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Agent.

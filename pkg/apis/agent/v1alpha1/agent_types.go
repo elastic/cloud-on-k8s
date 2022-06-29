@@ -84,6 +84,11 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	FleetServerEnabled bool `json:"fleetServerEnabled,omitempty"`
 
+	// PolicyID optionally determines into which Agent Policy this Agent will be enrolled. If left empty the default
+	// policy will be used.
+	// +kubebuilder:validation:Optional
+	PolicyID string `json:"policyID,omitempty"`
+
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
 	// +kubebuilder:validation:Optional
