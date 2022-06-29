@@ -26,12 +26,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
-const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token"
+const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
 
+// EnrollmentAPIKeyResult wrapper for a single result in the Fleet API.
 type EnrollmentAPIKeyResult struct {
 	Item EnrollmentAPIKey `json:"item"`
 }
 
+// EnrollmentAPIKey is the representation of an enrollment token in the Fleet API.
 type EnrollmentAPIKey struct {
 	ID       string `json:"id,omitempty"`
 	Active   bool   `json:"active,omitempty"`
@@ -39,11 +41,13 @@ type EnrollmentAPIKey struct {
 	PolicyID string `json:"policy_id,omitempty"`
 }
 
-type AgentPolicyList struct {
-	Items []AgentPolicy `json:"items"`
+// PolicyList is a wrapper for a list of agent policies as returned by the Fleet API.
+type PolicyList struct { //nolint:revive
+	Items []Policy `json:"items"`
 }
 
-type AgentPolicy struct {
+// Policy is the representation of an agent policy in the Fleet API.
+type Policy struct {
 	ID                   string `json:"id"`
 	IsDefault            bool   `json:"is_default"`
 	IsDefaultFleetServer bool   `json:"is_default_fleet_server"`
@@ -132,30 +136,30 @@ func (f fleetAPI) enrollmentAPIKeyPath() string {
 	return path
 }
 
-func (f fleetAPI) CreateEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
+func (f fleetAPI) createEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
 
 	var response EnrollmentAPIKeyResult
 	err := f.request(ctx, http.MethodPost, f.enrollmentAPIKeyPath(), EnrollmentAPIKey{PolicyID: policyID}, &response)
 	return response.Item, err
 }
 
-func (f fleetAPI) GetEnrollmentAPIKey(ctx context.Context, keyID string) (EnrollmentAPIKey, error) {
+func (f fleetAPI) getEnrollmentAPIKey(ctx context.Context, keyID string) (EnrollmentAPIKey, error) {
 	var response EnrollmentAPIKeyResult
 	err := f.request(ctx, http.MethodGet, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, &response)
 	return response.Item, err
 }
 
-func (f fleetAPI) DeleteEnrollmentAPIKey(ctx context.Context, keyID string) error {
+func (f fleetAPI) deleteEnrollmentAPIKey(ctx context.Context, keyID string) error {
 	return f.request(ctx, http.MethodDelete, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, nil)
 }
 
-func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentPolicy) bool) (AgentPolicy, error) {
+func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy Policy) bool) (Policy, error) {
 	page := 1
 	for {
-		var list AgentPolicyList
+		var list PolicyList
 		err := f.request(ctx, http.MethodGet, fmt.Sprintf("agent_policies?perPage=20&page=%d", page), nil, &list)
 		if err != nil {
-			return AgentPolicy{}, err
+			return Policy{}, err
 		}
 		if len(list.Items) == 0 {
 			break
@@ -167,11 +171,11 @@ func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentP
 		}
 		page++
 	}
-	return AgentPolicy{}, errors.New("no matching agent policy found")
+	return Policy{}, errors.New("no matching agent policy found")
 }
 
-func (f fleetAPI) DefaultFleetServerPolicyID(ctx context.Context) (string, error) {
-	policy, err := f.findAgentPolicy(ctx, func(policy AgentPolicy) bool {
+func (f fleetAPI) defaultFleetServerPolicyID(ctx context.Context) (string, error) {
+	policy, err := f.findAgentPolicy(ctx, func(policy Policy) bool {
 		return policy.IsDefaultFleetServer && policy.Status == "active"
 	})
 	if err != nil {
@@ -180,8 +184,8 @@ func (f fleetAPI) DefaultFleetServerPolicyID(ctx context.Context) (string, error
 	return policy.ID, nil
 }
 
-func (f fleetAPI) DefaultAgentPolicyID(ctx context.Context) (string, error) {
-	policy, err := f.findAgentPolicy(ctx, func(policy AgentPolicy) bool {
+func (f fleetAPI) defaultAgentPolicyID(ctx context.Context) (string, error) {
+	policy, err := f.findAgentPolicy(ctx, func(policy Policy) bool {
 		return policy.IsDefault && policy.Status == "active"
 	})
 	if err != nil {
@@ -225,7 +229,7 @@ func reconcileEnrollmentToken(
 	}
 	if exists {
 		// get the enrollment token identified by the annotation
-		key, err := api.GetEnrollmentAPIKey(ctx, tokenName)
+		key, err := api.getEnrollmentAPIKey(ctx, tokenName)
 		// the annotation might contain corrupted or no longer valid information
 		if err != nil && commonhttp.IsNotFound(err) {
 			goto CREATE
@@ -240,7 +244,7 @@ func reconcileEnrollmentToken(
 	}
 
 CREATE:
-	key, err := api.CreateEnrollmentAPIKey(ctx, policyID)
+	key, err := api.createEnrollmentAPIKey(ctx, policyID)
 	if err != nil {
 		return "", err
 	}
@@ -250,7 +254,7 @@ CREATE:
 	err = client.Update(ctx, &agent)
 	if err != nil {
 		// we have failed to store the token id in an annotation let's try to remove the token again
-		return "", k8serrors.NewAggregate([]error{err, api.DeleteEnrollmentAPIKey(ctx, key.ID)})
+		return "", k8serrors.NewAggregate([]error{err, api.deleteEnrollmentAPIKey(ctx, key.ID)})
 	}
 	return key.APIKey, nil
 }
@@ -260,8 +264,8 @@ func reconcilePolicyID(ctx context.Context, agent agentv1alpha1.Agent, api fleet
 		return agent.Spec.PolicyID, nil
 	}
 	if agent.Spec.FleetServerEnabled {
-		return api.DefaultFleetServerPolicyID(ctx)
+		return api.defaultFleetServerPolicyID(ctx)
 	}
-	return api.DefaultAgentPolicyID(ctx)
+	return api.defaultAgentPolicyID(ctx)
 
 }
