@@ -16,11 +16,15 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/types"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
@@ -42,7 +46,7 @@ type EnrollmentAPIKey struct {
 }
 
 // PolicyList is a wrapper for a list of agent policies as returned by the Fleet API.
-type PolicyList struct { 
+type PolicyList struct {
 	Items []Policy `json:"items"`
 }
 
@@ -191,14 +195,25 @@ func (f fleetAPI) defaultAgentPolicyID(ctx context.Context) (string, error) {
 	return policy.ID, nil
 }
 
-func maybeReconcileFleetEnrollment(params Params) (string, error) {
+func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) string {
 	if !params.Agent.Spec.KibanaRef.IsDefined() {
-		return "", nil
+		return ""
+	}
+
+	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.NamespacedName())
+	if err != nil {
+		result.WithError(err)
+		return ""
+	}
+	if !reachable {
+		result.WithResult(reconcile.Result{Requeue: true})
+		return ""
 	}
 
 	kbConnectionSettings, err := extractClientConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
 	if err != nil {
-		return "", err
+		result.WithError(err)
+		return ""
 	}
 
 	token, err := reconcileEnrollmentToken(
@@ -208,7 +223,20 @@ func maybeReconcileFleetEnrollment(params Params) (string, error) {
 			kbConnectionSettings,
 			params.Logger().WithValues("namespace", params.Agent.Namespace, "agent_name", params.Agent.Name)),
 	)
-	return token, err
+	result.WithError(err)
+	return token
+}
+
+func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.NamespacedName) (bool, error) {
+	var kb v1.Kibana
+	err := client.Get(ctx, kibanaNSN, &kb)
+	if err != nil {
+		return false, err
+	}
+	if kb.Status.Health != commonv1.GreenHealth {
+		return false, nil // requeue
+	}
+	return true, nil
 }
 
 func reconcileEnrollmentToken(

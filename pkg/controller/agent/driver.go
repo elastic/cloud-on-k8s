@@ -129,9 +129,9 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
 	}
 
-	fleetToken, err := maybeReconcileFleetEnrollment(params)
-	if err != nil {
-		return results.WithError(err), params.Status
+	fleetToken := maybeReconcileFleetEnrollment(params, results)
+	if results.HasRequeue() || results.HasError() {
+		return results, params.Status
 	}
 
 	if res := reconcileConfig(params, configHash); res.HasError() {
