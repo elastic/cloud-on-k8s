@@ -195,12 +195,16 @@ func (f fleetAPI) defaultAgentPolicyID(ctx context.Context) (string, error) {
 	return policy.ID, nil
 }
 
+func (f fleetAPI) setupFleet(ctx context.Context) error {
+	return f.request(ctx, http.MethodPost, "setup", nil, nil)
+}
+
 func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) string {
 	if !params.Agent.Spec.KibanaRef.IsDefined() {
 		return ""
 	}
 
-	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.NamespacedName())
+	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).NamespacedName())
 	if err != nil {
 		result.WithError(err)
 		return ""
@@ -247,6 +251,12 @@ func reconcileEnrollmentToken(
 ) (string, error) {
 	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
+	if !exists {
+		// setup fleet to create default policies (and tokens)
+		if err := api.setupFleet(ctx); err != nil {
+			return "", err
+		}
+	}
 	// what policy should we enroll this agent in?
 	policyID, err := reconcilePolicyID(ctx, agent, api)
 	if err != nil {
