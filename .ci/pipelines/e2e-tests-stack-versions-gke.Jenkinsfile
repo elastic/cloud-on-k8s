@@ -46,17 +46,6 @@ pipeline {
                         }
                     }
                 }
-                stage("7.11.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-711-${BUILD_NUMBER}-e2e", "7.11.2")
-                        }
-                    }
-                }
                 stage("7.12.1") {
                     agent {
                         label 'linux'
@@ -197,7 +186,6 @@ pipeline {
             script {
                 clusters = [
                     "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-711-${BUILD_NUMBER}-e2e",
                     "eck-712-${BUILD_NUMBER}-e2e",
                     "eck-713-${BUILD_NUMBER}-e2e",
                     "eck-714-${BUILD_NUMBER}-e2e",
