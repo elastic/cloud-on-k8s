@@ -16,8 +16,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -148,24 +150,29 @@ func (f fleetAPI) request(
 
 }
 
-func (f fleetAPI) CreateEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
+func (f fleetAPI) enrollmentAPIKeyPath() string {
 	path := "enrollment_api_keys"
 	if strings.HasPrefix(f.kibanaVersion, "7") {
-		path = strings.Replace(path, "_", "-", -1)
+		path = "enrollment-api-keys"
 	}
+	return path
+}
+
+func (f fleetAPI) CreateEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
+
 	var response EnrollmentAPIKeyResult
-	err := f.request(ctx, http.MethodPost, path, EnrollmentAPIKey{PolicyID: policyID}, &response)
+	err := f.request(ctx, http.MethodPost, f.enrollmentAPIKeyPath(), EnrollmentAPIKey{PolicyID: policyID}, &response)
 	return response.Item, err
 }
 
 func (f fleetAPI) GetEnrollmentAPIKey(ctx context.Context, keyID string) (EnrollmentAPIKey, error) {
-	path := "enrollment_api_keys"
-	if strings.HasPrefix(f.kibanaVersion, "7") {
-		path = strings.Replace(path, "_", "-", -1)
-	}
 	var response EnrollmentAPIKeyResult
-	err := f.request(ctx, http.MethodGet, fmt.Sprintf("%s/%s", path, keyID), nil, &response)
+	err := f.request(ctx, http.MethodGet, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, &response)
 	return response.Item, err
+}
+
+func (f fleetAPI) DeleteEnrollmentAPIKey(ctx context.Context, keyID string) error {
+	return f.request(ctx, http.MethodDelete, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, nil)
 }
 
 func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentPolicy) bool) (AgentPolicy, error) {
@@ -177,7 +184,6 @@ func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentP
 			return AgentPolicy{}, err
 		}
 		if len(list.Items) == 0 {
-			// goto NOTFOUND
 			break
 		}
 		for _, p := range list.Items {
@@ -187,7 +193,6 @@ func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy AgentP
 		}
 		page++
 	}
-	// NOTFOUND:
 	return AgentPolicy{}, errors.New("no matching agent policy found")
 }
 
@@ -211,27 +216,52 @@ func (f fleetAPI) DefaultAgentPolicyID(ctx context.Context) (string, error) {
 	return policy.ID, nil
 }
 
+// todo name
+func maybeReconcileFleetEnrollment(params Params) (string, error) {
+	if !params.Agent.Spec.KibanaRef.IsDefined() {
+		return "", nil
+	}
+
+	kbConnectionSettings, err := extractClientConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := reconcileEnrollmentToken(
+		params.Context, params.Agent, params.Client,
+		newFleetAPI(
+			params.OperatorParams.Dialer,
+			kbConnectionSettings,
+			params.Logger().WithValues("namespace", params.Agent.Namespace, "agent_name", params.Agent.Name)),
+	)
+	return token, err
+}
+
 func reconcileEnrollmentToken(
 	ctx context.Context,
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	api fleetAPI,
 ) (string, error) {
+	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
+	// what policy should we enroll this agent in?
 	policyID, err := reconcilePolicyID(ctx, agent, api)
 	if err != nil {
 		return "", err
 	}
 	if exists {
+		// get the enrollment token identified by the annotation
 		key, err := api.GetEnrollmentAPIKey(ctx, tokenName)
+		// the annotation might contain corrupted or no longer valid information
 		if err != nil && IsNotFound(err) {
 			goto CREATE
 		}
 		if err != nil {
 			return "", err
 		}
-		// TODO check token is for the correct policy
-		if key.Active {
+		// if the token is valid and for the right policy we are done here
+		if key.Active && key.PolicyID == policyID {
 			return key.APIKey, nil
 		}
 	}
@@ -241,13 +271,14 @@ CREATE:
 	if err != nil {
 		return "", err
 	}
-	// TODO  this creates conflicts solve on top level
+	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it
+	// on the top level but we would then potentially create redundant enrollment tokens in the Fleet API
 	agent.Annotations[FleetTokenAnnotation] = key.ID
 	err = client.Update(ctx, &agent)
 	if err != nil {
-		return "", err
+		// we have failed to store the token id in an annotation let's try to remove the token again
+		return "", k8serrors.NewAggregate([]error{err, api.DeleteEnrollmentAPIKey(ctx, key.ID)})
 	}
-	// TODO failed update creates dangling API key
 	return key.APIKey, nil
 }
 

@@ -5,13 +5,12 @@
 package agent
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"hash"
 	"path"
 	"sort"
 
-	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
@@ -121,7 +119,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken string, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -138,7 +136,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
 		var err error
-		if builder, err = amendBuilderForFleetMode(params, fleetCerts, builder, configHash); err != nil {
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 	} else if spec.StandaloneModeEnabled() {
@@ -186,7 +184,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	return builder.PodTemplate, nil
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken string, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
@@ -203,7 +201,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	// ES, Kibana and FleetServer connection info are inject using environment variables
-	builder, err = applyEnvVars(params, builder)
+	builder, err = applyEnvVars(params, fleetToken, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -228,8 +226,8 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	return builder, nil
 }
 
-func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, params.OperatorParams.Dialer, params.Logger())
+func applyEnvVars(params Params, fleetToken string, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client, fleetToken)
 	if err != nil {
 		return nil, err
 	}
@@ -430,15 +428,15 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, dialer netutil.Dialer, logger logr.Logger) (map[string]string, error) {
+func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken string) (map[string]string, error) {
 	result := map[string]string{}
 
-	for _, f := range []func(context.Context, agentv1alpha1.Agent, k8s.Client, netutil.Dialer, logr.Logger) (map[string]string, error){
+	for _, f := range []func(agentv1alpha1.Agent, k8s.Client, string) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
 	} {
-		envVars, err := f(ctx, agent, client, dialer, logger)
+		envVars, err := f(agent, client, fleetToken)
 		if err != nil {
 			return nil, err
 		}
@@ -448,31 +446,23 @@ func getFleetModeEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client 
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, dialer netutil.Dialer, logger logr.Logger) (map[string]string, error) {
+func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, _ k8s.Client, fleetToken string) (map[string]string, error) {
 	if !agent.Spec.KibanaRef.IsDefined() {
 		return map[string]string{}, nil
 	}
 
-	kbConnectionSettings, err := extractClientConnectionSettings(agent, client, commonv1.KibanaAssociationType)
-	if err != nil {
-		return nil, err
+	if fleetToken == "" {
+		return nil, errors.New("fleet enrollment token must not be empty, potential programmer error")
 	}
 
-	token, err := reconcileEnrollmentToken(
-		ctx, agent, client,
-		newFleetAPI(dialer, kbConnectionSettings, logger.WithValues("namespace", agent.Namespace, "agent_name", agent.Name)),
-	)
-	if err != nil {
-		return nil, err
-	}
 	envVars := map[string]string{
-		FleetEnrollmentToken: token,
+		FleetEnrollmentToken: fleetToken,
 	}
 
 	return envVars, nil
 }
 
-func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ netutil.Dialer, _ logr.Logger) (map[string]string, error) {
+func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ string) (map[string]string, error) {
 	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
@@ -514,7 +504,7 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ netutil.Dialer, _ logr.Logger) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ string) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
 		return map[string]string{}, nil
 	}

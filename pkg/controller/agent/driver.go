@@ -128,6 +128,12 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		}
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
 	}
+
+	fleetToken, err := maybeReconcileFleetEnrollment(params)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
 	if res := reconcileConfig(params, configHash); res.HasError() {
 		return results.WithResults(res), params.Status
 	}
@@ -137,7 +143,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		return results.WithError(err), params.Status
 	}
 
-	podTemplate, err := buildPodTemplate(params, fleetCerts, configHash)
+	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
