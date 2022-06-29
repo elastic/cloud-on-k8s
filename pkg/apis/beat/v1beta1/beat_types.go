@@ -138,6 +138,9 @@ type BeatStatus struct {
 	// +kubebuilder:validation:Optional
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 
+	// +kubebuilder:validation:Optional
+	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+
 	// ObservedGeneration represents the .metadata.generation that the status is based upon.
 	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
 	// If the generation observed in status diverges from the generation in metadata, the Beats
@@ -183,6 +186,8 @@ type Beat struct {
 	Status      BeatStatus                `json:"status,omitempty"`
 	esAssocConf *commonv1.AssociationConf `json:"-"`
 	kbAssocConf *commonv1.AssociationConf `json:"-"`
+	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
+	monitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
@@ -194,6 +199,12 @@ func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Assoc
 	case commonv1.KibanaAssociationType:
 		if b.Spec.KibanaRef.IsDefined() {
 			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
+		}
+	case commonv1.BeatMonitoringAssociationType:
+		for _, esRef := range b.Spec.Monitoring.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return b.Status.MonitoringAssociationsStatus
+			}
 		}
 	}
 
@@ -213,8 +224,11 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 	case commonv1.KibanaAssociationType:
 		b.Status.KibanaAssociationStatus = single
 		return nil
+	case commonv1.BeatMonitoringAssociationType:
+		b.Status.MonitoringAssociationsStatus = status
+		return nil
 	default:
-		return fmt.Errorf("association type %s not known", typ)
+		return fmt.Errorf("beat: association type %s not known", typ)
 	}
 }
 
@@ -236,6 +250,14 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 		associations = append(associations, &BeatKibanaAssociation{
 			Beat: b,
 		})
+	}
+	for _, ref := range b.Spec.Monitoring.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &BeatMonitoringAssociation{
+				Beat: b,
+				ref:  ref.WithDefaultNamespace(b.Namespace),
+			})
+		}
 	}
 
 	return associations
@@ -356,4 +378,76 @@ type BeatList struct {
 
 func init() {
 	SchemeBuilder.Register(&Beat{}, &BeatList{})
+}
+
+// -- association with monitoring Elasticsearch clusters
+
+// BeatMonitoringAssociation helps to manage the Beats / monitoring Elasticsearch clusters association.
+type BeatMonitoringAssociation struct {
+	// The associated Beat
+	*Beat
+	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
+	ref commonv1.ObjectSelector
+}
+
+var _ commonv1.Association = &BeatMonitoringAssociation{}
+
+func (beatmon *BeatMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
+func (beatmon *BeatMonitoringAssociation) Associated() commonv1.Associated {
+	if beatmon == nil {
+		return nil
+	}
+	if beatmon.Beat == nil {
+		beatmon.Beat = &Beat{}
+	}
+	return beatmon.Beat
+}
+
+func (beatmon *BeatMonitoringAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName(beatmon.ref)
+}
+
+func (beatmon *BeatMonitoringAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.BeatMonitoringAssociationType
+}
+
+func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+	return beatmon.ref
+}
+
+func (beatmon *BeatMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(beatmon, beatmon.ref, beatmon.monitoringAssocConfs)
+}
+
+func (beatmon *BeatMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if beatmon.monitoringAssocConfs == nil {
+		beatmon.monitoringAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
+	}
+	if assocConf != nil {
+		beatmon.monitoringAssocConfs[beatmon.ref] = *assocConf
+	}
+}
+
+func (beatmon *BeatMonitoringAssociation) AssociationID() string {
+	return beatmon.ref.ToID()
+}
+
+// -- HasMonitoring methods
+
+func (b *Beat) GetMonitoringMetricsRefs() []commonv1.ObjectSelector {
+	return b.Spec.Monitoring.ElasticsearchRefs
+}
+
+func (b *Beat) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
+	return b.Spec.Monitoring.ElasticsearchRefs
+}
+
+func (b *Beat) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
+	return &BeatMonitoringAssociation{
+		Beat: b,
+		ref:  esRef.WithDefaultNamespace(b.Namespace),
+	}
 }

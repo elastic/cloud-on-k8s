@@ -817,6 +817,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
+		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},
 	}
 
 	for _, c := range assocControllers {

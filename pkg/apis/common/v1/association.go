@@ -106,6 +106,10 @@ const (
 	FleetServerConfigAnnotationNameBase = "association.k8s.elastic.co/fs-conf"
 	FleetServerAssociationType          = "fleetserver"
 
+	BeatConfigAnnotationNameBase  = "association.k8s.elastic.co/beat-conf"
+	BeatAssociationType           = "beat"
+	BeatMonitoringAssociationType = "beat-monitoring"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"

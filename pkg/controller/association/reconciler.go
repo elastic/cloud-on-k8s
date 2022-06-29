@@ -463,13 +463,16 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 	// To correctly compare statuses without making the reconciler aware of singleton vs multiple associations status
 	// differences we: set new status, get it from associated and only then compare with the oldStatus. Setting the
 	// same status is harmless, setting a different status is fine as we have a copy of oldStatus above.
+	r.logger.Info("calling setAssociationStatusMap")
 	if err := associated.SetAssociationStatusMap(r.AssociationType, newStatus); err != nil {
 		return err
 	}
+	r.logger.Info("generating new status")
 	newStatus = associated.AssociationStatusMap(r.AssociationType)
 
 	// shortcut if the two maps are nil or empty
 	if len(oldStatus) == 0 && len(newStatus) == 0 {
+		r.logger.Info("old and new status are empty")
 		return nil
 	}
 	if !reflect.DeepEqual(oldStatus, newStatus) {
@@ -487,6 +490,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 			events.EventAssociationStatusChange,
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 	}
+	r.logger.Info("old and new status were equal", "old", oldStatus.String(), "new", newStatus.String())
 	return nil
 }
 

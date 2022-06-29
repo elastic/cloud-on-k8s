@@ -20,9 +20,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
 	esservices "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -180,6 +180,20 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 			VerificationMode:       "certificate",
 		}
 	} else {
+		associations := monitoring.GetMetricsAssociation(&params.Beat)
+		if len(associations) != 1 {
+			// should never happen because of the pre-creation validation
+			return nil, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
+		}
+		assoc := associations[0]
+
+		credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
+		if err != nil {
+			return nil, err
+		}
+
+		username, password = credentials.Username, credentials.Password
+
 		associatedEsNsn := esRef.NamespacedName()
 		if associatedEsNsn.Namespace == "" {
 			associatedEsNsn.Namespace = params.Beat.Namespace
@@ -190,12 +204,6 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 			return nil, errors.Wrap(err, "while retrieving Beat stack monitoring Elasticsearch instance")
 		}
 
-		var err error
-		username = esuser.MonitoringUserName
-		password, err = esuser.GetMonitoringUserPassword(params.Client, associatedEsNsn)
-		if err != nil {
-			return nil, err
-		}
 		url = esservices.InternalServiceURL(es)
 		sslConfig = SSLConfig{
 			// TODO: Does this work in all ubi/non-ubi containers?

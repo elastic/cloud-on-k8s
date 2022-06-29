@@ -7,9 +7,6 @@ spec:
   version: 8.2.0
   elasticsearchRef:
     name: elasticsearch
-  monitoring:
-    elasticsearchRefs:
-    - name: elasticsearch
   config:
     heartbeat.monitors:
     - type: tcp
