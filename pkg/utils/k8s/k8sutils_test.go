@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 func TestDeepCopyObject(t *testing.T) {

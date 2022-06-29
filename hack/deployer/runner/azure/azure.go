@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
 )
 
 type Credentials struct {

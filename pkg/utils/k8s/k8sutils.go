@@ -17,7 +17,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 // DeepCopyObject creates a deep copy of a client.Object.

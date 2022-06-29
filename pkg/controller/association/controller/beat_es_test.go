@@ -7,9 +7,9 @@ package controller
 import (
 	"testing"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 func Test_getBeatRoles(t *testing.T) {

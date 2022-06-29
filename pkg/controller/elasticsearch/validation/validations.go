@@ -11,14 +11,15 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	stackmon "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 var log = ulog.Log.WithName("es-validation")
@@ -59,7 +60,7 @@ func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []update
 }
 
 // validations are the validation funcs that apply to creates or updates
-func validations(exposedNodeLabels NodeLabels) []validation {
+func validations(checker license.Checker, exposedNodeLabels NodeLabels) []validation {
 	return []validation{
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
@@ -73,6 +74,9 @@ func validations(exposedNodeLabels NodeLabels) []validation {
 		validPVCNaming,
 		validMonitoring,
 		validAssociations,
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validLicenseLevel(proposed, checker)
+		},
 	}
 }
 
@@ -334,4 +338,17 @@ func validAssociations(es esv1.Elasticsearch) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), es.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), es.GetMonitoringLogsRefs()...)
 	return append(err1, err2...)
+}
+
+func validLicenseLevel(es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+	var errs field.ErrorList
+	ok, err := license.HasRequestedLicenseLevel(es.Annotations, checker)
+	if err != nil {
+		log.Error(err, "while checking license level during validation")
+		return nil // ignore the error here
+	}
+	if !ok {
+		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("annotations").Child(license.Annotation), "enterprise", "Enterprise license required but ECK operator is running on a Basic license"))
+	}
+	return errs
 }

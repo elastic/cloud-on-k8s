@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/chaos"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/chaos"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 )
 
 func main() {

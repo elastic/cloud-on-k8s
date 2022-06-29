@@ -96,11 +96,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/elastic/go-ucfg
-Version : v0.8.5
-Time    : 2022-05-11T18:47:27Z
+Version : v0.8.6
+Time    : 2022-06-28T12:02:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elastic/go-ucfg@v0.8.6/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.9.0
-Time    : 2022-05-17T14:02:43Z
+Version : v0.10.0
+Time    : 2022-06-21T17:53:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.10.0/LICENSE:
 
 
                                  Apache License
@@ -4652,11 +4652,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220210201930
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.12.1
-Time    : 2022-05-17T13:32:27Z
+Version : v0.12.2
+Time    : 2022-06-23T14:27:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.12.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.12.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7345,11 +7345,11 @@ Contents of probable licence file $GOMODCACHE/github.com/elastic/go-windows@v1.0
 
 --------------------------------------------------------------------------------
 Module  : github.com/elazarl/goproxy
-Version : v0.0.0-20190711103511-473e67f1d7d2
-Time    : 2019-07-11T10:35:11Z
+Version : v0.0.0-20180725130230-947c36da3153
+Time    : 2018-07-25T13:02:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20190711103511-473e67f1d7d2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/elazarl/goproxy@v0.0.0-20180725130230-947c36da3153/LICENSE:
 
 Copyright (c) 2012 Elazar Leibovich. All rights reserved.
 
@@ -19665,11 +19665,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20220520000938-2e3eb7b945c2
-Time    : 2022-05-20T00:09:38Z
+Version : v0.0.0-20220524220425-1d687d428aca
+Time    : 2022-05-24T22:04:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220520000938-2e3eb7b945c2/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220524220425-1d687d428aca/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19702,11 +19702,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.0.0-20220411215720-9780585627b5
-Time    : 2022-04-11T21:57:20Z
+Version : v0.0.0-20220524215830-622c5d57e401
+Time    : 2022-05-24T21:58:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220411215720-9780585627b5/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.0.0-20220524215830-622c5d57e401/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -21494,11 +21494,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.24.0
-Time    : 2022-05-03T23:05:25Z
+Version : v0.24.2
+Time    : 2022-06-17T04:34:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.24.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.24.2/LICENSE:
 
 
                                  Apache License
@@ -21706,11 +21706,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.24.0
-Time    : 2022-05-03T22:43:43Z
+Version : v0.24.2
+Time    : 2022-06-17T04:07:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.2/LICENSE:
 
 
                                  Apache License

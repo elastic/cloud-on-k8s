@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/elastic/cloud-on-k8s/hack/manifest-gen/internal"
+	"github.com/elastic/cloud-on-k8s/v2/hack/manifest-gen/internal"
 )
 
 var (

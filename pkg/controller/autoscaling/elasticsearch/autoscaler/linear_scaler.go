@@ -9,9 +9,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/math"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/math"
 )
 
 // cpuFromMemory computes a CPU quantity within the specified allowed range by the user proportionally

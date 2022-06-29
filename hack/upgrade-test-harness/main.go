@@ -11,12 +11,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness/config"
-	"github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness/fixture"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/config"
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/fixture"
 )
 
 type configOpts struct {
@@ -175,9 +176,10 @@ func setupUpcomingRelease(installYAML, targetYAML string) error {
 }
 
 func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) ([]*fixture.Fixture, error) {
-	fixtures := []*fixture.Fixture{fixture.TestInstallOperator(to)}
+	isUpgrade := from != nil
+	fixtures := []*fixture.Fixture{fixture.TestInstallOperator(to, isUpgrade)}
 
-	if from != nil {
+	if isUpgrade {
 		testStatusOfResources, err := fixture.TestStatusOfResources(*from)
 		if err != nil {
 			return nil, err

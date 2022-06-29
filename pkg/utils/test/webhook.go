@@ -26,8 +26,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 var log = ulog.Log.WithName("test-webhook")

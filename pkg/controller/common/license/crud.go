@@ -14,9 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
@@ -80,7 +80,7 @@ func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedN
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
 			Labels: map[string]string{
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 				LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
 			},
 			Annotations: map[string]string{

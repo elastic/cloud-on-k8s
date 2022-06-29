@@ -18,12 +18,12 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token"
@@ -84,7 +84,7 @@ type fleetAPI struct {
 
 func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
 	return fleetAPI{
-		client:        common.HTTPClient(dialer, settings.caCerts, 60*time.Second),
+		client:        commonhttp.Client(dialer, settings.caCerts, 60*time.Second),
 		kibanaVersion: settings.version,
 		endpoint:      settings.host,
 		username:      settings.credentials.Username,
@@ -118,7 +118,7 @@ func (f fleetAPI) request(
 	if request.Header == nil {
 		request.Header = make(http.Header)
 	}
-	request.Header.Set(common.InternalProductRequestHeaderKey, common.InternalProductRequestHeaderValue)
+	request.Header.Set(commonhttp.InternalProductRequestHeaderKey, commonhttp.InternalProductRequestHeaderValue)
 	request.Header.Set("kbn-xsrf", "true")
 	request.SetBasicAuth(f.username, f.password)
 
