@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,12 +52,18 @@ func Test_buildBeatConfig(t *testing.T) {
 	clientWithMonitoringEnabled := k8s.NewFakeClient(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testes-es-internal-users",
+				Name:      "secret",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{"elastic": []byte("123")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "external-user-secret",
 				Namespace: "ns",
 			},
 			Data: map[string][]byte{
-				"elastic-internal":            []byte("asdf"),
-				"elastic-internal-monitoring": []byte("asdfasdf"),
+				"elastic-external": []byte("asdf"),
 			},
 		},
 		&corev1.Secret{
@@ -82,7 +89,7 @@ func Test_buildBeatConfig(t *testing.T) {
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
-	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
+	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities:
    - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
 	outputYaml := settings.MustParseConfig([]byte(`output:
   elasticsearch:
@@ -96,12 +103,12 @@ func Test_buildBeatConfig(t *testing.T) {
   elasticsearch:
     hosts:
     - "https://testes-es-internal-http.ns.svc:9200"
-    username: "elastic-internal-monitoring"
-    password: asdfasdf
+    username: elastic
+    password: "123"
     ssl:
       certificate_authorities:
-	  - "/etc/pki/root/tls.crt"
-	  verification_mode: "certificate
+        - "/etc/pki/root/tls.crt"
+      verification_mode: "certificate"
 `))
 	externalMonitoringYaml := settings.MustParseConfig([]byte(`monitoring:
   enabled: true
@@ -112,8 +119,8 @@ func Test_buildBeatConfig(t *testing.T) {
     password: asdfasdf
     ssl:
       certificate_authorities:
-	  - "will_fail"
-	  verification_mode: "certificate
+        - /tmp/external/ca.crt
+      verification_mode: "certificate"
 `))
 
 	withAssoc := beatv1beta1.Beat{
@@ -145,117 +152,147 @@ func Test_buildBeatConfig(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
-		beat          beatv1beta1.Beat
+		beat          func() beatv1beta1.Beat
 		managedConfig *settings.CanonicalConfig
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
 		{
 			name: "no association, no configs",
-			beat: beatv1beta1.Beat{},
+			beat: func() beatv1beta1.Beat { return beatv1beta1.Beat{} },
 		},
 		{
 			name: "no association, user config",
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userCfg,
-			}},
+			beat: func() beatv1beta1.Beat {
+				return beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+					Config: userCfg,
+				}}
+			},
 			want: userCanonicalCfg,
 		},
 		{
 			name:   "no association, user config, with monitoring enabled",
 			client: clientWithMonitoringEnabled,
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userCfg,
-				Monitoring: beatv1beta1.Monitoring{
-					ElasticsearchRefs: []commonv1.ObjectSelector{
-						{
-							Name:      "testes",
-							Namespace: "ns",
-						},
+			beat: func() beatv1beta1.Beat {
+				b := beatv1beta1.Beat{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testbeat",
+						Namespace: "ns",
 					},
-				},
-			}},
+					Spec: beatv1beta1.BeatSpec{
+						Config: userCfg,
+						Monitoring: beatv1beta1.Monitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "testes",
+									Namespace: "ns",
+								},
+							},
+						},
+					}}
+				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName: "secret",
+					AuthSecretKey:  "elastic",
+					URL:            "https://testes-es-internal-http.ns.svc:9200",
+				})
+				return b
+			},
 			want: merge(userCanonicalCfg, monitoringYaml),
 		},
 		{
 			name:   "no association, user config, with monitoring enabled, external es cluster",
 			client: clientWithMonitoringEnabled,
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userCfg,
-				Monitoring: beatv1beta1.Monitoring{
-					ElasticsearchRefs: []commonv1.ObjectSelector{
-						{
-							SecretName: "external-es-monitoring",
-							Namespace:  "ns",
-						},
+			beat: func() beatv1beta1.Beat {
+				b := beatv1beta1.Beat{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testbeat",
+						Namespace: "ns",
 					},
-				},
-			}},
+					Spec: beatv1beta1.BeatSpec{
+						Config: userCfg,
+						Monitoring: beatv1beta1.Monitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									SecretName: "external-es-monitoring",
+									Namespace:  "ns",
+								},
+							},
+						},
+					}}
+				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
+					URL: "https://testes-es-internal-http.ns.svc:9200",
+				})
+				return b
+			},
 			want: merge(userCanonicalCfg, externalMonitoringYaml),
 		},
 		{
 			name:          "no association, managed config",
-			beat:          beatv1beta1.Beat{},
+			beat:          func() beatv1beta1.Beat { return beatv1beta1.Beat{} },
 			managedConfig: managedCfg,
 			want:          managedCfg,
 		},
 		{
 			name: "no association, managed and user configs",
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userCfg,
-			}},
+			beat: func() beatv1beta1.Beat {
+				return beatv1beta1.Beat{
+					Spec: beatv1beta1.BeatSpec{
+						Config: userCfg,
+					},
+				}
+			},
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg),
 		},
 		{
 			name:   "association without ca, no configs",
 			client: clientWithSecret,
-			beat:   withAssoc,
+			beat:   func() beatv1beta1.Beat { return withAssoc },
 			want:   outputYaml,
 		},
 		{
 			name:   "association without ca, user config",
 			client: clientWithSecret,
-			beat:   withAssocWithConfig,
+			beat:   func() beatv1beta1.Beat { return withAssocWithConfig },
 			want:   merge(userCanonicalCfg, outputYaml),
 		},
 		{
 			name:          "association without ca, managed config",
 			client:        clientWithSecret,
-			beat:          withAssoc,
+			beat:          func() beatv1beta1.Beat { return withAssoc },
 			managedConfig: managedCfg,
 			want:          merge(managedCfg, outputYaml),
 		},
 		{
 			name:          "association without ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          withAssocWithConfig,
+			beat:          func() beatv1beta1.Beat { return withAssocWithConfig },
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml),
 		},
 		{
 			name:   "association with ca, no configs",
 			client: clientWithSecret,
-			beat:   withAssocWithCA,
+			beat:   func() beatv1beta1.Beat { return withAssocWithCA },
 			want:   merge(outputYaml, outputCAYaml),
 		},
 		{
 			name:   "association with ca, user config",
 			client: clientWithSecret,
-			beat:   withAssocWithCAWithonfig,
+			beat:   func() beatv1beta1.Beat { return withAssocWithCAWithonfig },
 			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:          "association with ca, managed config",
 			client:        clientWithSecret,
-			beat:          withAssocWithCA,
+			beat:          func() beatv1beta1.Beat { return withAssocWithCA },
 			managedConfig: managedCfg,
 			want:          merge(managedCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:          "association with ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          withAssocWithCAWithonfig,
+			beat:          func() beatv1beta1.Beat { return withAssocWithCAWithonfig },
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
@@ -267,12 +304,15 @@ func Test_buildBeatConfig(t *testing.T) {
 				Logger:        logr.Discard(),
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
-				Beat:          tt.beat,
+				Beat:          tt.beat(),
 			}, tt.managedConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 
-			require.Empty(t, diff)
+			if len(diff) != 0 {
+				wantBytes, _ := tt.want.Render()
+				t.Errorf("BuildKibanaConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotYaml)))
+			}
 			require.Equal(t, gotErr != nil, tt.wantErr)
 		})
 	}
@@ -377,7 +417,11 @@ setup.kibana:
 				return
 			}
 			diff := tt.want.Diff(got, nil)
-			require.Empty(t, diff)
+			if len(diff) != 0 {
+				wantBytes, _ := tt.want.Render()
+				gotBytes, _ := got.Render()
+				t.Errorf("BuildKibanaConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotBytes)))
+			}
 		})
 	}
 }

@@ -417,6 +417,10 @@ func TestNewCanonicalConfigFrom(t *testing.T) {
 	type args struct {
 		data untypedDict
 	}
+	type sslConfig struct {
+		CertificateAuthorities []string `config:"certificate_authorities" json:"certificate_authorities" yaml:"certificate_authorities"`
+		VerificationMode       string   `config:"verification_mode" json:"verification_mode" yaml:"verification_mode"`
+	}
 	tests := []struct {
 		name    string
 		args    args
@@ -429,6 +433,19 @@ func TestNewCanonicalConfigFrom(t *testing.T) {
 				data: map[string]interface{}{
 					"a": float64(1), // after json round trip or deep copy typically a float
 					"b": 1.2,
+				},
+			},
+			want: MustCanonicalConfig(map[string]interface{}{
+				"a": 1,
+				"b": 1.2,
+			}),
+			wantErr: false,
+		},
+		{
+			name: "config tags should be supported to allow underscores",
+			args: args{
+				data: map[string]interface{}{
+					"monitoring": float64(1), // after json round trip or deep copy typically a float
 				},
 			},
 			want: MustCanonicalConfig(map[string]interface{}{

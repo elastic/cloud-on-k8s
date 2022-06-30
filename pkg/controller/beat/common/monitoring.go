@@ -22,8 +22,10 @@ type ElasticsearchConfig struct {
 
 /// SSLConfig contains the SSL configuration for Beat stack monitoring.
 type SSLConfig struct {
-	CertificateAuthorities []string `json:"certificate_authorities,omitempty"`
-	VerificationMode       string   `json:"verification_mode,omitempty"`
+	// CertificateAuthorities contains a slice of filenames that contain PEM formatted certificate authorities.
+	CertificateAuthorities []string `config:"certificate_authorities" yaml:"certificate_authorities"`
+	// VerificationMode contains the verification mode for server certificates. Valid options: [full, strict, certificate, none]
+	VerificationMode string `config:"verification_mode" yaml:"verification_mode"`
 }
 
 func getMonitoringCASecretName(beatName string) string {

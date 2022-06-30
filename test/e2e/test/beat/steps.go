@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -132,9 +133,15 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					beat.Status.ExpectedNodes = 0
 					beat.Status.AvailableNodes = 0
 				}
-				if beat.Status != expected {
-					return fmt.Errorf("expected status %+v but got %+v", expected, beat.Status)
+				if !cmp.Equal(beat.Status, expected) {
+					return fmt.Errorf("expected status health %+v, got diff: %s", expected, cmp.Diff(beat.Status, expected))
 				}
+				// if beat.Status.Health != expected.Health {
+				// 	return fmt.Errorf("expected status health %+v but got %+v", expected.Health, beat.Status.Health)
+				// }
+				// if beat.Status.Version != expected.Version {
+				// 	return fmt.Errorf("expected status version %+v but got %+v", expected.Version, beat.Status.Version)
+				// }
 				return nil
 			}),
 		},
@@ -182,6 +189,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+		b.CheckMonitoringMetricsIndex(k),
 	}
 }
 
@@ -249,4 +257,32 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.Beat, k, isMutated, beatGenerationBeforeMutation, beatObservedGenerationBeforeMutation))
+}
+
+func (b Builder) CheckMonitoringMetricsIndex(k *test.K8sClient) test.Step {
+	indexPattern := b.GetMetricsIndexPattern()
+	return test.Step{
+		Name: fmt.Sprintf("Check that documents are indexed in index %s", indexPattern),
+		Test: test.Eventually(func() error {
+			if b.GetMetricsCluster() == nil {
+				return nil
+			}
+			esMetricsRef := *b.GetMetricsCluster()
+			// Get Elasticsearch
+			esMetrics := esv1.Elasticsearch{}
+			if err := k.Client.Get(context.Background(), esMetricsRef, &esMetrics); err != nil {
+				return err
+			}
+			// Create a new Elasticsearch client
+			client, err := elasticsearch.NewElasticsearchClient(esMetrics, k)
+			if err != nil {
+				return err
+			}
+			// Check that there is at least one document
+			err = containsDocuments(client, indexPattern)
+			if err != nil {
+				return err
+			}
+			return nil
+		})}
 }

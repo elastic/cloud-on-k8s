@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -334,4 +335,25 @@ func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Bui
 	}
 
 	return b
+}
+
+func (b Builder) WithMonitoring(esRef commonv1.ObjectSelector) Builder {
+	b.Beat.Spec.Monitoring.ElasticsearchRefs = []commonv1.ObjectSelector{esRef}
+	return b
+}
+
+func (b Builder) GetMetricsIndexPattern() string {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.GTE(version.MinFor(8, 0, 0)) {
+		return fmt.Sprintf("metricbeat-%d.%d.%d*", v.Major, v.Minor, v.Patch)
+	}
+	return ".monitoring-beat-*"
+}
+
+func (b Builder) GetMetricsCluster() *types.NamespacedName {
+	if len(b.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	metricsCluster := b.Beat.Spec.Monitoring.ElasticsearchRefs[0].NamespacedName()
+	return &metricsCluster
 }

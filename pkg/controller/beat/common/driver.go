@@ -91,21 +91,29 @@ func Reconcile(
 	}
 
 	configHash := fnv.New32a()
+	params.Logger.Info("about to reconcileConfig")
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
 		return results.WithError(err), params.Status
 	}
+	params.Logger.Info("end about to reconcileConfig")
 
+	params.Logger.Info("about to WriteAssocsToConfigHash")
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
 	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Beat.GetAssociations(), configHash); err != nil {
 		return results.WithError(err), params.Status
 	}
+	params.Logger.Info("end about to WriteAssocsToConfigHash")
 
+	params.Logger.Info("about to buildPodTemplate")
 	podTemplate, err := buildPodTemplate(params, defaultImage, configHash)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
+	params.Logger.Info("end about to buildPodTemplate")
 	var reconcileResults *reconciler.Results
+	params.Logger.Info("about to reconcilePodVehicle")
 	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params)
+	params.Logger.Info("end about to reconcilePodVehicle")
 	results.WithResults(reconcileResults)
 	return results, params.Status
 }

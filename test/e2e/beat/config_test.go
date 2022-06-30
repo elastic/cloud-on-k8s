@@ -10,9 +10,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/auditbeat"
@@ -49,7 +50,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
-func TestMetricbeatDefaultConfig(t *testing.T) {
+func TestMetricbeatDefaultConfigWithStackMonitoring(t *testing.T) {
 	name := "test-mb-default-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -61,6 +62,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 		WithType(metricbeat.Type).
 		WithRoles(beat.MetricbeatClusterRoleName, beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
 		WithElasticsearchRef(esBuilder.Ref()).
+		WithMonitoring(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(metricbeat.Type),
 			beat.HasEvent("event.dataset:system.cpu"),
