@@ -21,6 +21,7 @@ import (
 	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -131,6 +132,12 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
 	if results.HasRequeue() || results.HasError() {
+		if results.HasRequeue() {
+			// we requeue if Kibana is unavailable: surface this condition to the user
+			message := "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not not available yet"
+			params.Logger().Info(message)
+			params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
+		}
 		return results, params.Status
 	}
 

@@ -225,7 +225,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) st
 		newFleetAPI(
 			params.OperatorParams.Dialer,
 			kbConnectionSettings,
-			params.Logger().WithValues("namespace", params.Agent.Namespace, "agent_name", params.Agent.Name)),
+			params.Logger()),
 	)
 	result.WithError(err)
 	return token
