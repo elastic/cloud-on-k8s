@@ -33,7 +33,7 @@ helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 
 [float]
 [id="{p}-elasticsearch-helm-customize"]
-=== Customizing Elasticsearch using eck-stack Helm Chart
+=== Customizing Elasticsearch using the eck-stack Helm Chart
 
 There are many example Helm values files for installing and managing a more advanced Elasticsearch cluster link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples/elasticsearch[in the project repository].
 
