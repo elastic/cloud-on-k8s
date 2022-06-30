@@ -59,7 +59,7 @@ helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namesp
 
 [float]
 [id="{p}-kibana-helm-customize"]
-=== Customizing Kibana using eck-stack Helm Chart
+=== Customizing Kibana using the eck-stack Helm Chart
 
 There are many example Helm values files for installing and managing a more advanced Kibana instance link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples/kibana[in the project repository].
 
