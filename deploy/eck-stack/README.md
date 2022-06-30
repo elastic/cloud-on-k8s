@@ -22,7 +22,7 @@ Additional resources will be supported in future releases of this Helm Chart.
 ### Installing the ECK Operator
 
 Before using this chart, the Elastic ECK Operator is required to be installed within the Kubernetes cluster.
-Full installation instructions can be found within the [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-installing-eck.html)
+Full installation instructions can be found within [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-installing-eck.html)
 
 To install the ECK Operator using Helm.
 
