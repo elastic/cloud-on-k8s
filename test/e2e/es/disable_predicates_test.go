@@ -73,8 +73,8 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 					r, err := http.NewRequest(http.MethodPut, "/test-index", bytes.NewBufferString(settings))
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close() // nolint
 					require.NoError(t, err)
+					defer response.Body.Close() // nolint
 				},
 			},
 			// wait for the cluster to become red
@@ -88,8 +88,8 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 					r, err := http.NewRequest(http.MethodDelete, "/test-index", nil)
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close() // nolint
 					require.NoError(t, err)
+					defer response.Body.Close() // nolint
 				},
 			},
 		},
