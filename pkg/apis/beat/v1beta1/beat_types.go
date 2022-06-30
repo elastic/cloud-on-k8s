@@ -115,9 +115,6 @@ func (m Monitoring) Enabled() bool {
 	return len(m.ElasticsearchRefs) > 0
 }
 
-type MetricsMonitoring struct {
-}
-
 // BeatStatus defines the observed state of a Beat.
 type BeatStatus struct {
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run

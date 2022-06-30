@@ -137,6 +137,7 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 	if len(params.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
 		return nil, errors.New("ElasticsearchRef must exist when stack monitoring is enabled")
 	}
+
 	// only the first ElasticsearchRef is currently supported.
 	esRef := params.Beat.Spec.Monitoring.ElasticsearchRefs[0]
 	if !esRef.IsDefined() {
@@ -147,10 +148,10 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 	var sslConfig SSLConfig
 	if esRef.IsExternal() {
 		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(params.Client, esRef)
-		url = info.URL
 		if err != nil {
 			return nil, err
 		}
+		url = info.URL
 		username, password = info.Username, info.Password
 		if info.CaCert != "" {
 			// save the monitoring connection information so it doesn't have to be retrieved
