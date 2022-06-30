@@ -33,7 +33,7 @@ helm repo add elastic https://helm.elastic.co && helm repo update
 helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace
 ```
 
-Additional ECK Operator Helm installation options can be found within the [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html)
+Additional ECK Operator Helm installation options can be found within [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html)
 
 ### Installing the ECK Stack Chart
 
