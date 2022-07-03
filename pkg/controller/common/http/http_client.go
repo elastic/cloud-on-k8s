@@ -78,9 +78,13 @@ type APIError struct {
 // MaybeAPIError creates an APIError from a http.Response if the status code is not 2xx.
 func MaybeAPIError(resp *http.Response) *APIError {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		url := "unknown url"
+		if resp.Request != nil {
+			url = resp.Request.URL.Redacted()
+		}
 		return &APIError{
 			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("failed to request %s, status is %d)", resp.Request.URL.Redacted(), resp.StatusCode),
+			msg:        fmt.Sprintf("failed to request %s, status is %d)", url, resp.StatusCode),
 		}
 	}
 	return nil

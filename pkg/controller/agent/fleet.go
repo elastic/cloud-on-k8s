@@ -285,6 +285,9 @@ CREATE:
 	}
 	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it
 	// on the top level but we would then potentially create redundant enrollment tokens in the Fleet API
+	if agent.Annotations == nil {
+		agent.Annotations = map[string]string{}
+	}
 	agent.Annotations[FleetTokenAnnotation] = key.ID
 	err = client.Update(ctx, &agent)
 	if err != nil {
