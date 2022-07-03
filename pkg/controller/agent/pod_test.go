@@ -378,8 +378,11 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			params: Params{
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
-						Mode:           agentv1alpha1.AgentFleetMode,
-						KibanaRef:      commonv1.ObjectSelector{Name: "kibana"},
+						Mode:      agentv1alpha1.AgentFleetMode,
+						KibanaRef: commonv1.ObjectSelector{Name: "kibana"},
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"}, OutputName: "default"},
+						},
 						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
 					},
 				},
@@ -391,8 +394,11 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
 					CASecretName: "fleet-agent-http-certs-public",
 				})
+				assocs[2].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName: "elasticsearch-es-ca",
+				})
 			},
-			wantAssociationsLength: 1,
+			wantAssociationsLength: 2,
 		},
 		{
 			name: "fleet mode enabled, kb no tls ref, fleet ref",
