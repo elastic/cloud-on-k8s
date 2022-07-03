@@ -514,7 +514,7 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esConnectionSettings, err := extractPodConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		esConnectionSettings, _, err := extractPodConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}

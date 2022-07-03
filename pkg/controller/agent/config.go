@@ -146,29 +146,32 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
 }
 
+// extractPodConnectionSettings extracts connections settings to be used inside an Elastic Agent Pod. That is without
+// certificates which are mounted directly into the Pod, instead the connection settings contain a path which points to
+// the future location of the certificates in the Pod.
 func extractPodConnectionSettings(
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
-) (connectionSettings, error) {
+) (connectionSettings, *commonv1.AssociationConf, error) {
 	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	if assoc == nil {
 		errTemplate := "association of type %s not found in %d associations"
-		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
+		return connectionSettings{}, nil, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
 	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	assocConf, err := assoc.AssociationConf()
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	ca := ""
@@ -180,37 +183,20 @@ func extractPodConnectionSettings(
 		host:        assocConf.GetURL(),
 		caFileName:  ca,
 		credentials: credentials,
-	}, err
+		version:     assocConf.Version,
+	}, assocConf, err
 }
 
+// extractClientConnectionSettings same as extractPodConnectionSettings but for use inside the operator or any other
+// client that needs direct access to the relevant CA certificates of the associated object (if TLS is configured)
 func extractClientConnectionSettings(
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 ) (connectionSettings, error) {
-	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
+	settings, assocConf, err := extractPodConnectionSettings(agent, client, associationType)
 	if err != nil {
 		return connectionSettings{}, err
-	}
-
-	if assoc == nil {
-		errTemplate := "association of type %s not found in %d associations"
-		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
-	}
-
-	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
-	if err != nil {
-		return connectionSettings{}, err
-	}
-
-	assocConf, err := assoc.AssociationConf()
-	if err != nil {
-		return connectionSettings{}, err
-	}
-	settings := connectionSettings{
-		host:        assocConf.GetURL(),
-		credentials: credentials,
-		version:     assocConf.Version,
 	}
 	if !assocConf.GetCACertProvided() {
 		return settings, nil
