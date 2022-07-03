@@ -53,7 +53,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					},
 				},
 				api: mockFleetResponses(map[request]response{
-					{"GET", "/api/fleet/entrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
+					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
 			want:    "some-token",

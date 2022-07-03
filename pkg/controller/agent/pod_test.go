@@ -392,7 +392,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
-			wantAssociationsLength: 2,
+			wantAssociationsLength: 1,
 		},
 		{
 			name: "fleet mode enabled, kb no tls ref, fleet ref",
