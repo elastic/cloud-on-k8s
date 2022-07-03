@@ -256,7 +256,7 @@ type mockFleetAPI struct {
 
 func (m *mockFleetAPI) missingRequests() []request {
 	var missing []request
-	for req, _ := range m.requests {
+	for req := range m.requests {
 		if _, ok := m.callLog[req]; !ok {
 			missing = append(missing, req)
 		}
@@ -270,7 +270,7 @@ func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 		r := request{method: req.Method, path: req.URL.Path}
 		response, exists := rs[r]
 		if exists {
-			callLog[r] = callLog[r] + 1
+			callLog[r]++
 		}
 		return &http.Response{
 			StatusCode: response.code,
