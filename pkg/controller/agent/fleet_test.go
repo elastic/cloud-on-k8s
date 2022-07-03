@@ -28,7 +28,6 @@ var (
 )
 
 func Test_reconcileEnrollmentToken(t *testing.T) {
-
 	type args struct {
 		agent  v1alpha1.Agent
 		client *k8s.Client
