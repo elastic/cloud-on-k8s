@@ -4,7 +4,7 @@
 
 package apmserver
 
-import "github.com/elastic/cloud-on-k8s/pkg/controller/common"
+import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 
 const (
 	// ApmServerNameLabelName used to represent an ApmServer in k8s resources
@@ -19,6 +19,6 @@ const (
 func NewLabels(apmServerName string) map[string]string {
 	return map[string]string{
 		ApmServerNameLabelName: apmServerName,
-		common.TypeLabelName:   Type,
+		labels.TypeLabelName:   Type,
 	}
 }

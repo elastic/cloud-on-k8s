@@ -19,11 +19,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 func fakeEsClient200(user client.BasicAuth) client.Client {
@@ -78,12 +78,17 @@ func TestNewObserver(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		events <- cluster
 	}
+	doneCh := make(chan struct{})
+	go func() {
+		// let it observe at least 3 times
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		close(doneCh)
+	}()
 	observer := createAndRunTestObserver(onObservation)
 	defer observer.Stop()
-	// let it observe at least 3 times
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+	<-doneCh
 }
 
 func TestObserver_Stop(t *testing.T) {

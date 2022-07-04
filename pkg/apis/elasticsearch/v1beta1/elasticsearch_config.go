@@ -7,7 +7,7 @@ package v1beta1
 import (
 	ucfg "github.com/elastic/go-ucfg"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1beta1"
 )
 
 const (

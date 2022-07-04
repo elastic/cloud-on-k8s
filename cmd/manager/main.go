@@ -40,55 +40,55 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing/apmclientgo"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	commonwebhook "github.com/elastic/cloud-on-k8s/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
-	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/remoteca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
-	"github.com/elastic/cloud-on-k8s/pkg/dev"
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
-	"github.com/elastic/cloud-on-k8s/pkg/telemetry"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/fs"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1beta1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	esv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	kbv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1beta1"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	associationctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	commonlicense "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing/apmclientgo"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	commonwebhook "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/webhook"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	esvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/license"
+	licensetrial "github.com/elastic/cloud-on-k8s/v2/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/webhook"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
+	licensing "github.com/elastic/cloud-on-k8s/v2/pkg/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/fs"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/metrics"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 const (
@@ -601,7 +601,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params.CertRotation, params.ValidateStorageClass, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		setupWebhook(ctx, mgr, params, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -884,20 +884,20 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 func setupWebhook(
 	ctx context.Context,
 	mgr manager.Manager,
-	certRotation certificates.RotationParams,
-	validateStorageClass bool,
+	params operator.Parameters,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
 	tracer *apm.Tracer) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, certRotation, clientset, tracer); err != nil {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
 			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 	}
 
+	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
 	webhookObjects := []interface {
 		runtime.Object
@@ -921,6 +921,7 @@ func setupWebhook(
 			WebhookPath:      obj.WebhookPath(),
 			ManagedNamespace: managedNamespaces,
 			Validator:        obj,
+			LicenseChecker:   checker,
 		}); err != nil {
 			gvk := obj.GetObjectKind().GroupVersionKind()
 			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
@@ -928,7 +929,7 @@ func setupWebhook(
 	}
 
 	// esv1 validating webhook is wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, validateStorageClass, exposedNodeLabels, managedNamespaces)
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

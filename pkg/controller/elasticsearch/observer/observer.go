@@ -12,10 +12,10 @@ import (
 	"go.elastic.co/apm/v2"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 var log = ulog.Log.WithName("observer")
@@ -65,9 +65,27 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 	return &observer
 }
 
-// Start the observer in a separate goroutine
+// Start starts the Observer in a separate goroutine after a first synchronous observation.
+// The first observation is synchronous to allow to retrieve the cluster state immediately after the start.
+// Then, observations are performed periodically in a separate goroutine until the observer stop channel is closed.
 func (o *Observer) Start() {
-	go o.runPeriodically()
+	// initial synchronous observation
+	o.observe()
+	// periodic asynchronous observations
+	go func() {
+		ticker := time.NewTicker(o.settings.ObservationInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				o.observe()
+			case <-o.stopChan:
+				log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
+				return
+			}
+		}
+	}()
 }
 
 // Stop the observer loop
@@ -83,25 +101,6 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.lastHealth
-}
-
-// runPeriodically triggers a state retrieval every tick,
-// until the given context is cancelled
-func (o *Observer) runPeriodically() {
-	o.observe()
-
-	ticker := time.NewTicker(o.settings.ObservationInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			o.observe()
-		case <-o.stopChan:
-			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
-			return
-		}
-	}
 }
 
 // observe retrieves the current ES state, executes onObservation,

@@ -7,7 +7,7 @@ package volume
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 // SecretVolume captures a subset of data of the k8s secret volume/mount type.

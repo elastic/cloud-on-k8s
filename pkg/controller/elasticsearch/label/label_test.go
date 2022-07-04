@@ -16,9 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func TestClusterFromResourceLabels(t *testing.T) {
@@ -121,7 +121,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:             "name",
-				common.TypeLabelName:             "elasticsearch",
+				labels.TypeLabelName:             "elasticsearch",
 				VersionLabelName:                 "7.1.0",
 				string(NodeTypesMasterLabelName): "false",
 				string(NodeTypesDataLabelName):   "false",
@@ -150,7 +150,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                 "name",
-				common.TypeLabelName:                 "elasticsearch",
+				labels.TypeLabelName:                 "elasticsearch",
 				VersionLabelName:                     "7.3.0",
 				string(NodeTypesMasterLabelName):     "false",
 				string(NodeTypesDataLabelName):       "true",
@@ -179,7 +179,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				common.TypeLabelName:                          "elasticsearch",
+				labels.TypeLabelName:                          "elasticsearch",
 				VersionLabelName:                              "7.7.0",
 				string(NodeTypesMasterLabelName):              "false",
 				string(NodeTypesDataLabelName):                "true",
@@ -206,7 +206,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				common.TypeLabelName:                          "elasticsearch",
+				labels.TypeLabelName:                          "elasticsearch",
 				VersionLabelName:                              "7.10.0",
 				string(NodeTypesMasterLabelName):              "true",
 				string(NodeTypesDataLabelName):                "true",
@@ -237,7 +237,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				common.TypeLabelName:                          "elasticsearch",
+				labels.TypeLabelName:                          "elasticsearch",
 				VersionLabelName:                              "7.12.0",
 				string(NodeTypesMasterLabelName):              "true",
 				string(NodeTypesDataLabelName):                "true",

@@ -22,14 +22,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -40,7 +41,7 @@ const (
 )
 
 func applicationSecretLabels(es esv1.Elasticsearch) map[string]string {
-	return common.AddCredentialsLabel(map[string]string{
+	return labels.AddCredentialsLabel(map[string]string{
 		label.ClusterNamespaceLabelName: es.Namespace,
 		label.ClusterNameLabelName:      es.Name,
 	})
@@ -50,7 +51,7 @@ func esSecretsLabels(es esv1.Elasticsearch) map[string]string {
 	return map[string]string{
 		label.ClusterNamespaceLabelName: es.Namespace,
 		label.ClusterNameLabelName:      es.Name,
-		common.TypeLabelName:            esuser.ServiceAccountTokenType,
+		labels.TypeLabelName:            esuser.ServiceAccountTokenType,
 	}
 }
 

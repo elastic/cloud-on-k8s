@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package common
+package http
 
 import (
 	"crypto/tls"
@@ -13,18 +13,18 @@ import (
 
 	"go.elastic.co/apm/module/apmelasticsearch/v2"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
-// HTTPClient returns an http.Client configured for targeting a service managed by ECK.
+// Client returns an http.Client configured for targeting a service managed by ECK.
 // Features:
 // - use the custom dialer if provided (can be nil) for eg. custom port-forwarding
 // - use the provided ca certs for TLS verification (can be nil)
 // - verify TLS certs, but ignore the server name: users may provide their own TLS certificate that may not
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
-func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
+func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
 		certPool.AddCert(c)

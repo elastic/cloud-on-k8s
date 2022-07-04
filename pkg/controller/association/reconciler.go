@@ -21,21 +21,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 var (
@@ -117,7 +119,7 @@ func (a AssociationInfo) userLabelSelector(
 	association types.NamespacedName,
 ) client.MatchingLabels {
 	return maps.Merge(
-		map[string]string{common.TypeLabelName: user.AssociatedUserType},
+		map[string]string{labels.TypeLabelName: user.AssociatedUserType},
 		a.AssociationResourceLabels(associated, association),
 	)
 }
@@ -330,10 +332,23 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}
-	// Detect if we should use a service account. If it is the case create the related Secrets and update the association
-	// configuration on the associated resource.
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	// Detect if we should use a service account.
+	var esHints hints.OrchestrationsHints
 	if len(serviceAccount) > 0 {
+		// We must first ensure that the relevant orchestration hint is set on the Elasticsearch cluster.
+		esHints, err = hints.NewFrom(es)
+		if err != nil {
+			return commonv1.AssociationPending, err
+		}
+		if !esHints.ServiceAccounts.IsSet() {
+			r.log(k8s.ExtractNamespacedName(association)).Info("Waiting for Elasticsearch to report if service accounts are fully rolled out")
+			return commonv1.AssociationPending, nil
+		}
+	}
+
+	// If it is the case create the related Secrets and update the association configuration on the associated resource.
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
 		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
 		r.log(k8s.ExtractNamespacedName(association)).V(1).Info("Ensure service account exists", "sa", serviceAccount)
 		err := ReconcileServiceAccounts(

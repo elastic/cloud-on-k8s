@@ -10,7 +10,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1beta1"
 )
 
 func TestConfig_RoleDefaults(t *testing.T) {

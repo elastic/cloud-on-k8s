@@ -5,8 +5,8 @@
 package common
 
 import (
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 // calculateHealth returns health of the Beat based on association status, desired count and ready count.
