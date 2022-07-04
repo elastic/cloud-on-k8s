@@ -82,11 +82,6 @@ spec:
                       when created from a template
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
-                  revisionHistoryLimit:
-                    description: RevisionHistoryLimit is the number of revisions to
-                      retain to allow rollback in the underlying DaemonSet.
-                    format: int32
-                    type: integer
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -165,11 +160,6 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   replicas:
-                    format: int32
-                    type: integer
-                  revisionHistoryLimit:
-                    description: RevisionHistoryLimit is the number of revisions to
-                      retain to allow rollback in the underlying Deployment.
                     format: int32
                     type: integer
                   strategy:
@@ -756,6 +746,11 @@ spec:
                 - standalone
                 - fleet
                 type: string
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying DaemonSet or Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Agent.
@@ -2155,11 +2150,6 @@ spec:
                       when created from a template
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
-                  revisionHistoryLimit:
-                    description: RevisionHistoryLimit is the number of revisions to
-                      retain to allow rollback in the underlying DaemonSet.
-                    format: int32
-                    type: integer
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -2238,11 +2228,6 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   replicas:
-                    format: int32
-                    type: integer
-                  revisionHistoryLimit:
-                    description: RevisionHistoryLimit is the number of revisions to
-                      retain to allow rollback in the underlying Deployment.
                     format: int32
                     type: integer
                   strategy:
@@ -2366,6 +2351,11 @@ spec:
                       is used.
                     type: string
                 type: object
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying DaemonSet or Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Beat.

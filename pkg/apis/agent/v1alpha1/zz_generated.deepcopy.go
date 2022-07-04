@@ -185,6 +185,11 @@ func (in *AgentSpec) DeepCopyInto(out *AgentSpec) {
 		*out = new(DeploymentSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	out.KibanaRef = in.KibanaRef
 	out.FleetServerRef = in.FleetServerRef
@@ -226,11 +231,6 @@ func (in *AgentStatus) DeepCopy() *AgentStatus {
 func (in *DaemonSetSpec) DeepCopyInto(out *DaemonSetSpec) {
 	*out = *in
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
-	if in.RevisionHistoryLimit != nil {
-		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
-		*out = new(int32)
-		**out = **in
-	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
 }
 
@@ -248,11 +248,6 @@ func (in *DaemonSetSpec) DeepCopy() *DaemonSetSpec {
 func (in *DeploymentSpec) DeepCopyInto(out *DeploymentSpec) {
 	*out = *in
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
-	if in.RevisionHistoryLimit != nil {
-		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
-		*out = new(int32)
-		**out = **in
-	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
