@@ -197,18 +197,21 @@ func TestManager_AddObservationListener(t *testing.T) {
 			eventsCluster2 <- cluster
 		}
 	})
-
+	doneCh := make(chan struct{})
+	go func() {
+		// events should be propagated to both listeners
+		<-eventsCluster1
+		<-eventsCluster2
+		<-eventsCluster1
+		<-eventsCluster2
+		close(doneCh)
+	}()
 	// observe 2 clusters
 	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
 	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
-
-	// events should be propagated to both listeners
-	<-eventsCluster1
-	<-eventsCluster2
-	<-eventsCluster1
-	<-eventsCluster2
+	<-doneCh
 }
 
 func esObject(n types.NamespacedName) esv1.Elasticsearch {

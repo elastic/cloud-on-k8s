@@ -78,12 +78,17 @@ func TestNewObserver(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth) {
 		events <- cluster
 	}
+	doneCh := make(chan struct{})
+	go func() {
+		// let it observe at least 3 times
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+		close(doneCh)
+	}()
 	observer := createAndRunTestObserver(onObservation)
 	defer observer.Stop()
-	// let it observe at least 3 times
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
-	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+	<-doneCh
 }
 
 func TestObserver_Stop(t *testing.T) {
