@@ -94,7 +94,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Labels:               NewLabels(rp.agent),
 		PodTemplateSpec:      rp.podTemplate,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
-		RevisionHistoryLimit: rp.agent.Spec.Deployment.RevisionHistoryLimit,
+		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
@@ -116,7 +116,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Owner:                &rp.agent,
 		Labels:               NewLabels(rp.agent),
 		Selectors:            NewLabels(rp.agent),
-		RevisionHistoryLimit: rp.agent.Spec.DaemonSet.RevisionHistoryLimit,
+		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
 

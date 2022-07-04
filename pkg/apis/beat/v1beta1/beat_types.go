@@ -79,6 +79,9 @@ type BeatSpec struct {
 	// Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type DaemonSetSpec struct {
@@ -86,8 +89,6 @@ type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
-	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet.
-	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type DeploymentSpec struct {
@@ -96,8 +97,6 @@ type DeploymentSpec struct {
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
-	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
-	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.
