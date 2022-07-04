@@ -145,14 +145,14 @@ pipeline {
                         }
                     }
                }
-               stage("8.3.0") {
+               stage("8.3.1") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-83-${BUILD_NUMBER}-e2e", "8.3.0")
+                            runWith(lib, failedTests, "eck-83-${BUILD_NUMBER}-e2e", "8.3.1")
                         }
                     }
                }
