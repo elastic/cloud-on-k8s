@@ -38,8 +38,8 @@ func NewReconciliationContext(
 	newCtx := tracing.NewContextTransaction(
 		ctx,
 		tracer,
+		tracing.ReconciliationTxType,
 		controllerName,
-		request.String(),
 		map[string]string{"iteration": itString})
 	return logconf.InitInContext(
 		newCtx,

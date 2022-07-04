@@ -144,7 +144,7 @@ var _ driver.Interface = &ReconcileEnterpriseSearch{}
 // and what is in the EnterpriseSearch.Spec.
 func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "ent_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "enterprisesearch")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, controllerName)
 	defer tracing.EndTransaction(tx)
 
 	var ent entv1.EnterpriseSearch

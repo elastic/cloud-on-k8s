@@ -55,7 +55,7 @@ type ReconcileWebhookResources struct {
 
 func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "webhook", "reconcile", map[string]string{"iteration": strconv.FormatUint(r.iteration, 10)})
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.ReconciliationTxType, "webhook", map[string]string{"iteration": strconv.FormatUint(r.iteration, 10)})
 	defer tracing.EndContextTransaction(ctx)
 
 	res := r.reconcileInternal(ctx)

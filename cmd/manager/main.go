@@ -703,7 +703,7 @@ func asyncTasks(
 
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
-	gcCtx := tracing.NewContextTransaction(ctx, tracer, "garbage-collection", "on_operator_start", nil)
+	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
 	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
 	if err != nil {
 		log.Error(err, "exiting due to unrecoverable error")
@@ -956,7 +956,7 @@ func setupWebhook(
 }
 
 func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
-	ctx = tracing.NewContextTransaction(ctx, tracer, "webhook", "reconcile", nil)
+	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, "webhook", nil)
 	defer tracing.EndContextTransaction(ctx)
 	log.Info("Automatic management of the webhook certificates enabled")
 	// Ensure that all the certificates needed by the webhook server are already created

@@ -131,7 +131,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}
 }
 
 func (r *Reporter) report(ctx context.Context) {
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "telemetry-reporter", "report", nil)
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "telemetry-reporter", nil)
 	defer tracing.EndContextTransaction(ctx)
 
 	stats, err := r.getResourceStats(ctx)

@@ -61,7 +61,7 @@ func (r ResourceReporter) Start(ctx context.Context, refreshPeriod time.Duration
 
 // Report licensing information by publishing metrics and updating the config map.
 func (r ResourceReporter) Report(ctx context.Context) error {
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "resource-reporter", "license_info", nil)
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "resource-reporter", nil)
 	defer tracing.EndContextTransaction(ctx)
 
 	licensingInfo, err := r.Get(ctx)

@@ -147,7 +147,7 @@ var _ driver.Interface = &ReconcileMapsServer{}
 // in the MapsServer.Spec
 func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "maps")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, controllerName)
 	defer tracing.EndTransaction(tx)
 
 	// retrieve the EMS object

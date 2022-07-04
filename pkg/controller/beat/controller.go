@@ -128,7 +128,7 @@ type ReconcileBeat struct {
 // and what is in the Beat.Spec.
 func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "beat_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "beat")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, controllerName)
 	defer tracing.EndTransaction(tx)
 
 	var beat beatv1beta1.Beat

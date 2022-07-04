@@ -8,16 +8,19 @@ import (
 	"context"
 
 	"go.elastic.co/apm/v2"
-	"k8s.io/apimachinery/pkg/types"
 )
+
+const ReconciliationTxType = "reconciliation"
+const PeriodicTxType = "periodic"
+const RunOnceTxType = "run-once"
 
 // NewTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
 // APM agent's tracer.
-func NewTransaction(ctx context.Context, t *apm.Tracer, name types.NamespacedName, txType string) (*apm.Transaction, context.Context) {
+func NewTransaction(ctx context.Context, t *apm.Tracer, txName string) (*apm.Transaction, context.Context) {
 	if t == nil {
 		return nil, ctx // apm turned off
 	}
-	tx := t.StartTransaction(name.String(), txType)
+	tx := t.StartTransaction(txName, ReconciliationTxType)
 	return tx, apm.ContextWithTransaction(ctx, tx)
 }
 

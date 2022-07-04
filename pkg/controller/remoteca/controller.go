@@ -85,7 +85,7 @@ type ReconcileRemoteCa struct {
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "remoteca")
+	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, name)
 	defer tracing.EndTransaction(tx)
 
 	// Fetch the local Elasticsearch spec
