@@ -57,7 +57,7 @@ The default link:https://kubernetes.io/docs/concepts/configuration/manage-resour
 kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "resources":{"limits":{"memory":"2Gi"}}}]}}}}'
 ----
 
-NOTE: It is a best practice to set `spec.containers[].resources.limits.memory` and `spec.containers[].resources.requests.memory` to the same value.
+NOTE: It is recommended to set limits (`spec.containers[].resources.limits`) that match requests (`spec.containers[].resources.requests`) in order to prevent operator's Pod from being terminated during link:https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/[node-pressure eviction].
 
 [id="{p}-{page_id}-webhook-timeout"]
 == Timeout when submitting a resource manifest
