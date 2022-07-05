@@ -7,7 +7,7 @@
 
 ## Context and Problem Statement
 
-This proposal explains the raison d'être for the *global operator*. The *global operator* is an operator that contains controllers for resources that span more than one deployment.
+This proposal explains the raison for the *global operator*. The *global operator* is an operator that contains controllers for resources that span more than one deployment.
 
 Additionally, this proposal outlines deploying an operator per namespace that is responsible for managing namespace-local resources, such as individual Elasticsearch clusters and Kibana nodes.
 
