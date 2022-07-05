@@ -10,36 +10,43 @@ endif::[]
 [id="{p}-{page_id}-operator-oom"]
 == Operator crashes on startup with `OOMKilled`
 
-On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting killed with a `OOMKilled` message:
+On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting terminated with a `OOMKilled` reason:
 
-```
-                "containerStatuses": [
-                    {
-                        "containerID": "<container_id>",
-                        "image": "<image_path>/eck-operator:1.6.0",
-                        "imageID": "<image_id>",
-                        "lastState": {
-                            "terminated": {
-                                "containerID": "<container_id>",
-                                "exitCode": 137,
-                                "finishedAt": "2022-06-06T13:23:55Z",
-                                "reason": "OOMKilled",
-                                "startedAt": "2022-06-06T13:23:24Z"
-                            }
-                        },
-                        "name": "manager",
-                        "ready": false,
-                        "restartCount": 16,
-                        "started": false,
-                        "state": {
-                            "waiting": {
-                                "message": "back-off 5m0s restarting failed container=manager pod=<pod_name>(<pod_id>)",
-                                "reason": "CrashLoopBackOff"
-                            }
-                        }
-                    }
-                ]
-```
+[source,sh,subs="attributes,+macros"]
+----
+kubectl -n elastic-system \
+  get pods -o=jsonpath='{.items[].status.containerStatuses}' | jq
+----
+
+[source,json,subs="attributes"]
+----
+[
+  {
+    "containerID": "containerd://...",
+    "image": "docker.elastic.co/eck/eck-operator:{eck_version}",
+    "imageID": "docker.elastic.co/eck/eck-operator@sha256:...",
+    "lastState": {
+      "terminated": {
+        "containerID": "containerd://...",
+        "exitCode": 137,
+        "finishedAt": "2022-07-04T09:47:02Z",
+        "reason": "OOMKilled",
+        "startedAt": "2022-07-04T09:46:43Z"
+      }
+    },
+    "name": "manager",
+    "ready": false,
+    "restartCount": 2,
+    "started": false,
+    "state": {
+      "waiting": {
+        "message": "back-off 20s restarting failed container=manager pod=elastic-operator-0_elastic-system(57de3efd-57e0-4c1e-8151-72b0ac4d6b14)",
+        "reason": "CrashLoopBackOff"
+      }
+    }
+  }
+]
+----
 
 This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
 
