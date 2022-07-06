@@ -23,6 +23,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -37,6 +38,9 @@ const (
 	operatorManifestURL = "https://download.elastic.co/downloads/eck/%s/operator.yaml"
 	operatorName        = "elastic-operator"
 
+	RedHatAPITokenFlag = "redhat-api-token"
+	RedHatProjectId    = "redhat-project-id"
+
 	csvTemplateFile     = "csv.tpl"
 	packageTemplateFile = "package.tpl"
 
@@ -48,9 +52,11 @@ const (
 )
 
 type cmdArgs struct {
-	confPath      string
-	manifestPaths []string
-	templatesDir  string
+	confPath              string
+	manifestPaths         []string
+	templatesDir          string
+	redhatAPIToken        string
+	skipCertifiedOperator bool
 }
 
 var args = cmdArgs{}
@@ -70,6 +76,16 @@ func main() {
 
 	cmd.Flags().StringSliceVar(&args.manifestPaths, "yaml-manifest", nil, "Path to installation manifests")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
+	cmd.Flags().String(RedHatAPITokenFlag, "", "RedHat API Token")
+	cmd.Flags().String(RedHatProjectId, "", "RedHat project id")
+
+	// enable using dashed notation in flags and underscores in env
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to bind flags: %v\n", err)
+		os.Exit(1)
+	}
+	viper.AutomaticEnv()
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -81,6 +97,23 @@ func doRun(_ *cobra.Command, _ []string) error {
 	conf, err := loadConfig(args.confPath)
 	if err != nil {
 		return fmt.Errorf("when loading config: %w", err)
+	}
+
+	// Sanity check, if RedHat API key and project ID are not provided then the certified bundle cannot be generated.
+	redhatAPITokenFlag := viper.GetString(RedHatAPITokenFlag)
+	redhatProjectId := viper.GetString(RedHatProjectId)
+	imageDigest := ""
+	if conf.HasDigestPinning() {
+		if len(redhatAPITokenFlag) == 0 {
+			return errors.New("RedHat API key is required to get image digest")
+		}
+		if len(redhatProjectId) == 0 {
+			return errors.New("RedHat project ID is required to get image digest")
+		}
+		imageDigest, err = getImageDigest(redhatAPITokenFlag, redhatProjectId, conf.NewVersion)
+		if err != nil {
+			return err
+		}
 	}
 
 	manifestStream, close, err := getInstallManifestStream(conf, args.manifestPaths)
@@ -96,7 +129,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 
 	for i := range conf.Packages {
-		params, err := buildRenderParams(conf, i, extracts)
+		params, err := buildRenderParams(conf, i, extracts, imageDigest)
 		if err != nil {
 			return fmt.Errorf("when building render params: %w", err)
 		}
@@ -125,7 +158,20 @@ type config struct {
 		DistributionChannel string `json:"distributionChannel"`
 		OperatorRepo        string `json:"operatorRepo"`
 		UbiOnly             bool   `json:"ubiOnly"`
+		DigestPinning       bool   `json:"digestPinning"`
 	} `json:"packages"`
+}
+
+func (c *config) HasDigestPinning() bool {
+	if c == nil {
+		return false
+	}
+	for _, pkg := range c.Packages {
+		if pkg.DigestPinning {
+			return true
+		}
+	}
+	return false
 }
 
 func loadConfig(path string) (*config, error) {
@@ -336,10 +382,11 @@ type RenderParams struct {
 	CRDList          []*CRD
 	OperatorWebhooks string
 	PackageName      string
+	Tag              string
 	UbiOnly          bool
 }
 
-func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
+func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
 	for _, c := range conf.CRDs {
 		if crd, ok := extracts.crds[c.Name]; ok {
 			crd.DisplayName = c.DisplayName
@@ -395,6 +442,11 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 
 	additionalArgs = append(additionalArgs, "--distribution-channel="+conf.Packages[packageIndex].DistributionChannel)
 
+	tag := ":" + conf.NewVersion
+	if conf.Packages[packageIndex].DigestPinning {
+		tag = "@" + imageDigest
+	}
+
 	return &RenderParams{
 		NewVersion:       conf.NewVersion,
 		ShortVersion:     strings.Join(versionParts[:2], "."),
@@ -406,6 +458,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		OperatorWebhooks: string(webhooks),
 		OperatorRBAC:     string(rbac),
 		PackageName:      conf.Packages[packageIndex].PackageName,
+		Tag:              tag,
 		UbiOnly:          conf.Packages[packageIndex].UbiOnly,
 	}, nil
 }
