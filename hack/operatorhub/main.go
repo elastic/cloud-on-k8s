@@ -218,7 +218,9 @@ func makeRequest(url string) (io.Reader, error) {
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, resp.Body)
-
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy response body to buffer: %w", err)
+	}
 	return buf, err
 }
 
