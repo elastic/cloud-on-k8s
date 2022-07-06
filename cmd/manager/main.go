@@ -192,6 +192,11 @@ func Command() *cobra.Command {
 		3*time.Minute,
 		"Default timeout for requests made by the Elasticsearch client.",
 	)
+	cmd.Flags().Duration(
+		operator.ElasticsearchObservationIntervalFlag,
+		10*time.Second,
+		"Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation",
+	)
 	cmd.Flags().Bool(
 		operator.DisableTelemetryFlag,
 		false,
@@ -580,12 +585,13 @@ func startOperator(ctx context.Context) error {
 	}
 
 	params := operator.Parameters{
-		Dialer:            dialer,
-		ExposedNodeLabels: exposedNodeLabels,
-		IPFamily:          ipFamily,
-		OperatorNamespace: operatorNamespace,
-		OperatorInfo:      operatorInfo,
-		GlobalCA:          ca,
+		Dialer:                           dialer,
+		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
+		ExposedNodeLabels:                exposedNodeLabels,
+		IPFamily:                         ipFamily,
+		OperatorNamespace:                operatorNamespace,
+		OperatorInfo:                     operatorInfo,
+		GlobalCA:                         ca,
 		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,

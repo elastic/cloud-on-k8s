@@ -6,6 +6,7 @@ package observer
 
 import (
 	"sync"
+	"time"
 
 	"go.elastic.co/apm/v2"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,18 +24,20 @@ const (
 
 // Manager for a set of observers
 type Manager struct {
-	observerLock sync.RWMutex
-	observers    map[types.NamespacedName]*Observer
-	listenerLock sync.RWMutex
-	listeners    []OnObservation // invoked on each observation event
-	tracer       *apm.Tracer
+	defaultInterval time.Duration
+	observerLock    sync.RWMutex
+	observers       map[types.NamespacedName]*Observer
+	listenerLock    sync.RWMutex
+	listeners       []OnObservation // invoked on each observation event
+	tracer          *apm.Tracer
 }
 
 // NewManager returns a new manager
-func NewManager(tracer *apm.Tracer) *Manager {
+func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 	return &Manager{
-		observers: make(map[types.NamespacedName]*Observer),
-		tracer:    tracer,
+		defaultInterval: defaultInterval,
+		observers:       make(map[types.NamespacedName]*Observer),
+		tracer:          tracer,
 	}
 }
 
@@ -77,7 +80,7 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 // extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
 func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
 	return Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, m.defaultInterval),
 		Tracer:              m.tracer,
 	}
 }

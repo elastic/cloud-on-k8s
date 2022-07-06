@@ -71,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
-		esObservers:    observer.NewManager(params.Tracer),
+		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
