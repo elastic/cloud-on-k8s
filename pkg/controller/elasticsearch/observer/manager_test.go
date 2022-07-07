@@ -5,6 +5,9 @@
 package observer
 
 import (
+	"bytes"
+	"io/ioutil"
+	"net/http"
 	"testing"
 	"time"
 
@@ -14,7 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
 func TestManager_List(t *testing.T) {
@@ -119,6 +124,70 @@ func TestManager_Observe(t *testing.T) {
 			observer.Stop()
 		})
 	}
+}
+
+func flappingEsClient() client.Client {
+	var retErr bool
+	return client.NewMockClientWithUser(version.MustParse("8.3.0"),
+		client.BasicAuth{},
+		func(req *http.Request) *http.Response {
+			if retErr {
+				retErr = false
+				return &http.Response{
+					StatusCode: 503,
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			}
+			retErr = true
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.HealthSample)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+}
+
+func TestManager_ObserveSync(t *testing.T) {
+	tests := []struct {
+		name           string
+		manager        *Manager
+		expectedHealth []esv1.ElasticsearchHealth
+	}{
+		{
+			name:    "Async observation disabled make sync requests every time",
+			manager: NewManager(-1*time.Second, nil),
+			expectedHealth: []esv1.ElasticsearchHealth{
+				esv1.ElasticsearchGreenHealth,
+				// the flapping client returns an error on the second request
+				esv1.ElasticsearchUnknownHealth,
+			},
+		},
+		{
+			name:    "Async observation enabled, only the first request is synchronous",
+			manager: NewManager(1*time.Hour, nil),
+			expectedHealth: []esv1.ElasticsearchHealth{
+				esv1.ElasticsearchGreenHealth,
+				// they async observer returns the old observation while the observation interval has not expired
+				esv1.ElasticsearchGreenHealth,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esClient := flappingEsClient()
+			name := cluster("es1")
+			cluster := esObject(name)
+			results := []esv1.ElasticsearchHealth{
+				tt.manager.ObservedStateResolver(cluster, esClient)(),
+				tt.manager.ObservedStateResolver(cluster, esClient)(),
+			}
+			require.Equal(t, tt.expectedHealth, results)
+			tt.manager.StopObserving(name) // let's clean up the go-routines
+		})
+	}
+
 }
 
 func TestManager_StopObserving(t *testing.T) {

@@ -71,6 +71,9 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 		return m.createOrReplaceObserver(nsName, settings, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
 		return m.createOrReplaceObserver(nsName, settings, esClient)
+	case exists && settings.ObservationInterval <= 0:
+		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
+		return m.getAndObserveSynchronously(nsName, settings, esClient)
 	default:
 		esClient.Close()
 		return observer
@@ -102,6 +105,18 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 
 	m.observers[cluster] = observer
 
+	return observer
+}
+
+// getAndObserveSynchronously retrieves the currently configured observer and trigger a synchronous observation.
+func (m *Manager) getAndObserveSynchronously(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+	m.observerLock.RLock()
+	defer m.observerLock.RUnlock()
+
+	// invariant: this method must only be called when existence of observer is given
+	observer := m.observers[cluster]
+	// force a synchronous observation
+	observer.observe()
 	return observer
 }
 
