@@ -58,7 +58,6 @@ type cmdArgs struct {
 	confPath      string
 	manifestPaths []string
 	templatesDir  string
-	redhatAPIKey  string
 }
 
 var args = cmdArgs{}
