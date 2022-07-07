@@ -39,7 +39,7 @@ const (
 	operatorManifestURL = "https://download.elastic.co/downloads/eck/%s/operator.yaml"
 	operatorName        = "elastic-operator"
 
-	RedHatAPIKeyFlag    = "redhat-api-key"
+	RedHatAPITokenFlag  = "redhat-api-token"
 	RedHatProjectIdFLag = "redhat-project-id"
 
 	csvTemplateFile     = "csv.tpl"
@@ -77,7 +77,7 @@ func main() {
 
 	cmd.Flags().StringSliceVar(&args.manifestPaths, "yaml-manifest", nil, "Path to installation manifests")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
-	cmd.Flags().String(RedHatAPIKeyFlag, "", "RedHat API key")
+	cmd.Flags().String(RedHatAPITokenFlag, "", "RedHat API key")
 	cmd.Flags().String(RedHatProjectIdFLag, "", "RedHat project id")
 
 	// enable using dashed notation in flags and underscores in env
@@ -101,7 +101,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 
 	// Sanity check, if RedHat API key and project ID are not provided then the certified bundle cannot be generated.
-	redhatAPIKey := viper.GetString(RedHatAPIKeyFlag)
+	redhatAPIKey := viper.GetString(RedHatAPITokenFlag)
 	redhatProjectId := viper.GetString(RedHatProjectIdFLag)
 	imageDigest := ""
 	if conf.HasDigestPinning() {
