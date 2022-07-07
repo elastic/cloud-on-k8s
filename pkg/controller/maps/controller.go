@@ -146,9 +146,9 @@ var _ driver.Interface = &ReconcileMapsServer{}
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec
 func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, controllerName)
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the EMS object
 	var ems emsv1alpha1.ElasticMapsServer

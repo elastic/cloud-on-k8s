@@ -123,7 +123,7 @@ type ReconcileAgent struct {
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
-	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
+	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	agent := &agentv1alpha1.Agent{}

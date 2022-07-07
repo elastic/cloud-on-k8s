@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -51,7 +52,10 @@ var log = ulog.Log.WithName(name)
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
+
 	results := r.reconcileInternal(ctx, request)
 	current, err := results.Aggregate()
 	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
@@ -73,8 +77,9 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := mgr.GetClient()
 	return &ReconcileLicenses{
-		Client:  c,
-		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
+		Client:     c,
+		Parameters: params,
+		checker:    license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 }
 
@@ -141,6 +146,7 @@ var _ reconcile.Reconciler = &ReconcileLicenses{}
 // ReconcileLicenses reconciles EnterpriseLicenses with existing Elasticsearch clusters and creates ClusterLicenses for them.
 type ReconcileLicenses struct {
 	k8s.Client
+	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 	checker   license.Checker

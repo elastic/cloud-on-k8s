@@ -10,35 +10,22 @@ import (
 	"go.elastic.co/apm/v2"
 )
 
-const ReconciliationTxType = "reconciliation"
-const PeriodicTxType = "periodic"
-const RunOnceTxType = "run-once"
+type TxType string
 
-// NewTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
-// APM agent's tracer.
-func NewTransaction(ctx context.Context, t *apm.Tracer, txName string) (*apm.Transaction, context.Context) {
-	if t == nil {
-		return nil, ctx // apm turned off
-	}
-	tx := t.StartTransaction(txName, ReconciliationTxType)
-	return tx, apm.ContextWithTransaction(ctx, tx)
-}
-
-// EndTransaction nil safe version of APM agents tx.End()
-func EndTransaction(tx *apm.Transaction) {
-	if tx != nil {
-		tx.End()
-	}
-}
+const (
+	ReconciliationTxType TxType = "reconciliation"
+	PeriodicTxType       TxType = "periodic"
+	RunOnceTxType        TxType = "run-once"
+)
 
 // NewContextTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
 // APM agent's tracer.
-func NewContextTransaction(ctx context.Context, t *apm.Tracer, txType, txName string, labels map[string]string) context.Context {
+func NewContextTransaction(ctx context.Context, t *apm.Tracer, txType TxType, txName string, labels map[string]string) context.Context {
 	if t == nil {
 		return ctx // apm turned off
 	}
 
-	tx := t.StartTransaction(txName, txType)
+	tx := t.StartTransaction(txName, string(txType))
 	for k, v := range labels {
 		tx.Context.SetLabel(k, v)
 	}

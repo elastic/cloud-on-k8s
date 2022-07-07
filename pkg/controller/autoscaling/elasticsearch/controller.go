@@ -78,7 +78,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 // _autoscaling/capacity API and given the constraints provided by the user in the autoscaling specification.
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "es_name", request)
-	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
+	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the Elasticsearch instance

@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
@@ -84,9 +85,9 @@ type ReconcileRemoteCa struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, name)
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the local Elasticsearch spec
 	es := esv1.Elasticsearch{}

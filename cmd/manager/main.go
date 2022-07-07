@@ -956,7 +956,7 @@ func setupWebhook(
 }
 
 func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
-	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, "webhook", nil)
+	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
 	defer tracing.EndContextTransaction(ctx)
 	log.Info("Automatic management of the webhook certificates enabled")
 	// Ensure that all the certificates needed by the webhook server are already created

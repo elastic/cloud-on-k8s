@@ -6,7 +6,6 @@ package webhook
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -54,8 +53,8 @@ type ReconcileWebhookResources struct {
 }
 
 func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.ReconciliationTxType, "webhook", map[string]string{"iteration": strconv.FormatUint(r.iteration, 10)})
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.tracer, ControllerName, "validating_webhook_configuration", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	res := r.reconcileInternal(ctx)

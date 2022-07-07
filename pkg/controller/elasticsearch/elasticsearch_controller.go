@@ -155,9 +155,9 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, name)
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the Elasticsearch instance
 	var es esv1.Elasticsearch

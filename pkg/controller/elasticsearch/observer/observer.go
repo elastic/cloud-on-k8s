@@ -114,7 +114,7 @@ func (o *Observer) observe() {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	if o.settings.Tracer != nil {
-		tx := o.settings.Tracer.StartTransaction("elasticsearch-observer", tracing.PeriodicTxType)
+		tx := o.settings.Tracer.StartTransaction("elasticsearch-observer", string(tracing.PeriodicTxType))
 		defer tx.End()
 		ctx = apm.ContextWithTransaction(ctx, tx)
 	}

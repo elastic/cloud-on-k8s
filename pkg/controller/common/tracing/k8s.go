@@ -28,6 +28,6 @@ func ClientGoCacheTx(tracer *apm.Tracer) func() *apm.Transaction {
 			return nil
 		}
 		// if no transaction is running assume we are tracing cache refresh requests from client-go
-		return tracer.StartTransaction("client-go", PeriodicTxType)
+		return tracer.StartTransaction("client-go", string(PeriodicTxType))
 	}
 }
