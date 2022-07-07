@@ -187,7 +187,6 @@ func TestManager_ObserveSync(t *testing.T) {
 			tt.manager.StopObserving(name) // let's clean up the go-routines
 		})
 	}
-
 }
 
 func TestManager_StopObserving(t *testing.T) {
