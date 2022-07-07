@@ -93,13 +93,14 @@ func (r *ReconcileApmServer) deploymentParams(
 	}
 
 	return deployment.Params{
-		Name:            Deployment(as.Name),
-		Namespace:       as.Namespace,
-		Replicas:        as.Spec.Count,
-		Selector:        NewLabels(as.Name),
-		Labels:          NewLabels(as.Name),
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 Deployment(as.Name),
+		Namespace:            as.Namespace,
+		Replicas:             as.Spec.Count,
+		Selector:             NewLabels(as.Name),
+		Labels:               NewLabels(as.Name),
+		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }
 

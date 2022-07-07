@@ -82,9 +82,6 @@ spec:
                       when created from a template
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
-                  revisionHistoryLimit:
-                    format: int32
-                    type: integer
                   updateStrategy:
                     description: DaemonSetUpdateStrategy is a struct used to control
                       the update strategy for a DaemonSet.
@@ -163,9 +160,6 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   replicas:
-                    format: int32
-                    type: integer
-                  revisionHistoryLimit:
                     format: int32
                     type: integer
                   strategy:
@@ -752,6 +746,11 @@ spec:
                 - standalone
                 - fleet
                 type: string
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying DaemonSet or Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Agent.
@@ -1397,6 +1396,11 @@ spec:
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for APM Server.
@@ -2347,6 +2351,11 @@ spec:
                       is used.
                     type: string
                 type: object
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying DaemonSet or Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Beat.
@@ -2973,6 +2982,11 @@ spec:
                   Server pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (for ex. Elasticsearch) in a different namespace.
@@ -4134,6 +4148,11 @@ spec:
                   - name
                   type: object
                 type: array
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying StatefulSets.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.
@@ -6367,6 +6386,11 @@ spec:
                   Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
               serviceAccountName:
                 description: ServiceAccountName is used to check access from the current
                   resource to a resource (for ex. Elasticsearch) in a different namespace.
@@ -7632,6 +7656,11 @@ spec:
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Kibana.

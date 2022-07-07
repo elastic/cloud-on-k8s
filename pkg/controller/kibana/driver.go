@@ -286,13 +286,14 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 	}
 
 	return deployment.Params{
-		Name:            kbv1.KBNamer.Suffix(kb.Name),
-		Namespace:       kb.Namespace,
-		Replicas:        kb.Spec.Count,
-		Selector:        NewLabels(kb.Name),
-		Labels:          NewLabels(kb.Name),
-		PodTemplateSpec: kibanaPodSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: strategyType},
+		Name:                 kbv1.KBNamer.Suffix(kb.Name),
+		Namespace:            kb.Namespace,
+		Replicas:             kb.Spec.Count,
+		Selector:             NewLabels(kb.Name),
+		Labels:               NewLabels(kb.Name),
+		PodTemplateSpec:      kibanaPodSpec,
+		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
+		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }
 

@@ -15340,6 +15340,11 @@ spec:
                       is used.
                     type: string
                 type: object
+              revisionHistoryLimit:
+                description: RevisionHistoryLimit is the number of revisions to retain
+                  to allow rollback in the underlying DaemonSet or Deployment.
+                format: int32
+                type: integer
               secureSettings:
                 description: SecureSettings is a list of references to Kubernetes
                   Secrets containing sensitive configuration options for the Beat.

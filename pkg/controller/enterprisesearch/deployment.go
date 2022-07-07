@@ -45,12 +45,13 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            DeploymentName(ent.Name),
-		Namespace:       ent.Namespace,
-		Replicas:        ent.Spec.Count,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 DeploymentName(ent.Name),
+		Namespace:            ent.Namespace,
+		Replicas:             ent.Spec.Count,
+		Selector:             deploymentLabels,
+		Labels:               deploymentLabels,
+		RevisionHistoryLimit: ent.Spec.RevisionHistoryLimit,
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }

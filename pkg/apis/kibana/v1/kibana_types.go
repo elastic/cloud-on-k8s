@@ -92,6 +92,9 @@ type KibanaSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
