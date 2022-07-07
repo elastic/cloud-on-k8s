@@ -39,3 +39,7 @@ packages:
     distributionChannel: certified-operators
     operatorRepo: registry.connect.redhat.com/elastic/eck-operator
     ubiOnly: true
+    ## digestPinning should only be set to true for certified operator.
+    ## The RedHat API key and project ID should be set through the REDHAT_API_TOKEN and REDHAT_PROJECT_ID environment variables.
+    ## It can be set to false for local testing.
+    digestPinning: true

@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -37,6 +39,9 @@ const (
 	operatorManifestURL = "https://download.elastic.co/downloads/eck/%s/operator.yaml"
 	operatorName        = "elastic-operator"
 
+	RedHatAPITokenFlag  = "redhat-api-token"
+	RedHatProjectIdFLag = "redhat-project-id"
+
 	csvTemplateFile     = "csv.tpl"
 	packageTemplateFile = "package.tpl"
 
@@ -45,6 +50,8 @@ const (
 	packageFileSuffix = "package.yaml"
 
 	yamlSeparator = "---\n"
+
+	ImagesEndpoint = "https://catalog.redhat.com/api/containers/v1/projects/certification/id/%s/images"
 )
 
 type cmdArgs struct {
@@ -70,6 +77,16 @@ func main() {
 
 	cmd.Flags().StringSliceVar(&args.manifestPaths, "yaml-manifest", nil, "Path to installation manifests")
 	cmd.Flags().StringVar(&args.templatesDir, "templates", "./templates", "Path to the templates directory")
+	cmd.Flags().String(RedHatAPITokenFlag, "", "RedHat API key")
+	cmd.Flags().String(RedHatProjectIdFLag, "", "RedHat project id")
+
+	// enable using dashed notation in flags and underscores in env
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to bind flags: %v\n", err)
+		os.Exit(1)
+	}
+	viper.AutomaticEnv()
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -81,6 +98,23 @@ func doRun(_ *cobra.Command, _ []string) error {
 	conf, err := loadConfig(args.confPath)
 	if err != nil {
 		return fmt.Errorf("when loading config: %w", err)
+	}
+
+	// Sanity check, if RedHat API key and project ID are not provided then the certified bundle cannot be generated.
+	redhatAPIKey := viper.GetString(RedHatAPITokenFlag)
+	redhatProjectId := viper.GetString(RedHatProjectIdFLag)
+	imageDigest := ""
+	if conf.HasDigestPinning() {
+		if len(redhatAPIKey) == 0 {
+			return errors.New("RedHat API key is required to get image digest")
+		}
+		if len(redhatProjectId) == 0 {
+			return errors.New("RedHat project ID is required to get image digest")
+		}
+		imageDigest, err = getImageDigest(redhatAPIKey, redhatProjectId, conf.NewVersion)
+		if err != nil {
+			return err
+		}
 	}
 
 	manifestStream, close, err := getInstallManifestStream(conf, args.manifestPaths)
@@ -96,7 +130,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 
 	for i := range conf.Packages {
-		params, err := buildRenderParams(conf, i, extracts)
+		params, err := buildRenderParams(conf, i, extracts, imageDigest)
 		if err != nil {
 			return fmt.Errorf("when building render params: %w", err)
 		}
@@ -125,7 +159,20 @@ type config struct {
 		DistributionChannel string `json:"distributionChannel"`
 		OperatorRepo        string `json:"operatorRepo"`
 		UbiOnly             bool   `json:"ubiOnly"`
+		DigestPinning       bool   `json:"digestPinning"`
 	} `json:"packages"`
+}
+
+func (c *config) HasDigestPinning() bool {
+	if c == nil {
+		return false
+	}
+	for _, pkg := range c.Packages {
+		if pkg.DigestPinning {
+			return true
+		}
+	}
+	return false
 }
 
 func loadConfig(path string) (*config, error) {
@@ -336,10 +383,11 @@ type RenderParams struct {
 	CRDList          []*CRD
 	OperatorWebhooks string
 	PackageName      string
+	Tag              string
 	UbiOnly          bool
 }
 
-func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
+func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
 	for _, c := range conf.CRDs {
 		if crd, ok := extracts.crds[c.Name]; ok {
 			crd.DisplayName = c.DisplayName
@@ -395,6 +443,11 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 
 	additionalArgs = append(additionalArgs, "--distribution-channel="+conf.Packages[packageIndex].DistributionChannel)
 
+	tag := ":" + conf.NewVersion
+	if conf.Packages[packageIndex].DigestPinning {
+		tag = "@" + imageDigest
+	}
+
 	return &RenderParams{
 		NewVersion:       conf.NewVersion,
 		ShortVersion:     strings.Join(versionParts[:2], "."),
@@ -406,6 +459,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		OperatorWebhooks: string(webhooks),
 		OperatorRBAC:     string(rbac),
 		PackageName:      conf.Packages[packageIndex].PackageName,
+		Tag:              tag,
 		UbiOnly:          conf.Packages[packageIndex].UbiOnly,
 	}, nil
 }
@@ -518,4 +572,63 @@ func writeCRD(out io.WriteCloser, data []byte) error {
 	_, err := io.Copy(out, bytes.NewReader(data))
 
 	return err
+}
+
+type Images struct {
+	Data []struct {
+		DockerImageDigest string `json:"docker_image_digest"`
+		Id                string `json:"_id"`
+		CreationDate      string `json:"creation_date"`
+	} `json:"data"`
+}
+
+// getImageDigest connects to the RedHat catalog API to get the certified operator image digest as it is exposed
+// by the RedHat registry.
+func getImageDigest(apiKey, projectId, version string) (string, error) {
+	requestURL := fmt.Sprintf(ImagesEndpoint, projectId)
+
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-API-KEY", apiKey)
+
+	q := req.URL.Query()
+	q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
+	req.URL.RawQuery = q.Encode()
+
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("request error %s: %s", requestURL, res.Status)
+	}
+
+	var images Images
+	if err := json.NewDecoder(res.Body).Decode(&images); err != nil {
+		return "", err
+	}
+	if len(images.Data) > 1 {
+		fmt.Fprintf(os.Stderr, "\nid                       creation_date                    docker_image_digest\n")
+		for _, image := range images.Data {
+			fmt.Fprintf(os.Stderr, "%s %s %s\n", image.Id, image.CreationDate, image.DockerImageDigest)
+		}
+		return "", fmt.Errorf("found %d images with tag %s in RedHat catalog while only one is expected", len(images.Data), version)
+	}
+	if len(images.Data) == 0 {
+		return "", fmt.Errorf("no image with tag %s in RedHat catalog", version)
+	}
+	imageDigest := images.Data[0].DockerImageDigest
+	if imageDigest == "" {
+		return "", fmt.Errorf("image digest for %s is empty", version)
+	}
+	return imageDigest, nil
 }
