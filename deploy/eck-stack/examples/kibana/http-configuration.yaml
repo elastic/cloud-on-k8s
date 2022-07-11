@@ -23,10 +23,10 @@ eck-kibana:
     #
     count: 1
 
-    # Reference to ECK-managed Elasticsearch instanced, ideally from {{ .Values.elasticsearch.name }}
+    # Reference to ECK-managed Elasticsearch instance, ideally from  {{ "elasticsearch.fullname" }}
     #
     elasticsearchRef:
-      name: quickstart
+      name: quickstart-eck-elasticsearch
       namespace: default
     http:
       service:

@@ -57,7 +57,7 @@ tests:
           value: 1
       - equal:
           path: spec.elasticsearchRef.name
-          value: quickstart
+          value: quickstart-eck-elasticsearch
       - equal:
           path: spec.elasticsearchRef.namespace
           value: default

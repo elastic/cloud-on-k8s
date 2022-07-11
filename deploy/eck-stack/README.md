@@ -29,6 +29,7 @@ To install the ECK Operator using Helm.
 ```sh
 # Add the Elastic Helm Repository
 helm repo add elastic https://helm.elastic.co && helm repo update
+
 # Install the ECK Operator cluster-wide
 helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace
 ```
@@ -53,10 +54,10 @@ can be found in [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s
 
 ## Uninstalling the Chart
 
-To uninstall/delete the `my-release` deployment:
+To uninstall/delete the `my-release` deployment from the 'my-namespace' namespace:
 
 ```console
-$ helm delete my-release
+$ helm delete my-release -n my-namespace
 ```
 
 The command removes all the Elastic Stack resources associated with the chart and deletes the release.
