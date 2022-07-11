@@ -412,7 +412,7 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 }
 
 func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
-	var newNodeSets []esv1.NodeSet
+	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
 	for _, n := range b.Elasticsearch.Spec.NodeSets {
 		if cfg, exists := nodeSetCfg[n.Name]; exists {
 			newCfg := n.Config.DeepCopy()
