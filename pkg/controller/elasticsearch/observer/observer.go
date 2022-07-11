@@ -26,8 +26,8 @@ type Settings struct {
 	Tracer              *apm.Tracer
 }
 
-// defaultObservationTimeout is the default timeout for an observation. The observer uses the observation interval as a timeout
-// the default applies if the observation interval is not positive to allow at least one successful observation.
+// defaultObservationTimeout is the default timeout for an observation. The observer uses the observation interval as a timeout.
+// The default applies if the observation interval is not positive to allow at least one successful observation.
 const defaultObservationTimeout = 10 * time.Second
 
 // OnObservation is a function that gets executed when a new state is observed
@@ -133,7 +133,7 @@ func (o *Observer) observe() {
 func nonNegativeTimeout(observationInterval time.Duration) time.Duration {
 	// if the observation interval is not positive async observations are disabled
 	if observationInterval <= 0 {
-		// use a default positive timeout ot allow one synchronous observation
+		// use a default positive timeout to allow one synchronous observation
 		return defaultObservationTimeout
 	}
 	// use the observation interval as the timeout for all other cases.

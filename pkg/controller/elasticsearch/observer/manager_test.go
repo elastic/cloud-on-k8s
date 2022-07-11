@@ -169,7 +169,7 @@ func TestManager_ObserveSync(t *testing.T) {
 			manager: NewManager(1*time.Hour, nil),
 			expectedHealth: []esv1.ElasticsearchHealth{
 				esv1.ElasticsearchGreenHealth,
-				// they async observer returns the old observation while the observation interval has not expired
+				// the async observer returns the old observation while the observation interval has not expired
 				esv1.ElasticsearchGreenHealth,
 			},
 		},
