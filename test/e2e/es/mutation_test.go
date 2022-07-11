@@ -162,11 +162,26 @@ func TestMutationSecondMasterSet(t *testing.T) {
 func TestMutationSecondMasterSetDown(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
-		WithESMasterNodes(3, elasticsearch.DefaultResources)
+		WithESMasterNodes(3, elasticsearch.DefaultResources).
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+			"master": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+		})
 
 	// scale down to single node
 	mutated := b.WithNoESTopology().
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).WithAdditionalConfig(map[string]map[string]interface{}{
+		"masterdata": {
+			"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+			"http.tracer.include":                      []string{"*_cluster/health*"},
+		},
+	})
 
 	RunESMutation(t, b, mutated)
 }
