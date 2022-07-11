@@ -146,7 +146,7 @@ var _ driver.Interface = &ReconcileMapsServer{}
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec
 func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "name", request)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "maps_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
@@ -164,7 +164,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if common.IsUnmanaged(&ems) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "name", ems.Name)
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -195,7 +195,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 
 	if !enabled {
 		msg := "Elastic Maps Server is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg, "namespace", ems.Namespace, "name", ems.Name)
+		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
 		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
