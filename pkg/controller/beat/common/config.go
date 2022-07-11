@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -105,24 +104,20 @@ func buildBeatConfig(
 
 	// If monitoring is enabled, render the relevant section
 	if params.Beat.Spec.Monitoring.Enabled() {
-		logf.Log.WithName("beat_config").Info("about to getMonitoringConfig")
 		monitoringConfig, err := getMonitoringConfig(params)
 		if err != nil {
 			return nil, err
 		}
-		logf.Log.WithName("beat_config").Info("end about to getMonitoringConfig")
 		if err = cfg.MergeWith(monitoringConfig); err != nil {
 			return nil, err
 		}
 	}
 
 	// get user config from `config` or `configRef`
-	logf.Log.WithName("beat_config").Info("about to getUserConfig")
 	userConfig, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
 	}
-	logf.Log.WithName("beat_config").Info("end about to getUserConfig")
 
 	if userConfig == nil {
 		return cfg.Render()
@@ -162,7 +157,6 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 			// save the monitoring connection information so it doesn't have to be retrieved
 			// again later when buliding the secret which contains the CA.
 			params.monitoringAssociationConnectionInfo = info
-			logf.Log.WithName("beat_config").Info("about to reconcile monitoring CA secret")
 			if _, err := reconciler.ReconcileSecret(
 				params.Context,
 				params.Client,
@@ -179,7 +173,6 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 			); err != nil {
 				return nil, errors.Wrap(err, "while creating external monitoring ca secret")
 			}
-			logf.Log.WithName("beat_config").Info("end about to reconcile monitoring CA secret")
 		}
 		sslConfig = SSLConfig{
 			// configure the CA cert needed for external monitoring cluster.
@@ -249,12 +242,10 @@ func reconcileConfig(
 	managedConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
 ) error {
-	logf.Log.WithName("beat_config").Info("building beat configuration")
 	cfgBytes, err := buildBeatConfig(params, managedConfig)
 	if err != nil {
 		return err
 	}
-	logf.Log.WithName("beat_config").Info("end building beat configuration")
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -267,11 +258,9 @@ func reconcileConfig(
 		},
 	}
 
-	logf.Log.WithName("beat_config").Info("reconciling beat creentials secret")
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Beat); err != nil {
 		return err
 	}
-	logf.Log.WithName("beat_config").Info("end reconciling beat creentials secret")
 
 	_, _ = configHash.Write(cfgBytes)
 
