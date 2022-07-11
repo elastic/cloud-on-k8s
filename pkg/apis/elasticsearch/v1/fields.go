@@ -36,6 +36,7 @@ const (
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"             //nolint:revive
 	XPackSecurityHttpSslCertificateAuthorities      = "xpack.security.http.ssl.certificate_authorities" //nolint:revive
+	XPackSecurityHttpSslClientAuthentication        = "xpack.security.http.ssl.client_authentication"   //nolint:revive
 	XPackSecurityHttpSslEnabled                     = "xpack.security.http.ssl.enabled"                 //nolint:revive
 	XPackSecurityHttpSslKey                         = "xpack.security.http.ssl.key"                     //nolint:revive
 	XPackSecurityTransportSslCertificate            = "xpack.security.transport.ssl.certificate"
@@ -59,6 +60,7 @@ var UnsupportedSettings = []string{
 	XPackSecurityAuthcReservedRealmEnabled,
 	XPackSecurityEnabled,
 	XPackSecurityHttpSslCertificate,
+	XPackSecurityHttpSslClientAuthentication,
 	XPackSecurityHttpSslEnabled,
 	XPackSecurityHttpSslKey,
 	XPackSecurityTransportSslCertificate,
