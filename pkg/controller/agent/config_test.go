@@ -4,6 +4,7 @@
 package agent
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
@@ -226,7 +227,7 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := extractClientConnectionSettings(tt.args.agent, tt.args.client, "kibana")
+			got, err := extractClientConnectionSettings(context.Background(), tt.args.agent, tt.args.client, "kibana")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractClientConnectionSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

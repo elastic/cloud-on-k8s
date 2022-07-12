@@ -82,8 +82,7 @@ func (f fleetAPI) request(
 	ctx context.Context,
 	method string,
 	pathWithQuery string,
-	requestObj,
-	responseObj interface{}) error {
+	requestObj, responseObj interface{}) error {
 	var body io.Reader = http.NoBody
 	if requestObj != nil {
 		outData, err := json.Marshal(requestObj)
@@ -214,7 +213,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) st
 		return ""
 	}
 
-	kbConnectionSettings, err := extractClientConnectionSettings(params.Agent, params.Client, commonv1.KibanaAssociationType)
+	kbConnectionSettings, err := extractClientConnectionSettings(params.Context, params.Agent, params.Client, commonv1.KibanaAssociationType)
 	if err != nil {
 		result.WithError(err)
 		return ""

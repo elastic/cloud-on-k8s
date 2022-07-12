@@ -190,6 +190,7 @@ func extractPodConnectionSettings(
 // extractClientConnectionSettings same as extractPodConnectionSettings but for use inside the operator or any other
 // client that needs direct access to the relevant CA certificates of the associated object (if TLS is configured)
 func extractClientConnectionSettings(
+	ctx context.Context,
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
@@ -202,10 +203,13 @@ func extractClientConnectionSettings(
 		return settings, nil
 	}
 	var caSecret corev1.Secret
-	if err := client.Get(context.Background(), types.NamespacedName{Name: assocConf.GetCASecretName(), Namespace: agent.Namespace}, &caSecret); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: assocConf.GetCASecretName(), Namespace: agent.Namespace}, &caSecret); err != nil {
 		return connectionSettings{}, err
 	}
-	bytes := caSecret.Data[CAFileName]
+	bytes, ok := caSecret.Data[CAFileName]
+	if !ok {
+		return connectionSettings{}, fmt.Errorf("no %s in %s", CAFileName, k8s.ExtractNamespacedName(&caSecret))
+	}
 	certs, err := certificates.ParsePEMCerts(bytes)
 	if err != nil {
 		return connectionSettings{}, err
