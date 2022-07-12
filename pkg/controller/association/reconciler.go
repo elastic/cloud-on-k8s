@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
@@ -148,9 +149,10 @@ func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, r.AssociationName)
-	defer tracing.EndTransaction(tx)
+	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	associated := r.AssociatedObjTemplate()
 	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {

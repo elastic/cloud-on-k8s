@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -112,7 +113,7 @@ func (o *Observer) observe() {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	if o.settings.Tracer != nil {
-		tx := o.settings.Tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
+		tx := o.settings.Tracer.StartTransaction("elasticsearch-observer", string(tracing.PeriodicTxType))
 		defer tx.End()
 		ctx = apm.ContextWithTransaction(ctx, tx)
 	}
