@@ -30,6 +30,7 @@ type baseClient struct {
 	es       types.NamespacedName
 	caCerts  []*x509.Certificate
 	version  version.Version
+	debug    bool
 }
 
 // Close idle connections in the underlying http client.
@@ -139,6 +140,12 @@ func (c *baseClient) request(
 		request.Header = make(http.Header)
 	}
 	request.Header.Set(commonhttp.InternalProductRequestHeaderKey, commonhttp.InternalProductRequestHeaderValue)
+
+	if c.debug {
+		q := request.URL.Query()
+		q.Add("error_trace", "true")
+		request.URL.RawQuery = q.Encode()
+	}
 
 	var skippedErr error
 	resp, err := c.doRequest(ctx, request)

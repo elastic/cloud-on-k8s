@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
@@ -221,5 +222,6 @@ func newElasticsearchClient(
 		v,
 		caCerts,
 		esclient.Timeout(es),
+		dev.Enabled,
 	), nil
 }

@@ -275,7 +275,7 @@ func TestAPIError_Error(t *testing.T) {
 			})},
 			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
 				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
-				`RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
+				`StackTrace: RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
 			name: "non-JSON error response",
@@ -284,7 +284,7 @@ func TestAPIError_Error(t *testing.T) {
 				Status:     "500 Internal Server Error",
 				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
 			})},
-			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: RootCause:[]}}",
+			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
 		},
 	}
 	for _, tt := range tests {
@@ -374,62 +374,62 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{}), false),
 			want: false,
 		},
 	}

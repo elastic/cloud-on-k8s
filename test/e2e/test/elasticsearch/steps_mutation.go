@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -253,10 +254,10 @@ func (hc *ContinuousHealthCheck) Start() {
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.
-					clusterUnavailability.markUnavailable()
+					clusterUnavailability.markUnavailable(err)
 					if clusterUnavailability.hasExceededThreshold() {
 						// cluster has been unavailable for too long
-						hc.AppendErr(err)
+						hc.AppendErr(clusterUnavailability.Errors())
 					}
 					continue
 				}
@@ -279,16 +280,21 @@ func (hc *ContinuousHealthCheck) Stop() {
 type clusterUnavailability struct {
 	start     time.Time
 	threshold time.Duration
+	errors    []error
 }
 
-func (cu *clusterUnavailability) markUnavailable() {
+func (cu *clusterUnavailability) markUnavailable(err error) {
 	if cu.start.IsZero() {
 		cu.start = time.Now()
+	}
+	if err != nil {
+		cu.errors = append(cu.errors, err)
 	}
 }
 
 func (cu *clusterUnavailability) markAvailable() {
 	cu.start = time.Time{}
+	cu.errors = nil
 }
 
 func (cu *clusterUnavailability) hasExceededThreshold() bool {
@@ -296,4 +302,8 @@ func (cu *clusterUnavailability) hasExceededThreshold() bool {
 		return false
 	}
 	return time.Since(cu.start) >= cu.threshold
+}
+
+func (cu *clusterUnavailability) Errors() error {
+	return k8serrors.NewAggregate(cu.errors)
 }
