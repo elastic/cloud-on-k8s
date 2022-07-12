@@ -131,16 +131,18 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	rawUrl := stringsutil.Concat(c.Endpoint, pathWithQuery)
+	rawURL := stringsutil.Concat(c.Endpoint, pathWithQuery)
 	if c.debug {
-		url, err := url.Parse(rawUrl)
+		url, err := url.Parse(rawURL)
 		if err != nil {
 			return err
 		}
-		url.Query().Set("error_trace", "true")
-		rawUrl = url.String()
+		q := url.Query()
+		q.Set("error_trace", "true")
+		url.RawQuery = q.Encode()
+		rawURL = url.String()
 	}
-	request, err := http.NewRequest(method, rawUrl, body) //nolint:noctx
+	request, err := http.NewRequest(method, rawURL, body) //nolint:noctx
 	if err != nil {
 		return err
 	}
