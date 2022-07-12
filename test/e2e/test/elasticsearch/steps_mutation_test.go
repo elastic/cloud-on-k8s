@@ -23,13 +23,13 @@ func Test_clusterUnavailability(t *testing.T) {
 	require.False(t, cu.hasExceededThreshold())
 
 	// mark the cluster as available, we're still below the threshold
-	cu.markUnavailable(errors.New("Connection refused"))
+	cu.markUnavailable(errors.New("connection refused"))
 	require.False(t, cu.start.IsZero())
 	require.False(t, cu.hasExceededThreshold())
 
 	// marking as unavailable again should not change the start time
 	initialStartTime := cu.start
-	cu.markUnavailable(errors.New("Context deadline exceeded"))
+	cu.markUnavailable(errors.New("context deadline exceeded"))
 	require.Equal(t, initialStartTime, cu.start)
 	require.False(t, cu.hasExceededThreshold())
 
@@ -39,7 +39,7 @@ func Test_clusterUnavailability(t *testing.T) {
 	require.False(t, cu.hasExceededThreshold())
 
 	// simulate a lower threshold we should have exceeded
-	cu.markUnavailable(errors.New("Something else"))
+	cu.markUnavailable(errors.New("something else"))
 	cu.threshold = time.Duration(0)
 	require.True(t, cu.hasExceededThreshold())
 }
