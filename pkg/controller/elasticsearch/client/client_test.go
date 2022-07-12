@@ -275,7 +275,7 @@ func TestAPIError_Error(t *testing.T) {
 			})},
 			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
 				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
-				`RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
+				`StackTrace: RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
 			name: "non-JSON error response",
@@ -284,7 +284,7 @@ func TestAPIError_Error(t *testing.T) {
 				Status:     "500 Internal Server Error",
 				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
 			})},
-			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: RootCause:[]}}",
+			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
 		},
 	}
 	for _, tt := range tests {

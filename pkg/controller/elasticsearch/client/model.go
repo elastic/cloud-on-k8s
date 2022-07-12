@@ -267,7 +267,7 @@ type ErrorResponse struct {
 		} `json:"caused_by"`
 		Reason     string `json:"reason"`
 		Type       string `json:"type"`
-		StackTrace string `json:"stack_trace"`
+		StackTrace string `json:"stack_trace,omitempty"`
 		RootCause  []struct {
 			Reason string `json:"reason"`
 			Type   string `json:"type"`
