@@ -127,6 +127,9 @@ type ElasticsearchSpec struct {
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type Monitoring struct {

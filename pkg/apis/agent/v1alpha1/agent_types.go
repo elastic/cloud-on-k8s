@@ -70,6 +70,9 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
@@ -107,19 +110,15 @@ type Output struct {
 
 type DaemonSetSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	PodTemplate          corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
-
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 type DeploymentSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	PodTemplate          corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	Replicas             *int32                 `json:"replicas,omitempty"`
-	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
-
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
 }

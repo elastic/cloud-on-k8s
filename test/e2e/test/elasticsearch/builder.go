@@ -412,18 +412,16 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 }
 
 func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
-	var newNodeSets []esv1.NodeSet
-	for nodeSetName, cfg := range nodeSetCfg {
-		for _, n := range b.Elasticsearch.Spec.NodeSets {
-			if n.Name == nodeSetName {
-				newCfg := n.Config.DeepCopy()
-				for k, v := range cfg {
-					newCfg.Data[k] = v
-				}
-				n.Config = newCfg
+	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
+	for _, n := range b.Elasticsearch.Spec.NodeSets {
+		if cfg, exists := nodeSetCfg[n.Name]; exists {
+			newCfg := n.Config.DeepCopy()
+			for k, v := range cfg {
+				newCfg.Data[k] = v
 			}
-			newNodeSets = append(newNodeSets, n)
+			n.Config = newCfg
 		}
+		newNodeSets = append(newNodeSets, n)
 	}
 	b.Elasticsearch.Spec.NodeSets = newNodeSets
 	return b

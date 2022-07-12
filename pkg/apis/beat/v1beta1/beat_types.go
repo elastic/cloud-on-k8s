@@ -79,6 +79,9 @@ type BeatSpec struct {
 	// Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type DaemonSetSpec struct {
