@@ -87,6 +87,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 		v,
 		caCert,
 		client.Timeout(es),
+		true,
 	)
 	return esClient, nil
 }

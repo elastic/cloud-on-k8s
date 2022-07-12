@@ -265,9 +265,10 @@ type ErrorResponse struct {
 			Reason string `json:"reason"`
 			Type   string `json:"type"`
 		} `json:"caused_by"`
-		Reason    string `json:"reason"`
-		Type      string `json:"type"`
-		RootCause []struct {
+		Reason     string `json:"reason"`
+		Type       string `json:"type"`
+		StackTrace string `json:"stack_trace"`
+		RootCause  []struct {
 			Reason string `json:"reason"`
 			Type   string `json:"type"`
 		} `json:"root_cause"`

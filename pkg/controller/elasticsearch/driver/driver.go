@@ -45,6 +45,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -364,6 +365,7 @@ func (d *defaultDriver) newElasticsearchClient(
 		v,
 		caCerts,
 		esclient.Timeout(d.ES),
+		dev.Enabled,
 	)
 }
 

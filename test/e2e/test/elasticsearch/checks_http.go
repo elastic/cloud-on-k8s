@@ -51,6 +51,7 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 			v,
 			caCert,
 			client.Timeout(es),
+			true,
 		)
 		_, err := esClient.GetClusterInfo(context.Background())
 		if err != nil {

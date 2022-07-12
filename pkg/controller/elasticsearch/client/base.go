@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,6 +31,7 @@ type baseClient struct {
 	es       types.NamespacedName
 	caCerts  []*x509.Certificate
 	version  version.Version
+	debug    bool
 }
 
 // Close idle connections in the underlying http client.
@@ -129,7 +131,16 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body) //nolint:noctx
+	rawUrl := stringsutil.Concat(c.Endpoint, pathWithQuery)
+	if c.debug {
+		url, err := url.Parse(rawUrl)
+		if err != nil {
+			return err
+		}
+		url.Query().Set("error_trace", "true")
+		rawUrl = url.String()
+	}
+	request, err := http.NewRequest(method, rawUrl, body) //nolint:noctx
 	if err != nil {
 		return err
 	}

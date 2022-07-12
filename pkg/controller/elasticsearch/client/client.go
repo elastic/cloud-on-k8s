@@ -147,6 +147,7 @@ func NewElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 	timeout time.Duration,
+	debug bool,
 ) Client {
 	base := &baseClient{
 		Endpoint: esURL,
@@ -154,6 +155,7 @@ func NewElasticsearchClient(
 		caCerts:  caCerts,
 		HTTP:     commonhttp.Client(dialer, caCerts, timeout),
 		es:       es,
+		debug:    debug,
 	}
 	return versioned(base, v)
 }
