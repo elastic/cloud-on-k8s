@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/types"
@@ -131,18 +130,7 @@ func (c *baseClient) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	rawURL := stringsutil.Concat(c.Endpoint, pathWithQuery)
-	if c.debug {
-		url, err := url.Parse(rawURL)
-		if err != nil {
-			return err
-		}
-		q := url.Query()
-		q.Set("error_trace", "true")
-		url.RawQuery = q.Encode()
-		rawURL = url.String()
-	}
-	request, err := http.NewRequest(method, rawURL, body) //nolint:noctx
+	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -152,6 +140,12 @@ func (c *baseClient) request(
 		request.Header = make(http.Header)
 	}
 	request.Header.Set(commonhttp.InternalProductRequestHeaderKey, commonhttp.InternalProductRequestHeaderValue)
+
+	if c.debug {
+		q := request.URL.Query()
+		q.Add("error_trace", "true")
+		request.URL.RawQuery = q.Encode()
+	}
 
 	var skippedErr error
 	resp, err := c.doRequest(ctx, request)
