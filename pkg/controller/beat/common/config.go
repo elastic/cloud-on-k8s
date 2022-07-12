@@ -7,6 +7,7 @@ package common
 import (
 	"hash"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,18 +15,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
-	esservices "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-const externalCAPath = "/tmp/external"
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
@@ -104,7 +103,7 @@ func buildBeatConfig(
 
 	// If monitoring is enabled, render the relevant section
 	if params.Beat.Spec.Monitoring.Enabled() {
-		monitoringConfig, err := getMonitoringConfig(params)
+		monitoringConfig, err := buildMonitoringConfig(params)
 		if err != nil {
 			return nil, err
 		}
@@ -130,9 +129,8 @@ func buildBeatConfig(
 	return cfg.Render()
 }
 
-// getMonitoringConfig returns the stack monitoring configuration for a Beats instance.
-// TODO: I believe the ssl pieces are remaining.
-func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error) {
+// buildMonitoringConfig builds the stack monitoring configuration for a Beats instance.
+func buildMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error) {
 	if len(params.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
 		return nil, errors.New("ElasticsearchRef must exist when stack monitoring is enabled")
 	}
@@ -145,69 +143,34 @@ func getMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error)
 
 	var username, password, url string
 	var sslConfig SSLConfig
-	if esRef.IsExternal() {
-		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(params.Client, esRef.WithDefaultNamespace(params.Beat.Namespace))
-		if err != nil {
-			return nil, err
-		}
+	associations := monitoring.GetMetricsAssociation(&params.Beat)
+	if len(associations) != 1 {
+		// should never happen because of the pre-creation validation
+		return nil, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
+	}
+	assoc := associations[0]
 
-		url = info.URL
-		username, password = info.Username, info.Password
-		if info.CaCert != "" {
-			// save the monitoring connection information so it doesn't have to be retrieved
-			// again later when buliding the secret which contains the CA.
-			params.monitoringAssociationConnectionInfo = info
-			if _, err := reconciler.ReconcileSecret(
-				params.Context,
-				params.Client,
-				corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      getMonitoringCASecretName(params.Beat.Name),
-						Namespace: params.Beat.Namespace,
-					},
-					Data: map[string][]byte{
-						"ca.crt": []byte(info.CaCert),
-					},
-				},
-				&params.Beat,
-			); err != nil {
-				return nil, errors.Wrap(err, "while creating external monitoring ca secret")
-			}
-		}
+	credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
+	if err != nil {
+		return nil, err
+	}
+
+	username, password = credentials.Username, credentials.Password
+
+	var assocConf *v1.AssociationConf
+	assocConf, err = assoc.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+
+	url = assocConf.GetURL()
+
+	caDirPath := certificatesDir(assoc)
+
+	if assocConf.GetCACertProvided() {
+		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
 		sslConfig = SSLConfig{
-			// configure the CA cert needed for external monitoring cluster.
-			// The secret, and volume for the pod will be created during pod templating.
-			CertificateAuthorities: []string{path.Join(externalCAPath, CAFileName)},
-			VerificationMode:       "certificate",
-		}
-	} else {
-		associations := monitoring.GetMetricsAssociation(&params.Beat)
-		if len(associations) != 1 {
-			// should never happen because of the pre-creation validation
-			return nil, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
-		}
-		assoc := associations[0]
-
-		credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
-		if err != nil {
-			return nil, err
-		}
-
-		username, password = credentials.Username, credentials.Password
-
-		associatedEsNsn := esRef.NamespacedName()
-		if associatedEsNsn.Namespace == "" {
-			associatedEsNsn.Namespace = params.Beat.Namespace
-		}
-
-		var es esv1.Elasticsearch
-		if err := params.Client.Get(params.Context, associatedEsNsn, &es); err != nil {
-			return nil, errors.Wrap(err, "while retrieving Beat stack monitoring Elasticsearch instance")
-		}
-
-		url = esservices.InternalServiceURL(es)
-		sslConfig = SSLConfig{
-			CertificateAuthorities: []string{"/etc/pki/root/tls.crt"},
+			CertificateAuthorities: []string{sslCAPath},
 			VerificationMode:       "certificate",
 		}
 	}

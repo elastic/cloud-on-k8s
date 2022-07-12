@@ -12,17 +12,79 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func Test_buildPodTemplate(t *testing.T) {
+	clientWithMonitoringEnabled := k8s.NewFakeClient(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "secret",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{"elastic": []byte("123")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "external-user-secret",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"elastic-external": []byte("asdf"),
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "external-es-monitoring",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"url":      []byte("https://external-es.external.com"),
+				"username": []byte("monitoring-user"),
+				"password": []byte("asdfasdf"),
+				"ca.crt":   []byte("my_pem_encoded_cert"),
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testes",
+				Namespace: "ns",
+			},
+		},
+	)
+	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
+	beatWithMonitoring := v1beta1.Beat{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "beat-name",
+			Namespace: "ns",
+		},
+		Spec: v1beta1.BeatSpec{
+			Version: "7.15.0",
+			Config:  userCfg,
+			Monitoring: v1beta1.Monitoring{
+				ElasticsearchRefs: []commonv1.ObjectSelector{
+					{
+						Name:      "testes",
+						Namespace: "ns",
+					},
+				},
+			},
+		}}
+	beatWithMonitoring.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret",
+		AuthSecretKey:  "elastic",
+		CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
+		URL:            "https://testes-es-internal-http.ns.svc:9200",
+	})
 	type args struct {
 		params       DriverParams
 		initialHash  hash.Hash32
@@ -39,6 +101,30 @@ func Test_buildPodTemplate(t *testing.T) {
 		args args
 		want want
 	}{
+		{
+			name: "deployment with monitoring enabled should have CA volume",
+			args: args{
+				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
+				params: DriverParams{
+					Watches: watches.NewDynamicWatches(),
+					Client:  clientWithMonitoringEnabled,
+					Beat:    beatWithMonitoring,
+				},
+				defaultImage: "beats/filebeat",
+			},
+			want: want{
+				initContainers: 0,
+				labels: map[string]string{
+					"beat.k8s.elastic.co/name":    "beat-name",
+					"beat.k8s.elastic.co/version": "7.15.0",
+					"common.k8s.elastic.co/type":  "beat",
+				},
+				annotations: map[string]string{
+					// SHA224 should be the same as the initial one.
+					"beat.k8s.elastic.co/config-hash": "3214735720",
+				},
+			},
+		},
 		{
 			name: "daemonset user-provided init containers should inherit from the default main container image",
 			args: args{
@@ -170,6 +256,9 @@ func Test_buildPodTemplate(t *testing.T) {
 				t.Errorf("Annotations do not match: %s", cmp.Diff(tt.want.annotations, podTemplateSpec.Annotations))
 				return
 			}
+			if tt.args.params.Beat.Spec.Monitoring.Enabled() {
+				assertMonitoring(t, podTemplateSpec.Spec.Volumes)
+			}
 		})
 	}
 }
@@ -180,7 +269,12 @@ var expectedConfigVolumeMode int32 = 292
 func assertInitContainers(t *testing.T, pod corev1.PodTemplateSpec, wantInitContainers int) {
 	t.Helper()
 	// Validate that init container is in the PodTemplate
-	assert.Len(t, pod.Spec.InitContainers, wantInitContainers)
+	require.Len(t, pod.Spec.InitContainers, wantInitContainers)
+	if wantInitContainers == 0 {
+		return
+	}
+	// Validate that the containers contains a container before referencing the first
+	require.NotEmpty(t, pod.Spec.Containers, "pod.Spec.Containers should not be empty")
 	// Image used by the init container and by the "main" container must be the same
 	assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
 }
@@ -195,10 +289,26 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 			break
 		}
 	}
-	assert.NotNil(t, configVolume)
+	require.NotNil(t, configVolume)
 	// Validate the mode
-	assert.NotNil(t, configVolume.DefaultMode, "default volume mode for beat configuration should not be nil")
+	require.NotNil(t, configVolume.DefaultMode, "default volume mode for beat configuration should not be nil")
 	assert.Equal(t, expectedConfigVolumeMode, *configVolume.DefaultMode)
+}
+
+func assertMonitoring(t *testing.T, volumes []corev1.Volume) {
+	t.Helper()
+	var monitoringVolume *corev1.Volume
+	// Validate that the Pod's volumes contain a Secret as a monitoring CA volume.
+	for _, vol := range volumes {
+		if vol.Name == "beat-monitoring-certs" {
+			foundVol := vol
+			monitoringVolume = &foundVol
+			break
+		}
+	}
+	require.NotNil(t, monitoringVolume)
+	require.NotNil(t, monitoringVolume.Secret)
+	assert.Equal(t, monitoringVolume.Secret.SecretName, "testbeat-es-testes-ns-monitoring-ca")
 }
 
 // newHash creates a hash with some initial data.

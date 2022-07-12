@@ -78,6 +78,15 @@ func Test_buildBeatConfig(t *testing.T) {
 				"ca.crt":   []byte("my_pem_encoded_cert"),
 			},
 		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testbeat-es-testes-ns-monitoring-ca",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"ca.crt": []byte("my_pem_encoded_cert"),
+			},
+		},
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "testes",
@@ -107,7 +116,7 @@ func Test_buildBeatConfig(t *testing.T) {
     password: "123"
     ssl:
       certificate_authorities:
-        - "/etc/pki/root/tls.crt"
+        - "/mnt/elastic-internal/beat-monitoring-certs/ca.crt"
       verification_mode: "certificate"
 `))
 	externalMonitoringYaml := settings.MustParseConfig([]byte(`monitoring:
@@ -139,6 +148,13 @@ func Test_buildBeatConfig(t *testing.T) {
 	withAssocWithCA := *withAssoc.DeepCopy()
 
 	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssocWithCA}
+	esAssocWithCA.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret",
+		AuthSecretKey:  "elastic",
+		CACertProvided: true,
+		CASecretName:   "secret2",
+		URL:            "url",
+	})
 	assocConf, err := esAssocWithCA.AssociationConf()
 	require.NoError(t, err)
 	assocConf.CACertProvided = true
@@ -193,6 +209,8 @@ func Test_buildBeatConfig(t *testing.T) {
 				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
 					AuthSecretName: "secret",
 					AuthSecretKey:  "elastic",
+					CACertProvided: true,
+					CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
 					URL:            "https://testes-es-internal-http.ns.svc:9200",
 				})
 				return b
@@ -220,7 +238,11 @@ func Test_buildBeatConfig(t *testing.T) {
 						},
 					}}
 				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
-					URL: "https://testes-es-internal-http.ns.svc:9200",
+					AuthSecretName: "secret",
+					AuthSecretKey:  "elastic",
+					CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
+					CACertProvided: true,
+					URL:            "https://testes-es-internal-http.ns.svc:9200",
 				})
 				return b
 			},

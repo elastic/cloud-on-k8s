@@ -115,18 +115,6 @@ func buildPodTemplate(
 		vols = append(vols, caVolume)
 	}
 
-	// if the monitoring connection information isn't empty
-	// then we need to create the secret volume for the CA.
-	if params.monitoringAssociationConnectionInfo != nil {
-		monitoringCASecretName := getMonitoringCASecretName(params.Beat.Name)
-		caVolume := volume.NewSecretVolumeWithMountPath(
-			monitoringCASecretName,
-			monitoringCASecretName,
-			externalCAPath,
-		)
-		vols = append(vols, caVolume)
-	}
-
 	volumes := make([]corev1.Volume, 0, len(vols))
 	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
 	var initContainers []corev1.Container
