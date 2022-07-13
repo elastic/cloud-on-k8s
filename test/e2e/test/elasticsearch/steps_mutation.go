@@ -291,7 +291,6 @@ func (cu *clusterUnavailability) markUnavailable(err error) {
 		cu.start = time.Now()
 	}
 	if err != nil {
-		fmt.Printf("Unavailablity observed: %s\n", err)
 		cu.errors = append(cu.errors, err)
 	}
 }
