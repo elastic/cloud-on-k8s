@@ -40,6 +40,8 @@ func Test_clusterUnavailability(t *testing.T) {
 
 	// simulate a lower threshold we should have exceeded
 	cu.markUnavailable(errors.New("something else"))
+	cu.markUnavailable(errors.New("this is bad too"))
 	cu.threshold = time.Duration(0)
 	require.True(t, cu.hasExceededThreshold())
+	require.Equal(t, "[something else, this is bad too]", cu.Errors().Error())
 }
