@@ -24,9 +24,10 @@ import (
 )
 
 const (
-	// as of 8.3. we see longer response times during master changes, some of them seemingly return with 400 Bad Request.
+	// As of 8.3 we see longer response times during master changes, some of them seemingly return with 400 Bad Request.
 	// Extending the request timeout to debug these requests. Once the problem is better understood we can
 	// instead increase the cluster unavailability threshold.
+	// See https://github.com/elastic/cloud-on-k8s/issues/5865.
 	continuousHealthCheckTimeout = 30 * time.Second
 )
 
