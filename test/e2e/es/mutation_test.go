@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -162,8 +163,15 @@ func TestMutationSecondMasterSet(t *testing.T) {
 func TestMutationSecondMasterSetDown(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
-		WithESMasterNodes(3, elasticsearch.DefaultResources).
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithESMasterNodes(3, elasticsearch.DefaultResources)
+
+	// scale down to single node
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	// added to debug https://github.com/elastic/cloud-on-k8s/issues/5865 can be removed once stable
+	if version.MustParse(b.Elasticsearch.Spec.Version).GTE(version.MinFor(7, 7, 0)) {
+		b = b.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
@@ -174,15 +182,13 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 			},
 		})
 
-	// scale down to single node
-	mutated := b.WithNoESTopology().
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).WithAdditionalConfig(map[string]map[string]interface{}{
-		"masterdata": {
-			"logger.org.elasticsearch.http.HttpTracer": "TRACE",
-			"http.tracer.include":                      []string{"*_cluster/health*"},
-		},
-	})
-
+		mutated = mutated.WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+		})
+	}
 	RunESMutation(t, b, mutated)
 }
 
