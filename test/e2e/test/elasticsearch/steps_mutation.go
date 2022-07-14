@@ -24,11 +24,7 @@ import (
 )
 
 const (
-	// As of 8.3 we see longer response times during master changes, some of them seemingly return with 400 Bad Request.
-	// Extending the request timeout to debug these requests. Once the problem is better understood we can
-	// instead increase the cluster unavailability threshold.
-	// See https://github.com/elastic/cloud-on-k8s/issues/5865.
-	continuousHealthCheckTimeout = 30 * time.Second
+	continuousHealthCheckTimeout = 5 * time.Second
 )
 
 // clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
@@ -39,11 +35,17 @@ func clusterUnavailabilityThreshold(b Builder) time.Duration {
 		cluster = b.MutatedFrom.Elasticsearch
 	}
 	v := version.MustParse(cluster.Spec.Version)
-	if (&v).GTE(version.MustParse("7.2.0")) {
+	switch {
+	case (&v).GTE(version.MinFor(8, 3, 0)):
+		// as of 8.3. we see longer unavailability. This increases the timeout until the underlying problem is better understood,
+		// see: https://github.com/elastic/cloud-on-k8s/issues/5865
+		return 40 * time.Second
+	case (&v).GTE(version.MinFor(7, 2, 0)):
 		// in version 7.2 and above, there is usually close to zero unavailability when a master node is killed
-		// we still keep an arbitrary safety margin
+		// we still keep an arbitrary safety margin.
 		return 20 * time.Second
 	}
+
 	// in other versions (< 7.2), we commonly get about 50sec unavailability, and more on a stressed test environment
 	// let's take a larger arbitrary safety margin
 	return 120 * time.Second
