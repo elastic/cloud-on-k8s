@@ -128,7 +128,7 @@ func Test_buildBeatConfig(t *testing.T) {
     password: asdfasdf
     ssl:
       certificate_authorities:
-        - /tmp/external/ca.crt
+        - "/mnt/elastic-internal/beat-monitoring-certs/ca.crt"
       verification_mode: "certificate"
 `))
 
@@ -237,12 +237,12 @@ func Test_buildBeatConfig(t *testing.T) {
 							},
 						},
 					}}
-				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "secret",
-					AuthSecretKey:  "elastic",
+				b.MonitoringAssociation(commonv1.ObjectSelector{SecretName: "external-es-monitoring", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName: "external-es-monitoring",
+					AuthSecretKey:  "password",
 					CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
 					CACertProvided: true,
-					URL:            "https://testes-es-internal-http.ns.svc:9200",
+					URL:            "https://external-es.external.com",
 				})
 				return b
 			},
