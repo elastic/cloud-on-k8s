@@ -19,14 +19,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/daemonset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, agentv1alpha1.AgentStatus) {
@@ -94,7 +94,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Labels:               NewLabels(rp.agent),
 		PodTemplateSpec:      rp.podTemplate,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
-		RevisionHistoryLimit: pointer.Int32OrDefault(rp.agent.Spec.Deployment.RevisionHistoryLimit, int32(10)),
+		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
@@ -116,7 +116,7 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Owner:                &rp.agent,
 		Labels:               NewLabels(rp.agent),
 		Selectors:            NewLabels(rp.agent),
-		RevisionHistoryLimit: pointer.Int32OrDefault(rp.agent.Spec.DaemonSet.RevisionHistoryLimit, int32(10)),
+		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
 

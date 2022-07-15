@@ -10,8 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 )
 
 var (

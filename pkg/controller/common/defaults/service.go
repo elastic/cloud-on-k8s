@@ -7,7 +7,7 @@ package defaults
 import (
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // SetServiceDefaults updates the service with the provided defaults if they are not already set.

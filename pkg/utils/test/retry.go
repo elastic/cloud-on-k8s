@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
 )
 
 // Default values to be used for testing purpose.

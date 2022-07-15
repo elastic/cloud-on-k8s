@@ -12,9 +12,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 // Info represents the response from /
@@ -265,9 +265,10 @@ type ErrorResponse struct {
 			Reason string `json:"reason"`
 			Type   string `json:"type"`
 		} `json:"caused_by"`
-		Reason    string `json:"reason"`
-		Type      string `json:"type"`
-		RootCause []struct {
+		Reason     string `json:"reason"`
+		Type       string `json:"type"`
+		StackTrace string `json:"stack_trace,omitempty"`
+		RootCause  []struct {
 			Reason string `json:"reason"`
 			Type   string `json:"type"`
 		} `json:"root_cause"`

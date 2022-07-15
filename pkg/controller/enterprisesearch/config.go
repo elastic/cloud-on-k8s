@@ -15,19 +15,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	kibana_network "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	kibana_network "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 const (
@@ -77,7 +78,7 @@ func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.Ent
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ent.Namespace,
 			Name:      ConfigName(ent.Name),
-			Labels:    common.AddCredentialsLabel(Labels(ent.Name)),
+			Labels:    labels.AddCredentialsLabel(Labels(ent.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename:         cfgBytes,

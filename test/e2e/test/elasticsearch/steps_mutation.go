@@ -13,13 +13,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/generation"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
 
 const (
@@ -34,11 +35,17 @@ func clusterUnavailabilityThreshold(b Builder) time.Duration {
 		cluster = b.MutatedFrom.Elasticsearch
 	}
 	v := version.MustParse(cluster.Spec.Version)
-	if (&v).GTE(version.MustParse("7.2.0")) {
+	switch {
+	case (&v).GTE(version.MinFor(8, 3, 0)):
+		// as of 8.3. we see longer unavailability. This increases the timeout until the underlying problem is better understood,
+		// see: https://github.com/elastic/cloud-on-k8s/issues/5865
+		return 40 * time.Second
+	case (&v).GTE(version.MinFor(7, 2, 0)):
 		// in version 7.2 and above, there is usually close to zero unavailability when a master node is killed
-		// we still keep an arbitrary safety margin
+		// we still keep an arbitrary safety margin.
 		return 20 * time.Second
 	}
+
 	// in other versions (< 7.2), we commonly get about 50sec unavailability, and more on a stressed test environment
 	// let's take a larger arbitrary safety margin
 	return 120 * time.Second
@@ -253,10 +260,10 @@ func (hc *ContinuousHealthCheck) Start() {
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.
-					clusterUnavailability.markUnavailable()
+					clusterUnavailability.markUnavailable(err)
 					if clusterUnavailability.hasExceededThreshold() {
 						// cluster has been unavailable for too long
-						hc.AppendErr(err)
+						hc.AppendErr(clusterUnavailability.Errors())
 					}
 					continue
 				}
@@ -279,16 +286,21 @@ func (hc *ContinuousHealthCheck) Stop() {
 type clusterUnavailability struct {
 	start     time.Time
 	threshold time.Duration
+	errors    []error
 }
 
-func (cu *clusterUnavailability) markUnavailable() {
+func (cu *clusterUnavailability) markUnavailable(err error) {
 	if cu.start.IsZero() {
 		cu.start = time.Now()
+	}
+	if err != nil {
+		cu.errors = append(cu.errors, err)
 	}
 }
 
 func (cu *clusterUnavailability) markAvailable() {
 	cu.start = time.Time{}
+	cu.errors = nil
 }
 
 func (cu *clusterUnavailability) hasExceededThreshold() bool {
@@ -296,4 +308,8 @@ func (cu *clusterUnavailability) hasExceededThreshold() bool {
 		return false
 	}
 	return time.Since(cu.start) >= cu.threshold
+}
+
+func (cu *clusterUnavailability) Errors() error {
+	return k8serrors.NewAggregate(cu.errors)
 }

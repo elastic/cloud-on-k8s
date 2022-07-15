@@ -18,10 +18,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 // TestMutationHTTPToHTTPS creates a 3 node cluster running without TLS on the HTTP layer,
@@ -168,6 +169,26 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 	mutated := b.WithNoESTopology().
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
+	// added to debug https://github.com/elastic/cloud-on-k8s/issues/5865 can be removed once stable
+	if version.MustParse(b.Elasticsearch.Spec.Version).GTE(version.MinFor(7, 7, 0)) {
+		b = b.WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+			"master": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+		})
+
+		mutated = mutated.WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": {
+				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
+				"http.tracer.include":                      []string{"*_cluster/health*"},
+			},
+		})
+	}
 	RunESMutation(t, b, mutated)
 }
 

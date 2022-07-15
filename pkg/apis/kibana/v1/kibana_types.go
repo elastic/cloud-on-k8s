@@ -11,8 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 const (
@@ -91,6 +91,9 @@ type KibanaSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`

@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 const (
@@ -86,6 +86,9 @@ type BeatSpec struct {
 	// or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 type DaemonSetSpec struct {

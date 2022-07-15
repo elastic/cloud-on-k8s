@@ -24,24 +24,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -146,9 +146,9 @@ var _ driver.Interface = &ReconcileMapsServer{}
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec
 func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "maps")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "maps_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the EMS object
 	var ems emsv1alpha1.ElasticMapsServer
@@ -164,7 +164,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if common.IsUnmanaged(&ems) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "name", ems.Name)
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -195,7 +195,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 
 	if !enabled {
 		msg := "Elastic Maps Server is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg, "namespace", ems.Namespace, "name", ems.Name)
+		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
 		r.recorder.Eventf(&ems, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status

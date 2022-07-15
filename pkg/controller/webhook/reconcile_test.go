@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 )
 
 func TestParams_ReconcileResources(t *testing.T) {

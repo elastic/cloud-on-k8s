@@ -16,14 +16,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (
@@ -412,18 +412,16 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 }
 
 func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
-	var newNodeSets []esv1.NodeSet
-	for nodeSetName, cfg := range nodeSetCfg {
-		for _, n := range b.Elasticsearch.Spec.NodeSets {
-			if n.Name == nodeSetName {
-				newCfg := n.Config.DeepCopy()
-				for k, v := range cfg {
-					newCfg.Data[k] = v
-				}
-				n.Config = newCfg
+	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
+	for _, n := range b.Elasticsearch.Spec.NodeSets {
+		if cfg, exists := nodeSetCfg[n.Name]; exists {
+			newCfg := n.Config.DeepCopy()
+			for k, v := range cfg {
+				newCfg.Data[k] = v
 			}
-			newNodeSets = append(newNodeSets, n)
+			n.Config = newCfg
 		}
+		newNodeSets = append(newNodeSets, n)
 	}
 	b.Elasticsearch.Spec.NodeSets = newNodeSets
 	return b

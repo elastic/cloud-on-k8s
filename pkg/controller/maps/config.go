@@ -12,17 +12,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 const (
@@ -51,7 +52,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ems.Namespace,
 			Name:      Config(ems.Name),
-			Labels:    common.AddCredentialsLabel(labels(ems.Name)),
+			Labels:    commonlabels.AddCredentialsLabel(labels(ems.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

@@ -18,13 +18,13 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func newReconcileAgent(objs ...runtime.Object) *ReconcileAgent {
@@ -149,7 +149,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testAgent-agent",
 						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3363336355"),
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "2370142397"),
 					},
 					Status: appsv1.DeploymentStatus{
 						AvailableReplicas: 1,

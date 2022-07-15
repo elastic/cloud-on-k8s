@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 )
 
 type AutoscalingClient interface {

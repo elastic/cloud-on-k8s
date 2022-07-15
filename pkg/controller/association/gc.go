@@ -15,9 +15,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -88,13 +88,13 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 
 func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
-	userLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
+	userLabels := client.MatchingLabels(map[string]string{labels.TypeLabelName: esuser.AssociatedUserType})
 	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), userLabels); err != nil {
 		return nil, err
 	}
 
 	serviceAccountSecrets := v1.SecretList{}
-	serviceAccountLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.ServiceAccountTokenType})
+	serviceAccountLabels := client.MatchingLabels(map[string]string{labels.TypeLabelName: esuser.ServiceAccountTokenType})
 	if err := c.List(context.Background(), &serviceAccountSecrets, client.InNamespace(namespace), serviceAccountLabels); err != nil {
 		return nil, err
 	}

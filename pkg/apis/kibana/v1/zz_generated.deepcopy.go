@@ -10,7 +10,7 @@
 package v1
 
 import (
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -162,6 +162,11 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.RevisionHistoryLimit != nil {
+		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
+		*out = new(int32)
+		**out = **in
+	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
 		*out = make([]commonv1.SecretSource, len(*in))

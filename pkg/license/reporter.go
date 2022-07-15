@@ -11,8 +11,8 @@ import (
 	"go.elastic.co/apm/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter
@@ -61,7 +61,7 @@ func (r ResourceReporter) Start(ctx context.Context, refreshPeriod time.Duration
 
 // Report licensing information by publishing metrics and updating the config map.
 func (r ResourceReporter) Report(ctx context.Context) error {
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "resource-reporter", "license_info", nil)
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "resource-reporter", nil)
 	defer tracing.EndContextTransaction(ctx)
 
 	licensingInfo, err := r.Get(ctx)

@@ -34,6 +34,7 @@
 [float]
 === Bug fixes
 
+* Do not use service accounts until Elasticsearch nodes have been upgraded {pull}5830[#5830] (issue: {issue}5684[#5684])
 * Ensure CA is always updated in HTTP Secret {pull}5622[#5622] (issue: {issue}5621[#5621])
 * Fix resources limits conversion in ToInt64() used for logging {pull}5596[#5596]
 * Fix non-closed http responses {pull}5755[#5755]

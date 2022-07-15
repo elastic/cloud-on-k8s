@@ -14,12 +14,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -111,7 +112,7 @@ func reconcilePredefinedUsers(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: secretNsn.Namespace,
 			Name:      secretNsn.Name,
-			Labels:    common.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
+			Labels:    labels.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
 		},
 		Data: secretData,
 	}

@@ -15,14 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 func TestSamples(t *testing.T) {

@@ -14,11 +14,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	commonlicense "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 var log = ulog.Log.WithName("elasticsearch-controller")

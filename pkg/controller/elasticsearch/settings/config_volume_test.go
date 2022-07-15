@@ -13,10 +13,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestConfigSecretName(t *testing.T) {

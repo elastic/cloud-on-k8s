@@ -11,16 +11,17 @@ import (
 	"fmt"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 // TestKibanaStandalone tests running Kibana without an automatic association to Elasticsearch.

@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // doRun runs the main chaos process. It randomly deletes operator Pods, scale up and down operator replicas and attempts

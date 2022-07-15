@@ -12,9 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 type Params struct {
@@ -23,7 +23,7 @@ type Params struct {
 	Owner                metav1.Object
 	Labels               map[string]string
 	Selectors            map[string]string
-	RevisionHistoryLimit int32
+	RevisionHistoryLimit *int32
 	Strategy             appsv1.DaemonSetUpdateStrategy
 }
 
@@ -39,7 +39,7 @@ func New(params Params) appsv1.DaemonSet {
 				MatchLabels: params.Selectors,
 			},
 			Template:             params.PodTemplate,
-			RevisionHistoryLimit: &params.RevisionHistoryLimit,
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			UpdateStrategy:       params.Strategy,
 		},
 	}

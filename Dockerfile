@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM golang:1.18.3 as builder
+FROM --platform=$TARGETPLATFORM golang:1.18.4 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       go build \
       -mod readonly \
       -ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
-      -o elastic-operator github.com/elastic/cloud-on-k8s/cmd
+      -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 # Copy the operator binary into a lighter image
 FROM gcr.io/distroless/static:nonroot

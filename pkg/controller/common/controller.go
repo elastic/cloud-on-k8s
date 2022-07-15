@@ -14,9 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // NewController creates a new controller with the given name, reconciler and parameters and registers it with the manager.
@@ -38,9 +38,9 @@ func NewReconciliationContext(
 	newCtx := tracing.NewContextTransaction(
 		ctx,
 		tracer,
+		tracing.ReconciliationTxType,
 		controllerName,
-		request.String(),
-		map[string]string{"iteration": itString})
+		map[string]string{"iteration": itString, "name": request.Name, "namespace": request.Namespace})
 	return logconf.InitInContext(
 		newCtx,
 		controllerName,

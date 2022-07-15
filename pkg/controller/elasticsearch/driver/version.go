@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 )
 
 func (d *defaultDriver) verifySupportsExistingPods(pods []corev1.Pod) error {

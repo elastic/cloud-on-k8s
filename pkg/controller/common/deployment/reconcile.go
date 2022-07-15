@@ -12,9 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Params to specify a Deployment specification.
@@ -25,7 +25,7 @@ type Params struct {
 	Labels               map[string]string
 	PodTemplateSpec      corev1.PodTemplateSpec
 	Replicas             int32
-	RevisionHistoryLimit int32
+	RevisionHistoryLimit *int32
 	Strategy             appsv1.DeploymentStrategy
 }
 
@@ -38,7 +38,7 @@ func New(params Params) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			RevisionHistoryLimit: &params.RevisionHistoryLimit,
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},

@@ -15,22 +15,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/license"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 const (
@@ -131,7 +131,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}
 }
 
 func (r *Reporter) report(ctx context.Context) {
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "telemetry-reporter", "report", nil)
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "telemetry-reporter", nil)
 	defer tracing.EndContextTransaction(ctx)
 
 	stats, err := r.getResourceStats(ctx)

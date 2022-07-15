@@ -11,10 +11,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

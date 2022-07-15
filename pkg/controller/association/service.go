@@ -11,8 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // ServiceURL calculates the URL for the service identified by serviceNSN using protocol.

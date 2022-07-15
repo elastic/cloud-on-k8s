@@ -14,10 +14,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
@@ -73,8 +73,8 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 					r, err := http.NewRequest(http.MethodPut, "/test-index", bytes.NewBufferString(settings))
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close() // nolint
 					require.NoError(t, err)
+					defer response.Body.Close() // nolint
 				},
 			},
 			// wait for the cluster to become red
@@ -88,8 +88,8 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 					r, err := http.NewRequest(http.MethodDelete, "/test-index", nil)
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close() // nolint
 					require.NoError(t, err)
+					defer response.Body.Close() // nolint
 				},
 			},
 		},

@@ -14,12 +14,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(
@@ -93,13 +93,14 @@ func (r *ReconcileApmServer) deploymentParams(
 	}
 
 	return deployment.Params{
-		Name:            Deployment(as.Name),
-		Namespace:       as.Namespace,
-		Replicas:        as.Spec.Count,
-		Selector:        NewLabels(as.Name),
-		Labels:          NewLabels(as.Name),
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 Deployment(as.Name),
+		Namespace:            as.Namespace,
+		Replicas:             as.Spec.Count,
+		Selector:             NewLabels(as.Name),
+		Labels:               NewLabels(as.Name),
+		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }
 

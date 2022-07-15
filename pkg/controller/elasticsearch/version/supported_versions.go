@@ -4,7 +4,7 @@
 
 package version
 
-import "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 
 // SupportedVersions returns the supported minor versions for given major version
 func SupportedVersions(v version.Version) *version.MinMaxVersion {

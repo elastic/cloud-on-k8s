@@ -10,10 +10,10 @@ import (
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
@@ -45,12 +45,13 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            DeploymentName(ent.Name),
-		Namespace:       ent.Namespace,
-		Replicas:        ent.Spec.Count,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+		Name:                 DeploymentName(ent.Name),
+		Namespace:            ent.Namespace,
+		Replicas:             ent.Spec.Count,
+		Selector:             deploymentLabels,
+		Labels:               deploymentLabels,
+		RevisionHistoryLimit: ent.Spec.RevisionHistoryLimit,
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 	}, nil
 }

@@ -14,11 +14,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 const (
@@ -60,6 +60,7 @@ type Client interface {
 	DesiredNodesClient
 	ShardLister
 	LicenseClient
+	SecurityClient
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.
@@ -146,13 +147,15 @@ func NewElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 	timeout time.Duration,
+	debug bool,
 ) Client {
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
+		HTTP:     commonhttp.Client(dialer, caCerts, timeout),
 		es:       es,
+		debug:    debug,
 	}
 	return versioned(base, v)
 }

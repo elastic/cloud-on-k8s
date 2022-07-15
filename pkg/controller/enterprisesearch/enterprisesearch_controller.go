@@ -23,21 +23,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -143,9 +143,9 @@ var _ driver.Interface = &ReconcileEnterpriseSearch{}
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
 func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "ent_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "enterprisesearch")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "ent_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	var ent entv1.EnterpriseSearch
 	if err := r.Client.Get(ctx, request.NamespacedName, &ent); err != nil {

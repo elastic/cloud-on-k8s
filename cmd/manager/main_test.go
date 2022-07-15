@@ -21,13 +21,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.Secret {

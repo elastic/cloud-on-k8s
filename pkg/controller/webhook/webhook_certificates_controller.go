@@ -6,7 +6,6 @@ package webhook
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -20,13 +19,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -54,8 +53,8 @@ type ReconcileWebhookResources struct {
 }
 
 func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
-	ctx = tracing.NewContextTransaction(ctx, r.tracer, "webhook", "reconcile", map[string]string{"iteration": strconv.FormatUint(r.iteration, 10)})
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.tracer, ControllerName, "validating_webhook_configuration", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	res := r.reconcileInternal(ctx)

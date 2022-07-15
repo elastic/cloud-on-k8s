@@ -22,30 +22,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	commonversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/observer"
+	esreconcile "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	esversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const name = "elasticsearch-controller"
@@ -155,9 +155,9 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "elasticsearch")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the Elasticsearch instance
 	var es esv1.Elasticsearch
@@ -251,7 +251,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	err := validation.ValidateElasticsearch(es, r.ExposedNodeLabels)
+	err := validation.ValidateElasticsearch(es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
 
 	if err != nil {

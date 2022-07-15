@@ -7,7 +7,7 @@ package test
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func Test_IsGKE(t *testing.T) {

@@ -15,22 +15,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 type EsClientProvider func(ctx context.Context, c k8s.Client, dialer net.Dialer, es esv1.Elasticsearch) (esclient.Client, error)
@@ -78,7 +79,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 // _autoscaling/capacity API and given the constraints provided by the user in the autoscaling specification.
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "es_name", request)
-	defer common.LogReconciliationRunNoSideEffects(logconf.FromContext(ctx))()
+	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the Elasticsearch instance
@@ -117,7 +118,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	// Validate Elasticsearch and Autoscaling spec
-	if err := validation.ValidateElasticsearch(es, r.ExposedNodeLabels); err != nil {
+	if err := validation.ValidateElasticsearch(es, r.licenseChecker, r.ExposedNodeLabels); err != nil {
 		log.Error(
 			err,
 			"Elasticsearch manifest validation failed",
@@ -221,5 +222,6 @@ func newElasticsearchClient(
 		v,
 		caCerts,
 		esclient.Timeout(es),
+		dev.Enabled,
 	), nil
 }

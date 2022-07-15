@@ -14,14 +14,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
@@ -96,7 +97,7 @@ func reconcileEsUserSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
-			Labels:    common.AddCredentialsLabel(labels),
+			Labels:    commonlabels.AddCredentialsLabel(labels),
 		},
 		Data: map[string][]byte{},
 	}

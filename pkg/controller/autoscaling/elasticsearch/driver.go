@@ -15,14 +15,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/autoscaler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	logconf "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/autoscaler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func (r *ReconcileElasticsearch) reconcileInternal(

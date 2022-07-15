@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"strconv"
 
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 )
 
 func HasEventFromBeat(name beatcommon.Type) ValidationFunc {

@@ -12,10 +12,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const webhookServiceName = "elastic-webhook-server"

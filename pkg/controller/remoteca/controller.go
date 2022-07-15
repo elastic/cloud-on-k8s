@@ -18,18 +18,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 const (
@@ -83,9 +85,9 @@ type ReconcileRemoteCa struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "remoteca")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the local Elasticsearch spec
 	es := esv1.Elasticsearch{}
@@ -280,7 +282,7 @@ func remoteClustersInvolvedWith(
 	if err := c.List(ctx,
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:            remoteca.TypeLabelValue,
+			labels.TypeLabelName:            remoteca.TypeLabelValue,
 			RemoteClusterNamespaceLabelName: es.Namespace,
 			RemoteClusterNameLabelName:      es.Name,
 		}),

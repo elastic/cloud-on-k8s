@@ -10,15 +10,15 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 // getNodeSettings returns the node settings for a given Pod.
@@ -570,13 +570,13 @@ var predicates = [...]Predicate{
 				return true, nil
 			}
 
-			healthyPodRoleHisto := map[common.TrueFalseLabel]int{}
-			currentPodRoleHisto := map[common.TrueFalseLabel]int{}
+			healthyPodRoleHisto := map[labels.TrueFalseLabel]int{}
+			currentPodRoleHisto := map[labels.TrueFalseLabel]int{}
 			// look at the current pods because we want to prevent taking away from current capacity for a tier
 			// not future capacity as per the expected Pod definitions expressed in the resourcesList
 			for _, pod := range context.currentPods {
 				// ignore voting_only and master we are handling those in dedicated predicates
-				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+				forEachNonMasterRole(pod, func(role labels.TrueFalseLabel) {
 					currentPodRoleHisto[role]++
 				})
 			}
@@ -587,7 +587,7 @@ var predicates = [...]Predicate{
 				if pod.Name == candidate.Name {
 					continue
 				}
-				forEachNonMasterRole(pod, func(role common.TrueFalseLabel) {
+				forEachNonMasterRole(pod, func(role labels.TrueFalseLabel) {
 					healthyPodRoleHisto[role]++
 				})
 			}
@@ -617,7 +617,7 @@ var predicates = [...]Predicate{
 	},
 }
 
-func forEachNonMasterRole(pod corev1.Pod, f func(falseLabel common.TrueFalseLabel)) {
+func forEachNonMasterRole(pod corev1.Pod, f func(falseLabel labels.TrueFalseLabel)) {
 	for _, role := range label.NonMasterRoles {
 		if role.HasValue(true, pod.Labels) {
 			f(role)

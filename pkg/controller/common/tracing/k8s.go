@@ -10,7 +10,7 @@ import (
 	"go.elastic.co/apm/v2"
 	"k8s.io/client-go/transport"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing/apmclientgo"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing/apmclientgo"
 )
 
 func ClientGoTransportWrapper(o ...apmclientgo.ClientOption) transport.WrapperFunc {
@@ -28,6 +28,6 @@ func ClientGoCacheTx(tracer *apm.Tracer) func() *apm.Transaction {
 			return nil
 		}
 		// if no transaction is running assume we are tracing cache refresh requests from client-go
-		return tracer.StartTransaction("cache", "client-go")
+		return tracer.StartTransaction("client-go", string(PeriodicTxType))
 	}
 }

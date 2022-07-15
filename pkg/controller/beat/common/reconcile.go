@@ -18,13 +18,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/daemonset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (*reconciler.Results, *beatv1beta1.BeatStatus) {
@@ -90,13 +90,14 @@ type ReconciliationParams struct {
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
-		Name:            Name(rp.beat.Name, rp.beat.Spec.Type),
-		Namespace:       rp.beat.Namespace,
-		Selector:        NewLabels(rp.beat),
-		Labels:          NewLabels(rp.beat),
-		PodTemplateSpec: rp.podTemplate,
-		Replicas:        pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
-		Strategy:        rp.beat.Spec.Deployment.Strategy,
+		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
+		Namespace:            rp.beat.Namespace,
+		Selector:             NewLabels(rp.beat),
+		Labels:               NewLabels(rp.beat),
+		PodTemplateSpec:      rp.podTemplate,
+		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
+		Replicas:             pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
+		Strategy:             rp.beat.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
 		return 0, 0, err
@@ -112,12 +113,13 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	ds := daemonset.New(daemonset.Params{
-		PodTemplate: rp.podTemplate,
-		Name:        Name(rp.beat.Name, rp.beat.Spec.Type),
-		Owner:       &rp.beat,
-		Labels:      NewLabels(rp.beat),
-		Selectors:   NewLabels(rp.beat),
-		Strategy:    rp.beat.Spec.DaemonSet.UpdateStrategy,
+		PodTemplate:          rp.podTemplate,
+		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
+		Owner:                &rp.beat,
+		Labels:               NewLabels(rp.beat),
+		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
+		Selectors:            NewLabels(rp.beat),
+		Strategy:             rp.beat.Spec.DaemonSet.UpdateStrategy,
 	})
 
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {

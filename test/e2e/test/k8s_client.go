@@ -27,24 +27,24 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/agent"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 type K8sClient struct {
@@ -373,7 +373,7 @@ func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
 func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(esNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:       label.Type,
+		labels.TypeLabelName:       label.Type,
 		label.ClusterNameLabelName: esName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
@@ -400,7 +400,7 @@ func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(apmNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:             apmserver.Type,
+		labels.TypeLabelName:             apmserver.Type,
 		apmserver.ApmServerNameLabelName: apmName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
@@ -409,7 +409,7 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 func EnterpriseSearchPodListOptions(entNamespace, entName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(entNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:                           enterprisesearch.Type,
+		labels.TypeLabelName:                           enterprisesearch.Type,
 		enterprisesearch.EnterpriseSearchNameLabelName: entName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
@@ -418,7 +418,7 @@ func EnterpriseSearchPodListOptions(entNamespace, entName string) []k8sclient.Li
 func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(agentNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName: agent.TypeLabelValue,
+		labels.TypeLabelName: agent.TypeLabelValue,
 		agent.NameLabelName:  agent.Name(agentName),
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
@@ -427,7 +427,7 @@ func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOptio
 func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(beatNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:     beatcommon.TypeLabelValue,
+		labels.TypeLabelName:     beatcommon.TypeLabelValue,
 		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
@@ -436,7 +436,7 @@ func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.Li
 func MapsPodListOptions(emsNS, emsName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(emsNS)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName: maps.Type,
+		labels.TypeLabelName: maps.Type,
 		maps.NameLabelName:   emsName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}

@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_hasDependencyInOthers(t *testing.T) {
