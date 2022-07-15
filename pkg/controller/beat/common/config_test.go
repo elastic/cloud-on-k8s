@@ -333,7 +333,7 @@ func Test_buildBeatConfig(t *testing.T) {
 
 			if len(diff) != 0 {
 				wantBytes, _ := tt.want.Render()
-				t.Errorf("BuildKibanaConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotYaml)))
+				t.Errorf("buildBeatConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotYaml)))
 			}
 			require.Equal(t, gotErr != nil, tt.wantErr)
 		})

@@ -1,7 +1,5 @@
 package common
 
-import "fmt"
-
 // MonitoringConfig contains the stack monitoring configuration for Beats.
 type MonitoringConfig struct {
 	Enabled       bool                `json:"enabled,omitempty"`
@@ -26,8 +24,4 @@ type SSLConfig struct {
 	CertificateAuthorities []string `config:"certificate_authorities" yaml:"certificate_authorities"`
 	// VerificationMode contains the verification mode for server certificates. Valid options: [full, strict, certificate, none]
 	VerificationMode string `config:"verification_mode" yaml:"verification_mode"`
-}
-
-func getMonitoringCASecretName(beatName string) string {
-	return fmt.Sprintf("%s-monitoring-ca", beatName)
 }

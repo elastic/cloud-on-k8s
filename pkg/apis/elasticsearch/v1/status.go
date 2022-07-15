@@ -98,7 +98,7 @@ func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) comm
 
 func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	if typ != commonv1.EsMonitoringAssociationType {
-		return fmt.Errorf("Elasticsearch: association type %s not known", typ)
+		return fmt.Errorf("elasticsearch: association type %s not known", typ)
 	}
 
 	es.Status.MonitoringAssociationsStatus = status
