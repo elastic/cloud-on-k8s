@@ -45,6 +45,10 @@ type EnrollmentAPIKey struct {
 	PolicyID string `json:"policy_id,omitempty"`
 }
 
+func (e EnrollmentAPIKey) isEmpty() bool {
+	return !e.Active && e.ID == "" && e.APIKey == "" && e.PolicyID == ""
+}
+
 // PolicyList is a wrapper for a list of agent policies as returned by the Fleet API.
 type PolicyList struct {
 	Items []Policy `json:"items"`
@@ -198,25 +202,25 @@ func (f fleetAPI) setupFleet(ctx context.Context) error {
 	return f.request(ctx, http.MethodPost, "setup", nil, nil)
 }
 
-func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) string {
+func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) EnrollmentAPIKey {
 	if !params.Agent.Spec.KibanaRef.IsDefined() {
-		return ""
+		return EnrollmentAPIKey{}
 	}
 
 	reachable, err := isKibanaReachable(params.Context, params.Client, params.Agent.Spec.KibanaRef.WithDefaultNamespace(params.Agent.Namespace).NamespacedName())
 	if err != nil {
 		result.WithError(err)
-		return ""
+		return EnrollmentAPIKey{}
 	}
 	if !reachable {
 		result.WithResult(reconcile.Result{Requeue: true})
-		return ""
+		return EnrollmentAPIKey{}
 	}
 
 	kbConnectionSettings, err := extractClientConnectionSettings(params.Context, params.Agent, params.Client, commonv1.KibanaAssociationType)
 	if err != nil {
 		result.WithError(err)
-		return ""
+		return EnrollmentAPIKey{}
 	}
 
 	token, err := reconcileEnrollmentToken(
@@ -242,24 +246,19 @@ func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.N
 	return true, nil
 }
 
-func reconcileEnrollmentToken(
-	ctx context.Context,
-	agent agentv1alpha1.Agent,
-	client k8s.Client,
-	api fleetAPI,
-) (string, error) {
+func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, api fleetAPI) (EnrollmentAPIKey, error) {
 	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
 	if !exists {
 		// setup fleet to create default policies (and tokens)
 		if err := api.setupFleet(ctx); err != nil {
-			return "", err
+			return EnrollmentAPIKey{}, err
 		}
 	}
 	// what policy should we enroll this agent in?
 	policyID, err := reconcilePolicyID(ctx, agent, api)
 	if err != nil {
-		return "", err
+		return EnrollmentAPIKey{}, err
 	}
 	if exists {
 		// get the enrollment token identified by the annotation
@@ -269,18 +268,18 @@ func reconcileEnrollmentToken(
 			goto CREATE
 		}
 		if err != nil {
-			return "", err
+			return EnrollmentAPIKey{}, err
 		}
 		// if the token is valid and for the right policy we are done here
 		if key.Active && key.PolicyID == policyID {
-			return key.APIKey, nil
+			return key, nil
 		}
 	}
 
 CREATE:
 	key, err := api.createEnrollmentAPIKey(ctx, policyID)
 	if err != nil {
-		return "", err
+		return EnrollmentAPIKey{}, err
 	}
 	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it
 	// on the top level but we would then potentially create redundant enrollment tokens in the Fleet API
@@ -291,9 +290,9 @@ CREATE:
 	err = client.Update(ctx, &agent)
 	if err != nil {
 		// we have failed to store the token id in an annotation let's try to remove the token again
-		return "", k8serrors.NewAggregate([]error{err, api.deleteEnrollmentAPIKey(ctx, key.ID)})
+		return EnrollmentAPIKey{}, k8serrors.NewAggregate([]error{err, api.deleteEnrollmentAPIKey(ctx, key.ID)})
 	}
-	return key.APIKey, nil
+	return key, nil
 }
 
 func reconcilePolicyID(ctx context.Context, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {

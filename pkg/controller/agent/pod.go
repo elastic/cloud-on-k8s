@@ -70,6 +70,7 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
@@ -111,7 +112,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken string, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -176,7 +177,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	return builder.PodTemplate, nil
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken string, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
@@ -218,7 +219,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	return builder, nil
 }
 
-func applyEnvVars(params Params, fleetToken string, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
 	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client, fleetToken)
 	if err != nil {
 		return nil, err
@@ -425,10 +426,10 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken string) (map[string]string, error) {
+func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	result := map[string]string{}
 
-	for _, f := range []func(agentv1alpha1.Agent, k8s.Client, string) (map[string]string, error){
+	for _, f := range []func(agentv1alpha1.Agent, k8s.Client, EnrollmentAPIKey) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
@@ -443,23 +444,23 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToke
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, _ k8s.Client, fleetToken string) (map[string]string, error) {
+func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, _ k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	if !agent.Spec.KibanaRef.IsDefined() {
 		return map[string]string{}, nil
 	}
 
-	if fleetToken == "" {
+	if fleetToken.isEmpty() {
 		return nil, errors.New("fleet enrollment token must not be empty, potential programmer error")
 	}
 
 	envVars := map[string]string{
-		FleetEnrollmentToken: fleetToken,
+		FleetEnrollmentToken: fleetToken.APIKey,
 	}
 
 	return envVars, nil
 }
 
-func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ string) (map[string]string, error) {
+func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
@@ -480,6 +481,10 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ s
 
 		fleetCfg[FleetURL] = fleetURL
 		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		// Fleet Server needs a policy ID to bootstrap itself unless a policy marked as default is used.
+		if agent.Spec.KibanaRef.IsDefined() && !fleetToken.isEmpty() {
+			fleetCfg[FleetServerPolicyID] = fleetToken.PolicyID
+		}
 	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
@@ -501,7 +506,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ s
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ string) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ EnrollmentAPIKey) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
 		return map[string]string{}, nil
 	}

@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -28,6 +29,12 @@ var (
 )
 
 func Test_reconcileEnrollmentToken(t *testing.T) {
+	asObject := func(raw string) EnrollmentAPIKey {
+		var r EnrollmentAPIKeyResult
+		require.NoError(t, json.Unmarshal([]byte(raw), &r))
+		return r.Item
+	}
+
 	type args struct {
 		agent  v1alpha1.Agent
 		client *k8s.Client
@@ -36,7 +43,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    string
+		want    EnrollmentAPIKey
 		wantErr bool
 	}{
 		{
@@ -54,7 +61,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    "some-token",
+			want:    asObject(enrollmentKeySample),
 			wantErr: false,
 		},
 		{
@@ -77,7 +84,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    "some-token",
+			want:    asObject(enrollmentKeySample),
 			wantErr: false,
 		},
 		{
@@ -98,7 +105,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    "some-token",
+			want:    asObject(enrollmentKeySample),
 			wantErr: false,
 		},
 		{
@@ -119,7 +126,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    "some-token",
+			want:    asObject(enrollmentKeySample),
 			wantErr: false,
 		},
 		{
@@ -137,7 +144,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    "some-token",
+			want:    asObject(enrollmentKeySample),
 			wantErr: false,
 		},
 		{
@@ -156,7 +163,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/agent_policies"}: {code: 500},
 				}),
 			},
-			want:    "",
+			want:    EnrollmentAPIKey{},
 			wantErr: true,
 		},
 		{
@@ -179,7 +186,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: fleetServerKeySample},
 				}),
 			},
-			want:    "fleet-token",
+			want:    asObject(fleetServerKeySample),
 			wantErr: false,
 		},
 		{
@@ -207,7 +214,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"DELETE", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200},
 				}),
 			},
-			want:    "",
+			want:    EnrollmentAPIKey{},
 			wantErr: true,
 		},
 	}

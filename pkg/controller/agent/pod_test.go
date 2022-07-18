@@ -177,7 +177,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			builder := generateBuilder()
 			hash := sha256.New224()
 
-			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, fleetCerts, "", builder, hash)
+			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, fleetCerts, EnrollmentAPIKey{}, builder, hash)
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
@@ -232,11 +232,16 @@ func Test_applyEnvVars(t *testing.T) {
 	podTemplateBuilderWithFleetTokenSet := generateBuilder()
 	podTemplateBuilderWithFleetTokenSet = podTemplateBuilderWithFleetTokenSet.WithEnv(corev1.EnvVar{Name: "FLEET_ENROLLMENT_TOKEN", Value: "custom"})
 
+	testToken := EnrollmentAPIKey{
+		APIKey:   "test-token",
+		PolicyID: "policy-id",
+	}
+
 	f := false
 	for _, tt := range []struct {
 		name               string
 		params             Params
-		fleetToken         string
+		fleetToken         EnrollmentAPIKey
 		podTemplateBuilder *defaults.PodTemplateBuilder
 		wantContainer      corev1.Container
 		wantSecretData     map[string][]byte
@@ -247,7 +252,7 @@ func Test_applyEnvVars(t *testing.T) {
 				Agent:  agent,
 				Client: k8s.NewFakeClient(),
 			},
-			fleetToken:         "test-token",
+			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
 			wantContainer: corev1.Container{
 				Name: "agent",
@@ -272,7 +277,7 @@ func Test_applyEnvVars(t *testing.T) {
 				Agent:  agent,
 				Client: k8s.NewFakeClient(),
 			},
-			fleetToken:         "test-token",
+			fleetToken:         testToken,
 			podTemplateBuilder: podTemplateBuilderWithFleetTokenSet,
 			wantContainer: corev1.Container{
 				Name: "agent",
@@ -309,7 +314,7 @@ func Test_applyEnvVars(t *testing.T) {
 					},
 				),
 			},
-			fleetToken:         "test-token",
+			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
 			wantContainer: corev1.Container{
 				Name: "agent",
@@ -335,6 +340,7 @@ func Test_applyEnvVars(t *testing.T) {
 						Optional:             &f,
 					}}},
 					{Name: "FLEET_SERVER_ENABLE", Value: "true"},
+					{Name: "FLEET_SERVER_POLICY_ID", Value: "policy-id"},
 					{Name: "FLEET_URL", Value: "https://agent-agent-http.default.svc:8220"},
 				},
 			},
@@ -781,7 +787,7 @@ func Test_getFleetSetupKibanaEnvVars(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
 		agent       agentv1alpha1.Agent
-		fleetToken  string
+		fleetToken  EnrollmentAPIKey
 		wantErr     bool
 		wantEnvVars map[string]string
 	}{
@@ -794,14 +800,14 @@ func Test_getFleetSetupKibanaEnvVars(t *testing.T) {
 		{
 			name:        "kibana ref present, but no token",
 			agent:       agent,
-			fleetToken:  "",
+			fleetToken:  EnrollmentAPIKey{},
 			wantEnvVars: nil,
 			wantErr:     true,
 		},
 		{
 			name:       "kibana ref present, token populated",
 			agent:      agent,
-			fleetToken: "test-token",
+			fleetToken: EnrollmentAPIKey{APIKey: "test-token"},
 			wantEnvVars: map[string]string{
 				"FLEET_ENROLLMENT_TOKEN": "test-token",
 			},
@@ -982,7 +988,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(tt.agent, tt.client, "")
+			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(tt.agent, tt.client, EnrollmentAPIKey{})
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -1102,7 +1108,7 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(tt.agent, tt.client, "")
+			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(tt.agent, tt.client, EnrollmentAPIKey{})
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
