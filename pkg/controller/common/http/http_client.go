@@ -26,14 +26,9 @@ import (
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
 func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
 
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
-			RootCAs:    certPool,
 			MinVersion: tls.VersionTLS12, // this is the default as of Go 1.18 we are just restating this here for clarity.
 
 			// We use our own certificate verification because we permit users to provide their own certificates, which may not
@@ -48,6 +43,15 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 				return errors.New("tls: verify peer certificate not setup")
 			},
 		},
+	}
+
+	// only replace default cert pool if we have certificates to trust
+	if caCerts != nil {
+		certPool := x509.NewCertPool()
+		for _, c := range caCerts {
+			certPool.AddCert(c)
+		}
+		transportConfig.TLSClientConfig.RootCAs = certPool
 	}
 
 	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
