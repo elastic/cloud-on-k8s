@@ -137,12 +137,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				if !cmp.Equal(beat.Status, expected) {
 					return fmt.Errorf("expected status health %+v, got diff: %s", expected, cmp.Diff(beat.Status, expected))
 				}
-				if beat.Status.Health != expected.Health {
-					return fmt.Errorf("expected status health %+v but got %+v", expected.Health, beat.Status.Health)
-				}
-				if beat.Status.Version != expected.Version {
-					return fmt.Errorf("expected status version %+v but got %+v", expected.Version, beat.Status.Version)
-				}
 				return nil
 			}),
 		},
