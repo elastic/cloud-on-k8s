@@ -27,9 +27,9 @@ type Settings struct {
 	Tracer              *apm.Tracer
 }
 
-// defaultObservationInterval is the default interval of observation.
-// if the Elasticsearch cluster is unavailable, the actual interval would be observationInterval + requestTimeout.
-const defaultObservationInterval = 10 * time.Second
+// defaultObservationTimeout is the default timeout for an observation. The observer uses the observation interval as a timeout.
+// The default applies if the observation interval is not positive to allow at least one successful observation.
+const defaultObservationTimeout = 10 * time.Second
 
 // OnObservation is a function that gets executed when a new state is observed
 type OnObservation func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth)
@@ -72,6 +72,9 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 func (o *Observer) Start() {
 	// initial synchronous observation
 	o.observe()
+	if o.settings.ObservationInterval <= 0 {
+		return // asynchronous observations are effectively disabled
+	}
 	// periodic asynchronous observations
 	go func() {
 		ticker := time.NewTicker(o.settings.ObservationInterval)
@@ -107,7 +110,7 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 // observe retrieves the current ES state, executes onObservation,
 // and stores the new state
 func (o *Observer) observe() {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), o.settings.ObservationInterval)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), nonNegativeTimeout(o.settings.ObservationInterval))
 	defer cancelFunc()
 
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
@@ -126,6 +129,16 @@ func (o *Observer) observe() {
 	o.mutex.Lock()
 	o.lastHealth = newHealth
 	o.mutex.Unlock()
+}
+
+func nonNegativeTimeout(observationInterval time.Duration) time.Duration {
+	// if the observation interval is not positive async observations are disabled
+	if observationInterval <= 0 {
+		// use a default positive timeout to allow one synchronous observation
+		return defaultObservationTimeout
+	}
+	// use the observation interval as the timeout for all other cases.
+	return observationInterval
 }
 
 // retrieveHealth returns the current Elasticsearch cluster health

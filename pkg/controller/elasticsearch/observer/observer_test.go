@@ -163,3 +163,43 @@ func TestRetrieveHealth(t *testing.T) {
 		})
 	}
 }
+
+func Test_nonNegativeTimeout(t *testing.T) {
+	type args struct {
+		observationInterval time.Duration
+	}
+	tests := []struct {
+		name string
+		args args
+		want time.Duration
+	}{
+		{
+			name: "positive observation interval == timeout",
+			args: args{
+				observationInterval: 1 * time.Second,
+			},
+			want: 1 * time.Second,
+		},
+		{
+			name: "0 observation interval == default",
+			args: args{
+				observationInterval: 0,
+			},
+			want: defaultObservationTimeout,
+		},
+		{
+			name: "negative observation interval == default",
+			args: args{
+				observationInterval: -1 * time.Second,
+			},
+			want: defaultObservationTimeout,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nonNegativeTimeout(tt.args.observationInterval); got != tt.want {
+				t.Errorf("nonNegativeTimeout() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

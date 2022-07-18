@@ -6,6 +6,7 @@ package observer
 
 import (
 	"sync"
+	"time"
 
 	"go.elastic.co/apm/v2"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,18 +24,20 @@ const (
 
 // Manager for a set of observers
 type Manager struct {
-	observerLock sync.RWMutex
-	observers    map[types.NamespacedName]*Observer
-	listenerLock sync.RWMutex
-	listeners    []OnObservation // invoked on each observation event
-	tracer       *apm.Tracer
+	defaultInterval time.Duration
+	observerLock    sync.RWMutex
+	observers       map[types.NamespacedName]*Observer
+	listenerLock    sync.RWMutex
+	listeners       []OnObservation // invoked on each observation event
+	tracer          *apm.Tracer
 }
 
 // NewManager returns a new manager
-func NewManager(tracer *apm.Tracer) *Manager {
+func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 	return &Manager{
-		observers: make(map[types.NamespacedName]*Observer),
-		tracer:    tracer,
+		defaultInterval: defaultInterval,
+		observers:       make(map[types.NamespacedName]*Observer),
+		tracer:          tracer,
 	}
 }
 
@@ -68,6 +71,9 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 		return m.createOrReplaceObserver(nsName, settings, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
 		return m.createOrReplaceObserver(nsName, settings, esClient)
+	case exists && settings.ObservationInterval <= 0:
+		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
+		return m.getAndObserveSynchronously(nsName)
 	default:
 		esClient.Close()
 		return observer
@@ -77,7 +83,7 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 // extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
 func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
 	return Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, m.defaultInterval),
 		Tracer:              m.tracer,
 	}
 }
@@ -99,6 +105,18 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 
 	m.observers[cluster] = observer
 
+	return observer
+}
+
+// getAndObserveSynchronously retrieves the currently configured observer and trigger a synchronous observation.
+func (m *Manager) getAndObserveSynchronously(cluster types.NamespacedName) *Observer {
+	m.observerLock.RLock()
+	defer m.observerLock.RUnlock()
+
+	// invariant: this method must only be called when existence of observer is given
+	observer := m.observers[cluster]
+	// force a synchronous observation
+	observer.observe()
 	return observer
 }
 
