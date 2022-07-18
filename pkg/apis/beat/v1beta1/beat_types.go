@@ -80,10 +80,10 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// Monitoring enables you to collect and ship log and monitoring data of this Beat.
+	// Monitoring enables you to collect and ship monitoring data of this Beat.
 	// See https://www.elastic.co/guide/en/beats/filebeat/current/monitoring.html
-	// Internal Beat collectors are configured and sends data (metrics and logs) to one
-	// or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+	// Internal Beat collectors are configured and send metrics data to one
+	// Elasticsearch monitoring cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
 
@@ -228,7 +228,7 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 		b.Status.MonitoringAssociationsStatus = status
 		return nil
 	default:
-		return fmt.Errorf("beat: association type %s not known", typ)
+		return fmt.Errorf("association type %s not known", typ)
 	}
 }
 
