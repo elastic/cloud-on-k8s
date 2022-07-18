@@ -2370,11 +2370,11 @@ spec:
                     type: string
                 type: object
               monitoring:
-                description: Monitoring enables you to collect and ship log and monitoring
+                description: Monitoring enables you to collect and ship monitoring
                   data of this Beat. See https://www.elastic.co/guide/en/beats/filebeat/current/monitoring.html
-                  Internal Beat collectors are configured and sends data (metrics
-                  and logs) to one or two different Elasticsearch monitoring clusters
-                  running in the same Kubernetes cluster.
+                  Internal Beat collectors are configured and send metrics data to
+                  one Elasticsearch monitoring cluster running in the same Kubernetes
+                  cluster.
                 properties:
                   elasticsearchRefs:
                     description: ElasticsearchRefs is a reference to a list of monitoring
