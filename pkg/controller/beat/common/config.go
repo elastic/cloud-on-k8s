@@ -8,7 +8,6 @@ import (
 	"hash"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -143,7 +142,6 @@ func buildMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, erro
 	}
 
 	var username, password, url string
-	var sslConfig SSLConfig
 	associations := monitoring.GetMetricsAssociation(&params.Beat)
 	if len(associations) != 1 {
 		// should never happen because of the pre-creation validation
@@ -168,14 +166,6 @@ func buildMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, erro
 
 	caDirPath := certificatesDir(assoc)
 
-	if assocConf.GetCACertProvided() {
-		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
-		sslConfig = SSLConfig{
-			CertificateAuthorities: []string{sslCAPath},
-			VerificationMode:       "certificate",
-		}
-	}
-
 	config := MonitoringConfig{
 		Enabled: true,
 		Elasticsearch: ElasticsearchConfig{
@@ -185,8 +175,12 @@ func buildMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, erro
 		},
 	}
 
-	if strings.Contains(url, "https") {
-		config.Elasticsearch.SSL = sslConfig
+	if assocConf.GetCACertProvided() {
+		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
+		config.Elasticsearch.SSL = SSLConfig{
+			CertificateAuthorities: []string{sslCAPath},
+			VerificationMode:       "certificate",
+		}
 	}
 
 	return settings.NewCanonicalConfigFrom(map[string]interface{}{"monitoring": config})
