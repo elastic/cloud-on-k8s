@@ -26,7 +26,6 @@ import (
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
 func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
-
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12, // this is the default as of Go 1.18 we are just restating this here for clarity.
