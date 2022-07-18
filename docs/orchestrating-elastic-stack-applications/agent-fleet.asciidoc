@@ -312,7 +312,7 @@ spec:
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Set referenced resources
 
-Both Fleet Server and Elastic Agent in Fleet mode can be automatically setup with Fleet by ECK. The ECK operator can set up Fleet in Kibana (which otherwise requires manual steps) and enroll Fleet Server in the default Fleet Server policy. Elastic Agent can be automatically enrolled in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to a ECK-managed Kibana through the `kibanaRef` configuration element.
+Both Fleet Server and Elastic Agent in Fleet mode can be automatically set up with Fleet by ECK. The ECK operator can set up Fleet in Kibana (which otherwise requires manual steps) and enroll Fleet Server in the default Fleet Server policy. Elastic Agent can be automatically enrolled in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to a ECK-managed Kibana through the `kibanaRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -364,7 +364,7 @@ In contrast to Elastic Agents in standalone mode, the configuration is managed t
 [id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
 === Upgrade the Elastic Agent specification
 
-You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK configures an agent to set up Fleet in Kibana, enrolls itself in Fleet, or restarts Elastic Agent on certificate rollover.
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set up Fleet in Kibana, enrolls the agent in Fleet, or restarts Elastic Agent on certificate rollover.
 
 [id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
 === Choose the deployment model
@@ -484,7 +484,7 @@ spec:
 ...
 ----
 
-Please note that the environment variables related to policy selection mentioned in the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will not take effect if enrollment is managed by the ECK operator.
+Please note that the environment variables related to policy selection mentioned in the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will be managed by the ECK operator.
 
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]
