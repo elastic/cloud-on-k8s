@@ -36,11 +36,11 @@ tests:
       - equal:
           path: metadata.name
           value: override
-  - it: should render http service properly
+  - it: should render custom kibana using values file properly
     set:
-      eck-kibana.enabled: true
+      eck-kibana.spec.elasticsearchRef.namespace: default
     values:
-      - ../../examples/kibana/http-configuration.yaml
+      - ../../examples/custom-elasticsearch-kibana.yaml
     release:
       name: quickstart
     asserts:
@@ -48,7 +48,7 @@ tests:
           of: Kibana
       - equal:
           path: metadata.name
-          value: quickstart-eck-kibana
+          value: quickstart
       - equal:
           path: spec.version
           value: 8.2.3
@@ -57,7 +57,7 @@ tests:
           value: 1
       - equal:
           path: spec.elasticsearchRef.name
-          value: quickstart-eck-elasticsearch
+          value: quickstart
       - equal:
           path: spec.elasticsearchRef.namespace
           value: default

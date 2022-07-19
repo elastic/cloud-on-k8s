@@ -38,7 +38,7 @@ tests:
           value: override
   - it: should render http service properly
     set:
-      eck-kibana.enabled: true
+      spec.elasticsearchRef.namespace: default
     values:
       - ../../examples/http-configuration.yaml
     release:

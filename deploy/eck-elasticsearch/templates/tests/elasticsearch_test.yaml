@@ -51,10 +51,13 @@ tests:
           value: quickstart-eck-elasticsearch
       - equal:
           path: spec.nodeSets[0].name
-          value: hot
+          value: masters
       - equal:
           path: spec.nodeSets[1].name
-          value: warm
+          value: hot
       - equal:
           path: spec.nodeSets[2].name
+          value: warm
+      - equal:
+          path: spec.nodeSets[3].name
           value: cold

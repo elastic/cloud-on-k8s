@@ -1,8 +1,4 @@
 ---
-# Name of the Kibana instance.
-#
-name: "quickstart"
-
 # Version of Kibana.
 #
 version: 8.2.3
@@ -26,7 +22,7 @@ spec:
   #
   elasticsearchRef:
     name: quickstart-eck-elasticsearch
-    namespace: default
+    # namespace: default
   http:
     service:
       spec:
