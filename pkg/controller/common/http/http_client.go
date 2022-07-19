@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -25,14 +26,8 @@ import (
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
 func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
-
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
-			RootCAs:    certPool,
 			MinVersion: tls.VersionTLS12, // this is the default as of Go 1.18 we are just restating this here for clarity.
 
 			// We use our own certificate verification because we permit users to provide their own certificates, which may not
@@ -47,6 +42,15 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 				return errors.New("tls: verify peer certificate not setup")
 			},
 		},
+	}
+
+	// only replace default cert pool if we have certificates to trust
+	if caCerts != nil {
+		certPool := x509.NewCertPool()
+		for _, c := range caCerts {
+			certPool.AddCert(c)
+		}
+		transportConfig.TLSClientConfig.RootCAs = certPool
 	}
 
 	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
@@ -66,4 +70,42 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 		Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
 		Timeout:   timeout,
 	}
+}
+
+// APIError to represent non-200 HTTP responses as Go errors.
+type APIError struct {
+	StatusCode int
+	msg        string
+}
+
+// MaybeAPIError creates an APIError from a http.Response if the status code is not 2xx.
+func MaybeAPIError(resp *http.Response) *APIError {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		url := "unknown url"
+		if resp.Request != nil {
+			url = resp.Request.URL.Redacted()
+		}
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			msg:        fmt.Sprintf("failed to request %s, status is %d)", url, resp.StatusCode),
+		}
+	}
+	return nil
+}
+
+func (e *APIError) Error() string {
+	return e.msg
+}
+
+// IsNotFound checks whether the error was an HTTP 404 error.
+func IsNotFound(err error) bool {
+	return isHTTPError(err, http.StatusNotFound)
+}
+
+func isHTTPError(err error, statusCode int) bool {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		return apiErr.StatusCode == statusCode
+	}
+	return false
 }

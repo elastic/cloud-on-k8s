@@ -5,6 +5,8 @@
 package agent
 
 import (
+	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"hash"
@@ -12,11 +14,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
@@ -25,8 +29,9 @@ import (
 )
 
 type connectionSettings struct {
-	host, ca    string
-	credentials association.Credentials
+	host, caFileName, version string
+	credentials               association.Credentials
+	caCerts                   []*x509.Certificate
 }
 
 func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
@@ -141,29 +146,32 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(params, &params.Agent, params.Agent.Spec.ConfigRef, ConfigFileName)
 }
 
-func extractConnectionSettings(
+// extractPodConnectionSettings extracts connections settings to be used inside an Elastic Agent Pod. That is without
+// certificates which are mounted directly into the Pod, instead the connection settings contain a path which points to
+// the future location of the certificates in the Pod.
+func extractPodConnectionSettings(
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
-) (connectionSettings, error) {
+) (connectionSettings, *commonv1.AssociationConf, error) {
 	assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), associationType)
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	if assoc == nil {
 		errTemplate := "association of type %s not found in %d associations"
-		return connectionSettings{}, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
+		return connectionSettings{}, nil, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
 	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	assocConf, err := assoc.AssociationConf()
 	if err != nil {
-		return connectionSettings{}, err
+		return connectionSettings{}, nil, err
 	}
 
 	ca := ""
@@ -173,7 +181,39 @@ func extractConnectionSettings(
 
 	return connectionSettings{
 		host:        assocConf.GetURL(),
-		ca:          ca,
+		caFileName:  ca,
 		credentials: credentials,
-	}, err
+		version:     assocConf.Version,
+	}, assocConf, err
+}
+
+// extractClientConnectionSettings same as extractPodConnectionSettings but for use inside the operator or any other
+// client that needs direct access to the relevant CA certificates of the associated object (if TLS is configured)
+func extractClientConnectionSettings(
+	ctx context.Context,
+	agent agentv1alpha1.Agent,
+	client k8s.Client,
+	associationType commonv1.AssociationType,
+) (connectionSettings, error) {
+	settings, assocConf, err := extractPodConnectionSettings(agent, client, associationType)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+	if !assocConf.GetCACertProvided() {
+		return settings, nil
+	}
+	var caSecret corev1.Secret
+	if err := client.Get(ctx, types.NamespacedName{Name: assocConf.GetCASecretName(), Namespace: agent.Namespace}, &caSecret); err != nil {
+		return connectionSettings{}, err
+	}
+	bytes, ok := caSecret.Data[CAFileName]
+	if !ok {
+		return connectionSettings{}, fmt.Errorf("no %s in %s", CAFileName, k8s.ExtractNamespacedName(&caSecret))
+	}
+	certs, err := certificates.ParsePEMCerts(bytes)
+	if err != nil {
+		return connectionSettings{}, err
+	}
+	settings.caCerts = certs
+	return settings, nil
 }

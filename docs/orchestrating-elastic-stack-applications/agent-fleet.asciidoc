@@ -312,7 +312,7 @@ spec:
 [id="{p}-elastic-agent-fleet-configuration-setting-referenced-resources"]
 === Set referenced resources
 
-Both Fleet Server and Elastic Agent in Fleet mode can facilitate the Fleet setup. Fleet Server can set up Fleet in Kibana (which otherwise requires manual steps) and enroll itself in the default Fleet Server policy. Elastic Agent can enroll itself in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to ECK-managed Kibana through `kibanaRef` configuration element.
+Both Fleet Server and Elastic Agent in Fleet mode can be automatically set up with Fleet by ECK. The ECK operator can set up Fleet in Kibana (which otherwise requires manual steps) and enroll Fleet Server in the default Fleet Server policy. Elastic Agent can be automatically enrolled in the default Elastic Agent policy. To allow ECK to set this up, provide a reference to a ECK-managed Kibana through the `kibanaRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -325,7 +325,7 @@ spec:
     name: kibana
 ----
 
-ECK can also facilitate the connection between Elastic Agents and ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through `fleetServerRef` configuration element.
+ECK can also facilitate the connection between Elastic Agents and a ECK-managed Fleet Server. To allow ECK to set this up, provide a reference to Fleet Server through the `fleetServerRef` configuration element.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -339,7 +339,7 @@ spec:
 ----
 
 
-Set `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana `xpack.fleet.agents.elasticsearch.hosts` configuration element.
+Set the `elasticsearchRefs` element in your Fleet Server to point to the Elasticsearch cluster that will manage Fleet. Leave `elasticsearchRefs` empty or unset it for any Elastic Agent running in Fleet mode as the Elasticsearch cluster to target will come from Kibana's `xpack.fleet.agents.elasticsearch.hosts` configuration element.
 
 NOTE: Currently, Elastic Agent in Fleet mode supports only a single output, so only a single Elasticsearch cluster can be referenced.
 
@@ -359,14 +359,12 @@ By default, every reference targets all instances in your Elasticsearch, Kibana 
 [id="{p}-elastic-agent-fleet-configuration-custom-configuration"]
 === Customize Elastic Agent configuration
 
-In contrast to what happens with Elastic Agent as standalone, the configuration is managed through Fleet, and it cannot be defined through `config` or `configRef` elements.
-
-You can only configure the setup part of the Fleet Server and Elastic Agent. You can override each of the environment variables that agents consume, as documented in link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[Elastic Agent environment variables]. This allows different setups where components are deployed both in local Kubernetes cluster and externally.
+In contrast to Elastic Agents in standalone mode, the configuration is managed through Fleet, and it cannot be defined through `config` or `configRef` elements.
 
 [id="{p}-elastic-agent-fleet-configuration-upgrade-specification"]
 === Upgrade the Elastic Agent specification
 
-You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK configures an agent to set up Fleet in Kibana, enrolls itself in Fleet, or restarts Elastic Agent on certificate rollover.
+You can upgrade the Elastic Agent version or change settings by editing the YAML specification file. ECK applies the changes by performing a rolling restart of the Agent's Pods. Depending on the settings that you used, ECK will set up Fleet in Kibana, enrolls the agent in Fleet, or restarts Elastic Agent on certificate rollover.
 
 [id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
 === Choose the deployment model
@@ -470,27 +468,23 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 
 By default, ECK creates a Service for Fleet Server that Elastic Agents can connect through. You can customize it using the `http` configuration element. Check more information on how to link:k8s-services.html[make changes] to the Service and link:k8s-tls-certificates.html[customize] the TLS configuration.
 
-[id="{p}-elastic-agent-fleet-configuration-override-default-fleet-configuration-settings"]
-=== Override default Fleet configuration settings
+[id="{p}-elastic-agent-control-fleet-policy-selection"]
+=== Control Fleet policy selection
 
-ECK uses environment variables to control how Elastic Agent and Fleet Server should be configured. Sometimes, it might be required to override some of these settings. For example, if Kibana TLS certificate is signed by a well-known root and can't include `kibana-kb-http.namespace.svc` as a SAN, `KIBANA_FLEET_HOST` can be overriden to point to the URL that the certificate specifies. To do that, specify environment variable, as shown in the following example.
-
+ECK uses the default policy to enroll Elastic Agents in Fleet and the default Fleet Server policy to enroll Fleet Server. A different policy can be chosen by using the `policyID` attribute in the Elastic Agent resource:
 [source,yaml]
 ----
-...
+
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server-sample
 spec:
-  deployment:
-    podTemplate:
-      spec:
-        containers:
-        - name: agent
-          env:
-          - name: KIBANA_FLEET_HOST
-            value: "https://kibana.example.com:443"
+  policyID: my-custom-policy
 ...
 ----
 
-Check the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] to get a list of all the environment variables that can be used.
+Please note that the environment variables related to policy selection mentioned in the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will be managed by the ECK operator.
 
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]

@@ -15799,6 +15799,11 @@ spec:
                 - standalone
                 - fleet
                 type: string
+              policyID:
+                description: PolicyID optionally determines into which Agent Policy
+                  this Agent will be enrolled. If left empty the default policy will
+                  be used.
+                type: string
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying DaemonSet or Deployment.

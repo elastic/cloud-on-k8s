@@ -93,6 +93,13 @@ func (r *Results) HasError() bool {
 	return len(r.errors) > 0
 }
 
+func (r *Results) HasRequeue() bool {
+	if r == nil {
+		return false
+	}
+	return r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0
+}
+
 // WithResults appends the results and error from the other Results.
 func (r *Results) WithResults(other *Results) *Results {
 	if other != nil {
@@ -157,5 +164,5 @@ func (r *Results) IsReconciled() (bool, string) {
 	if !r.currResult.incomplete {
 		return true, ""
 	}
-	return !(r.currResult.Result.Requeue || r.currResult.Result.RequeueAfter > 0), r.currResult.reason
+	return !r.HasRequeue(), r.currResult.reason
 }
