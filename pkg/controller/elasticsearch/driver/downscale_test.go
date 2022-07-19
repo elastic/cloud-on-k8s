@@ -677,7 +677,7 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
+			gotDownscales, gotDeletions := calculateDownscales(nil, downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
 			require.Equal(t, tt.wantDownscales, gotDownscales)
 			require.Equal(t, tt.wantDeletions, gotDeletions)
 		})
@@ -846,6 +846,7 @@ func Test_attemptDownscale(t *testing.T) {
 				reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				nodeShutdown:   shutdown.WithObserver(migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})), esState),
 				esClient:       &fakeESClient{},
+				parentCtx:      context.Background(),
 			}
 			// do the downscale
 			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.statefulSets)

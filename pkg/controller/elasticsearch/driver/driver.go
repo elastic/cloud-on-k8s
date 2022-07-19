@@ -47,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -119,6 +120,7 @@ var _ commondriver.Interface = &defaultDriver{}
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
+	log := ulog.FromContext(ctx)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
 	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
@@ -419,6 +421,7 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 		return nil
 	}
 	allPods := names(resourcesState.AllPods)
+	log := ulog.FromContext(ctx)
 	// Detect if some service tokens are expected
 	saTokens, err := user.GetServiceAccountTokens(d.Client, d.ES)
 	if err != nil {

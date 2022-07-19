@@ -5,11 +5,13 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // expectationsSatisfied checks that resources in our local cache match what we expect.
@@ -18,7 +20,8 @@ import (
 // - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions
 // (eg. incorrect number of nodes or master-eligible nodes topology)
 // - create or delete more than one master node at once
-func (d *defaultDriver) expectationsSatisfied() (bool, string, error) {
+func (d *defaultDriver) expectationsSatisfied(ctx context.Context) (bool, string, error) {
+	log := ulog.FromContext(ctx)
 	// make sure the cache is up-to-date
 	expectationsOK, reason, err := d.Expectations.Satisfied()
 	if err != nil {

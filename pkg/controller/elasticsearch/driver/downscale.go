@@ -55,7 +55,7 @@ func HandleDownscale(
 	downscaleState := newDownscaleState(actualPods, downscaleCtx.es)
 
 	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
+	downscales, deletions := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
@@ -99,7 +99,7 @@ func podsToDownscale(
 ) ([]ssetDownscale, sset.StatefulSetList) {
 	downscaleState := newDownscaleState(actualPods, es)
 	// compute the list of StatefulSet downscales and deletions to perform
-	return calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
+	return calculateDownscales(nil, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
@@ -114,12 +114,7 @@ func deleteStatefulSets(ctx context.Context, toDelete sset.StatefulSetList, k8sC
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of StatefulSets
 // that can be downscaled (replica decrease) or deleted (no replicas).
-func calculateDownscales(
-	state downscaleState,
-	expectedStatefulSets sset.StatefulSetList,
-	actualStatefulSets sset.StatefulSetList,
-	downscaleFilter downscaleFilter,
-) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
+func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
 	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
@@ -138,7 +133,7 @@ func calculateDownscales(
 		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
 			requestedDeletes := actualReplicas - expectedReplicas
-			allowedDeletes := downscaleFilter(&state, actualSset, requestedDeletes)
+			allowedDeletes := downscaleFilter(ctx, &state, actualSset, requestedDeletes)
 			if allowedDeletes == 0 {
 				continue
 			}
@@ -156,21 +151,21 @@ func calculateDownscales(
 	return downscales, deletions
 }
 
-type downscaleFilter func(_ *downscaleState, _ appsv1.StatefulSet, _ int32) int32
+type downscaleFilter func(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, _ int32) int32
 
 // noDownscaleFilter is a filter which does not remove any Pod. It can be used to compute the full list of
 // Pods which are expected to be deleted.
-func noDownscaleFilter(_ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
+func noDownscaleFilter(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
 	return requestedDeletes
 }
 
 // downscaleBudgetFilter is a filter which relies on checkDownscaleInvariants.
 // It ensures that we only downscale nodes we're allowed to.
 // Note that this function may have side effects on the downscaleState and should not be considered as idempotent.
-func downscaleBudgetFilter(state *downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
+func downscaleBudgetFilter(ctx context.Context, state *downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
 	allowedDeletes, reason := checkDownscaleInvariants(*state, actualSset, requestedDeletes)
 	if allowedDeletes == 0 {
-		ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
+		ssetLogger(ctx, actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
 		return 0
 	}
 	state.recordNodeRemoval(actualSset, allowedDeletes)
@@ -218,7 +213,7 @@ func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es es
 		return err
 	}
 
-	ssetLogger(statefulSet).Info("Deleting statefulset")
+	ssetLogger(ctx, statefulSet).Info("Deleting statefulset")
 	return k8sClient.Delete(ctx, &statefulSet)
 }
 
@@ -277,7 +272,7 @@ func calculatePerformableDownscale(
 
 // doDownscale schedules nodes removal for the given downscale, and updates zen settings accordingly.
 func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualStatefulSets sset.StatefulSetList) error {
-	ssetLogger(downscale.statefulSet).Info(
+	ssetLogger(downscaleCtx.parentCtx, downscale.statefulSet).Info(
 		"Scaling replicas down",
 		"from", downscale.initialReplicas,
 		"to", downscale.targetReplicas,

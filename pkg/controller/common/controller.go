@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
+	"go.elastic.co/apm/module/apmzap/v2"
 	"go.elastic.co/apm/v2"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -41,10 +42,23 @@ func NewReconciliationContext(
 		tracing.ReconciliationTxType,
 		controllerName,
 		map[string]string{"iteration": itString, "name": request.Name, "namespace": request.Namespace})
+
+	// operator specific fields
+	logFields := []interface{}{
+		"iteration", itString,
+		"namespace", request.Namespace,
+		nameField, request.Name,
+	}
+
+	// tracing releated fields for log correlation
+	for _, field := range apmzap.TraceContext(newCtx) {
+		logFields = append(logFields, field.Key, field.Interface)
+	}
+
 	return logconf.InitInContext(
 		newCtx,
 		controllerName,
-		"iteration", itString,
-		"namespace", request.Namespace,
-		nameField, request.Name)
+		logFields...
+	)
+
 }

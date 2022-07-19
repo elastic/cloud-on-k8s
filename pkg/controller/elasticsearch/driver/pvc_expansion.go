@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -96,7 +97,7 @@ func resizePVCs(
 			}
 
 			newSize := expectedClaim.Spec.Resources.Requests.Storage()
-			log.Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
+			ulog.FromContext(ctx).Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
 				"Pods may need to be manually deleted for the filesystem to be resized.",
 				"namespace", pvc.Namespace, "es_name", es.Name, "pvc_name", pvc.Name,
 				"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
@@ -119,7 +120,7 @@ func annotateForRecreation(
 	actualSset appsv1.StatefulSet,
 	expectedClaims []corev1.PersistentVolumeClaim,
 ) error {
-	log.Info("Preparing StatefulSet re-creation to account for PVC resize",
+	ulog.FromContext(ctx).Info("Preparing StatefulSet re-creation to account for PVC resize",
 		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", actualSset.Name)
 
 	actualSset.Spec.VolumeClaimTemplates = expectedClaims
@@ -160,6 +161,7 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 // 4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
 //    a different UID: the re-creation is over, remove the annotation.
 func recreateStatefulSets(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
+	log := ulog.FromContext(ctx)
 	recreateList, err := ssetsToRecreate(es)
 	if err != nil {
 		return 0, err
@@ -261,7 +263,7 @@ func recreateStatefulSet(ctx context.Context, k8sClient k8s.Client, sset appsv1.
 // they won't be owned anymore. At this point if the Elasticsearch resource is deleted (before the StatefulSet
 // is re-created), we also want the Pods to be deleted automatically.
 func updatePodOwners(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
-	log.V(1).Info("Setting an owner ref to the Elasticsearch resource on the future orphan Pods",
+	ulog.FromContext(ctx).V(1).Info("Setting an owner ref to the Elasticsearch resource on the future orphan Pods",
 		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
 	return updatePods(ctx, k8sClient, statefulSet, func(p *corev1.Pod) error {
 		return controllerutil.SetOwnerReference(&es, p, scheme.Scheme)
@@ -270,7 +272,7 @@ func updatePodOwners(ctx context.Context, k8sClient k8s.Client, es esv1.Elastics
 
 // removeESPodOwner removes any reference to the ES resource from the Pods, that was set in updatePodOwners.
 func removeESPodOwner(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
-	log.V(1).Info("Removing any Pod owner ref set to the Elasticsearch resource after StatefulSet re-creation",
+	ulog.FromContext(ctx).V(1).Info("Removing any Pod owner ref set to the Elasticsearch resource after StatefulSet re-creation",
 		"namespace", es.Namespace, "es_name", es.Name, "statefulset_name", statefulSet.Name)
 	updateFunc := func(p *corev1.Pod) error {
 		for i, ownerRef := range p.OwnerReferences {

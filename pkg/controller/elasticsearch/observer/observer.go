@@ -112,7 +112,7 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 func (o *Observer) observe() {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), nonNegativeTimeout(o.settings.ObservationInterval))
 	defer cancelFunc()
-
+	log := ulog.FromContext(ctx)
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	if o.settings.Tracer != nil {
@@ -143,6 +143,7 @@ func nonNegativeTimeout(observationInterval time.Duration) time.Duration {
 
 // retrieveHealth returns the current Elasticsearch cluster health
 func retrieveHealth(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) esv1.ElasticsearchHealth {
+	log := ulog.FromContext(ctx)
 	health, err := esClient.GetClusterHealth(ctx)
 	if err != nil {
 		log.V(1).Info(

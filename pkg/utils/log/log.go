@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	"go.elastic.co/apm/module/apmzap/v2"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -81,9 +82,12 @@ func setLogger(v *int) {
 		_ = flagset.Set("v", strconv.Itoa(int(zapLevel.Level())*-1))
 	}
 
+	// send error logs to APM
+	tracing := zap.WrapCore((&apmzap.Core{}).WrapCore)
+
 	opts := []zap.Option{zap.Fields(
 		zap.String("service.version", getVersionString()),
-	)}
+	), tracing}
 
 	var encoder zapcore.Encoder
 	if dev.Enabled {

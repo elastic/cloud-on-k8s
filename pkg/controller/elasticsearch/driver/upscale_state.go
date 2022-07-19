@@ -184,7 +184,7 @@ func (s *upscaleState) limitNodesCreation(
 	if replicasToCreate > 0 {
 		nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas+replicasToCreate))
 		s.recordNodesCreation(replicasToCreate)
-		ssetLogger(toApply).Info(
+		ssetLogger(s.ctx.parentCtx, toApply).Info(
 			"Creating nodes",
 			"actualReplicas", actualReplicas,
 			"replicasToCreate", replicasToCreate,
@@ -199,7 +199,7 @@ func (s *upscaleState) limitNodesCreation(
 	}
 	if replicasToCreate+actualReplicas < targetReplicas {
 		msg := "Limiting nodes creation to respect maxSurge setting"
-		ssetLogger(toApply).Info(
+		ssetLogger(s.ctx.parentCtx, toApply).Info(
 			msg,
 			"target", targetReplicas,
 			"actual", actualReplicas,
@@ -221,7 +221,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
 		if !s.canCreateMasterNode() {
 			msg := "Limiting master nodes creation to one at a time"
-			ssetLogger(toApply).Info(
+			ssetLogger(s.ctx.parentCtx, toApply).Info(
 				"Limiting master nodes creation to one at a time",
 				"target", targetReplicas,
 				"actual", actualReplicas,
@@ -233,7 +233,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
 		s.recordMasterNodeCreation()
 		msg := "Creating master node"
-		ssetLogger(toApply).Info(
+		ssetLogger(s.ctx.parentCtx, toApply).Info(
 			msg,
 			"actualReplicas", actualReplicas,
 			"targetReplicas", rep,
