@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
@@ -184,7 +186,7 @@ func (s *upscaleState) limitNodesCreation(
 	if replicasToCreate > 0 {
 		nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas+replicasToCreate))
 		s.recordNodesCreation(replicasToCreate)
-		ssetLogger(s.ctx.parentCtx, toApply).Info(
+		s.loggerFor(toApply).Info(
 			"Creating nodes",
 			"actualReplicas", actualReplicas,
 			"replicasToCreate", replicasToCreate,
@@ -199,7 +201,7 @@ func (s *upscaleState) limitNodesCreation(
 	}
 	if replicasToCreate+actualReplicas < targetReplicas {
 		msg := "Limiting nodes creation to respect maxSurge setting"
-		ssetLogger(s.ctx.parentCtx, toApply).Info(
+		s.loggerFor(toApply).Info(
 			msg,
 			"target", targetReplicas,
 			"actual", actualReplicas,
@@ -221,7 +223,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
 		if !s.canCreateMasterNode() {
 			msg := "Limiting master nodes creation to one at a time"
-			ssetLogger(s.ctx.parentCtx, toApply).Info(
+			s.loggerFor(toApply).Info(
 				"Limiting master nodes creation to one at a time",
 				"target", targetReplicas,
 				"actual", actualReplicas,
@@ -233,7 +235,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
 		s.recordMasterNodeCreation()
 		msg := "Creating master node"
-		ssetLogger(s.ctx.parentCtx, toApply).Info(
+		s.loggerFor(toApply).Info(
 			msg,
 			"actualReplicas", actualReplicas,
 			"targetReplicas", rep,
@@ -242,4 +244,12 @@ func (s *upscaleState) limitMasterNodesCreation(
 	}
 
 	return toApply, nil
+}
+
+func (s *upscaleState) loggerFor(sset appsv1.StatefulSet) logr.Logger {
+	if s.ctx.parentCtx != nil {
+		return ssetLogger(s.ctx.parentCtx, sset)
+	}
+	// for testing with incomplete state
+	return crlog.Log
 }

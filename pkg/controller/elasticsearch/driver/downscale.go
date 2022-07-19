@@ -332,7 +332,7 @@ func maybeUpdateZen1ForDownscale(
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
-	if zen1compatible, err := zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets, c, es); !zen1compatible || err != nil {
+	if zen1compatible, err := zen1.AtLeastOneNodeCompatibleWithZen1(ctx, actualStatefulSets, c, es); !zen1compatible || err != nil {
 		return err
 	}
 

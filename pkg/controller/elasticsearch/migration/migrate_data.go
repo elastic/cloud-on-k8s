@@ -14,8 +14,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("migrate-data")
-
 // ShardMigration implements the shutdown.Interface based on externally controlled shard allocation filtering.
 type ShardMigration struct {
 	es esv1.Elasticsearch
@@ -48,7 +46,7 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 		return shutdown.NodeShutdownStatus{}, err
 	}
 	if shardActivity {
-		log.Info("Delaying node shutdown because of shard activity",
+		ulog.FromContext(ctx).Info("Delaying node shutdown because of shard activity",
 			"namespace", sm.es.Namespace, "es_name", sm.es.Name, "pod_name", podName)
 		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownInProgress}, nil
 	}
@@ -78,7 +76,7 @@ func nodeMayHaveShard(ctx context.Context, es esv1.Elasticsearch, shardLister es
 		}
 		// shard node undefined (likely unassigned)
 		if shard.NodeName == "" {
-			log.Info("Found orphan shard, preventing data migration",
+			ulog.FromContext(ctx).Info("Found orphan shard, preventing data migration",
 				"namespace", es.Namespace, "es_name", es.Name,
 				"index", shard.Index, "shard", shard.Shard, "shard_state", shard.State)
 			return true, nil
@@ -99,6 +97,6 @@ func migrateData(
 	if len(leavingNodes) > 0 {
 		exclusions = strings.Join(leavingNodes, ",")
 	}
-	log.Info("Setting routing allocation excludes", "namespace", es.Namespace, "es_name", es.Name, "value", exclusions)
+	ulog.FromContext(ctx).Info("Setting routing allocation excludes", "namespace", es.Namespace, "es_name", es.Name, "value", exclusions)
 	return allocationSetter.ExcludeFromShardAllocation(ctx, exclusions)
 }

@@ -42,5 +42,5 @@ func (d *defaultDriver) expectationsSatisfied(ctx context.Context) (bool, string
 		return false, fmt.Sprintf("observedGeneration is not reconciled yet for StatefulSets %s", strings.Join(pendingStatefulSetReconciliation.Names().AsSlice(), ",")), nil
 	}
 	// make sure pods have been reconciled by the StatefulSet controller
-	return actualStatefulSets.PodReconciliationDone(d.Client)
+	return actualStatefulSets.PodReconciliationDone(ctx, d.Client)
 }

@@ -268,7 +268,7 @@ func TestAPIError_Error(t *testing.T) {
 	}{
 		{
 			name: "Elasticsearch JSON error response",
-			fields: fields{newAPIError(&http.Response{
+			fields: fields{newAPIError(context.Background(), &http.Response{
 				StatusCode: 400,
 				Status:     "400 Bad Request",
 				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
@@ -279,7 +279,7 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "non-JSON error response",
-			fields: fields{newAPIError(&http.Response{
+			fields: fields{newAPIError(context.Background(), &http.Response{
 				StatusCode: 500,
 				Status:     "500 Internal Server Error",
 				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
@@ -557,6 +557,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 }
 
 func TestAPIError_Types(t *testing.T) {
+	ctx := context.Background()
 	type args struct {
 		err error
 	}
@@ -570,27 +571,27 @@ func TestAPIError_Types(t *testing.T) {
 		{
 			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: newAPIError(NewMockResponse(500, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(500, nil, "")), //nolint:bodyclose
 			},
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: newAPIError(NewMockResponse(409, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(409, nil, "")), //nolint:bodyclose
 			},
 			wantConflict: true,
 		},
 		{
 			name: "403 is a forbidden",
 			args: args{
-				err: newAPIError(NewMockResponse(403, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(403, nil, "")), //nolint:bodyclose
 			},
 			wantForbidden: true,
 		},
 		{
 			name: "404 is not found",
 			args: args{
-				err: newAPIError(NewMockResponse(404, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(404, nil, "")), //nolint:bodyclose
 			},
 			wantNotFound: true,
 		},

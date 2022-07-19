@@ -698,7 +698,9 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 		{
 			name: "no downscale planned",
 			args: args{
-				ctx: downscaleContext{},
+				ctx: downscaleContext{
+					parentCtx: context.Background(),
+				},
 				downscale: ssetDownscale{
 					initialReplicas: 3,
 					targetReplicas:  3,
@@ -715,6 +717,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			name: "downscale possible from 3 to 2",
 			args: args{
 				ctx: downscaleContext{
+					parentCtx:    context.Background(),
 					nodeShutdown: migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{})),
 				},
 				downscale: ssetDownscale{
@@ -733,6 +736,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			name: "downscale not possible: data migration not complete",
 			args: args{
 				ctx: downscaleContext{
+					parentCtx:      context.Background(),
 					reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 					nodeShutdown: migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardLister(esclient.Shards{
 						{
@@ -760,6 +764,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			name: "downscale not possible: pending shard activity",
 			args: args{
 				ctx: downscaleContext{
+					parentCtx:      context.Background(),
 					reconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 					nodeShutdown:   migration.NewShardMigration(es, &fakeESClient{}, migration.NewFakeShardListerWithShardActivity(esclient.Shards{})),
 				},
@@ -876,6 +881,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 		k8sClient:    k8sClient,
 		expectations: expectations.NewExpectations(k8sClient),
 		esClient:     &fakeESClient{},
+		parentCtx:    context.Background(),
 	}
 
 	expectedSset1 := *sset1.DeepCopy()

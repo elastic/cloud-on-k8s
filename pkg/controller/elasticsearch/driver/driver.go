@@ -193,9 +193,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// Always update the Elasticsearch state bits with the latest observed state.
 	d.ReconcileState.
-		UpdateClusterHealth(observedState()).    // Elasticsearch cluster health
-		UpdateAvailableNodes(*resourcesState).   // Available nodes
-		UpdateMinRunningVersion(*resourcesState) // Min running version
+		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
+		UpdateAvailableNodes(*resourcesState).        // Available nodes
+		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
 
 	res = certificates.ReconcileTransport(
 		ctx,

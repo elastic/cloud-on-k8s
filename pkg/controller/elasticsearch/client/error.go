@@ -6,11 +6,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // APIError is a non 2xx response from the Elasticsearch API
@@ -21,8 +24,9 @@ type APIError struct {
 }
 
 // newAPIError converts an HTTP response into an API error, attempting to parse the body to include the details about the error.
-func newAPIError(response *http.Response) error {
+func newAPIError(ctx context.Context, response *http.Response) error {
 	defer response.Body.Close()
+	log := ulog.FromContext(ctx)
 	apiError := &APIError{
 		Status:     response.Status,
 		StatusCode: response.StatusCode,

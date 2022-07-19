@@ -23,8 +23,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("cleanup")
-
 // DeleteAfter represents how long after creation an object can be safely garbage collected.
 const DeleteAfter = 10 * time.Minute
 
@@ -81,7 +79,7 @@ func cleanupFromPodReference(ctx context.Context, c k8s.Client, namespace string
 				continue
 			}
 			// pod does not exist anymore, delete the object
-			log.Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
+			ulog.FromContext(ctx).Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
 			if deleteErr := c.Delete(ctx, runtimeObj); deleteErr != nil {
 				return deleteErr
 			}
