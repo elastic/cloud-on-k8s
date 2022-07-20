@@ -1,0 +1,6 @@
+
+1. Check Agent cluster status
+  $ kubectl get agent --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=agent
+
+2. Check Agent pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=agent

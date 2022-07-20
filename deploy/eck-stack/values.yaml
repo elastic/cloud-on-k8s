@@ -19,3 +19,8 @@ eck-kibana:
     # both the eck-elasticsearch and the eck-kibana chart work together by default in the eck-stack chart.
     elasticsearchRef:
       name: elasticsearch
+
+# If enabled, will use the eck-elastic-agent chart and deploy an Elastic Agent instance.
+#
+eck-elastic-agent:
+  enabled: false

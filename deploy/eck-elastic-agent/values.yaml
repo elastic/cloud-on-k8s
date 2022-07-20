@@ -1,0 +1,129 @@
+---
+# Default values for eck-elastic-agent.
+# This is a YAML-formatted file.
+instances:
+- # Name of this specific Elastic Agent.
+  #
+  name: quickstart
+
+  # Version of Elastic Agent.
+  #
+  version: 8.2.3
+  
+  # Labels that will be applied to Elastic Agent.
+  #
+  labels: {}
+  
+  # Annotations that will be applied to Elastic Agent.
+  #
+  annotations: {}
+  
+  spec:
+    # Referenced resources are below, as, depending on the setup, at least one is required for a functional Agent.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+    #
+    # Reference to ECK-managed Kibana instance.
+    #
+    # kibanaRef:
+    #   name: quickstart
+      # Optional namespace reference to Kibana instance.
+      # If not specified, then the namespace of the Agent instance
+      # will be assumed.
+      #
+      # namespace: default
+
+    # Reference to ECK-managed Elasticsearch instance.
+    #
+    elasticsearchRefs:
+    - name: quickstart
+      # Optional namespace reference to Elasticsearch instance.
+      # If not specified, then the namespace of the Agent instance
+      # will be assumed.
+      #
+      # namespace: default
+    
+    # Reference to ECK-managed Fleet Server instance.
+    #
+    # fleetServerRef:
+    #   name: fleet-server
+      # Optional namespace reference to Fleet Server instance.
+      # If not specified, then the namespace of the Agent instance
+      # will be assumed.
+      #
+      # namespace: default
+  
+    # Daemonset, or Deployment specification for Agent.
+    # At least one is required of [daemonSet, deployment].
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+    #
+    daemonSet:
+      podTemplate:
+        spec:
+          containers:
+          - name: agent
+            securityContext:
+              runAsUser: 0
+  
+    # Configuration of Agent, specifically used in Agent standalone mode.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
+    #
+    config:
+      agent:
+        monitoring:
+          enabled: true
+          use_output: default
+          metrics: true
+      inputs:
+      - type: system/metrics
+        data_stream.namespace: default
+        use_output: default
+        streams:
+        - metricset: cpu
+          data_stream.dataset: system.cpu
+
+# ServiceAccounts to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
+# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+serviceAccounts: []
+# - name: fleet-server
+#   namespace: optional-namespace
+
+# ClusterRoleBindings to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
+# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRoleBindings: []
+# - name: fleet-server
+#   subjects:
+#   - kind: ServiceAccount
+#     name: fleet-server
+#     namespace: default
+#   roleRef:
+#     kind: ClusterRole
+#     name: fleet-server
+#     apiGroup: rbac.authorization.k8s.io
+
+# ClusterRoles to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
+# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRoles: []
+# - name: fleet-server
+#   rules:
+#   - apiGroups: [""]
+#     resources:
+#     - pods
+#     - namespaces
+#     - nodes
+#     verbs:
+#     - get
+#     - watch
+#     - list
+#   - apiGroups: ["coordination.k8s.io"]
+#     resources:
+#     - leases
+#     verbs:
+#     - get
+#     - create
+#     - update

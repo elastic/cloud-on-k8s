@@ -1,0 +1,247 @@
+---
+eck-elasticsearch:
+  enabled: true
+
+  # Name of the Elasticsearch instance.
+  #
+  fullnameOverride: elasticsearch
+
+  # Version of Elasticsearch.
+  #
+  version: 8.2.3
+
+  nodeSets:
+  - name: default
+    count: 3
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false
+
+eck-kibana:
+  enabled: true
+
+  # Name of the Kibana instance.
+  #
+  fullnameOverride: kibana
+  
+  # Version of Kibana.
+  #
+  version: 8.2.3
+  
+  spec:
+    # Count of Kibana instances to create.
+    #
+    count: 1
+  
+    # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+    #
+    elasticsearchRef:
+      name: elasticsearch
+      # namespace: default
+
+    config:
+      xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+      xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+      xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+      - name: kubernetes
+        version: latest
+      xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        is_default_fleet_server: true
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        unenroll_timeout: 900
+        is_default: true
+        package_policies:
+        - package:
+            name: system
+          name: system-1
+        - package:
+            name: kubernetes
+          name: kubernetes-1
+
+eck-elastic-agent:
+  enabled: true
+
+  instances:
+  - # Name of this specific Elastic Agent.
+    #
+    name: fleet-server
+  
+    # Version of Elastic Agent.
+    #
+    version: 8.2.3
+    
+    spec:
+      # Reference to ECK-managed Kibana instance.
+      #
+      kibanaRef:
+        name: kibana
+  
+      # Reference to ECK-managed Elasticsearch instance.
+      #
+      elasticsearchRefs:
+      - name: elasticsearch
+    
+      mode: fleet
+      fleetServerEnabled: true
+      deployment:
+        replicas: 1
+        podTemplate:
+          spec:
+            serviceAccountName: fleet-server
+            automountServiceAccountToken: true
+            securityContext:
+              runAsUser: 0
+  - # Name of this specific Elastic Agent.
+    #
+    name: elastic-agent
+  
+    # Version of Elastic Agent.
+    #
+    version: 8.2.3
+    
+    spec:
+      # Reference to ECK-managed Kibana instance.
+      #
+      kibanaRef:
+        name: kibana
+  
+      # Reference to ECK-managed Fleet instance.
+      #
+      fleetServerRef:
+        name: fleet-server
+      
+      mode: fleet
+    
+      daemonSet:
+        podTemplate:
+          spec:
+            serviceAccountName: elastic-agent
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            automountServiceAccountToken: true
+            securityContext:
+              runAsUser: 0
+  
+  serviceAccounts:
+  - name: fleet-server
+  - name: elastic-agent
+
+  clusterRoles:
+  - name: fleet-server
+    rules:
+    - apiGroups: [""]
+      resources:
+      - pods
+      - namespaces
+      - nodes
+      verbs:
+      - get
+      - watch
+      - list
+    - apiGroups: ["coordination.k8s.io"]
+      resources:
+      - leases
+      verbs:
+      - get
+      - create
+      - update
+  - name: elastic-agent
+    rules:
+    - apiGroups: [""]
+      resources:
+      - pods
+      - nodes
+      - namespaces
+      - events
+      - services
+      - configmaps
+      verbs:
+      - get
+      - watch
+      - list
+    - apiGroups: ["coordination.k8s.io"]
+      resources:
+      - leases
+      verbs:
+      - get
+      - create
+      - update
+    - nonResourceURLs:
+      - "/metrics"
+      verbs:
+      - get
+    - apiGroups: ["extensions"]
+      resources:
+        - replicasets
+      verbs: 
+      - "get"
+      - "list"
+      - "watch"
+    - apiGroups:
+      - "apps"
+      resources:
+      - statefulsets
+      - deployments
+      - replicasets
+      verbs:
+      - "get"
+      - "list"
+      - "watch"
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/stats
+      verbs:
+      - get
+    - apiGroups:
+      - "batch"
+      resources:
+      - jobs
+      verbs:
+      - "get"
+      - "list"
+      - "watch"
+
+  clusterRoleBindings:
+  - name: fleet-server
+    subjects:
+    - kind: ServiceAccount
+      name: fleet-server
+      namespace: default
+    roleRef:
+      kind: ClusterRole
+      name: fleet-server
+      apiGroup: rbac.authorization.k8s.io
+  - name: elastic-agent
+    subjects:
+    - kind: ServiceAccount
+      name: elastic-agent
+      namespace: default
+    roleRef:
+      kind: ClusterRole
+      name: elastic-agent
+      apiGroup: rbac.authorization.k8s.io
