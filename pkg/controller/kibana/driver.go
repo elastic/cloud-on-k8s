@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -138,7 +139,7 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	logger := log.WithValues("namespace", kb.Namespace, "kb_name", kb.Name)
+	logger := ulog.FromContext(ctx)
 	assocAllowed, err := association.AllowVersion(d.version, kb, logger, d.Recorder())
 	if err != nil {
 		return results.WithError(err)
