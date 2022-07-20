@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -176,7 +175,6 @@ func Test_buildBeatConfig(t *testing.T) {
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Logger:        logr.Discard(),
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
@@ -370,7 +368,6 @@ func Test_getUserConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
-				Logger:        logr.Discard(),
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),

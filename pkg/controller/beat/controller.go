@@ -44,8 +44,6 @@ const (
 	controllerName = "beat-controller"
 )
 
-var log = ulog.Log.WithName(controllerName)
-
 // Add creates a new Beat Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -144,7 +142,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	}
 
 	if common.IsUnmanaged(ctx, &beat) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", beat.Namespace, "beat_name", beat.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", beat.Namespace, "beat_name", beat.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -193,7 +191,7 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	defer span.End()
 
 	if err := beat.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -218,7 +216,6 @@ func newDriver(
 	dp := beatcommon.DriverParams{
 		Client:        client,
 		Context:       ctx,
-		Logger:        log,
 		Watches:       dynamicWatches,
 		EventRecorder: recorder,
 		Status:        &status,
