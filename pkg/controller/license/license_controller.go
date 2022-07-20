@@ -157,7 +157,10 @@ func findLicense(ctx context.Context, c k8s.Client, checker license.Checker, min
 	if len(errs) > 0 {
 		ulog.FromContext(ctx).Info("Ignoring invalid license objects", "errors", errs)
 	}
-	return license.BestMatch(minVersion, licenseList, checker.Valid)
+	valid := func(l license.EnterpriseLicense) (bool, error) {
+		return checker.Valid(ctx, l)
+	}
+	return license.BestMatch(ctx, minVersion, licenseList, valid)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.

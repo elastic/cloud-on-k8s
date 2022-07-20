@@ -95,7 +95,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 
 	log := logconf.FromContext(ctx)
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -118,7 +118,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	// Validate Elasticsearch and Autoscaling spec
-	if err := validation.ValidateElasticsearch(es, r.licenseChecker, r.ExposedNodeLabels); err != nil {
+	if err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels); err != nil {
 		log.Error(
 			err,
 			"Elasticsearch manifest validation failed",

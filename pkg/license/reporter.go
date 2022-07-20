@@ -82,5 +82,5 @@ func (r ResourceReporter) Get(ctx context.Context) (LicensingInfo, error) {
 		return LicensingInfo{}, err
 	}
 
-	return r.licensingResolver.ToInfo(totalMemory)
+	return r.licensingResolver.ToInfo(ctx, totalMemory)
 }

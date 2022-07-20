@@ -137,7 +137,7 @@ func doReconcile(
 		return reconcile.Result{}, err
 	}
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return defaultRequeue, err
 	}

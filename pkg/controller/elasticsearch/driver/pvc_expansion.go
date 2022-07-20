@@ -47,6 +47,7 @@ func handleVolumeExpansion(
 ) (bool, error) {
 	// ensure there are no incompatible storage size modification
 	if err := validation.ValidateClaimsStorageUpdate(
+		ctx,
 		k8sClient,
 		actualSset.Spec.VolumeClaimTemplates,
 		expectedSset.Spec.VolumeClaimTemplates,

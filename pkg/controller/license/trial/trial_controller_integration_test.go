@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 func validateTrialStatus(t *testing.T, checker license.Checker, expected bool) {
 	// test trial initialisation on create
 	test.RetryUntilSuccess(t, func() error {
-		trialEnabled, err := checker.EnterpriseFeaturesEnabled()
+		trialEnabled, err := checker.EnterpriseFeaturesEnabled(context.Background())
 		if err != nil {
 			return err
 		}

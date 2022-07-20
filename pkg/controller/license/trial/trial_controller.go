@@ -90,7 +90,7 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 
 	// 2. reconcile the trial license itself
 	trialLicensePopulated := license.IsMissingFields() == nil
-	licenseStatus := r.validateLicense(license)
+	licenseStatus := r.validateLicense(ctx, license)
 	switch {
 	case !trialLicensePopulated && r.trialState.IsTrialStarted():
 		// user wants to start a trial for the second time
@@ -189,7 +189,7 @@ func (r *ReconcileTrials) completeTrialActivation(ctx context.Context, license t
 }
 
 func (r *ReconcileTrials) initTrialLicense(ctx context.Context, secret corev1.Secret, license licensing.EnterpriseLicense) (reconcile.Result, error) {
-	if err := r.trialState.InitTrialLicense(&license); err != nil {
+	if err := r.trialState.InitTrialLicense(ctx, &license); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(ctx, r, secret, license)
@@ -204,8 +204,8 @@ func validLicense(status licensing.LicenseStatus) bool {
 	return status == licensing.LicenseStatusValid
 }
 
-func (r *ReconcileTrials) validateLicense(license licensing.EnterpriseLicense) licensing.LicenseStatus {
-	return r.trialState.LicenseVerifier().Valid(license, time.Now())
+func (r *ReconcileTrials) validateLicense(ctx context.Context, license licensing.EnterpriseLicense) licensing.LicenseStatus {
+	return r.trialState.LicenseVerifier().Valid(ctx, license, time.Now())
 }
 
 func validateEULA(trialSecret corev1.Secret) string {

@@ -90,7 +90,7 @@ func simulateLicenseInit(t *testing.T, k k8s.Client, secret corev1.Secret) licen
 	}
 	state, err := licensing.NewTrialState()
 	require.NoError(t, err)
-	err = state.InitTrialLicense(&l)
+	err = state.InitTrialLicense(context.Background(), &l)
 	require.NoError(t, err)
 	require.NoError(t, licensing.UpdateEnterpriseLicense(context.Background(), k, secret, l))
 	return state

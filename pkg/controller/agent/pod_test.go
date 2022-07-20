@@ -249,8 +249,9 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref",
 			params: Params{
-				Agent:  agent,
-				Client: k8s.NewFakeClient(),
+				Context: context.Background(),
+				Agent:   agent,
+				Client:  k8s.NewFakeClient(),
 			},
 			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
@@ -274,8 +275,9 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref, token override",
 			params: Params{
-				Agent:  agent,
-				Client: k8s.NewFakeClient(),
+				Context: context.Background(),
+				Agent:   agent,
+				Client:  k8s.NewFakeClient(),
 			},
 			fleetToken:         testToken,
 			podTemplateBuilder: podTemplateBuilderWithFleetTokenSet,
@@ -293,7 +295,8 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, with fleet server, with kibana ref",
 			params: Params{
-				Agent: agent2,
+				Context: context.Background(),
+				Agent:   agent2,
 				Client: k8s.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{Name: "agent-agent-http", Namespace: "default"},
