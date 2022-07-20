@@ -14,10 +14,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("keystore")
 
 // Resources holds all the resources needed to create a keystore in Kibana or in the APM server.
 type Resources struct {
