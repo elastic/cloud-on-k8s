@@ -5,6 +5,7 @@
 package webhook
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -26,13 +27,13 @@ type WebhookCertificates struct { //nolint:revive
 	serverCert []byte
 }
 
-func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhooks []webhook) bool {
+func (w *Params) shouldRenewCertificates(ctx context.Context, serverCertificates *corev1.Secret, webhooks []webhook) bool {
 	// Read the current certificate used by the server
-	serverCA := certificates.BuildCAFromSecret(*serverCertificates)
+	serverCA := certificates.BuildCAFromSecret(ctx, *serverCertificates)
 	if serverCA == nil {
 		return true
 	}
-	if !certificates.CanReuseCA(serverCA, w.Rotation.RotateBefore) {
+	if !certificates.CanReuseCA(ctx, serverCA, w.Rotation.RotateBefore) {
 		return true
 	}
 	// Read the certificate in the webhook configuration
@@ -51,7 +52,7 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 			return true
 		}
 		for _, cert := range certs {
-			if !certificates.CertIsValid(*cert, w.Rotation.RotateBefore) {
+			if !certificates.CertIsValid(ctx, *cert, w.Rotation.RotateBefore) {
 				return true
 			}
 		}

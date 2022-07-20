@@ -43,7 +43,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 ) error {
 	log := ulog.FromContext(ctx)
 	// verify that the secret contains a parsable and compatible private key
-	privateKey := certificates.GetCompatiblePrivateKey(ca.PrivateKey, secret, PodKeyFileName(pod.Name))
+	privateKey := certificates.GetCompatiblePrivateKey(ctx, ca.PrivateKey, secret, PodKeyFileName(pod.Name))
 
 	// if we need a new private key, generate it
 	if privateKey == nil {
@@ -128,7 +128,7 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	if !certificates.PrivateMatchesPublicKey(cert.PublicKey, privateKey) {
+	if !certificates.PrivateMatchesPublicKey(ctx, cert.PublicKey, privateKey) {
 		log.Info(
 			"Certificate belongs do a different public key, should issue new",
 			"namespace", pod.Namespace,

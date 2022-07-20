@@ -43,7 +43,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 	}
 
 	// check if we need to renew the certificates used in the resources
-	if w.shouldRenewCertificates(webhookServerSecret, webhookConfiguration.webhooks()) {
+	if w.shouldRenewCertificates(ctx, webhookServerSecret, webhookConfiguration.webhooks()) {
 		log.Info(
 			"Creating new webhook certificates",
 			"webhook", w.Name,

@@ -8,6 +8,8 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 var (
@@ -206,7 +208,8 @@ func ParseSANGeneralNamesOtherNamesOnly(c *x509.Certificate) ([]GeneralName, err
 							},
 						})
 					default:
-						log.Info("Ignoring unsupported GeneralNames tag", "tag", generalName.Tag, "subject", c.Subject)
+						// only used in tests
+						ulog.Log.Info("Ignoring unsupported GeneralNames tag", "tag", generalName.Tag, "subject", c.Subject)
 					}
 				}
 			}

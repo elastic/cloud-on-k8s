@@ -182,8 +182,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		min = &d.Version
 	}
 	observedState := d.Observers.ObservedStateResolver(
+		ctx,
 		d.ES,
 		d.newElasticsearchClient(
+			ctx,
 			resourcesState,
 			controllerUser,
 			*min,
@@ -223,6 +225,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
+		ctx,
 		resourcesState,
 		controllerUser,
 		*min,
@@ -353,6 +356,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
+	ctx context.Context,
 	state *reconcile.ResourcesState,
 	user esclient.BasicAuth,
 	v version.Version,
@@ -366,7 +370,7 @@ func (d *defaultDriver) newElasticsearchClient(
 		user,
 		v,
 		caCerts,
-		esclient.Timeout(d.ES),
+		esclient.Timeout(ctx, d.ES),
 		dev.Enabled,
 	)
 }

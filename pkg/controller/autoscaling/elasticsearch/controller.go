@@ -221,7 +221,7 @@ func newElasticsearchClient(
 		},
 		v,
 		caCerts,
-		esclient.Timeout(es),
+		esclient.Timeout(ctx, es),
 		dev.Enabled,
 	), nil
 }

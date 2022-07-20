@@ -6,6 +6,7 @@ package observer
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -111,7 +112,7 @@ func TestManager_Observe(t *testing.T) {
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(esObject(tt.clusterToObserve), tt.clusterToObserveClient)
+			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), tt.clusterToObserveClient)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -180,8 +181,8 @@ func TestManager_ObserveSync(t *testing.T) {
 			name := cluster("es1")
 			cluster := esObject(name)
 			results := []esv1.ElasticsearchHealth{
-				tt.manager.ObservedStateResolver(cluster, esClient)(),
-				tt.manager.ObservedStateResolver(cluster, esClient)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
 			}
 			require.Equal(t, tt.expectedHealth, results)
 			tt.manager.StopObserving(name) // let's clean up the go-routines
@@ -243,6 +244,7 @@ func TestManager_StopObserving(t *testing.T) {
 
 func TestManager_AddObservationListener(t *testing.T) {
 	m := NewManager(1*time.Second, nil)
+	ctx := context.Background()
 
 	cluster1 := esObject(cluster("cluster1"))
 	cluster1.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
@@ -275,9 +277,9 @@ func TestManager_AddObservationListener(t *testing.T) {
 		close(doneCh)
 	}()
 	// observe 2 clusters
-	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
+	obs1 := m.Observe(ctx, cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
+	obs2 := m.Observe(ctx, cluster2, fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
 	<-doneCh
 }
@@ -315,7 +317,7 @@ func TestExtractSettings(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
 			m := NewManager(tc.globalInterval, nil)
-			have := m.extractObserverSettings(es)
+			have := m.extractObserverSettings(context.Background(), es)
 			require.Equal(t, tc.want, have)
 		})
 	}
