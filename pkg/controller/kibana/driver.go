@@ -181,7 +181,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	deploymentStatus, err := common.DeploymentStatus(state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}

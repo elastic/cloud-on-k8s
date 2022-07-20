@@ -5,9 +5,12 @@
 package common
 
 import (
+	"context"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -17,7 +20,7 @@ const (
 )
 
 // IsUnmanaged checks if a given resource is currently unmanaged.
-func IsUnmanaged(object metav1.Object) bool {
+func IsUnmanaged(ctx context.Context, object metav1.Object) bool {
 	managed, exists := object.GetAnnotations()[ManagedAnnotation]
 	if exists && managed == "false" {
 		return true
@@ -25,7 +28,7 @@ func IsUnmanaged(object metav1.Object) bool {
 
 	paused, exists := object.GetAnnotations()[LegacyPauseAnnoation]
 	if exists {
-		log.Info(fmt.Sprintf("%s is deprecated, please use %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", object.GetNamespace(), "name", object.GetName())
+		ulog.FromContext(ctx).Info(fmt.Sprintf("%s is deprecated, please use %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", object.GetNamespace(), "name", object.GetName())
 	}
 	return exists && paused == "true"
 }

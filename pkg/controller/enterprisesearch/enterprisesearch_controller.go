@@ -159,7 +159,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&ent) {
+	if common.IsUnmanaged(ctx, &ent) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ent.Namespace, "ent_name", ent.Name)
 		return reconcile.Result{}, nil
 	}
@@ -258,7 +258,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	status, err = r.generateStatus(ent, deploy, svc.Name)
+	status, err = r.generateStatus(ctx, ent, deploy, svc.Name)
 	if err != nil {
 		return results.WithError(fmt.Errorf("updating status: %w", err)), status
 	}
@@ -287,7 +287,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	return nil
 }
 
-func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
+func (r *ReconcileEnterpriseSearch) generateStatus(ctx context.Context, ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
 	status := entv1.EnterpriseSearchStatus{
 		Association:        ent.Status.Association,
 		ExternalService:    svcName,
@@ -298,7 +298,7 @@ func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, d
 	if err != nil {
 		return status, err
 	}
-	status.DeploymentStatus, err = common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
+	status.DeploymentStatus, err = common.DeploymentStatus(ctx, ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
 	return status, err
 }
 

@@ -169,7 +169,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	associatedKey := k8s.ExtractNamespacedName(associated)
 
-	if common.IsUnmanaged(associated) {
+	if common.IsUnmanaged(ctx, associated) {
 		r.log(associatedKey).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}

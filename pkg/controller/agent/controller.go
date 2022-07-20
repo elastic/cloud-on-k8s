@@ -135,7 +135,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(agent) {
+	if common.IsUnmanaged(ctx, agent) {
 		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}

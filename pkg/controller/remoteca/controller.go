@@ -99,7 +99,7 @@ func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, err
 	}
 
-	if common.IsUnmanaged(&es) {
+	if common.IsUnmanaged(ctx, &es) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}

@@ -163,7 +163,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&ems) {
+	if common.IsUnmanaged(ctx, &ems) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}
@@ -269,7 +269,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	status, err = r.getStatus(ems, deploy)
+	status, err = r.getStatus(ctx, ems, deploy)
 	if err != nil {
 		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
 	}
@@ -383,13 +383,13 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 	}, nil
 }
 
-func (r *ReconcileMapsServer) getStatus(ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
+func (r *ReconcileMapsServer) getStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
 	status := newStatus(ems)
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ems.Namespace, map[string]string{NameLabelName: ems.Name})
 	if err != nil {
 		return status, err
 	}
-	deploymentStatus, err := common.DeploymentStatus(ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
 	if err != nil {
 		return status, err
 	}

@@ -143,7 +143,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&beat) {
+	if common.IsUnmanaged(ctx, &beat) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", beat.Namespace, "beat_name", beat.Name)
 		return reconcile.Result{}, nil
 	}

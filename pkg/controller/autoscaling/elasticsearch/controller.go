@@ -106,7 +106,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return licenseCheckRequeue, nil
 	}
 
-	if common.IsUnmanaged(&es) {
+	if common.IsUnmanaged(ctx, &es) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
