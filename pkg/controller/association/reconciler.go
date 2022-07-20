@@ -153,6 +153,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
+	log := ulog.FromContext(ctx)
 
 	associated := r.AssociatedObjTemplate()
 	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {
@@ -231,6 +232,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
 	assocRef := association.AssociationRef()
+	log := ulog.FromContext(ctx)
 
 	// the referenced object can be an Elastic resource or a custom Secret
 	referencedObj := r.ReferencedObjTemplate()
@@ -542,6 +544,6 @@ func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...runt
 				},
 			},
 		},
-		logger: log.WithName("test"),
+		logger: ulog.Log.WithName("test"),
 	}
 }

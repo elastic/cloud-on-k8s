@@ -135,7 +135,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 	if esAssocConf.IsConfigured() {
-		credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+		credentials, err := association.ElasticsearchAuthSettings(ctx, client, kb.EsAssociation())
 		if err != nil {
 			return CanonicalConfig{}, err
 		}

@@ -201,7 +201,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
 	}
 
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ems, r.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ems, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}

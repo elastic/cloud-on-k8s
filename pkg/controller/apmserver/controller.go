@@ -213,7 +213,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	state := NewState(as)
 	results := reconciler.NewResult(ctx)
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, as.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}

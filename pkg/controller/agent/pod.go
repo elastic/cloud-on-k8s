@@ -5,6 +5,7 @@
 package agent
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hash"
@@ -220,7 +221,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 }
 
 func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client, fleetToken)
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, fleetToken)
 	if err != nil {
 		return nil, err
 	}
@@ -426,15 +427,15 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
+func getFleetModeEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	result := map[string]string{}
 
-	for _, f := range []func(agentv1alpha1.Agent, k8s.Client, EnrollmentAPIKey) (map[string]string, error){
+	for _, f := range []func(context.Context, agentv1alpha1.Agent, k8s.Client, EnrollmentAPIKey) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
 	} {
-		envVars, err := f(agent, client, fleetToken)
+		envVars, err := f(ctx, agent, client, fleetToken)
 		if err != nil {
 			return nil, err
 		}
@@ -444,7 +445,7 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToke
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, _ k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
+func getFleetSetupKibanaEnvVars(_ context.Context, agent agentv1alpha1.Agent, _ k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	if !agent.Spec.KibanaRef.IsDefined() {
 		return map[string]string{}, nil
 	}
@@ -460,7 +461,7 @@ func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, _ k8s.Client, fleetTo
 	return envVars, nil
 }
 
-func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
+func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
@@ -506,7 +507,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client, fle
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client, _ EnrollmentAPIKey) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ EnrollmentAPIKey) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
 		return map[string]string{}, nil
 	}
@@ -519,7 +520,7 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esConnectionSettings, _, err := extractPodConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		esConnectionSettings, _, err := extractPodConnectionSettings(ctx, agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}

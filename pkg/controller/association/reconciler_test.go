@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
@@ -272,7 +273,7 @@ func testReconciler(runtimeObjs ...runtime.Object) Reconciler {
 				},
 			},
 		},
-		logger: log.WithName("test"),
+		logger: ulog.Log.WithName("test"),
 	}
 }
 
@@ -583,7 +584,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 				},
 			},
 		},
-		logger: log.WithName("test"),
+		logger: ulog.Log.WithName("test"),
 	}
 
 	// no resources are watched yet
@@ -925,7 +926,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 				},
 			},
 		},
-		logger: log.WithName("test"),
+		logger: ulog.Log.WithName("test"),
 	}
 
 	// Secrets created for the first ref

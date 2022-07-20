@@ -99,14 +99,14 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(kb.EsAssociation(), d.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, kb.EsAssociation(), d.recorder)
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !isEsAssocConfigured {
 		return results
 	}
-	isEntAssocConfigured, err := association.IsConfiguredIfSet(kb.EntAssociation(), d.recorder)
+	isEntAssocConfigured, err := association.IsConfiguredIfSet(ctx, kb.EntAssociation(), d.recorder)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -235,7 +235,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(d.client, *kb, keystoreResources, volumes)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes)
 	if err != nil {
 		return deployment.Params{}, err
 	}

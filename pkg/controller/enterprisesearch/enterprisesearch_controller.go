@@ -186,7 +186,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ent)
 
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ent, r.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ent, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}

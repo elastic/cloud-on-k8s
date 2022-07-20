@@ -58,7 +58,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
 func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
-	cfg, err := newConfig(driver, ent, ipFamily)
+	cfg, err := newConfig(ctx, driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -146,7 +146,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily cor
 
 	userCfgHasAuth := userConfigHasAuth(userProvidedCfg, userProvidedSecretCfg)
 
-	associationCfg, err := associationConfig(driver.K8sClient(), ent, userCfgHasAuth)
+	associationCfg, err := associationConfig(ctx, driver.K8sClient(), ent, userCfgHasAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*setti
 	return settings.MustCanonicalConfig(settingsMap), nil
 }
 
-func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth bool) (*settings.CanonicalConfig, error) {
+func associationConfig(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth bool) (*settings.CanonicalConfig, error) {
 	entAssocConf, err := ent.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -311,7 +311,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth 
 		})
 	}
 
-	credentials, err := association.ElasticsearchAuthSettings(c, &ent)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, c, &ent)
 	if err != nil {
 		return nil, err
 	}

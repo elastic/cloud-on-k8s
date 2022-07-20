@@ -164,7 +164,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, agent.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}

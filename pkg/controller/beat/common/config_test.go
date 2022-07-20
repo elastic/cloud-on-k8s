@@ -283,7 +283,7 @@ setup.kibana:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildKibanaConfig(tt.args.client, tt.args.associated)
+			got, err := BuildKibanaConfig(context.Background(), tt.args.client, tt.args.associated)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildKibanaConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -37,7 +37,7 @@ func configSecretVolume(ems emsv1alpha1.ElasticMapsServer) volume.SecretVolume {
 }
 
 func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (corev1.Secret, error) {
-	cfg, err := newConfig(driver, ems, ipFamily)
+	cfg, err := newConfig(ctx, driver, ems, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -62,7 +62,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 	return reconciler.ReconcileSecret(ctx, driver.K8sClient(), expectedConfigSecret, &ems)
 }
 
-func newConfig(d driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+func newConfig(ctx context.Context, d driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
 
 	inlineUserCfg, err := inlineUserConfig(ems.Spec.Config)
@@ -77,7 +77,7 @@ func newConfig(d driver.Interface, ems emsv1alpha1.ElasticMapsServer, ipFamily c
 
 	defaults := defaultConfig(ipFamily)
 	tls := tlsConfig(ems)
-	assocCfg, err := associationConfig(d.K8sClient(), ems)
+	assocCfg, err := associationConfig(ctx, d.K8sClient(), ems)
 	if err != nil {
 		return cfg, err
 	}
@@ -109,7 +109,7 @@ func tlsConfig(ems emsv1alpha1.ElasticMapsServer) *settings.CanonicalConfig {
 	})
 }
 
-func associationConfig(c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settings.CanonicalConfig, error) {
+func associationConfig(ctx context.Context, c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
 	assocConf, err := ems.AssociationConf()
 	if err != nil {
@@ -118,7 +118,7 @@ func associationConfig(c k8s.Client, ems emsv1alpha1.ElasticMapsServer) (*settin
 	if !assocConf.IsConfigured() {
 		return cfg, nil
 	}
-	credentials, err := association.ElasticsearchAuthSettings(c, &ems)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, c, &ems)
 	if err != nil {
 		return nil, err
 	}

@@ -136,7 +136,7 @@ func TestExtractConnectionSettings(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotConnectionSettings, _, gotErr := extractPodConnectionSettings(tt.agent, tt.client, tt.assocType)
+			gotConnectionSettings, _, gotErr := extractPodConnectionSettings(context.Background(), tt.agent, tt.client, tt.assocType)
 
 			require.Equal(t, tt.wantConnectionSettings, gotConnectionSettings)
 			require.Equal(t, tt.wantErr, gotErr != nil)

@@ -18,10 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
-var (
-	log = ulog.Log.WithName("association")
-)
-
 // AddAssociationController sets up and starts an association controller for the given associationInfo.
 func AddAssociationController(
 	mgr manager.Manager,
@@ -38,7 +34,7 @@ func AddAssociationController(
 		recorder:        mgr.GetEventRecorderFor(controllerName),
 		Parameters:      params,
 		// override the default logger to be specialized with the association name
-		logger: log.WithName(controllerName),
+		logger: ulog.Log.WithName(controllerName),
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
