@@ -44,10 +44,6 @@ const (
 	controllerName = "enterprisesearch-controller"
 )
 
-var (
-	log = ulog.Log.WithName(controllerName)
-)
-
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -160,7 +156,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	}
 
 	if common.IsUnmanaged(ctx, &ent) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ent.Namespace, "ent_name", ent.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ent.Namespace, "ent_name", ent.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -227,8 +223,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	if err != nil {
 		return results.WithError(err), status
 	}
-	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder)
+	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), ulog.FromContext(ctx), r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -279,7 +274,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	defer span.End()
 
 	if err := ent.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -309,7 +304,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
 		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ent.Namespace,
 		"ent_name", ent.Name,

@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	kibana_network "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
@@ -147,7 +148,7 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
 func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
-	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
+	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +195,8 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg, err := getExistingConfig(c, ent)
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+	cfg, err := getExistingConfig(ctx, c, ent)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +233,7 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1.EnterpriseSearch) (*set
 }
 
 // getExistingConfig retrieves the canonical config, if one exists
-func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func getExistingConfig(ctx context.Context, client k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ent.Namespace,
@@ -240,7 +241,7 @@ func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings
 	}
 	err := client.Get(context.Background(), key, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
-		log.V(1).Info("Enterprise Search config secret does not exist", "namespace", ent.Namespace, "ent_name", ent.Name)
+		ulog.FromContext(ctx).V(1).Info("Enterprise Search config secret does not exist", "namespace", ent.Namespace, "ent_name", ent.Name)
 		return nil, nil
 	} else if err != nil {
 		return nil, err

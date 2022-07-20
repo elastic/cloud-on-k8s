@@ -28,6 +28,7 @@ import (
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
@@ -52,6 +53,7 @@ type VersionUpgrade struct {
 
 // Handle Enterprise Search version upgrades if necessary, by toggling read-only mode.
 func (r *VersionUpgrade) Handle(ctx context.Context) error {
+	log := ulog.FromContext(ctx)
 	expectedVersion, err := version.Parse(r.ent.Spec.Version)
 	if err != nil {
 		return err
@@ -113,7 +115,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Enabling read-only mode for version upgrade",
+	ulog.FromContext(ctx).Info("Enabling read-only mode for version upgrade",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name, "target_version", r.ent.Spec.Version)
 
 	// call the Enterprise Search API
@@ -138,7 +140,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Disabling read-only mode",
+	ulog.FromContext(ctx).Info("Disabling read-only mode",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name)
 
 	// call the Enterprise Search API
