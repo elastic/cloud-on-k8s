@@ -3,15 +3,13 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: {{ include "elasticsearch.fullname" . }}
-  {{- if .Values.labels }}
   labels:
-    {{- include "elasticsearch.labels" . | indent 4 }}
-  {{- end }}
-  {{- if .Values.annotations }}
+    {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
     eck.k8s.elastic.co/license: enterprise
+    {{- if .Values.annotations }}
     {{- toYaml .Values.annotations | indent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   {{- if .Values.updateStrategy }}
   updateStrategy:
