@@ -533,7 +533,7 @@ e2e-local: go-generate
 
 ci-check: check-license-header lint shellcheck generate check-local-changes check-predicates
 
-ci: unit-xml integration-xml helm-test docker-build reattach-pv
+ci: unit-xml integration-xml docker-build reattach-pv
 
 setup-e2e: e2e-compile run-deployer apply-psp e2e-docker-multiarch-build
 
