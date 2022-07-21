@@ -58,7 +58,6 @@ func NewReconciliationContext(
 	return logconf.InitInContext(
 		newCtx,
 		controllerName,
-		logFields...
+		logFields...,
 	)
-
 }

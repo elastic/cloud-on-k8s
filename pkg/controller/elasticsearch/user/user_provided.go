@@ -40,7 +40,7 @@ func UserProvidedRolesWatchName(es types.NamespacedName) string { //nolint:reviv
 
 // reconcileUserProvidedFileRealm returns the aggregate file realm from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
-func reconcileUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existing filerealm.Realm, watched watches.DynamicWatches, recorder record.EventRecorder, ) (filerealm.Realm, error) {
+func reconcileUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existing filerealm.Realm, watched watches.DynamicWatches, recorder record.EventRecorder) (filerealm.Realm, error) {
 	esKey := k8s.ExtractNamespacedName(&es)
 	secretNames := make([]string, 0, len(es.Spec.Auth.FileRealm))
 	for _, secretRef := range es.Spec.Auth.FileRealm {

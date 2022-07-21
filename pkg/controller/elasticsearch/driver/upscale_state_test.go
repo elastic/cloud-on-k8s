@@ -22,7 +22,6 @@ import (
 )
 
 func Test_upscaleState_limitNodesCreation(t *testing.T) {
-
 	tests := []struct {
 		name        string
 		state       *upscaleState
