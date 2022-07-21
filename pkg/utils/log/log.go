@@ -177,8 +177,12 @@ func FromContext(ctx context.Context) logr.Logger {
 		result = crlog.Log
 	}
 
-	if span := apm.SpanFromContext(ctx); span != nil {
-		result = result.WithValues(SpanIDField, span.TraceContext().Span)
+	var fields []interface{}
+	for _, f := range apmzap.TraceContext(ctx) {
+		fields = append(fields, f.Key, f.Interface)
+	}
+	if len(fields) > 0 {
+		result = result.WithValues(fields...)
 	}
 
 	return result
