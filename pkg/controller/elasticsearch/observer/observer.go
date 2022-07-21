@@ -19,7 +19,9 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("observer")
+const name = "elasticsearch-observer"
+
+var log = ulog.Log.WithName(name)
 
 // Settings for the Observer configuration
 type Settings struct {
@@ -112,14 +114,15 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 func (o *Observer) observe() {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), nonNegativeTimeout(o.settings.ObservationInterval))
 	defer cancelFunc()
-	log := ulog.FromContext(ctx)
-	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	if o.settings.Tracer != nil {
-		tx := o.settings.Tracer.StartTransaction("elasticsearch-observer", string(tracing.PeriodicTxType))
+		tx := o.settings.Tracer.StartTransaction(name, string(tracing.PeriodicTxType))
 		defer tx.End()
 		ctx = apm.ContextWithTransaction(ctx, tx)
 	}
+	// initialise logger after tracing has been started
+	ctx = ulog.InitInContext(ctx, name)
+	ulog.FromContext(ctx).V(1).Info("Retrieving cluster health", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	newHealth := retrieveHealth(ctx, o.cluster, o.esClient)
 	if o.onObservation != nil {
