@@ -19,12 +19,14 @@ dependencies:
   - name: eck-elasticsearch
     condition: eck-elasticsearch.enabled
     version: "0.1.0"
-    repository: "file://../eck-elasticsearch"
-    # TODO: Before merge
-    # repository: "https://helm.elastic.co"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-elasticsearch"
+    repository: "https://helm.elastic.co"
   - name: eck-kibana
     condition: eck-kibana.enabled
     version: "0.1.0"
-    repository: "file://../eck-kibana"
-    # TODO: Before merge
-    # repository: "https://helm.elastic.co"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-kibana"
+    repository: "https://helm.elastic.co"
