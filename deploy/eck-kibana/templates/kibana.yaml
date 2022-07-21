@@ -12,8 +12,4 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Kibana version is required" .Values.version }}
-  {{- $finalSpec := .Values.spec }}
-  {{- if and .Values.spec.elasticsearchRef ( not .Values.spec.elasticsearchRef.namespace ) }}
-  {{- $finalSpec = mustMergeOverwrite (dict) .Values.spec (dict "elasticsearchRef" (dict "namespace" .Release.Namespace )) }}
-  {{- end }}
-  {{- toYaml $finalSpec | nindent 2 }}
+  {{- toYaml .Values.spec | nindent 2 }}
