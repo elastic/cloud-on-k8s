@@ -13,13 +13,14 @@ tests:
           of: Elasticsearch
       - equal:
           path: metadata.name
-          value: quickstart-eck-elasticsearch
+          value: quickstart
       - equal:
           path: spec.version
           value: 8.2.0
   - it: name override should work properly
     set:
       eck-elasticsearch.nameOverride: override
+      eck-elasticsearch.fullnameOverride: null
       eck-kibana.enabled: false
     release:
       name: quickstart
