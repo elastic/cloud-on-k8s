@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
@@ -44,7 +45,7 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 
 	// check if we need to renew the certificates used in the resources
 	if w.shouldRenewCertificates(ctx, webhookServerSecret, webhookConfiguration.webhooks()) {
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			"Creating new webhook certificates",
 			"webhook", w.Name,
 			"secret_namespace", webhookServerSecret.Namespace,
@@ -105,7 +106,7 @@ func updateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes
 		return err
 	})
 	if err != nil {
-		log.Error(err, "failed to update pod annotation",
+		ulog.FromContext(ctx).Error(err, "failed to update pod annotation",
 			"annotation", annotation.UpdateAnnotation,
 			"namespace", pod.Namespace,
 			"pod_name", pod.Name)

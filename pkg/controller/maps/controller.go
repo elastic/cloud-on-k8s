@@ -48,8 +48,6 @@ const (
 	controllerName = "maps-controller"
 )
 
-var log = ulog.Log.WithName(controllerName)
-
 // Add creates a new MapsServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -164,7 +162,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 	}
 
 	if common.IsUnmanaged(ctx, &ems) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -185,6 +183,7 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 }
 
 func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (*reconciler.Results, emsv1alpha1.MapsStatus) {
+	log := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ems)
 
@@ -242,8 +241,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	if err != nil {
 		return results.WithError(err), status
 	}
-	logger := log.WithValues("namespace", ems.Namespace, "maps_name", ems.Name) // TODO  mapping explosion
-	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), logger, r.recorder)
+	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), log, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -288,7 +286,7 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	defer span.End()
 
 	if err := ems.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -406,7 +404,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 	if status.IsDegraded(ems.Status.DeploymentStatus) {
 		r.recorder.Event(&ems, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Maps Server health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ems.Namespace,
 		"maps_name", ems.Name,

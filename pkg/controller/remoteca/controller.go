@@ -100,7 +100,7 @@ func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Req
 	}
 
 	if common.IsUnmanaged(ctx, &es) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -130,6 +130,8 @@ func doReconcile(
 	r *ReconcileRemoteCa,
 	localEs *esv1.Elasticsearch,
 ) (reconcile.Result, error) {
+	log := ulog.FromContext(ctx)
+
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
 
 	expectedRemoteClusters, err := getExpectedRemoteClusters(ctx, r.Client, localEs)

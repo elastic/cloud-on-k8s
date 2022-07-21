@@ -40,8 +40,6 @@ const (
 	timestampFieldName = "timestamp"
 )
 
-var log = ulog.Log.WithName("usage")
-
 type ECKTelemetry struct {
 	ECK ECK `json:"eck"`
 }
@@ -87,6 +85,7 @@ type Reporter struct {
 }
 
 func (r *Reporter) Start(ctx context.Context) {
+	ctx = ulog.InitInContext(ctx, "telemetry")
 	ticker := time.NewTicker(r.telemetryInterval)
 	for range ticker.C {
 		r.report(ctx)
@@ -134,6 +133,8 @@ func (r *Reporter) report(ctx context.Context) {
 	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "telemetry-reporter", nil)
 	defer tracing.EndContextTransaction(ctx)
 
+	log := ulog.FromContext(ctx)
+
 	stats, err := r.getResourceStats(ctx)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
@@ -167,6 +168,8 @@ func (r *Reporter) report(ctx context.Context) {
 func (r *Reporter) reconcileKibanaSecret(ctx context.Context, kb kbv1.Kibana, telemetryBytes []byte) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_kibana_secret", tracing.SpanTypeApp)
 	defer span.End()
+
+	log := ulog.FromContext(ctx)
 
 	var secret corev1.Secret
 	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}

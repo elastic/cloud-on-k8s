@@ -17,6 +17,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
@@ -45,7 +46,7 @@ func (w *Params) shouldRenewCertificates(ctx context.Context, serverCertificates
 		// Parse the certificates
 		certs, err := certificates.ParsePEMCerts(caBytes)
 		if err != nil {
-			log.Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhook.webhookConfigurationName)
+			ulog.FromContext(ctx).Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhook.webhookConfigurationName)
 			return true
 		}
 		if len(certs) == 0 {

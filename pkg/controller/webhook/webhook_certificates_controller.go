@@ -32,8 +32,6 @@ const (
 	ControllerName = "webhook-certificates-controller"
 )
 
-var log = ulog.Log.WithName(ControllerName)
-
 var _ reconcile.Reconciler = &ReconcileWebhookResources{}
 
 // ReconcileWebhookResources reconciles the certificates used by the webhook server.

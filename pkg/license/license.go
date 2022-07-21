@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/metrics"
 )
 
@@ -116,7 +117,7 @@ func (r LicensingResolver) ToInfo(ctx context.Context, totalMemory resource.Quan
 func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 	span, ctx := apm.StartSpan(ctx, "save_license_info", tracing.SpanTypeApp)
 	defer span.End()
-	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
+	ulog.FromContext(ctx).V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNs,
 		Name:      LicensingCfgMapName,

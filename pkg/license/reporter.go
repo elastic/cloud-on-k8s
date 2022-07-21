@@ -18,8 +18,6 @@ import (
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter
 const ResourceReporterFrequency = 2 * time.Minute
 
-var log = ulog.Log.WithName("resource")
-
 // ResourceReporter aggregates resources of all Elastic components managed by the operator
 // and reports them in a config map in the form of licensing information
 type ResourceReporter struct {
@@ -44,6 +42,8 @@ func NewResourceReporter(c client.Client, operatorNs string, tracer *apm.Tracer)
 
 // Start starts to report the licensing information repeatedly at regular intervals
 func (r ResourceReporter) Start(ctx context.Context, refreshPeriod time.Duration) {
+	ctx = ulog.InitInContext(ctx, "resource-reporter")
+	log := ulog.FromContext(ctx)
 	// report once as soon as possible to not wait the first tick
 	err := r.Report(ctx)
 	if err != nil {
@@ -77,7 +77,7 @@ func (r ResourceReporter) Report(ctx context.Context) error {
 func (r ResourceReporter) Get(ctx context.Context) (LicensingInfo, error) {
 	span, _ := apm.StartSpan(ctx, "get_license_info", tracing.SpanTypeApp)
 	defer span.End()
-	totalMemory, err := r.aggregator.AggregateMemory()
+	totalMemory, err := r.aggregator.AggregateMemory(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
