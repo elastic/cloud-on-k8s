@@ -143,7 +143,7 @@ func (jm *JobsManager) Start() {
 				job.numFailures++
 				// One of the managed Job/Pod has failed, wait for logs and return.
 				jm.err = errors.Errorf("Pod %s has failed.  Total failures: %d", newPod.Name, job.numFailures)
-				// We are seeing random ci job failures in Azure, so let's at least let the statefulset retry the job
+				// We are seeing random ci job failures in Azure, so let's at least let the job retry
 				// one time before we completely fail.
 				if job.numFailures > 1 {
 					log.Error(jm.err, "Pod is in failed state, retry limit exceeded", "name", newPod.Name)
