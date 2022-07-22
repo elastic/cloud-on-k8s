@@ -2,17 +2,17 @@
 # Default values for eck-elasticsearch.
 # This is a YAML-formatted file.
 
-# Overridable names of the Elasticsearch instance.
+# Overridable names of the Elasticsearch resource.
 # By default, this is the Release name set for the chart,
 # followed by 'eck-elasticsearch'.
 #
 # nameOverride will override the name of the Chart with the name set here,
-# so nameOverride: testing, would convert to '{{ Release.name }}-testing'
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
 #
 # nameOverride: "quickstart"
 #
 # fullnameOverride will override both the release name, and the chart name,
-# and will name the Elasticsearch instance exactly what is specified.
+# and will name the Elasticsearch resource exactly as specified.
 #
 # fullnameOverride: "quickstart"
 
@@ -48,10 +48,8 @@ http: {}
 #
 secureSettings: {}
 
-# Settings for limiting the number of simultaneous changes to an Elasticsearch cluster.
+# Settings for limiting the number of simultaneous changes to an Elasticsearch resource.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-update-strategy.html
-#
-# The default are the default settings for ECK.
 #
 updateStrategy: {}
 
@@ -74,10 +72,12 @@ remoteClusters: {}
 nodeSets:
 - name: default
   count: 1
-  # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
-  #
   config:
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
     node.store.allow_mmap: false
   podTemplate:
     spec:

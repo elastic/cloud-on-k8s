@@ -36,9 +36,6 @@ Common labels
 {{- define "eck-stack.labels" -}}
 helm.sh/chart: {{ include "eck-stack.chart" . }}
 {{ include "eck-stack.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 

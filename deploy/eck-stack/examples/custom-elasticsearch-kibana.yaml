@@ -1,6 +1,6 @@
 ---
 eck-elasticsearch:
-  # Name of the Elasticsearch instance.
+  # Name of the Elasticsearch resource.
   #
   fullnameOverride: quickstart
 
@@ -11,10 +11,12 @@ eck-elasticsearch:
   nodeSets:
   - name: default
     count: 1
-    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
-    #
     config:
+      # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+      # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+      # and leave node.store.allow_mmap unset.
+      # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      #
       node.store.allow_mmap: false
     volumeClaimTemplates:
     - metadata:
@@ -30,7 +32,7 @@ eck-elasticsearch:
         # storageClassName: local-storage
 
 eck-kibana:
-  # Name of the Kibana instance.
+  # Name of the Kibana resource.
   #
   fullnameOverride: quickstart
   
@@ -39,11 +41,11 @@ eck-kibana:
   version: 8.2.3
   
   spec:
-    # Count of Kibana instances to create.
+    # Count of Kibana replicas to create.
     #
     count: 1
   
-    # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+    # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
     #
     elasticsearchRef:
       name: quickstart

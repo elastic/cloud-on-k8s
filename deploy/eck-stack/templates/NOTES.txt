@@ -1,5 +1,9 @@
 Elasticsearch ECK-Stack {{ .Chart.Version }} has been deployed successfully!
 
+To see status of all resources, run
+
+kubectl get elastic -l "app.kubernetes.io/instance"={{ .Release.Name}}
+
 More information on the Elastic ECK Operator, and its Helm chart can be found
 within our documentation.
 

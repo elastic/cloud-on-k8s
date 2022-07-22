@@ -35,7 +35,7 @@ helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namesp
 [id="{p}-eck-stack-helm-customize"]
 === Customizing Kibana and Elasticsearch using the eck-stack Helm Chart's example values
 
-There are many example Helm values files for installing and managing a more advanced Elasticsearch and/or Kibana link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples[in the project repository].
+There are example Helm values files for installing and managing a more advanced Elasticsearch and/or Kibana link:{eck_github}/tree/{eck_release_branch}/deploy/eck-stack/examples[in the project repository].
 
 To use one or more of these example configurations, use the `--values` Helm option, as seen in the following section.
 

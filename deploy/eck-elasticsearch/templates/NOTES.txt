@@ -1,9 +1,6 @@
 
-1. Check Elasticsearch cluster status
-  $ kubectl get es --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=elasticsearch
+1. Check Elasticsearch resource status
+  $ kubectl get es {{ include "elasticsearch.fullname" . }} -n={{ .Release.Namespace }}
 
 2. Check Elasticsearch pod status
-  $ kubectl get pods --namespace={{ .Release.Namespace }} -L common.k8s.elastic.co/type=elasticsearch
-
-3. Expose Elasticsearch service
-  $ kubectl port-forward svc/{{ .Values.name }}-es-http 9200
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l elasticsearch.k8s.elastic.co/cluster-name={{ include "elasticsearch.fullname" . }}

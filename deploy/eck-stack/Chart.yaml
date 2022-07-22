@@ -5,12 +5,6 @@ description: |
   Currently supported:
   * Elasticsearch
   * Kibana
-  Future Roadmap:
-  * Agent
-  * APM
-  * Beat
-  * Enterprise Search
-  * Elastic Maps Server
 kubeVersion: ">= 1.20.0-0"
 type: application
 version: 0.1.0

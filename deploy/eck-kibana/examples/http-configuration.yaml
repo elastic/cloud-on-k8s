@@ -14,11 +14,11 @@ annotations: {}
   # key: value
 
 spec:
-  # Count of Kibana instances to create.
+  # Count of Kibana replicas to create.
   #
   count: 1
 
-  # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+  # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
   #
   elasticsearchRef:
     name: quickstart-eck-elasticsearch

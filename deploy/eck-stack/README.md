@@ -45,7 +45,7 @@ The following will install the ECK-Stack chart using the default values, which w
 helm repo add elastic https://helm.elastic.co && helm repo update
 
 # Install the ECK-Stack helm chart
-# This will setup a 'quickstart' Elasticsearch cluster, and Kibana instance
+# This will setup a 'quickstart' Elasticsearch and Kibana resource
 $ helm install my-release -n my-namespace elastic/eck-stack --create-namespace
 ```
 
@@ -64,12 +64,12 @@ The command removes all the Elastic Stack resources associated with the chart an
 
 ## Configuration
 
-The following table lists the configurable parameters of the cert-manager chart and their default values.
+The following table lists the configurable parameters of the eck-stack chart and their default values.
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `eck-elasticsearch.enabled` | If `true`, create an Elasticsearch cluster (using the eck-elasticsearch Chart) | `true` |
-| `eck-kibana.enabled` | If `true`, create a Kibana instance (using the eck-kibana Chart) | `true` |
+| `eck-elasticsearch.enabled` | If `true`, create an Elasticsearch resource (using the eck-elasticsearch Chart) | `true` |
+| `eck-kibana.enabled` | If `true`, create a Kibana resource (using the eck-kibana Chart) | `true` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
 

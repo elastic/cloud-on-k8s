@@ -4,6 +4,11 @@ nodeSets:
   count: 1
   config:
     node.roles: ["master"]
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
     node.store.allow_mmap: false
   podTemplate:
     spec:
@@ -48,6 +53,11 @@ nodeSets:
   count: 1
   config:
     node.roles: ["data_hot", "data_content", "ingest"]
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
     node.store.allow_mmap: false
   podTemplate:
     spec:
@@ -92,6 +102,11 @@ nodeSets:
   count: 1
   config:
     node.roles: ["data_warm"]
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
     node.store.allow_mmap: false
   podTemplate:
     spec:
@@ -136,6 +151,11 @@ nodeSets:
   count: 1
   config:
     node.roles: ["data_cold"]
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
     node.store.allow_mmap: false
   podTemplate:
     spec:

@@ -36,9 +36,6 @@ Common labels
 {{- define "elasticsearch.labels" -}}
 helm.sh/chart: {{ include "elasticsearch.chart" . }}
 {{ include "elasticsearch.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Values.labels }}
 {{ .Values.labels }}
