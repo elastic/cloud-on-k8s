@@ -6,7 +6,9 @@
 #
 eck-elasticsearch:
   enabled: true
-  fullnameOverride: quickstart
+  # This is adjusting the full name here, so the default values of the `eck-kibana` chart will work
+  # by default, as it references `eck-elasticsearch` in it's `elasticsearchRef`.
+  fullnameOverride: eck-elasticsearch
 
 # If enabled, will use the eck-kibana chart and deploy a Kibana resource.
 #

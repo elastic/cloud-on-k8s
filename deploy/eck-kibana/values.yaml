@@ -36,7 +36,7 @@ spec:
   # Reference to ECK-managed Elasticsearch resource.
   #
   elasticsearchRef:
-    name: quickstart
+    name: eck-elasticsearch
     # Optional namespace reference to Elasticsearch resource.
     # If not specified, then the namespace of the Kibana resource
     # will be assumed.
