@@ -29,10 +29,6 @@ const (
 	EcsServiceType = "eck"
 	FlagName       = "log-verbosity"
 
-	SpanIDField        = "span.id"
-	TraceIDField       = "trace.id"
-	TransactionIDField = "transaction.id"
-
 	testLogLevelEnvVar = "ECK_TEST_LOG_LEVEL"
 )
 
@@ -150,7 +146,11 @@ func TraceContextKV(ctx context.Context) []interface{} {
 	}
 
 	traceCtx := tx.TraceContext()
-	fields := []interface{}{TraceIDField, traceCtx.Trace, TransactionIDField, traceCtx.Span}
+	fields := []interface{}{apmzap.FieldKeyTraceID, traceCtx.Trace, apmzap.FieldKeyTransactionID, traceCtx.Span}
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		fields = append(fields, apmzap.FieldKeySpanID, span.TraceContext().Span)
+	}
 
 	return fields
 }
@@ -177,11 +177,7 @@ func FromContext(ctx context.Context) logr.Logger {
 		result = crlog.Log
 	}
 
-	var fields []interface{}
-	for _, f := range apmzap.TraceContext(ctx) {
-		fields = append(fields, f.Key, f.Interface)
-	}
-	if len(fields) > 0 {
+	if fields := TraceContextKV(ctx); len(fields) > 0 {
 		result = result.WithValues(fields...)
 	}
 
