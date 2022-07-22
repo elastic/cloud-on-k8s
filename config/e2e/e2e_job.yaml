@@ -21,6 +21,7 @@ spec:
 {{ if not .Context.Ocp3Cluster }}
   ttlSecondsAfterFinished: 360
 {{ end }}
+  backoffLimit: 1
   template:
     metadata:
       annotations:
@@ -61,5 +62,5 @@ spec:
         - name: test-secrets
           secret:
             secretName: "eck-{{ .Context.TestRun }}"
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 0 # don't retry a failed test

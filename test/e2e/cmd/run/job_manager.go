@@ -28,8 +28,6 @@ type JobsManager struct {
 	cancelFunc context.CancelFunc
 	*kubernetes.Clientset
 
-	jobFailures int
-
 	jobs map[string]*Job
 	err  error // used to notify that an error occurred in this session
 }
@@ -142,18 +140,18 @@ func (jm *JobsManager) Start() {
 				job.WaitForLogs()
 				jm.Stop()
 			case corev1.PodFailed:
-				jm.jobFailures++
+				job.numFailures++
 				// One of the managed Job/Pod has failed, wait for logs and return.
-				jm.err = errors.Errorf("Pod %s has failed.  Total failures: %d", newPod.Name, jm.jobFailures)
+				jm.err = errors.Errorf("Pod %s has failed.  Total failures: %d", newPod.Name, job.numFailures)
 				// We are seeing random ci job failures in Azure, so let's at least let the statefulset retry the job
 				// one time before we completely fail.
-				if jm.jobFailures > 1 {
-					log.Error(jm.err, "Pod is in failed state, not retrying", "name", newPod.Name)
+				if job.numFailures > 1 {
+					log.Error(jm.err, "Pod is in failed state, retry limit exceeded", "name", newPod.Name)
 					job.WaitForLogs()
 					jm.Stop()
 					return
 				}
-				log.Error(jm.err, "Pod is in failed state, retrying", "name", newPod.Name)
+				log.Error(jm.err, "Pod is in failed state, should retry", "name", newPod.Name, "numFailures", job.numFailures)
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
 			}

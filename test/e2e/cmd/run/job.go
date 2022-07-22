@@ -25,6 +25,7 @@ type Job struct {
 	jobStarted    bool // keep track of the first Pod running event
 	podSucceeded  bool // keep track of when we're done
 	stopRequested bool // keep track when a stop request has already been requested
+	numFailures   int  // keep track of number of times the job has failed
 
 	// Job logs management
 	timestampExtractor timestampExtractor
