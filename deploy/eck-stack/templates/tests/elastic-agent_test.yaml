@@ -1,0 +1,61 @@
+suite: test elastic-agent
+templates:
+  - charts/eck-elastic-agent/templates/elastic-agent.yaml
+tests:
+  - it: should render quickstart properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elastic-agent
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: name override should work properly
+    set:
+      eck-elastic-agent.nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      eck-elastic-agent.fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: override
+  - it: should render custom elastic-agent fleet example properly
+    values:
+      - ../../examples/fleet-agents.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.count
+          value: 1
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: quickstart
+      - equal:
+          path: spec.elasticsearchRef.namespace
+          value: default
