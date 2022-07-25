@@ -20,10 +20,11 @@ check() {
     echo "Running 'helm lint' on $(basename "${TEST_DIR}") chart."
     helm lint --strict .
 
-    echo docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
     echo "showing files in unittest directory"
     ls "$(pwd)"/*
-    docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
+    echo helm unittest -3 -f 'templates/tests/*.yaml' .
+    helm unittest -3 -f 'templates/tests/*.yaml' .
+    # docker run -ti --rm -v "$(pwd)":/apps quintush/helm-unittest:latest -3 -f 'templates/tests/*.yaml' .
     cd -
 }
 

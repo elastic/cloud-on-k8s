@@ -88,6 +88,8 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
     ./get_helm.sh -v v${HELM_VERSION} --no-sudo && \
     rm get_helm.sh
 
+RUN helm plugin install https://github.com/lrills/helm-unittest
+
 # Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY ["go.mod", "go.sum", "./"]
