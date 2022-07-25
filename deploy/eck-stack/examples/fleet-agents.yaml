@@ -14,6 +14,8 @@ eck-elasticsearch:
   - name: default
     count: 3
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
     #
     config:
@@ -39,9 +41,11 @@ eck-kibana:
     #
     elasticsearchRef:
       name: elasticsearch
-      # namespace: default
 
     config:
+      # Note that these are specific to the namespace into which this example is installed, and are
+      # using `default` as configured here.  If installed outside of the `deafult` namespace,
+      # these 2 lines need modification.
       xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
       xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
       xpack.fleet.packages:

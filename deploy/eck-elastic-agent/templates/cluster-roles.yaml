@@ -11,9 +11,9 @@ metadata:
     {{- toYaml $cr.labels | indent 4 }}
     {{- end }}
   {{- end }}
+  {{- if $cr.annotations }}
   annotations:
-    {{- if $cr.annotations }}
     {{- toYaml $cr.annotations | indent 4 }}
-    {{- end }}
+  {{- end }}
 rules: {{- toYaml $cr.rules | nindent 2 }}
 {{- end }}

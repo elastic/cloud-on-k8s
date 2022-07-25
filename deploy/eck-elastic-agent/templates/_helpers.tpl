@@ -36,9 +36,6 @@ Common labels
 {{- define "elasticagent.labels" -}}
 helm.sh/chart: {{ include "elasticagent.chart" . }}
 {{ include "elasticagent.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Values.labels }}
 {{ .Values.labels }}

@@ -19,7 +19,7 @@ instances:
   annotations: {}
   
   spec:
-    # Referenced resources are below, as, depending on the setup, at least one is required for a functional Agent.
+    # Referenced resources are belowand depending on the setup, at least one is required for a functional Agent.
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
     #
     # Reference to ECK-managed Kibana instance.
@@ -35,7 +35,7 @@ instances:
     # Reference to ECK-managed Elasticsearch instance.
     #
     elasticsearchRefs:
-    - name: quickstart
+    - name: elasticsearch
       # Optional namespace reference to Elasticsearch instance.
       # If not specified, then the namespace of the Agent instance
       # will be assumed.
@@ -89,8 +89,7 @@ serviceAccounts: []
 # - name: fleet-server
 #   namespace: optional-namespace
 
-# ClusterRoleBindings to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
-# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ClusterRoleBindings to be used by Elastic Agents. Similar to ServiceAccounts, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 clusterRoleBindings: []
@@ -104,8 +103,7 @@ clusterRoleBindings: []
 #     name: fleet-server
 #     apiGroup: rbac.authorization.k8s.io
 
-# ClusterRoles to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
-# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ClusterRoles to be used by Elastic Agents. Similar to ServiceAccounts, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 clusterRoles: []

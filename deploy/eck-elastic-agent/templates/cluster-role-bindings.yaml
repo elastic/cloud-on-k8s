@@ -11,10 +11,10 @@ metadata:
     {{- toYaml $crb.labels | indent 4 }}
     {{- end }}
   {{- end }}
+  {{- if $crb.annotations }}
   annotations:
-    {{- if $crb.annotations }}
     {{- toYaml $crb.annotations | indent 4 }}
-    {{- end }}
+  {{- end }}
 subjects: {{- toYaml $crb.subjects | nindent 2 }}
 roleRef:
   kind: {{ $crb.roleRef.kind }}
