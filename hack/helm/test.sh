@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 check() {
     local TEST_DIR="$1"
-    cd "${TEST_DIR}"
+    cd "${TEST_DIR}" || exit
 
     local SED="sed_gnu"
     if [[ "$OSTYPE" =~ "darwin" ]]; then
@@ -33,7 +33,7 @@ check() {
     # restore changes to Chart.yaml
     git checkout Chart.yaml
 
-    cd -
+    cd - || exit
 }
 
 sed_gnu() {
