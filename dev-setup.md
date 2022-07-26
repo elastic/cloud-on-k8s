@@ -11,6 +11,8 @@ Before you start, install the following tools and packages:
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
 * [docker](https://docs.docker.com/) (>= 19.0.0 with optional `buildx` extension for multi-arch builds)
+* [helm](https://helm.sh/docs/intro/install/) (>= 3.2.0, preferably 3.9.x)
+* [helm unittest](https://github.com/quintush/helm-unittest#install) (only needed if developing helm charts) `helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8`
 * Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
 
 ### Get sources
