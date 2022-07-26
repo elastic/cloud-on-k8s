@@ -156,6 +156,9 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+helm-test:
+	@hack/helm/test.sh
+
 integration: GO_TAGS += integration
 integration: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)

@@ -1,0 +1,63 @@
+suite: test elasticsearch
+templates:
+  - templates/elasticsearch.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      version: 8.2.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.version
+          value: 8.2.0
+  - it: name override should work properly
+    set:
+      nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: override
+  - it: should render node roles properly
+    values:
+      - ../../examples/hot-warm-cold.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.nodeSets[0].name
+          value: masters
+      - equal:
+          path: spec.nodeSets[1].name
+          value: hot
+      - equal:
+          path: spec.nodeSets[2].name
+          value: warm
+      - equal:
+          path: spec.nodeSets[3].name
+          value: cold
