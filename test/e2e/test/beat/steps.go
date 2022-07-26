@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
@@ -184,7 +185,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
-		b.CheckMonitoringMetricsIndex(k),
+		checks.BeatsMonitoredStep(&b, k),
 	}
 }
 
@@ -252,32 +253,4 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.Beat, k, isMutated, beatGenerationBeforeMutation, beatObservedGenerationBeforeMutation))
-}
-
-func (b Builder) CheckMonitoringMetricsIndex(k *test.K8sClient) test.Step {
-	indexPattern := b.GetMetricsIndexPattern()
-	return test.Step{
-		Name: fmt.Sprintf("Check that documents are indexed in index %s", indexPattern),
-		Test: test.Eventually(func() error {
-			if b.GetMetricsCluster() == nil {
-				return nil
-			}
-			esMetricsRef := *b.GetMetricsCluster()
-			// Get Elasticsearch
-			esMetrics := esv1.Elasticsearch{}
-			if err := k.Client.Get(context.Background(), esMetricsRef, &esMetrics); err != nil {
-				return err
-			}
-			// Create a new Elasticsearch client
-			client, err := elasticsearch.NewElasticsearchClient(esMetrics, k)
-			if err != nil {
-				return err
-			}
-			// Check that there is at least one document
-			err = containsDocuments(client, indexPattern)
-			if err != nil {
-				return err
-			}
-			return nil
-		})}
 }

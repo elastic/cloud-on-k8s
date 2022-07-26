@@ -350,10 +350,25 @@ func (b Builder) GetMetricsIndexPattern() string {
 	return ".monitoring-beat-*"
 }
 
+func (b Builder) Name() string {
+	return b.Beat.Name
+}
+
+func (b Builder) Namespace() string {
+	return b.Beat.Namespace
+}
+
 func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	if len(b.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
 		return nil
 	}
 	metricsCluster := b.Beat.Spec.Monitoring.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+// GetLogsCluster does not return a logs cluster, as Beats stack monitoring is slightly
+// different that both Elasticsearch, and Kibana stack monitoring, as it uses internal
+// beat collectors to send only metrics data, not logs data.
+func (b Builder) GetLogsCluster() *types.NamespacedName {
+	return nil
 }

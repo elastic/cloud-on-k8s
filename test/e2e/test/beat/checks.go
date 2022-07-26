@@ -10,11 +10,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 
 	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 )
 
 func HasEventFromBeat(name beatcommon.Type) ValidationFunc {
@@ -88,39 +86,4 @@ func checkEvent(url string, check func(int) error) ValidationFunc {
 		}
 		return check(len(results.Hits.Hits))
 	}
-}
-
-func containsDocuments(esClient client.Client, indexPattern string) error {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/_cat/indices/%s?format=json", indexPattern), nil) //nolint:noctx
-	if err != nil {
-		return err
-	}
-	resp, err := esClient.Request(context.Background(), req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	resultBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	var indices []checks.Index
-	err = json.Unmarshal(resultBytes, &indices)
-	if err != nil {
-		return err
-	}
-
-	// 1 index must exist
-	if len(indices) != 1 {
-		return fmt.Errorf("expected [%d] index [%s], found [%d]", 1, indexPattern, len(indices))
-	}
-	docsCount, err := strconv.Atoi(indices[0].DocsCount)
-	if err != nil {
-		return err
-	}
-	// with at least 1 doc
-	if docsCount <= 0 {
-		return fmt.Errorf("index [%s] empty", indexPattern)
-	}
-	return nil
 }
