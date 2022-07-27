@@ -3,6 +3,8 @@ templates:
   - charts/eck-elastic-agent/templates/elastic-agent.yaml
 tests:
   - it: should render quickstart properly
+    set:
+      eck-elastic-agent.enabled: true
     release:
       name: quickstart
     asserts:
@@ -10,52 +12,80 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-elastic-agent
+          value: quickstart
       - equal:
           path: spec.version
           value: 8.2.3
-  - it: name override should work properly
-    set:
-      eck-elastic-agent.nameOverride: override
-    release:
-      name: quickstart
-    asserts:
-      - isKind:
-          of: Agent
-      - equal:
-          path: metadata.name
-          value: quickstart-override
-  - it: fullname override should work properly
-    set:
-      eck-elastic-agent.fullnameOverride: override
-    release:
-      name: quickstart
-    asserts:
-      - isKind:
-          of: Agent
-      - equal:
-          path: metadata.name
-          value: override
-  - it: should render custom elastic-agent fleet example properly
+  - it: should render first agent in custom fleet example properly
     values:
       - ../../examples/fleet-agents.yaml
     release:
       name: quickstart
+    documentIndex: 0
     asserts:
       - isKind:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart
+          value: fleet-server
       - equal:
           path: spec.version
           value: 8.2.3
       - equal:
-          path: spec.count
+          path: spec.kibanaRef.name
+          value: kibana
+      - equal:
+          path: spec.elasticsearchRefs[0].name
+          value: elasticsearch
+      - equal:
+          path: spec.mode
+          value: fleet
+      - equal:
+          path: spec.fleetServerEnabled
+          value: true
+      - equal:
+          path: spec.deployment.replicas
           value: 1
       - equal:
-          path: spec.elasticsearchRef.name
-          value: quickstart
+          path: spec.deployment.podTemplate.spec.securityContext.runAsUser
+          value: 0
+  - it: should render second agent in custom fleet example properly
+    values:
+      - ../../examples/fleet-agents.yaml
+    release:
+      name: quickstart
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: Agent
       - equal:
-          path: spec.elasticsearchRef.namespace
-          value: default
+          path: metadata.name
+          value: elastic-agent
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.kibanaRef.name
+          value: kibana
+      - equal:
+          path: spec.fleetServerRef.name
+          value: fleet-server
+      - equal:
+          path: spec.mode
+          value: fleet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.serviceAccountName
+          value: elastic-agent
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.securityContext.runAsUser
+          value: 0
+
