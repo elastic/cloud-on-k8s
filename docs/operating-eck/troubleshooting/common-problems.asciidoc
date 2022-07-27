@@ -10,7 +10,45 @@ endif::[]
 [id="{p}-{page_id}-operator-oom"]
 == Operator crashes on startup with `OOMKilled`
 
-On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting killed with a `OOMKilled` message. This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
+On very large Kubernetes clusters with many hundreds of resources (pods, secrets, config maps, and so on), the operator may fail to start with its pod getting terminated with a `OOMKilled` reason:
+
+[source,sh,subs="attributes,+macros"]
+----
+kubectl -n elastic-system \
+  get pods -o=jsonpath='{.items[].status.containerStatuses}' | jq
+----
+
+[source,json,subs="attributes"]
+----
+[
+  {
+    "containerID": "containerd://...",
+    "image": "docker.elastic.co/eck/eck-operator:{eck_version}",
+    "imageID": "docker.elastic.co/eck/eck-operator@sha256:...",
+    "lastState": {
+      "terminated": {
+        "containerID": "containerd://...",
+        "exitCode": 137,
+        "finishedAt": "2022-07-04T09:47:02Z",
+        "reason": "OOMKilled",
+        "startedAt": "2022-07-04T09:46:43Z"
+      }
+    },
+    "name": "manager",
+    "ready": false,
+    "restartCount": 2,
+    "started": false,
+    "state": {
+      "waiting": {
+        "message": "back-off 20s restarting failed container=manager pod=elastic-operator-0_elastic-system(57de3efd-57e0-4c1e-8151-72b0ac4d6b14)",
+        "reason": "CrashLoopBackOff"
+      }
+    }
+  }
+]
+----
+
+This is an issue with the `controller-runtime` framework on top of which the operator is built. Even though the operator is only interested in the resources created by itself, the framework code needs to gather information about all relevant resources in the Kubernetes cluster in order to provide the filtered view of cluster state required by the operator. On very large clusters, this information gathering can use up a lot of memory and exceed the default resource limit defined for the operator pod.
 
 The default link:https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory[memory limit] for the operator pod is set to 1 Gi. You can increase (or decrease) this limit to a value suited to your cluster as follows:
 
@@ -19,6 +57,7 @@ The default link:https://kubernetes.io/docs/concepts/configuration/manage-resour
 kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "resources":{"limits":{"memory":"2Gi"}}}]}}}}'
 ----
 
+NOTE: Set limits (`spec.containers[].resources.limits`) that match requests (`spec.containers[].resources.requests`) to prevent operator's Pod from being terminated during link:https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/[node-pressure eviction].
 
 [id="{p}-{page_id}-webhook-timeout"]
 == Timeout when submitting a resource manifest
