@@ -299,7 +299,7 @@ func assertMonitoring(t *testing.T, volumes []corev1.Volume) {
 	t.Helper()
 	var monitoringVolume *corev1.Volume
 	// Validate that the Pod's volumes contain a Secret as a monitoring CA volume.
-       for i := range volumes {
+	for i := range volumes {
 		if volumes[i].Name == "beat-monitoring-certs" {
 			monitoringVolume = &volumes[i]
 			break
