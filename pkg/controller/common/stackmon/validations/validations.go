@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	unsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
+	UnsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
 	invalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
 
 	InvalidKibanaElasticsearchRefForStackMonitoringMsg = "Kibana must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
@@ -38,7 +38,7 @@ func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList
 		if err != nil {
 			finalMinStackVersion, _ := semver.FinalizeVersion(MinStackVersion.String()) // discards prerelease suffix
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,
-				fmt.Sprintf(unsupportedVersionMsg, finalMinStackVersion)))
+				fmt.Sprintf(UnsupportedVersionMsg, finalMinStackVersion)))
 		}
 	}
 	refs := resource.GetMonitoringMetricsRefs()

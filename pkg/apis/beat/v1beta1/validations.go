@@ -5,11 +5,15 @@
 package v1beta1
 
 import (
+	"fmt"
 	"regexp"
 
+	"github.com/blang/semver/v4"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
@@ -24,6 +28,7 @@ var (
 		checkSingleConfigSource,
 		checkSpec,
 		checkAssociations,
+		checkMonitoring,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -31,6 +36,8 @@ var (
 	}
 
 	typeRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
+	// minStackVersion is the minimum Stack version to enable Stack Monitoring on an Elastic Beats.
+	minStackVersion = version.MustParse("7.2.0-SNAPSHOT")
 )
 
 func checkNoUnknownFields(b *Beat) field.ErrorList {
@@ -113,4 +120,33 @@ func checkAssociations(b *Beat) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), b.Spec.KibanaRef)
 	return append(err1, err2...)
+}
+
+func checkMonitoring(b *Beat) field.ErrorList {
+	var errs field.ErrorList
+	if !b.Spec.Monitoring.Enabled() {
+		return nil
+	}
+	if err := isStackSupportedVersion(b.Spec.Version); err != nil {
+		finalMinStackVersion, _ := semver.FinalizeVersion(minStackVersion.String()) // discards prerelease suffix
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), b.Spec.Version,
+			fmt.Sprintf(validations.UnsupportedVersionMsg, finalMinStackVersion)))
+	}
+	refs := b.GetMonitoringMetricsRefs()
+	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
+			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
+	}
+	return errs
+}
+
+func isStackSupportedVersion(v string) error {
+	ver, err := version.Parse(v)
+	if err != nil {
+		return err
+	}
+	if ver.LT(minStackVersion) {
+		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", minStackVersion)
+	}
+	return nil
 }
