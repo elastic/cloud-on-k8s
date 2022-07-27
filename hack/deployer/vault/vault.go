@@ -20,6 +20,7 @@ type Client struct {
 	secretID    string
 	token       string
 	clientToken string
+	rootPath    string
 }
 
 type Info struct {
@@ -28,6 +29,7 @@ type Info struct {
 	SecretId    string `yaml:"secretId"` //nolint:revive
 	Token       string `yaml:"token"`
 	ClientToken string `yaml:"clientToken"`
+	RootPath    string `yaml:"rootPath"`
 }
 
 func NewClient(info Info) (*Client, error) {
@@ -49,6 +51,7 @@ func NewClient(info Info) (*Client, error) {
 		secretID:    info.SecretId,
 		token:       info.Token,
 		clientToken: info.ClientToken,
+		rootPath:    info.RootPath,
 	}
 	if err := c.auth(); err != nil {
 		return nil, err
@@ -132,6 +135,7 @@ func readCachedToken() (string, error) {
 
 // ReadIntoFile is a helper function used to read from Vault into file
 func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
+	secretPath = filepath.Join(v.rootPath, secretPath)
 	res, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return err
@@ -152,6 +156,7 @@ func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 
 // Get fetches contents of a single field at a specified path in Vault
 func (v *Client) Get(secretPath string, fieldName string) (string, error) {
+	secretPath = filepath.Join(v.rootPath, secretPath)
 	result, err := v.GetMany(secretPath, fieldName)
 	if err != nil {
 		return "", err
@@ -163,6 +168,7 @@ func (v *Client) Get(secretPath string, fieldName string) (string, error) {
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
 func (v *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
+	secretPath = filepath.Join(v.rootPath, secretPath)
 	secret, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return nil, err

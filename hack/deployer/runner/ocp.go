@@ -23,7 +23,7 @@ import (
 
 const (
 	OCPDriverID                     = "ocp"
-	OCPVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
+	OCPVaultPath                    = "ci-ocp-k8s-operator"
 	OCPServiceAccountVaultFieldName = "service-account"
 	OCPPullSecretFieldName          = "pull-secret"
 	OCPStateBucket                  = "eck-deployer-ocp-clusters-state"
