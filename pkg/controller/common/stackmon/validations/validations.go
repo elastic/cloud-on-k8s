@@ -16,7 +16,7 @@ import (
 
 const (
 	UnsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
-	invalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
+	InvalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
 
 	InvalidKibanaElasticsearchRefForStackMonitoringMsg = "Kibana must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
 	InvalidBeatsElasticsearchRefForStackMonitoringMsg  = "Beats must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
@@ -44,12 +44,12 @@ func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList
 	refs := resource.GetMonitoringMetricsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Metrics")))
+			refs, fmt.Sprintf(InvalidElasticsearchRefsMsg, "Metrics")))
 	}
 	refs = resource.GetMonitoringLogsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Logs")))
+			refs, fmt.Sprintf(InvalidElasticsearchRefsMsg, "Logs")))
 	}
 	return errs
 }

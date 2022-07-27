@@ -128,14 +128,16 @@ func checkMonitoring(b *Beat) field.ErrorList {
 		return nil
 	}
 	if err := isStackSupportedVersion(b.Spec.Version); err != nil {
-		finalMinStackVersion, _ := semver.FinalizeVersion(minStackVersion.String()) // discards prerelease suffix
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), b.Spec.Version,
-			fmt.Sprintf(validations.UnsupportedVersionMsg, finalMinStackVersion)))
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), b.Spec.Version, err.Error()))
 	}
 	refs := b.GetMonitoringMetricsRefs()
-	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
+	if !monitoring.AreEsRefsDefined(refs) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
 			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
+	}
+	if len(refs) != 1 {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
+			refs, validations.InvalidElasticsearchRefsMsg))
 	}
 	return errs
 }
@@ -146,7 +148,8 @@ func isStackSupportedVersion(v string) error {
 		return err
 	}
 	if ver.LT(minStackVersion) {
-		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", minStackVersion)
+		finalMinStackVersion, _ := semver.FinalizeVersion(minStackVersion.String()) // discards prerelease suffix
+		return fmt.Errorf(validations.UnsupportedVersionMsg, finalMinStackVersion)
 	}
 	return nil
 }

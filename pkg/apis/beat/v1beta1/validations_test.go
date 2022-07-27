@@ -7,12 +7,14 @@ package v1beta1
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 )
 
 func Test_checkBeatType(t *testing.T) {
@@ -204,6 +206,123 @@ func Test_checkNoDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, checkNoDowngrade(tt.args.prev, tt.args.curr), "checkNoDowngrade(%v, %v)", tt.args.prev, tt.args.curr)
+		})
+	}
+}
+
+func Test_checkMonitoring(t *testing.T) {
+	tests := []struct {
+		name string
+		beat *Beat
+		want field.ErrorList
+	}{
+		{
+			name: "stack monitoring not enabled returns nil",
+			beat: &Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testbeat",
+					Namespace: "test",
+				},
+				Spec: BeatSpec{
+					Type:      "filebeat",
+					Version:   "8.2.3",
+					DaemonSet: &DaemonSetSpec{},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "too old version with stack monitoring enabled returns unsupported version error",
+			beat: &Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testbeat",
+					Namespace: "test",
+				},
+				Spec: BeatSpec{
+					Type:      "filebeat",
+					Version:   "7.1.0",
+					DaemonSet: &DaemonSetSpec{},
+					Monitoring: Monitoring{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								Name:      "elasticsearch",
+								Namespace: "test",
+							},
+						},
+					},
+				},
+			},
+			want: field.ErrorList{&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.version", BadValue: "7.1.0", Detail: "Unsupported version for Stack Monitoring. Required >= 7.2.0."}},
+		},
+		{
+			name: "valid version with stack monitoring enabled but invalid ref returns error",
+			beat: &Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testbeat",
+					Namespace: "test",
+				},
+				Spec: BeatSpec{
+					Type:      "filebeat",
+					Version:   "8.2.3",
+					DaemonSet: &DaemonSetSpec{},
+					Monitoring: Monitoring{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								// missing name
+								Namespace: "test",
+							},
+						},
+					},
+				},
+			},
+			want: field.ErrorList{&field.Error{
+				Type:     field.ErrorTypeInvalid,
+				Field:    "spec.monitoring.metrics.elasticsearchRefs",
+				BadValue: []commonv1.ObjectSelector{{Namespace: "test", Name: "", ServiceName: "", SecretName: ""}},
+				Detail:   validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg,
+			}},
+		},
+		{
+			name: "valid version with stack monitoring enabled but 2 elasticsearch refs",
+			beat: &Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testbeat",
+					Namespace: "test",
+				},
+				Spec: BeatSpec{
+					Type:      "filebeat",
+					Version:   "8.2.3",
+					DaemonSet: &DaemonSetSpec{},
+					Monitoring: Monitoring{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								Name:      "es1",
+								Namespace: "test",
+							},
+							{
+								Name:      "es2",
+								Namespace: "test",
+							},
+						},
+					},
+				},
+			},
+			want: field.ErrorList{&field.Error{
+				Type:  field.ErrorTypeInvalid,
+				Field: "spec.monitoring.metrics.elasticsearchRefs",
+				BadValue: []commonv1.ObjectSelector{
+					{Namespace: "test", Name: "es1", ServiceName: "", SecretName: ""},
+					{Namespace: "test", Name: "es2", ServiceName: "", SecretName: ""},
+				},
+				Detail: validations.InvalidElasticsearchRefsMsg,
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := checkMonitoring(tt.beat); !cmp.Equal(got, tt.want) {
+				t.Errorf("checkMonitoring() = diff: %s", cmp.Diff(got, tt.want))
+			}
 		})
 	}
 }
