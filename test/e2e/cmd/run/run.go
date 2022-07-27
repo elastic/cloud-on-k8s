@@ -88,6 +88,8 @@ func doRun(flags runFlags) error {
 
 	for _, step := range steps {
 		if err := step(); err != nil {
+			helper.dumpEventLog()
+			helper.runECKDiagnostics()
 			return err
 		}
 	}
@@ -526,8 +528,6 @@ func (h *helper) runTestsRemote() error {
 	close(stopChan)
 
 	if err != nil {
-		h.dumpEventLog()
-		h.runECKDiagnostics()
 		return errors.Wrap(err, "test run failed")
 	}
 
