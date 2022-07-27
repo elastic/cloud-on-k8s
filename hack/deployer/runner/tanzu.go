@@ -23,7 +23,7 @@ import (
 const (
 	TanzuDriverID                 = "tanzu"
 	TanzuInstallConfig            = "install-config.yaml"
-	TanzuVaultPath                = "secret/devops-ci/cloud-on-k8s/ci-tanzu-k8s-operator"
+	TanzuVaultPath                = "ci-tanzu-k8s-operator"
 	DefaultTanzuRunConfigTemplate = `id: tanzu-dev
 overrides:
   clusterName: %s-dev-cluster

@@ -26,7 +26,7 @@ overrides:
     address: %s
     token: %s
 `
-	EKSVaultPath            = "secret/devops-ci/cloud-on-k8s/ci-aws-k8s-operator"
+	EKSVaultPath            = "ci-aws-k8s-operator"
 	clusterCreationTemplate = `apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:

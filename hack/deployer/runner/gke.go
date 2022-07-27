@@ -14,7 +14,7 @@ import (
 
 const (
 	GKEDriverID                     = "gke"
-	GKEVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
+	GKEVaultPath                    = "ci-gcp-k8s-operator"
 	GKEServiceAccountVaultFieldName = "service-account"
 	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
