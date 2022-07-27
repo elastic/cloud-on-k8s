@@ -8,8 +8,6 @@ endif::[]
 [id="{p}-{page_id}"]
 = Run Fleet-managed Elastic Agent on ECK
 
-experimental[]
-
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet-managed] mode with ECK. Check the link:k8s-elastic-agent.html[Standalone section] if you want to run Elastic Agent in the link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[standalone mode].
 
 * <<{p}-elastic-agent-fleet-quickstart,Quickstart>>
@@ -216,8 +214,6 @@ kubectl logs -f elastic-agent-agent-xbcxr
 
 [id="{p}-elastic-agent-fleet-configuration"]
 == Configuration
-
-experimental[]
 
 Fleet-managed Elastic Agents must connect to Fleet Server to receive their configurations. You can deploy Fleet Server instances using ECKs Agent CRD with the appropriate configuration, as shown in <<{p}-elastic-agent-fleet-configuration-fleet-mode-and-fleet-server,Fleet mode and Fleet Server>>.
 
@@ -489,8 +485,6 @@ Please note that the environment variables related to policy selection mentioned
 
 [id="{p}-elastic-agent-fleet-configuration-examples"]
 == Configuration Examples
-
-experimental[]
 
 This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster, a single Kibana instance and a single Fleet Server instance.
 
