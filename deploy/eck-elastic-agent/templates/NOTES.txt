@@ -1,6 +1,6 @@
 
 1. Check Agent cluster status
-  $ kubectl get agent {{ include "elasticagent.fullname" . }} -n={{ .Release.Namespace }}
+  $ kubectl get agent {{ include "elasticagent.fullname" . }} -n {{ .Release.Namespace }}
 
 2. Check Agent pod status
   $ kubectl get pods --namespace={{ .Release.Namespace }} -l agent.k8s.elastic.co/name={{ include "elasticagent.fullname" . }}
