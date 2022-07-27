@@ -44,7 +44,7 @@ eck-kibana:
 
     config:
       # Note that these are specific to the namespace into which this example is installed, and are
-      # using `default` as configured here.  If installed outside of the `deafult` namespace,
+      # using `default` as configured here.  If installed outside of the `default` namespace,
       # these 2 lines need modification.
       xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
       xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
