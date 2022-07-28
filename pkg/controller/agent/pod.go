@@ -46,7 +46,7 @@ const (
 	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
 
 	DataVolumeName            = "agent-data"
-	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
+	DataMountHostPathTemplate = "/var/lib/elastic-agent/%s/%s/state"
 	DataMountPath             = "/usr/share/elastic-agent/state" // available since 7.14 without effect before that
 
 	// ConfigHashAnnotationName is an annotation used to store the Agent config hash.
