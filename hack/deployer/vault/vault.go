@@ -135,8 +135,7 @@ func readCachedToken() (string, error) {
 
 // ReadIntoFile is a helper function used to read from Vault into file
 func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
-	secretPath = filepath.Join(v.rootPath, secretPath)
-	res, err := v.client.Logical().Read(secretPath)
+	res, err := v.read(secretPath)
 	if err != nil {
 		return err
 	}
@@ -156,7 +155,6 @@ func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 
 // Get fetches contents of a single field at a specified path in Vault
 func (v *Client) Get(secretPath string, fieldName string) (string, error) {
-	secretPath = filepath.Join(v.rootPath, secretPath)
 	result, err := v.GetMany(secretPath, fieldName)
 	if err != nil {
 		return "", err
@@ -168,8 +166,7 @@ func (v *Client) Get(secretPath string, fieldName string) (string, error) {
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
 func (v *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
-	secretPath = filepath.Join(v.rootPath, secretPath)
-	secret, err := v.client.Logical().Read(secretPath)
+	secret, err := v.read(secretPath)
 	if err != nil {
 		return nil, err
 	}
@@ -190,4 +187,15 @@ func (v *Client) GetMany(secretPath string, fieldNames ...string) ([]string, err
 	}
 
 	return result, nil
+}
+
+// read reads data from Vault at the given relative path appended to the root path configured at the client level.
+// An error is returned if no data is found.
+func (v *Client) read(relativeSecretPath string) (*api.Secret, error) {
+	absoluteSecretPath := filepath.Join(v.rootPath, relativeSecretPath)
+	secret, err := v.client.Logical().Read(absoluteSecretPath)
+	if secret == nil {
+		return nil, fmt.Errorf("no data found at %s", absoluteSecretPath)
+	}
+	return secret, err
 }
