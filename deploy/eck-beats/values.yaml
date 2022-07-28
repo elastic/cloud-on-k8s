@@ -9,6 +9,11 @@ instances:
   # Version of Elastic Beats.
   #
   version: 8.2.3
+
+  # Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+  #
+  type: filebeat
   
   # Labels that will be applied to Elastic Beats.
   #
