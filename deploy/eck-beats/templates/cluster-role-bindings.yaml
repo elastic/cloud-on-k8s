@@ -1,0 +1,23 @@
+{{- range $i, $crb := .Values.clusterRoleBindings }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $crb.name }}
+  {{- with $ }}
+  labels:
+    {{- include "beat.labels" $ | nindent 4 }}
+    {{- if $crb.labels }}
+    {{- toYaml $crb.labels | indent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- if $crb.annotations }}
+  annotations:
+    {{- toYaml $crb.annotations | indent 4 }}
+  {{- end }}
+subjects: {{- toYaml $crb.subjects | nindent 2 }}
+roleRef:
+  kind: {{ $crb.roleRef.kind }}
+  name: {{ $crb.roleRef.name }}
+  apiGroup: {{ $crb.roleRef.apiGroup }}
+{{- end }}

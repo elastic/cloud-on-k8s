@@ -1,0 +1,23 @@
+suite: test beats
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render default filebeat properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].name
+          value: filebeat
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].securityContext.runAsUser
+          value: 0
+

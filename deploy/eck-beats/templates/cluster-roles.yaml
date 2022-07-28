@@ -1,0 +1,19 @@
+{{- range $i, $cr := .Values.clusterRoles }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $cr.name }}
+  {{- with $ }}
+  labels:
+    {{- include "beat.labels" $ | nindent 4 }}
+    {{- if $cr.labels }}
+    {{- toYaml $cr.labels | indent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- if $cr.annotations }}
+  annotations:
+    {{- toYaml $cr.annotations | indent 4 }}
+  {{- end }}
+rules: {{- toYaml $cr.rules | nindent 2 }}
+{{- end }}

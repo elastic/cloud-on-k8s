@@ -1,0 +1,129 @@
+---
+# Default values for eck-beats.
+# This is a YAML-formatted file.
+instances:
+- # Name of this specific set of Elastic Beats.
+  #
+  name: quickstart
+
+  # Version of Elastic Beats.
+  #
+  version: 8.2.3
+  
+  # Labels that will be applied to Elastic Beats.
+  #
+  labels: {}
+  
+  # Annotations that will be applied to Elastic Beats.
+  #
+  annotations: {}
+  
+  spec:
+    # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
+    #
+    # Reference to ECK-managed Kibana instance.
+    #
+    # kibanaRef:
+    #   name: quickstart
+      # Optional namespace reference to Kibana instance.
+      # If not specified, then the namespace of the Beats instance
+      # will be assumed.
+      #
+      # namespace: default
+
+    # Reference to ECK-managed Elasticsearch instance.
+    #
+    elasticsearchRef:
+      name: elasticsearch
+      # Optional namespace reference to Elasticsearch instance.
+      # If not specified, then the namespace of the Beats instance
+      # will be assumed.
+      #
+      # namespace: default
+  
+    # Daemonset, or Deployment specification for the type of Beat specified.
+    # At least one is required of [daemonSet, deployment].
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
+    #
+    daemonSet:
+      podTemplate:
+        spec:
+          automountServiceAccountToken: true
+          terminationGracePeriodSeconds: 30
+          dnsPolicy: ClusterFirstWithHostNet
+          hostNetwork: true # Allows to provide richer host metadata
+          containers:
+          - name: filebeat
+            securityContext:
+              runAsUser: 0
+              # If using Red Hat OpenShift uncomment this:
+              # privileged: true
+            volumeMounts:
+            - name: varlogcontainers
+              mountPath: /var/log/containers
+            - name: varlogpods
+              mountPath: /var/log/pods
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+          volumes:
+          - name: varlogcontainers
+            hostPath:
+              path: /var/log/containers
+          - name: varlogpods
+            hostPath:
+              path: /var/log/pods
+          - name: varlibdockercontainers
+            hostPath:
+              path: /var/lib/docker/containers
+  
+    # Configuration of Beat, which is dependent on the `type` of Beat specified.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+    #
+    config:
+      filebeat.inputs:
+      - type: container
+        paths:
+        - /var/log/containers/*.log
+      processors:
+      - add_host_metadata: {}
+      - add_cloud_metadata: {}
+
+# ServiceAccounts to be used by Elastic Beats. Some Beats features (such as autodiscover or Kubernetes module metricsets)
+# require that Beat Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+serviceAccounts: []
+# - name: elastic-beat-filebeat-quickstart
+#   namespace: optional-namespace
+
+# ClusterRoleBindings to be used by Elastic Beats. Similar to ServiceAccounts, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+clusterRoleBindings: []
+# - name: elastic-beat-autodiscover-binding
+#   subjects:
+#   - kind: ServiceAccount
+#     name: elastic-beat-filebeat-quickstart
+#     namespace: default
+#   roleRef:
+#     kind: ClusterRole
+#     name: elastic-beat-autodiscover
+#     apiGroup: rbac.authorization.k8s.io
+
+# ClusterRoles to be used by Elastic Beats. Similar to ServiceAccounts, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+clusterRoles: []
+# - name: elastic-beat-autodiscover
+#   rules:
+#   - apiGroups: [""]
+#     resources:
+#     - events
+#     - pods
+#     - namespaces
+#     - nodes
+#     verbs:
+#     - get
+#     - watch
+#     - list
