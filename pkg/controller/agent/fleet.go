@@ -278,6 +278,7 @@ func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.N
 }
 
 func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, api fleetAPI) (EnrollmentAPIKey, error) {
+	defer api.client.CloseIdleConnections()
 	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
 	if !exists {
