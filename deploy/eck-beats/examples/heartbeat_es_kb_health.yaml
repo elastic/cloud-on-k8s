@@ -1,0 +1,30 @@
+name: heartbeat
+type: heartbeat
+version: 8.2.3
+spec:
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
+    filebeat.inputs: []
+    # Since rpcoessors is used in the default values, this needs to be removed with an empty list. 
+    processors: []
+    heartbeat.monitors:
+    - type: tcp
+      schedule: '@every 5s'
+      # This should directly match the name of the Elasticsearch instance
+      # with "-es-http" appended to the name.
+      hosts: ["elasticsearch-es-http.default.svc:9200"]
+    - type: tcp
+      schedule: '@every 5s'
+      # This should directly match the names of the Kibana instance
+      # with "-kb-http" appended to the name.
+      hosts: ["eck-kibana-kb-http.default.svc:5601"]
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
+  # Since there is an existing daemonSet in the default values, it must be moved by using 'null'.
+  daemonSet: null

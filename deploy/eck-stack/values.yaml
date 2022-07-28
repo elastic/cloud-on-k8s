@@ -19,3 +19,6 @@ eck-kibana:
     # both the eck-elasticsearch and the eck-kibana chart work together by default in the eck-stack chart.
     elasticsearchRef:
       name: elasticsearch
+
+eck-beats:
+  enabled: false

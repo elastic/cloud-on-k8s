@@ -1,0 +1,50 @@
+suite: test elastic-agent
+templates:
+  - charts/eck-beats/templates/beats.yaml
+tests:
+  - it: should render filebeat quickstart properly
+    set:
+      eck-beats.enabled: true
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-beats
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: should render custom metricbeat example properly
+    values:
+      - ../../examples/metricbeat_hosts.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-beats
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.kibanaRef.name
+          value: quickstart
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: quickstart
+      - equal:
+          path: spec.type
+          value: metricbeat
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.securityContext.runAsUser
+          value: 0
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.serviceAccountName
+          value: metricbeat
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostNetwork
+          value: true
