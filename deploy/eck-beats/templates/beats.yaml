@@ -1,26 +1,19 @@
-{{- range $i, $instance := .Values.instances }}
 ---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: {{ $instance.name }}
-  {{- with $ }}
+  name: {{ include "beat.fullname" . }}
   labels:
-    {{- include "beat.labels" $ | nindent 4 }}
-    {{- if $instance.labels }}
-    {{- toYaml $instance.labels | indent 4 }}
-    {{- end }}
-  {{- end }}
+    {{- include "beat.labels" . | nindent 4 }}
   annotations:
     eck.k8s.elastic.co/license: enterprise
-    {{- if $instance.annotations }}
-    {{- toYaml $instance.annotations | indent 4 }}
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | indent 4 }}
     {{- end }}
 spec:
-  version: {{ required "A Beat version is required" $instance.version }}
-  type: {{ required "A Beat type is required" $instance.type }}
-  {{- if and (not (hasKey $instance.spec "daemonSet")) (not (hasKey $instance.spec "deployment")) }}
+  version: {{ required "A Beat version is required" .Values.version }}
+  type: {{ required "A Beat type is required" .Values.type }}
+  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
   {{ fail "At least one of daemonSet or deployment is required for a functional Beat" }}
   {{- end }}
-  {{- toYaml $instance.spec | nindent 2 }}
-{{- end }}
+  {{- toYaml .Values.spec | nindent 2 }}
