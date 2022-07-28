@@ -217,4 +217,3 @@ eck-beats:
       kind: ClusterRole
       name: metricbeat
       apiGroup: rbac.authorization.k8s.io
-  
