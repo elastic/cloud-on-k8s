@@ -219,6 +219,8 @@ inputs:
     - mountPath: /var/log
       name: varlog
   dnsPolicy: ClusterFirstWithHostNet
+  securityContext:
+    runAsUser: 0
   terminationGracePeriodSeconds: 30
   volumes:
   - hostPath:
