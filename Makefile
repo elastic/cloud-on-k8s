@@ -71,12 +71,6 @@ OPERATOR_NAME ?= elastic-operator
 # comma separated list of namespaces in which the operator should watch resources
 MANAGED_NAMESPACES ?=
 
-## -- Security
-
-# should environments be configured with PSP ?
-# TODO: only relevant on GKE for e2e tests for the moment
-PSP ?= 0
-
 #####################################
 ##  --       Development       --  ##
 #####################################
@@ -262,10 +256,6 @@ else
 		--set=managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
 endif
 
-apply-psp:
-	kubectl apply -f config/recipes/psp/elastic-psp.yaml
-	kubectl apply -f config/recipes/psp/beats-agent-psp.yaml
-
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
 
@@ -338,9 +328,6 @@ bootstrap-k8s: setup-deployer
 
 bootstrap-cloud: bootstrap-k8s
 	$(MAKE) cluster-bootstrap
-ifeq ($(PSP), 1)
-	$(MAKE) apply-psp
-endif
 
 delete-cloud: setup-deployer
 	@ $(DEPLOYER) execute --operation=delete
@@ -535,7 +522,7 @@ ci-check: check-license-header lint shellcheck generate check-local-changes chec
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer apply-psp e2e-docker-multiarch-build
+setup-e2e: e2e-compile run-deployer e2e-docker-multiarch-build
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run

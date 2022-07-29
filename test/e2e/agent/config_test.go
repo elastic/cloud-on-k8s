@@ -33,7 +33,6 @@ func TestSystemIntegrationConfig(t *testing.T) {
 	testPodBuilder := beat.NewPodBuilder(name)
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
@@ -73,7 +72,6 @@ func TestAgentConfigRef(t *testing.T) {
 	}
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithConfigRef(secretName).
 		WithObjects(secret).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
@@ -107,7 +105,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithElasticsearchRefs(
 			agent.ToOutput(esBuilder1.Ref(), "default"),
 			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
@@ -148,8 +145,7 @@ func TestFleetMode(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	fleetServerBuilder := agent.NewBuilder(name+"-fs").
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+	fleetServerBuilder := agent.NewBuilder(name + "-fs").
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
@@ -164,8 +160,7 @@ func TestFleetMode(t *testing.T) {
 
 	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
-	agentBuilder := agent.NewBuilder(name+"-ea").
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
