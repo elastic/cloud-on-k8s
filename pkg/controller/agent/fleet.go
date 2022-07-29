@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/module/apmhttp/v2"
 	"k8s.io/apimachinery/pkg/types"
-	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -165,10 +164,6 @@ func (f fleetAPI) getEnrollmentAPIKey(ctx context.Context, keyID string) (Enroll
 	return response.Item, err
 }
 
-func (f fleetAPI) deleteEnrollmentAPIKey(ctx context.Context, keyID string) error {
-	return f.request(ctx, http.MethodDelete, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, nil)
-}
-
 func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy Policy) bool) (Policy, error) {
 	page := 1
 	for {
@@ -309,8 +304,6 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 	}
 
 FindOrCreate:
-	// try to re-use an existing key
-	newkey := false
 	key, err := api.findEnrollmentAPIKey(ctx, policyID)
 	if err != nil {
 		ulog.FromContext(ctx).Info("Could not find existing Fleet enrollment API keys, creating new one", "error", err.Error())
@@ -318,20 +311,14 @@ FindOrCreate:
 		if err != nil {
 			return EnrollmentAPIKey{}, err
 		}
-		newkey = true
 	}
 
-	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it
-	// on the top level but we would then potentially create redundant enrollment tokens in the Fleet API
+	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it  on the top level
 	if agent.Annotations == nil {
 		agent.Annotations = map[string]string{}
 	}
 	agent.Annotations[FleetTokenAnnotation] = key.ID
 	err = client.Update(ctx, &agent)
-	if err != nil && newkey {
-		// we have failed to store the token id in an annotation let's try to remove the token again
-		return EnrollmentAPIKey{}, k8serrors.NewAggregate([]error{err, api.deleteEnrollmentAPIKey(ctx, key.ID)})
-	}
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}

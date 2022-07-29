@@ -219,8 +219,6 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					// no token to reuse create a new one
 					{"GET", "/api/fleet/enrollment_api_keys"}:  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: fleetServerKeySample},
-					// delete token because annotation update failed and we want to avoid dangling keys
-					{"DELETE", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200},
 				}),
 			},
 			want:    EnrollmentAPIKey{},
