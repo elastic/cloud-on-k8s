@@ -7,6 +7,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -22,7 +23,9 @@ import (
 )
 
 var (
+	emptyList                   = `{"items":[]}`
 	enrollmentKeySample         = `{"item":{"id":"some-token-id","active":true,"api_key_id":"2y2otIEB7e2EvmgdFYCC","api_key":"some-token","name":"fe2c49b4-a94a-41ba-b6ed-a64c536874e9","policy_id":"a-policy-id","created_at":"2022-06-30T12:48:44.378Z"}}`
+	enrollmentKeyListSample     = `{"items":[{"id":"some-token-id","active":true,"api_key_id":"2y2otIEB7e2EvmgdFYCC","api_key":"some-token","name":"fe2c49b4-a94a-41ba-b6ed-a64c536874e9","policy_id":"a-policy-id","created_at":"2022-06-30T12:48:44.378Z"}], "total":1,"page":1,"perPage":20}`
 	fleetServerKeySample        = `{"item":{"id":"some-token-id","active":true,"api_key_id":"2y2otIEB7e2EvmgdFYCC","api_key":"fleet-token","name":"fe2c49b4-a94a-41ba-b6ed-a64c536874e9","policy_id":"fleet-policy-id","created_at":"2022-06-30T12:48:44.378Z"}}`
 	inactiveEnrollmentKeySample = `{"item":{"id":"some-token-id","active":false,"api_key_id":"2y2otIEB7e2EvmgdFYCC","api_key":"some-token","name":"fe2c49b4-a94a-41ba-b6ed-a64c536874e9","policy_id":"a-policy-id","created_at":"2022-06-30T12:48:44.378Z"}}`
 	agentPoliciesSample         = `{"items":[{"id":"fleet-policy-id","namespace":"default","monitoring_enabled":["logs","metrics"],"name":"Default Fleet Server policy","description":"Default Fleet Server agent policy created by Kibana","is_default":false,"is_default_fleet_server":true,"is_preconfigured":true,"status":"active","is_managed":false,"revision":1,"updated_at":"2022-06-30T12:48:35.349Z","updated_by":"system","package_policies":["dcc6e5b3-ea49-4b96-ae39-a1a3b74d849b"],"agents":1},{"id":"f217f7e0-f872-11ec-8bc1-17034ca5bd9f","namespace":"default","monitoring_enabled":["logs","metrics"],"name":"Default policy","description":"Default agent policy created by Kibana","is_default":true,"is_preconfigured":true,"status":"active","is_managed":false,"revision":1,"updated_at":"2022-06-30T12:48:33.323Z","updated_by":"system","package_policies":["8a7a3e75-47fb-4205-8c1c-db69a2c70458"],"agents":3}],"total":2,"page":1,"perPage":20}`
@@ -80,6 +83,8 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/agent_policies"}: {code: 200, body: agentPoliciesSample},
 					// check annotated api key
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
+					// try to find existing key but there is none
+					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 200, body: emptyList},
 					// new token because existing key not valid for policy
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
@@ -97,12 +102,13 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 						Annotations: map[string]string{
 							FleetTokenAnnotation: "invalid-token-id",
 						}},
-					Spec: v1alpha1.AgentSpec{},
+					Spec: v1alpha1.AgentSpec{
+						PolicyID: "a-policy-id",
+					},
 				},
 				api: mockFleetResponses(map[request]response{
-					{"GET", "/api/fleet/agent_policies"}:                       {code: 200, body: agentPoliciesSample},
 					{"GET", "/api/fleet/enrollment_api_keys/invalid-token-id"}: {code: 404},
-					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
+					{"GET", "/api/fleet/enrollment_api_keys"}:                  {code: 200, body: enrollmentKeyListSample},
 				}),
 			},
 			want:    asObject(enrollmentKeySample),
@@ -123,6 +129,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				api: mockFleetResponses(map[request]response{
 					{"GET", "/api/fleet/agent_policies"}:                       {code: 200, body: agentPoliciesSample},
 					{"GET", "/api/fleet/enrollment_api_keys/invalid-token-id"}: {code: 200, body: inactiveEnrollmentKeySample},
+					{"GET", "/api/fleet/enrollment_api_keys"}:                  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
 				}),
 			},
@@ -141,6 +148,7 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				api: mockFleetResponses(map[request]response{
 					{"POST", "/api/fleet/setup"}:               {code: 200},
 					{"GET", "/api/fleet/agent_policies"}:       {code: 200, body: agentPoliciesSample},
+					{"GET", "/api/fleet/enrollment_api_keys"}:  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
@@ -154,13 +162,12 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
 						Namespace: "ns",
-						Annotations: map[string]string{
-							FleetTokenAnnotation: "some-token-id",
-						},
 					},
 				},
 				api: mockFleetResponses(map[request]response{
-					{"GET", "/api/fleet/agent_policies"}: {code: 500},
+					{"POST", "/api/fleet/setup"}:              {code: 200},
+					{"GET", "/api/fleet/agent_policies"}:      {code: 200, body: agentPoliciesSample},
+					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 500}, // could also be a timeout etc
 				}),
 			},
 			want:    EnrollmentAPIKey{},
@@ -208,10 +215,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/setup"}: {code: 200},
 					// get all policies
 					{"GET", "/api/fleet/agent_policies"}: {code: 200, body: agentPoliciesSample},
-					// check annotated api key, should be valid
+					// no token to reuse create a new one
+					{"GET", "/api/fleet/enrollment_api_keys"}:  {code: 200, body: emptyList},
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: fleetServerKeySample},
-					// delete token because annotation update failed and we want to avoid dangling keys
-					{"DELETE", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200},
 				}),
 			},
 			want:    EnrollmentAPIKey{},
@@ -276,12 +282,13 @@ func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 		response, exists := rs[r]
 		if exists {
 			callLog[r]++
+			return &http.Response{
+				StatusCode: response.code,
+				Body:       ioutil.NopCloser(strings.NewReader(response.body)),
+				Request:    req,
+			}
 		}
-		return &http.Response{
-			StatusCode: response.code,
-			Body:       ioutil.NopCloser(strings.NewReader(response.body)),
-			Request:    req,
-		}
+		panic(fmt.Sprintf("unexpected request %+v", r))
 	}
 	return &mockFleetAPI{
 		fleetAPI: fleetAPI{
