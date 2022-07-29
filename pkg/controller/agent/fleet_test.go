@@ -162,13 +162,12 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "agent",
 						Namespace: "ns",
-						Annotations: map[string]string{
-							FleetTokenAnnotation: "some-token-id",
-						},
 					},
 				},
 				api: mockFleetResponses(map[request]response{
-					{"GET", "/api/fleet/agent_policies"}: {code: 500},
+					{"POST", "/api/fleet/setup"}:              {code: 200},
+					{"GET", "/api/fleet/agent_policies"}:      {code: 200, body: agentPoliciesSample},
+					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 500}, // could also be a timeout etc
 				}),
 			},
 			want:    EnrollmentAPIKey{},

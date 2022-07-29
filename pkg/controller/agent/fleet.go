@@ -34,6 +34,8 @@ import (
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
 
+var noMatchingTokenFound = errors.New("no matching active enrollment token found")
+
 // EnrollmentAPIKeyResult wrapper for a single result in the Fleet API.
 type EnrollmentAPIKeyResult struct {
 	Item EnrollmentAPIKey `json:"item"`
@@ -201,7 +203,7 @@ func (f fleetAPI) findEnrollmentAPIKey(ctx context.Context, policyID string) (En
 		}
 		page++
 	}
-	return EnrollmentAPIKey{}, errors.New("no matching active enrollment token found")
+	return EnrollmentAPIKey{}, noMatchingTokenFound
 }
 
 func (f fleetAPI) defaultFleetServerPolicyID(ctx context.Context) (string, error) {
@@ -305,12 +307,15 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 
 FindOrCreate:
 	key, err := api.findEnrollmentAPIKey(ctx, policyID)
-	if err != nil {
+	if err != nil && errors.Is(err, noMatchingTokenFound) {
 		ulog.FromContext(ctx).Info("Could not find existing Fleet enrollment API keys, creating new one", "error", err.Error())
 		key, err = api.createEnrollmentAPIKey(ctx, policyID)
 		if err != nil {
 			return EnrollmentAPIKey{}, err
 		}
+	}
+	if err != nil {
+		return EnrollmentAPIKey{}, err
 	}
 
 	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it  on the top level
