@@ -1,7 +1,7 @@
 ---
 # Default values for eck-elastic-agent.
 # This is a YAML-formatted file.
-instances:
+agents:
 - # Name of this specific Elastic Agent.
   #
   name: quickstart

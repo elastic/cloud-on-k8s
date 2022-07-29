@@ -89,7 +89,7 @@ eck-kibana:
 eck-elastic-agent:
   enabled: true
 
-  instances:
+  agents:
   - # Name of this specific Elastic Agent.
     #
     name: fleet-server
