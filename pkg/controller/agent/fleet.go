@@ -34,7 +34,7 @@ import (
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
 
-var noMatchingTokenFound = errors.New("no matching active enrollment token found")
+var errNoMatchingTokenFound = errors.New("no matching active enrollment token found")
 
 // EnrollmentAPIKeyResult wrapper for a single result in the Fleet API.
 type EnrollmentAPIKeyResult struct {
@@ -203,7 +203,7 @@ func (f fleetAPI) findEnrollmentAPIKey(ctx context.Context, policyID string) (En
 		}
 		page++
 	}
-	return EnrollmentAPIKey{}, noMatchingTokenFound
+	return EnrollmentAPIKey{}, errNoMatchingTokenFound
 }
 
 func (f fleetAPI) defaultFleetServerPolicyID(ctx context.Context) (string, error) {
@@ -307,7 +307,7 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 
 FindOrCreate:
 	key, err := api.findEnrollmentAPIKey(ctx, policyID)
-	if err != nil && errors.Is(err, noMatchingTokenFound) {
+	if err != nil && errors.Is(err, errNoMatchingTokenFound) {
 		ulog.FromContext(ctx).Info("Could not find existing Fleet enrollment API keys, creating new one", "error", err.Error())
 		key, err = api.createEnrollmentAPIKey(ctx, policyID)
 		if err != nil {
