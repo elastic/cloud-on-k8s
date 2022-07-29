@@ -15,7 +15,7 @@ func RequestName(request *http.Request) string {
 		return ""
 	}
 	var b strings.Builder
-	b.Grow(len(request.Method) + len(request.URL.Path))
+	b.Grow(len(request.Method) + len(request.URL.Path) + 1)
 	b.WriteString(request.Method)
 	b.WriteRune(' ')
 	b.WriteString(request.URL.Path)
