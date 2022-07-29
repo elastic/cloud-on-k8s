@@ -409,3 +409,24 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 ----
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
+
+
+=== Storing local state in host path volume
+Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
+If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
+
+[source,yaml]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  deployment:
+    podTemplate:
+      spec:
+        volumes:
+        - name: agent-data
+          emptyDir: {}
+...
+----

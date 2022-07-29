@@ -46,8 +46,8 @@ const (
 	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
 
 	DataVolumeName            = "agent-data"
-	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
-	DataMountPath             = "/usr/share/data"
+	DataMountHostPathTemplate = "/var/lib/elastic-agent/%s/%s/state"
+	DataMountPath             = "/usr/share/elastic-agent/state" // available since 7.14 without effect before that
 
 	// ConfigHashAnnotationName is an annotation used to store the Agent config hash.
 	ConfigHashAnnotationName = "agent.k8s.elastic.co/config-hash"
@@ -141,11 +141,10 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		builder = builder.
 			WithResources(defaultResources).
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
-
-		// volume with agent data path
-		vols = append(vols, createDataVolume(params))
 	}
 
+	// volume with agent data path
+	vols = append(vols, createDataVolume(params))
 	// all volumes with CAs of direct associations
 	caAssocVols, err := getVolumesFromAssociations(params.Agent.GetAssociations())
 	if err != nil {

@@ -529,3 +529,24 @@ To establish trust, the Pod needs to update the CA store through a call to `upda
 
 === Running Endpoint Security integration
 Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
+
+=== Storing local state in host path volume
+Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
+Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
+
+[source,yaml]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  deployment:
+    replicas: 3
+    podTemplate:
+      spec:
+        volumes:
+        - name: agent-data
+          emptyDir: {}
+...
+----
