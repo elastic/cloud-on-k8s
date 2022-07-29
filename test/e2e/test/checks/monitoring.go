@@ -40,7 +40,7 @@ func BeatsMonitoredStep(monitored Monitored, k8sClient *test.K8sClient) test.Ste
 	return stackMonitoringChecks{
 		monitored: monitored,
 		k8sClient: k8sClient,
-	}.BeatsStep()
+	}.CheckMonitoringMetricsIndex()
 }
 
 // stackMonitoringChecks tests that the monitored resource pods have 3 containers ready and that there are documents indexed in the beat indexes
@@ -56,10 +56,6 @@ func (c stackMonitoringChecks) Steps() test.StepList {
 		c.CheckMonitoringMetricsIndex(),
 		c.CheckFilebeatIndex(),
 	}
-}
-
-func (c stackMonitoringChecks) BeatsStep() test.Step {
-	return c.CheckMonitoringMetricsIndex()
 }
 
 func (c stackMonitoringChecks) CheckBeatSidecars() test.Step {

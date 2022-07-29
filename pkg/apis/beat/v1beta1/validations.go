@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/blang/semver/v4"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -37,7 +36,9 @@ var (
 
 	typeRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 	// minStackVersion is the minimum Stack version to enable Stack Monitoring on an Elastic Beats.
-	minStackVersion = version.MustParse("7.2.0-SNAPSHOT")
+	// Technically, Beats internal monitoring existed prior to 7.2.0, but it's configuration format
+	// was slightly different.
+	minStackVersion = version.MustParse("7.2.0")
 )
 
 func checkNoUnknownFields(b *Beat) field.ErrorList {
@@ -148,8 +149,7 @@ func isStackSupportedVersion(v string) error {
 		return err
 	}
 	if ver.LT(minStackVersion) {
-		finalMinStackVersion, _ := semver.FinalizeVersion(minStackVersion.String()) // discards prerelease suffix
-		return fmt.Errorf(validations.UnsupportedVersionMsg, finalMinStackVersion)
+		return fmt.Errorf(validations.UnsupportedVersionMsg, minStackVersion)
 	}
 	return nil
 }
