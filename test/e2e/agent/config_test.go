@@ -146,6 +146,7 @@ func TestFleetMode(t *testing.T) {
 		WithNodeCount(1)
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
@@ -161,6 +162,7 @@ func TestFleetMode(t *testing.T) {
 	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())

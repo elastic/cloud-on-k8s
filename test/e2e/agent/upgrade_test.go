@@ -31,6 +31,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 		WithNodeCount(1)
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithVersion(srcVersion).
 		WithDeployment().
 		WithFleetMode().
@@ -47,6 +48,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithVersion(srcVersion).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
