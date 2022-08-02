@@ -1,6 +1,6 @@
-newVersion: 2.4.0-SNAPSHOT
+newVersion: 2.4.0
 prevVersion: 2.3.0
-stackVersion: 8.4.0-SNAPSHOT
+stackVersion: 8.4.0
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
