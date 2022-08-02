@@ -1,0 +1,8 @@
+filebeat.inputs:
+- type: filestream
+  id: filebeatlogs
+  paths:
+    - /var/log/*.log
+    - /usr/share/filebeat/data/registry/filebeat/*.json
+
+# Elasticsearch output configuration is generated and added here

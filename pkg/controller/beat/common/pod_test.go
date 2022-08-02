@@ -20,6 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -71,10 +72,12 @@ func Test_buildPodTemplate(t *testing.T) {
 			Version: "7.15.0",
 			Config:  userCfg,
 			Monitoring: v1beta1.Monitoring{
-				ElasticsearchRefs: []commonv1.ObjectSelector{
-					{
-						Name:      "testes",
-						Namespace: "ns",
+				Metrics: v1beta1.MetricsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							Name:      "testes",
+							Namespace: "ns",
+						},
 					},
 				},
 			},
@@ -256,7 +259,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				t.Errorf("Annotations do not match: %s", cmp.Diff(tt.want.annotations, podTemplateSpec.Annotations))
 				return
 			}
-			if tt.args.params.Beat.Spec.Monitoring.Enabled() {
+			if monitoring.IsDefined(&tt.args.params.Beat) {
 				assertMonitoring(t, podTemplateSpec.Spec.Volumes)
 			}
 		})

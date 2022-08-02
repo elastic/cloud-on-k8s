@@ -6,9 +6,16 @@ spec:
   type: filebeat
   version: 8.3.1
   elasticsearchRef:
-    name: elasticsearch
+    name: source
   kibanaRef:
-    name: kibana
+    name: source-kibana
+  monitoring:
+    logs:
+      elasticsearchRefs:
+      - name: source
+    metrics:
+      elasticsearchRefs:
+      - name: source
   config:
     filebeat:
       autodiscover:
@@ -34,6 +41,13 @@ spec:
         hostNetwork: true # Allows to provide richer host metadata
         containers:
         - name: filebeat
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500Mi
+            requests:
+              cpu: 500m
+              memory: 200M
           securityContext:
             runAsUser: 0
             # If using Red Hat OpenShift uncomment this:
@@ -94,26 +108,26 @@ roleRef:
   kind: ClusterRole
   name: filebeat
   apiGroup: rbac.authorization.k8s.io
----
-apiVersion: elasticsearch.k8s.elastic.co/v1
-kind: Elasticsearch
-metadata:
-  name: elasticsearch
-spec:
-  version: 8.3.1
-  nodeSets:
-  - name: default
-    count: 3
-    config:
-      node.store.allow_mmap: false
----
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kibana
-spec:
-  version: 8.3.1
-  count: 1
-  elasticsearchRef:
-    name: elasticsearch
-...
+# ---
+# apiVersion: elasticsearch.k8s.elastic.co/v1
+# kind: Elasticsearch
+# metadata:
+#   name: elasticsearch
+# spec:
+#   version: 8.3.1
+#   nodeSets:
+#   - name: default
+#     count: 3
+#     config:
+#       node.store.allow_mmap: false
+# ---
+# apiVersion: kibana.k8s.elastic.co/v1
+# kind: Kibana
+# metadata:
+#   name: kibana
+# spec:
+#   version: 8.3.1
+#   count: 1
+#   elasticsearchRef:
+#     name: elasticsearch
+# ...

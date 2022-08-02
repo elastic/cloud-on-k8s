@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -18,7 +17,6 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -50,52 +48,6 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	)
 
-	clientWithMonitoringEnabled := k8s.NewFakeClient(
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
-		},
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-user-secret",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{
-				"elastic-external": []byte("asdf"),
-			},
-		},
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-es-monitoring",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{
-				"url":      []byte("https://external-es.external.com"),
-				"username": []byte("monitoring-user"),
-				"password": []byte("asdfasdf"),
-				"ca.crt":   []byte("my_pem_encoded_cert"),
-			},
-		},
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testbeat-es-testes-ns-monitoring-ca",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{
-				"ca.crt": []byte("my_pem_encoded_cert"),
-			},
-		},
-		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testes",
-				Namespace: "ns",
-			},
-		},
-	)
-
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
@@ -108,31 +60,6 @@ func Test_buildBeatConfig(t *testing.T) {
     password: "123"
     username: elastic
 `))
-	monitoringYaml := settings.MustParseConfig([]byte(`monitoring:
-  enabled: true
-  elasticsearch:
-    hosts:
-    - "https://testes-es-internal-http.ns.svc:9200"
-    username: elastic
-    password: "123"
-    ssl:
-      certificate_authorities:
-        - "/mnt/elastic-internal/beat-monitoring-certs/ca.crt"
-      verification_mode: "certificate"
-`))
-	externalMonitoringYaml := settings.MustParseConfig([]byte(`monitoring:
-  enabled: true
-  elasticsearch:
-    hosts:
-    - "https://external-es.external.com"
-    username: "monitoring-user"
-    password: asdfasdf
-    ssl:
-      certificate_authorities:
-        - "/mnt/elastic-internal/beat-monitoring-certs/ca.crt"
-      verification_mode: "certificate"
-`))
-
 	withAssoc := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -186,68 +113,6 @@ func Test_buildBeatConfig(t *testing.T) {
 				}}
 			},
 			want: userCanonicalCfg,
-		},
-		{
-			name:   "no association, user config, with monitoring enabled",
-			client: clientWithMonitoringEnabled,
-			beat: func() beatv1beta1.Beat {
-				b := beatv1beta1.Beat{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testbeat",
-						Namespace: "ns",
-					},
-					Spec: beatv1beta1.BeatSpec{
-						Config: userCfg,
-						Monitoring: beatv1beta1.Monitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{
-								{
-									Name:      "testes",
-									Namespace: "ns",
-								},
-							},
-						},
-					}}
-				b.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "secret",
-					AuthSecretKey:  "elastic",
-					CACertProvided: true,
-					CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
-					URL:            "https://testes-es-internal-http.ns.svc:9200",
-				})
-				return b
-			},
-			want: merge(userCanonicalCfg, monitoringYaml),
-		},
-		{
-			name:   "no association, user config, with monitoring enabled, external es cluster",
-			client: clientWithMonitoringEnabled,
-			beat: func() beatv1beta1.Beat {
-				b := beatv1beta1.Beat{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testbeat",
-						Namespace: "ns",
-					},
-					Spec: beatv1beta1.BeatSpec{
-						Config: userCfg,
-						Monitoring: beatv1beta1.Monitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{
-								{
-									SecretName: "external-es-monitoring",
-									Namespace:  "ns",
-								},
-							},
-						},
-					}}
-				b.MonitoringAssociation(commonv1.ObjectSelector{SecretName: "external-es-monitoring", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "external-es-monitoring",
-					AuthSecretKey:  "password",
-					CASecretName:   "testbeat-es-testes-ns-monitoring-ca",
-					CACertProvided: true,
-					URL:            "https://external-es.external.com",
-				})
-				return b
-			},
-			want: merge(userCanonicalCfg, externalMonitoringYaml),
 		},
 		{
 			name:          "no association, managed config",
@@ -540,158 +405,6 @@ func Test_getUserConfig(t *testing.T) {
 			got, gotErr := getUserConfig(params)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func Test_buildMonitoringConfig(t *testing.T) {
-	k8sClient := k8s.NewFakeClient()
-	k8sClientWithValidMonitoring := k8s.NewFakeClient(
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat-secret",
-				Namespace: "test",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
-		},
-	)
-	monitoringYaml := settings.MustParseConfig([]byte(`monitoring:
-  enabled: true
-  elasticsearch:
-    hosts:
-    - "https://testes-es-internal-http.ns.svc:9200"
-    username: elastic
-    password: "123"
-    ssl:
-      certificate_authorities:
-        - "/mnt/elastic-internal/beat-monitoring-certs/ca.crt"
-      verification_mode: "certificate"
-`))
-	tests := []struct {
-		name              string
-		params            func() DriverParams
-		want              *settings.CanonicalConfig
-		wantErr           bool
-		expectedErrString string
-	}{
-		{
-			name: "beat without monitoring.ElasticsearchRefs returns error",
-			params: func() DriverParams {
-				return DriverParams{
-					Beat: beatv1beta1.Beat{
-						Spec: beatv1beta1.BeatSpec{
-							Monitoring: beatv1beta1.Monitoring{},
-						},
-					},
-				}
-			},
-			want:              nil,
-			wantErr:           true,
-			expectedErrString: "ElasticsearchRef must exist when stack monitoring is enabled",
-		},
-		{
-			name: "beat with monitoring.ElasticsearchRef that isn't properly defined returns error",
-			params: func() DriverParams {
-				return DriverParams{
-					Beat: beatv1beta1.Beat{
-						Spec: beatv1beta1.BeatSpec{
-							Monitoring: beatv1beta1.Monitoring{
-								ElasticsearchRefs: []commonv1.ObjectSelector{
-									{
-										Name:       "",
-										SecretName: "",
-									},
-								},
-							},
-						},
-					},
-				}
-			},
-			want:              nil,
-			wantErr:           true,
-			expectedErrString: "Beats must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features",
-		},
-		{
-			name: "beat with monitoring.ElasticsearchRef with invalid association config (secret not found) returns error",
-			params: func() DriverParams {
-				beat := beatv1beta1.Beat{
-					Spec: beatv1beta1.BeatSpec{
-						Monitoring: beatv1beta1.Monitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{
-								{
-									Name:       "fake",
-									SecretName: "fake",
-								},
-							},
-						},
-					},
-				}
-				beat.MonitoringAssociation(commonv1.ObjectSelector{Name: "fake", SecretName: "fake"}).SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "does-not-exist",
-					AuthSecretKey:  "invalid",
-				})
-				return DriverParams{
-					Beat:   beat,
-					Client: k8sClient,
-				}
-			},
-			want:              nil,
-			wantErr:           true,
-			expectedErrString: `secrets "does-not-exist" not found`,
-		},
-		{
-			name: "beat with valid monitoring association configuration succeeds",
-			params: func() DriverParams {
-				beat := beatv1beta1.Beat{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "beat",
-						Namespace: "test",
-					},
-					Spec: beatv1beta1.BeatSpec{
-						Monitoring: beatv1beta1.Monitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{
-								{
-									Name:       "fake",
-									SecretName: "fake",
-								},
-							},
-						},
-					},
-				}
-				beat.MonitoringAssociation(commonv1.ObjectSelector{Name: "fake", SecretName: "fake"}).SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "beat-secret",
-					AuthSecretKey:  "elastic",
-					CACertProvided: true,
-					URL:            "https://testes-es-internal-http.ns.svc:9200",
-				})
-				return DriverParams{
-					Beat:   beat,
-					Client: k8sClientWithValidMonitoring,
-				}
-			},
-			want:    monitoringYaml,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildMonitoringConfig(tt.params())
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildMonitoringConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr && (tt.expectedErrString != err.Error()) {
-				t.Errorf("buildMonitoringConfig() = %v, want %v", err.Error(), tt.expectedErrString)
-				return
-			}
-			if len(tt.want.Diff(got, nil)) != 0 {
-				wantBytes, _ := tt.want.Render()
-				gotBytes, _ := got.Render()
-				t.Errorf("buildMonitoringConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotBytes)))
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("buildMonitoringConfig() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

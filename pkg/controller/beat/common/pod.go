@@ -12,9 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	beat_stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -118,6 +121,7 @@ func buildPodTemplate(
 	volumes := make([]corev1.Volume, 0, len(vols))
 	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
 	var initContainers []corev1.Container
+	var sideCars []corev1.Container
 
 	for _, v := range vols {
 		volumes = append(volumes, v.Volume())
@@ -128,6 +132,36 @@ func buildPodTemplate(
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
 		volumes = append(volumes, keystoreResources.Volume)
 		initContainers = append(initContainers, keystoreResources.InitContainer)
+	}
+
+	if monitoring.IsLogsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.Filebeat(params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "logs-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		volumes = append(volumes, sideCar.Volumes...)
+		sideCars = append(sideCars, sideCar.Container)
+	}
+
+	if monitoring.IsMetricsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.MetricBeat(params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "metrics-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		volumes = append(volumes, sideCar.Volumes...)
+		sideCars = append(sideCars, sideCar.Container)
 	}
 
 	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
@@ -146,7 +180,8 @@ func buildPodTemplate(
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults()
+		WithInitContainerDefaults().
+		WithContainers(sideCars...)
 
 	return builder.PodTemplate, nil
 }

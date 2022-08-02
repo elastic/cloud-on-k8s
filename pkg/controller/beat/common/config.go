@@ -7,22 +7,17 @@ package common
 import (
 	"hash"
 	"path"
-	"path/filepath"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
-	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -101,17 +96,6 @@ func buildBeatConfig(
 		return nil, err
 	}
 
-	// If monitoring is enabled, render the relevant section
-	if params.Beat.Spec.Monitoring.Enabled() {
-		monitoringConfig, err := buildMonitoringConfig(params)
-		if err != nil {
-			return nil, err
-		}
-		if err = cfg.MergeWith(monitoringConfig); err != nil {
-			return nil, err
-		}
-	}
-
 	// get user config from `config` or `configRef`
 	userConfig, err := getUserConfig(params)
 	if err != nil {
@@ -126,64 +110,14 @@ func buildBeatConfig(
 		return nil, err
 	}
 
-	return cfg.Render()
-}
-
-// buildMonitoringConfig builds the stack monitoring configuration for a Beats instance.
-func buildMonitoringConfig(params DriverParams) (*settings.CanonicalConfig, error) {
-	if len(params.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
-		return nil, errors.New("ElasticsearchRef must exist when stack monitoring is enabled")
-	}
-
-	// only the first ElasticsearchRef is currently supported.
-	esRef := params.Beat.Spec.Monitoring.ElasticsearchRefs[0]
-	if !esRef.IsDefined() {
-		return nil, errors.New(validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg)
-	}
-
-	var username, password, url string
-	associations := monitoring.GetMetricsAssociation(&params.Beat)
-	if len(associations) != 1 {
-		// should never happen because of the pre-creation validation
-		return nil, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
-	}
-	assoc := associations[0]
-
-	credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
-	if err != nil {
-		return nil, err
-	}
-
-	username, password = credentials.Username, credentials.Password
-
-	var assocConf *v1.AssociationConf
-	assocConf, err = assoc.AssociationConf()
-	if err != nil {
-		return nil, err
-	}
-
-	url = assocConf.GetURL()
-
-	caDirPath := certificatesDir(assoc)
-
-	config := MonitoringConfig{
-		Enabled: true,
-		Elasticsearch: ElasticsearchConfig{
-			Hosts:    []string{url},
-			Username: username,
-			Password: password,
-		},
-	}
-
-	if assocConf.GetCACertProvided() {
-		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
-		config.Elasticsearch.SSL = SSLConfig{
-			CertificateAuthorities: []string{sslCAPath},
-			VerificationMode:       "certificate",
+	// if metrics monitoring is enabled, then enable the metrics http endpoint for metricsbeat sidecar.
+	if monitoring.IsMetricsDefined(&params.Beat) {
+		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]bool{"http.enabled": true})); err != nil {
+			return nil, err
 		}
 	}
 
-	return settings.NewCanonicalConfigFrom(map[string]interface{}{"monitoring": config})
+	return cfg.Render()
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec

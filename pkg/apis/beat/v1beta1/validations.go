@@ -125,7 +125,7 @@ func checkAssociations(b *Beat) field.ErrorList {
 
 func checkMonitoring(b *Beat) field.ErrorList {
 	var errs field.ErrorList
-	if !b.Spec.Monitoring.Enabled() {
+	if !monitoring.IsDefined(b) {
 		return nil
 	}
 	if err := isStackSupportedVersion(b.Spec.Version); err != nil {
@@ -138,6 +138,15 @@ func checkMonitoring(b *Beat) field.ErrorList {
 	}
 	if len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
+			refs, validations.InvalidElasticsearchRefsMsg))
+	}
+	refs = b.GetMonitoringLogsRefs()
+	if !monitoring.AreEsRefsDefined(refs) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
+			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
+	}
+	if len(refs) != 1 {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
 			refs, validations.InvalidElasticsearchRefsMsg))
 	}
 	return errs

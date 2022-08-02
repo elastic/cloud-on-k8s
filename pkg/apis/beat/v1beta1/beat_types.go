@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 )
 
 const (
@@ -80,9 +81,8 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// Monitoring enables you to collect and ship monitoring data of this Beat.
-	// See https://www.elastic.co/guide/en/beats/filebeat/current/monitoring.html
-	// Internal Beat collectors are configured and send metrics data to one
+	// Monitoring enables you to collect and ship monitoring, and logs data of this Beat.
+	// Metricbeat and/or Filebeat sidecars are configured and send metrics data to one
 	// Elasticsearch monitoring cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
@@ -107,15 +107,26 @@ type DeploymentSpec struct {
 }
 
 type Monitoring struct {
+	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this Beats resource.
+	// +kubebuilder:validation:Optional
+	Metrics MetricsMonitoring `json:"metrics,omitempty"`
+	// Logs holds references to Elasticsearch clusters which receive log data from this Beats resource.
+	// +kubebuilder:validation:Optional
+	Logs LogsMonitoring `json:"logs,omitempty"`
+}
+
+type MetricsMonitoring struct {
 	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
 	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
 	// +kubebuilder:validation:Required
 	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
-// Enabled returns whether the Beat has stack monitoring enabled.
-func (m Monitoring) Enabled() bool {
-	return len(m.ElasticsearchRefs) > 0
+type LogsMonitoring struct {
+	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
+	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+	// +kubebuilder:validation:Required
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.
@@ -201,10 +212,8 @@ func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Assoc
 			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
 		}
 	case commonv1.BeatMonitoringAssociationType:
-		for _, esRef := range b.Spec.Monitoring.ElasticsearchRefs {
-			if esRef.IsDefined() {
-				return b.Status.MonitoringAssociationsStatus
-			}
+		if monitoring.IsDefined(b) {
+			return b.Status.MonitoringAssociationsStatus
 		}
 	}
 
@@ -251,7 +260,15 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 			Beat: b,
 		})
 	}
-	for _, ref := range b.Spec.Monitoring.ElasticsearchRefs {
+	for _, ref := range b.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &BeatMonitoringAssociation{
+				Beat: b,
+				ref:  ref.WithDefaultNamespace(b.Namespace),
+			})
+		}
+	}
+	for _, ref := range b.Spec.Monitoring.Logs.ElasticsearchRefs {
 		if ref.IsDefined() {
 			associations = append(associations, &BeatMonitoringAssociation{
 				Beat: b,
@@ -438,11 +455,11 @@ func (beatmon *BeatMonitoringAssociation) AssociationID() string {
 // -- HasMonitoring methods
 
 func (b *Beat) GetMonitoringMetricsRefs() []commonv1.ObjectSelector {
-	return b.Spec.Monitoring.ElasticsearchRefs
+	return b.Spec.Monitoring.Metrics.ElasticsearchRefs
 }
 
 func (b *Beat) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
-	return b.Spec.Monitoring.ElasticsearchRefs
+	return b.Spec.Monitoring.Logs.ElasticsearchRefs
 }
 
 func (b *Beat) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
