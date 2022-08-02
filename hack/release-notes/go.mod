@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/v2/hack/release-notes
 
-go 1.17
+go 1.19
 
 require (
 	github.com/stretchr/testify v1.7.3
