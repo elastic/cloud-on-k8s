@@ -5,16 +5,21 @@
 package common
 
 import (
+	"context"
+	"fmt"
 	"hash"
 	"hash/fnv"
+	"net/url"
 	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -62,7 +67,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			},
 		},
 	)
-	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
+	httpPortCfg := &commonv1.Config{Data: map[string]interface{}{"http.port": 3033}}
 	beatWithMonitoring := v1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "beat-name",
@@ -70,7 +75,7 @@ func Test_buildPodTemplate(t *testing.T) {
 		},
 		Spec: v1beta1.BeatSpec{
 			Version: "7.15.0",
-			Config:  userCfg,
+			Config:  httpPortCfg,
 			Monitoring: v1beta1.Monitoring{
 				Metrics: v1beta1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{
@@ -268,7 +273,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				return
 			}
 			if monitoring.IsDefined(&tt.args.params.Beat) {
-				assertMonitoring(t, tt.args.params.Beat, podTemplateSpec)
+				assertMonitoring(t, tt.args.params.Client, tt.args.params.Beat, podTemplateSpec)
 			}
 		})
 	}
@@ -306,7 +311,7 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 	assert.Equal(t, expectedConfigVolumeMode, *configVolume.DefaultMode)
 }
 
-func assertMonitoring(t *testing.T, beat v1beta1.Beat, pod corev1.PodTemplateSpec) {
+func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod corev1.PodTemplateSpec) {
 	t.Helper()
 	var monitoringVolume *corev1.Volume
 	// Validate that the Pod's volumes contain a Secret as a monitoring CA volume.
@@ -321,10 +326,39 @@ func assertMonitoring(t *testing.T, beat v1beta1.Beat, pod corev1.PodTemplateSpe
 	assert.Equal(t, monitoringVolume.Secret.SecretName, "testbeat-es-testes-ns-monitoring-ca")
 
 	if monitoring.IsMetricsDefined(&beat) {
+		// ensure the metricsbeat sidecar exists
 		assert.True(t, containersContains(pod.Spec.Containers, "metrics-monitoring-sidecar"))
+
+		// ensure that the beat's metrics port can be set, and used in the sidecar
+		var secret corev1.Secret
+		assert.NoError(t, client.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("%s-beat-monitoring-metricbeat-config", beat.Name), Namespace: beat.Namespace}, &secret))
+		data, ok := secret.Data["metricbeat.yml"]
+		assert.True(t, ok)
+
+		var cfg metricsbeatConfig
+		assert.NoError(t, yaml.Unmarshal(data, &cfg))
+		u, err := url.Parse(cfg.MetricBeat.Modules[0].Hosts[0])
+		require.NoError(t, err)
+		assert.Equal(t, "3033", u.Port())
 	}
 	if monitoring.IsLogsDefined(&beat) {
 		assert.True(t, containersContains(pod.Spec.Containers, "logs-monitoring-sidecar"))
+	}
+}
+
+// metricsbeatConfig represents the metricsbeat configuration for testing purposes.
+//
+// example:
+//
+// metricbeat:
+//   modules:
+//     - hosts:
+//       - http://example.com:3033
+type metricsbeatConfig struct {
+	MetricBeat struct {
+		Modules []struct {
+			Hosts []string
+		}
 	}
 }
 

@@ -1,9 +1,0 @@
-metricbeat.modules:
-- module: beat
-  metricsets:
-    - stats
-    - state
-  period: 10s
-  hosts: ["http://localhost:5066"]
-
-# Elasticsearch output configuration is generated and added here
