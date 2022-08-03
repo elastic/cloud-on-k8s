@@ -87,8 +87,8 @@ func Test_buildBeatConfig(t *testing.T) {
 	require.NoError(t, err)
 	assocConf.CACertProvided = true
 
-	withAssocWithCAWithonfig := *withAssocWithCA.DeepCopy()
-	withAssocWithCAWithonfig.Spec.Config = userCfg
+	withAssocWithCAWithconfig := *withAssocWithCA.DeepCopy()
+	withAssocWithCAWithconfig.Spec.Config = userCfg
 
 	withAssocWithConfig := *withAssoc.DeepCopy()
 	withAssocWithConfig.Spec.Config = userCfg
@@ -167,7 +167,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:   "association with ca, user config",
 			client: clientWithSecret,
-			beat:   func() beatv1beta1.Beat { return withAssocWithCAWithonfig },
+			beat:   func() beatv1beta1.Beat { return withAssocWithCAWithconfig },
 			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
 		},
 		{
@@ -180,9 +180,30 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:          "association with ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          func() beatv1beta1.Beat { return withAssocWithCAWithonfig },
+			beat:          func() beatv1beta1.Beat { return withAssocWithCAWithconfig },
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
+		},
+		{
+			name: "no association, user config, with metrics monitoring enabled",
+			beat: func() beatv1beta1.Beat {
+				return beatv1beta1.Beat{
+					Spec: beatv1beta1.BeatSpec{
+						Config: userCfg,
+						Monitoring: beatv1beta1.Monitoring{
+							Metrics: beatv1beta1.MetricsMonitoring{
+								ElasticsearchRefs: []commonv1.ObjectSelector{
+									{
+										Name:      "testesref",
+										Namespace: "test",
+									},
+								},
+							},
+						},
+					},
+				}
+			},
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]bool{"http.enabled": true})),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

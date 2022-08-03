@@ -243,10 +243,12 @@ func Test_checkMonitoring(t *testing.T) {
 					Version:   "7.1.0",
 					DaemonSet: &DaemonSetSpec{},
 					Monitoring: Monitoring{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{
-								Name:      "elasticsearch",
-								Namespace: "test",
+						Metrics: MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "elasticsearch",
+									Namespace: "test",
+								},
 							},
 						},
 					},
@@ -266,10 +268,12 @@ func Test_checkMonitoring(t *testing.T) {
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
 					Monitoring: Monitoring{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{
-								// missing name
-								Namespace: "test",
+						Metrics: MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									// missing name
+									Namespace: "test",
+								},
 							},
 						},
 					},
@@ -294,14 +298,16 @@ func Test_checkMonitoring(t *testing.T) {
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
 					Monitoring: Monitoring{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{
-								Name:      "es1",
-								Namespace: "test",
-							},
-							{
-								Name:      "es2",
-								Namespace: "test",
+						Metrics: MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "es1",
+									Namespace: "test",
+								},
+								{
+									Name:      "es2",
+									Namespace: "test",
+								},
 							},
 						},
 					},

@@ -338,7 +338,7 @@ func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Bui
 }
 
 func (b Builder) WithMonitoring(esRef commonv1.ObjectSelector) Builder {
-	b.Beat.Spec.Monitoring.ElasticsearchRefs = []commonv1.ObjectSelector{esRef}
+	b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{esRef}
 	return b
 }
 
@@ -359,10 +359,10 @@ func (b Builder) Namespace() string {
 }
 
 func (b Builder) GetMetricsCluster() *types.NamespacedName {
-	if len(b.Beat.Spec.Monitoring.ElasticsearchRefs) == 0 {
+	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Beat.Spec.Monitoring.ElasticsearchRefs[0].NamespacedName()
+	metricsCluster := b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
 }
 
@@ -370,5 +370,9 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 // different that both Elasticsearch, and Kibana stack monitoring, as it uses internal
 // beat collectors to send only metrics data, not logs data.
 func (b Builder) GetLogsCluster() *types.NamespacedName {
-	return nil
+	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &metricsCluster
 }

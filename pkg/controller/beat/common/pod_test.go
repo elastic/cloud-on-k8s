@@ -80,6 +80,14 @@ func Test_buildPodTemplate(t *testing.T) {
 						},
 					},
 				},
+				Logs: v1beta1.LogsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							Name:      "testes",
+							Namespace: "ns",
+						},
+					},
+				},
 			},
 		}}
 	beatWithMonitoring.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
@@ -105,7 +113,7 @@ func Test_buildPodTemplate(t *testing.T) {
 		want want
 	}{
 		{
-			name: "deployment with monitoring enabled should have CA volume",
+			name: "deployment with monitoring enabled should have CA volume, and sidecars",
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
 				params: DriverParams{
@@ -260,7 +268,7 @@ func Test_buildPodTemplate(t *testing.T) {
 				return
 			}
 			if monitoring.IsDefined(&tt.args.params.Beat) {
-				assertMonitoring(t, podTemplateSpec.Spec.Volumes)
+				assertMonitoring(t, tt.args.params.Beat, podTemplateSpec)
 			}
 		})
 	}
@@ -298,19 +306,35 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 	assert.Equal(t, expectedConfigVolumeMode, *configVolume.DefaultMode)
 }
 
-func assertMonitoring(t *testing.T, volumes []corev1.Volume) {
+func assertMonitoring(t *testing.T, beat v1beta1.Beat, pod corev1.PodTemplateSpec) {
 	t.Helper()
 	var monitoringVolume *corev1.Volume
 	// Validate that the Pod's volumes contain a Secret as a monitoring CA volume.
-	for i := range volumes {
-		if volumes[i].Name == "beat-monitoring-certs" {
-			monitoringVolume = &volumes[i]
+	for _, volume := range pod.Spec.Volumes {
+		if volume.Name == "beat-monitoring-certs" {
+			monitoringVolume = &volume
 			break
 		}
 	}
 	require.NotNil(t, monitoringVolume)
 	require.NotNil(t, monitoringVolume.Secret)
 	assert.Equal(t, monitoringVolume.Secret.SecretName, "testbeat-es-testes-ns-monitoring-ca")
+
+	if monitoring.IsMetricsDefined(&beat) {
+		assert.True(t, containersContains(pod.Spec.Containers, "metrics-monitoring-sidecar"))
+	}
+	if monitoring.IsLogsDefined(&beat) {
+		assert.True(t, containersContains(pod.Spec.Containers, "logs-monitoring-sidecar"))
+	}
+}
+
+func containersContains(containers []corev1.Container, name string) bool {
+	for _, container := range containers {
+		if container.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // newHash creates a hash with some initial data.

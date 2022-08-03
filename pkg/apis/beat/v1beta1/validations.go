@@ -125,27 +125,29 @@ func checkAssociations(b *Beat) field.ErrorList {
 
 func checkMonitoring(b *Beat) field.ErrorList {
 	var errs field.ErrorList
-	if !monitoring.IsDefined(b) {
+	if len(b.GetMonitoringMetricsRefs()) == 0 && len(b.GetMonitoringLogsRefs()) == 0 {
 		return nil
 	}
 	if err := isStackSupportedVersion(b.Spec.Version); err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), b.Spec.Version, err.Error()))
 	}
 	refs := b.GetMonitoringMetricsRefs()
-	if !monitoring.AreEsRefsDefined(refs) {
+	refsDefined := monitoring.AreEsRefsDefined(refs)
+	if len(refs) > 0 && !refsDefined {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
 			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
 	}
-	if len(refs) != 1 {
+	if refsDefined && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
 			refs, validations.InvalidElasticsearchRefsMsg))
 	}
 	refs = b.GetMonitoringLogsRefs()
-	if !monitoring.AreEsRefsDefined(refs) {
+	refsDefined = monitoring.AreEsRefsDefined(refs)
+	if len(refs) > 0 && !refsDefined {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
 			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
 	}
-	if len(refs) != 1 {
+	if refsDefined && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
 			refs, validations.InvalidElasticsearchRefsMsg))
 	}
