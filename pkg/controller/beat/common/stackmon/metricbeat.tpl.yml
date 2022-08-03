@@ -1,0 +1,9 @@
+metricbeat.modules:
+- module: beat
+  metricsets:
+    - stats
+    - state
+  period: 10s
+  hosts: ["{{ .URL }}"]
+
+# Elasticsearch output configuration is generated and added here
