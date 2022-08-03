@@ -278,7 +278,7 @@ func (nr NodeResources) UpdateLimits(autoscalingResources v1.AutoscalingResource
 		}
 	}
 	if nr.HasRequest(corev1.ResourceCPU) {
-		// Update Memory limit
+		// Update CPU limit
 		if autoscalingResources.CPURequestsToLimitsRatio() > 0 {
 			request := nr.GetRequest(corev1.ResourceCPU)
 			limit := int64(math.Ceil(float64(request.Value()) * autoscalingResources.CPURequestsToLimitsRatio()))

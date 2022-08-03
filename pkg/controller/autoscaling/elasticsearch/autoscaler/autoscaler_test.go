@@ -643,7 +643,10 @@ func (rcb *autoscalingPolicyResultBuilder) observedNodes(nodes ...string) *autos
 }
 
 func ptr(q int64) *client.AutoscalingCapacity {
-	v := client.AutoscalingCapacity(q)
+	qPtr := resource.NewQuantity(q, resource.DecimalSI)
+	v := client.AutoscalingCapacity{
+		Quantity: *qPtr,
+	}
 	return &v
 }
 

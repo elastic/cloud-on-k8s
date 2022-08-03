@@ -60,6 +60,17 @@ func NewContext(
 		return nil, err
 	}
 
+	cpuRecommender, err := recommender.NewCPURecommender(
+		log,
+		statusBuilder,
+		autoscalingSpec,
+		autoscalingPolicyResult,
+		currentAutoscalingStatus,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Context{
 		Log:                      log,
 		AutoscalingSpec:          autoscalingSpec,
@@ -67,6 +78,6 @@ func NewContext(
 		AutoscalingPolicyResult:  autoscalingPolicyResult,
 		CurrentAutoscalingStatus: currentAutoscalingStatus,
 		StatusBuilder:            statusBuilder,
-		Recommenders:             []recommender.Recommender{storageRecommender, memoryRecommender},
+		Recommenders:             []recommender.Recommender{storageRecommender, memoryRecommender, cpuRecommender},
 	}, nil
 }

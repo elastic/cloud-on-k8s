@@ -208,6 +208,21 @@ func TestReconcile(t *testing.T) {
 			wantErr:    false,
 			wantEvents: []string{},
 		},
+		{
+			name: "CPU autoscaling",
+			fields: fields{
+				EsClient:       newFakeEsClient(t).withCapacity("cpu-scaled-horizontally"),
+				recorder:       record.NewFakeRecorder(1000),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			args: args{
+				esManifest: "cpu-scaled-horizontally",
+				isOnline:   true,
+			},
+			want:       defaultRequeue,
+			wantErr:    false,
+			wantEvents: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
