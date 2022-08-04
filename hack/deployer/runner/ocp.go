@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -171,7 +170,7 @@ func (d *OCPDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.runtimeState.ClusterStateDir, "install-config.yaml")
-	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
+	err := os.WriteFile(installConfig, tpl.Bytes(), 0600)
 	if err != nil {
 		return err
 	}
@@ -260,7 +259,7 @@ func (d *OCPDriver) ensureWorkDir() error {
 		// having the work dir in HOME also underlines the importance of the work dir contents. The work dir is the only
 		// source to cleanly uninstall the cluster should the rsync fail.
 		var err error
-		workDir, err = ioutil.TempDir(os.Getenv("HOME"), d.plan.ClusterName)
+		workDir, err = os.MkdirTemp(os.Getenv("HOME"), d.plan.ClusterName)
 		if err != nil {
 			return err
 		}

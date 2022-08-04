@@ -6,7 +6,7 @@ package license
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -225,7 +225,7 @@ func Test_unmarshalModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var license EnterpriseLicense
-			bytes, err := ioutil.ReadFile(tt.args.licenseFile)
+			bytes, err := os.ReadFile(tt.args.licenseFile)
 			require.NoError(t, err)
 
 			if err := json.Unmarshal(bytes, &license); (err != nil) != tt.wantErr {

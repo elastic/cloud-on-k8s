@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -96,7 +96,7 @@ func getToken() (*CSRFToken, error) {
 		return nil, fmt.Errorf("received status code %d", resp.StatusCode)
 	}
 
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func getToken() (*CSRFToken, error) {
 }
 
 func validate(token *CSRFToken, pipeline string) (string, error) {
-	bytez, err := ioutil.ReadFile(pipeline)
+	bytez, err := os.ReadFile(pipeline)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +147,7 @@ func validate(token *CSRFToken, pipeline string) (string, error) {
 		return "", fmt.Errorf("received status code %d", resp.StatusCode)
 	}
 
-	bytez, err = ioutil.ReadAll(resp.Body)
+	bytez, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -147,7 +147,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 	defer response.Body.Close()
 	var results client.SearchResults
-	resultBytes, err := ioutil.ReadAll(response.Body)
+	resultBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}

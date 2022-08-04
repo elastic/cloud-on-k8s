@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -187,7 +186,7 @@ func (t *TanzuDriver) ensureWorkDir() error {
 		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
 		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
 		var err error
-		workDir, err = ioutil.TempDir(os.Getenv("HOME"), t.plan.ClusterName)
+		workDir, err = os.MkdirTemp(os.Getenv("HOME"), t.plan.ClusterName)
 		if err != nil {
 			return err
 		}
@@ -261,7 +260,7 @@ func (t *TanzuDriver) createInstallerConfig() error {
 		return err
 	}
 
-	return ioutil.WriteFile(t.installerConfigFilePath(), cfg.Bytes(), 0600)
+	return os.WriteFile(t.installerConfigFilePath(), cfg.Bytes(), 0600)
 }
 
 // installerConfigFilePath returns the path to the installer config valid in the context of deployer.

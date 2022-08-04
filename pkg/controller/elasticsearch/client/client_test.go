@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"sort"
@@ -143,7 +143,7 @@ func requestAssertion(test func(req *http.Request)) RoundTripFunc {
 		test(req)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`{}`)),
+			Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -271,7 +271,7 @@ func TestAPIError_Error(t *testing.T) {
 			fields: fields{newAPIError(&http.Response{
 				StatusCode: 400,
 				Status:     "400 Bad Request",
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
 			})},
 			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
 				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
@@ -282,7 +282,7 @@ func TestAPIError_Error(t *testing.T) {
 			fields: fields{newAPIError(&http.Response{
 				StatusCode: 500,
 				Status:     "500 Internal Server Error",
-				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
+				Body:       io.NopCloser(bytes.NewBufferString("")),
 			})},
 			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
 		},
@@ -302,7 +302,7 @@ func TestClientGetNodes(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.NodesSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -320,7 +320,7 @@ func TestClientGetNodesStats(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesStatsSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.NodesStatsSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -338,7 +338,7 @@ func TestGetInfo(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.InfoSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.InfoSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -477,7 +477,7 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.expectedQuery, req.URL.RawQuery, tt.version)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.AddVotingConfigExclusions(context.Background(), []string{"a", "b"})
@@ -510,7 +510,7 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.DeleteVotingConfigExclusions(context.Background(), false)
@@ -546,7 +546,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.SetMinimumMasterNodes(context.Background(), 1)
@@ -655,7 +655,7 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 				require.Equal(t, tt.expectedPath, req.URL.Path)
 				return &http.Response{
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(strings.NewReader(tt.apiResponse)),
+					Body:       io.NopCloser(strings.NewReader(tt.apiResponse)),
 				}
 			})
 			bootstrappedForZen2, err := client.ClusterBootstrappedForZen2(context.Background())
@@ -711,7 +711,7 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 					require.Equal(t, expectedRawQuery, req.URL.RawQuery)
 					return &http.Response{
 						StatusCode: 408,
-						Body: ioutil.NopCloser(strings.NewReader(
+						Body: io.NopCloser(strings.NewReader(
 							`
 {
 	"cluster_name": "elasticsearch-sample",
@@ -762,7 +762,7 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 					require.Equal(t, expectedRawQuery, req.URL.RawQuery)
 					return &http.Response{
 						StatusCode: 200,
-						Body: ioutil.NopCloser(strings.NewReader(
+						Body: io.NopCloser(strings.NewReader(
 							`
 {
 	"cluster_name": "elasticsearch-sample",

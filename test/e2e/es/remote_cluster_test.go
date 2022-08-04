@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,7 +50,7 @@ func TestRemoteCluster(t *testing.T) {
 		WithRestrictedSecurityContext().
 		WithRemoteCluster(es1Builder)
 	es2LicenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), es2Builder.Elasticsearch)
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
+	licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 	trialSecretName := "eck-license"
 

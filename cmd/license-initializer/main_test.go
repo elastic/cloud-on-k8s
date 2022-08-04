@@ -8,7 +8,7 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +17,7 @@ import (
 
 func Test_generateSrc(t *testing.T) {
 	path := filepath.Join("testdata", "expected.src")
-	expectedBytes, err := ioutil.ReadFile(path)
+	expectedBytes, err := os.ReadFile(path)
 	require.NoError(t, err)
 	input := filepath.Join("testdata", "test.key")
 	var out bytes.Buffer
