@@ -20,4 +20,4 @@ helm repo update
 helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 ```
 
-Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-helm-chart.html[docs] for more information and detailed instructions.
+Check link:https://www.elastic.co/guide/en/cloud-on-k8s/2.4/k8s-stack-helm-chart.html[docs] for more information and detailed instructions.
