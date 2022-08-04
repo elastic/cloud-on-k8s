@@ -46,7 +46,7 @@ plans:
   clusterName: ci
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
@@ -59,7 +59,7 @@ plans:
   clusterName: dev
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: false
   psp: false
   aks:
