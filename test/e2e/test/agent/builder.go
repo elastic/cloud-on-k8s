@@ -15,10 +15,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/pointer"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -195,11 +197,29 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	for i := range b.PodTemplate.Spec.Containers {
-		b.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
+	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
+	if containerIdx < 0 {
+		b.PodTemplate.Spec.Containers = append(
+			b.PodTemplate.Spec.Containers,
+			corev1.Container{
+				Name:            agent.ContainerName,
+				SecurityContext: &securityContext,
+			},
+		)
+		return b
 	}
 
+	b.PodTemplate.Spec.Containers[containerIdx].SecurityContext = &securityContext
 	return b
+}
+
+func getContainerIndex(name string, containers []corev1.Container) int {
+	for i := range containers {
+		if containers[i].Name == name {
+			return i
+		}
+	}
+	return -1
 }
 
 func (b Builder) WithLabel(key, value string) Builder {
@@ -339,7 +359,31 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 }
 
 func (b Builder) RuntimeObjects() []k8sclient.Object {
+	// OpenShift does not only require running as root, the privileged field must also be
+	// set to true in order to write in a hostPath volume.
+	if test.Ctx().OcpCluster {
+		podSecurityContext := b.getPodSecurityContext()
+		if podSecurityContext != nil && podSecurityContext.RunAsUser != nil {
+			if *podSecurityContext.RunAsUser == 0 {
+				// Only update the container's SecurityContext if the Pod runs as root.
+				b = b.WithContainerSecurityContext(corev1.SecurityContext{
+					Privileged: pointer.Bool(true),
+					RunAsUser:  pointer.Int64(0),
+				})
+			}
+		}
+	}
 	return append(b.AdditionalObjects, &b.Agent)
+}
+
+func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
+	if b.Agent.Spec.Deployment != nil {
+		return b.Agent.Spec.Deployment.PodTemplate.Spec.SecurityContext
+	}
+	if b.Agent.Spec.DaemonSet != nil {
+		return b.Agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext
+	}
+	return nil
 }
 
 var _ test.Builder = Builder{}
