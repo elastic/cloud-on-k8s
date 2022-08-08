@@ -96,7 +96,7 @@ func (k *KindDriver) create() error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpManifest.Name())
+	defer os.Remove(tmpManifest.Name())
 
 	// Delete any previous e2e kind cluster with the same name
 	err = k.delete()
