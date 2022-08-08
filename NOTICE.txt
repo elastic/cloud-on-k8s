@@ -2507,11 +2507,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.7.3
-Time    : 2022-06-20T10:32:41Z
+Version : v1.8.0
+Time    : 2022-06-29T10:56:06Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.7.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.8.0/LICENSE:
 
 MIT License
 
