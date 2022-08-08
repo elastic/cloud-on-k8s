@@ -144,14 +144,18 @@ func TestNewReporter(t *testing.T) {
 	kb1, s1 := createKbAndSecret("kb1", "ns1", 1)
 	kb2, s2 := createKbAndSecret("kb2", "ns2", 2)
 	kb3, s3 := createKbAndSecret("kb3", "ns3", 3)
+	kb4, s4 := createKbAndSecret("kb4", "ns2", 1)
+	kb4.Labels = map[string]string{"helm.sh/chart": "eck-kibana-0.1.0"}
 
 	client := k8s.NewFakeClient(
 		&kb1,
 		&kb2,
 		&kb3,
+		&kb4,
 		&s1,
 		&s2,
 		&s3,
+		&s4,
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
@@ -186,6 +190,13 @@ func TestNewReporter(t *testing.T) {
 			},
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 1,
+			},
+		},
+		&esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "helm-managed",
+				Labels:    map[string]string{"helm.sh/chart": "eck-elasticsearch-0.1.0"},
 			},
 		},
 		&apmv1.ApmServer{
@@ -344,16 +355,18 @@ func TestNewReporter(t *testing.T) {
       resource_count: 2
     elasticsearches:
       autoscaled_resource_count: 1
+      helm_resource_count: 1
       pod_count: 10
-      resource_count: 3
+      resource_count: 4
       stack_monitoring_logs_count: 1
       stack_monitoring_metrics_count: 1
     enterprisesearches:
       pod_count: 3
       resource_count: 1
     kibanas:
+      helm_resource_count: 1
       pod_count: 0
-      resource_count: 2
+      resource_count: 3
     maps:
       pod_count: 1
       resource_count: 1
