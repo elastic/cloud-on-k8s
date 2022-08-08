@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.9.1
+    controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
   name: apmservers.apm.k8s.elastic.co
 spec:
@@ -1551,9 +1551,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -1572,6 +1569,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -1620,9 +1618,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -1644,6 +1639,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
@@ -2920,9 +2916,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -2941,6 +2934,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -2989,9 +2983,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -3013,6 +3004,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
@@ -4277,9 +4269,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -4298,6 +4287,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -4346,9 +4336,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -4370,6 +4357,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
@@ -9316,9 +9304,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -9337,6 +9322,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -9385,9 +9371,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -9409,6 +9392,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
@@ -10685,9 +10669,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -10706,6 +10687,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -10754,9 +10736,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -10778,6 +10757,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
@@ -12042,9 +12022,6 @@ spec:
                                       value. Cannot be used if value is not empty.
                                     properties:
                                       configMapKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a ConfigMap.
                                         properties:
                                           key:
@@ -12063,6 +12040,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       fieldRef:
                                         description: 'Selects a field of the pod:
                                           supports metadata.name, metadata.namespace,
@@ -12111,9 +12089,6 @@ spec:
                                         type: object
                                         x-kubernetes-map-type: atomic
                                       secretKeyRef:
-                                        allOf:
-                                        - x-kubernetes-map-type: atomic
-                                        - x-kubernetes-map-type: atomic
                                         description: Selects a key of a secret in
                                           the pod's namespace
                                         properties:
@@ -12135,6 +12110,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                 required:
                                 - name
