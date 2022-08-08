@@ -5,7 +5,7 @@
 package license
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -13,9 +13,9 @@ import (
 )
 
 func TestParseEnterpriseLicenses(t *testing.T) {
-	good, err := ioutil.ReadFile("testdata/test-license.json")
+	good, err := os.ReadFile("testdata/test-license.json")
 	require.NoError(t, err)
-	bad, err := ioutil.ReadFile("testdata/test-error.json")
+	bad, err := os.ReadFile("testdata/test-error.json")
 	require.NoError(t, err)
 
 	type args struct {

@@ -5,7 +5,7 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -157,7 +157,7 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 	}
 
 	// setup cert fixtures
-	bytes, err := ioutil.ReadFile(filepath.Join("testdata", "ca.crt"))
+	bytes, err := os.ReadFile(filepath.Join("testdata", "ca.crt"))
 	require.NoError(t, err)
 	certs, err := certificates.ParsePEMCerts(bytes)
 	require.NoError(t, err)

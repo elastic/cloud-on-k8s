@@ -8,7 +8,6 @@ package certificates
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -91,7 +90,7 @@ func TestBuildCAFromFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// creating a temp dir inside testdata so that we can simply link to the test files
-			tempDir, err := ioutil.TempDir("testdata", "ca-from-file")
+			tempDir, err := os.MkdirTemp("testdata", "ca-from-file")
 			require.NoError(t, err)
 			defer os.RemoveAll(tempDir)
 
@@ -162,7 +161,7 @@ func Test_detectCAFileNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			for _, f := range tt.files {
-				require.NoError(t, ioutil.WriteFile(filepath.Join(dir, f), []byte("contents"), 0644))
+				require.NoError(t, os.WriteFile(filepath.Join(dir, f), []byte("contents"), 0644))
 			}
 
 			cert, key, err := detectCAFileNames(dir)

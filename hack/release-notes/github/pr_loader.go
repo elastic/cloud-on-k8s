@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -126,7 +125,7 @@ func (loader *prLoader) mkRequest(client *http.Client, cursor *string) (*apiResp
 
 	defer func() {
 		if resp.Body != nil {
-			_, _ = io.Copy(ioutil.Discard, resp.Body)
+			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 		}
 	}()
@@ -135,7 +134,7 @@ func (loader *prLoader) mkRequest(client *http.Client, cursor *string) (*apiResp
 		return nil, fmt.Errorf("received status %s from the API", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxPayloadSize))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPayloadSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}

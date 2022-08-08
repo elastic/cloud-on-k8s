@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -74,5 +74,5 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 		return nil, err
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }

@@ -8,7 +8,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -66,5 +66,5 @@ func DoRequest(client *http.Client, ems v1alpha1.ElasticMapsServer, method, path
 			msg:        fmt.Sprintf("fail to request %s, status is %d)", path, resp.StatusCode),
 		}
 	}
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }

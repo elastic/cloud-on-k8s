@@ -5,7 +5,7 @@
 package runner
 
 import (
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v3"
 
@@ -110,7 +110,7 @@ type RunConfig struct {
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
-	yml, err := ioutil.ReadFile(plansFile)
+	yml, err := os.ReadFile(plansFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}
@@ -121,7 +121,7 @@ func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
 		return Plans{}, RunConfig{}, err
 	}
 
-	yml, err = ioutil.ReadFile(runConfigFile)
+	yml, err = os.ReadFile(runConfigFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}

@@ -6,7 +6,6 @@ package runner
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -149,7 +148,7 @@ func (d OCP3Driver) writeAnsibleVarsFile() error {
 	}
 	varsFile := filepath.Join(os.Getenv("HOME"), AnsibleVarsFilename)
 	/* #nosec */
-	if err := ioutil.WriteFile(varsFile, varsBytes, 0644); err != nil {
+	if err := os.WriteFile(varsFile, varsBytes, 0644); err != nil {
 		return fmt.Errorf("while writing Ansible variables file %w", err)
 	}
 	return nil

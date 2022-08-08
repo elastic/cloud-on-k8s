@@ -11,7 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -283,7 +283,7 @@ func BuildCAFromFile(path string) (*CA, error) {
 		return nil, err
 	}
 
-	bytes, err := ioutil.ReadFile(certFile)
+	bytes, err := os.ReadFile(certFile)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func BuildCAFromFile(path string) (*CA, error) {
 	}
 	cert := certs[0]
 
-	privateKeyBytes, err := ioutil.ReadFile(privateKeyFile)
+	privateKeyBytes, err := os.ReadFile(privateKeyFile)
 	if err != nil {
 		return nil, err
 	}
