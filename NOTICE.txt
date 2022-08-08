@@ -1803,11 +1803,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.12.2
-Time    : 2022-05-13T10:05:14Z
+Version : v1.13.0
+Time    : 2022-08-05T18:31:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.12.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.13.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -18690,11 +18690,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.7.3
-Time    : 2021-08-09T15:06:36Z
+Version : v0.8.0
+Time    : 2022-07-20T13:20:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.7.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.8.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -20804,11 +20804,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.47.0/LIC
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.28.0
-Time    : 2022-03-22T07:56:23Z
+Version : v1.28.1
+Time    : 2022-07-28T12:39:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.28.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.28.1/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
