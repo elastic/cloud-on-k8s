@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -47,7 +48,7 @@ const (
 
 	DataVolumeName            = "agent-data"
 	DataMountHostPathTemplate = "/var/lib/elastic-agent/%s/%s/state"
-	DataMountPath             = "/usr/share/elastic-agent/state" // available since 7.14 without effect before that
+	DataMountPath             = "/usr/share/elastic-agent/state" // available since 7.13 functional since 7.15 without effect before that
 
 	// ConfigHashAnnotationName is an annotation used to store the Agent config hash.
 	ConfigHashAnnotationName = "agent.k8s.elastic.co/config-hash"
@@ -143,8 +144,16 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
 	}
 
-	// volume with agent data path
-	vols = append(vols, createDataVolume(params))
+	v, err := version.Parse(params.Agent.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+	// volume with agent data path if version > 7.15 (available since 7.13 but non-functional as agent tries to fork child
+	// processes in data path directory and hostPath volumes are always mounted non-exec)
+	if v.GTE(version.MinFor(7, 15, 0)) {
+		vols = append(vols, createDataVolume(params))
+	}
+
 	// all volumes with CAs of direct associations
 	caAssocVols, err := getVolumesFromAssociations(params.Agent.GetAssociations())
 	if err != nil {
