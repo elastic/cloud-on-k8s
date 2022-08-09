@@ -404,8 +404,9 @@ func startOperator(ctx context.Context) error {
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 		pprofServer := http.Server{
-			Addr:    viper.GetString(operator.DebugHTTPListenFlag),
-			Handler: mux,
+			Addr:              viper.GetString(operator.DebugHTTPListenFlag),
+			Handler:           mux,
+			ReadHeaderTimeout: 60 * time.Second,
 		}
 		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
