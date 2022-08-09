@@ -1,0 +1,97 @@
+agents:
+- # Name of this specific Elastic Agent.
+  #
+  name: elastic-agent
+
+  # Version of Elastic Agent.
+  #
+  version: 8.2.3
+  
+  spec:
+    fleetServerRef:
+      name: eck-fleet-eck-fleet-agent
+    kibanaRef:
+      name: eck-kibana
+    mode: fleet
+  
+    daemonSet:
+      podTemplate:
+        spec:
+          serviceAccountName: elastic-agent
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          automountServiceAccountToken: true
+          securityContext:
+            runAsUser: 0
+
+serviceAccounts:
+- name: elastic-agent
+
+clusterRoles:
+- name: elastic-agent
+  rules:
+  - apiGroups: [""]
+    resources:
+    - pods
+    - nodes
+    - namespaces
+    - events
+    - services
+    - configmaps
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+    - leases
+    verbs:
+    - get
+    - create
+    - update
+  - nonResourceURLs:
+    - "/metrics"
+    verbs:
+    - get
+  - apiGroups: ["extensions"]
+    resources:
+      - replicasets
+    verbs: 
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - "apps"
+    resources:
+    - statefulsets
+    - deployments
+    - replicasets
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/stats
+    verbs:
+    - get
+  - apiGroups:
+    - "batch"
+    resources:
+    - jobs
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
+
+clusterRoleBindings:
+- name: elastic-agent
+  subjects:
+  - kind: ServiceAccount
+    name: elastic-agent
+    namespace: default
+  roleRef:
+    kind: ClusterRole
+    name: elastic-agent
+    apiGroup: rbac.authorization.k8s.io
