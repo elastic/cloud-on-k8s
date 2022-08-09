@@ -1,0 +1,90 @@
+---
+# Default values for eck-elasticsearch.
+# This is a YAML-formatted file.
+
+# Overridable names of the Elasticsearch resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-elasticsearch'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Elasticsearch resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Elasticsearch.
+#
+version: 8.2.3
+
+# Labels that will be applied to Elasticsearch.
+#
+labels: {}
+
+# Annotations that will be applied to Elasticsearch.
+#
+annotations: {}
+
+# Settings for configuring stack monitoring.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
+#
+monitoring: {}
+
+# Control the Elasticsearch transport module used for internal communication between nodes.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-transport-settings.html
+#
+transport: {}
+
+# Settings to control how Elasticsearch will be accessed.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-accessing-elastic-services.html
+#
+http: {}
+
+# Control Elasticsearch Secure Settings.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html#k8s-es-secure-settings
+#
+secureSettings: {}
+
+# Settings for limiting the number of simultaneous changes to an Elasticsearch resource.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-update-strategy.html
+#
+updateStrategy: {}
+
+# Controlling of connectivity between remote clusters within the same kubernetes cluster.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-remote-clusters.html
+#
+remoteClusters: {}
+
+# Node configuration settings.
+# The node roles which can be configured here are:
+# - "master"
+# - "data_hot"
+# - "data_cold"
+# - "data_frozen"
+# - "data_content"
+# - "ml"
+# - "ingest"
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-node-configuration.html
+#
+nodeSets:
+- name: default
+  count: 1
+  config:
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    node.store.allow_mmap: false
+  podTemplate:
+    spec:
+      containers:
+      - name: elasticsearch
+        resources:
+          requests:
+            cpu: 1
+          limits:
+            memory: 1Gi

@@ -7,8 +7,9 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -35,7 +36,7 @@ func TestClient_CreateAutoscalingPolicy(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -61,7 +62,7 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -73,11 +74,11 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	testClient := NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, "/_autoscaling/capacity", req.URL.Path)
-		fixture, err := ioutil.ReadFile(filepath.Join("testdata", "autoscaling.json"))
+		fixture, err := os.ReadFile(filepath.Join("testdata", "autoscaling.json"))
 		assert.NoError(t, err)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewReader(fixture)),
+			Body:       io.NopCloser(bytes.NewReader(fixture)),
 			Header:     make(http.Header),
 			Request:    req,
 		}

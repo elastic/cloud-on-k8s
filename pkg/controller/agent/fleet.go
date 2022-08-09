@@ -16,8 +16,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"go.elastic.co/apm/module/apmhttp/v2"
 	"k8s.io/apimachinery/pkg/types"
-	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -25,16 +25,25 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 const FleetTokenAnnotation = "fleet.eck.k8s.elastic.co/token" //nolint:gosec
 
+var errNoMatchingTokenFound = errors.New("no matching active enrollment token found")
+
 // EnrollmentAPIKeyResult wrapper for a single result in the Fleet API.
 type EnrollmentAPIKeyResult struct {
 	Item EnrollmentAPIKey `json:"item"`
+}
+
+// EnrollmentAPIKeyList is a wrapper for a list of enrollment tokens.
+type EnrollmentAPIKeyList struct {
+	Items []EnrollmentAPIKey `json:"items"`
 }
 
 // EnrollmentAPIKey is the representation of an enrollment token in the Fleet API.
@@ -73,7 +82,11 @@ type fleetAPI struct {
 
 func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
 	return fleetAPI{
-		client:        commonhttp.Client(dialer, settings.caCerts, 60*time.Second),
+		client: apmhttp.WrapClient(
+			commonhttp.Client(dialer, settings.caCerts, 60*time.Second),
+			apmhttp.WithClientRequestName(tracing.RequestName),
+			apmhttp.WithClientSpanType("external.kibana"),
+		),
 		kibanaVersion: settings.version,
 		endpoint:      settings.host,
 		username:      settings.credentials.Username,
@@ -153,16 +166,11 @@ func (f fleetAPI) getEnrollmentAPIKey(ctx context.Context, keyID string) (Enroll
 	return response.Item, err
 }
 
-func (f fleetAPI) deleteEnrollmentAPIKey(ctx context.Context, keyID string) error {
-	return f.request(ctx, http.MethodDelete, fmt.Sprintf("%s/%s", f.enrollmentAPIKeyPath(), keyID), nil, nil)
-}
-
 func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy Policy) bool) (Policy, error) {
 	page := 1
 	for {
 		var list PolicyList
-		err := f.request(ctx, http.MethodGet, fmt.Sprintf("agent_policies?perPage=20&page=%d", page), nil, &list)
-		if err != nil {
+		if err := f.request(ctx, http.MethodGet, fmt.Sprintf("agent_policies?perPage=20&page=%d", page), nil, &list); err != nil {
 			return Policy{}, err
 		}
 		if len(list.Items) == 0 {
@@ -176,6 +184,26 @@ func (f fleetAPI) findAgentPolicy(ctx context.Context, filter func(policy Policy
 		page++
 	}
 	return Policy{}, errors.New("no matching agent policy found")
+}
+
+func (f fleetAPI) findEnrollmentAPIKey(ctx context.Context, policyID string) (EnrollmentAPIKey, error) {
+	page := 1
+	for {
+		var list EnrollmentAPIKeyList
+		if err := f.request(ctx, http.MethodGet, fmt.Sprintf("%s?perPage=20&page=%d", f.enrollmentAPIKeyPath(), page), nil, &list); err != nil {
+			return EnrollmentAPIKey{}, err
+		}
+		if len(list.Items) == 0 {
+			break
+		}
+		for _, t := range list.Items {
+			if t.Active && t.PolicyID == policyID {
+				return t, nil
+			}
+		}
+		page++
+	}
+	return EnrollmentAPIKey{}, errNoMatchingTokenFound
 }
 
 func (f fleetAPI) defaultFleetServerPolicyID(ctx context.Context) (string, error) {
@@ -247,6 +275,7 @@ func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.N
 }
 
 func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, api fleetAPI) (EnrollmentAPIKey, error) {
+	defer api.client.CloseIdleConnections()
 	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
 	if !exists {
@@ -265,7 +294,7 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 		key, err := api.getEnrollmentAPIKey(ctx, tokenName)
 		// the annotation might contain corrupted or no longer valid information
 		if err != nil && commonhttp.IsNotFound(err) {
-			goto CREATE
+			goto FindOrCreate
 		}
 		if err != nil {
 			return EnrollmentAPIKey{}, err
@@ -276,21 +305,27 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 		}
 	}
 
-CREATE:
-	key, err := api.createEnrollmentAPIKey(ctx, policyID)
+FindOrCreate:
+	key, err := api.findEnrollmentAPIKey(ctx, policyID)
+	if err != nil && errors.Is(err, errNoMatchingTokenFound) {
+		ulog.FromContext(ctx).Info("Could not find existing Fleet enrollment API keys, creating new one", "error", err.Error())
+		key, err = api.createEnrollmentAPIKey(ctx, policyID)
+		if err != nil {
+			return EnrollmentAPIKey{}, err
+		}
+	}
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
-	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it
-	// on the top level but we would then potentially create redundant enrollment tokens in the Fleet API
+
+	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it  on the top level
 	if agent.Annotations == nil {
 		agent.Annotations = map[string]string{}
 	}
 	agent.Annotations[FleetTokenAnnotation] = key.ID
 	err = client.Update(ctx, &agent)
 	if err != nil {
-		// we have failed to store the token id in an annotation let's try to remove the token again
-		return EnrollmentAPIKey{}, k8serrors.NewAggregate([]error{err, api.deleteEnrollmentAPIKey(ctx, key.ID)})
+		return EnrollmentAPIKey{}, err
 	}
 	return key, nil
 }

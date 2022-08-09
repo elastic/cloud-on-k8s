@@ -7,7 +7,7 @@ package observer
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -143,7 +143,7 @@ func flappingEsClient() client.Client {
 			retErr = true
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.HealthSample)),
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.HealthSample)),
 				Header:     make(http.Header),
 				Request:    req,
 			}

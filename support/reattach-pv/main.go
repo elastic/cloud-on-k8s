@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -93,7 +92,7 @@ func main() {
 
 // esFromFile parses an Elasticsearch resource from the given yaml manifest path.
 func esFromFile(path string) (esv1.Elasticsearch, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return esv1.Elasticsearch{}, err
 	}

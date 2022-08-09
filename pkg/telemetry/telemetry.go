@@ -7,6 +7,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -34,8 +35,9 @@ import (
 )
 
 const (
-	resourceCount = "resource_count"
-	podCount      = "pod_count"
+	resourceCount            = "resource_count"
+	podCount                 = "pod_count"
+	helmManagedResourceCount = "helm_resource_count"
 
 	timestampFieldName = "timestamp"
 )
@@ -221,6 +223,7 @@ type downwardNodeLabelsStats struct {
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
 	stats := struct {
 		ResourceCount               int32                    `json:"resource_count"`
+		HelmManagedResourceCount    int32                    `json:"helm_resource_count"`
 		PodCount                    int32                    `json:"pod_count"`
 		AutoscaledResourceCount     int32                    `json:"autoscaled_resource_count"`
 		StackMonitoringLogsCount    int32                    `json:"stack_monitoring_logs_count"`
@@ -239,6 +242,10 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			es := es
 			stats.ResourceCount++
 			stats.PodCount += es.Status.AvailableNodes
+
+			if isManagedByHelm(es.Labels) {
+				stats.HelmManagedResourceCount++
+			}
 			if es.IsAutoscalingDefined() {
 				stats.AutoscaledResourceCount++
 			}
@@ -263,8 +270,16 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 	return "elasticsearches", stats, nil
 }
 
+func isManagedByHelm(labels map[string]string) bool {
+	if val, ok := labels["helm.sh/chart"]; ok {
+		return strings.HasPrefix(val, "eck-elasticsearch-") || strings.HasPrefix(val, "eck-kibana-")
+	}
+
+	return false
+}
+
 func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := map[string]int32{resourceCount: 0, podCount: 0, helmManagedResourceCount: 0}
 
 	var kbList kbv1.KibanaList
 	for _, ns := range managedNamespaces {
@@ -275,6 +290,10 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		for _, kb := range kbList.Items {
 			stats[resourceCount]++
 			stats[podCount] += kb.Status.AvailableNodes
+
+			if isManagedByHelm(kb.Labels) {
+				stats[helmManagedResourceCount]++
+			}
 		}
 	}
 	return "kibanas", stats, nil

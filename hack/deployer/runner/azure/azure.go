@@ -21,7 +21,7 @@ type Credentials struct {
 }
 
 const (
-	AKSVaultPath     = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
+	AKSVaultPath     = "ci-azr-k8s-operator"
 	azureClientImage = "mcr.microsoft.com/azure-cli"
 )
 

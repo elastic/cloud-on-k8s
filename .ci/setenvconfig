@@ -26,6 +26,8 @@ if [[ ${BUILD_ID:-} == "" ]]; then
   VAULT_SECRET_ID="dev"
 fi
 
+VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+
 # main
 
 # default empty stack version definition common to all environments to allow uniform invocation of the e2e test runner
@@ -65,6 +67,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -100,6 +103,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -173,6 +177,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -213,6 +218,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   kind:
     nodeImage: ${kindNodeImage}
     ipFamily: ${ipFamily}
@@ -249,6 +255,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -287,6 +294,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -322,6 +330,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -356,6 +365,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp3:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -390,6 +400,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -425,6 +436,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -457,6 +469,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 
 ;;
@@ -497,6 +510,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -534,6 +548,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -617,6 +632,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -635,6 +651,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -651,6 +668,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -667,6 +685,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -683,6 +702,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -700,6 +720,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -718,6 +739,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp3:
     gCloudProject: $GCLOUD_PROJECT
 CFG

@@ -10,7 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -81,7 +81,7 @@ func (e EnterpriseSearchClient) doRequest(request *http.Request) ([]byte, error)
 		return nil, fmt.Errorf("http response status code is %d)", resp.StatusCode)
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 func (e EnterpriseSearchClient) HealthCheck() error {

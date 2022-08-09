@@ -107,6 +107,11 @@ pipeline {
                                 sh 'make -C .ci TARGET=reattach-pv ci'
                             }
                         }
+                        stage("helm-test") {
+                            steps {
+                                sh 'make -C .ci TARGET=helm-test ci'
+                            }
+                        }
                         stage("unit-tests") {
                             steps {
                                 script {

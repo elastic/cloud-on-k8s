@@ -67,3 +67,6 @@ pkg/controller/common/license/zz_generated.pubkey.go
 
 # ignore validator for Jenkins pipelines
 hack/pipeline-validator/validator
+
+# ignore helm chart dependencies in eck-stack chart
+deploy/eck-stack/charts/*

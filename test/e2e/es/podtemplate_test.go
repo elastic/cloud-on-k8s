@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -235,7 +235,7 @@ func TestCustomConfiguration(t *testing.T) {
 					response, err := esClient.Request(context.Background(), r)
 					require.NoError(t, err)
 					defer response.Body.Close() // nolint
-					actual, err := ioutil.ReadAll(response.Body)
+					actual, err := io.ReadAll(response.Body)
 					require.NoError(t, err)
 					expected := `{"tokens":[{"token":"Elastic","start_offset":0,"end_offset":3,"type":"SYNONYM","position":0},{"token":"runs","start_offset":4,"end_offset":8,"type":"word","position":1},{"token":"Cloud","start_offset":4,"end_offset":8,"type":"SYNONYM","position":1},{"token":"Elasticsearch,","start_offset":9,"end_offset":23,"type":"word","position":2},{"token":"on","start_offset":9,"end_offset":23,"type":"SYNONYM","position":2},{"token":"Kibana","start_offset":24,"end_offset":30,"type":"word","position":3},{"token":"Kubernetes","start_offset":24,"end_offset":30,"type":"SYNONYM","position":3},{"token":"and","start_offset":31,"end_offset":34,"type":"word","position":4},{"token":"APM","start_offset":35,"end_offset":38,"type":"word","position":5},{"token":"Server","start_offset":39,"end_offset":45,"type":"word","position":6},{"token":"on","start_offset":46,"end_offset":48,"type":"word","position":7},{"token":"Kubernetes","start_offset":49,"end_offset":59,"type":"word","position":8}]}`
 					assert.Equal(t, string(actual), expected)

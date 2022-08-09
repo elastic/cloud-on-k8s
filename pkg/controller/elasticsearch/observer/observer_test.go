@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -32,7 +31,7 @@ func fakeEsClient200(user client.BasicAuth) client.Client {
 		func(req *http.Request) *http.Response {
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -121,7 +120,7 @@ func fakeEsClient(healthRespErr bool) client.Client {
 		var respBody io.ReadCloser
 
 		if strings.Contains(req.URL.RequestURI(), "health") {
-			respBody = ioutil.NopCloser(bytes.NewBufferString(fixtures.HealthSample))
+			respBody = io.NopCloser(bytes.NewBufferString(fixtures.HealthSample))
 			if healthRespErr {
 				statusCode = 500
 			}

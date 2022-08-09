@@ -1,17 +1,15 @@
-# ECK Operator Helm Chart
+# ECK Operator, and ECK Resources Helm Charts
 
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
-This directory contains the Helm chart for deploying the ECK operator.
+This directory contains the Helm chart for deploying the ECK operator, and charts for deploying any resource in the Elastic Stack individually, or as a group.
 
-See also the [ECK Helm install guide](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html).
-
-## Usage
+## ECK Operator Helm Chart Usage
 
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
 ```sh
-helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace 
+helm install elastic-operator eck-operator -n elastic-system --create-namespace 
 ```
 
 Install the operator restricted to a single namespace. 
@@ -21,7 +19,7 @@ Install the operator restricted to a single namespace.
 helm install elastic-operator-crds ./eck/charts/eck-operator-crds 
 
 # This step can be done by any user with full access to the my-namespace namespace.
-helm install elastic-operator elastic/eck-operator -n my-namespace --create-namespace \
+helm install elastic-operator eck-operator -n my-namespace --create-namespace \
   --set=installCRDs=false \
   --set=managedNamespaces='{my-namespace}' \
   --set=createClusterScopedResources=false \
@@ -31,7 +29,19 @@ helm install elastic-operator elastic/eck-operator -n my-namespace --create-name
 View the available settings for customizing the installation.
 
 ```sh
-helm show values elastic/eck-operator
+helm show values eck-operator
 ```
 
+## ECK Stack Helm Chart Usage
 
+Install a quickstart Elasticsearch and Kibana resource in a cluster controlled by the ECK Operator.
+
+```sh
+helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
+```
+
+To see all resources installed by the helm chart
+
+```sh
+kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack
+```

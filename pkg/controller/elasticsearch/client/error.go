@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -32,7 +32,7 @@ func newAPIError(ctx context.Context, response *http.Response) error {
 		StatusCode: response.StatusCode,
 	}
 	// We may need to read the body multiple times, read the full body and store it as an array of bytes.
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		// We were not able to read the body, log this I/O error and return the API error with the status.
 		log.Error(err, "Cannot read Elasticsearch error response body")
@@ -40,7 +40,7 @@ func newAPIError(ctx context.Context, response *http.Response) error {
 	}
 	// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
 	// for example in the case of a 408.
-	response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	response.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	// Parse the body to get the details about the API error, as they are stored by Elasticsearch.
 	var errorResponse ErrorResponse

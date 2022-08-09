@@ -7,7 +7,7 @@ package shutdown
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
@@ -214,7 +214,7 @@ func TestNodeShutdown_Clear(t *testing.T) {
 				}
 				return &http.Response{
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
 					Header:     make(http.Header),
 					Request:    req,
 				}
@@ -312,7 +312,7 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
 				return &http.Response{
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
 					Header:     make(http.Header),
 					Request:    req,
 				}
@@ -438,7 +438,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				methodsCalled = append(methodsCalled, req.Method)
 				return &http.Response{
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(bytes.NewBuffer([]byte(tt.fixtures[i]))),
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(tt.fixtures[i]))),
 					Header:     make(http.Header),
 					Request:    req,
 				}

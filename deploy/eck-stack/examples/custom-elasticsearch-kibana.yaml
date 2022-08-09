@@ -1,0 +1,78 @@
+---
+eck-elasticsearch:
+  # Name of the Elasticsearch resource.
+  #
+  fullnameOverride: quickstart
+
+  # Version of Elasticsearch.
+  #
+  version: 8.2.3
+
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+      # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+      # and leave node.store.allow_mmap unset.
+      # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      #
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
+        # Adjust to your storage class name
+        #
+        # storageClassName: local-storage
+
+eck-kibana:
+  # Name of the Kibana resource.
+  #
+  fullnameOverride: quickstart
+  
+  # Version of Kibana.
+  #
+  version: 8.2.3
+  
+  spec:
+    # Count of Kibana replicas to create.
+    #
+    count: 1
+  
+    # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
+    #
+    elasticsearchRef:
+      name: quickstart
+      # namespace: default
+    http:
+      service:
+        spec:
+          # Type of service to deploy for Kibana.
+          # This deploys a load balancer in a cloud service provider, where supported.
+          # 
+          type: LoadBalancer
+      # tls:
+      #   selfSignedCertificate:
+      #     subjectAltNames:
+      #     - ip: 1.2.3.4
+      #     - dns: kibana.example.com
+    podTemplate:
+      spec:
+        containers:
+        - name: kibana
+          env:
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=2048"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 0.5
+            limits:
+              memory: 2.5Gi
+              cpu: 2

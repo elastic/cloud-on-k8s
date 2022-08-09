@@ -10,7 +10,7 @@ plans:
   # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
-    region: europe-west2
+    region: europe-west6
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
@@ -46,7 +46,7 @@ plans:
   clusterName: ci
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
@@ -59,7 +59,7 @@ plans:
   clusterName: dev
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: false
   psp: false
   aks:
@@ -73,7 +73,7 @@ plans:
   machineType: n1-standard-8
   serviceAccount: true
   ocp:
-    region: europe-west2
+    region: europe-west6
     nodeCount: 3
 - id: ocp-dev
   operation: create
