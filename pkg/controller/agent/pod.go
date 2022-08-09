@@ -146,7 +146,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 
 	v, err := version.Parse(params.Agent.Spec.Version)
 	if err != nil {
-		return corev1.PodTemplateSpec{}, pkgerrors.Wrap(err, "unexpected error while parsing specified version")
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
 	// volume with agent data path if version > 7.15 (available since 7.13 but non-functional as agent tries to fork child
 	// processes in data path directory and hostPath volumes are always mounted non-exec)
