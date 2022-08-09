@@ -154,11 +154,11 @@ func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSe
 // resized volume claims.
 // This function acts as a state machine that depends on the annotation and the UID of existing StatefulSets.
 // A standard flow may span over multiple reconciliations like this:
-// 1. No annotation set: nothing to do.
-// 2. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists: delete it.
-// 3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
-// 4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
-//    a different UID: the re-creation is over, remove the annotation.
+//  1. No annotation set: nothing to do.
+//  2. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists: delete it.
+//  3. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet does not exist: create it.
+//  4. An annotation specifies StatefulSet Foo needs to be recreated. That StatefulSet actually exists, but with
+//     a different UID: the re-creation is over, remove the annotation.
 func recreateStatefulSets(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) (int, error) {
 	recreateList, err := ssetsToRecreate(es)
 	if err != nil {

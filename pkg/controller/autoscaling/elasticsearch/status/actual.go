@@ -22,9 +22,9 @@ import (
 
 // ImportExistingResources attempts to infer the resources to allocate to node sets if an autoscaling policy is not in the Status.
 // It can be the case if:
-//  * The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
-//    we want to be able to set some good default resources even if the autoscaling API is not responding.
-// * The Elasticsearch resource has been replaced and the status annotation has been lost in the process.
+// - The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
+// we want to be able to set some good default resources even if the autoscaling API is not responding.
+// - The Elasticsearch resource has been replaced and the status annotation has been lost in the process.
 func (s *Status) ImportExistingResources(
 	log logr.Logger,
 	c k8s.Client,

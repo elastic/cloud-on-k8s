@@ -19,16 +19,16 @@ import (
 )
 
 // reconcileSuspendedPods implements the operator side of activating the Pod suspension mechanism:
-// - Users annotate the Elasticsearch resource with names of Pods they want to suspend for debugging purposes.
-// - Each Pod has an initContainer that runs a shell script to check a file backed by a configMap for its own Pod name.
-// - If the name of the Pod is found in the file the initContainer enters a loop preventing termination until the name
-//   of the Pod is removed from the file again. The Pod is now "suspended".
-// - This function handles the case where the Pod is either already running the main container or it is currently suspended.
-// - If the Pod is already running but should be suspended we want to delete the Pod so that the recreated Pod can run
-//   the initContainer again.
-// - If the Pod is suspended in the initContainer but should be running we update the Pods metadata to accelerate the
-//   propagation of the configMap values. This is just an optimisation and not essential for the correct operation of
-//   the feature.
+//   - Users annotate the Elasticsearch resource with names of Pods they want to suspend for debugging purposes.
+//   - Each Pod has an initContainer that runs a shell script to check a file backed by a configMap for its own Pod name.
+//   - If the name of the Pod is found in the file the initContainer enters a loop preventing termination until the name
+//     of the Pod is removed from the file again. The Pod is now "suspended".
+//   - This function handles the case where the Pod is either already running the main container or it is currently suspended.
+//   - If the Pod is already running but should be suspended we want to delete the Pod so that the recreated Pod can run
+//     the initContainer again.
+//   - If the Pod is suspended in the initContainer but should be running we update the Pods metadata to accelerate the
+//     propagation of the configMap values. This is just an optimisation and not essential for the correct operation of
+//     the feature.
 func reconcileSuspendedPods(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, e *expectations.Expectations) error {
 	// let's make sure we observe any deletions in the cache to avoid redundant deletion
 	pendingPodDeletions, err := e.PendingPodDeletions()

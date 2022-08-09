@@ -228,7 +228,7 @@ func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *Pod
 // Defaults:
 // - If the init container contains an empty image field, it's inherited from the main container.
 // - VolumeMounts from the main container are added to the init container VolumeMounts, unless they would conflict
-//   with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
+// with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
 // - default environment variables
 //
 // This method can also be used to set some additional environment variables.
