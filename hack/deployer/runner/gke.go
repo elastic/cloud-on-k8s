@@ -163,7 +163,7 @@ const (
 )
 
 func (d *GKEDriver) patchGCEProvider() error {
-	storageClassesYaml, err := exec.NewCommand(fmt.Sprintf("kubectl get sc -o yaml")).Output()
+	storageClassesYaml, err := exec.NewCommand(fmt.Sprintf("kubectl get sc -o yaml")).WithoutStreaming().Output()
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (d *GKEDriver) patchGCEProvider() error {
 	if err := yaml.Unmarshal([]byte(storageClassesYaml), &storageClasses); err != nil {
 		return err
 	}
-	labels, err := d.labels()
+	labels, err := d.resourcesLabels()
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (d *GKEDriver) patchGCEProvider() error {
 		if storageClass.Parameters == nil {
 			storageClass.Parameters = make(map[string]string)
 		}
-		storageClass.Parameters["labels"] = labels
+		storageClass.Parameters["resourcesLabels"] = labels
 		// Delete the storage class as it is not allowed to patch parameters.
 		if err := exec.NewCommand(fmt.Sprintf("kubectl delete sc %s", storageClass.Name)).Run(); err != nil {
 			return err
@@ -202,7 +202,7 @@ EOF`, string(storageClassYaml))).Run(); err != nil {
 	return nil
 }
 
-func (d *GKEDriver) labels() (string, error) {
+func (d *GKEDriver) resourcesLabels() (string, error) {
 	username, err := d.username(true)
 	if err != nil {
 		return "", err
@@ -243,12 +243,12 @@ func (d *GKEDriver) create() error {
 		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
 	}
 
-	labels, err := d.labels()
+	labels, err := d.resourcesLabels()
 	if err != nil {
 		return err
 	}
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+		`--resourcesLabels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
@@ -305,16 +305,29 @@ func (d *GKEDriver) delete() error {
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	cmd = `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
-
-	if len(disks) == 0 {
-		log.Println("No disk deleted")
+	if err := d.deleteDisks(disks); err != nil {
+		return err
 	}
 
+	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err = exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	if err != nil {
+		return err
+	}
+	if err := d.deleteDisks(disks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *GKEDriver) deleteDisks(disks []string) error {
 	for _, disk := range disks {
 		nameZone := strings.Split(disk, ",")
 		if len(nameZone) != 2 {
@@ -322,7 +335,7 @@ func (d *GKEDriver) delete() error {
 		}
 
 		name, zone := nameZone[0], nameZone[1]
-		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
+		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
 			AsTemplate(map[string]interface{}{
 				"GCloudProject": d.plan.Gke.GCloudProject,
@@ -334,6 +347,5 @@ func (d *GKEDriver) delete() error {
 			return err
 		}
 	}
-
 	return nil
 }
