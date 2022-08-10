@@ -259,9 +259,9 @@ func (d *GKEDriver) create() error {
 		Run()
 }
 
-// unqualifiedUsername attempts to extract the username part of current account name.
-// This is mostly to be able to set the user name as a label value, in which lowercase letters ([a-z]),
-// numeric characters ([0-9]), underscores (_) and dashes (-) are allowed.
+// username attempts to extract the username from the current account.
+// When used in labels the "unqualified" parameter should be set to true, it's because only lowercase letters ([a-z]),
+// numeric characters ([0-9]), underscores (_) and dashes (-) are allowed as label values.
 func (d *GKEDriver) username(unqualified bool) (string, error) {
 	userInContext, hasUser := d.ctx["User"]
 	if !hasUser {
