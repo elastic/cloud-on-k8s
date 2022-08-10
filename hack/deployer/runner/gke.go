@@ -183,7 +183,7 @@ func (d *GKEDriver) patchGCEProvider() error {
 		if storageClass.Parameters == nil {
 			storageClass.Parameters = make(map[string]string)
 		}
-		storageClass.Parameters["resourcesLabels"] = labels
+		storageClass.Parameters["labels"] = labels
 		// Delete the storage class as it is not allowed to patch parameters.
 		if err := exec.NewCommand(fmt.Sprintf("kubectl delete sc %s", storageClass.Name)).Run(); err != nil {
 			return err
