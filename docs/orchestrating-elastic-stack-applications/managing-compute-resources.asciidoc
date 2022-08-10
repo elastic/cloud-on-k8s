@@ -86,7 +86,7 @@ spec:
 [id="{p}-elasticsearch-cpu"]
 ==== CPU resources
 
-The value set for CPU limits or requests directly impacts the Elasticsearch `node.processors` setting. The following table gives the default value for `node.processors` given the cpu limits and requests set on the `elasticsearch` container:
+Although `node.processors` isn't directly set by the ECK Operator, the value set for CPU limits or requests directly impacts the Elasticsearch `node.processors` setting as, by default the number of processors is automatically detected, and the thread pool settings are automatically set. The following table gives the default value for `node.processors` given the cpu limits and requests set on the `elasticsearch` container:
 
 [cols="h,m,m", options="header"]
 |===
