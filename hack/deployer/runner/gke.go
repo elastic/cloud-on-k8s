@@ -313,6 +313,7 @@ func (d *GKEDriver) delete() error {
 	if err := d.deleteDisks(disks); err != nil {
 		return err
 	}
+	deletedDisks := len(disks)
 
 	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
 	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
@@ -322,6 +323,12 @@ func (d *GKEDriver) delete() error {
 	}
 	if err := d.deleteDisks(disks); err != nil {
 		return err
+	}
+	deletedDisks += len(disks)
+	if deletedDisks == 0 {
+		log.Println("No GCE persistent disks deleted")
+	} else {
+		log.Println(fmt.Sprintf("%d GCE persistent disks deleted", deletedDisks))
 	}
 
 	return nil
