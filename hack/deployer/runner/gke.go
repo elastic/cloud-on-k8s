@@ -121,7 +121,7 @@ func (d *GKEDriver) Execute() error {
 			}
 		}
 
-		if err := d.patchGCEProvider(); err != nil {
+		if err := d.setupLabelsForGCEProvider(); err != nil {
 			return err
 		}
 
@@ -162,7 +162,9 @@ const (
 	GoogleComputeEngineStorageProvider = "pd.csi.storage.gke.io"
 )
 
-func (d *GKEDriver) patchGCEProvider() error {
+// setupLabelsForGCEProvider adds the "labels" parameter in the GCE storage classes.
+// These labels are automatically applied to GCE Persistent Disks provisioned using these storage classes.
+func (d *GKEDriver) setupLabelsForGCEProvider() error {
 	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
 	if err != nil {
 		return err
