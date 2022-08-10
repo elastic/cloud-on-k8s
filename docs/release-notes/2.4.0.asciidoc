@@ -64,8 +64,5 @@ Fleet-managed Elastic Agents now default to use `hostPath` instead of `emptyDir`
 * Update module github.com/spf13/cobra to v1.5.0 {pull}5811[#5811]
 * Update module github.com/prometheus/common to v0.35.0 {pull}5808[#5808]
 * Update module github.com/stretchr/testify to v1.7.3 {pull}5807[#5807]
-* Update k8s to v0.24.2 {pull}5792[#5792]
 * Update module github.com/hashicorp/vault/api to v1.7.2 {pull}5761[#5761]
-* Update module github.com/hashicorp/vault/api to v1.7.1 {pull}5754[#5754]
-* Update module github.com/stretchr/testify to v1.7.2 {pull}5734[#5734]
 
