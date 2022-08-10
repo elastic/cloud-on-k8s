@@ -1,0 +1,6 @@
+
+1. Check Fleet Agent status
+  $ kubectl get agent {{ include "fleet-agent.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check Fleet Agent pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l fleet-agent.k8s.elastic.co/name={{ include "fleet-agent.fullname" . }}

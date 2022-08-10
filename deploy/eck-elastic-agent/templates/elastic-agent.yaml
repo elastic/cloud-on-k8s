@@ -1,25 +1,18 @@
-{{- range $i, $agent := .Values.agents }}
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: {{ $agent.name }}
-  {{- with $ }}
+  name: {{ include "elasticagent.fullname" . }}
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
-    {{- if $agent.labels }}
-    {{- toYaml $agent.labels | indent 4 }}
-    {{- end }}
-  {{- end }}
   annotations:
     eck.k8s.elastic.co/license: enterprise
-    {{- if $agent.annotations }}
-    {{- toYaml $agent.annotations | indent 4 }}
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | indent 4 }}
     {{- end }}
 spec:
-  version: {{ required "An Elastic-Agent version is required" $agent.version }}
-  {{- if and (not (hasKey $agent.spec "daemonSet")) (not (hasKey $agent.spec "deployment")) }}
+  version: {{ required "An Elastic-Agent version is required" .Values.version }}
+  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
   {{ fail "At least one of daemonSet or deployment is required" }}
   {{- end }}
-  {{- toYaml $agent.spec | nindent 2 }}
-{{- end }}
+  {{- toYaml .Values.spec | nindent 2 }}

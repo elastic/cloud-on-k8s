@@ -1,0 +1,41 @@
+suite: test fleet agent
+templates:
+  - templates/cluster-role.yaml
+tests:
+  - it: should render default cluster role properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: fleet-server
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[0].resources
+          value:
+          - pods
+          - namespaces
+          - nodes
+      - equal:
+          path: rules[0].verbs
+          value:
+          - get
+          - watch
+          - list
+      - equal:
+          path: rules[1].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[1].resources
+          value:
+          - leases
+      - equal:
+          path: rules[1].verbs
+          value:
+          - get
+          - create
+          - update

@@ -1,127 +1,137 @@
 ---
 # Default values for eck-elastic-agent.
 # This is a YAML-formatted file.
-agents:
-- # Name of this specific Elastic Agent.
-  #
-  name: quickstart
 
-  # Version of Elastic Agent.
-  #
-  version: 8.2.3
-  
-  # Labels that will be applied to Elastic Agent.
-  #
-  labels: {}
-  
-  # Annotations that will be applied to Elastic Agent.
-  #
-  annotations: {}
-  
-  spec:
-    # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
-    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
-    #
-    # Reference to ECK-managed Kibana instance.
-    #
-    # kibanaRef:
-    #   name: quickstart
-      # Optional namespace reference to Kibana instance.
-      # If not specified, then the namespace of the Agent instance
-      # will be assumed.
-      #
-      # namespace: default
+# Overridable names of the Elastic Agent resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-elastic-agent'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Fleet Agent resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
 
-    # Reference to ECK-managed Elasticsearch instance.
+# Version of Elastic Agent.
+#
+version: 8.2.3
+
+# Labels that will be applied to Elastic Agent.
+#
+labels: {}
+
+# Annotations that will be applied to Elastic Agent.
+#
+annotations: {}
+
+spec:
+  # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+  #
+  # Reference to ECK-managed Kibana instance.
+  #
+  # kibanaRef:
+  #   name: quickstart
+    # Optional namespace reference to Kibana instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
     #
-    elasticsearchRefs:
-    - name: elasticsearch
-      # Optional namespace reference to Elasticsearch instance.
-      # If not specified, then the namespace of the Agent instance
-      # will be assumed.
-      #
-      # namespace: default
-    
-    # Reference to ECK-managed Fleet Server instance.
+    # namespace: default
+
+  # Reference to ECK-managed Elasticsearch instance.
+  #
+  elasticsearchRefs:
+  - name: elasticsearch
+    # Optional namespace reference to Elasticsearch instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
     #
-    # fleetServerRef:
-    #   name: fleet-server
-      # Optional namespace reference to Fleet Server instance.
-      # If not specified, then the namespace of the Agent instance
-      # will be assumed.
-      #
-      # namespace: default
+    # namespace: default
   
-    # Daemonset, or Deployment specification for Agent.
-    # At least one is required of [daemonSet, deployment].
-    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+  # Reference to ECK-managed Fleet Server instance.
+  #
+  # fleetServerRef:
+  #   name: fleet-server
+    # Optional namespace reference to Fleet Server instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
     #
-    daemonSet:
-      podTemplate:
-        spec:
-          containers:
-          - name: agent
-            securityContext:
-              runAsUser: 0
-  
-    # Configuration of Agent, specifically used in Agent standalone mode.
-    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
-    #
-    config:
-      agent:
-        monitoring:
-          enabled: true
-          use_output: default
-          metrics: true
-      inputs:
-      - type: system/metrics
-        data_stream.namespace: default
+    # namespace: default
+
+  # Daemonset, or Deployment specification for Agent.
+  # At least one is required of [daemonSet, deployment].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+  #
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+
+  # Configuration of Agent, specifically used in Agent standalone mode.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
+  #
+  config:
+    agent:
+      monitoring:
+        enabled: true
         use_output: default
-        streams:
-        - metricset: cpu
-          data_stream.dataset: system.cpu
+        metrics: true
+    inputs:
+    - type: system/metrics
+      data_stream.namespace: default
+      use_output: default
+      streams:
+      - metricset: cpu
+        data_stream.dataset: system.cpu
 
-# ServiceAccounts to be used by Elastic Agents. Some Elastic Agent features, such as the Kubernetes integration,
+# ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
 # require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-serviceAccounts: []
-# - name: fleet-server
-#   namespace: optional-namespace
+serviceAccount: {}
+  # name: fleet-server
+  # namespace: optional-namespace
 
-# ClusterRoleBindings to be used by Elastic Agents. Similar to ServiceAccounts, this is required in some scenarios.
+# ClusterRoleBinding to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-clusterRoleBindings: []
-# - name: fleet-server
-#   subjects:
-#   - kind: ServiceAccount
-#     name: fleet-server
-#     namespace: default
-#   roleRef:
-#     kind: ClusterRole
-#     name: fleet-server
-#     apiGroup: rbac.authorization.k8s.io
+clusterRoleBinding: {}
+  # name: fleet-server
+  # subjects:
+  # - kind: ServiceAccount
+  #   name: fleet-server
+  #   namespace: default
+  # roleRef:
+  #   kind: ClusterRole
+  #   name: fleet-server
+  #   apiGroup: rbac.authorization.k8s.io
 
-# ClusterRoles to be used by Elastic Agents. Similar to ServiceAccounts, this is required in some scenarios.
+# ClusterRole to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-clusterRoles: []
-# - name: fleet-server
-#   rules:
-#   - apiGroups: [""]
-#     resources:
-#     - pods
-#     - namespaces
-#     - nodes
-#     verbs:
-#     - get
-#     - watch
-#     - list
-#   - apiGroups: ["coordination.k8s.io"]
-#     resources:
-#     - leases
-#     verbs:
-#     - get
-#     - create
-#     - update
+clusterRole: {}
+  # name: fleet-server
+  # rules:
+  # - apiGroups: [""]
+  #   resources:
+  #   - pods
+  #   - namespaces
+  #   - nodes
+  #   verbs:
+  #   - get
+  #   - watch
+  #   - list
+  # - apiGroups: ["coordination.k8s.io"]
+  #   resources:
+  #   - leases
+  #   verbs:
+  #   - get
+  #   - create
+  #   - update

@@ -24,3 +24,8 @@ eck-kibana:
 #
 eck-elastic-agent:
   enabled: false
+
+# If enabled, will use the eck-fleet-agent chart and deploy a Fleet Server Agent resource.
+#
+eck-fleet-agent:
+  enabled: false

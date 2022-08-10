@@ -1,0 +1,31 @@
+suite: test fleet agent
+templates:
+  - templates/fleet-agent.yaml
+tests:
+  - it: should render default fleet agent properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-fleet-agent
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.kibanaRef.name
+          value: quickstart
+      - equal:
+          path: spec.deployment.replicas
+          value: 1
+      - equal:
+          path: spec.deployment.podTemplate.spec.serviceAccountName
+          value: fleet-server
+      - equal:
+          path: spec.deployment.podTemplate.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.deployment.podTemplate.spec.securityContext.runAsUser
+          value: 0

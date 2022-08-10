@@ -1,6 +1,6 @@
 ---
 eck-elasticsearch:
-  enabled: true
+  enabled: false
 
   # Name of the Elasticsearch instance.
   #
@@ -22,7 +22,7 @@ eck-elasticsearch:
       node.store.allow_mmap: false
 
 eck-kibana:
-  enabled: true
+  enabled: false
 
   # Name of the Kibana instance.
   #
@@ -89,91 +89,40 @@ eck-kibana:
 eck-elastic-agent:
   enabled: true
 
-  agents:
-  - # Name of this specific Elastic Agent.
+  # Version of Elastic Agent.
+  #
+  version: 8.2.3
+  
+  spec:
+    # Reference to ECK-managed Kibana instance.
     #
-    name: fleet-server
-  
-    # Version of Elastic Agent.
-    #
-    version: 8.2.3
-    
-    spec:
-      # Reference to ECK-managed Kibana instance.
-      #
-      kibanaRef:
-        name: kibana
-  
-      # Reference to ECK-managed Elasticsearch instance.
-      #
-      elasticsearchRefs:
-      - name: elasticsearch
-    
-      mode: fleet
-      fleetServerEnabled: true
-      deployment:
-        replicas: 1
-        podTemplate:
-          spec:
-            serviceAccountName: fleet-server
-            automountServiceAccountToken: true
-            securityContext:
-              runAsUser: 0
-  - # Name of this specific Elastic Agent.
-    #
-    name: elastic-agent
-  
-    # Version of Elastic Agent.
-    #
-    version: 8.2.3
-    
-    spec:
-      # Reference to ECK-managed Kibana instance.
-      #
-      kibanaRef:
-        name: kibana
-  
-      # Reference to ECK-managed Fleet instance.
-      #
-      fleetServerRef:
-        name: fleet-server
-      
-      mode: fleet
-    
-      daemonSet:
-        podTemplate:
-          spec:
-            serviceAccountName: elastic-agent
-            hostNetwork: true
-            dnsPolicy: ClusterFirstWithHostNet
-            automountServiceAccountToken: true
-            securityContext:
-              runAsUser: 0
-  
-  serviceAccounts:
-  - name: fleet-server
-  - name: elastic-agent
+    kibanaRef:
+      name: kibana
 
-  clusterRoles:
-  - name: fleet-server
-    rules:
-    - apiGroups: [""]
-      resources:
-      - pods
-      - namespaces
-      - nodes
-      verbs:
-      - get
-      - watch
-      - list
-    - apiGroups: ["coordination.k8s.io"]
-      resources:
-      - leases
-      verbs:
-      - get
-      - create
-      - update
-  - name: elastic-agent
+    # Reference to ECK-managed Fleet instance.
+    #
+    fleetServerRef:
+      name: fleet-server
+    
+    mode: fleet
+
+    # config: null
+  
+    daemonSet:
+      podTemplate:
+        spec:
+          serviceAccountName: elastic-agent
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          automountServiceAccountToken: true
+          securityContext:
+            runAsUser: 0
+  
+  serviceAccount:
+    name: elastic-agent
+
+  clusterRole:
+    name: elastic-agent
     rules:
     - apiGroups: [""]
       resources:
@@ -230,17 +179,8 @@ eck-elastic-agent:
       - "list"
       - "watch"
 
-  clusterRoleBindings:
-  - name: fleet-server
-    subjects:
-    - kind: ServiceAccount
-      name: fleet-server
-      namespace: default
-    roleRef:
-      kind: ClusterRole
-      name: fleet-server
-      apiGroup: rbac.authorization.k8s.io
-  - name: elastic-agent
+  clusterRoleBinding:
+    name: elastic-agent
     subjects:
     - kind: ServiceAccount
       name: elastic-agent
@@ -249,3 +189,8 @@ eck-elastic-agent:
       kind: ClusterRole
       name: elastic-agent
       apiGroup: rbac.authorization.k8s.io
+
+eck-fleet-agent:
+  enabled: false
+
+  fullnameOverride: "fleet-server"
