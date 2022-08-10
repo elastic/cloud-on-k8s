@@ -163,7 +163,7 @@ const (
 )
 
 func (d *GKEDriver) patchGCEProvider() error {
-	storageClassesYaml, err := exec.NewCommand(fmt.Sprintf("kubectl get sc -o yaml")).WithoutStreaming().Output()
+	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func (d *GKEDriver) delete() error {
 	if deletedDisks == 0 {
 		log.Println("No GCE persistent disks deleted")
 	} else {
-		log.Println(fmt.Sprintf("%d GCE persistent disks deleted", deletedDisks))
+		log.Printf("%d GCE persistent disks deleted", deletedDisks)
 	}
 
 	return nil
