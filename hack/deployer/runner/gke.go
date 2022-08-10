@@ -63,7 +63,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
 	}
 
-	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).Output()
+	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (d *GKEDriver) create() error {
 		return err
 	}
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--resourcesLabels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
