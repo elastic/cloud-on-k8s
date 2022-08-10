@@ -121,10 +121,6 @@ func (d *GKEDriver) Execute() error {
 			}
 		}
 
-		if err := d.setupLabelsForGCEProvider(); err != nil {
-			return err
-		}
-
 		if d.plan.Gke.Private {
 			log.Printf("a private cluster has been created, please retrieve credentials manually and create storage class and provider if needed")
 			log.Printf("to authorize a VM to access this cluster run the following command:\n"+
@@ -142,6 +138,10 @@ func (d *GKEDriver) Execute() error {
 		}
 
 		if err := d.GetCredentials(); err != nil {
+			return err
+		}
+
+		if err := d.setupLabelsForGCEProvider(); err != nil {
 			return err
 		}
 
