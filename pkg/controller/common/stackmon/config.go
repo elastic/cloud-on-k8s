@@ -127,6 +127,9 @@ func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[strin
 	if assocConf.GetCACertProvided() {
 		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
 		outputConfig["ssl.certificate_authorities"] = []string{sslCAPath}
+		// Elasticsearch certificate might have been generated for a "public" hostname,
+		// and therefore not being valid for the internal URL.
+		outputConfig["ssl.verification_mode"] = "certificate"
 		volumeName := caVolumeName(assoc)
 		caVolume = volume.NewSecretVolumeWithMountPath(
 			assocConf.GetCASecretName(), volumeName, caDirPath,
