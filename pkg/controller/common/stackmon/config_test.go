@@ -12,10 +12,121 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
+
+func Test_newBeatConfig(t *testing.T) {
+	type args struct {
+		initObjects []runtime.Object
+		beatName    string
+		baseConfig  string
+		associated  commonv1.Associated
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    beatConfig
+		wantErr bool
+	}{
+		{
+			name: "Simple output config",
+			args: args{
+				baseConfig: `
+param1: value1
+param2: value2
+`,
+				initObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:            "monitored-default-monitoring-beat-es-mon-user",
+							Namespace:       "default",
+							UID:             uuid.NewUUID(),
+							ResourceVersion: "1",
+							Generation:      0,
+						},
+						Data: map[string][]byte{
+							"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
+						},
+					},
+				},
+				beatName: "metricbeat",
+				associated: &esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "monitored",
+						Namespace:       "default",
+						UID:             uuid.NewUUID(),
+						ResourceVersion: "1",
+						Annotations: map[string]string{
+							commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+{
+	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
+	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
+	"isServiceAccount": false,
+	"caCertProvided": true,
+	"caSecretName": "monitored-es-monitoring-default-monitoring-ca",
+	"url": "https://monitoring-es-http.default.svc:9200",
+	"version": "8.3.1"
+}
+`,
+						},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Monitoring: esv1.Monitoring{
+							Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+						},
+					},
+				},
+			},
+			want: beatConfig{
+				secret: corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "monitored-es-monitoring-metricbeat-config",
+					},
+					Data: map[string][]byte{
+						"metricbeat.yml": []byte(`output:
+  elasticsearch:
+    hosts:
+    - https://monitoring-es-http.default.svc:9200
+    password: password
+    ssl:
+      certificate_authorities:
+      - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
+      verification_mode: certificate
+    username: default-monitored-default-monitoring-beat-es-mon-user
+param1: value1
+param2: value2
+`),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := k8s.NewFakeClient(tt.args.initObjects...)
+			got, err := newBeatConfig(
+				fakeClient,
+				tt.args.beatName,
+				tt.args.associated.(monitoring.HasMonitoring),
+				tt.args.associated.GetAssociations(),
+				tt.args.baseConfig,
+			)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("newBeatConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			// Compare Beat configuration
+			assert.Equal(t, tt.want.secret.Name, got.secret.Name)
+			assert.Equal(t, tt.want.secret.Data, got.secret.Data)
+		})
+	}
+}
 
 func TestBuildMetricbeatBaseConfig(t *testing.T) {
 	tests := []struct {
