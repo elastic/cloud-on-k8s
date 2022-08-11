@@ -63,8 +63,8 @@ func InitLogger() {
 // Standard levels are as follows:
 // level | Zap level | name
 // -------------------------
-//  1    | -1        | Debug
-//  0    |  0        | Info
+// 1     | -1        | Debug
+// 0     |  0        | Info
 // -1    |  1        | Warn
 // -2    |  2        | Error
 func ChangeVerbosity(v int) {

@@ -70,13 +70,13 @@ func UpdateSettings(
 // have been declared in the Elasticsearch spec. The purpose is to delete remote clusters which were managed by
 // the operator but are not desired anymore, without removing the ones which have been added by the user.
 // The following algorithm is used:
-// 1. Get the list of the previously declared remote clusters from the annotation
-// 2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
-// 3. For each remote cluster in the annotation which is not in the Spec, either:
-//   3.1 Schedule its deletion from the Elasticsearch settings
-//   3.2 Otherwise remove it from the annotation
-// 4. Update the annotation on the Elasticsearch object
-// 5. Apply the settings through the Elasticsearch API
+//  1. Get the list of the previously declared remote clusters from the annotation
+//  2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
+//  3. For each remote cluster in the annotation which is not in the Spec, either:
+//     3.1 Schedule its deletion from the Elasticsearch settings
+//     3.2 Otherwise remove it from the annotation
+//  4. Update the annotation on the Elasticsearch object
+//  5. Apply the settings through the Elasticsearch API
 func updateSettingsInternal(
 	ctx context.Context,
 	remoteClustersInSpec map[string]esv1.RemoteCluster,
