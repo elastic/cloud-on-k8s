@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/pkg/errors"
 	storagev1 "k8s.io/api/storage/v1"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
@@ -63,11 +62,6 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
 	}
 
-	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
-	if err != nil {
-		return nil, err
-	}
-
 	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
@@ -83,7 +77,6 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
 			"ClusterIPv4CIDR":   clusterIPv4CIDR,
 			"ServicesIPv4CIDR":  servicesIPv4CIDR,
-			"User":              user,
 		},
 	}, nil
 }
@@ -265,11 +258,10 @@ func (d *GKEDriver) create() error {
 // When used in labels the "unqualified" parameter should be set to true, it's because only lowercase letters ([a-z]),
 // numeric characters ([0-9]), underscores (_) and dashes (-) are allowed as label values.
 func (d *GKEDriver) username(unqualified bool) (string, error) {
-	userInContext, hasUser := d.ctx["User"]
-	if !hasUser {
-		return "", errors.New("no user in GKE context")
+	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
+	if err != nil {
+		return "", err
 	}
-	user := fmt.Sprintf("%v", userInContext)
 	if unqualified {
 		if idx := strings.Index(user, "@"); idx != -1 {
 			user = user[:idx]
