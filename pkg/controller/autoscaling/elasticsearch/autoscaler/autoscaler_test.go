@@ -49,7 +49,7 @@ func Test_GetResources(t *testing.T) {
 					currentNodeStorage("368Gi"). // despite the 1Gi claim, physical capacity as reported by Elasticsearch is ~368Gi
 					currentTierStorage("736Gi"). // 2 nodes with storage capacity ~368Gi in the current tier
 					// required storage capacity
-					requiredNodeStorage("64Mi"). // biggest shard is 64Mi
+					requiredNodeStorage("64Mi").  // biggest shard is 64Mi
 					requiredTierStorage("736Gi"). // the 2 claims, of 1Gi each, have been bound to 2 volumes of ~368Gi
 					observedNodes("default-0", "default-1").
 					build(),
@@ -90,7 +90,7 @@ func Test_GetResources(t *testing.T) {
 					currentNodeStorage("368Gi"). // despite the 1Gi claim, physical capacity as reported by Elasticsearch is ~368Gi
 					currentTierStorage("736Gi"). // 2 nodes with storage capacity ~368Gi in the current tier
 					// required storage capacity
-					requiredNodeStorage("64Mi"). // biggest shard is 64Mi
+					requiredNodeStorage("64Mi").  // biggest shard is 64Mi
 					requiredTierStorage("736Gi"). // the 2 claims, of 1Gi each, have been bound to 2 volumes of ~368Gi
 					observedNodes("default-0", "default-1").
 					build(),
@@ -122,7 +122,7 @@ func Test_GetResources(t *testing.T) {
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
-					currentNodeStorage("960Mi"). // physical capacity as reported by Elasticsearch, a bit smaller than 1Gi
+					currentNodeStorage("960Mi").  // physical capacity as reported by Elasticsearch, a bit smaller than 1Gi
 					currentTierStorage("1920Mi"). // 2 nodes with storage capacity ~1Gi in the current tier
 					// required storage capacity as expressed by the deciders
 					requiredNodeMemory("3Gi").requiredTierMemory("9Gi").
@@ -228,7 +228,7 @@ func Test_GetResources(t *testing.T) {
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
-					currentNodeStorage("9000M"). // physical capacity of a single as reported by Elasticsearch, a bit smaller than 10G in the claim
+					currentNodeStorage("9000M").  // physical capacity of a single as reported by Elasticsearch, a bit smaller than 10G in the claim
 					currentTierStorage("27000M"). // 3 nodes with an actual storage capacity of 9G in the current tier
 					// required storage capacity as expressed by the deciders
 					requiredNodeMemory("6G").requiredTierMemory("15G").
@@ -333,7 +333,7 @@ func Test_GetResources(t *testing.T) {
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
-					requiredNodeMemory("8G"). // user set a limit to 5G / node
+					requiredNodeMemory("8G").  // user set a limit to 5G / node
 					requiredTierMemory("48G"). // would require 10
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "7G").Build(),
@@ -368,10 +368,10 @@ func Test_GetResources(t *testing.T) {
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
-					currentNodeStorage("5G"). // physical capacity of a single as reported by Elasticsearch, a bit smaller than 5G in the claim
+					currentNodeStorage("5G").  // physical capacity of a single as reported by Elasticsearch, a bit smaller than 5G in the claim
 					currentTierStorage("25G"). // 5 nodes observed by Elasticsearch in the tier
 					// required capacity as expressed by the deciders
-					requiredNodeStorage("1G"). // biggest shard is 1G
+					requiredNodeStorage("1G").  // biggest shard is 1G
 					requiredTierStorage("30G"). // only 5 nodes with 6G of storage each are seen
 					observedNodes("default-0", "default-1", "default-2", "default-3", "default-4").
 					build(),
@@ -397,7 +397,7 @@ func Test_GetResources(t *testing.T) {
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
-					currentNodeStorage("6G").requiredNodeStorage("1G"). // biggest shard is 1G
+					currentNodeStorage("6G").requiredNodeStorage("1G").   // biggest shard is 1G
 					requiredTierStorage("30G").currentTierStorage("30G"). // only 5 nodes with 6G of storage each are seen
 					observedNodes("default-0", "default-1", "default-2", "default-3", "default-4").
 					build(),
@@ -423,10 +423,10 @@ func Test_GetResources(t *testing.T) {
 					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G"), corev1.ResourceStorage: q("1G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder(). // ML decider sets all the resources to 0.
-					currentNodeStorage("1G").requiredNodeStorage("0").
-					currentTierStorage("1G").requiredTierStorage("0").
-					observedNodes("default-0").
-					build(),
+											currentNodeStorage("1G").requiredNodeStorage("0").
+											currentTierStorage("1G").requiredTierStorage("0").
+											observedNodes("default-0").
+											build(),
 				policy: NewAutoscalingSpecBuilder("ml-autoscaling-policy").WithNodeCounts(0, 3).WithMemory("7G", "9G").WithStorage("1G", "1G").Build(),
 			},
 			want: resources.NodeSetsResources{
