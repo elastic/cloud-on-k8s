@@ -6,7 +6,7 @@ package test
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -92,7 +92,7 @@ func LicenseTestBuilder() WrappedBuilder {
 				Step{
 					Name: "Create an Enterprise license secret",
 					Test: func(t *testing.T) {
-						licenseBytes, err := ioutil.ReadFile(Ctx().TestLicense)
+						licenseBytes, err := os.ReadFile(Ctx().TestLicense)
 						require.NoError(t, err)
 						DeleteAllEnterpriseLicenseSecrets(t, k)
 						CreateEnterpriseLicenseSecret(t, k, "eck-license", licenseBytes)

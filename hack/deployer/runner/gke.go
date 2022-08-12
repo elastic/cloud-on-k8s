@@ -9,6 +9,9 @@ import (
 	"log"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	storagev1 "k8s.io/api/storage/v1"
+
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 )
 
@@ -65,6 +68,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
 			"PVCPrefix":         pvcPrefix,
+			"PlanId":            plan.Id,
 			"Region":            plan.Gke.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
@@ -130,6 +134,10 @@ func (d *GKEDriver) Execute() error {
 			return err
 		}
 
+		if err := d.setupLabelsForGCEProvider(); err != nil {
+			return err
+		}
+
 		if err := setupDisks(d.plan); err != nil {
 			return err
 		}
@@ -141,6 +149,63 @@ func (d *GKEDriver) Execute() error {
 	}
 
 	return err
+}
+
+const (
+	GoogleComputeEngineStorageProvider = "pd.csi.storage.gke.io"
+)
+
+// setupLabelsForGCEProvider adds the "labels" parameter in the GCE storage classes.
+// These labels are automatically applied to GCE Persistent Disks provisioned using these storage classes.
+func (d *GKEDriver) setupLabelsForGCEProvider() error {
+	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
+	if err != nil {
+		return err
+	}
+	storageClasses := storagev1.StorageClassList{}
+	if err := yaml.Unmarshal([]byte(storageClassesYaml), &storageClasses); err != nil {
+		return err
+	}
+	labels, err := d.resourcesLabels()
+	if err != nil {
+		return err
+	}
+	for _, storageClass := range storageClasses.Items {
+		if storageClass.Provisioner != GoogleComputeEngineStorageProvider {
+			continue
+		}
+		// This is a GCE storage class patch it
+		if storageClass.Parameters == nil {
+			storageClass.Parameters = make(map[string]string)
+		}
+		storageClass.Parameters["labels"] = labels
+		// Delete the storage class as it is not allowed to patch parameters.
+		if err := exec.NewCommand(fmt.Sprintf("kubectl delete sc %s", storageClass.Name)).Run(); err != nil {
+			return err
+		}
+		// Apply the new one
+		storageClassYaml, err := yaml.Marshal(storageClass)
+		if err != nil {
+			return err
+		}
+		if err := exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+%s
+EOF`, string(storageClassYaml))).Run(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *GKEDriver) resourcesLabels() (string, error) {
+	username, err := d.username(true)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(
+		"username=%s,cluster_name=%s,plan_id=%s,region=%s",
+		username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
+	), nil
 }
 
 func (d *GKEDriver) clusterExists() (bool, error) {
@@ -173,11 +238,15 @@ func (d *GKEDriver) create() error {
 		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
 	}
 
+	labels, err := d.resourcesLabels()
+	if err != nil {
+		return err
+	}
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
-		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
+		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
 		strings.Join(opts, " ")).
@@ -185,12 +254,29 @@ func (d *GKEDriver) create() error {
 		Run()
 }
 
+// username attempts to extract the username from the current account.
+// When used in labels the "unqualified" parameter should be set to true, it's because only lowercase letters ([a-z]),
+// numeric characters ([0-9]), underscores (_) and dashes (-) are allowed as label values.
+func (d *GKEDriver) username(unqualified bool) (string, error) {
+	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
+	if err != nil {
+		return "", err
+	}
+	if unqualified {
+		if idx := strings.Index(user, "@"); idx != -1 {
+			user = user[:idx]
+		}
+		user = strings.ReplaceAll(user, ".", "_")
+	}
+	return user, nil
+}
+
 func (d *GKEDriver) bindRoles() error {
-	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).Output()
+	user, err := d.username(false)
 	if err != nil {
 		return err
 	}
-	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
+	cmd := fmt.Sprintf("kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s", user)
 	if d.plan.Gke.Private {
 		log.Printf("this is a private cluster, please bind roles manually from an authorized VM with the following command:\n$ %s\n", cmd)
 		return nil
@@ -213,12 +299,36 @@ func (d *GKEDriver) delete() error {
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	cmd = `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
+	if err := d.deleteDisks(disks); err != nil {
+		return err
+	}
+	deletedDisks := len(disks)
 
+	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err = exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	if err != nil {
+		return err
+	}
+	if err := d.deleteDisks(disks); err != nil {
+		return err
+	}
+	deletedDisks += len(disks)
+	if deletedDisks == 0 {
+		log.Println("No GCE persistent disks deleted")
+	} else {
+		log.Printf("%d GCE persistent disks deleted", deletedDisks)
+	}
+
+	return nil
+}
+
+func (d *GKEDriver) deleteDisks(disks []string) error {
 	for _, disk := range disks {
 		nameZone := strings.Split(disk, ",")
 		if len(nameZone) != 2 {
@@ -226,7 +336,7 @@ func (d *GKEDriver) delete() error {
 		}
 
 		name, zone := nameZone[0], nameZone[1]
-		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
+		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
 			AsTemplate(map[string]interface{}{
 				"GCloudProject": d.plan.Gke.GCloudProject,
@@ -238,6 +348,5 @@ func (d *GKEDriver) delete() error {
 			return err
 		}
 	}
-
 	return nil
 }

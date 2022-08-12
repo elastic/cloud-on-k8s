@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -77,6 +76,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 }
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
+//
 //nolint:thelper
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
 	controllerscheme.SetupScheme()
@@ -124,7 +124,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 			require.NoError(t, err)
 			defer func() {
 				if resp.Body != nil {
-					_, _ = io.Copy(ioutil.Discard, resp.Body)
+					_, _ = io.Copy(io.Discard, resp.Body)
 					resp.Body.Close()
 				}
 			}()
@@ -138,7 +138,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 func decodeResponse(t *testing.T, decoder runtime.Decoder, body io.Reader) *admissionv1beta1.AdmissionResponse {
 	t.Helper()
 
-	responseBytes, err := ioutil.ReadAll(body)
+	responseBytes, err := io.ReadAll(body)
 	require.NoError(t, err, "Failed to read response body")
 
 	response := &admissionv1beta1.AdmissionReview{}

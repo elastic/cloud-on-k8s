@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -284,7 +284,7 @@ func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 			callLog[r]++
 			return &http.Response{
 				StatusCode: response.code,
-				Body:       ioutil.NopCloser(strings.NewReader(response.body)),
+				Body:       io.NopCloser(strings.NewReader(response.body)),
 				Request:    req,
 			}
 		}

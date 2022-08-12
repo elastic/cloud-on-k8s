@@ -24,26 +24,26 @@ GeneralName is a partially modelled GeneralName from RFC 5280, Section 4.2.1.6
 
 The RFC defines the Subject Alternative Names value as follows:
 
-    id-ce-subjectAltName OBJECT IDENTIFIER ::=  { id-ce 17 }
+	id-ce-subjectAltName OBJECT IDENTIFIER ::=  { id-ce 17 }
 
-    SubjectAltName ::= GeneralNames
+	SubjectAltName ::= GeneralNames
 
-    GeneralNames ::= SEQUENCE SIZE (1..MAX) OF GeneralName
+	GeneralNames ::= SEQUENCE SIZE (1..MAX) OF GeneralName
 
-    GeneralName ::= CHOICE {
-        otherName                       [0]     OtherName,
-        rfc822Name                      [1]     IA5String,
-        dNSName                         [2]     IA5String,
-        x400Address                     [3]     ORAddress,
-        directoryName                   [4]     Name,
-        ediPartyName                    [5]     EDIPartyName,
-        uniformResourceIdentifier       [6]     IA5String,
-        iPAddress                       [7]     OCTET STRING,
-        registeredID                    [8]     OBJECT IDENTIFIER }
+	GeneralName ::= CHOICE {
+	    otherName                       [0]     OtherName,
+	    rfc822Name                      [1]     IA5String,
+	    dNSName                         [2]     IA5String,
+	    x400Address                     [3]     ORAddress,
+	    directoryName                   [4]     Name,
+	    ediPartyName                    [5]     EDIPartyName,
+	    uniformResourceIdentifier       [6]     IA5String,
+	    iPAddress                       [7]     OCTET STRING,
+	    registeredID                    [8]     OBJECT IDENTIFIER }
 
-    OtherName ::= SEQUENCE {
-        type-id    OBJECT IDENTIFIER,
-        value      [0] EXPLICIT ANY DEFINED BY type-id }
+	OtherName ::= SEQUENCE {
+	    type-id    OBJECT IDENTIFIER,
+	    value      [0] EXPLICIT ANY DEFINED BY type-id }
 
 OtherName is used in Elasticsearch certificates as the node names, and is what is compared to the allowed subjects
 in the trust_restrictions file (if configured) when doing certificate validation between ES nodes.
