@@ -35,7 +35,7 @@ func (m *cpu) NodeResourceQuantity() resource.Quantity {
 	// Surface the situation where CPU is exhausted.
 	if m.requiredNodeCPUCapacity.MilliValue() > max {
 		// Elasticsearch requested more CPU per node than allowed by the user
-		err := fmt.Errorf("node required CPU is greater than the maximum one")
+		err := fmt.Errorf("CPU required per node is greater than the maximum allowed")
 		m.log.Error(
 			err, err.Error(),
 			"scope", "node",
@@ -48,7 +48,7 @@ func (m *cpu) NodeResourceQuantity() resource.Quantity {
 			ForPolicy(m.autoscalingSpec.Name).
 			RecordEvent(
 				status.VerticalScalingLimitReached,
-				fmt.Sprintf("Node required CPU %s is greater than max allowed: %s", m.requiredNodeCPUCapacity, m.autoscalingSpec.CPURange.Max.String()),
+				fmt.Sprintf("Required CPU per node %s is greater than the maximum allowed: %s", m.requiredNodeCPUCapacity, m.autoscalingSpec.CPURange.Max.String()),
 			)
 	}
 
@@ -102,13 +102,13 @@ func NewCPURecommender(
 	// Check if user expects the resource to be managed by the autoscaling controller
 	hasResourceRange := autoscalingSpec.CPURange != nil
 
-	// Did we get a resource requirement from Elasticsearch ?
+	// Did we get a resource requirement from Elasticsearch?
 	hasRequirement := !autoscalingPolicyResult.RequiredCapacity.Node.Processors.IsEmpty() ||
 		!autoscalingPolicyResult.RequiredCapacity.Total.Processors.IsEmpty()
 
 	if hasRequirement && autoscalingSpec.CPURange == nil {
-		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(status.CPURequired, "Min and max cpu must be specified")
-		return nil, fmt.Errorf("min and max cpu must be specified")
+		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(status.CPURequired, "Min and max CPU must be specified")
+		return nil, fmt.Errorf("min and max CPU must be specified")
 	}
 
 	// We must recommend something in one of the following situations:
