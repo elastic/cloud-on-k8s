@@ -67,10 +67,6 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 
 		esv1.PathData: volume.ElasticsearchDataMountPath,
 		esv1.PathLogs: volume.ElasticsearchLogsMountPath,
-
-		// to avoid misleading error messages about the inability to connect to localhost for discovery despite us using
-		// file based discovery
-		esv1.DiscoverySeedHosts: []string{},
 	}
 
 	// seed hosts setting name changed starting ES 7.X
@@ -79,6 +75,9 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 		cfg[esv1.DiscoveryZenHostsProvider] = fileProvider
 	} else {
 		cfg[esv1.DiscoverySeedProviders] = fileProvider
+		// to avoid misleading error messages about the inability to connect to localhost for discovery despite us using
+		// file based discovery
+		cfg[esv1.DiscoverySeedHosts] = []string{}
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
