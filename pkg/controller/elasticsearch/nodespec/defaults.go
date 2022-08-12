@@ -40,12 +40,14 @@ var (
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
 	}
+)
 
-	// DefaultAnnotations are the default annotations for the Elasticsearch pods
-	DefaultAnnotations = map[string]string{
+// defaultAnnotations are the default annotations for the Elasticsearch pods
+func defaultAnnotations() map[string]string {
+	return map[string]string{
 		annotation.FilebeatModuleAnnotation: "elasticsearch",
 	}
-)
+}
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
 func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {

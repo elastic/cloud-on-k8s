@@ -174,7 +174,7 @@ func buildAnnotations(
 	scriptsVersion string,
 ) map[string]string {
 	// start from our defaults
-	annotations := DefaultAnnotations
+	annotations := defaultAnnotations()
 
 	configHash := fnv.New32a()
 	// hash of the ES config to rotate the pod on config changes
