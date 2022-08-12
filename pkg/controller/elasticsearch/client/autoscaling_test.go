@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -96,12 +98,14 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		t,
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
-				Storage: newCapacity(165155770),
-				Memory:  nil, // No memory capacity expected for the data deciders
+				Processors: newCapacity("2.5"),
+				Storage:    newCapacity("165155770"),
+				Memory:     nil, // No memory capacity expected for the data deciders
 			},
 			Total: AutoscalingResources{
-				Storage: newCapacity(3069911040),
-				Memory:  nil, // No memory capacity expected for the data deciders
+				Processors: newCapacity("5.0"),
+				Storage:    newCapacity("3069911040"),
+				Memory:     nil, // No memory capacity expected for the data deciders
 			},
 		},
 		dataCapacity.RequiredCapacity,
@@ -112,12 +116,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		t,
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
-				Storage: newCapacity(1023303680),
-				Memory:  newCapacity(2147483648),
+				Storage: newCapacity("1023303680"),
+				Memory:  newCapacity("2147483648"),
 			},
 			Total: AutoscalingResources{
-				Storage: newCapacity(3069911040),
-				Memory:  newCapacity(6442450944),
+				Storage: newCapacity("3069911040"),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 		dataCapacity.CurrentCapacity,
@@ -141,11 +145,11 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
-				Memory:  newCapacity(3221225472),
+				Memory:  newCapacity("3221225472"),
 			},
 			Total: AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
-				Memory:  newCapacity(6442450944),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 	)
@@ -156,11 +160,11 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
 				Storage: nil,
-				Memory:  newCapacity(3221225472),
+				Memory:  newCapacity("3221225472"),
 			},
 			Total: AutoscalingResources{
 				Storage: nil,
-				Memory:  newCapacity(6442450944),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 		mlCapacity.CurrentCapacity,
@@ -174,7 +178,7 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	)
 }
 
-func newCapacity(i int) *AutoscalingCapacity {
-	v := AutoscalingCapacity(int64(i))
+func newCapacity(q string) *AutoscalingCapacity {
+	v := AutoscalingCapacity{Quantity: resource.MustParse(q)}
 	return &v
 }
