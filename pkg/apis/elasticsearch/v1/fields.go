@@ -51,6 +51,8 @@ const (
 
 var UnsupportedSettings = []string{
 	ClusterName,
+	DiscoverySeedHosts,
+	DiscoverySeedProviders,
 	DiscoveryZenMinimumMasterNodes,
 	ClusterInitialMasterNodes,
 	NetworkHost,
