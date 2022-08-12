@@ -12,6 +12,7 @@ const (
 
 	DiscoveryZenHostsProvider = "discovery.zen.hosts_provider" // ES < 7.X
 	DiscoverySeedProviders    = "discovery.seed_providers"     // ES >= 7.X
+	DiscoverySeedHosts        = "discovery.seed_hosts"
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
