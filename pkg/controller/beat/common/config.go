@@ -110,9 +110,16 @@ func buildBeatConfig(
 		return nil, err
 	}
 
-	// if metrics monitoring is enabled, then enable the metrics http endpoint for metricsbeat sidecar.
+	// if metrics monitoring is enabled, then
+	// 1. enable the metrics http endpoint for the metricsbeat sidecar to consume
+	// 2. disable internal metrics monitoring endpoint
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]bool{"http.enabled": true})); err != nil {
+		if err = cfg.MergeWith(settings.MustCanonicalConfig(
+			map[string]interface{}{
+				"http.enabled":       true,
+				"monitoring.enabled": false,
+			},
+		)); err != nil {
 			return nil, err
 		}
 	}

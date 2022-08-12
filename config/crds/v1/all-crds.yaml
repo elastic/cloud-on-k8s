@@ -2352,10 +2352,10 @@ spec:
                     type: string
                 type: object
               monitoring:
-                description: Monitoring enables you to collect and ship monitoring,
-                  and logs data of this Beat. Metricbeat and/or Filebeat sidecars
-                  are configured and send metrics data to one Elasticsearch monitoring
-                  cluster running in the same Kubernetes cluster.
+                description: Monitoring enables you to collect and ship logs and metrics
+                  for this Beat. Metricbeat and/or Filebeat sidecars are configured
+                  and send montioring data to a Elasticsearch monitoring cluster running
+                  in the same Kubernetes cluster.
                 properties:
                   logs:
                     description: Logs holds references to Elasticsearch clusters which

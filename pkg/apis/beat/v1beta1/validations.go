@@ -5,7 +5,6 @@
 package v1beta1
 
 import (
-	"fmt"
 	"regexp"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -35,10 +34,6 @@ var (
 	}
 
 	typeRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-	// minStackVersion is the minimum Stack version to enable Stack Monitoring on an Elastic Beats.
-	// Technically, Beats internal monitoring existed prior to 7.2.0, but it's configuration format
-	// was slightly different.
-	minStackVersion = version.MustParse("7.2.0")
 )
 
 func checkNoUnknownFields(b *Beat) field.ErrorList {
@@ -128,9 +123,6 @@ func checkMonitoring(b *Beat) field.ErrorList {
 	if len(b.GetMonitoringMetricsRefs()) == 0 && len(b.GetMonitoringLogsRefs()) == 0 {
 		return nil
 	}
-	if err := isStackSupportedVersion(b.Spec.Version); err != nil {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), b.Spec.Version, err.Error()))
-	}
 	refs := b.GetMonitoringMetricsRefs()
 	refsDefined := monitoring.AreEsRefsDefined(refs)
 	if len(refs) > 0 && !refsDefined {
@@ -152,15 +144,4 @@ func checkMonitoring(b *Beat) field.ErrorList {
 			refs, validations.InvalidElasticsearchRefsMsg))
 	}
 	return errs
-}
-
-func isStackSupportedVersion(v string) error {
-	ver, err := version.Parse(v)
-	if err != nil {
-		return err
-	}
-	if ver.LT(minStackVersion) {
-		return fmt.Errorf(validations.UnsupportedVersionMsg, minStackVersion)
-	}
-	return nil
 }

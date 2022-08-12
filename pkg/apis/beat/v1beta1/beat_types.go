@@ -81,8 +81,8 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// Monitoring enables you to collect and ship monitoring, and logs data of this Beat.
-	// Metricbeat and/or Filebeat sidecars are configured and send metrics data to one
+	// Monitoring enables you to collect and ship logs and metrics for this Beat.
+	// Metricbeat and/or Filebeat sidecars are configured and send montioring data to a
 	// Elasticsearch monitoring cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring Monitoring `json:"monitoring,omitempty"`
@@ -403,7 +403,7 @@ func init() {
 type BeatMonitoringAssociation struct {
 	// The associated Beat
 	*Beat
-	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
+	// ref is the object selector of the monitoring Elasticsearch referenced in the association
 	ref commonv1.ObjectSelector
 }
 

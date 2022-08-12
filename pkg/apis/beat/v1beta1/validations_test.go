@@ -232,32 +232,7 @@ func Test_checkMonitoring(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "too old version with stack monitoring enabled returns unsupported version error",
-			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
-				Spec: BeatSpec{
-					Type:      "filebeat",
-					Version:   "7.1.0",
-					DaemonSet: &DaemonSetSpec{},
-					Monitoring: Monitoring{
-						Metrics: MetricsMonitoring{
-							ElasticsearchRefs: []commonv1.ObjectSelector{
-								{
-									Name:      "elasticsearch",
-									Namespace: "test",
-								},
-							},
-						},
-					},
-				},
-			},
-			want: field.ErrorList{&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.version", BadValue: "7.1.0", Detail: "Unsupported version for Stack Monitoring. Required >= 7.2.0."}},
-		},
-		{
-			name: "valid version with stack monitoring enabled but invalid ref returns error",
+			name: "stack monitoring enabled but invalid ref returns error",
 			beat: &Beat{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testbeat",
@@ -287,7 +262,7 @@ func Test_checkMonitoring(t *testing.T) {
 			}},
 		},
 		{
-			name: "valid version with stack monitoring enabled but 2 elasticsearch refs",
+			name: "stack monitoring enabled but 2 elasticsearch refs",
 			beat: &Beat{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testbeat",
