@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
@@ -174,7 +175,9 @@ func buildAnnotations(
 	scriptsVersion string,
 ) map[string]string {
 	// start from our defaults
-	annotations := defaultAnnotations()
+	annotations := map[string]string{
+		annotation.FilebeatModuleAnnotation: "elasticsearch",
+	}
 
 	configHash := fnv.New32a()
 	// hash of the ES config to rotate the pod on config changes
