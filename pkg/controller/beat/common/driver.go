@@ -6,11 +6,14 @@ package common
 
 import (
 	"context"
+	"errors"
 	"hash/fnv"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
@@ -90,6 +93,9 @@ func Reconcile(
 
 	configHash := fnv.New32a()
 	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
+		if errors.Is(err, ElasticsearchMonitoringClusterUUIDUnavailable) {
+			results.WithReconciliationState(reconciler.Requeue.WithReason("ElasticsearchRef UUID unavailable while configuring beats stack monitoring")).WithResult(reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second})
+		}
 		return results.WithError(err), params.Status
 	}
 
