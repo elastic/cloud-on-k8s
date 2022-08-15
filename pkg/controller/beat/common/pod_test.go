@@ -335,7 +335,7 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 		data, ok := secret.Data["metricbeat.yml"]
 		assert.True(t, ok)
 
-		var cfg metricsbeatConfig
+		var cfg metricbeatConfig
 		assert.NoError(t, yaml.Unmarshal(data, &cfg))
 		u, err := url.Parse(cfg.MetricBeat.Modules[0].Hosts[0])
 		require.NoError(t, err)
@@ -346,7 +346,7 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 	}
 }
 
-// metricsbeatConfig represents the metricsbeat configuration for testing purposes.
+// metricbeatConfig represents the MetricBeat configuration for testing purposes.
 //
 // example:
 //
@@ -354,7 +354,7 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 //   modules:
 //     - hosts:
 //       - http://example.com:3033
-type metricsbeatConfig struct {
+type metricbeatConfig struct {
 	MetricBeat struct {
 		Modules []struct {
 			Hosts []string
