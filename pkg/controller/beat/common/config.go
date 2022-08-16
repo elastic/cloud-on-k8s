@@ -5,7 +5,6 @@
 package common
 
 import (
-	"errors"
 	"hash"
 	"path"
 
@@ -13,18 +12,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
-
-var ElasticsearchMonitoringClusterUUIDUnavailable = errors.New("beats metrics monitoring cluster uuid is unavailable")
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
@@ -119,23 +114,10 @@ func buildBeatConfig(
 	// 1. enable the metrics http endpoint for the metricsbeat sidecar to consume
 	// 2. disable internal metrics monitoring endpoint
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		var es esv1.Elasticsearch
-		params.Beat.ElasticsearchRef()
-		if err := params.Client.Get(params.Context, params.Beat.ElasticsearchRef().NamespacedName(), &es); err != nil {
-			return nil, err
-		}
-		uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
-		if !ok {
-			// returning specific error here to retry this operation.
-			return nil, ElasticsearchMonitoringClusterUUIDUnavailable
-		}
-		if err = cfg.MergeWith(settings.MustCanonicalConfig(
-			map[string]interface{}{
-				"http.enabled":            true,
-				"monitoring.enabled":      false,
-				"monitoring.cluster_uuid": uuid,
-			},
-		)); err != nil {
+		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+			"http.enabled":       true,
+			"monitoring.enabled": false,
+		})); err != nil {
 			return nil, err
 		}
 	}

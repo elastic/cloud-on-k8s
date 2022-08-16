@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -62,8 +63,9 @@ func Test_buildPodTemplate(t *testing.T) {
 		},
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testes",
-				Namespace: "ns",
+				Name:        "testes",
+				Namespace:   "ns",
+				Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
 			},
 		},
 	)
@@ -74,8 +76,9 @@ func Test_buildPodTemplate(t *testing.T) {
 			Namespace: "ns",
 		},
 		Spec: v1beta1.BeatSpec{
-			Version: "7.15.0",
-			Config:  httpPortCfg,
+			Version:          "7.15.0",
+			Config:           httpPortCfg,
+			ElasticsearchRef: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"},
 			Monitoring: v1beta1.Monitoring{
 				Metrics: v1beta1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{

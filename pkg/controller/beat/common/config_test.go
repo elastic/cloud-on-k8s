@@ -203,7 +203,7 @@ func Test_buildBeatConfig(t *testing.T) {
 					},
 				}
 			},
-			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]bool{"http.enabled": true})),
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]bool{"http.enabled": true, "monitoring.enabled": false})),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

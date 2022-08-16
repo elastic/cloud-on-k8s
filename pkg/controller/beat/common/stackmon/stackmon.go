@@ -5,15 +5,21 @@
 package stackmon
 
 import (
+	"bytes"
+	"context"
 	_ "embed" // for the beats config files
+	"errors"
 	"fmt"
+	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -25,6 +31,10 @@ var (
 	// metricbeatConfigTemplate is a configuration template for Metricbeat to collect monitoring data from Beats resources
 	//go:embed metricbeat.tpl.yml
 	metricbeatConfigTemplate string
+
+	// MonitoringClusterUUIDUnavailable will be returned when the UUID for the Beat ElasticsearchRef cluster
+	// has not yet been assigned a UUID.  This could happen on a newly created Elasticsearch cluster.
+	MonitoringClusterUUIDUnavailable = errors.New("beats stack monitoring cluster uuid is unavailable")
 )
 
 func Filebeat(client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
@@ -36,7 +46,8 @@ func Filebeat(client k8s.Client, resource monitoring.HasMonitoring, version stri
 	return filebeat, nil
 }
 
-func MetricBeat(client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {
+func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {
+	finalTemplate := metricbeatConfigTemplate
 	config, err := settings.NewCanonicalConfigFrom(beat.Spec.Config.Data)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
@@ -58,22 +69,46 @@ func MetricBeat(client k8s.Client, beat *v1beta1.Beat, version string) (stackmon
 		httpPort = portData
 	}
 
-	sidecar, err := stackmon.NewMetricBeatSidecar(
+	if err := beat.ElasticsearchRef().IsValid(); err == nil {
+		var es esv1.Elasticsearch
+		if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
+			return stackmon.BeatSidecar{}, err
+		}
+		uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
+		if !ok {
+			// returning specific error here so this operation can be retried.
+			return stackmon.BeatSidecar{}, MonitoringClusterUUIDUnavailable
+		}
+		var tmpl *template.Template
+		if tmpl, err = template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate); err != nil {
+			return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %s", err)
+		}
+		var tpl bytes.Buffer
+		data := struct {
+			ClusterUUID string
+			URL         string
+		}{
+			ClusterUUID: uuid,
+			URL:         fmt.Sprintf("http://localhost:%d", httpPort),
+		}
+		if err := tmpl.Execute(&tpl, data); err != nil {
+			return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %s", err)
+		}
+		finalTemplate = tpl.String()
+	}
+
+	return stackmon.NewMetricBeatSidecar(
 		client,
 		commonv1.BeatMonitoringAssociationType,
 		beat,
 		version,
-		metricbeatConfigTemplate,
+		finalTemplate,
 		common_name.NewNamer("beat"),
 		fmt.Sprintf("http://localhost:%d", httpPort),
 		"",
 		"",
 		false,
 	)
-	if err != nil {
-		return sidecar, err
-	}
-	return sidecar, nil
 }
 
 type httpPortSetting struct {

@@ -6,5 +6,7 @@ metricbeat.modules:
   period: 10s
   hosts: ["{{ .URL }}"]
   xpack.enabled: true
-
+{{if .ClusterUUID }}
+monitoring.cluster_uuid: "{{ .ClusterUUID }}"
+{{end}}
 # Elasticsearch output configuration is generated and added here
