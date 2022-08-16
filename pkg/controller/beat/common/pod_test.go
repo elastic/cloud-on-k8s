@@ -354,9 +354,10 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 // example:
 //
 // metricbeat:
-//   modules:
-//     - hosts:
-//       - http://example.com:3033
+//
+//	modules:
+//	  - hosts:
+//	    - http://example.com:3033
 type metricbeatConfig struct {
 	MetricBeat struct {
 		Modules []struct {
