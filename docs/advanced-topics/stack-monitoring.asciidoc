@@ -66,9 +66,14 @@ spec:
   type: filebeat
   version: {version}
   monitoring:
-    elasticsearchRefs:
-    - name: monitoring
-      namespace: observability <3>
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.

@@ -366,9 +366,6 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	return &metricsCluster
 }
 
-// GetLogsCluster does not return a logs cluster, as Beats stack monitoring is slightly
-// different that both Elasticsearch, and Kibana stack monitoring, as it uses internal
-// beat collectors to send only metrics data, not logs data.
 func (b Builder) GetLogsCluster() *types.NamespacedName {
 	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
 		return nil
