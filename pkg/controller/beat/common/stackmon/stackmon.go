@@ -32,9 +32,9 @@ var (
 	//go:embed metricbeat.tpl.yml
 	metricbeatConfigTemplate string
 
-	// MonitoringClusterUUIDUnavailable will be returned when the UUID for the Beat ElasticsearchRef cluster
+	// ErrMonitoringClusterUUIDUnavailable will be returned when the UUID for the Beat ElasticsearchRef cluster
 	// has not yet been assigned a UUID.  This could happen on a newly created Elasticsearch cluster.
-	MonitoringClusterUUIDUnavailable = errors.New("beats stack monitoring cluster uuid is unavailable")
+	ErrMonitoringClusterUUIDUnavailable = errors.New("beats stack monitoring cluster uuid is unavailable")
 )
 
 func Filebeat(client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
@@ -77,11 +77,11 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
 		if !ok {
 			// returning specific error here so this operation can be retried.
-			return stackmon.BeatSidecar{}, MonitoringClusterUUIDUnavailable
+			return stackmon.BeatSidecar{}, ErrMonitoringClusterUUIDUnavailable
 		}
 		var tmpl *template.Template
 		if tmpl, err = template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate); err != nil {
-			return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %s", err)
+			return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
 		}
 		var tpl bytes.Buffer
 		data := struct {
@@ -92,7 +92,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 			URL:         fmt.Sprintf("http://localhost:%d", httpPort),
 		}
 		if err := tmpl.Execute(&tpl, data); err != nil {
-			return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %s", err)
+			return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %w", err)
 		}
 		finalTemplate = tpl.String()
 	}
