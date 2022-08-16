@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
@@ -113,35 +112,14 @@ func checkSpec(b *Beat) field.ErrorList {
 }
 
 func checkAssociations(b *Beat) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), b.Spec.KibanaRef)
-	return append(err1, err2...)
+	err3 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), b.GetMonitoringMetricsRefs()...)
+	err4 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), b.GetMonitoringLogsRefs()...)
+	return append(err1, append(err2, append(err3, err4...)...)...)
 }
 
 func checkMonitoring(b *Beat) field.ErrorList {
-	var errs field.ErrorList
-	if len(b.GetMonitoringMetricsRefs()) == 0 && len(b.GetMonitoringLogsRefs()) == 0 {
-		return nil
-	}
-	refs := b.GetMonitoringMetricsRefs()
-	refsDefined := monitoring.AreEsRefsDefined(refs)
-	if len(refs) > 0 && !refsDefined {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
-			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
-	}
-	if refsDefined && len(refs) != 1 {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
-			refs, validations.InvalidElasticsearchRefsMsg))
-	}
-	refs = b.GetMonitoringLogsRefs()
-	refsDefined = monitoring.AreEsRefsDefined(refs)
-	if len(refs) > 0 && !refsDefined {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
-			refs, validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg))
-	}
-	if refsDefined && len(refs) != 1 {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
-			refs, validations.InvalidElasticsearchRefsMsg))
-	}
-	return errs
+	return validations.Validate(b, b.Spec.Version)
 }

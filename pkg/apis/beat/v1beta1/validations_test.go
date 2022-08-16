@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 )
 
 func Test_checkBeatType(t *testing.T) {
@@ -155,6 +154,36 @@ func Test_checkAssociations(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "invalid metrics stackmon ref with name and secretname: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						Monitoring: Monitoring{
+							Metrics: MetricsMonitoring{
+								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid logs stackmon ref with name and secretname: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						Monitoring: Monitoring{
+							Logs: LogsMonitoring{
+								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -232,7 +261,7 @@ func Test_checkMonitoring(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "stack monitoring enabled but invalid ref returns error",
+			name: "stack monitoring enabled with only metrics ref is valid",
 			beat: &Beat{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testbeat",
@@ -246,7 +275,7 @@ func Test_checkMonitoring(t *testing.T) {
 						Metrics: MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
-									// missing name
+									Name:      "es",
 									Namespace: "test",
 								},
 							},
@@ -254,15 +283,10 @@ func Test_checkMonitoring(t *testing.T) {
 					},
 				},
 			},
-			want: field.ErrorList{&field.Error{
-				Type:     field.ErrorTypeInvalid,
-				Field:    "spec.monitoring.metrics.elasticsearchRefs",
-				BadValue: []commonv1.ObjectSelector{{Namespace: "test", Name: "", ServiceName: "", SecretName: ""}},
-				Detail:   validations.InvalidBeatsElasticsearchRefForStackMonitoringMsg,
-			}},
+			want: nil,
 		},
 		{
-			name: "stack monitoring enabled but 2 elasticsearch refs",
+			name: "stack monitoring enabled with only logs ref is valid",
 			beat: &Beat{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testbeat",
@@ -273,14 +297,10 @@ func Test_checkMonitoring(t *testing.T) {
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
 					Monitoring: Monitoring{
-						Metrics: MetricsMonitoring{
+						Logs: LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
-									Name:      "es1",
-									Namespace: "test",
-								},
-								{
-									Name:      "es2",
+									Name:      "es",
 									Namespace: "test",
 								},
 							},
@@ -288,15 +308,40 @@ func Test_checkMonitoring(t *testing.T) {
 					},
 				},
 			},
-			want: field.ErrorList{&field.Error{
-				Type:  field.ErrorTypeInvalid,
-				Field: "spec.monitoring.metrics.elasticsearchRefs",
-				BadValue: []commonv1.ObjectSelector{
-					{Namespace: "test", Name: "es1", ServiceName: "", SecretName: ""},
-					{Namespace: "test", Name: "es2", ServiceName: "", SecretName: ""},
+			want: nil,
+		},
+		{
+			name: "stack monitoring enabled with both logs and metrics ref is valid",
+			beat: &Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testbeat",
+					Namespace: "test",
 				},
-				Detail: validations.InvalidElasticsearchRefsMsg,
-			}},
+				Spec: BeatSpec{
+					Type:      "filebeat",
+					Version:   "8.2.3",
+					DaemonSet: &DaemonSetSpec{},
+					Monitoring: Monitoring{
+						Logs: LogsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "es",
+									Namespace: "test",
+								},
+							},
+						},
+						Metrics: MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "es",
+									Namespace: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
