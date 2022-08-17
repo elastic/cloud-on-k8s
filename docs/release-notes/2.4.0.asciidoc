@@ -1,0 +1,68 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.4.0]]
+== {n} version 2.4.0
+
+[[breaking-2.4.0]]
+[float]
+=== Breaking changes
+
+* Configure Elastic Agent host path volume to point to correct path {pull}5890[#5890] (issue: {issue}4428[#4428])
+
+Fleet-managed Elastic Agents now default to use a `hostPath` volume for storing their state. This will prevent more than one Pod from the same Elastic Agent Deployment to be deployed on the same Kubernetes node. For cases where this is desired, the volume type can be changed to an `emptyDir` volume. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elastic-agent-fleet-known-limitations.html#k8s_storing_local_state_in_host_path_volume_2[docs] to learn more.
+
+[[feature-2.4.0]]
+[float]
+=== New features
+
+* Introduce ECK-managed resources Helm Charts {pull}5781[#5781] (issue: {issue}5505[#5505])
+
+[[enhancement-2.4.0]]
+[float]
+=== Enhancements
+
+* Add new operator flag to control Elasticsearch health observation intervals {pull}5861[#5861] (issue: {issue}5839[#5839])
+* Make xpack.security.http.ssl.client_authentication an unsupported setting {pull}5852[#5852] (issue: {issue}5817[#5817])
+* Use static transaction names for APM {pull}5850[#5850] (issue: {issue}5840[#5840])
+* Create Elastic Agent enrolment tokens in the operator  {pull}5846[#5846] (issue: {issue}5779[#5779])
+* Support RevisionHistoryLimit for all ECK-managed resources {pull}5818[#5818] (issue: {issue}5789[#5789])
+* Stricter notion of esReacheable: require health response {pull}5796[#5796] (issue: {issue}5776[#5776])
+* Increase default Beats guaranteed memory to 300Mi {pull}5793[#5793] (issue: {issue}5036[#5036])
+
+[[bug-2.4.0]]
+[float]
+=== Bug fixes
+
+* Move first ES cluster state observation out of go routine {pull}5783[#5783] (issue: {issue}5812[#5812])
+* Check shard activity before removing a node {pull}5758[#5758] (issues: {issue}3070[#3070], {issue}5713[#5713])
+
+[[docs-2.4.0]]
+[float]
+=== Documentation improvements
+
+* Remove experimental label from Elastic Agent docs {pull}5894[#5894]
+* Improve "Operator crashes on startup with `OOMKilled`" docs section {pull}5836[#5836]
+* Expose recipes in ECK product documentation {pull}5763[#5763] (issue: {issue}5012[#5012])
+* Fix minimum Helm supported version 3.2.0 in README {pull}5753[#5753]
+
+[[nogroup-2.4.0]]
+[float]
+=== Misc
+
+* Update dependency docker.io/library/golang to v1.18.5 {pull}5907[#5907]
+* Update k8s to v0.24.3 {pull}5904[#5904]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.13.8 {pull}5900[#5900]
+* Update module helm.sh/helm/v3 to v3.9.2 {pull}5876[#5876]
+* Update dependency golang to v1.18.4 {pull}5873[#5873]
+* Update dependency registry.access.redhat.com/ubi8/ubi-minimal to v8.6-854 {pull}5855[#5855]
+* Update module sigs.k8s.io/controller-tools to v0.9.1 {pull}5842[#5842]
+* Update module github.com/elastic/go-ucfg to v0.8.6 {pull}5841[#5841]
+* Update module sigs.k8s.io/controller-runtime to v0.12.2 {pull}5828[#5828]
+* Update module github.com/google/go-containerregistry to v0.10.0 {pull}5821[#5821]
+* Update module k8s.io/klog/v2 to v2.70.0 {pull}5819[#5819]
+* Update module github.com/spf13/cobra to v1.5.0 {pull}5811[#5811]
+* Update module github.com/prometheus/common to v0.35.0 {pull}5808[#5808]
+* Update module github.com/stretchr/testify to v1.7.3 {pull}5807[#5807]
+* Update module github.com/hashicorp/vault/api to v1.7.2 {pull}5761[#5761]
+
