@@ -7,7 +7,6 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ func mergeKubeconfig(kubeConfig string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(hostKubeconfig, []byte(merged), 0600)
+	return os.WriteFile(hostKubeconfig, []byte(merged), 0600)
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {

@@ -16,6 +16,7 @@ import (
 const (
 	ElasticsearchAutoscalingStatusAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-status"
 
+	CPURequired                    AutoscalingEventType = "CPURequired"
 	EmptyResponse                  AutoscalingEventType = "EmptyResponse"
 	HorizontalScalingLimitReached  AutoscalingEventType = "HorizontalScalingLimitReached"
 	MemoryRequired                 AutoscalingEventType = "MemoryRequired"

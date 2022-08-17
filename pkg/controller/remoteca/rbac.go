@@ -16,8 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
-var log = ulog.Log.WithName("remotecluster-remoteca")
-
 // isRemoteClusterAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
 func isRemoteClusterAssociationAllowed(
 	ctx context.Context,
@@ -30,7 +28,7 @@ func isRemoteClusterAssociationAllowed(
 		return false, err
 	}
 	if !accessAllowed {
-		logNotAllowedAssociation(localEs, remoteEs, eventRecorder)
+		logNotAllowedAssociation(ctx, localEs, remoteEs, eventRecorder)
 		return false, nil
 	}
 	accessAllowed, err = accessReviewer.AccessAllowed(ctx, remoteEs.Spec.ServiceAccountName, remoteEs.Namespace, localEs)
@@ -38,14 +36,14 @@ func isRemoteClusterAssociationAllowed(
 		return false, err
 	}
 	if !accessAllowed {
-		logNotAllowedAssociation(remoteEs, localEs, eventRecorder)
+		logNotAllowedAssociation(ctx, remoteEs, localEs, eventRecorder)
 		return false, nil
 	}
 	return true, nil
 }
 
-func logNotAllowedAssociation(localEs, remoteEs *esv1.Elasticsearch, eventRecorder record.EventRecorder) {
-	log.Info("Remote cluster association not allowed",
+func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elasticsearch, eventRecorder record.EventRecorder) {
+	ulog.FromContext(ctx).Info("Remote cluster association not allowed",
 		"local_name", localEs.Name,
 		"local_namespace", localEs.GetNamespace(),
 		"service_account", localEs.Spec.ServiceAccountName,

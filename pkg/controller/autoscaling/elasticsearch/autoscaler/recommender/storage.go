@@ -217,6 +217,11 @@ var usableDiskPercent = 0.95
 // adjustRequiredStorage adjust the required capacity from Elasticsearch to account for the filesystem reserved space.
 // In the worst case we consider that Elasticsearch is only able to use 95% of the persistent volume capacity.
 func adjustRequiredStorage(v *client.AutoscalingCapacity) *client.AutoscalingCapacity {
-	adjustedStorage := client.AutoscalingCapacity(math.Ceil(float64(v.Value()) / usableDiskPercent))
-	return &adjustedStorage
+	adjustedStorage := resource.NewQuantity(
+		int64(math.Ceil(float64(v.Value())/usableDiskPercent)),
+		resource.DecimalSI,
+	)
+	return &client.AutoscalingCapacity{
+		Quantity: *adjustedStorage,
+	}
 }

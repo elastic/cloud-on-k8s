@@ -529,7 +529,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				Client:   c,
 				recorder: fakeRecorder,
 			}
-			status, err := r.generateStatus(tt.ent, tt.deploy, tt.svcName)
+			status, err := r.generateStatus(context.Background(), tt.ent, tt.deploy, tt.svcName)
 			require.NoError(t, err)
 			err = r.updateStatus(context.Background(), tt.ent, status)
 			require.NoError(t, err)

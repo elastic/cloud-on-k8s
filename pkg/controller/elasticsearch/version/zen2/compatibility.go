@@ -5,6 +5,8 @@
 package zen2
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -20,8 +22,8 @@ func versionCompatibleWithZen2(v version.Version) bool {
 }
 
 // IsCompatibleWithZen2 returns true if the given StatefulSet is compatible with zen2.
-func IsCompatibleWithZen2(statefulSet appsv1.StatefulSet) bool {
-	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen2)
+func IsCompatibleWithZen2(ctx context.Context, statefulSet appsv1.StatefulSet) bool {
+	return sset.ESVersionMatch(ctx, statefulSet, versionCompatibleWithZen2)
 }
 
 // AllMastersCompatibleWithZen2 returns true if all master nodes in the given cluster can use zen2 APIs.

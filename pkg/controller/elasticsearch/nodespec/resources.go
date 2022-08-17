@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"context"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -52,6 +53,7 @@ func (l ResourcesList) ExpectedNodeCount() int32 {
 }
 
 func BuildExpectedResources(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
@@ -78,7 +80,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
 		if err != nil {
 			return nil, err
 		}

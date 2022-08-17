@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
@@ -48,6 +49,7 @@ var minDefaultSecurityContextVersion = version.MinFor(8, 0, 0)
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
@@ -113,7 +115,7 @@ func BuildPodTemplateSpec(
 		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
 		WithPreStopHook(*NewPreStopHook())
 
-	builder, err = stackmon.WithMonitoring(client, builder, es)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -174,7 +176,9 @@ func buildAnnotations(
 	scriptsVersion string,
 ) map[string]string {
 	// start from our defaults
-	annotations := DefaultAnnotations
+	annotations := map[string]string{
+		annotation.FilebeatModuleAnnotation: "elasticsearch",
+	}
 
 	configHash := fnv.New32a()
 	// hash of the ES config to rotate the pod on config changes

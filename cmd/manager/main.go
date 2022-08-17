@@ -192,6 +192,11 @@ func Command() *cobra.Command {
 		3*time.Minute,
 		"Default timeout for requests made by the Elasticsearch client.",
 	)
+	cmd.Flags().Duration(
+		operator.ElasticsearchObservationIntervalFlag,
+		10*time.Second,
+		"Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation",
+	)
 	cmd.Flags().Bool(
 		operator.DisableTelemetryFlag,
 		false,
@@ -399,8 +404,9 @@ func startOperator(ctx context.Context) error {
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 		pprofServer := http.Server{
-			Addr:    viper.GetString(operator.DebugHTTPListenFlag),
-			Handler: mux,
+			Addr:              viper.GetString(operator.DebugHTTPListenFlag),
+			Handler:           mux,
+			ReadHeaderTimeout: 60 * time.Second,
 		}
 		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
@@ -580,12 +586,13 @@ func startOperator(ctx context.Context) error {
 	}
 
 	params := operator.Parameters{
-		Dialer:            dialer,
-		ExposedNodeLabels: exposedNodeLabels,
-		IPFamily:          ipFamily,
-		OperatorNamespace: operatorNamespace,
-		OperatorInfo:      operatorInfo,
-		GlobalCA:          ca,
+		Dialer:                           dialer,
+		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
+		ExposedNodeLabels:                exposedNodeLabels,
+		IPFamily:                         ipFamily,
+		OperatorNamespace:                operatorNamespace,
+		OperatorInfo:                     operatorInfo,
+		GlobalCA:                         ca,
 		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,
@@ -641,7 +648,7 @@ func startOperator(ctx context.Context) error {
 		mgr.GetCache().WaitForCacheSync(ctx)
 
 		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-		licenseType, err := lc.ValidOperatorLicenseKeyType()
+		licenseType, err := lc.ValidOperatorLicenseKeyType(ctx)
 		if err != nil {
 			log.Error(err, "Failed to validate operator license key")
 			exitOnErr <- err
@@ -728,10 +735,10 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 }
 
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
-// 1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
-// 2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
-//    If we determine we are on an OpenShift cluster, and since OpenShift automatically sets security context, return false,
-//    otherwise, return true as we'll need to set this security context on non-OpenShift clusters.
+//  1. If the setDefaultSecurityContext is explicitly set to either true, or false, use this value.
+//  2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
+//     If we determine we are on an OpenShift cluster, and since OpenShift automatically sets security context, return false,
+//     otherwise, return true as we'll need to set this security context on non-OpenShift clusters.
 func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
 	if setDefaultSecurityContext == "auto-detect" {
 		openshift, err := isOpenShift(clientset)
@@ -740,8 +747,8 @@ func determineSetDefaultSecurityContext(setDefaultSecurityContext string, client
 	return strconv.ParseBool(setDefaultSecurityContext)
 }
 
-// isOpenShift detects whether we are running on OpenShift.  Detection inspired by kubevirt
-//    https://github.com/kubevirt/kubevirt/blob/f71e9c9615a6c36178169d66814586a93ba515b5/pkg/util/cluster/cluster.go#L21
+// isOpenShift detects whether we are running on OpenShift. Detection inspired by kubevirt:
+// - https://github.com/kubevirt/kubevirt/blob/f71e9c9615a6c36178169d66814586a93ba515b5/pkg/util/cluster/cluster.go#L21
 func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	openshiftSecurityGroupVersion := schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}
 	apiResourceList, err := clientset.Discovery().ServerResourcesForGroupVersion(openshiftSecurityGroupVersion.String())

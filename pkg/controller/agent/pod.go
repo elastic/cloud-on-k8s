@@ -5,11 +5,12 @@
 package agent
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"hash"
 	"path"
 	"sort"
-	"strconv"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -46,8 +48,8 @@ const (
 	FleetCertsMountPath  = "/usr/share/fleet-server/config/http-certs"
 
 	DataVolumeName            = "agent-data"
-	DataMountHostPathTemplate = "/var/lib/%s/%s/agent-data"
-	DataMountPath             = "/usr/share/data"
+	DataMountHostPathTemplate = "/var/lib/elastic-agent/%s/%s/state"
+	DataMountPath             = "/usr/share/elastic-agent/state" // available since 7.13 functional since 7.15 without effect before that
 
 	// ConfigHashAnnotationName is an annotation used to store the Agent config hash.
 	ConfigHashAnnotationName = "agent.k8s.elastic.co/config-hash"
@@ -55,17 +57,11 @@ const (
 	// VersionLabelName is a label used to track the version of a Agent Pod.
 	VersionLabelName = "agent.k8s.elastic.co/version"
 
-	// Below are the names of environment variables used to configure Elastic Agent to Kibana connection in Fleet mode.
-	KibanaFleetHost     = "KIBANA_FLEET_HOST"
-	KibanaFleetUsername = "KIBANA_FLEET_USERNAME"
-	KibanaFleetPassword = "KIBANA_FLEET_PASSWORD" //nolint:gosec
-	KibanaFleetSetup    = "KIBANA_FLEET_SETUP"
-	KibanaFleetCA       = "KIBANA_FLEET_CA"
-
 	// Below are the names of environment variables used to configure Elastic Agent to Fleet connection in Fleet mode.
-	FleetEnroll = "FLEET_ENROLL"
-	FleetCA     = "FLEET_CA"
-	FleetURL    = "FLEET_URL"
+	FleetEnroll          = "FLEET_ENROLL"
+	FleetEnrollmentToken = "FLEET_ENROLLMENT_TOKEN"
+	FleetCA              = "FLEET_CA"
+	FleetURL             = "FLEET_URL"
 
 	// Below are the names of environment variables used to configure Fleet Server and its connection to Elasticsearch
 	// in Fleet mode.
@@ -76,6 +72,7 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
@@ -111,14 +108,13 @@ var (
 	}
 
 	secretEnvVarNames = map[string]struct{}{
-		KibanaFleetUsername:              {},
-		KibanaFleetPassword:              {},
+		FleetEnrollmentToken:             {},
 		FleetServerElasticsearchUsername: {},
 		FleetServerElasticsearchPassword: {},
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -135,7 +131,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
 		var err error
-		if builder, err = amendBuilderForFleetMode(params, fleetCerts, builder, configHash); err != nil {
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 	} else if spec.StandaloneModeEnabled() {
@@ -147,8 +143,15 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		builder = builder.
 			WithResources(defaultResources).
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
+	}
 
-		// volume with agent data path
+	v, err := version.Parse(params.Agent.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+	// volume with agent data path if version > 7.15 (available since 7.13 but non-functional as agent tries to fork child
+	// processes in data path directory and hostPath volumes are always mounted non-exec)
+	if v.GTE(version.MinFor(7, 15, 0)) {
 		vols = append(vols, createDataVolume(params))
 	}
 
@@ -183,7 +186,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	return builder.PodTemplate, nil
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
@@ -200,7 +203,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	// ES, Kibana and FleetServer connection info are inject using environment variables
-	builder, err = applyEnvVars(params, builder)
+	builder, err = applyEnvVars(params, fleetToken, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -225,8 +228,8 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	return builder, nil
 }
 
-func applyEnvVars(params Params, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Agent, params.Client)
+func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, fleetToken)
 	if err != nil {
 		return nil, err
 	}
@@ -372,6 +375,11 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
 	var vols []volume.VolumeLike //nolint:prealloc
 	for i, assoc := range associations {
+		// the Kibana association is only used by the operator to interact with the Kibana Fleet API but
+		// not by the individual Elastic Agent Pods. There is therefore no need to mount the Kibana certificate secret.
+		if assoc.AssociationType() == commonv1.KibanaAssociationType {
+			continue
+		}
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
 			return nil, err
@@ -427,15 +435,15 @@ func certificatesDir(association commonv1.Association) string {
 	)
 }
 
-func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetModeEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	result := map[string]string{}
 
-	for _, f := range []func(agentv1alpha1.Agent, k8s.Client) (map[string]string, error){
+	for _, f := range []func(context.Context, agentv1alpha1.Agent, k8s.Client, EnrollmentAPIKey) (map[string]string, error){
 		getFleetSetupKibanaEnvVars,
 		getFleetSetupFleetEnvVars,
 		getFleetSetupFleetServerEnvVars,
 	} {
-		envVars, err := f(agent, client)
+		envVars, err := f(ctx, agent, client, fleetToken)
 		if err != nil {
 			return nil, err
 		}
@@ -445,32 +453,23 @@ func getFleetModeEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[stri
 	return result, nil
 }
 
-func getFleetSetupKibanaEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
-	if agent.Spec.KibanaRef.IsDefined() {
-		kbConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.KibanaAssociationType)
-		if err != nil {
-			return nil, err
-		}
-
-		envVars := map[string]string{
-			KibanaFleetHost:     kbConnectionSettings.host,
-			KibanaFleetUsername: kbConnectionSettings.credentials.Username,
-			KibanaFleetPassword: kbConnectionSettings.credentials.Password,
-			KibanaFleetSetup:    strconv.FormatBool(agent.Spec.KibanaRef.IsDefined()),
-		}
-
-		// don't set ca key if ca is not available
-		if kbConnectionSettings.ca != "" {
-			envVars[KibanaFleetCA] = kbConnectionSettings.ca
-		}
-
-		return envVars, nil
+func getFleetSetupKibanaEnvVars(_ context.Context, agent agentv1alpha1.Agent, _ k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
+	if !agent.Spec.KibanaRef.IsDefined() {
+		return map[string]string{}, nil
 	}
 
-	return map[string]string{}, nil
+	if fleetToken.isEmpty() {
+		return nil, errors.New("fleet enrollment token must not be empty, potential programmer error")
+	}
+
+	envVars := map[string]string{
+		FleetEnrollmentToken: fleetToken.APIKey,
+	}
+
+	return envVars, nil
 }
 
-func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, client k8s.Client, fleetToken EnrollmentAPIKey) (map[string]string, error) {
 	fleetCfg := map[string]string{}
 
 	if agent.Spec.KibanaRef.IsDefined() {
@@ -491,6 +490,10 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 
 		fleetCfg[FleetURL] = fleetURL
 		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		// Fleet Server needs a policy ID to bootstrap itself unless a policy marked as default is used.
+		if agent.Spec.KibanaRef.IsDefined() && !fleetToken.isEmpty() {
+			fleetCfg[FleetServerPolicyID] = fleetToken.PolicyID
+		}
 	} else if agent.Spec.FleetServerRef.IsDefined() {
 		assoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
 		if err != nil {
@@ -512,7 +515,7 @@ func getFleetSetupFleetEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (ma
 	return fleetCfg, nil
 }
 
-func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Client) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, _ EnrollmentAPIKey) (map[string]string, error) {
 	if !agent.Spec.FleetServerEnabled {
 		return map[string]string{}, nil
 	}
@@ -525,7 +528,7 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
 	if esExpected {
-		esConnectionSettings, err := extractConnectionSettings(agent, client, commonv1.ElasticsearchAssociationType)
+		esConnectionSettings, _, err := extractPodConnectionSettings(ctx, agent, client, commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}
@@ -540,8 +543,8 @@ func getFleetSetupFleetServerEnvVars(agent agentv1alpha1.Agent, client k8s.Clien
 		}
 
 		// don't set ca key if ca is not available
-		if esConnectionSettings.ca != "" {
-			fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.ca
+		if esConnectionSettings.caFileName != "" {
+			fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.caFileName
 		}
 	}
 

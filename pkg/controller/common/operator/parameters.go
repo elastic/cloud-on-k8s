@@ -5,6 +5,8 @@
 package operator
 
 import (
+	"time"
+
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 
@@ -16,6 +18,8 @@ import (
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
+	// ElasticsearchObservationInterval is the interval between (asynchronous) observations of Elasticsearch health.
+	ElasticsearchObservationInterval time.Duration
 	// ExposedNodeLabels holds regular expressions of node labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
 	ExposedNodeLabels esvalidation.NodeLabels
 	// OperatorNamespace is the control plane namespace of the operator.

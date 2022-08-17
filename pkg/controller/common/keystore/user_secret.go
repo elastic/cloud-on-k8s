@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const secureSettingsSecretSuffix = "secure-settings"
@@ -53,7 +54,7 @@ func secureSettingsVolume(
 		return nil, "", err
 	}
 
-	secrets, err := retrieveUserSecrets(r.K8sClient(), r.Recorder(), hasKeystore)
+	secrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore)
 	if err != nil {
 		return nil, "", err
 	}
@@ -116,11 +117,11 @@ func reconcileSecureSettings(
 	return &secret, nil
 }
 
-func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {
+func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {
 	userSecrets := make([]corev1.Secret, 0, len(hasKeystore.SecureSettings()))
 	for _, userSecretsRef := range hasKeystore.SecureSettings() {
 		// retrieve the secret referenced by the user in the same namespace
-		userSecret, exists, err := retrieveUserSecret(c, recorder, hasKeystore, userSecretsRef)
+		userSecret, exists, err := retrieveUserSecret(ctx, c, recorder, hasKeystore, userSecretsRef)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +134,7 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.SecretSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.SecretSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
 	secretName := secretSrc.SecretName
 
@@ -141,7 +142,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	err := c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "namespace", namespace, "secret_name", secretName)
+		ulog.FromContext(ctx).Info(msg, "namespace", namespace, "secret_name", secretName)
 		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 		return nil, false, nil
 	} else if err != nil {

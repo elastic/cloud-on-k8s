@@ -10,7 +10,6 @@ import (
 	"hash/fnv"
 	"time"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -26,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 type Type string
@@ -36,7 +36,6 @@ type Driver interface {
 
 type DriverParams struct {
 	Context context.Context
-	Logger  logr.Logger
 
 	Client        k8s.Client
 	EventRecorder record.EventRecorder
@@ -84,7 +83,7 @@ func Reconcile(
 		return results.WithError(err), params.Status
 	}
 
-	assocAllowed, err := association.AllowVersion(beatVersion, &params.Beat, params.Logger, params.Recorder())
+	assocAllowed, err := association.AllowVersion(beatVersion, &params.Beat, ulog.FromContext(params.Context), params.Recorder())
 	if err != nil {
 		return results.WithError(err), params.Status
 	}

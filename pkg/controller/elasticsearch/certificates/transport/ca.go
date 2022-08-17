@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func CustomTransportCertsWatchKey(es types.NamespacedName) string {
@@ -90,7 +91,7 @@ func ReconcileOrRetrieveCA(
 		},
 	})
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",
+		ulog.FromContext(ctx).Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",
 			"namespace", esNSN.Namespace, "name", esNSN.Name, "err", err.Error(),
 		)
 	}

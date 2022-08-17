@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -32,7 +31,7 @@ func fakeEsClient200(user client.BasicAuth) client.Client {
 		func(req *http.Request) *http.Response {
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -121,7 +120,7 @@ func fakeEsClient(healthRespErr bool) client.Client {
 		var respBody io.ReadCloser
 
 		if strings.Contains(req.URL.RequestURI(), "health") {
-			respBody = ioutil.NopCloser(bytes.NewBufferString(fixtures.HealthSample))
+			respBody = io.NopCloser(bytes.NewBufferString(fixtures.HealthSample))
 			if healthRespErr {
 				statusCode = 500
 			}
@@ -160,6 +159,46 @@ func TestRetrieveHealth(t *testing.T) {
 			esClient := fakeEsClient(tt.healthRespErr)
 			health := retrieveHealth(context.Background(), cluster, esClient)
 			require.Equal(t, tt.expected, health)
+		})
+	}
+}
+
+func Test_nonNegativeTimeout(t *testing.T) {
+	type args struct {
+		observationInterval time.Duration
+	}
+	tests := []struct {
+		name string
+		args args
+		want time.Duration
+	}{
+		{
+			name: "positive observation interval == timeout",
+			args: args{
+				observationInterval: 1 * time.Second,
+			},
+			want: 1 * time.Second,
+		},
+		{
+			name: "0 observation interval == default",
+			args: args{
+				observationInterval: 0,
+			},
+			want: defaultObservationTimeout,
+		},
+		{
+			name: "negative observation interval == default",
+			args: args{
+				observationInterval: -1 * time.Second,
+			},
+			want: defaultObservationTimeout,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nonNegativeTimeout(tt.args.observationInterval); got != tt.want {
+				t.Errorf("nonNegativeTimeout() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

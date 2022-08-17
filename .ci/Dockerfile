@@ -1,7 +1,7 @@
 # Docker image used for continuous integration
-FROM golang:1.18.4
+FROM docker.io/library/golang:1.19.0
 
-ENV GOLANGCILINT_VERSION=1.45.2
+ENV GOLANGCILINT_VERSION=1.48.0
 ENV SHELLCHECK_VERSION=0.8.0
 ENV KUBEBUILDER_VERSION=2.3.1
 ENV GCLOUD_VERSION=381.0.0
@@ -11,6 +11,7 @@ ENV DOCKER_BUILDX_VERSION=0.8.2
 ENV GOTESTSUM_VERSION=1.8.0
 ENV EKSCTL_VERSION=0.74.0
 ENV ECK_DIAG_VERSION=1.1.0
+ENV HELM_VERSION=3.9.1
 
 # golangci-lint
 RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
@@ -81,6 +82,13 @@ RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/v${EKSCT
     tar xzf eksctl_Linux_amd64.tar.gz && \
     mv eksctl /usr/local/bin/eksctl && \
     rm eksctl_Linux_amd64.tar.gz
+
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod 700 get_helm.sh && \ 
+    ./get_helm.sh -v v${HELM_VERSION} --no-sudo && \
+    rm get_helm.sh
+
+RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
 
 # Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -58,7 +58,7 @@ var emptyTrialLicenseFixture = EnterpriseLicense{
 }
 
 func externallySignedLicenseFixture() (EnterpriseLicense, error) {
-	exptectedBytes, err := ioutil.ReadFile("testdata/externally-generated-lic.json")
+	exptectedBytes, err := os.ReadFile("testdata/externally-generated-lic.json")
 	if err != nil {
 		return EnterpriseLicense{}, err
 	}

@@ -5,6 +5,10 @@
 package observer
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
 	"testing"
 	"time"
 
@@ -14,7 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
 func TestManager_List(t *testing.T) {
@@ -39,7 +45,7 @@ func TestManager_List(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil)
+			m := NewManager(0, nil)
 			m.observers = tt.observers
 			require.ElementsMatch(t, tt.want, m.List())
 		})
@@ -54,7 +60,7 @@ func TestManager_Observe(t *testing.T) {
 	fakeClient := fakeEsClient200(client.BasicAuth{})
 	fakeClientWithDifferentUser := fakeEsClient200(client.BasicAuth{Name: "name", Password: "another-one"})
 	defaultSettings := Settings{
-		ObservationInterval: defaultObservationInterval,
+		ObservationInterval: defaultObservationTimeout,
 	}
 
 	tests := []struct {
@@ -100,13 +106,13 @@ func TestManager_Observe(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil)
+			m := NewManager(10*time.Second, nil)
 			m.observers = tt.initiallyObserved
 			var initialCreationTime time.Time
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(esObject(tt.clusterToObserve), tt.clusterToObserveClient)
+			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), tt.clusterToObserveClient)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -117,6 +123,69 @@ func TestManager_Observe(t *testing.T) {
 				require.Equal(t, tt.expectNewObserver, !initialCreationTime.Equal(observer.creationTime))
 			}
 			observer.Stop()
+		})
+	}
+}
+
+func flappingEsClient() client.Client {
+	var retErr bool
+	return client.NewMockClientWithUser(version.MustParse("8.3.0"),
+		client.BasicAuth{},
+		func(req *http.Request) *http.Response {
+			if retErr {
+				retErr = false
+				return &http.Response{
+					StatusCode: 503,
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			}
+			retErr = true
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.HealthSample)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+}
+
+func TestManager_ObserveSync(t *testing.T) {
+	tests := []struct {
+		name           string
+		manager        *Manager
+		expectedHealth []esv1.ElasticsearchHealth
+	}{
+		{
+			name:    "Async observation disabled make sync requests every time",
+			manager: NewManager(-1*time.Second, nil),
+			expectedHealth: []esv1.ElasticsearchHealth{
+				esv1.ElasticsearchGreenHealth,
+				// the flapping client returns an error on the second request
+				esv1.ElasticsearchUnknownHealth,
+			},
+		},
+		{
+			name:    "Async observation enabled, only the first request is synchronous",
+			manager: NewManager(1*time.Hour, nil),
+			expectedHealth: []esv1.ElasticsearchHealth{
+				esv1.ElasticsearchGreenHealth,
+				// the async observer returns the old observation while the observation interval has not expired
+				esv1.ElasticsearchGreenHealth,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esClient := flappingEsClient()
+			name := cluster("es1")
+			cluster := esObject(name)
+			results := []esv1.ElasticsearchHealth{
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
+			}
+			require.Equal(t, tt.expectedHealth, results)
+			tt.manager.StopObserving(name) // let's clean up the go-routines
 		})
 	}
 }
@@ -163,7 +232,7 @@ func TestManager_StopObserving(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil)
+			m := NewManager(10*time.Second, nil)
 			m.observers = tt.observed
 			for _, name := range tt.stopObserving {
 				m.StopObserving(name)
@@ -174,7 +243,8 @@ func TestManager_StopObserving(t *testing.T) {
 }
 
 func TestManager_AddObservationListener(t *testing.T) {
-	m := NewManager(nil)
+	m := NewManager(1*time.Second, nil)
+	ctx := context.Background()
 
 	cluster1 := esObject(cluster("cluster1"))
 	cluster1.ObjectMeta.Annotations = map[string]string{ObserverIntervalAnnotation: "0.000001s"}
@@ -207,9 +277,9 @@ func TestManager_AddObservationListener(t *testing.T) {
 		close(doneCh)
 	}()
 	// observe 2 clusters
-	obs1 := m.Observe(cluster1, fakeEsClient200(client.BasicAuth{}))
+	obs1 := m.Observe(ctx, cluster1, fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster2, fakeEsClient200(client.BasicAuth{}))
+	obs2 := m.Observe(ctx, cluster2, fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
 	<-doneCh
 }
@@ -225,26 +295,29 @@ func esObject(n types.NamespacedName) esv1.Elasticsearch {
 
 func TestExtractSettings(t *testing.T) {
 	testCases := []struct {
-		name        string
-		annotations map[string]string
-		want        Settings
+		name           string
+		globalInterval time.Duration
+		annotations    map[string]string
+		want           Settings
 	}{
 		{
-			name: "no annotations",
-			want: Settings{ObservationInterval: defaultObservationInterval},
+			name:           "no annotations",
+			globalInterval: 1 * time.Minute,
+			want:           Settings{ObservationInterval: 1 * time.Minute},
 		},
 		{
-			name:        "with annotations",
-			annotations: map[string]string{ObserverIntervalAnnotation: "42s"},
-			want:        Settings{ObservationInterval: 42 * time.Second},
+			name:           "with annotations",
+			globalInterval: 1 * time.Second,
+			annotations:    map[string]string{ObserverIntervalAnnotation: "42s"},
+			want:           Settings{ObservationInterval: 42 * time.Second},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
-			m := NewManager(nil)
-			have := m.extractObserverSettings(es)
+			m := NewManager(tc.globalInterval, nil)
+			have := m.extractObserverSettings(context.Background(), es)
 			require.Equal(t, tc.want, have)
 		})
 	}

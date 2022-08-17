@@ -22,12 +22,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) (bool, error) {
+func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association, r record.EventRecorder) (bool, error) {
 	allAssociationsConfigured := true
 	for _, association := range associations {
-		isAssocConfigured, err := IsConfiguredIfSet(association, r)
+		isAssocConfigured, err := IsConfiguredIfSet(ctx, association, r)
 		if err != nil {
 			return false, err
 		}
@@ -38,7 +39,7 @@ func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecor
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) (bool, error) {
+func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r record.EventRecorder) (bool, error) {
 	ref := association.AssociationRef()
 	assocConf, err := association.AssociationConf()
 	if err != nil {
@@ -51,7 +52,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			events.EventAssociationError,
 			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
 		)
-		log.Info("Association not established: skipping association resource reconciliation",
+		ulog.FromContext(ctx).Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
@@ -75,7 +76,7 @@ func (c Credentials) HasServiceAccountToken() bool {
 // against an Elasticsearch cluster.
 // This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana).
 // This supports direct or transitive association to unmanaged Elasticsearch using a custom Secret.
-func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (_ Credentials, err error) {
+func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1.Association) (_ Credentials, err error) {
 	assocConf, err := assoc.AssociationConf()
 	if err != nil {
 		return Credentials{}, err
@@ -105,7 +106,7 @@ func ElasticsearchAuthSettings(c k8s.Client, assoc commonv1.Association) (_ Cred
 	username := assocConf.AuthSecretKey
 	// if direct or transitive unmanaged ES, the auth secret points to an unmanaged Secret where the username key exists
 	if providedUsername, exists := secret.Data[authUsernameUnmanagedSecretKey]; exists {
-		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
+		ulog.FromContext(ctx).V(1).Info("Association with a transitive unmanaged Elasticsearch, read unmanaged auth Secret",
 			"name", assoc.Associated().GetName(), "ref_name", assoc.AssociationRef().NameOrSecretName())
 		username = string(providedUsername)
 	}

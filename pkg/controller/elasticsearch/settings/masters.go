@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // Quorum computes the quorum of a cluster given the number of masters.
@@ -45,6 +46,7 @@ func UpdateSeedHostsConfigMap(
 ) error {
 	span, ctx := apm.StartSpan(ctx, "update_seed_hosts", tracing.SpanTypeApp)
 	defer span.End()
+	log := ulog.FromContext(ctx)
 
 	// Get the masters from the pods
 	var masters []corev1.Pod

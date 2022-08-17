@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	kibana_network "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
@@ -58,7 +59,7 @@ func ReadinessProbeSecretVolume(ent entv1.EnterpriseSearch) volume.SecretVolume 
 // - the Enterprise Search configuration file
 // - a bash script used as readiness probe
 func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (corev1.Secret, error) {
-	cfg, err := newConfig(driver, ent, ipFamily)
+	cfg, err := newConfig(ctx, driver, ent, ipFamily)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -146,8 +147,8 @@ func readinessProbeScript(ent entv1.EnterpriseSearch, config *settings.Canonical
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
-	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ent)
+func newConfig(ctx context.Context, driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*settings.CanonicalConfig, error) {
+	reusedCfg, err := getOrCreateReusableSettings(ctx, driver.K8sClient(), ent)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +173,7 @@ func newConfig(driver driver.Interface, ent entv1.EnterpriseSearch, ipFamily cor
 
 	userCfgHasAuth := userConfigHasAuth(userProvidedCfg, userProvidedSecretCfg)
 
-	associationCfg, err := associationConfig(driver.K8sClient(), ent, userCfgHasAuth)
+	associationCfg, err := associationConfig(ctx, driver.K8sClient(), ent, userCfgHasAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +195,8 @@ type reusableSettings struct {
 }
 
 // getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
-func getOrCreateReusableSettings(c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg, err := getExistingConfig(c, ent)
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+	cfg, err := getExistingConfig(ctx, c, ent)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +233,7 @@ func getOrCreateReusableSettings(c k8s.Client, ent entv1.EnterpriseSearch) (*set
 }
 
 // getExistingConfig retrieves the canonical config, if one exists
-func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func getExistingConfig(ctx context.Context, client k8s.Client, ent entv1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ent.Namespace,
@@ -240,7 +241,7 @@ func getExistingConfig(client k8s.Client, ent entv1.EnterpriseSearch) (*settings
 	}
 	err := client.Get(context.Background(), key, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
-		log.V(1).Info("Enterprise Search config secret does not exist", "namespace", ent.Namespace, "ent_name", ent.Name)
+		ulog.FromContext(ctx).V(1).Info("Enterprise Search config secret does not exist", "namespace", ent.Namespace, "ent_name", ent.Name)
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -290,7 +291,7 @@ func defaultConfig(ent entv1.EnterpriseSearch, ipFamily corev1.IPFamily) (*setti
 	return settings.MustCanonicalConfig(settingsMap), nil
 }
 
-func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth bool) (*settings.CanonicalConfig, error) {
+func associationConfig(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth bool) (*settings.CanonicalConfig, error) {
 	entAssocConf, err := ent.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -311,7 +312,7 @@ func associationConfig(c k8s.Client, ent entv1.EnterpriseSearch, userCfgHasAuth 
 		})
 	}
 
-	credentials, err := association.ElasticsearchAuthSettings(c, &ent)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, c, &ent)
 	if err != nil {
 		return nil, err
 	}

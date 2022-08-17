@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 	"hash"
 	"hash/fnv"
 	"net/url"
@@ -149,6 +148,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
 				params: DriverParams{
+					Context: context.Background(),
 					Watches: watches.NewDynamicWatches(),
 					Client:  k8s.NewFakeClient(),
 					Beat: v1beta1.Beat{
@@ -195,6 +195,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"),
 				params: DriverParams{
+					Context: context.Background(),
 					Watches: watches.NewDynamicWatches(),
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator

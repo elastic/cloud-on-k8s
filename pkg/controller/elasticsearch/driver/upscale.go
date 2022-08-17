@@ -132,7 +132,7 @@ func adjustResources(
 
 func adjustZenConfig(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
+	if err := zen1.SetupMinimumMasterNodesConfig(ctx, k8sClient, es, resources); err != nil {
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes

@@ -18,9 +18,7 @@ spec:
     - name: fleet_server
       version: latest
     - name: kubernetes
-      # pinning this version as the next one introduced a kube-proxy host setting default that breaks this recipe,
-      # see https://github.com/elastic/integrations/pull/1565 for more details
-      version: 0.14.0
+      version: latest
     xpack.fleet.agentPolicies:
     - name: Fleet Server on ECK policy
       id: eck-fleet-server
@@ -28,6 +26,7 @@ spec:
       monitoring_enabled:
       - logs
       - metrics
+      unenroll_timeout: 900
       is_default_fleet_server: true
       package_policies:
       - name: fleet_server-1

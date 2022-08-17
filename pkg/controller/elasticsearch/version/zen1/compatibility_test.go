@@ -5,6 +5,7 @@
 package zen1
 
 import (
+	"context"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -78,7 +79,7 @@ func TestIsCompatibleWithZen1(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsCompatibleWithZen1(tt.sset); got != tt.want {
+			if got := IsCompatibleWithZen1(context.Background(), tt.sset); got != tt.want {
 				t.Errorf("IsCompatibleWithZen1() = %v, want %v", got, tt.want)
 			}
 		})
@@ -126,7 +127,7 @@ func TestAtLeastOneNodeCompatibleWithZen1(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AtLeastOneNodeCompatibleWithZen1(tt.statefulSets, tt.client, testES)
+			got, err := AtLeastOneNodeCompatibleWithZen1(context.Background(), tt.statefulSets, tt.client, testES)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -144,6 +144,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 // RunFile runs the builder workflow for all known resources in a yaml file, all other objects are created before and deleted
 // after. Resources will be created in a given namespace and with a given suffix. Additional objects to be created and deleted
 // can be passed as well as set of optional transformations to apply to all Builders.
+//
 //nolint:thelper
 func RunFile(
 	t *testing.T,

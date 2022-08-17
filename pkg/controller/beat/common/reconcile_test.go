@@ -35,6 +35,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates strategy",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
@@ -58,6 +59,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates pod template",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
@@ -77,6 +79,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates labels and owner",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					ObjectMeta: metav1.ObjectMeta{Name: "my-beat", Namespace: "my-namespace"},

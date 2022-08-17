@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -146,7 +146,7 @@ func request(esClient client.Client, url string) ([]byte, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	resultBytes, err := ioutil.ReadAll(res.Body)
+	resultBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}

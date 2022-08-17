@@ -3,9 +3,11 @@
     "di": {
       "required_capacity": {
         "node": {
+          "processors": 2.5,
           "storage": 165155770
         },
         "total": {
+          "processors": 5.0,
           "storage": 3069911040
         }
       },

@@ -306,7 +306,7 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 	licenseSecret, license, err := commonlicense.TrialLicense(wrappedClient, licenseNSN)
 	require.NoError(t, err)
 	// fill in and sign
-	require.NoError(t, trialState.InitTrialLicense(&license))
+	require.NoError(t, trialState.InitTrialLicense(context.Background(), &license))
 	status, err := commonlicense.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
 	require.NoError(t, err)
 	// persist status

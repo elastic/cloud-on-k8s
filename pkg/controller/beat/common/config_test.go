@@ -8,8 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -210,7 +208,6 @@ func Test_buildBeatConfig(t *testing.T) {
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Logger:        logr.Discard(),
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat(),
@@ -320,7 +317,7 @@ setup.kibana:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildKibanaConfig(tt.args.client, tt.args.associated)
+			got, err := BuildKibanaConfig(context.Background(), tt.args.client, tt.args.associated)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildKibanaConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -411,7 +408,6 @@ func Test_getUserConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
-				Logger:        logr.Discard(),
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),

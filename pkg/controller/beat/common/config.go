@@ -5,6 +5,7 @@
 package common
 
 import (
+	"context"
 	"hash"
 	"path"
 
@@ -22,7 +23,7 @@ import (
 )
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
-func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
+func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
 	esAssocConf, err := associated.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -31,7 +32,7 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
@@ -52,7 +53,7 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 }
 
 // BuildKibanaConfig builds on optional Kibana configuration for dashboard setup and visualizations.
-func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssociation) (*settings.CanonicalConfig, error) {
+func BuildKibanaConfig(ctx context.Context, client k8s.Client, associated beatv1beta1.BeatKibanaAssociation) (*settings.CanonicalConfig, error) {
 	kbAssocConf, err := associated.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 		return settings.NewCanonicalConfig(), nil
 	}
 
-	credentials, err := association.ElasticsearchAuthSettings(client, &associated)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, client, &associated)
 	if err != nil {
 		return settings.NewCanonicalConfig(), err
 	}
@@ -87,7 +88,7 @@ func buildBeatConfig(
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
-	outputCfg, err := buildOutputConfig(params.Client, beatv1beta1.BeatESAssociation{Beat: &params.Beat})
+	outputCfg, err := buildOutputConfig(params.Context, params.Client, beatv1beta1.BeatESAssociation{Beat: &params.Beat})
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 type PodTemplateError struct {
@@ -57,18 +58,14 @@ func validatePodTemplate(
 		Spec: template.Spec,
 	}
 	if err := c.Create(ctx, dummyPod, client.DryRunAll); err != nil {
-		return toPodTemplateError(parent, sset, err)
+		return toPodTemplateError(ctx, parent, sset, err)
 	}
 	return nil
 }
 
 // toPodTemplateError attempts to extract the meaningful information from the dry run API call by converting the original
 // error into a PodTemplateError.
-func toPodTemplateError(
-	parent metav1.Object,
-	sset appsv1.StatefulSet,
-	err error,
-) error {
+func toPodTemplateError(ctx context.Context, parent metav1.Object, sset appsv1.StatefulSet, err error) error {
 	var statusErr *k8serrors.StatusError
 	if !errors.As(err, &statusErr) {
 		// Not a Kubernetes API error (e.g. timeout)
@@ -91,6 +88,6 @@ func toPodTemplateError(
 
 	// The Kubernetes API returns an error which is not related to the spec. of the Pod. In order to not block
 	// the reconciliation loop we skip the validation.
-	log.Info("Pod validation skipped", "namespace", parent.GetNamespace(), "es_name", parent.GetName(), "error", statusErr)
+	ulog.FromContext(ctx).Info("Pod validation skipped", "namespace", parent.GetNamespace(), "es_name", parent.GetName(), "error", statusErr)
 	return nil
 }

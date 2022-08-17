@@ -5,6 +5,7 @@
 package maps
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -155,7 +156,7 @@ ssl:
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := newConfig(&d, tt.args.ems, tt.args.ipFamily)
+			got, err := newConfig(context.Background(), &d, tt.args.ems, tt.args.ipFamily)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

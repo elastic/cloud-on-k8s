@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -50,8 +51,6 @@ import (
 
 const name = "elasticsearch-controller"
 
-var log = ulog.Log.WithName(name)
-
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
 // this is also called by cmd/main.go
@@ -71,7 +70,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
-		esObservers:    observer.NewManager(params.Tracer),
+		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
@@ -159,6 +158,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
+	log := ulog.FromContext(ctx)
 	// Fetch the Elasticsearch instance
 	var es esv1.Elasticsearch
 	requeue, err := r.fetchElasticsearchWithAssociations(ctx, request, &es)
@@ -166,7 +166,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&es) {
+	if common.IsUnmanaged(ctx, &es) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
@@ -243,7 +243,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	reconcileState *esreconcile.State,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-
+	log := log.FromContext(ctx)
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
 		return results.WithError(r.onDelete(ctx, k8s.ExtractNamespacedName(&es)))
@@ -251,7 +251,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	err := validation.ValidateElasticsearch(es, r.licenseChecker, r.ExposedNodeLabels)
+	err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
 
 	if err != nil {
@@ -304,8 +304,8 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
-	defer span.End()
+	defer tracing.Span(&ctx)()
+	log := ulog.FromContext(ctx)
 
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
@@ -334,6 +334,8 @@ func (r *ReconcileElasticsearch) annotateResource(
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_hints_annotations", tracing.SpanTypeApp)
 	defer span.End()
+
+	log := ulog.FromContext(ctx)
 
 	// cluster-uuid is a special case of an annotation on the Elasticsearch resource that is not treated here but through
 	// an immediate update due to the risk of data loss. See bootstrap package.

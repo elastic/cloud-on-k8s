@@ -15,9 +15,6 @@ spec:
         - name: agent
           securityContext:
             runAsUser: 0
-          volumeMounts:
-          - name: agent-data
-            mountPath: /usr/share/elastic-agent/data/elastic-agent-08e204/run
           env:
           - name: NODE_NAME
             valueFrom:
@@ -150,6 +147,13 @@ rules:
   - get
   - watch
   - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+    - leases
+  verbs:
+    - get
+    - create
+    - update
 ---
 apiVersion: v1
 kind: ServiceAccount

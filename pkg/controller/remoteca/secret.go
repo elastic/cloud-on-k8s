@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // createOrUpdateCertificateAuthorities creates the two Secrets that are needed to establish a trust relationship between
@@ -48,7 +49,7 @@ func createOrUpdateCertificateAuthorities(
 		return results.WithError(err)
 	}
 
-	log.V(1).Info(
+	ulog.FromContext(ctx).V(1).Info(
 		"Setting up remote CA",
 		"local_namespace", localClusterKey.Namespace,
 		"local_name", localClusterKey.Namespace,
@@ -89,7 +90,7 @@ func copyCertificateAuthority(
 	}
 
 	if len(sourceCA.Data[certificates.CAFileName]) == 0 {
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			"Cannot find CA cert",
 			"local_namespace", source.Namespace,
 			"local_name", source.Namespace,

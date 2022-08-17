@@ -1,0 +1,37 @@
+---
+# Version of Kibana.
+#
+version: 8.2.3
+
+# Labels that will be applied to Kibana.
+#
+labels: {}
+  # key: value
+
+# Annotations that will be applied to Kibana.
+#
+annotations: {}
+  # key: value
+
+spec:
+  # Count of Kibana replicas to create.
+  #
+  count: 1
+
+  # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
+  #
+  elasticsearchRef:
+    name: quickstart-eck-elasticsearch
+    # namespace: default
+  http:
+    service:
+      spec:
+        # Type of service to deploy for Kibana.
+        # This deploys a load balancer in a cloud service provider, where supported.
+        # 
+        type: LoadBalancer
+    # tls:
+    #   selfSignedCertificate:
+    #     subjectAltNames:
+    #     - ip: 1.2.3.4
+    #     - dns: kibana.example.com

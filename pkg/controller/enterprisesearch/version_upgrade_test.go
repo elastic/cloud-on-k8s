@@ -7,7 +7,7 @@ package enterprisesearch
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -88,14 +88,14 @@ type roundTripChecks struct {
 func (f fakeRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	f.checks.called = true
 	f.checks.withURL = req.URL.String()
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
 	f.checks.withBody = string(body)
 	return &http.Response{
 		StatusCode: f.checks.returnStatusCode,
-		Body:       ioutil.NopCloser(bytes.NewReader(nil)),
+		Body:       io.NopCloser(bytes.NewReader(nil)),
 	}, nil
 }
 
@@ -322,14 +322,14 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(&ent, &esUserSecret)
 			u := &VersionUpgrade{k8sClient: c, ent: ent}
-			req, err := u.readOnlyModeRequest(tt.enabled)
+			req, err := u.readOnlyModeRequest(context.Background(), tt.enabled)
 			require.NoError(t, err)
 
 			// check URL
 			require.Equal(t, tt.wantURL, req.URL.String())
 
 			// check body
-			body, err := ioutil.ReadAll(req.Body)
+			body, err := io.ReadAll(req.Body)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantBody, string(body))
 

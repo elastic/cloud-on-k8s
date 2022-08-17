@@ -5,6 +5,7 @@
 package controller
 
 import (
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -14,6 +15,8 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
@@ -43,7 +46,23 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 			ElasticsearchRef: getElasticsearchFromKibana,
 			UserSecretSuffix: "agent-kb-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
-				return "superuser", nil
+				agent, ok := associated.(*agentv1alpha1.Agent)
+				if !ok {
+					return "", pkgerrors.Errorf(
+						"Agent expected, got %s/%s",
+						associated.GetObjectKind().GroupVersionKind().Group,
+						associated.GetObjectKind().GroupVersionKind().Kind,
+					)
+				}
+				v, err := version.Parse(agent.Spec.Version)
+				if err != nil {
+					return "", err
+				}
+				// Fleet API can only be used as a non-superuser as of 8.1.0 https://github.com/elastic/kibana/issues/108252
+				if v.LT(version.MinFor(8, 1, 0)) {
+					return "superuser", nil
+				}
+				return user.FleetAdminUserRole, nil
 			},
 		},
 	})

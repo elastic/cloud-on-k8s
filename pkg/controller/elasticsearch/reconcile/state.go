@@ -5,6 +5,7 @@
 package reconcile
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -17,8 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("elasticsearch-controller")
 
 // State holds the accumulated state during the reconcile loop including the response and a copy of the
 // Elasticsearch resource from the start of reconciliation, for status updates.
@@ -66,7 +65,8 @@ func MustNewState(c esv1.Elasticsearch) *State {
 	return state
 }
 
-func (s *State) fetchMinRunningVersion(resourcesState ResourcesState) (*version.Version, error) {
+func (s *State) fetchMinRunningVersion(ctx context.Context, resourcesState ResourcesState) (*version.Version, error) {
+	log := ulog.FromContext(ctx)
 	minPodVersion, err := version.MinInPods(resourcesState.AllPods, label.VersionLabelName)
 	if err != nil {
 		log.Error(err, "failed to parse running Pods version", "namespace", s.cluster.Namespace, "es_name", s.cluster.Name)
@@ -124,9 +124,10 @@ func (s *State) UpdateAvailableNodes(
 }
 
 func (s *State) UpdateMinRunningVersion(
+	ctx context.Context,
 	resourcesState ResourcesState,
 ) *State {
-	lowestVersion, err := s.fetchMinRunningVersion(resourcesState)
+	lowestVersion, err := s.fetchMinRunningVersion(ctx, resourcesState)
 	if err != nil {
 		// error already handled in fetchMinRunningVersion, move on with the status update
 	} else if lowestVersion != nil {

@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,7 +25,7 @@ overrides:
     address: %s
     token: %s
 `
-	EKSVaultPath            = "secret/devops-ci/cloud-on-k8s/ci-aws-k8s-operator"
+	EKSVaultPath            = "ci-aws-k8s-operator"
 	clusterCreationTemplate = `apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
@@ -117,7 +116,7 @@ func (e *EKSDriver) Execute() error {
 			}
 			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
+			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
@@ -150,7 +149,7 @@ func (e *EKSDriver) ensureWorkDir() error {
 	if e.ctx["WorkDir"] != "" {
 		return nil
 	}
-	dir, err := ioutil.TempDir("", e.ctx["ClusterName"].(string))
+	dir, err := os.MkdirTemp("", e.ctx["ClusterName"].(string))
 	if err != nil {
 		return err
 	}
@@ -232,7 +231,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
-	return ioutil.WriteFile(file, []byte(fileContents), 0600)
+	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
 var _ Driver = &EKSDriver{}
