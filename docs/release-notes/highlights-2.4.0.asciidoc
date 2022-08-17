@@ -8,16 +8,14 @@
 New and notable changes in version 2.4.0 of {n}. Check <<release-notes-2.4.0>> for the full list of changes.
 
 [float]
-[id="{p}-240-eck-helm-charts-"]
+[id="{p}-240-eck-helm-charts"]
 ==== Introducing Helm Charts for ECK-managed resources
 
 Starting from ECK 2.4.0, a Helm chart is available for managing Elastic Stack resources using the ECK Operator. It is available from the Elastic Helm repository and can be used to deploy Elasticsearch and Kibana:
 
-[source,bash]
-```
-helm repo add elastic https://helm.elastic.co
-helm repo update
-helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
-```
 
-Check link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-stack-helm-chart.html[docs] for more information and detailed instructions.
+[float]
+[id="{p}-240-agent-no-longer-experimental"]
+==== Elastic Agent CRD is no longer experimental
+
+With the improvements made in this and multiple previous releases, Elastic Agent CRD is not considered an experimental feature anymore. Note that the APIVersion stays at `v1alpha1` to avoid introducing upgrade friction to current users. Check <<{p}-elastic-agent-fleet,docs>> for more information.
