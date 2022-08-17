@@ -7,7 +7,6 @@ package kyverno
 import (
 	_ "embed"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,13 +28,13 @@ const (
 func Install(globalKubectlOptions ...string) error {
 	k := NewKubectl(globalKubectlOptions...)
 	// Kyverno related manifests are stored in a temporary directory
-	dir, err := ioutil.TempDir("", "gatekeeper")
+	dir, err := os.MkdirTemp("", "kyverno")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(dir)
 
-	// Install Gatekeeper
+	// Install Kyverno
 	log.Println("Installing Kyverno")
 	if err := apply(k, dir, install, "install.yaml"); err != nil {
 		return err
@@ -56,7 +55,7 @@ func Install(globalKubectlOptions ...string) error {
 
 func apply(k *Kubectl, workDir string, content string, tmpFilename string) error {
 	path := filepath.Join(workDir, tmpFilename)
-	if err := ioutil.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		return err
 	}
 	return k.NewCommand(fmt.Sprintf(`apply -f %s`, path)).Run()
