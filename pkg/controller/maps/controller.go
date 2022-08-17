@@ -48,8 +48,6 @@ const (
 	controllerName = "maps-controller"
 )
 
-var log = ulog.Log.WithName(controllerName)
-
 // Add creates a new MapsServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -163,8 +161,8 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&ems) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
+	if common.IsUnmanaged(ctx, &ems) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ems.Namespace, "maps_name", ems.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -185,10 +183,11 @@ func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.R
 }
 
 func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.ElasticMapsServer) (*reconciler.Results, emsv1alpha1.MapsStatus) {
+	log := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ems)
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -201,7 +200,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
 	}
 
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ems, r.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ems, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -242,8 +241,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 	if err != nil {
 		return results.WithError(err), status
 	}
-	logger := log.WithValues("namespace", ems.Namespace, "maps_name", ems.Name) // TODO  mapping explosion
-	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), logger, r.recorder)
+	assocAllowed, err := association.AllowVersion(emsVersion, ems.Associated(), log, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -269,7 +267,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	status, err = r.getStatus(ems, deploy)
+	status, err = r.getStatus(ctx, ems, deploy)
 	if err != nil {
 		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
 	}
@@ -288,7 +286,7 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	defer span.End()
 
 	if err := ems.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -383,13 +381,13 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 	}, nil
 }
 
-func (r *ReconcileMapsServer) getStatus(ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
+func (r *ReconcileMapsServer) getStatus(ctx context.Context, ems emsv1alpha1.ElasticMapsServer, deploy appsv1.Deployment) (emsv1alpha1.MapsStatus, error) {
 	status := newStatus(ems)
 	pods, err := k8s.PodsMatchingLabels(r.K8sClient(), ems.Namespace, map[string]string{NameLabelName: ems.Name})
 	if err != nil {
 		return status, err
 	}
-	deploymentStatus, err := common.DeploymentStatus(ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, ems.Status.DeploymentStatus, deploy, pods, versionLabelName)
 	if err != nil {
 		return status, err
 	}
@@ -406,7 +404,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 	if status.IsDegraded(ems.Status.DeploymentStatus) {
 		r.recorder.Event(&ems, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Maps Server health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ems.Namespace,
 		"maps_name", ems.Name,

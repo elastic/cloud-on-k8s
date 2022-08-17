@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -355,7 +356,7 @@ func Test_bestMatchAt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, found := bestMatchAt(now, &tt.args.minVersion, tt.args.licenses, noopFilter)
+			got, _, found := bestMatchAt(context.Background(), now, &tt.args.minVersion, tt.args.licenses, noopFilter)
 			if tt.wantFound != found {
 				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)
 			}
@@ -473,7 +474,7 @@ func Test_filterValidForType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := filterValid(now, &tt.args.minVersion, tt.args.licenses, noopFilter); !reflect.DeepEqual(got, tt.want) {
+			if got := filterValid(context.Background(), now, &tt.args.minVersion, tt.args.licenses, noopFilter); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("filterValidForType expected %v, got %v", tt.want, got)
 			}
 		})

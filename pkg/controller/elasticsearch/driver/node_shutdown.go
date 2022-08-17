@@ -13,9 +13,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func newShutdownInterface(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	client esclient.Client,
 	state ESState,
@@ -27,7 +29,7 @@ func newShutdownInterface(
 		if err != nil {
 			return nil, err
 		}
-		logger := log.WithValues("namespace", es.Namespace, "es_name", es.Name)
+		logger := ulog.FromContext(ctx).WithValues("namespace", es.Namespace, "es_name", es.Name)
 		shutdownService = shutdown.NewNodeShutdown(client, idLookup, esclient.Remove, es.ResourceVersion, logger)
 	} else {
 		shutdownService = migration.NewShardMigration(es, client, client)
@@ -43,7 +45,7 @@ func supportsNodeShutdown(v version.Version) bool {
 // the settings previously that were used in the pre-node-shutdown orchestration approach.
 func (d *defaultDriver) maybeRemoveTransientSettings(ctx context.Context, c esclient.Client) error {
 	if supportsNodeShutdown(c.Version()) && !d.ReconcileState.OrchestrationHints().NoTransientSettings {
-		log.V(1).Info("Removing transient settings", "es_name", d.ES.Name, "namespace", d.ES.Namespace)
+		ulog.FromContext(ctx).V(1).Info("Removing transient settings", "es_name", d.ES.Name, "namespace", d.ES.Namespace)
 		if err := c.RemoveTransientAllocationSettings(ctx); err != nil {
 			return err
 		}

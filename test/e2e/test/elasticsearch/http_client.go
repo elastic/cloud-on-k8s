@@ -5,6 +5,8 @@
 package elasticsearch
 
 import (
+	"context"
+
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -86,7 +88,7 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 		user,
 		v,
 		caCert,
-		client.Timeout(es),
+		client.Timeout(context.Background(), es),
 		true,
 	)
 	return esClient, nil

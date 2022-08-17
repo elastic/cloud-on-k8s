@@ -22,10 +22,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var (
-	log = ulog.Log.WithName("generic-reconciler")
-)
-
 // Params is a parameter object for the ReconcileResources function
 type Params struct {
 	// Context to be used in API requests
@@ -76,6 +72,7 @@ func ReconcileResource(params Params) error {
 	if err != nil {
 		return err
 	}
+	log := ulog.FromContext(params.Context)
 	namespace := params.Expected.GetNamespace()
 	name := params.Expected.GetName()
 	gvk, err := apiutil.GVKForObject(params.Expected, scheme.Scheme)

@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 type webhook struct {
@@ -35,6 +37,7 @@ type AdmissionControllerInterface interface {
 }
 
 func (w *Params) NewAdmissionControllerInterface(ctx context.Context, clientset kubernetes.Interface) (AdmissionControllerInterface, error) {
+	log := ulog.FromContext(ctx)
 	// Detect if V1 is available
 	_, err := clientset.Discovery().ServerResourcesForGroupVersion(v1.SchemeGroupVersion.String())
 	if errors.IsNotFound(err) { // Presumably a K8S cluster older than 1.16

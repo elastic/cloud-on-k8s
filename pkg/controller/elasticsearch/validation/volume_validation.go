@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
@@ -68,7 +69,8 @@ func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
 // validPVCModification ensures the only part of volume claim templates that can be changed is storage requests.
 // Storage increase is allowed as long as the storage class supports volume expansion.
 // Storage decrease is not supported if the corresponding StatefulSet has been resized already.
-func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
+func validPVCModification(ctx context.Context, current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
+	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
 	if proposed.IsAutoscalingDefined() {
 		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
@@ -121,7 +123,7 @@ func validPVCModification(current esv1.Elasticsearch, proposed esv1.Elasticsearc
 			continue
 		}
 
-		if err := ValidateClaimsStorageUpdate(k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
+		if err := ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
 				proposedNodeSet.VolumeClaimTemplates,
@@ -146,6 +148,7 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 // - a storage increase is attempted but the storage class does not support volume expansion
 // - a new claim was added in updated ones
 func ValidateClaimsStorageUpdate(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	initial []corev1.PersistentVolumeClaim,
 	updated []corev1.PersistentVolumeClaim,
@@ -162,7 +165,7 @@ func ValidateClaimsStorageUpdate(
 		switch {
 		case cmp.Increase:
 			// storage increase requested: ensure the storage class allows volume expansion
-			if err := EnsureClaimSupportsExpansion(k8sClient, updatedClaim, validateStorageClass); err != nil {
+			if err := EnsureClaimSupportsExpansion(ctx, k8sClient, updatedClaim, validateStorageClass); err != nil {
 				return err
 			}
 		case cmp.Decrease:
@@ -195,9 +198,9 @@ func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.Per
 
 // EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion, and returns an error if it doesn't.
-func EnsureClaimSupportsExpansion(k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
+func EnsureClaimSupportsExpansion(ctx context.Context, k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
 	if !validateStorageClass {
-		log.V(1).Info("Skipping storage class validation")
+		ulog.FromContext(ctx).V(1).Info("Skipping storage class validation")
 		return nil
 	}
 	sc, err := getStorageClass(k8sClient, claim)

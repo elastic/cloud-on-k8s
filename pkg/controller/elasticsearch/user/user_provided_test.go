@@ -5,6 +5,7 @@
 package user
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -157,7 +158,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
-			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, filerealm.New(), tt.watched, recorder)
+			gotFileRealm, err := reconcileUserProvidedFileRealm(context.Background(), c, tt.es, filerealm.New(), tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantFileRealm, gotFileRealm)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
@@ -236,7 +237,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
-			gotRoles, err := reconcileUserProvidedRoles(c, tt.es, tt.watched, recorder)
+			gotRoles, err := reconcileUserProvidedRoles(context.Background(), c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRoles, gotRoles)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())

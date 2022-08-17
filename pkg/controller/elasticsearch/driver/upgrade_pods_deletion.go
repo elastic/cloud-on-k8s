@@ -17,12 +17,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
 // Do not run this function unless driver expectations are met.
 func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
+	log := ulog.FromContext(ctx.parentCtx)
 	// Update the status with the list of Pods to be maybe upgraded here.
 	ctx.reconcileState.RecordNodesToBeUpgraded(k8s.PodNames(ctx.podsToUpgrade))
 	if len(ctx.podsToUpgrade) == 0 {
@@ -116,7 +118,7 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 	}
 
 	if len(nonReadyPods) > 0 {
-		log.Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		ulog.FromContext(ctx.parentCtx).Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
 		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), "Not all Pods are ready for a full cluster upgrade")
 		return nil, nil
 	}
@@ -217,7 +219,7 @@ func deletePod(
 	reconcileState *reconcile.State,
 	msg string,
 ) error {
-	log.Info(msg, "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+	ulog.FromContext(ctx).Info(msg, "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
 	// We also check the version of the Pod resource, to make sure its status is the current one and we're not deleting
@@ -256,7 +258,7 @@ func runPredicates(
 			// "eck.k8s.elastic.co/disable-upgrade-predicates", then ignore this predicate,
 			// and continue processing the remaining predicates.
 			if disabledPredicates.Has(predicate.name) || disabledPredicates.Has("*") {
-				log.Info("Warning: disabling upgrade predicate because of annotation", "predicate", predicate.name, "namespace", ctx.es.Namespace, "es_name", ctx.es.Name)
+				ulog.FromContext(ctx.ctx).Info("Warning: disabling upgrade predicate because of annotation", "predicate", predicate.name, "namespace", ctx.es.Namespace, "es_name", ctx.es.Name)
 				continue
 			}
 			// Skip this Pod, it can't be deleted for the moment

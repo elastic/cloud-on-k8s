@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -157,7 +158,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 			apmv1.NewApmEsAssociation(apmServer).SetAssociationConf(tc.esAssocConf)
 			apmv1.NewApmKibanaAssociation(apmServer).SetAssociationConf(tc.kbAssocConf)
 
-			gotConf, err := newConfigFromSpec(client, apmServer)
+			gotConf, err := newConfigFromSpec(context.Background(), client, apmServer)
 			if tc.wantErr {
 				require.Error(t, err)
 				return

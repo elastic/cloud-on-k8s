@@ -31,9 +31,10 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 		Client:       client,
 		ES:           es,
 	}}
+	ctx := context.Background()
 
 	// no expectations set
-	satisfied, reason, err := d.expectationsSatisfied()
+	satisfied, reason, err := d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
 	require.Equal(t, "", reason)
@@ -45,21 +46,21 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	// but not satisfied yet
 	statefulSet.Generation = 122
 	require.NoError(t, client.Create(context.Background(), &statefulSet))
-	satisfied, reason, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
 	require.NotEqual(t, "", reason)
 	// satisfied now, but not from the StatefulSet controller point of view (status.observedGeneration)
 	statefulSet.Generation = 123
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
-	satisfied, reason, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
 	require.NotEqual(t, "", reason)
 	// satisfied now, with matching status.observedGeneration
 	statefulSet.Status.ObservedGeneration = 123
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
-	satisfied, reason, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
 	require.Equal(t, "", reason)
@@ -69,7 +70,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	statefulSet.Spec.Replicas = pointer.Int32(1)
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
 	// expectations should not be satisfied: we miss a pod
-	satisfied, reason, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
 	require.NotEqual(t, "", reason)
@@ -78,7 +79,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	pod := sset.TestPod{Namespace: es.Namespace, Name: "sset-0", StatefulSetName: statefulSet.Name}.Build()
 	require.NoError(t, client.Create(context.Background(), &pod))
 	// expectations should be satisfied
-	satisfied, reason, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
 	require.Equal(t, "", reason)

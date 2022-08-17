@@ -5,6 +5,7 @@
 package zen2
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,7 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsCompatibleWithZen2(tt.sset); got != tt.want {
+			if got := IsCompatibleWithZen2(context.Background(), tt.sset); got != tt.want {
 				t.Errorf("IsCompatibleWithZen2() = %v, want %v", got, tt.want)
 			}
 		})

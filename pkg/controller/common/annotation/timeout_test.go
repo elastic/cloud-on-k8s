@@ -5,6 +5,7 @@
 package annotation
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func TestExtractTimeout(t *testing.T) {
 				Annotations: tc.annotations,
 			}
 
-			have := ExtractTimeout(objMeta, key, defaultValue)
+			have := ExtractTimeout(context.Background(), objMeta, key, defaultValue)
 			require.Equal(t, tc.want, have)
 		})
 	}

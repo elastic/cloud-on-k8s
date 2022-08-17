@@ -17,11 +17,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // DeploymentStatus returns a DeploymentStatus computed from the given args.
 // Unknown fields are inherited from current.
-func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, pods []corev1.Pod, versionLabel string) (commonv1.DeploymentStatus, error) {
+func DeploymentStatus(ctx context.Context, current commonv1.DeploymentStatus, dep appsv1.Deployment, pods []corev1.Pod, versionLabel string) (commonv1.DeploymentStatus, error) {
 	status := *current.DeepCopy()
 	if dep.Spec.Selector != nil {
 		selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
@@ -32,7 +33,7 @@ func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, 
 	}
 	status.Count = dep.Status.Replicas
 	status.AvailableNodes = dep.Status.AvailableReplicas
-	status.Version = LowestVersionFromPods(status.Version, pods, versionLabel)
+	status.Version = LowestVersionFromPods(ctx, status.Version, pods, versionLabel)
 	status.Health = commonv1.RedHealth
 	for _, c := range dep.Status.Conditions {
 		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
@@ -44,10 +45,10 @@ func DeploymentStatus(current commonv1.DeploymentStatus, dep appsv1.Deployment, 
 
 // LowestVersionFromPods parses versions from the given pods based on the given label,
 // and returns the lowest one.
-func LowestVersionFromPods(currentVersion string, pods []corev1.Pod, versionLabel string) string {
+func LowestVersionFromPods(ctx context.Context, currentVersion string, pods []corev1.Pod, versionLabel string) string {
 	lowestVersion, err := version.MinInPods(pods, versionLabel)
 	if err != nil {
-		log.Error(err, "failed to parse version from Pods", "version_label", versionLabel)
+		ulog.FromContext(ctx).Error(err, "failed to parse version from Pods", "version_label", versionLabel)
 		return currentVersion
 	}
 	if lowestVersion == nil {
@@ -76,7 +77,7 @@ func workaroundStatusUpdateError(ctx context.Context, err error, client k8s.Clie
 	if err != nil {
 		return err
 	}
-	log.Info(
+	ulog.FromContext(ctx).Info(
 		"Status sub-resource update failed, attempting to update the entire resource instead",
 		"namespace", accessor.GetNamespace(),
 		"name", accessor.GetName(),

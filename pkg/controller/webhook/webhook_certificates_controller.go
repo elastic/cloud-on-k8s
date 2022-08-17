@@ -32,8 +32,6 @@ const (
 	ControllerName = "webhook-certificates-controller"
 )
 
-var log = ulog.Log.WithName(ControllerName)
-
 var _ reconcile.Reconciler = &ReconcileWebhookResources{}
 
 // ReconcileWebhookResources reconciles the certificates used by the webhook server.
@@ -76,7 +74,7 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 	if err != nil {
 		return res.WithError(err)
 	}
-	serverCA := certificates.BuildCAFromSecret(*webhookServerSecret)
+	serverCA := certificates.BuildCAFromSecret(ctx, *webhookServerSecret)
 	if serverCA == nil {
 		return res.WithError(
 			pkgerrors.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),

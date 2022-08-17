@@ -25,7 +25,7 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 }
 
 func (d *Driver) Reconcile() (*reconciler.Results, *beatv1beta1.BeatStatus) {
-	managedConfig, err := beatcommon.BuildKibanaConfig(d.Client, beatv1beta1.BeatKibanaAssociation{Beat: &d.Beat})
+	managedConfig, err := beatcommon.BuildKibanaConfig(d.Context, d.Client, beatv1beta1.BeatKibanaAssociation{Beat: &d.Beat})
 	if err != nil {
 		return reconciler.NewResult(d.DriverParams.Context).WithError(err), d.Status
 	}

@@ -22,6 +22,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func TestFetchWithAssociation(t *testing.T) {
@@ -224,7 +225,7 @@ func TestAreConfiguredIfSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AreConfiguredIfSet(tt.associations, tt.recorder)
+			got, err := AreConfiguredIfSet(context.Background(), tt.associations, tt.recorder)
 			require.NoError(t, err)
 			if got != tt.want {
 				t.Errorf("AreConfiguredIfSet() got = %v, want %v", got, tt.want)
@@ -331,7 +332,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apmEsAssociation.SetAssociationConf(&tt.assocConf)
-			gotCredentials, err := ElasticsearchAuthSettings(tt.client, &apmEsAssociation)
+			gotCredentials, err := ElasticsearchAuthSettings(context.Background(), tt.client, &apmEsAssociation)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -511,7 +512,7 @@ func TestAllowVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		logger := log.WithValues("a", "b")
+		logger := ulog.Log.WithValues("a", "b")
 		recorder := record.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
 			if got, err := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); err != nil && got != tt.want {

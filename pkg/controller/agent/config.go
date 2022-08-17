@@ -107,7 +107,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			return settings.NewCanonicalConfig(), nil
 		}
 
-		credentials, err := association.ElasticsearchAuthSettings(params.Client, assoc)
+		credentials, err := association.ElasticsearchAuthSettings(params.Context, params.Client, assoc)
 		if err != nil {
 			return settings.NewCanonicalConfig(), err
 		}
@@ -150,6 +150,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 // certificates which are mounted directly into the Pod, instead the connection settings contain a path which points to
 // the future location of the certificates in the Pod.
 func extractPodConnectionSettings(
+	ctx context.Context,
 	agent agentv1alpha1.Agent,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
@@ -164,7 +165,7 @@ func extractPodConnectionSettings(
 		return connectionSettings{}, nil, fmt.Errorf(errTemplate, associationType, len(agent.GetAssociations()))
 	}
 
-	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
 		return connectionSettings{}, nil, err
 	}
@@ -195,7 +196,7 @@ func extractClientConnectionSettings(
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 ) (connectionSettings, error) {
-	settings, assocConf, err := extractPodConnectionSettings(agent, client, associationType)
+	settings, assocConf, err := extractPodConnectionSettings(ctx, agent, client, associationType)
 	if err != nil {
 		return connectionSettings{}, err
 	}

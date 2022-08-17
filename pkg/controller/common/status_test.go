@@ -121,7 +121,7 @@ func TestLowestVersionFromPods(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := LowestVersionFromPods(tt.args.currentVersion, tt.args.pods, tt.args.versionLabel); got != tt.want {
+			if got := LowestVersionFromPods(context.Background(), tt.args.currentVersion, tt.args.pods, tt.args.versionLabel); got != tt.want {
 				t.Errorf("LowestVersionFromPods() = %v, want %v", got, tt.want)
 			}
 		})
@@ -204,7 +204,7 @@ func TestDeploymentStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := DeploymentStatus(tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel)
+			got, err := DeploymentStatus(context.Background(), tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DeploymentStatus() error = %v, wantErr %v", err, tt.wantErr)
 				return

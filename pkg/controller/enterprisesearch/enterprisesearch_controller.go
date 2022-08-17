@@ -44,10 +44,6 @@ const (
 	controllerName = "enterprisesearch-controller"
 )
 
-var (
-	log = ulog.Log.WithName(controllerName)
-)
-
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -159,8 +155,8 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&ent) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ent.Namespace, "ent_name", ent.Name)
+	if common.IsUnmanaged(ctx, &ent) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ent.Namespace, "ent_name", ent.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -186,7 +182,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	results := reconciler.NewResult(ctx)
 	status := newStatus(ent)
 
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(&ent, r.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ent, r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -227,8 +223,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	if err != nil {
 		return results.WithError(err), status
 	}
-	logger := log.WithValues("namespace", ent.Namespace, "ent_name", ent.Name)
-	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), logger, r.recorder)
+	assocAllowed, err := association.AllowVersion(entVersion, ent.Associated(), ulog.FromContext(ctx), r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -258,7 +253,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
 
-	status, err = r.generateStatus(ent, deploy, svc.Name)
+	status, err = r.generateStatus(ctx, ent, deploy, svc.Name)
 	if err != nil {
 		return results.WithError(fmt.Errorf("updating status: %w", err)), status
 	}
@@ -279,7 +274,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	defer span.End()
 
 	if err := ent.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -287,7 +282,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	return nil
 }
 
-func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
+func (r *ReconcileEnterpriseSearch) generateStatus(ctx context.Context, ent entv1.EnterpriseSearch, deploy appsv1.Deployment, svcName string) (entv1.EnterpriseSearchStatus, error) {
 	status := entv1.EnterpriseSearchStatus{
 		Association:        ent.Status.Association,
 		ExternalService:    svcName,
@@ -298,7 +293,7 @@ func (r *ReconcileEnterpriseSearch) generateStatus(ent entv1.EnterpriseSearch, d
 	if err != nil {
 		return status, err
 	}
-	status.DeploymentStatus, err = common.DeploymentStatus(ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
+	status.DeploymentStatus, err = common.DeploymentStatus(ctx, ent.Status.DeploymentStatus, deploy, pods, VersionLabelName)
 	return status, err
 }
 
@@ -309,7 +304,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
 		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", ent.Namespace,
 		"ent_name", ent.Name,

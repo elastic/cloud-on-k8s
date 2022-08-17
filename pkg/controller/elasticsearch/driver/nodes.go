@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 )
 
@@ -40,18 +41,19 @@ func (d *defaultDriver) reconcileNodeSpecs(
 ) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
 	defer span.End()
+	log := ulog.FromContext(ctx)
 
 	results := &reconciler.Results{}
 
 	// If some nodeSets are managed by the autoscaler, wait for them to be updated.
-	if ok, err := autoscaledResourcesSynced(d.ES); err != nil {
+	if ok, err := autoscaledResourcesSynced(ctx, d.ES); err != nil {
 		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err))
 	} else if !ok {
 		return results.WithReconciliationState(defaultRequeue.WithReason("Waiting for autoscaling controller to sync node sets"))
 	}
 
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
-	ok, reason, err := d.expectationsSatisfied()
+	ok, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -79,7 +81,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext)
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -182,7 +184,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		results.WithReconciliationState(defaultRequeue.WithReason("Cannot clear voting exclusions yet"))
 	}
 	// shutdown logic is dependent on Elasticsearch version
-	nodeShutdowns, err := newShutdownInterface(d.ES, esClient, esState, reconcileState.StatusReporter)
+	nodeShutdowns, err := newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -214,7 +216,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results
 	}
 
-	isNodeSpecsReconciled := d.isNodeSpecsReconciled(actualStatefulSets, d.Client, results)
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
@@ -239,11 +241,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	return results
 }
 
-func (d *defaultDriver) isNodeSpecsReconciled(
-	actualStatefulSets sset.StatefulSetList,
-	client k8s.Client,
-	result *reconciler.Results,
-) bool {
+func (d *defaultDriver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}
@@ -257,7 +255,7 @@ func (d *defaultDriver) isNodeSpecsReconciled(
 		return false
 	}
 	if len(pods) > 0 {
-		log.V(1).Info("Statefulset not reconciled", "reason", "pod not upgraded")
+		ulog.FromContext(ctx).V(1).Info("Statefulset not reconciled", "reason", "pod not upgraded")
 		return false
 	}
 

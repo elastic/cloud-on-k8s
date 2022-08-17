@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 
@@ -26,13 +27,14 @@ const (
 	cfgHashAnnotation = "elasticsearch.k8s.elastic.co/monitoring-config-hash"
 )
 
-func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
 	username := user.MonitoringUserName
 	password, err := user.GetMonitoringUserPassword(client, k8s.ExtractNamespacedName(&es))
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
+		ctx,
 		client,
 		commonv1.KbMonitoringAssociationType,
 		&es,
@@ -50,8 +52,8 @@ func Metricbeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar,
 	return metricbeat, nil
 }
 
-func Filebeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	filebeat, err := stackmon.NewFileBeatSidecar(client, &es, es.Spec.Version, filebeatConfig, nil)
+func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
+	filebeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -61,7 +63,7 @@ func Filebeat(client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, e
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&es) {
-		b, err := Metricbeat(client, es)
+		b, err := Metricbeat(ctx, client, es)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +90,7 @@ func WithMonitoring(client k8s.Client, builder *defaults.PodTemplateBuilder, es 
 		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		b, err := Filebeat(client, es)
+		b, err := Filebeat(ctx, client, es)
 		if err != nil {
 			return nil, err
 		}
