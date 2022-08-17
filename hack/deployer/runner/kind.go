@@ -127,7 +127,7 @@ func (k *KindDriver) create() error {
 		return err
 	}
 
-	if k.plan.Psp {
+	if k.plan.EnforceSecurityPolicies {
 		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
 			return err
 		}

@@ -145,7 +145,7 @@ func (d *GKEDriver) Execute() error {
 		if err := createStorageClass(); err != nil {
 			return err
 		}
-		if d.plan.Psp {
+		if d.plan.EnforceSecurityPolicies {
 			if err := kyverno.Install(); err != nil {
 				return err
 			}
