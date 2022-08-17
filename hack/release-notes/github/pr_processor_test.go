@@ -5,14 +5,14 @@
 package github
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestExtractIssues(t *testing.T) {
-	issueBody, err := ioutil.ReadFile("testdata/issue_body.txt")
+	issueBody, err := os.ReadFile("testdata/issue_body.txt")
 	require.NoError(t, err)
 
 	want := []int{3040, 3042, 3133, 3134}

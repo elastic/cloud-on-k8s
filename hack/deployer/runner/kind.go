@@ -7,7 +7,6 @@ package runner
 import (
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -156,7 +155,7 @@ func (k *KindDriver) delete() error {
 
 func (k *KindDriver) createTmpManifest() (*os.File, error) {
 	// HOME is shared between CI container and Kind container
-	f, err := ioutil.TempFile(os.Getenv("HOME"), "kind-cluster")
+	f, err := os.CreateTemp(os.Getenv("HOME"), "kind-cluster")
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +227,7 @@ func (k *KindDriver) getKubeConfig() (*os.File, error) {
 	}
 
 	// Persist kubeconfig for reliability in following kubectl commands
-	kubeCfg, err := ioutil.TempFile("", "kubeconfig")
+	kubeCfg, err := os.CreateTemp("", "kubeconfig")
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +254,7 @@ func (k *KindDriver) GetCredentials() error {
 
 func (k *KindDriver) createTmpStorageClass() (string, error) {
 	tmpFile := filepath.Join(os.Getenv("HOME"), storageClassFileName)
-	err := ioutil.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
+	err := os.WriteFile(tmpFile, []byte(storageClass), fs.ModePerm)
 	return tmpFile, err
 }
 

@@ -27,6 +27,7 @@ spec:
       monitoring_enabled:
       - logs
       - metrics
+      unenroll_timeout: 900
       package_policies:
       - name: fleet_server-1
         id: fleet_server-1

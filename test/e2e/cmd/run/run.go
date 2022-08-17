@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -144,7 +143,7 @@ func (h *helper) initTestContext() error {
 
 	var stackImages test.ElasticStackImages
 	if h.elasticStackImagesPath != "" {
-		bytes, err := ioutil.ReadFile(h.elasticStackImagesPath)
+		bytes, err := os.ReadFile(h.elasticStackImagesPath)
 		if err != nil {
 			return fmt.Errorf("unable to read Elastic Stack images config file: %w", err)
 		}
@@ -254,7 +253,7 @@ func isOcp3Cluster(h *helper) bool {
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 	if h.testLicense != "" {
-		bytes, err := ioutil.ReadFile(h.testLicense)
+		bytes, err := os.ReadFile(h.testLicense)
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
@@ -263,7 +262,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.testLicensePKeyPath != "" {
-		bytes, err := ioutil.ReadFile(h.testLicensePKeyPath)
+		bytes, err := os.ReadFile(h.testLicensePKeyPath)
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
@@ -272,7 +271,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.monitoringSecrets != "" {
-		bytes, err := ioutil.ReadFile(h.monitoringSecrets)
+		bytes, err := os.ReadFile(h.monitoringSecrets)
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
 		}
@@ -377,7 +376,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
 	}
 
-	if err := ioutil.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+	if err := os.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
 		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
 	}
 
@@ -770,7 +769,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
-	outFile, err := ioutil.TempFile(h.scratchDir, filepath.Base(templatePath))
+	outFile, err := os.CreateTemp(h.scratchDir, filepath.Base(templatePath))
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create tmp file: %s", templatePath)
 	}

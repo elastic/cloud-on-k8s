@@ -122,11 +122,11 @@ func (n nodeSetResourcesBuilder) withMemory(resources corev1.ResourceRequirement
 }
 
 // withStorage attempts to detect the storage capacity of the Elasticsearch nodes.
-// 1. Attempt to detect path settings, an error is raised if multiple data paths are set.
-// 2. Detect the data volume name. If none can be detected an error is raised.
-// 3. Lookup for the corresponding volume claim.
-// 4. For each Pod in the StatefulSet we attempt to read the capacity from the PVC status or from the Spec
-//    if there is no status yet.
+//  1. Attempt to detect path settings, an error is raised if multiple data paths are set.
+//  2. Detect the data volume name. If none can be detected an error is raised.
+//  3. Lookup for the corresponding volume claim.
+//  4. For each Pod in the StatefulSet we attempt to read the capacity from the PVC status or from the Spec
+//     if there is no status yet.
 func (n nodeSetResourcesBuilder) withStorage(
 	ctx context.Context,
 	k8sClient k8s.Client,

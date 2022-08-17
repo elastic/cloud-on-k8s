@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -208,6 +208,21 @@ func TestReconcile(t *testing.T) {
 			wantErr:    false,
 			wantEvents: []string{},
 		},
+		{
+			name: "CPU autoscaling",
+			fields: fields{
+				EsClient:       newFakeEsClient(t).withCapacity("cpu-scaled-horizontally"),
+				recorder:       record.NewFakeRecorder(1000),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			args: args{
+				esManifest: "cpu-scaled-horizontally",
+				isOnline:   true,
+			},
+			want:       defaultRequeue,
+			wantErr:    false,
+			wantEvents: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,7 +230,7 @@ func TestReconcile(t *testing.T) {
 			if tt.args.esManifest != "" {
 				// Load the current Elasticsearch resource from the sample files.
 				es := esv1.Elasticsearch{}
-				bytes, err := ioutil.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch.yml"))
+				bytes, err := os.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch.yml"))
 				require.NoError(t, err)
 				if err := yaml.Unmarshal(bytes, &es); err != nil {
 					t.Fatalf("yaml.Unmarshal error = %v, wantErr %v", err, tt.wantErr)
@@ -259,7 +274,7 @@ func TestReconcile(t *testing.T) {
 				require.NoError(t, k8sClient.Get(context.Background(), client.ObjectKey{Namespace: "testns", Name: "testes"}, &updatedElasticsearch))
 				// Read expected the expected Elasticsearch resource.
 				expectedElasticsearch := esv1.Elasticsearch{}
-				bytes, err := ioutil.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch-expected.yml"))
+				bytes, err := os.ReadFile(filepath.Join("testdata", tt.args.esManifest, "elasticsearch-expected.yml"))
 				require.NoError(t, err)
 				require.NoError(t, yaml.Unmarshal(bytes, &expectedElasticsearch))
 				assert.Equal(t, updatedElasticsearch.Spec, expectedElasticsearch.Spec, "Updated Elasticsearch spec. is not the expected one")
@@ -339,7 +354,7 @@ func newFakeEsClient(t *testing.T) *fakeEsClient {
 
 func (f *fakeEsClient) withCapacity(testdata string) *fakeEsClient {
 	policies := esclient.AutoscalingCapacityResult{}
-	bytes, err := ioutil.ReadFile("testdata/" + testdata + "/capacity.json")
+	bytes, err := os.ReadFile("testdata/" + testdata + "/capacity.json")
 	if err != nil {
 		f.t.Fatalf("Error while reading autoscaling capacity content: %v", err)
 	}

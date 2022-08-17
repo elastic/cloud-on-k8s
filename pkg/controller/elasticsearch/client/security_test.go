@@ -6,7 +6,7 @@ package client
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
@@ -39,7 +39,7 @@ func Test_GetServiceAccountCredentials(t *testing.T) {
 				require.Equal(t, "/_security/service/elastic/kibana/credential", req.URL.Path)
 				return &http.Response{
 					StatusCode: 200,
-					Body: ioutil.NopCloser(strings.NewReader(
+					Body: io.NopCloser(strings.NewReader(
 						`{
 	"service_account": "elastic/kibana",
 	"count": 1,

@@ -200,14 +200,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 	return b
 }
 
-func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	for i := range b.PodTemplate.Spec.Containers {
-		b.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-	}
-
-	return b
-}
-
 func (b Builder) WithLabel(key, value string) Builder {
 	if b.Beat.Labels == nil {
 		b.Beat.Labels = make(map[string]string)

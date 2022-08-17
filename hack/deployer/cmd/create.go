@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -69,7 +68,7 @@ func CreateCommand() *cobra.Command {
 			}
 
 			fullPath := path.Join(filePath, fmt.Sprintf("deployer-config-%s.yml", provider))
-			return ioutil.WriteFile(fullPath, []byte(cfgData), 0600)
+			return os.WriteFile(fullPath, []byte(cfgData), 0600)
 		},
 	}
 

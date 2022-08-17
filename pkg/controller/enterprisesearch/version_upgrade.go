@@ -10,10 +10,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"go.elastic.co/apm/module/apmhttp/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
@@ -168,7 +170,11 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 		if err != nil {
 			return err
 		}
-		httpClient = commonhttp.Client(r.dialer, tlsCerts, 0)
+		httpClient = apmhttp.WrapClient(
+			commonhttp.Client(r.dialer, tlsCerts, 0),
+			apmhttp.WithClientRequestName(tracing.RequestName),
+			apmhttp.WithClientSpanType("external.enterprisesearch"),
+		)
 		defer httpClient.CloseIdleConnections()
 	}
 
@@ -188,7 +194,7 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}

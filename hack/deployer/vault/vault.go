@@ -6,7 +6,6 @@ package vault
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,7 +125,7 @@ func readCachedToken() (string, error) {
 		return "", err
 	}
 
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +149,7 @@ func (v *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 		return fmt.Errorf("field %s at %s is not a string, that's unexpected", fieldName, secretPath)
 	}
 
-	return ioutil.WriteFile(fileName, []byte(stringServiceAccount), 0600)
+	return os.WriteFile(fileName, []byte(stringServiceAccount), 0600)
 }
 
 // Get fetches contents of a single field at a specified path in Vault

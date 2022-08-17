@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,10 +36,10 @@ var (
 )
 
 func TestDoLoadPullRequests(t *testing.T) {
-	firstPayload, err := ioutil.ReadFile("testdata/payload1.json")
+	firstPayload, err := os.ReadFile("testdata/payload1.json")
 	require.NoError(t, err)
 
-	secondPayload, err := ioutil.ReadFile("testdata/payload2.json")
+	secondPayload, err := os.ReadFile("testdata/payload2.json")
 	require.NoError(t, err)
 
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func TestDoLoadPullRequests(t *testing.T) {
 			Variables map[string]interface{} `json:"variables"`
 		}
 
-		reqBytes, err := ioutil.ReadAll(r.Body)
+		reqBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

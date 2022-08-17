@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -86,7 +85,7 @@ var publicKeyBytes = []byte{
 }
 `
 
-	bytes, err := ioutil.ReadFile(pubkeyFile)
+	bytes, err := os.ReadFile(pubkeyFile)
 	if err != nil {
 		handleErr(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
 	}
