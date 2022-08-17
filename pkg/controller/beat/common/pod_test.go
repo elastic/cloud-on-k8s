@@ -262,6 +262,7 @@ func Test_buildPodTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.args.params.Context = context.Background()
 			podTemplateSpec, err := buildPodTemplate(tt.args.params, tt.args.defaultImage, tt.args.initialHash)
 			if (err != nil) != tt.want.err {
 				t.Errorf("buildPodTemplate() error = %v, wantErr %v", err, tt.want.err)
