@@ -37,8 +37,8 @@ var (
 	ErrMonitoringClusterUUIDUnavailable = errors.New("beats stack monitoring cluster uuid is unavailable")
 )
 
-func Filebeat(client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
-	filebeat, err := stackmon.NewFileBeatSidecar(client, resource, version, filebeatConfig, nil)
+func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
+	filebeat, err := stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -98,6 +98,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 	}
 
 	return stackmon.NewMetricBeatSidecar(
+		ctx,
 		client,
 		commonv1.BeatMonitoringAssociationType,
 		beat,

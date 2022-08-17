@@ -135,7 +135,7 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsLogsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.Filebeat(params.Client, &params.Beat, params.Beat.Spec.Version)
+		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
 		if err != nil {
 			return podTemplate, err
 		}
