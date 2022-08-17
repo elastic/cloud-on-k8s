@@ -16,10 +16,10 @@ import (
 )
 
 //go:embed install/kyverno.yaml
-var install string
+var installerManifest string
 
 //go:embed install/policies.yaml
-var policies string
+var policiesManifest string
 
 const (
 	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=60s`
@@ -34,9 +34,8 @@ func Install(globalKubectlOptions ...string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	// Install Kyverno
 	log.Println("Installing Kyverno")
-	if err := apply(k, dir, install, "install.yaml"); err != nil {
+	if err := apply(k, dir, installerManifest, "install.yaml"); err != nil {
 		return err
 	}
 	log.Println("Waiting for Kyverno Pod to be ready...")
@@ -45,7 +44,7 @@ func Install(globalKubectlOptions ...string) error {
 	}
 
 	log.Println("Installing Kyverno policies")
-	if err := apply(k, dir, policies, "policies.yaml"); err != nil {
+	if err := apply(k, dir, policiesManifest, "policies.yaml"); err != nil {
 		return err
 	}
 
