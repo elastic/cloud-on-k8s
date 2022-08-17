@@ -10,7 +10,7 @@
 
 * Configure Elastic Agent host path volume to point to correct path {pull}5890[#5890] (issue: {issue}4428[#4428])
 
-Fleet-managed Elastic Agents now default to use `hostPath` instead of `emptyDir` for storing their state. This will prevent from correctly deploying a second Pod from the same Elastic Agent Deployment on the same Kubernetes node. For cases where this is desired, the volume type can be changed. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elastic-agent-fleet-known-limitations.html#k8s_storing_local_state_in_host_path_volume_2[docs] to learn more.
+Fleet-managed Elastic Agents now default to use a `hostPath` volume for storing their state. This will prevent more than one Pod from the same Elastic Agent Deployment to be deployed on the same Kubernetes node. For cases where this is desired, the volume type can be changed to an `emptyDir` volume. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elastic-agent-fleet-known-limitations.html#k8s_storing_local_state_in_host_path_volume_2[docs] to learn more.
 
 [[feature-2.4.0]]
 [float]
