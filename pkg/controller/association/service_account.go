@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -83,7 +84,7 @@ func reconcileApplicationSecret(
 		}
 	} else {
 		// Attempt to read current token, create a new one in case of an error.
-		token, err = getOrCreateToken(&es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName)
+		token, err = getOrCreateToken(ctx, &es, applicationSecretName.Name, applicationStore.Data, serviceAccount, tokenName)
 		if err != nil {
 			return nil, err
 		}
@@ -115,13 +116,14 @@ func reconcileApplicationSecret(
 }
 
 func getOrCreateToken(
+	ctx context.Context,
 	es *esv1.Elasticsearch,
 	secretName string,
 	secretData map[string][]byte,
 	serviceAccountName commonv1.ServiceAccountName,
 	tokenName string,
 ) (*Token, error) {
-	token := getCurrentApplicationToken(es, secretName, secretData)
+	token := getCurrentApplicationToken(ctx, es, secretName, secretData)
 	if token == nil {
 		// We need to create a new token
 		return newApplicationToken(serviceAccountName, tokenName)
@@ -180,31 +182,31 @@ func ReconcileServiceAccounts(
 }
 
 // getCurrentApplicationToken returns the current token from the application Secret, or nil if the content of the Secret is not valid.
-func getCurrentApplicationToken(es *esv1.Elasticsearch, secretName string, secretData map[string][]byte) *Token {
+func getCurrentApplicationToken(ctx context.Context, es *esv1.Elasticsearch, secretName string, secretData map[string][]byte) *Token {
 	if len(secretData) == 0 {
-		log.V(1).Info("secret is empty", "es_name", es.Name, "namespace", es.Namespace, "secret", secretName)
+		ulog.FromContext(ctx).V(1).Info("secret is empty", "es_name", es.Name, "namespace", es.Namespace, "secret", secretName)
 		return nil
 	}
 	result := &Token{}
-	if value := getFieldOrNil(es, secretName, secretData, esuser.ServiceAccountTokenNameField); value != nil && len(*value) > 0 {
+	if value := getFieldOrNil(ctx, es, secretName, secretData, esuser.ServiceAccountTokenNameField); value != nil && len(*value) > 0 {
 		result.TokenName = *value
 	} else {
 		return nil
 	}
 
-	if value := getFieldOrNil(es, secretName, secretData, ServiceAccountTokenValueField); value != nil && len(*value) > 0 {
+	if value := getFieldOrNil(ctx, es, secretName, secretData, ServiceAccountTokenValueField); value != nil && len(*value) > 0 {
 		result.Token = *value
 	} else {
 		return nil
 	}
 
-	if value := getFieldOrNil(es, secretName, secretData, esuser.ServiceAccountHashField); value != nil && len(*value) > 0 {
+	if value := getFieldOrNil(ctx, es, secretName, secretData, esuser.ServiceAccountHashField); value != nil && len(*value) > 0 {
 		result.Hash = *value
 	} else {
 		return nil
 	}
 
-	if value := getFieldOrNil(es, secretName, secretData, ServiceAccountNameField); value != nil && len(*value) > 0 {
+	if value := getFieldOrNil(ctx, es, secretName, secretData, ServiceAccountNameField); value != nil && len(*value) > 0 {
 		result.ServiceAccountName = *value
 	} else {
 		return nil
@@ -213,10 +215,10 @@ func getCurrentApplicationToken(es *esv1.Elasticsearch, secretName string, secre
 	return result
 }
 
-func getFieldOrNil(es *esv1.Elasticsearch, secretName string, secretData map[string][]byte, fieldName string) *string {
+func getFieldOrNil(ctx context.Context, es *esv1.Elasticsearch, secretName string, secretData map[string][]byte, fieldName string) *string {
 	data, exists := secretData[fieldName]
 	if !exists {
-		log.V(1).Info(fmt.Sprintf("%s field is missing in service account token Secret", fieldName), "es_name", es.Name, "namespace", es.Namespace, "secret", secretName)
+		ulog.FromContext(ctx).V(1).Info(fmt.Sprintf("%s field is missing in service account token Secret", fieldName), "es_name", es.Name, "namespace", es.Namespace, "secret", secretName)
 		return nil
 	}
 	fieldValue := string(data)

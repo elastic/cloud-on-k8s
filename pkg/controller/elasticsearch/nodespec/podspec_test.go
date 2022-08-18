@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -208,7 +209,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -224,7 +225,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	require.NoError(t, err)
 
 	client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-	actual, err := BuildPodTemplateSpec(client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+	actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec
@@ -277,7 +278,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "957591218",
+				"elasticsearch.k8s.elastic.co/config-hash": "3893049321",
 				"pod-template-annotation-name":             "pod-template-annotation-value",
 				"co.elastic.logs/module":                   "elasticsearch",
 			},
@@ -339,7 +340,7 @@ func Test_buildAnnotations(t *testing.T) {
 		{
 			name: "Sample Elasticsearch resource",
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "1382203021",
+				"elasticsearch.k8s.elastic.co/config-hash": "533641620",
 			},
 		},
 		{
@@ -352,7 +353,7 @@ func Test_buildAnnotations(t *testing.T) {
 				},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "2958662249",
+				"elasticsearch.k8s.elastic.co/config-hash": "3131886472",
 			},
 		},
 		{
@@ -361,7 +362,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "481468635",
+				"elasticsearch.k8s.elastic.co/config-hash": "757126536",
 			},
 		},
 		{
@@ -370,7 +371,7 @@ func Test_buildAnnotations(t *testing.T) {
 				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3276316785",
+				"elasticsearch.k8s.elastic.co/config-hash": "3605766330",
 			},
 		},
 		{
@@ -382,7 +383,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsVersion: "84",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3641963559",
+				"elasticsearch.k8s.elastic.co/config-hash": "1607725946",
 			},
 		},
 		{
@@ -394,7 +395,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsVersion: "84",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3625185940",
+				"elasticsearch.k8s.elastic.co/config-hash": "1624503565",
 			},
 		},
 		{
@@ -406,7 +407,7 @@ func Test_buildAnnotations(t *testing.T) {
 				scriptsVersion: "85",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3917140820",
+				"elasticsearch.k8s.elastic.co/config-hash": "3194693445",
 			},
 		},
 	}
@@ -515,7 +516,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-			actual, err := BuildPodTemplateSpec(client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 			require.NoError(t, err)
 
 			env := actual.Spec.Containers[1].Env

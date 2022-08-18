@@ -78,6 +78,7 @@ func RunMutationsWhileWatching(t *testing.T, creationBuilders []Builder, mutatio
 }
 
 // RunMutations tests one resource change on a given resource.
+//
 //nolint:thelper
 func RunMutation(t *testing.T, toCreate Builder, mutateTo Builder) {
 	RunMutations(t, []Builder{toCreate}, []Builder{mutateTo})

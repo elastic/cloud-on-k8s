@@ -172,7 +172,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.kibana)
+			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.kibana)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -734,7 +734,7 @@ func Test_getExistingConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(&tc.secret)
-			result, err := getExistingConfig(client, tc.kb)
+			result, err := getExistingConfig(context.Background(), client, tc.kb)
 			if tc.expectErr {
 				require.Error(t, err)
 			} else {

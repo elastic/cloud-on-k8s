@@ -349,7 +349,7 @@ func Test_GetResources(t *testing.T) {
 			wantPolicyState: []status.PolicyState{
 				{
 					Type:     "VerticalScalingLimitReached",
-					Messages: []string{"Node required memory 8000000000 is greater than max allowed: 7000000000"},
+					Messages: []string{"memory required per node, 8000000000, is greater than the maximum allowed: 7000000000"},
 				},
 				{
 					Type:     "HorizontalScalingLimitReached",
@@ -643,7 +643,10 @@ func (rcb *autoscalingPolicyResultBuilder) observedNodes(nodes ...string) *autos
 }
 
 func ptr(q int64) *client.AutoscalingCapacity {
-	v := client.AutoscalingCapacity(q)
+	qPtr := resource.NewQuantity(q, resource.DecimalSI)
+	v := client.AutoscalingCapacity{
+		Quantity: *qPtr,
+	}
 	return &v
 }
 

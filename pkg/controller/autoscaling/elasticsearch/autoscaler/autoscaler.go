@@ -54,7 +54,8 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 
 	// Same as above, if CPU limits have been expressed by the user in the autoscaling specification then we adjust CPU request according to the memory request.
 	// See https://github.com/elastic/cloud-on-k8s/issues/4021
-	if ctx.AutoscalingSpec.IsCPUDefined() && ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
+	if !nodeResources.HasRequest(corev1.ResourceCPU) && ctx.AutoscalingSpec.IsCPUDefined() &&
+		ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
 		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.MemoryRange, *ctx.AutoscalingSpec.CPURange))
 	}
 

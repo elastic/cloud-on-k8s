@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -75,12 +76,12 @@ func TestRetrieveActualStatefulSets(t *testing.T) {
 
 func TestESVersionMatch(t *testing.T) {
 	require.Equal(t, true,
-		ESVersionMatch(ssetv7, func(v version.Version) bool {
+		ESVersionMatch(context.Background(), ssetv7, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		ESVersionMatch(ssetv7, func(v version.Version) bool {
+		ESVersionMatch(context.Background(), ssetv7, func(v version.Version) bool {
 			return v.Major == 6
 		}),
 	)
@@ -91,12 +92,12 @@ func TestAtLeastOneESVersionMatch(t *testing.T) {
 	ssetv6.Spec.Template.Labels[label.VersionLabelName] = "6.8.0"
 
 	require.Equal(t, true,
-		AtLeastOneESVersionMatch(StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
+		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		AtLeastOneESVersionMatch(StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
+		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
@@ -203,7 +204,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, reason, err := tt.l.PodReconciliationDone(tt.c)
+			got, reason, err := tt.l.PodReconciliationDone(context.Background(), tt.c)
 			if !got {
 				require.True(t, len(reason) > 0)
 			}

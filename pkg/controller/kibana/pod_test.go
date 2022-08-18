@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -219,7 +220,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewPodTemplateSpec(k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{})
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{})
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

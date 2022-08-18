@@ -5,6 +5,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,7 +84,7 @@ func TestUnmanagedCondition(t *testing.T) {
 					Namespace:   "foo",
 					Annotations: test.annotationSequence[i],
 				}}
-				actualPauseState := IsUnmanaged(&obj)
+				actualPauseState := IsUnmanaged(context.Background(), &obj)
 				assert.Equal(t, expectedState, actualPauseState, test.annotationSequence[i])
 			}
 		})

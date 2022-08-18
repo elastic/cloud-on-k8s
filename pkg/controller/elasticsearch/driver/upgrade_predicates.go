@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
@@ -193,7 +194,7 @@ Loop:
 	// the user to understand why.
 	groupByPredicates := groupByPredicates(failedPredicates)
 	if len(failedPredicates) > 0 {
-		log.Info(
+		ulog.FromContext(ctx.ctx).Info(
 			"Cannot restart some nodes for upgrade at this time",
 			"namespace", ctx.es.Namespace,
 			"es_name", ctx.es.Name,
@@ -449,7 +450,7 @@ var predicates = [...]Predicate{
 				for _, actualMaster := range label.FilterMasterNodePods(context.currentPods) {
 					_, healthyMaster := context.healthyPods[actualMaster.Name]
 					if !healthyMaster {
-						log.V(1).Info(
+						ulog.FromContext(context.ctx).V(1).Info(
 							"Can't permanently remove a master in a rolling upgrade if there is an other unhealthy master",
 							"namespace", candidate.Namespace,
 							"candidate", candidate.Name,
@@ -476,7 +477,7 @@ var predicates = [...]Predicate{
 			if healthyMasters == expectedMasters {
 				return true, nil
 			}
-			log.V(1).Info(
+			ulog.FromContext(context.ctx).V(1).Info(
 				"Cannot delete master for rolling upgrade",
 				"expected_healthy_masters", expectedMasters,
 				"actually_healthy_masters", healthyMasters,
@@ -601,7 +602,7 @@ var predicates = [...]Predicate{
 						continue
 					}
 					if healthy <= 0 {
-						log.V(1).Info(
+						ulog.FromContext(context.ctx).V(1).Info(
 							"Delaying upgrade for Pod to ensure tier availability",
 							"node_role", role,
 							"namespace", candidate.Namespace,

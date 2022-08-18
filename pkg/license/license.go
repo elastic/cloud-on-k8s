@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/metrics"
 )
 
@@ -88,8 +89,8 @@ type LicensingResolver struct {
 }
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
-func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
-	operatorLicense, err := r.getOperatorLicense()
+func (r LicensingResolver) ToInfo(ctx context.Context, totalMemory resource.Quantity) (LicensingInfo, error) {
+	operatorLicense, err := r.getOperatorLicense(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
@@ -116,7 +117,7 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 	span, ctx := apm.StartSpan(ctx, "save_license_info", tracing.SpanTypeApp)
 	defer span.End()
-	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
+	ulog.FromContext(ctx).V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNs,
 		Name:      LicensingCfgMapName,
@@ -158,9 +159,9 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 }
 
 // getOperatorLicense gets the operator license.
-func (r LicensingResolver) getOperatorLicense() (*license.EnterpriseLicense, error) {
+func (r LicensingResolver) getOperatorLicense(ctx context.Context) (*license.EnterpriseLicense, error) {
 	checker := license.NewLicenseChecker(r.client, r.operatorNs)
-	return checker.CurrentEnterpriseLicense()
+	return checker.CurrentEnterpriseLicense(ctx)
 }
 
 // getOperatorLicenseLevel gets the level of the operator license.

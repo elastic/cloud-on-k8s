@@ -38,7 +38,7 @@ func cpuFromMemory(requiredMemoryCapacity resource.Quantity, memoryRange, cpuRan
 	requiredAdditionalCPUCapacity := int64(allowedCPURange * memRatio)
 	requiredCPUCapacityAsMilli := cpuRange.Min.MilliValue() + requiredAdditionalCPUCapacity
 
-	// Round up memory to the next core
+	// Round up CPU to the next core
 	requiredCPUCapacityAsMilli = math.RoundUp(requiredCPUCapacityAsMilli, 1000)
 	requiredCPUCapacity := resource.NewQuantity(requiredCPUCapacityAsMilli/1000, resource.DecimalSI).DeepCopy()
 	if requiredCPUCapacity.Cmp(cpuRange.Max) > 0 {

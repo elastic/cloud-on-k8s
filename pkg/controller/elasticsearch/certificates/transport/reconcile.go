@@ -29,8 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
-var log = ulog.Log.WithName("transport")
-
 // ReconcileTransportCertificatesSecrets reconciles the secret containing transport certificates for all nodes in the
 // cluster.
 // Secrets which are not used anymore are deleted as part of the downscale process.
@@ -91,6 +89,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) error {
 	results := &reconciler.Results{}
+	log := ulog.FromContext(ctx)
 	// List all the existing Pods in the nodeSet
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForStatefulSetName(es.Name, ssetName)
@@ -112,12 +111,12 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		}
 
 		if err := ensureTransportCertificatesSecretContentsForPod(
-			es, secret, pod, ca, rotationParams,
+			ctx, es, secret, pod, ca, rotationParams,
 		); err != nil {
 			return err
 		}
 		certCommonName := buildCertificateCommonName(pod, es)
-		cert := extractTransportCert(*secret, pod, certCommonName)
+		cert := extractTransportCert(ctx, *secret, pod, certCommonName)
 		if cert == nil {
 			return errors.New("no certificate found for pod")
 		}

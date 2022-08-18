@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
@@ -36,7 +37,7 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 	// if the cluster is annotated with `cluster.initial_master_nodes` (zen2 bootstrap in progress),
 	// make sure we reuse that value since it is not supposed to vary over time
 	if initialMasterNodes := getInitialMasterNodesAnnotation(es); initialMasterNodes != nil {
-		return patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes)
+		return patchInitialMasterNodesConfig(ctx, nodeSpecResources, initialMasterNodes)
 	}
 
 	// in most cases, `cluster.initial_master_nodes` should not be set
@@ -52,13 +53,13 @@ func SetupInitialMasterNodes(ctx context.Context, es esv1.Elasticsearch, k8sClie
 	if len(initialMasterNodes) == 0 {
 		return pkgerrors.Errorf("no master node found to compute `cluster.initial_master_nodes`")
 	}
-	log.Info(
+	ulog.FromContext(ctx).Info(
 		"Setting `cluster.initial_master_nodes`",
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 		"cluster.initial_master_nodes", strings.Join(initialMasterNodes, ","),
 	)
-	if err := patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes); err != nil {
+	if err := patchInitialMasterNodesConfig(ctx, nodeSpecResources, initialMasterNodes); err != nil {
 		return err
 	}
 	// keep the computed value in an annotation for reuse in subsequent reconciliations
@@ -100,7 +101,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 		// retry later
 		return true, nil
 	}
-	log.Info("Zen 2 bootstrap is complete",
+	ulog.FromContext(ctx).Info("Zen 2 bootstrap is complete",
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 	)
@@ -111,9 +112,9 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 
 // patchInitialMasterNodesConfig mutates the configuration of zen2-compatible master nodes
 // to have the given `cluster.initial_master_nodes` setting.
-func patchInitialMasterNodesConfig(nodeSpecResources nodespec.ResourcesList, initialMasterNodes []string) error {
+func patchInitialMasterNodesConfig(ctx context.Context, nodeSpecResources nodespec.ResourcesList, initialMasterNodes []string) error {
 	for i, res := range nodeSpecResources {
-		if !label.IsMasterNodeSet(res.StatefulSet) || !IsCompatibleWithZen2(res.StatefulSet) {
+		if !label.IsMasterNodeSet(res.StatefulSet) || !IsCompatibleWithZen2(ctx, res.StatefulSet) {
 			// we only care about updating zen2 masters config here
 			continue
 		}

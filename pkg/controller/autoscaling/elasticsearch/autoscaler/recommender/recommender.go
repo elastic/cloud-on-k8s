@@ -79,7 +79,7 @@ func getResourceValue(
 	// Surface the situation where a resource is exhausted.
 	if nodeRequired.Value() > max {
 		// Elasticsearch requested more capacity per node than allowed by the user
-		err := fmt.Errorf("node required %s is greater than the maximum one", resourceType)
+		err := fmt.Errorf("%s required per node is greater than the maximum one", resourceType)
 		log.Error(
 			err, err.Error(),
 			"scope", "node",
@@ -92,7 +92,7 @@ func getResourceValue(
 			ForPolicy(autoscalingSpec.Name).
 			RecordEvent(
 				status.VerticalScalingLimitReached,
-				fmt.Sprintf("Node required %s %d is greater than max allowed: %d", resourceType, nodeRequired.Value(), max),
+				fmt.Sprintf("%s required per node, %d, is greater than the maximum allowed: %d", resourceType, nodeRequired.Value(), max),
 			)
 	}
 
