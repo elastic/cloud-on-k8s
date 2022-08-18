@@ -57,7 +57,7 @@ tests:
 ---
 suite: test fleet-agent
 templates:
-  - charts/eck-fleet-agent/templates/fleet-agent.yaml
+  - charts/eck-fleet-server/templates/fleet-server.yaml
 tests:
   - it: should render quickstart properly
     set:
@@ -69,7 +69,7 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-fleet-agent
+          value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
           value: 8.2.3
