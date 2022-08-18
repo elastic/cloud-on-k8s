@@ -8,8 +8,8 @@ dependencies:
 - name: eck-elastic-agent
   repository: file://../eck-elastic-agent
   version: 0.1.0
-- name: eck-fleet-agent
-  repository: file://../eck-fleet-agent
+- name: eck-fleet-server
+  repository: file://../eck-fleet-server
   version: 0.1.0
-digest: sha256:324c574109e8c385d41d0a6920a9a2fb938bb2c38a9d38cd73bdae889e4933d2
-generated: "2022-08-09T12:25:34.847656-05:00"
+digest: sha256:bbdeec660cbe7ba4214cbfaa9ed079f7d330f70807ee4c36c21b85e51f9d541d
+generated: "2022-08-18T08:43:23.09912-05:00"

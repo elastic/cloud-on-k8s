@@ -1,8 +1,8 @@
-suite: test fleet agent
+suite: test fleet server agent
 templates:
-  - templates/fleet-agent.yaml
+  - templates/fleet-server.yaml
 tests:
-  - it: should render default fleet agent properly
+  - it: should render default fleet server agent properly
     release:
       name: quickstart
     asserts:
@@ -10,7 +10,7 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-fleet-agent
+          value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
           value: 8.2.3

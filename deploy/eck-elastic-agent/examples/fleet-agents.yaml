@@ -1,34 +1,30 @@
-agents:
-- # Name of this specific Elastic Agent.
-  #
+# Version of Elastic Agent.
+#
+version: 8.2.3
+
+spec:
+  # This must match the name of the fleet server installed from eck-fleet-server chart.
+  fleetServerRef:
+    name: eck-fleet-eck-fleet-agent
+  kibanaRef:
+    name: eck-kibana
+  mode: fleet
+
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+
+serviceAccount:
   name: elastic-agent
 
-  # Version of Elastic Agent.
-  #
-  version: 8.2.3
-  
-  spec:
-    fleetServerRef:
-      name: eck-fleet-eck-fleet-agent
-    kibanaRef:
-      name: eck-kibana
-    mode: fleet
-  
-    daemonSet:
-      podTemplate:
-        spec:
-          serviceAccountName: elastic-agent
-          hostNetwork: true
-          dnsPolicy: ClusterFirstWithHostNet
-          automountServiceAccountToken: true
-          securityContext:
-            runAsUser: 0
-
-serviceAccounts:
-- name: elastic-agent
-
-clusterRoles:
-- name: elastic-agent
+clusterRole:
+  name: elastic-agent
   rules:
   - apiGroups: [""]
     resources:
@@ -85,8 +81,8 @@ clusterRoles:
     - "list"
     - "watch"
 
-clusterRoleBindings:
-- name: elastic-agent
+clusterRoleBinding:
+  name: elastic-agent
   subjects:
   - kind: ServiceAccount
     name: elastic-agent

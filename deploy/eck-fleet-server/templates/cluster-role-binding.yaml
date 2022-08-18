@@ -5,7 +5,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ .Values.clusterRoleBinding.name }}
   labels:
-    {{- include "fleet-agent.labels" . | nindent 4 }}
+    {{- include "fleet-server.labels" . | nindent 4 }}
 subjects:  {{- range $i, $subject := .Values.clusterRoleBinding.subjects }}
 - kind: {{ $subject.kind }}
   name: {{ $subject.name }}

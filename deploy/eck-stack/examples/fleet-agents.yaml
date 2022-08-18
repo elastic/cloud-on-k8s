@@ -1,6 +1,6 @@
 ---
 eck-elasticsearch:
-  enabled: false
+  enabled: true
 
   # Name of the Elasticsearch instance.
   #
@@ -22,7 +22,7 @@ eck-elasticsearch:
       node.store.allow_mmap: false
 
 eck-kibana:
-  enabled: false
+  enabled: true
 
   # Name of the Kibana instance.
   #
@@ -94,10 +94,14 @@ eck-elastic-agent:
   version: 8.2.3
   
   spec:
+    config: null
+
     # Reference to ECK-managed Kibana instance.
     #
     kibanaRef:
       name: kibana
+
+    elasticsearchRefs: []
 
     # Reference to ECK-managed Fleet instance.
     #
@@ -190,7 +194,13 @@ eck-elastic-agent:
       name: elastic-agent
       apiGroup: rbac.authorization.k8s.io
 
-eck-fleet-agent:
-  enabled: false
+eck-fleet-server:
+  enabled: true
 
   fullnameOverride: "fleet-server"
+
+  spec:
+    kibanaRef:
+      name: kibana
+    elasticsearchRefs:
+    - name: elasticsearch

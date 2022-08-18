@@ -96,7 +96,7 @@ spec:
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 serviceAccount: {}
-  # name: fleet-server
+  # name: elastic-agent
   # namespace: optional-namespace
 
 # ClusterRoleBinding to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
@@ -106,24 +106,27 @@ clusterRoleBinding: {}
   # name: fleet-server
   # subjects:
   # - kind: ServiceAccount
-  #   name: fleet-server
+  #   name: elastic-agent
   #   namespace: default
   # roleRef:
   #   kind: ClusterRole
-  #   name: fleet-server
+  #   name: elastic-agent
   #   apiGroup: rbac.authorization.k8s.io
 
 # ClusterRole to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 clusterRole: {}
-  # name: fleet-server
+  # name: elastic-agent
   # rules:
   # - apiGroups: [""]
   #   resources:
   #   - pods
-  #   - namespaces
   #   - nodes
+  #   - namespaces
+  #   - events
+  #   - services
+  #   - configmaps
   #   verbs:
   #   - get
   #   - watch
@@ -135,3 +138,38 @@ clusterRole: {}
   #   - get
   #   - create
   #   - update
+  # - nonResourceURLs:
+  #   - "/metrics"
+  #   verbs:
+  #   - get
+  # - apiGroups: ["extensions"]
+  #   resources:
+  #     - replicasets
+  #   verbs: 
+  #   - "get"
+  #   - "list"
+  #   - "watch"
+  # - apiGroups:
+  #   - "apps"
+  #   resources:
+  #   - statefulsets
+  #   - deployments
+  #   - replicasets
+  #   verbs:
+  #   - "get"
+  #   - "list"
+  #   - "watch"
+  # - apiGroups:
+  #   - ""
+  #   resources:
+  #   - nodes/stats
+  #   verbs:
+  #   - get
+  # - apiGroups:
+  #   - "batch"
+  #   resources:
+  #   - jobs
+  #   verbs:
+  #   - "get"
+  #   - "list"
+  #   - "watch"

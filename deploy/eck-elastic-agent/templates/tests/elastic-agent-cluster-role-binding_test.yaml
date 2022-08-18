@@ -1,8 +1,10 @@
-suite: test fleet agent
+suite: test elastic agent cluster role binding
 templates:
   - templates/cluster-role-binding.yaml
 tests:
   - it: should render default cluster role binding properly
+    values:
+      - ../../examples/fleet-agents.yaml
     release:
       name: quickstart
     asserts:
@@ -10,19 +12,19 @@ tests:
           of: ClusterRoleBinding
       - equal:
           path: metadata.name
-          value: fleet-server
+          value: elastic-agent
       - equal:
           path: subjects[0].kind
           value: ServiceAccount
       - equal:
           path: subjects[0].name
-          value: fleet-server
+          value: elastic-agent
       - equal:
           path: roleRef.kind
           value: ClusterRole
       - equal:
           path: roleRef.name
-          value: fleet-server
+          value: elastic-agent
       - equal:
           path: roleRef.apiGroup
           value: rbac.authorization.k8s.io
