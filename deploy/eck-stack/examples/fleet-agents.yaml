@@ -94,6 +94,10 @@ eck-elastic-agent:
   version: 8.2.3
   
   spec:
+    # This is required to remove the default configuration for fleet agent in the default values.yaml
+    # Also note that there is a bug preventing the nullification of child chart's maps, which causes
+    # issues when templating this sub-chart.
+    # PR to resolve here: https://github.com/helm/helm/pull/9138
     config: null
 
     # Reference to ECK-managed Kibana instance.
@@ -110,8 +114,6 @@ eck-elastic-agent:
     
     mode: fleet
 
-    # config: null
-  
     daemonSet:
       podTemplate:
         spec:
