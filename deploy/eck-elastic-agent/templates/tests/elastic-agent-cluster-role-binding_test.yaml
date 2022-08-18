@@ -2,7 +2,7 @@ suite: test elastic agent cluster role binding
 templates:
   - templates/cluster-role-binding.yaml
 tests:
-  - it: should render default cluster role binding properly
+  - it: should render cluster role binding in fleet agents example properly
     values:
       - ../../examples/fleet-agents.yaml
     release:

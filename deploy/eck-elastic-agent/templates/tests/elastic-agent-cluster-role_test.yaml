@@ -2,7 +2,7 @@ suite: test elastic agent cluster role
 templates:
   - templates/cluster-role.yaml
 tests:
-  - it: should render default cluster role properly
+  - it: should render cluster role in fleet agents example properly
     values:
       - ../../examples/fleet-agents.yaml
     release:
