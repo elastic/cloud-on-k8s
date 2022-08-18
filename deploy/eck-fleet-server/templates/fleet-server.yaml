@@ -11,7 +11,7 @@ metadata:
     {{- toYaml .Values.annotations | indent 4 }}
     {{- end }}
 spec:
-  version: {{ required "A Fleet Agent version is required" .Values.version }}
+  version: {{ required "A Fleet Server Agent version is required" .Values.version }}
   {{- if not (hasKey .Values.spec "mode") }}
   {{- fail "spec.mode of 'fleet' is required for fleet-server" }}
   {{- else if (not (eq .Values.spec.mode "fleet")) }}
