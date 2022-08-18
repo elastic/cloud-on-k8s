@@ -95,7 +95,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 
 	log := logconf.FromContext(ctx)
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -106,7 +106,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return licenseCheckRequeue, nil
 	}
 
-	if common.IsUnmanaged(&es) {
+	if common.IsUnmanaged(ctx, &es) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
@@ -118,7 +118,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	}
 
 	// Validate Elasticsearch and Autoscaling spec
-	if err := validation.ValidateElasticsearch(es, r.licenseChecker, r.ExposedNodeLabels); err != nil {
+	if err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels); err != nil {
 		log.Error(
 			err,
 			"Elasticsearch manifest validation failed",
@@ -221,7 +221,7 @@ func newElasticsearchClient(
 		},
 		v,
 		caCerts,
-		esclient.Timeout(es),
+		esclient.Timeout(ctx, es),
 		dev.Enabled,
 	), nil
 }

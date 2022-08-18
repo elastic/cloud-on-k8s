@@ -5,6 +5,7 @@
 package webhook
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
@@ -26,13 +28,13 @@ type WebhookCertificates struct { //nolint:revive
 	serverCert []byte
 }
 
-func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhooks []webhook) bool {
+func (w *Params) shouldRenewCertificates(ctx context.Context, serverCertificates *corev1.Secret, webhooks []webhook) bool {
 	// Read the current certificate used by the server
-	serverCA := certificates.BuildCAFromSecret(*serverCertificates)
+	serverCA := certificates.BuildCAFromSecret(ctx, *serverCertificates)
 	if serverCA == nil {
 		return true
 	}
-	if !certificates.CanReuseCA(serverCA, w.Rotation.RotateBefore) {
+	if !certificates.CanReuseCA(ctx, serverCA, w.Rotation.RotateBefore) {
 		return true
 	}
 	// Read the certificate in the webhook configuration
@@ -44,14 +46,14 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 		// Parse the certificates
 		certs, err := certificates.ParsePEMCerts(caBytes)
 		if err != nil {
-			log.Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhook.webhookConfigurationName)
+			ulog.FromContext(ctx).Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhook.webhookConfigurationName)
 			return true
 		}
 		if len(certs) == 0 {
 			return true
 		}
 		for _, cert := range certs {
-			if !certificates.CertIsValid(*cert, w.Rotation.RotateBefore) {
+			if !certificates.CertIsValid(ctx, *cert, w.Rotation.RotateBefore) {
 				return true
 			}
 		}

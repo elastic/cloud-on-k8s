@@ -5,18 +5,22 @@
 package driver
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // autoscaledResourcesSynced checks that the autoscaler controller has updated the resources
 // when autoscaling is enabled. This is to avoid situations where resources have been manually
 // deleted or replaced by an external event. The Elasticsearch controller should then wait for
 // the Elasticsearch autoscaling controller to update again the resources in the NodeSets.
-func autoscaledResourcesSynced(es esv1.Elasticsearch) (bool, error) {
+func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
 	if !es.IsAutoscalingDefined() {
 		return true, nil
 	}
+	log := ulog.FromContext(ctx)
 	autoscalingSpec, err := es.GetAutoscalingSpecification()
 	if err != nil {
 		return false, err

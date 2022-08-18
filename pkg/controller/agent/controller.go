@@ -135,7 +135,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(agent) {
+	if common.IsUnmanaged(ctx, agent) {
 		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
@@ -164,7 +164,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 	results := reconciler.NewResult(ctx)
 	status := newStatus(agent)
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(agent.GetAssociations(), r.recorder)
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, agent.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(err), status
 	}

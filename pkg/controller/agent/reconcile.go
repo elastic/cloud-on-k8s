@@ -151,7 +151,7 @@ func calculateStatus(params *Params, ready, desired int32) (agentv1alpha1.AgentS
 		return status, err
 	}
 
-	status.Version = common.LowestVersionFromPods(status.Version, pods, VersionLabelName)
+	status.Version = common.LowestVersionFromPods(params.Context, status.Version, pods, VersionLabelName)
 	status.AvailableNodes = ready
 	status.ExpectedNodes = desired
 	health, err := CalculateHealth(agent.GetAssociations(), ready, desired)

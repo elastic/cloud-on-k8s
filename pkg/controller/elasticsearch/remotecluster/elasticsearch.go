@@ -22,8 +22,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("remotecluster")
-
 const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
 // UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
@@ -50,12 +48,12 @@ func UpdateSettings(
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return true, err
 	}
 	if !enabled && isRemoteClustersSpec {
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
@@ -139,7 +137,7 @@ func updateSettingsInternal(
 		// Apply the settings
 		sort.Strings(remoteClustersToUpdate)
 		sort.Strings(remoteClustersToDelete)
-		log.Info("Updating remote cluster settings",
+		ulog.FromContext(ctx).Info("Updating remote cluster settings",
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 			"updated_remote_clusters", remoteClustersToUpdate,

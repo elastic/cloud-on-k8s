@@ -6,6 +6,7 @@ package license
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -137,7 +138,7 @@ func TestAggregator(t *testing.T) {
 	client := k8s.NewFakeClient(objects...)
 	aggregator := Aggregator{client: client}
 
-	val, err := aggregator.AggregateMemory()
+	val, err := aggregator.AggregateMemory(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, 325.9073486328125, inGiB(val))
 }

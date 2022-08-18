@@ -19,8 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
-var whlog = ulog.Log.WithName("common-webhook")
-
 // SetupValidatingWebhookWithConfig will register a set of validation functions
 // at a given path, with a given controller manager, ensuring that the objects
 // are within the namespaces that the operator manages.
@@ -60,7 +58,9 @@ func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 }
 
 // Handle satisfies the admission.Handler interface
-func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
+func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
+	whlog := ulog.FromContext(ctx).WithName("common-webhook")
+
 	obj, ok := v.validator.DeepCopyObject().(admission.Validator)
 	if !ok {
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("object (%T) to be validated couldn't be converted to admission.Validator", v.validator))
@@ -72,7 +72,7 @@ func (v *validatingWebhook) Handle(_ context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if err := v.commonValidations(req, obj); err != nil {
+	if err := v.commonValidations(ctx, req, obj); err != nil {
 		return admission.Denied(err.Error())
 	}
 

@@ -428,7 +428,7 @@ func Test_retrieveUserSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hasKeystore.Spec.SecureSettings = tt.args
-			got, err := retrieveUserSecrets(client, recorder, hasKeystore)
+			got, err := retrieveUserSecrets(context.Background(), client, recorder, hasKeystore)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("retrieveUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return

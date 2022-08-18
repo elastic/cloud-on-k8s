@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
@@ -185,18 +188,20 @@ func (d *GKEDriver) setupLabelsForGCEProvider() error {
 			storageClass.Parameters = make(map[string]string)
 		}
 		storageClass.Parameters["labels"] = labels
-		// Delete the storage class as it is not allowed to patch parameters.
-		if err := exec.NewCommand(fmt.Sprintf("kubectl delete sc %s", storageClass.Name)).Run(); err != nil {
-			return err
-		}
-		// Apply the new one
 		storageClassYaml, err := yaml.Marshal(storageClass)
 		if err != nil {
 			return err
 		}
-		if err := exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+
+		if err := retry.OnError(
+			wait.Backoff{Duration: 10 * time.Millisecond, Steps: 5},
+			func(err error) bool { return true },
+			func() error {
+				return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl replace --force -f -
 %s
-EOF`, string(storageClassYaml))).Run(); err != nil {
+EOF`, string(storageClassYaml))).Run()
+			},
+		); err != nil {
 			return err
 		}
 	}

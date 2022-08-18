@@ -19,11 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-)
-
-var (
-	log = ulog.Log.WithName("certificates")
 )
 
 type Reconciler struct {

@@ -47,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/optional"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
@@ -119,6 +120,7 @@ var _ commondriver.Interface = &defaultDriver{}
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
+	log := ulog.FromContext(ctx)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
 	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
@@ -180,8 +182,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		min = &d.Version
 	}
 	observedState := d.Observers.ObservedStateResolver(
+		ctx,
 		d.ES,
 		d.newElasticsearchClient(
+			ctx,
 			resourcesState,
 			controllerUser,
 			*min,
@@ -191,9 +195,9 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// Always update the Elasticsearch state bits with the latest observed state.
 	d.ReconcileState.
-		UpdateClusterHealth(observedState()).    // Elasticsearch cluster health
-		UpdateAvailableNodes(*resourcesState).   // Available nodes
-		UpdateMinRunningVersion(*resourcesState) // Min running version
+		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
+		UpdateAvailableNodes(*resourcesState).        // Available nodes
+		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
 
 	res = certificates.ReconcileTransport(
 		ctx,
@@ -221,6 +225,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
+		ctx,
 		resourcesState,
 		controllerUser,
 		*min,
@@ -331,7 +336,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// requeue if associations are defined but not yet configured, otherwise we may be in a situation where we deploy
 	// Elasticsearch Pods once, then change their spec a few seconds later once the association is configured
-	areAssocsConfigured, err := association.AreConfiguredIfSet(d.ES.GetAssociations(), d.Recorder())
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, d.ES.GetAssociations(), d.Recorder())
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -351,6 +356,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
+	ctx context.Context,
 	state *reconcile.ResourcesState,
 	user esclient.BasicAuth,
 	v version.Version,
@@ -364,7 +370,7 @@ func (d *defaultDriver) newElasticsearchClient(
 		user,
 		v,
 		caCerts,
-		esclient.Timeout(d.ES),
+		esclient.Timeout(ctx, d.ES),
 		dev.Enabled,
 	)
 }
@@ -419,6 +425,7 @@ func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
 		return nil
 	}
 	allPods := names(resourcesState.AllPods)
+	log := ulog.FromContext(ctx)
 	// Detect if some service tokens are expected
 	saTokens, err := user.GetServiceAccountTokens(d.Client, d.ES)
 	if err != nil {

@@ -129,8 +129,8 @@ type Client interface {
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
-func Timeout(es esv1.Elasticsearch) time.Duration {
-	return annotation.ExtractTimeout(es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
+func Timeout(ctx context.Context, es esv1.Elasticsearch) time.Duration {
+	return annotation.ExtractTimeout(ctx, es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
 func formatAsSeconds(d time.Duration) string {

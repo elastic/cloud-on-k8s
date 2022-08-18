@@ -5,6 +5,8 @@
 package kibana
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -70,7 +72,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func NewPodTemplateSpec(client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
+func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
 	labels := NewLabels(kb.Name)
 	labels[KibanaVersionLabelName] = kb.Spec.Version
 
@@ -94,7 +96,7 @@ func NewPodTemplateSpec(client k8sclient.Client, kb kbv1.Kibana, keystore *keyst
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	builder, err := stackmon.WithMonitoring(client, builder, kb)
+	builder, err := stackmon.WithMonitoring(ctx, client, builder, kb)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

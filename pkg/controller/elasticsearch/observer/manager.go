@@ -5,6 +5,7 @@
 package observer
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -43,8 +44,8 @@ func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 
 // ObservedStateResolver returns a function that returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) func() esv1.ElasticsearchHealth {
-	observer := m.Observe(cluster, esClient)
+func (m *Manager) ObservedStateResolver(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client) func() esv1.ElasticsearchHealth {
+	observer := m.Observe(ctx, cluster, esClient)
 	return func() esv1.ElasticsearchHealth {
 		return observer.LastHealth()
 	}
@@ -60,9 +61,9 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
+func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client) *Observer {
 	nsName := k8s.ExtractNamespacedName(&cluster)
-	settings := m.extractObserverSettings(cluster)
+	settings := m.extractObserverSettings(ctx, cluster)
 
 	observer, exists := m.getObserver(nsName)
 
@@ -81,9 +82,9 @@ func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *O
 }
 
 // extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
-func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
+func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elasticsearch) Settings {
 	return Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, m.defaultInterval),
+		ObservationInterval: annotation.ExtractTimeout(ctx, cluster.ObjectMeta, ObserverIntervalAnnotation, m.defaultInterval),
 		Tracer:              m.tracer,
 	}
 }

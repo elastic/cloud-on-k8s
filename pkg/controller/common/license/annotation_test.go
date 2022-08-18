@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,7 @@ func TestHasRequestedLicenseLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := HasRequestedLicenseLevel(tt.args.annotations, tt.args.checker)
+			got, err := HasRequestedLicenseLevel(context.Background(), tt.args.annotations, tt.args.checker)
 			if tt.wantErr != (err != nil) {
 				t.Errorf("HasRequestedLicenseLevel expected err %v but was %v", tt.wantErr, err)
 			}

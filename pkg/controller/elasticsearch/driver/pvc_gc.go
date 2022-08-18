@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
@@ -40,7 +41,7 @@ func GarbageCollectPVCs(
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {
 		pvc := pvc
-		log.Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
+		ulog.FromContext(ctx).Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
 		if err := k8sClient.Delete(ctx, &pvc); err != nil {
 			return err
 		}

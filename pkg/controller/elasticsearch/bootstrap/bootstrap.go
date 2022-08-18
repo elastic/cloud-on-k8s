@@ -16,8 +16,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("elasticsearch-uuid")
-
 const (
 	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
 	ClusterUUIDAnnotationName = "elasticsearch.k8s.elastic.co/cluster-uuid"
@@ -52,7 +50,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// However we don't want to stop the reconciliation loop here because it could prevent the user to apply
 		// an update to the cluster spec to fix a problem.
 		// Therefore we just log the error and notify the driver that the reconciliation should be eventually re-queued.
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			"Recoverable error while retrieving Elasticsearch cluster UUID",
 			"namespace", cluster.Namespace,
 			"es_name", cluster.Name,
@@ -83,7 +81,7 @@ func isUUIDValid(uuid string) bool {
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
 func annotateWithUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
-	log.Info(
+	ulog.FromContext(ctx).Info(
 		"Annotating bootstrapped cluster with its UUID",
 		"namespace", cluster.Namespace,
 		"es_name", cluster.Name,

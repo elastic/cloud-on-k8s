@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // CAType is a type of CA
@@ -63,6 +64,7 @@ func ReconcileCAForOwner(
 	caType CAType,
 	rotationParams RotationParams,
 ) (*CA, error) {
+	log := ulog.FromContext(ctx)
 	// retrieve current CA secret
 	caInternalSecret := corev1.Secret{}
 	err := cl.Get(ctx, types.NamespacedName{
@@ -79,14 +81,14 @@ func ReconcileCAForOwner(
 	}
 
 	// build CA
-	ca := BuildCAFromSecret(caInternalSecret)
+	ca := BuildCAFromSecret(ctx, caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(ctx, cl, namer, owner, labels, rotationParams.Validity, caType)
 	}
 
 	// renew or recreate from private key if cannot reuse
-	if !CanReuseCA(ca, rotationParams.RotateBefore) {
+	if !CanReuseCA(ctx, ca, rotationParams.RotateBefore) {
 		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
 			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 			return renewCAFromExisting(ctx, cl, namer, owner, labels, rotationParams.Validity, caType, ca.PrivateKey)
@@ -115,6 +117,7 @@ func renewCAFromExisting(
 	caType CAType,
 	signer crypto.Signer,
 ) (*CA, error) {
+	log := ulog.FromContext(ctx)
 	privateKey, ok := signer.(*rsa.PrivateKey)
 	if !ok {
 		log.Error(
@@ -190,13 +193,14 @@ func renewCAWithOptions(
 }
 
 // CanReuseCA returns true if the given CA is valid for reuse
-func CanReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
-	return PrivateMatchesPublicKey(ca.Cert.PublicKey, ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
+func CanReuseCA(ctx context.Context, ca *CA, expirationSafetyMargin time.Duration) bool {
+	return PrivateMatchesPublicKey(ctx, ca.Cert.PublicKey, ca.PrivateKey) && CertIsValid(ctx, *ca.Cert, expirationSafetyMargin)
 }
 
 // CertIsValid returns true if the given cert is valid,
 // according to a safety time margin.
-func CertIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
+func CertIsValid(ctx context.Context, cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
+	log := ulog.FromContext(ctx)
 	now := time.Now()
 	if now.Before(cert.NotBefore) {
 		log.Info("CA cert is not valid yet", "subject", cert.Subject)
@@ -314,10 +318,11 @@ func BuildCAFromFile(path string) (*CA, error) {
 
 // BuildCAFromSecret parses the given secret into a CA.
 // It returns nil if the secrets could not be parsed into a CA.
-func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
+func BuildCAFromSecret(ctx context.Context, caInternalSecret corev1.Secret) *CA {
 	if caInternalSecret.Data == nil {
 		return nil
 	}
+	log := ulog.FromContext(ctx)
 	caBytes, exists := caInternalSecret.Data[CertFileName]
 	if !exists || len(caBytes) == 0 {
 		return nil

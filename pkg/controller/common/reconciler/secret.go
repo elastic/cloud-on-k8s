@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
@@ -141,6 +142,7 @@ func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev
 // GarbageCollectSoftOwnedSecrets deletes all secrets whose labels reference a soft owner.
 // To be called once that owner gets deleted.
 func GarbageCollectSoftOwnedSecrets(ctx context.Context, c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
+	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
 		&secrets,
@@ -209,7 +211,7 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(ctx context.Context, c k8s.Client, 
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// owner doesn't exit anymore
-				log.Info("Deleting secret as part of garbage collection",
+				ulog.FromContext(ctx).Info("Deleting secret as part of garbage collection",
 					"namespace", secret.Namespace, "secret_name", secret.Name,
 					"owner_kind", softOwner.Kind, "owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
 				)

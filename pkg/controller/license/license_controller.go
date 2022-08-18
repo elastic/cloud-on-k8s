@@ -45,8 +45,6 @@ const (
 	minimumRetryInterval = 1 * time.Hour
 )
 
-var log = ulog.Log.WithName(name)
-
 // Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
 // If there is none it assigns a new one.
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
@@ -58,7 +56,7 @@ func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Req
 
 	results := r.reconcileInternal(ctx, request)
 	current, err := results.Aggregate()
-	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	ulog.FromContext(ctx).V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
 	return current, err
 }
 
@@ -106,6 +104,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
 func addWatches(c controller.Controller, k8sClient k8s.Client) error {
+	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
 		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
@@ -127,7 +126,7 @@ func addWatches(c controller.Controller, k8sClient k8s.Client) error {
 
 		// if a license is added/modified we want to update for potentially all clusters managed by this instance
 		// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-		rs, err := reconcileRequestsForAllClusters(k8sClient)
+		rs, err := reconcileRequestsForAllClusters(k8sClient, log)
 		if err != nil {
 			// dropping the event(s) at this point
 			log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -153,12 +152,15 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best Elastic stack license available.
-func findLicense(c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
+func findLicense(ctx context.Context, c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
-		log.Info("Ignoring invalid license objects", "errors", errs)
+		ulog.FromContext(ctx).Info("Ignoring invalid license objects", "errors", errs)
 	}
-	return license.BestMatch(minVersion, licenseList, checker.Valid)
+	valid := func(l license.EnterpriseLicense) (bool, error) {
+		return checker.Valid(ctx, l)
+	}
+	return license.BestMatch(ctx, minVersion, licenseList, valid)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -199,12 +201,14 @@ func reconcileSecret(
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 // Returns time to next reconciliation, bool whether a license is configured at all and optional error.
 func (r *ReconcileLicenses) reconcileClusterLicense(ctx context.Context, cluster esv1.Elasticsearch) (time.Time, bool, error) {
+	log := ulog.FromContext(ctx)
+
 	var noResult time.Time
 	minVersion, err := r.minVersion(cluster)
 	if err != nil {
 		return noResult, true, err
 	}
-	matchingSpec, parent, found := findLicense(r, r.checker, minVersion)
+	matchingSpec, parent, found := findLicense(ctx, r, r.checker, minVersion)
 	if !found {
 		// no matching license found, delete cluster level license if it exists to revert to basic
 		clusterLicenseNSN := types.NamespacedName{Namespace: cluster.Namespace, Name: esv1.LicenseSecretName(cluster.Name)}
