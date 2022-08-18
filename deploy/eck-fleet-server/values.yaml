@@ -2,7 +2,7 @@
 # Default values for eck-fleet-server.
 # This is a YAML-formatted file.
 
-# Overridable names of the Fleet Agent resource.
+# Overridable names of the Fleet Server Agent resource.
 # By default, this is the Release name set for the chart,
 # followed by 'eck-fleet-server'.
 #
@@ -12,19 +12,19 @@
 # nameOverride: "quickstart"
 #
 # fullnameOverride will override both the release name, and the chart name,
-# and will name the Fleet Agent resource exactly as specified.
+# and will name the Fleet Server Agent resource exactly as specified.
 #
 # fullnameOverride: "quickstart"
 
-# Version of Elastic Fleet Agent.
+# Version of Elastic Fleet Server Agent.
 #
 version: 8.2.3
 
-# Labels that will be applied to Elastic Fleet Agent.
+# Labels that will be applied to Elastic Fleet Server Agent.
 #
 labels: {}
 
-# Annotations that will be applied to Elastic Fleet Agent.
+# Annotations that will be applied to Elastic Fleet Server Agent.
 #
 annotations: {}
 
@@ -37,7 +37,7 @@ spec:
   kibanaRef:
     name: quickstart
     # Optional namespace reference to Kibana resource.
-    # If not specified, then the namespace of the Fleet Agent resource
+    # If not specified, then the namespace of the Fleet Server Agent resource
     # will be assumed.
     #
     # namespace: default
@@ -48,7 +48,7 @@ spec:
   elasticsearchRefs:
   - name: quickstart
     # Optional namespace reference to Elasticsearch resource.
-    # If not specified, then the namespace of the Fleet Agent resource
+    # If not specified, then the namespace of the Fleet Server Agent resource
     # will be assumed.
     #
     # namespace: default
@@ -56,7 +56,7 @@ spec:
   mode: fleet
   fleetServerEnabled: true
 
-  # Daemonset, or Deployment specification for the type of Fleet Agent specified.
+  # Daemonset, or Deployment specification for the type of Fleet Server Agent specified.
   # At least one is required of [daemonSet, deployment].
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
   #
@@ -69,15 +69,15 @@ spec:
         securityContext:
           runAsUser: 0
 
-# ServiceAccount to be used by Elastic Fleet Agent. Some Fleet Agent features (such as autodiscover or Kubernetes module metricsets)
-# require that Fleet Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ServiceAccount to be used by Elastic Fleet Server Agent. Some Fleet Server Agent features (such as autodiscover or Kubernetes module metricsets)
+# require that Fleet Server Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 serviceAccount:
   name: fleet-server
   # namespace: optional-namespace
 
-# ClusterRoleBinding to be used by Elastic Fleet Agent. Similar to ServiceAccount, this is required in some scenarios.
+# ClusterRoleBinding to be used by Elastic Fleet Server Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 clusterRoleBinding:
@@ -91,7 +91,7 @@ clusterRoleBinding:
     name: fleet-server
     apiGroup: rbac.authorization.k8s.io
 
-# ClusterRole to be used by Elastic Fleet Agent. Similar to ServiceAccount, this is required in some scenarios.
+# ClusterRole to be used by Elastic Fleet Server Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
 clusterRole:
