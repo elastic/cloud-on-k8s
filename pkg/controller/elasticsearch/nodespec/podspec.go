@@ -111,7 +111,8 @@ func BuildPodTemplateSpec(
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults(corev1.EnvVar{Name: settings.HeadlessServiceName, Value: headlessServiceName}).
+		// inherit all env vars from main containers to allow Elasticsearch tools that read ES config to work in initContainers
+		WithInitContainerDefaults(builder.MainContainer().Env...).
 		WithPreStopHook(*NewPreStopHook())
 
 	builder, err = stackmon.WithMonitoring(client, builder, es)
