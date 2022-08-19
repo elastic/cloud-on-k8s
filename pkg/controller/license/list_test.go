@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,7 +82,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 				client = k8s.NewFailingClient(tt.injectedError)
 			}
 
-			got, err := reconcileRequestsForAllClusters(client)
+			got, err := reconcileRequestsForAllClusters(client, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileRequestsForAllClusters() error = %v, wantErr %v", err, tt.wantErr)
 				return

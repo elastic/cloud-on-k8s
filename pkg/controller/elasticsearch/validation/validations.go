@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -21,8 +22,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
-
-var log = ulog.Log.WithName("es-validation")
 
 const (
 	autoscalingVersionMsg    = "autoscaling is not available in this version of Elasticsearch"
@@ -49,18 +48,18 @@ type validation func(esv1.Elasticsearch) field.ErrorList
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
 
 // updateValidations are the validation funcs that only apply to updates
-func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
+func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
 	return []updateValidation{
 		noDowngrades,
 		validUpgradePath,
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
-			return validPVCModification(current, proposed, k8sClient, validateStorageClass)
+			return validPVCModification(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
 	}
 }
 
 // validations are the validation funcs that apply to creates or updates
-func validations(checker license.Checker, exposedNodeLabels NodeLabels) []validation {
+func validations(ctx context.Context, checker license.Checker, exposedNodeLabels NodeLabels) []validation {
 	return []validation{
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
@@ -75,7 +74,7 @@ func validations(checker license.Checker, exposedNodeLabels NodeLabels) []valida
 		validMonitoring,
 		validAssociations,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
-			return validLicenseLevel(proposed, checker)
+			return validLicenseLevel(ctx, proposed, checker)
 		},
 	}
 }
@@ -340,11 +339,11 @@ func validAssociations(es esv1.Elasticsearch) field.ErrorList {
 	return append(err1, err2...)
 }
 
-func validLicenseLevel(es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+func validLicenseLevel(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
 	var errs field.ErrorList
-	ok, err := license.HasRequestedLicenseLevel(es.Annotations, checker)
+	ok, err := license.HasRequestedLicenseLevel(ctx, es.Annotations, checker)
 	if err != nil {
-		log.Error(err, "while checking license level during validation")
+		ulog.FromContext(ctx).Error(err, "while checking license level during validation")
 		return nil // ignore the error here
 	}
 	if !ok {

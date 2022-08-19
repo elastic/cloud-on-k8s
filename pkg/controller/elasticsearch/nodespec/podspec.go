@@ -49,6 +49,7 @@ var minDefaultSecurityContextVersion = version.MinFor(8, 0, 0)
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
@@ -115,7 +116,7 @@ func BuildPodTemplateSpec(
 		WithInitContainerDefaults(builder.MainContainer().Env...).
 		WithPreStopHook(*NewPreStopHook())
 
-	builder, err = stackmon.WithMonitoring(client, builder, es)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

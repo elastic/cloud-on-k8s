@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
@@ -83,7 +84,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
-	reusableSettings, err := getOrCreateReusableSettings(client, kb)
+	reusableSettings, err := getOrCreateReusableSettings(ctx, client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -134,7 +135,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		return CanonicalConfig{}, err
 	}
 	if esAssocConf.IsConfigured() {
-		credentials, err := association.ElasticsearchAuthSettings(client, kb.EsAssociation())
+		credentials, err := association.ElasticsearchAuthSettings(ctx, client, kb.EsAssociation())
 		if err != nil {
 			return CanonicalConfig{}, err
 		}
@@ -195,7 +196,8 @@ type reusableSettings struct {
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
-func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+func getExistingConfig(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+	log := ulog.FromContext(ctx)
 	var secret corev1.Secret
 	err := client.Get(context.Background(), types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -221,8 +223,8 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalCo
 
 // getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
-	cfg, err := getExistingConfig(c, kb)
+func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+	cfg, err := getExistingConfig(ctx, c, kb)
 	if err != nil {
 		return nil, err
 	}

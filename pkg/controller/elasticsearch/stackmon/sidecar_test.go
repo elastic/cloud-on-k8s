@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -140,7 +141,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := tc.es()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			_, err := WithMonitoring(fakeClient, builder, es)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, es)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))

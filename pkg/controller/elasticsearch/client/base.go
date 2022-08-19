@@ -21,8 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
-var log = ulog.Log.WithName("elasticsearch-client")
-
 type baseClient struct {
 	User     BasicAuth
 	HTTP     *http.Client
@@ -72,7 +70,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 
-	log.V(1).Info(
+	ulog.FromContext(context).V(1).Info(
 		"Elasticsearch HTTP request",
 		"method", request.Method,
 		"url", request.URL.Redacted(),
@@ -86,7 +84,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 
 	// Check HTTP code in Elasticsearch response.
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return response, newDecoratedHTTPError(request, newAPIError(response))
+		return response, newDecoratedHTTPError(request, newAPIError(context, response))
 	}
 
 	return response, nil

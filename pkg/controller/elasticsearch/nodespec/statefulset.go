@@ -5,6 +5,8 @@
 package nodespec
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +57,7 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 }
 
 func BuildStatefulSet(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
@@ -76,7 +79,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

@@ -5,13 +5,16 @@
 package annotation
 
 import (
+	"context"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // ExtractTimeout extracts a timeout value specified as an annotation on a resource.
-func ExtractTimeout(objMeta metav1.ObjectMeta, annotation string, defaultVal time.Duration) time.Duration {
+func ExtractTimeout(ctx context.Context, objMeta metav1.ObjectMeta, annotation string, defaultVal time.Duration) time.Duration {
 	if len(objMeta.Annotations) == 0 {
 		return defaultVal
 	}
@@ -23,7 +26,7 @@ func ExtractTimeout(objMeta metav1.ObjectMeta, annotation string, defaultVal tim
 
 	timeout, err := time.ParseDuration(t)
 	if err != nil {
-		log.Error(err, "Failed to parse timeout value from annotation", "annotation", annotation, "value", t)
+		ulog.FromContext(ctx).Error(err, "Failed to parse timeout value from annotation", "annotation", annotation, "value", t)
 		return defaultVal
 	}
 

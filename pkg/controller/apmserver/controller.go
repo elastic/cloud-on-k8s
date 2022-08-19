@@ -189,7 +189,7 @@ func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&as) {
+	if common.IsUnmanaged(ctx, &as) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
 		return reconcile.Result{}, nil
 	}
@@ -213,7 +213,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	state := NewState(as)
 	results := reconciler.NewResult(ctx)
 
-	areAssocsConfigured, err := association.AreConfiguredIfSet(as.GetAssociations(), r.recorder)
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, as.GetAssociations(), r.recorder)
 	if err != nil {
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}

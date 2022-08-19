@@ -5,6 +5,8 @@
 package apmserver
 
 import (
+	"context"
+
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -28,8 +30,8 @@ func NewState(as *apmv1.ApmServer) State {
 }
 
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
-func (s State) UpdateApmServerState(deployment v1.Deployment, pods []corev1.Pod, apmServerSecret corev1.Secret) error {
-	deploymentStatus, err := common.DeploymentStatus(s.ApmServer.Status.DeploymentStatus, deployment, pods, APMVersionLabelName)
+func (s State) UpdateApmServerState(ctx context.Context, deployment v1.Deployment, pods []corev1.Pod, apmServerSecret corev1.Secret) error {
+	deploymentStatus, err := common.DeploymentStatus(ctx, s.ApmServer.Status.DeploymentStatus, deployment, pods, APMVersionLabelName)
 	if err != nil {
 		return err
 	}

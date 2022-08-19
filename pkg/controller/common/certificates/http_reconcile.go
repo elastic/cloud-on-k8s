@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
@@ -54,6 +55,7 @@ func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts 
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
 func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, customCertificates *CertificatesSecret) (*CertificatesSecret, error) {
+	log := ulog.FromContext(ctx)
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 
 	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
@@ -124,7 +126,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
+			ctx, &secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
 		)
 		if err != nil {
 			return nil, err
@@ -161,6 +163,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 //
 // Returns true if the secret was changed.
 func ensureInternalSelfSignedCertificateSecretContents(
+	ctx context.Context,
 	secret *corev1.Secret,
 	owner types.NamespacedName,
 	namer name.Namer,
@@ -170,10 +173,11 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	ca *CA,
 	rotationParam RotationParams,
 ) (bool, error) {
+	log := ulog.FromContext(ctx)
 	secretWasChanged := false
 
 	// verify that the secret contains a parsable and compatible private key
-	privateKey := GetCompatiblePrivateKey(ca.PrivateKey, secret, KeyFileName)
+	privateKey := GetCompatiblePrivateKey(ctx, ca.PrivateKey, secret, KeyFileName)
 
 	// if we need a new private key, generate it
 	if privateKey == nil {
@@ -191,7 +195,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// check if the existing cert should be re-issued
-	certificate := getHTTPCertificate(owner, namer, tls, controllerSANs, secret, svcs, ca, rotationParam.RotateBefore)
+	certificate := getHTTPCertificate(ctx, owner, namer, tls, controllerSANs, secret, svcs, ca, rotationParam.RotateBefore)
 	if certificate == nil {
 		log.Info(
 			"Issuing new HTTP certificate",
@@ -256,6 +260,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
 func getHTTPCertificate(
+	ctx context.Context,
 	owner types.NamespacedName,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
@@ -265,6 +270,8 @@ func getHTTPCertificate(
 	ca *CA,
 	certReconcileBefore time.Duration,
 ) []byte {
+	log := ulog.FromContext(ctx)
+
 	validatedTemplate := createValidatedHTTPCertificateTemplate(
 		owner, namer, tls, controllerSANs, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)

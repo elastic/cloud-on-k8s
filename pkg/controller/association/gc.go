@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -134,7 +135,7 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection(ctx context.Context) error
 			}
 			_, found := parents[expectedParent]
 			if !found {
-				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
+				ulog.FromContext(ctx).Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 				err = ugc.client.Delete(ctx, &secret)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err

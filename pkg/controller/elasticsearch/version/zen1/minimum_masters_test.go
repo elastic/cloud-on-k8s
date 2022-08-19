@@ -77,7 +77,7 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.pods...)
-			err := SetupMinimumMasterNodesConfig(client, testES, tt.nodeSpecResources)
+			err := SetupMinimumMasterNodesConfig(context.Background(), client, testES, tt.nodeSpecResources)
 			require.NoError(t, err)
 			for i := 0; i < len(tt.nodeSpecResources); i++ {
 				expected, err := tt.expected[i].Render()

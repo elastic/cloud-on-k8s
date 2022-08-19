@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func (d *defaultDriver) handleUpgrades(
@@ -32,11 +33,12 @@ func (d *defaultDriver) handleUpgrades(
 	expectedResources nodespec.ResourcesList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
+	log := ulog.FromContext(ctx)
 
 	// We need to check that all the expectations are satisfied before continuing.
 	// This is to be sure that none of the previous steps has changed the state and
 	// that we are not running with a stale cache.
-	ok, reason, err := d.expectationsSatisfied()
+	ok, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -272,6 +274,7 @@ func podsToUpgrade(
 }
 
 func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
+	log := ulog.FromContext(ctx)
 	targetEsVersion, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return err
@@ -308,7 +311,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	results := &reconciler.Results{}
 	// Make sure all pods scheduled for upgrade have been upgraded.
 	// This is a redundant check in the current call hierarchy but makes the invariant explicit and testing easier.
-	done, reason, err := d.expectationsSatisfied()
+	done, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -335,7 +338,7 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 		return results.WithError(err)
 	}
 	if !nodesInCluster {
-		log.V(1).Info(
+		ulog.FromContext(ctx).V(1).Info(
 			"Some upgraded nodes are not back in the cluster yet, cannot complete node upgrade",
 			"namespace", d.ES.Namespace,
 			"es_name", d.ES.Name,
@@ -373,7 +376,7 @@ func (d *defaultDriver) maybeEnableShardsAllocation(
 		return results
 	}
 
-	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+	ulog.FromContext(ctx).Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
 		return results.WithError(err)
 	}
@@ -425,7 +428,7 @@ func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) 
 		return err
 	}
 	if shardsAllocationEnabled {
-		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
+		ulog.FromContext(ctx.parentCtx).Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
 		if err := ctx.esClient.DisableReplicaShardsAllocation(ctx.parentCtx); err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"crypto/x509"
 	"reflect"
 	"testing"
@@ -75,7 +76,7 @@ func TestInitTrialLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.state.InitTrialLicense(tt.args.l)
+			err := tt.state.InitTrialLicense(context.Background(), tt.args.l)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return

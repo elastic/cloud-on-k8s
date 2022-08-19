@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"context"
 	"path"
 	"sort"
 	"testing"
@@ -211,7 +212,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -227,7 +228,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	require.NoError(t, err)
 
 	client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-	actual, err := BuildPodTemplateSpec(client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+	actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec
@@ -528,7 +529,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-			actual, err := BuildPodTemplateSpec(client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false)
 			require.NoError(t, err)
 
 			env := actual.Spec.Containers[1].Env

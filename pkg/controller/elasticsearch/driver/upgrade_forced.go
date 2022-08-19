@@ -7,6 +7,7 @@ package driver
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
@@ -33,8 +35,9 @@ func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
 func (d *defaultDriver) maybeForceUpgradePods(ctx context.Context, actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
-	actualBySset := podsByStatefulSetName(actualPods)
-	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade)
+	log := ulog.FromContext(ctx)
+	actualBySset := podsByStatefulSetName(actualPods, log)
+	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade, log)
 
 	attempted = false
 
@@ -62,7 +65,7 @@ func (d *defaultDriver) maybeForceUpgradePods(ctx context.Context, actualPods []
 	return attempted, nil
 }
 
-func podsByStatefulSetName(pods []corev1.Pod) map[string][]corev1.Pod {
+func podsByStatefulSetName(pods []corev1.Pod, log logr.Logger) map[string][]corev1.Pod {
 	byStatefulSet := map[string][]corev1.Pod{}
 	for _, p := range pods {
 		ssetName, exists := p.Labels[label.StatefulSetNameLabelName]

@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // reconcileSuspendedPods implements the operator side of activating the Pod suspension mechanism:
@@ -58,7 +59,7 @@ func reconcileSuspendedPods(ctx context.Context, c k8s.Client, es esv1.Elasticse
 				// delete the Pod without grace period if the main Elasticsearch container is running
 				// and we have seen all expected deletions in the cache
 				if deletionsSatisfied && s.Name == esv1.ElasticsearchContainerName && s.State.Running != nil {
-					log.Info("Deleting suspended pod", "pod_name", pod.Name, "pod_uid", pod.UID,
+					ulog.FromContext(ctx).Info("Deleting suspended pod", "pod_name", pod.Name, "pod_uid", pod.UID,
 						"namespace", es.Namespace, "es_name", es.Name)
 					// the precondition serves as an additional barrier in addition to the expectation mechanism to
 					// not accidentally deleting Pods we do not intent to delete (because our view of the world is out of sync)

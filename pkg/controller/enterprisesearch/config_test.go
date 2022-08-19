@@ -182,7 +182,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.ent)
+			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.ent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	"go.elastic.co/apm/module/apmzap/v2"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -27,10 +28,6 @@ const (
 	EcsVersion     = "1.4.0"
 	EcsServiceType = "eck"
 	FlagName       = "log-verbosity"
-
-	SpanIDField        = "span.id"
-	TraceIDField       = "trace.id"
-	TransactionIDField = "transaction.id"
 
 	testLogLevelEnvVar = "ECK_TEST_LOG_LEVEL"
 )
@@ -81,9 +78,12 @@ func setLogger(v *int) {
 		_ = flagset.Set("v", strconv.Itoa(int(zapLevel.Level())*-1))
 	}
 
+	// send error logs to APM
+	tracing := zap.WrapCore((&apmzap.Core{}).WrapCore)
+
 	opts := []zap.Option{zap.Fields(
 		zap.String("service.version", getVersionString()),
-	)}
+	), tracing}
 
 	var encoder zapcore.Encoder
 	if dev.Enabled {
@@ -146,7 +146,11 @@ func TraceContextKV(ctx context.Context) []interface{} {
 	}
 
 	traceCtx := tx.TraceContext()
-	fields := []interface{}{TraceIDField, traceCtx.Trace, TransactionIDField, traceCtx.Span}
+	fields := []interface{}{apmzap.FieldKeyTraceID, traceCtx.Trace, apmzap.FieldKeyTransactionID, traceCtx.Span}
+
+	if span := apm.SpanFromContext(ctx); span != nil {
+		fields = append(fields, apmzap.FieldKeySpanID, span.TraceContext().Span)
+	}
 
 	return fields
 }
@@ -173,8 +177,8 @@ func FromContext(ctx context.Context) logr.Logger {
 		result = crlog.Log
 	}
 
-	if span := apm.SpanFromContext(ctx); span != nil {
-		result = result.WithValues(SpanIDField, span.TraceContext().Span)
+	if fields := TraceContextKV(ctx); len(fields) > 0 {
+		result = result.WithValues(fields...)
 	}
 
 	return result

@@ -272,7 +272,6 @@ func testReconciler(runtimeObjs ...runtime.Object) Reconciler {
 				},
 			},
 		},
-		logger: log.WithName("test"),
 	}
 }
 
@@ -583,7 +582,6 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 				},
 			},
 		},
-		logger: log.WithName("test"),
 	}
 
 	// no resources are watched yet
@@ -925,7 +923,6 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 				},
 			},
 		},
-		logger: log.WithName("test"),
 	}
 
 	// Secrets created for the first ref

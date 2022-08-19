@@ -26,10 +26,6 @@ const (
 	FilebeatModuleAnnotation = "co.elastic.logs/module"
 )
 
-var (
-	log = ulog.Log.WithName("annotation")
-)
-
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(
 	ctx context.Context,
@@ -40,7 +36,7 @@ func MarkPodsAsUpdated(
 	var podList corev1.PodList
 	err := c.List(ctx, &podList, podListOptions...)
 	if err != nil {
-		log.Error(err, "failed to list pods for annotation update")
+		ulog.FromContext(ctx).Error(err, "failed to list pods for annotation update")
 		return
 	}
 	// Update annotation
@@ -58,6 +54,7 @@ func MarkPodAsUpdated(
 	c k8s.Client,
 	pod corev1.Pod,
 ) {
+	log := ulog.FromContext(ctx)
 	log.V(1).Info(
 		"Updating annotation on pod",
 		"annotation", UpdateAnnotation,

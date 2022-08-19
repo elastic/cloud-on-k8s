@@ -61,15 +61,15 @@ func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 	return nil
 }
 
-func (wh *validatingWebhook) validateCreate(es esv1.Elasticsearch) error {
+func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) error {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(es, wh.licenseChecker, wh.exposedNodeLabels)
+	return ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
 }
 
-func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
+func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elasticsearch, curr esv1.Elasticsearch) error {
 	eslog.V(1).Info("validate update", "name", curr.Name)
 	var errs field.ErrorList
-	for _, val := range updateValidations(wh.client, wh.validateStorageClass) {
+	for _, val := range updateValidations(ctx, wh.client, wh.validateStorageClass) {
 		if err := val(prev, curr); err != nil {
 			errs = append(errs, err...)
 		}
@@ -79,11 +79,11 @@ func (wh *validatingWebhook) validateUpdate(prev esv1.Elasticsearch, curr esv1.E
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			curr.Name, errs)
 	}
-	return ValidateElasticsearch(curr, wh.licenseChecker, wh.exposedNodeLabels)
+	return ValidateElasticsearch(ctx, curr, wh.licenseChecker, wh.exposedNodeLabels)
 }
 
 // Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
-func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) admission.Response {
+func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
 	es := &esv1.Elasticsearch{}
 	err := wh.decoder.DecodeRaw(req.Object, es)
 	if err != nil {
@@ -98,7 +98,7 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 	}
 
 	if req.Operation == admissionv1.Create {
-		err = wh.validateCreate(*es)
+		err = wh.validateCreate(ctx, *es)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
@@ -111,7 +111,7 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 
-		err = wh.validateUpdate(*oldObj, *es)
+		err = wh.validateUpdate(ctx, *oldObj, *es)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
@@ -121,8 +121,8 @@ func (wh *validatingWebhook) Handle(_ context.Context, req admission.Request) ad
 }
 
 // ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
-func ValidateElasticsearch(es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) error {
-	errs := check(es, validations(checker, exposedNodeLabels))
+func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) error {
+	errs := check(es, validations(ctx, checker, exposedNodeLabels))
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
