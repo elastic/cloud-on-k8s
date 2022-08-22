@@ -40,7 +40,6 @@ func TestFilebeatNoAutodiscoverRecipe(t *testing.T) {
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasMessageContaining(loggedString),
 			)
@@ -54,7 +53,6 @@ func TestFilebeatAutodiscoverRecipe(t *testing.T) {
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
@@ -72,7 +70,7 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+			WithRoles(beat.AutodiscoverClusterRoleName).
 			WithESValidations(
 				beat.HasEventFromPod(podLabel.Name),
 				beat.HasMessageContaining(goodLog),
@@ -86,7 +84,6 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 func TestMetricbeatHostsRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:system.cpu"),
 				beat.HasEvent("event.dataset:system.load"),
@@ -150,7 +147,6 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(append(
 				metricbeatValidations,
 				// filebeat validations
@@ -181,7 +177,6 @@ func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 		require.NoError(t, err)
 
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("monitor.status:up"),
 			)
@@ -201,7 +196,6 @@ func TestAuditbeatHostsRecipe(t *testing.T) {
 
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.AuditbeatPSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:file"),
 				beat.HasEvent("event.module:file_integrity"),
@@ -219,7 +213,6 @@ func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithRoles(beat.PacketbeatPSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:flow"),
 				beat.HasEvent("event.dataset:dns"),
@@ -231,8 +224,7 @@ func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 
 func TestJournalbeatHostsRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
-		return builder.
-			WithRoles(beat.JournalbeatPSPClusterRoleName)
+		return builder
 	}
 
 	runBeatRecipe(t, "journalbeat_hosts.yaml", customize)
