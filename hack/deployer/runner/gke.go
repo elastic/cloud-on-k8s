@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
 )
 
 const (
@@ -147,6 +148,11 @@ func (d *GKEDriver) Execute() error {
 		if err := createStorageClass(); err != nil {
 			return err
 		}
+		if d.plan.EnforceSecurityPolicies {
+			if err := kyverno.Install(); err != nil {
+				return err
+			}
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -229,9 +235,6 @@ func (d *GKEDriver) create() error {
 	log.Println("Creating cluster...")
 
 	opts := []string{}
-	if d.plan.Psp {
-		opts = append(opts, "--enable-pod-security-policy")
-	}
 
 	if d.plan.Gke.NetworkPolicy {
 		opts = append(opts, "--enable-network-policy")
