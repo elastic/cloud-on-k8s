@@ -11,6 +11,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -18,6 +19,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
+
+type Error struct {
+	Source runtime.Object
+	Err    error
+}
+
+func (e *Error) Error() string {
+	return e.Err.Error()
+}
+
+func NewError(src runtime.Object, err error) error {
+	return &Error{Source: src, Err: err}
+}
 
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
@@ -33,7 +47,7 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 		ls := license
 		parsed, err := ParseEnterpriseLicense(ls.Data)
 		if err != nil {
-			errors = append(errors, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls)))
+			errors = append(errors, NewError(&license, pkgerrors.Wrapf(err, "while parsing license in %v", k8s.ExtractNamespacedName(&ls))))
 		} else {
 			licenses = append(licenses, parsed)
 		}
