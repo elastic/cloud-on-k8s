@@ -47,7 +47,7 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 		ls := license
 		parsed, err := ParseEnterpriseLicense(ls.Data)
 		if err != nil {
-			errors = append(errors, NewError(&license, pkgerrors.Wrapf(err, "while parsing license in %v", k8s.ExtractNamespacedName(&ls))))
+			errors = append(errors, NewError(&ls, pkgerrors.Wrapf(err, "while parsing license in %v", k8s.ExtractNamespacedName(&ls))))
 		} else {
 			licenses = append(licenses, parsed)
 		}
