@@ -82,6 +82,8 @@ spec:
 
 NOTE: You can configure an Elasticsearch cluster to monitor itself.
 
+NOTE: If stack monitoring is configured for a Beat, but the cooresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
+
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
 You can send metrics and logs to two different Elasticsearch monitoring clusters.

@@ -159,8 +159,8 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						Monitoring: Monitoring{
-							Metrics: MetricsMonitoring{
+						Monitoring: commonv1.Monitoring{
+							Metrics: commonv1.MetricsMonitoring{
 								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
 							},
 						},
@@ -174,8 +174,8 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						Monitoring: Monitoring{
-							Logs: LogsMonitoring{
+						Monitoring: commonv1.Monitoring{
+							Logs: commonv1.LogsMonitoring{
 								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
 							},
 						},
@@ -271,8 +271,8 @@ func Test_checkMonitoring(t *testing.T) {
 					Type:      "filebeat",
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
-					Monitoring: Monitoring{
-						Metrics: MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
 									Name:      "es",
@@ -296,8 +296,8 @@ func Test_checkMonitoring(t *testing.T) {
 					Type:      "filebeat",
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
-					Monitoring: Monitoring{
-						Logs: LogsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
 									Name:      "es",
@@ -321,8 +321,8 @@ func Test_checkMonitoring(t *testing.T) {
 					Type:      "filebeat",
 					Version:   "8.2.3",
 					DaemonSet: &DaemonSetSpec{},
-					Monitoring: Monitoring{
-						Logs: LogsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
 									Name:      "es",
@@ -330,7 +330,7 @@ func Test_checkMonitoring(t *testing.T) {
 								},
 							},
 						},
-						Metrics: MetricsMonitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{
 									Name:      "es",

@@ -79,12 +79,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmo
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmon.BeatSidecar, error) {
-	filebeat, err := stackmon.NewFileBeatSidecar(ctx, client, &kb, kb.Spec.Version, filebeatConfig, nil)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
-
-	return filebeat, nil
+	return stackmon.NewFileBeatSidecar(ctx, client, &kb, kb.Spec.Version, filebeatConfig, nil)
 }
 
 // WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers

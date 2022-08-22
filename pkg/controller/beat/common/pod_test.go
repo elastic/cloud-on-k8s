@@ -79,8 +79,8 @@ func Test_buildPodTemplate(t *testing.T) {
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
 			ElasticsearchRef: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"},
-			Monitoring: v1beta1.Monitoring{
-				Metrics: v1beta1.MetricsMonitoring{
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{
 						{
 							Name:      "testes",
@@ -88,7 +88,7 @@ func Test_buildPodTemplate(t *testing.T) {
 						},
 					},
 				},
-				Logs: v1beta1.LogsMonitoring{
+				Logs: commonv1.LogsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{
 						{
 							Name:      "testes",
@@ -149,7 +149,6 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
 				params: DriverParams{
-					Context: context.Background(),
 					Watches: watches.NewDynamicWatches(),
 					Client:  k8s.NewFakeClient(),
 					Beat: v1beta1.Beat{
@@ -196,7 +195,6 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"),
 				params: DriverParams{
-					Context: context.Background(),
 					Watches: watches.NewDynamicWatches(),
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator

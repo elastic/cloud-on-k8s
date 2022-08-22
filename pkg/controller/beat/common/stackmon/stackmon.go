@@ -34,20 +34,14 @@ var (
 
 	// ErrMonitoringClusterUUIDUnavailable will be returned when the UUID for the Beat ElasticsearchRef cluster
 	// has not yet been assigned a UUID.  This could happen on a newly created Elasticsearch cluster.
-	ErrMonitoringClusterUUIDUnavailable = errors.New("beats stack monitoring cluster uuid is unavailable")
+	ErrMonitoringClusterUUIDUnavailable = errors.New("cluster UUID for Beats stack monitoring is unavailable")
 )
 
 func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
-	filebeat, err := stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
-
-	return filebeat, nil
+	return stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
 }
 
 func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {
-	finalTemplate := metricbeatConfigTemplate
 	config, err := settings.NewCanonicalConfigFrom(beat.Spec.Config.Data)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
@@ -69,32 +63,33 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		httpPort = portData
 	}
 
-	if err := beat.ElasticsearchRef().IsValid(); err == nil {
-		var es esv1.Elasticsearch
-		if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
-			return stackmon.BeatSidecar{}, err
-		}
-		uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
-		if !ok {
-			// returning specific error here so this operation can be retried.
-			return stackmon.BeatSidecar{}, ErrMonitoringClusterUUIDUnavailable
-		}
-		var tmpl *template.Template
-		if tmpl, err = template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate); err != nil {
-			return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
-		}
-		var tpl bytes.Buffer
-		data := struct {
-			ClusterUUID string
-			URL         string
-		}{
-			ClusterUUID: uuid,
-			URL:         fmt.Sprintf("http://localhost:%d", httpPort),
-		}
-		if err := tmpl.Execute(&tpl, data); err != nil {
-			return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %w", err)
-		}
-		finalTemplate = tpl.String()
+	if err := beat.ElasticsearchRef().IsValid(); err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	var es esv1.Elasticsearch
+	if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
+	if !ok {
+		// returning specific error here so this operation can be retried.
+		return stackmon.BeatSidecar{}, ErrMonitoringClusterUUIDUnavailable
+	}
+	var beatTemplate *template.Template
+	if beatTemplate, err = template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate); err != nil {
+		return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
+	}
+	var byteBuffer bytes.Buffer
+	data := struct {
+		ClusterUUID string
+		URL         string
+	}{
+		ClusterUUID: uuid,
+		URL:         fmt.Sprintf("http://localhost:%d", httpPort),
+	}
+	if err := beatTemplate.Execute(&byteBuffer, data); err != nil {
+		return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %w", err)
 	}
 
 	return stackmon.NewMetricBeatSidecar(
@@ -103,7 +98,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		commonv1.BeatMonitoringAssociationType,
 		beat,
 		version,
-		finalTemplate,
+		byteBuffer.String(),
 		common_name.NewNamer("beat"),
 		fmt.Sprintf("http://localhost:%d", httpPort),
 		"",

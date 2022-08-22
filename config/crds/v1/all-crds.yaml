@@ -2364,7 +2364,7 @@ spec:
                 properties:
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
-                      receive log data from this Beats resource.
+                      receive log data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -2411,7 +2411,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which receive monitoring data from this Beats resource.
+                      which receive monitoring data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -3670,7 +3670,7 @@ spec:
                 properties:
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
-                      receive log data from this Elasticsearch cluster.
+                      receive log data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -3717,7 +3717,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which receive monitoring data from this Elasticsearch cluster.
+                      which receive monitoring data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -7673,7 +7673,7 @@ spec:
                 properties:
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
-                      will receive log data from this Kibana.
+                      receive log data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -7720,7 +7720,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which will receive monitoring data from this Kibana.
+                      which receive monitoring data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of

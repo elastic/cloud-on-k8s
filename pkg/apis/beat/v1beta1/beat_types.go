@@ -85,7 +85,7 @@ type BeatSpec struct {
 	// Metricbeat and/or Filebeat sidecars are configured and send monitoring data to a
 	// Elasticsearch monitoring cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	Monitoring Monitoring `json:"monitoring,omitempty"`
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
@@ -104,29 +104,6 @@ type DeploymentSpec struct {
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
-}
-
-type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this Beats resource.
-	// +kubebuilder:validation:Optional
-	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which receive log data from this Beats resource.
-	// +kubebuilder:validation:Optional
-	Logs LogsMonitoring `json:"logs,omitempty"`
-}
-
-type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
-}
-
-type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 // BeatStatus defines the observed state of a Beat.

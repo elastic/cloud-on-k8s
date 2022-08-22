@@ -95,38 +95,35 @@ func Test_buildBeatConfig(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
-		beat          func() beatv1beta1.Beat
+		beat          beatv1beta1.Beat
 		managedConfig *settings.CanonicalConfig
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
 		{
 			name: "no association, no configs",
-			beat: func() beatv1beta1.Beat { return beatv1beta1.Beat{} },
+			beat: beatv1beta1.Beat{},
 		},
 		{
 			name: "no association, user config",
-			beat: func() beatv1beta1.Beat {
-				return beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-					Config: userCfg,
-				}}
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userCfg,
+			},
 			},
 			want: userCanonicalCfg,
 		},
 		{
 			name:          "no association, managed config",
-			beat:          func() beatv1beta1.Beat { return beatv1beta1.Beat{} },
+			beat:          beatv1beta1.Beat{},
 			managedConfig: managedCfg,
 			want:          managedCfg,
 		},
 		{
 			name: "no association, managed and user configs",
-			beat: func() beatv1beta1.Beat {
-				return beatv1beta1.Beat{
-					Spec: beatv1beta1.BeatSpec{
-						Config: userCfg,
-					},
-				}
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Config: userCfg,
+				},
 			},
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg),
@@ -134,73 +131,71 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:   "association without ca, no configs",
 			client: clientWithSecret,
-			beat:   func() beatv1beta1.Beat { return withAssoc },
+			beat:   withAssoc,
 			want:   outputYaml,
 		},
 		{
 			name:   "association without ca, user config",
 			client: clientWithSecret,
-			beat:   func() beatv1beta1.Beat { return withAssocWithConfig },
+			beat:   withAssocWithConfig,
 			want:   merge(userCanonicalCfg, outputYaml),
 		},
 		{
 			name:          "association without ca, managed config",
 			client:        clientWithSecret,
-			beat:          func() beatv1beta1.Beat { return withAssoc },
+			beat:          withAssoc,
 			managedConfig: managedCfg,
 			want:          merge(managedCfg, outputYaml),
 		},
 		{
 			name:          "association without ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          func() beatv1beta1.Beat { return withAssocWithConfig },
+			beat:          withAssocWithConfig,
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml),
 		},
 		{
 			name:   "association with ca, no configs",
 			client: clientWithSecret,
-			beat:   func() beatv1beta1.Beat { return withAssocWithCA },
+			beat:   withAssocWithCA,
 			want:   merge(outputYaml, outputCAYaml),
 		},
 		{
 			name:   "association with ca, user config",
 			client: clientWithSecret,
-			beat:   func() beatv1beta1.Beat { return withAssocWithCAWithConfig },
+			beat:   withAssocWithCAWithConfig,
 			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:          "association with ca, managed config",
 			client:        clientWithSecret,
-			beat:          func() beatv1beta1.Beat { return withAssocWithCA },
+			beat:          withAssocWithCA,
 			managedConfig: managedCfg,
 			want:          merge(managedCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:          "association with ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          func() beatv1beta1.Beat { return withAssocWithCAWithConfig },
+			beat:          withAssocWithCAWithConfig,
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name: "no association, user config, with metrics monitoring enabled",
-			beat: func() beatv1beta1.Beat {
-				return beatv1beta1.Beat{
-					Spec: beatv1beta1.BeatSpec{
-						Config: userCfg,
-						Monitoring: beatv1beta1.Monitoring{
-							Metrics: beatv1beta1.MetricsMonitoring{
-								ElasticsearchRefs: []commonv1.ObjectSelector{
-									{
-										Name:      "testesref",
-										Namespace: "test",
-									},
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Config: userCfg,
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "testesref",
+									Namespace: "test",
 								},
 							},
 						},
 					},
-				}
+				},
 			},
 			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]bool{"http.enabled": true, "monitoring.enabled": false})),
 		},
@@ -211,7 +206,7 @@ func Test_buildBeatConfig(t *testing.T) {
 				Context:       nil,
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
-				Beat:          tt.beat(),
+				Beat:          tt.beat,
 			}, tt.managedConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
