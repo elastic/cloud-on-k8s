@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -45,11 +44,8 @@ param2: value2
 				initObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:            "monitored-default-monitoring-beat-es-mon-user",
-							Namespace:       "default",
-							UID:             uuid.NewUUID(),
-							ResourceVersion: "1",
-							Generation:      0,
+							Name:      "monitored-default-monitoring-beat-es-mon-user",
+							Namespace: "default",
 						},
 						Data: map[string][]byte{
 							"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
@@ -59,10 +55,8 @@ param2: value2
 				beatName: "metricbeat",
 				associated: &esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:            "monitored",
-						Namespace:       "default",
-						UID:             uuid.NewUUID(),
-						ResourceVersion: "1",
+						Name:      "monitored",
+						Namespace: "default",
 						Annotations: map[string]string{
 							commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
 {
