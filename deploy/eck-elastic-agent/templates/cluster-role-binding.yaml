@@ -13,7 +13,14 @@ metadata:
   annotations:
     {{- toYaml .Values.clusterRoleBinding.annotations | indent 4 }}
   {{- end }}
-subjects: {{- toYaml .Values.clusterRoleBinding.subjects | nindent 2 }}
+{{- if .Values.clusterRoleBinding.subjects }}
+subjects:
+{{- range .Values.clusterRoleBinding.subjects }}
+  - kind: {{ .kind }}
+    name: {{ .name }}
+    namespace: {{ .namespace | default $.Release.Namespace | quote }}
+{{- end }}
+{{- end }}
 roleRef:
   kind: {{ .Values.clusterRoleBinding.roleRef.kind }}
   name: {{ .Values.clusterRoleBinding.roleRef.name }}
