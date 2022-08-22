@@ -7,9 +7,9 @@ package autoscaler
 import (
 	"github.com/go-logr/logr"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/autoscaler/recommender"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
@@ -17,26 +17,26 @@ import (
 type Context struct {
 	Log logr.Logger
 	// AutoscalingSpec is the autoscaling specification as provided by the user.
-	AutoscalingSpec esv1.AutoscalingPolicySpec
+	AutoscalingSpec v1alpha1.AutoscalingPolicySpec
 	// NodeSets is the list of the NodeSets managed by the autoscaling specification.
 	NodeSets esv1.NodeSetList
 	// CurrentAutoscalingStatus is the current resources status as stored in the Elasticsearch resource.
-	CurrentAutoscalingStatus status.Status
+	CurrentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus
 	// AutoscalingPolicyResult contains the Elasticsearch Autoscaling API result.
 	AutoscalingPolicyResult client.AutoscalingPolicyResult
 	// StatusBuilder is used to track any event that should be surfaced to the user.
-	StatusBuilder *status.AutoscalingStatusBuilder
+	StatusBuilder *v1alpha1.AutoscalingStatusBuilder
 	// Recommender are specialized services to compute required resources.
 	Recommenders []recommender.Recommender
 }
 
 func NewContext(
 	log logr.Logger,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
 	nodeSets esv1.NodeSetList,
-	currentAutoscalingStatus status.Status,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 	autoscalingPolicyResult client.AutoscalingPolicyResult,
-	statusBuilder *status.AutoscalingStatusBuilder,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
 ) (*Context, error) {
 	storageRecommender, err := recommender.NewStorageRecommender(
 		log,

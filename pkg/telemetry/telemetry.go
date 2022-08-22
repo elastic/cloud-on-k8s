@@ -246,7 +246,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			if isManagedByHelm(es.Labels) {
 				stats.HelmManagedResourceCount++
 			}
-			if es.IsAutoscalingDefined() {
+			if es.IsAutoscalingAnnotationSet() {
 				stats.AutoscaledResourceCount++
 			}
 			if es.HasDownwardNodeLabels() {

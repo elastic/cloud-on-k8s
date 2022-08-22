@@ -5,13 +5,14 @@
 package v1
 
 import (
-	"strings"
-
+	"encoding/json"
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	v1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -36,6 +37,9 @@ const (
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
+	// ElasticsearchAutoscalingSpecAnnotationName is the name of the annotation used to store the autoscaling specification.
+	// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+	ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
 
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
@@ -459,15 +463,52 @@ func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, e
 	return "", nil
 }
 
-// IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
-func (es Elasticsearch) IsAutoscalingDefined() bool {
+// IsAutoscalingAnnotationSet returns true if there is an autoscaling configuration in the annotations.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) IsAutoscalingAnnotationSet() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
 	return ok
 }
 
-// AutoscalingSpec returns the autoscaling spec in the Elasticsearch manifest.
-func (es Elasticsearch) AutoscalingSpec() string {
+// AutoscalingAnnotation returns the autoscaling spec in the Elasticsearch manifest.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) AutoscalingAnnotation() string {
 	return es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
+}
+
+var _ v1alpha1.AutoscalingSpec = &AutoscalingSpec{}
+
+// AutoscalingSpec is the root object of the autoscaling specification in the Elasticsearch resource definition.
+// +kubebuilder:object:generate=false
+type AutoscalingSpec struct {
+	AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs `json:"policies"`
+
+	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
+
+	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
+	// fully part of the Elasticsearch specification.
+	Elasticsearch Elasticsearch `json:"-"`
+}
+
+func (as AutoscalingSpec) GetAutoscalingPolicySpecs() v1alpha1.AutoscalingPolicySpecs {
+	return as.AutoscalingPolicySpecs
+}
+
+func (as AutoscalingSpec) GetPollingPeriod() *metav1.Duration {
+	return as.PollingPeriod
+}
+
+// GetAutoscalingSpecificationFromAnnotation unmarshal autoscaling specifications from an Elasticsearch resource.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) GetAutoscalingSpecificationFromAnnotation() (AutoscalingSpec, error) {
+	autoscalingSpec := AutoscalingSpec{}
+	if len(es.AutoscalingAnnotation()) == 0 {
+		return autoscalingSpec, nil
+	}
+	err := json.Unmarshal([]byte(es.AutoscalingAnnotation()), &autoscalingSpec)
+	autoscalingSpec.Elasticsearch = es
+	return autoscalingSpec, err
 }
 
 func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {

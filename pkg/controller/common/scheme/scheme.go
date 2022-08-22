@@ -13,6 +13,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1beta1"
+	easv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1beta1"
@@ -46,6 +47,7 @@ func SetupScheme() {
 		apmv1.AddToScheme,
 		commonv1.AddToScheme,
 		esv1.AddToScheme,
+		easv1alpha1.AddToScheme,
 		kbv1.AddToScheme,
 		entv1.AddToScheme,
 		beatv1beta1.AddToScheme,

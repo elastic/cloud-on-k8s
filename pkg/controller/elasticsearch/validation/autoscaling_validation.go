@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -34,7 +35,7 @@ var (
 )
 
 func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
-	if !es.IsAutoscalingDefined() {
+	if !es.IsAutoscalingAnnotationSet() {
 		return nil
 	}
 	proposedVer, err := version.Parse(es.Spec.Version)
@@ -58,11 +59,11 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	}
 
 	// Attempt to unmarshall the proposed autoscaling spec.
-	autoscalingSpecification, err := es.GetAutoscalingSpecification()
+	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
 	if err != nil {
 		errs = append(errs, field.Invalid(
 			field.NewPath("metadata").Child("annotations", esv1.ElasticsearchAutoscalingSpecAnnotationName),
-			es.AutoscalingSpec(),
+			es.AutoscalingAnnotation(),
 			err.Error(),
 		))
 		return errs
@@ -77,7 +78,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 
 	// Get the list of NodeSets managed by an autoscaling policy. This requires to parse the `node.roles` field in the
 	// node configuration, which may raise an error.
-	autoscaledNodeSets, nodeSetConfigErr := autoscalingSpecification.GetAutoscaledNodeSets()
+	autoscaledNodeSets, nodeSetConfigErr := es.GetAutoscaledNodeSets(proposedVer, autoscalingSpecification.AutoscalingPolicySpecs)
 	if nodeSetConfigErr != nil {
 		errs = append(
 			errs,
@@ -123,7 +124,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func validateAutoscalingPolicies(autoscalingPolicies esv1.AutoscalingPolicySpecs) field.ErrorList {
+func validateAutoscalingPolicies(autoscalingPolicies v1alpha1.AutoscalingPolicySpecs) field.ErrorList {
 	var errs field.ErrorList
 	policyNames := set.Make()
 	rolesSet := make([][]string, 0, len(autoscalingPolicies))
@@ -222,7 +223,7 @@ func autoscalingSpecPath(index int, child string, moreChildren ...string) *field
 // validateQuantities ensures that a quantity range is valid.
 func validateQuantities(
 	errs field.ErrorList,
-	quantityRange *esv1.QuantityRange,
+	quantityRange *v1alpha1.QuantityRange,
 	index int,
 	resource string,
 	minQuantity resource.Quantity,

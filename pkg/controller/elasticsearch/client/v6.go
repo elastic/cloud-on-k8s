@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
@@ -168,7 +168,7 @@ func (c *clientV6) DeleteAutoscalingPolicies(_ context.Context) error {
 	return errNotSupportedInEs6x
 }
 
-func (c *clientV6) CreateAutoscalingPolicy(_ context.Context, _ string, _ esv1.AutoscalingPolicy) error {
+func (c *clientV6) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1alpha1.AutoscalingPolicy) error {
 	return errNotSupportedInEs6x
 }
 

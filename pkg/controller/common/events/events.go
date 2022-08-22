@@ -6,6 +6,8 @@ package events
 
 // Event reasons for the Elastic stack controller
 const (
+	// EventReasonDeprecated describes events that were due to a deprecated resource being submitted by the user.
+	EventReasonDeprecated = "Deprecated"
 	// EventReasonDelayed describes events where a requested change was delayed e.g. to prevent data loss.
 	EventReasonDelayed = "Delayed"
 	// EventReasonStalled describes events where a requested change is stalled and may not make progress without user

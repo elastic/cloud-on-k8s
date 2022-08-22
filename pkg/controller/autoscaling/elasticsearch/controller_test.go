@@ -25,9 +25,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -38,12 +38,10 @@ import (
 
 var (
 	fetchEvents = func(recorder *record.FakeRecorder) []string {
+		close(recorder.Events)
 		events := make([]string, 0)
-		select {
-		case event := <-recorder.Events:
+		for event := range recorder.Events {
 			events = append(events, event)
-		default:
-			break
 		}
 		return events
 	}
@@ -103,7 +101,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want:       defaultRequeue,
 			wantErr:    false,
-			wantEvents: []string{},
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
 		},
 		{
 			name: "ML case where tier total memory was lower than node memory",
@@ -118,7 +116,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want:       defaultRequeue,
 			wantErr:    false,
-			wantEvents: []string{},
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
 		},
 		{
 			name: "Simulate an error while updating the autoscaling policies, we still want to respect min nodes count set by user",
@@ -131,9 +129,9 @@ func TestReconcile(t *testing.T) {
 				esManifest: "min-nodes-increased-by-user",
 				isOnline:   true, // Online, but an error will be raised when updating the autoscaling policies.
 			},
-			want:       reconcile.Result{},
-			wantErr:    true, // Autoscaling API error should be returned.
-			wantEvents: []string{},
+			want:       defaultRequeue, // we still expect the default requeue to be set even if there was an error
+			wantErr:    true,           // Autoscaling API error should be returned.
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
 		},
 		{
 			name: "Cluster is online, but answer from the API is empty, do not touch anything",
@@ -146,7 +144,8 @@ func TestReconcile(t *testing.T) {
 				esManifest: "empty-autoscaling-api-response",
 				isOnline:   true,
 			},
-			want: defaultRequeue,
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
+			want:       defaultRequeue,
 		},
 		{
 			name: "Cluster has just been created, initialize resources",
@@ -159,7 +158,8 @@ func TestReconcile(t *testing.T) {
 				esManifest: "cluster-creation",
 				isOnline:   false,
 			},
-			want: defaultRequeue,
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
+			want:       defaultRequeue,
 		},
 		{
 			name: "Cluster is online, data tier has reached max. capacity",
@@ -176,7 +176,10 @@ func TestReconcile(t *testing.T) {
 				Requeue:      true,
 				RequeueAfter: 42 * time.Second,
 			},
-			wantEvents: []string{"Warning HorizontalScalingLimitReached Can't provide total required storage 39059593954, max number of nodes is 8, requires 10 nodes"},
+			wantEvents: []string{
+				"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource.",
+				"Warning HorizontalScalingLimitReached Can't provide total required storage 39059593954, max number of nodes is 8, requires 10 nodes",
+			},
 		},
 		{
 			name: "Cluster is online, data tier needs to be scaled up from 8 to 10 nodes",
@@ -189,7 +192,8 @@ func TestReconcile(t *testing.T) {
 				esManifest: "storage-scaled-horizontally",
 				isOnline:   true,
 			},
-			want: defaultRequeue,
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
+			want:       defaultRequeue,
 		},
 		{
 			name: "Cluster does not exit",
@@ -206,7 +210,7 @@ func TestReconcile(t *testing.T) {
 				RequeueAfter: 0,
 			},
 			wantErr:    false,
-			wantEvents: []string{},
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
 		},
 		{
 			name: "CPU autoscaling",
@@ -221,7 +225,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want:       defaultRequeue,
 			wantErr:    false,
-			wantEvents: []string{},
+			wantEvents: []string{"Warning Deprecated The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."},
 		},
 	}
 	for _, tt := range tests {
@@ -242,18 +246,20 @@ func TestReconcile(t *testing.T) {
 				}
 			}
 
-			r := &ReconcileElasticsearch{
-				Client:           k8sClient,
-				esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
-				Parameters: operator.Parameters{
-					OperatorInfo: about.OperatorInfo{
-						BuildInfo: about.BuildInfo{
-							Version: "1.5.0",
+			r := &ReconcileElasticsearchAutoscalingAnnotation{
+				baseReconcileAutoscaling: baseReconcileAutoscaling{
+					Client:           k8sClient,
+					esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
+					Parameters: operator.Parameters{
+						OperatorInfo: about.OperatorInfo{
+							BuildInfo: about.BuildInfo{
+								Version: "1.5.0",
+							},
 						},
 					},
+					recorder:       tt.fields.recorder,
+					licenseChecker: tt.fields.licenseChecker,
 				},
-				recorder:       tt.fields.recorder,
-				licenseChecker: tt.fields.licenseChecker,
 			}
 			got, err := r.Reconcile(
 				context.Background(),
@@ -266,7 +272,7 @@ func TestReconcile(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReconcileElasticsearch.reconcileInternal() = %v, want %v", got, tt.want)
+				t.Errorf("ReconcileElasticsearchAutoscaler.reconcileInternal() = %v, want %v", got, tt.want)
 			}
 			if tt.args.esManifest != "" {
 				// Get back Elasticsearch from the API Server.
@@ -297,9 +303,9 @@ func TestReconcile(t *testing.T) {
 
 func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
 	t.Helper()
-	gotStatus, err := status.From(got)
+	gotStatus, err := esv1.ElasticsearchAutoscalerStatusFrom(got) //nolint:staticcheck
 	require.NoError(t, err)
-	wantStatus, err := status.From(want)
+	wantStatus, err := esv1.ElasticsearchAutoscalerStatusFrom(want) //nolint:staticcheck
 	require.NoError(t, err)
 	require.Equal(t, len(gotStatus.AutoscalingPolicyStatuses), len(wantStatus.AutoscalingPolicyStatuses))
 	for _, wantPolicyStatus := range wantStatus.AutoscalingPolicyStatuses {
@@ -322,7 +328,7 @@ func statusesEqual(t *testing.T, got, want esv1.Elasticsearch) {
 	}
 }
 
-func getPolicyStatus(autoscalingPolicyStatuses []status.AutoscalingPolicyStatus, name string) *status.AutoscalingPolicyStatus {
+func getPolicyStatus(autoscalingPolicyStatuses []v1alpha1.AutoscalingPolicyStatus, name string) *v1alpha1.AutoscalingPolicyStatus {
 	for _, policyStatus := range autoscalingPolicyStatuses {
 		if policyStatus.Name == name {
 			return &policyStatus
@@ -340,7 +346,7 @@ type fakeEsClient struct {
 	autoscalingPolicies                         esclient.AutoscalingCapacityResult
 	policiesCleaned                             bool
 	errorOnDeleteAutoscalingAutoscalingPolicies bool
-	updatedPolicies                             map[string]esv1.AutoscalingPolicy
+	updatedPolicies                             map[string]v1alpha1.AutoscalingPolicy
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
@@ -348,7 +354,7 @@ func newFakeEsClient(t *testing.T) *fakeEsClient {
 	return &fakeEsClient{
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
-		updatedPolicies:     make(map[string]esv1.AutoscalingPolicy),
+		updatedPolicies:     make(map[string]v1alpha1.AutoscalingPolicy),
 	}
 }
 
@@ -381,7 +387,7 @@ func (f *fakeEsClient) DeleteAutoscalingPolicies(_ context.Context) error {
 	}
 	return nil
 }
-func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, policyName string, autoscalingPolicy esv1.AutoscalingPolicy) error {
+func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1alpha1.AutoscalingPolicy) error {
 	return nil
 }
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {

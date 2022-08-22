@@ -5,22 +5,16 @@
 package elasticsearch
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 )
@@ -30,9 +24,9 @@ import (
 func reconcileElasticsearch(
 	log logr.Logger,
 	es *esv1.Elasticsearch,
-	statusBuilder *status.AutoscalingStatusBuilder,
-	nextClusterResources resources.ClusterResources,
-	currentAutoscalingStatus status.Status,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
+	nextClusterResources v1alpha1.ClusterResources,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 ) error {
 	nextResourcesByNodeSet := nextClusterResources.ByNodeSet()
 	for i := range es.Spec.NodeSets {
@@ -77,9 +71,7 @@ func reconcileElasticsearch(
 			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
 	}
-
-	// Update autoscaling status
-	return status.UpdateAutoscalingStatus(es, statusBuilder, nextClusterResources, currentAutoscalingStatus)
+	return nil
 }
 
 func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {
@@ -106,25 +98,6 @@ func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.Node
 	}
 	volumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = storageQuantity
 	return []corev1.PersistentVolumeClaim{*volumeClaimTemplate}, nil
-}
-
-func (r *ReconcileElasticsearch) fetchElasticsearch(
-	ctx context.Context,
-	request reconcile.Request,
-	es *esv1.Elasticsearch,
-) (bool, error) {
-	span, ctx := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
-	defer span.End()
-
-	err := r.Get(ctx, request.NamespacedName, es)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		// Error reading the object - requeue the request.
-		return true, err
-	}
-	return false, nil
 }
 
 // removeContainer remove a container from a slice and return the removed container if found.

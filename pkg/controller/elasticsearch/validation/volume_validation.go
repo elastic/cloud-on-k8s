@@ -72,7 +72,7 @@ func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
 func validPVCModification(ctx context.Context, current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
-	if proposed.IsAutoscalingDefined() {
+	if proposed.IsAutoscalingAnnotationSet() {
 		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
 		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
 		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.

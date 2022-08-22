@@ -7,7 +7,8 @@ package v1
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -69,7 +70,7 @@ type ElasticsearchStatus struct {
 	// +optional
 	// Conditions holds the current service state of an Elasticsearch cluster.
 	// **This API is in technical preview and may be changed or removed in a future release.**
-	Conditions Conditions `json:"conditions"`
+	Conditions v1alpha1.Conditions `json:"conditions"`
 
 	// +optional
 	// InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
@@ -105,52 +106,12 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 	return nil
 }
 
-// ConditionType defines the condition of an Elasticsearch resource.
-type ConditionType string
-
 const (
-	ElasticsearchIsReachable ConditionType = "ElasticsearchIsReachable"
-	ReconciliationComplete   ConditionType = "ReconciliationComplete"
-	ResourcesAwareManagement ConditionType = "ResourcesAwareManagement"
-	RunningDesiredVersion    ConditionType = "RunningDesiredVersion"
+	ElasticsearchIsReachable v1alpha1.ConditionType = "ElasticsearchIsReachable"
+	ReconciliationComplete   v1alpha1.ConditionType = "ReconciliationComplete"
+	ResourcesAwareManagement v1alpha1.ConditionType = "ResourcesAwareManagement"
+	RunningDesiredVersion    v1alpha1.ConditionType = "RunningDesiredVersion"
 )
-
-// Condition represents Elasticsearch resource's condition.
-// **This API is in technical preview and may be changed or removed in a future release.**
-type Condition struct {
-	Type   ConditionType          `json:"type"`
-	Status corev1.ConditionStatus `json:"status"`
-	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
-type Conditions []Condition
-
-func (c Conditions) Index(conditionType ConditionType) int {
-	for i, condition := range c {
-		if condition.Type == conditionType {
-			return i
-		}
-	}
-	return -1
-}
-
-func (c Conditions) MergeWith(nextCondition Condition) Conditions {
-	cp := c.DeepCopy()
-	if index := cp.Index(nextCondition.Type); index >= 0 {
-		currentCondition := c[index]
-		if currentCondition.Status != nextCondition.Status ||
-			currentCondition.Message != nextCondition.Message {
-			// Update condition
-			cp[index] = nextCondition
-		}
-	} else {
-		cp = append(cp, nextCondition)
-	}
-	return cp
-}
 
 // NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.
 // **This API is in technical preview and may be changed or removed in a future release.**
