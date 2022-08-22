@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -111,6 +112,7 @@ param2: value2
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := k8s.NewFakeClient(tt.args.initObjects...)
 			got, err := newBeatConfig(
+				context.Background(),
 				fakeClient,
 				tt.args.beatName,
 				tt.args.associated.(monitoring.HasMonitoring),
