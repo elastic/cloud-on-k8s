@@ -119,6 +119,10 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 		"hosts":    []string{assocConf.GetURL()},
 	}
 
+	// Elasticsearch certificate might have been generated for a "public" hostname,
+	// and therefore not being valid for the internal URL.
+	outputConfig["ssl.verification_mode"] = "certificate"
+
 	caDirPath := fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
 		assoc.AssociationType(), assoc.AssociationRef().Namespace, assoc.AssociationRef().NameOrSecretName(),

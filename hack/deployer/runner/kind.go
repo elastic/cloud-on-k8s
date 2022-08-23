@@ -14,10 +14,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/blang/semver/v4"
+
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
-
-	"github.com/blang/semver/v4"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
 )
 
 const (
@@ -124,6 +125,12 @@ func (k *KindDriver) create() error {
 	tmpStorageClass, err := k.createTmpStorageClass()
 	if err != nil {
 		return err
+	}
+
+	if k.plan.EnforceSecurityPolicies {
+		if err := kyverno.Install("--kubeconfig", kubeCfg.Name()); err != nil {
+			return err
+		}
 	}
 
 	return kubectl("--kubeconfig", kubeCfg.Name(), "apply", "-f", tmpStorageClass)
