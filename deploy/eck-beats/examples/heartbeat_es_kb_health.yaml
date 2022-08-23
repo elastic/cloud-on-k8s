@@ -1,13 +1,13 @@
 name: heartbeat
 type: heartbeat
-version: 8.2.3
+version: 8.3.3
 spec:
   elasticsearchRef:
     name: elasticsearch
   config:
     # Since filebeat is used in the default values, this needs to be removed with an empty list. 
     filebeat.inputs: []
-    # Since rpcoessors is used in the default values, this needs to be removed with an empty list. 
+    # Since processors is used in the default values, this needs to be removed with an empty list. 
     processors: []
     heartbeat.monitors:
     - type: tcp

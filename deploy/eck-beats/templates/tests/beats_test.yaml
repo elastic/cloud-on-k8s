@@ -13,7 +13,7 @@ tests:
           value: quickstart-eck-beats
       - equal:
           path: spec.version
-          value: 8.2.3
+          value: 8.3.3
       - equal:
           path: spec.daemonSet.podTemplate.spec.containers[0].name
           value: filebeat

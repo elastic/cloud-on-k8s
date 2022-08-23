@@ -34,7 +34,7 @@ for_all_yaml_do() {
 	local function="$1"
 	# Directories containing Yaml files with version references to replace
 	# Note: hack/operatorhub/config.yaml will need to be updated manually
-	local dirs=(config/samples config/recipes config/e2e test/e2e)
+	local dirs=(config/samples config/recipes config/e2e test/e2e deploy/eck-stack deploy/eck-beats deploy/eck-kibana deploy/eck-elasticsearch)
 	LC_CTYPE=C LANG=C find "${dirs[@]}" -type f -iname \*.yaml \
 		| while read -r file; do "$function" "$file"; done
 }
