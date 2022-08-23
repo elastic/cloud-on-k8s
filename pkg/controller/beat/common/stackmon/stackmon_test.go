@@ -93,6 +93,8 @@ output:
     hosts:
     - es-metrics-monitoring-url
     password: es-password
+    ssl:
+      verification_mode: certificate
     username: es-user
 `
 	beatSidecarFixture := stackmon.BeatSidecar{
