@@ -27,6 +27,10 @@ The next two examples cover approaches that use Cloud-provider specific means to
 * <<{p}-gke-workload-identiy>>
 * <<{p}-iam-service-accounts>>
 
+The final example illustrates how to configure secure and trusted communication when you
+
+* <<{p}-s3-compatible>>
+
 
 == Configuration examples
 
@@ -279,7 +283,105 @@ PUT /_snapshot/my_s3_repository
 }
 ----
 
+[id="{p}-s3-compatible"]
+=== Use S3-compatible services
 
+The following example assumes that you have deployed and configured a S3 compatible object store like https://min.io[MinIO] in your Kubernetes cluster and that you have created a bucket in said service, called `es-repo` in this example. We also assume an Elasticsearch cluster is deployed, called `es` in this example.
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  nodeSets:
+  - name: mixed
+    count: 3
+----
+
+
+. Extract the cacerts JVM trust store from one of the running Elasticsearch nodes.
++
+[source,sh]
+----
+kubectl cp es-es-mixed-0:/usr/share/elasticsearch/jdk/lib/security/cacerts cacerts
+----
++
+NOTE: You can skip this step if you want to create a new trust store that does not contain any well known CAs that Elasticsearch trusts by default. Be aware that this limits Elasticsearch's ability to communicate with TLS secured endpoints to those for which you add CA certificates in the next steps.
+. Obtain the CA certificate used to sign the certificate of your S3-compatible service. We assume it is called `tls.crt`
+. Add the certificate to the JVM trust store from step 1
++
+[source,sh]
+----
+keytool -importcert -keystore cacerts -storepass changeit -file tls.crt -alias my-custom-s3-svc
+----
++
+NOTE:  You need to have the Java Runtime environment with the keytool installed locally for this step. `changeit` is the default password used by the JVM, but it can be changed with `keytool` as well.
+. Create a Kubernetes secret with the amended trust store
++
+[source,sh]
+----
+kubectl create secret generic custom-truststore --from-file=cacerts
+----
++
+. Create a Kubernetes secret with the credentials for your object store bucket
++
+[source,sh]
+----
+kubectl create secret generic snapshot-settings \
+   --from-literal=s3.client.default.access_key=$YOUR_ACCESS_KEY \
+   --from-literal=s3.client.default.secret_key=$YOUR_SECRET_ACCESS_KEY
+----
++
+. Update your Elasticsearch cluster to use the trust store and credentials from the Kubernetes secrets
++
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  secureSettings:
+  - secretName: snapshot-settings
+  nodeSets:
+  - name: mixed
+    count: 3
+    podTemplate:
+      spec:
+        volumes:
+        - name: custom-truststore
+          secret:
+            secretName: additional-certs
+        containers:
+        - name: elasticsearch
+          volumeMounts:
+          - name: custom-truststore
+            mountPath: /usr/share/elasticsearch/config/custom-truststore
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Djavax.net.ssl.trustStore=/usr/share/elasticsearch/config/custom-truststore/cacerts -Djavax.net.ssl.keyStorePassword=changeit"
+----
++
+. Create the snapshot repository
++
+[source,sh,subs="attributes,callouts"]
+----
+POST _snapshot/my_s3_repository
+{
+  "type": "s3",
+  "settings": {
+    "bucket": "es-repo",
+    "path_style_access": true,	<1>
+    "endpoint": "https://mys3service.default.svc.cluster.local/" <2>
+  }
+}
+----
++
+<1> Whether or not you need to enable `path_style_access` depends on your choice of S3-compatible storage service and how it is deployed. If it is exposed through a standard Kubernetes service it is likely you need this option
+<2> Replace this is with the actual endpoint of your S3-compatible service
 
 [id="{p}-install-plugin"]
 === Install a snapshot repository plugin
