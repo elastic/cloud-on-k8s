@@ -161,7 +161,7 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: BeatSpec{
 						Monitoring: commonv1.Monitoring{
 							Metrics: commonv1.MetricsMonitoring{
-								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
+								ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
 							},
 						},
 					},
@@ -176,7 +176,7 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: BeatSpec{
 						Monitoring: commonv1.Monitoring{
 							Logs: commonv1.LogsMonitoring{
-								[]commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
+								ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "bli", Namespace: "blub"}},
 							},
 						},
 					},
