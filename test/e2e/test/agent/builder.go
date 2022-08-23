@@ -29,8 +29,6 @@ import (
 )
 
 const (
-	PSPClusterRoleName = "elastic-agent-restricted"
-
 	AgentFleetModeRoleName = "elastic-agent-fleet"
 
 	// FleetServerPseudoKind is a lookup key for a version definition.

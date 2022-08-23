@@ -48,7 +48,6 @@ func TestGlobalCA(t *testing.T) {
 		WithGlobalCA(true)
 	testPod := beat.NewPodBuilder(name)
 	agent := elasticagent.NewBuilder(name).
-		WithRoles(elasticagent.PSPClusterRoleName).
 		WithElasticsearchRefs(elasticagent.ToOutput(es.Ref(), "default")).
 		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default"))
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)

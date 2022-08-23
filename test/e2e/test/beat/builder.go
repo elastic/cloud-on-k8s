@@ -32,11 +32,6 @@ import (
 )
 
 const (
-	PSPClusterRoleName            = "elastic-beat-restricted"
-	AuditbeatPSPClusterRoleName   = "elastic-auditbeat-restricted"
-	PacketbeatPSPClusterRoleName  = "elastic-packetbeat-restricted"
-	JournalbeatPSPClusterRoleName = "elastic-journalbeat-restricted"
-
 	AutodiscoverClusterRoleName = "elastic-beat-autodiscover"
 	MetricbeatClusterRoleName   = "elastic-beat-metricbeat"
 )

@@ -74,7 +74,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	entUpdated := ent.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
-		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+		WithRoles(beat.AutodiscoverClusterRoleName).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef)

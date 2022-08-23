@@ -30,9 +30,9 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	fleetServerBuilder := agent.NewBuilder(name+"-fs").
+	fleetServerBuilder := agent.NewBuilder(name + "-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithVersion(srcVersion).
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
@@ -47,9 +47,9 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 
 	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
-	agentBuilder := agent.NewBuilder(name+"-ea").
+	agentBuilder := agent.NewBuilder(name + "-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithVersion(srcVersion).
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
