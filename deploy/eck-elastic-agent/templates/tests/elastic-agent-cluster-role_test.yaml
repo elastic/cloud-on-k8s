@@ -44,3 +44,72 @@ tests:
           - get
           - create
           - update
+  - it: should render cluster role in default values properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: elastic-agent
+      - equal:
+          path: rules[2].nonResourceURLs
+          value:
+          - "/metrics"
+      - equal:
+          path: rules[2].verbs
+          value:
+          - get
+      - equal:
+          path: rules[3].apiGroups[0]
+          value: "extensions"
+      - equal:
+          path: rules[3].resources
+          value:
+          - replicasets
+      - equal:
+          path: rules[3].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[4].apiGroups[0]
+          value: apps
+      - equal:
+          path: rules[4].resources
+          value:
+          - statefulsets
+          - deployments
+          - replicasets
+      - equal:
+          path: rules[4].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[5].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[5].resources
+          value:
+          - nodes/stats
+      - equal:
+          path: rules[5].verbs
+          value:
+          - get
+      - equal:
+          path: rules[6].apiGroups[0]
+          value: batch
+      - equal:
+          path: rules[6].resources
+          value:
+          - jobs
+      - equal:
+          path: rules[6].verbs
+          value:
+          - get
+          - list
+          - watch

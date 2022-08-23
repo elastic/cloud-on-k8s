@@ -10,9 +10,6 @@ spec:
     name: eck-kibana
   mode: fleet
 
-  # This is required to remove the default configuration for fleet agent in the default values.yaml
-  config: null
-
   daemonSet:
     podTemplate:
       spec:

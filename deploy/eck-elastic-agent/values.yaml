@@ -77,99 +77,89 @@ spec:
   # Configuration of Agent, specifically used in Agent standalone mode.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
   #
-  config:
-    agent:
-      monitoring:
-        enabled: true
-        use_output: default
-        metrics: true
-    inputs:
-    - type: system/metrics
-      data_stream.namespace: default
-      use_output: default
-      streams:
-      - metricset: cpu
-        data_stream.dataset: system.cpu
+  config: {}
 
 # ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
 # require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-serviceAccount: {}
-  # name: elastic-agent
+serviceAccount:
+  name: elastic-agent
+  # { .Release.Namespace } is used here by default, but can be specified.
   # namespace: optional-namespace
 
 # ClusterRoleBinding to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-clusterRoleBinding: {}
-  # name: fleet-server
-  # subjects:
-  # - kind: ServiceAccount
-  #   name: elastic-agent
-  #   namespace: default
-  # roleRef:
-  #   kind: ClusterRole
-  #   name: elastic-agent
-  #   apiGroup: rbac.authorization.k8s.io
+clusterRoleBinding:
+  name: elastic-agent
+  subjects:
+  - kind: ServiceAccount
+    name: elastic-agent
+    # { .Release.Namespace } is used here by default, but can be specified.
+    # namespace: default
+  roleRef:
+    kind: ClusterRole
+    name: elastic-agent
+    apiGroup: rbac.authorization.k8s.io
 
 # ClusterRole to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
 #
-clusterRole: {}
-  # name: elastic-agent
-  # rules:
-  # - apiGroups: [""]
-  #   resources:
-  #   - pods
-  #   - nodes
-  #   - namespaces
-  #   - events
-  #   - services
-  #   - configmaps
-  #   verbs:
-  #   - get
-  #   - watch
-  #   - list
-  # - apiGroups: ["coordination.k8s.io"]
-  #   resources:
-  #   - leases
-  #   verbs:
-  #   - get
-  #   - create
-  #   - update
-  # - nonResourceURLs:
-  #   - "/metrics"
-  #   verbs:
-  #   - get
-  # - apiGroups: ["extensions"]
-  #   resources:
-  #     - replicasets
-  #   verbs: 
-  #   - "get"
-  #   - "list"
-  #   - "watch"
-  # - apiGroups:
-  #   - "apps"
-  #   resources:
-  #   - statefulsets
-  #   - deployments
-  #   - replicasets
-  #   verbs:
-  #   - "get"
-  #   - "list"
-  #   - "watch"
-  # - apiGroups:
-  #   - ""
-  #   resources:
-  #   - nodes/stats
-  #   verbs:
-  #   - get
-  # - apiGroups:
-  #   - "batch"
-  #   resources:
-  #   - jobs
-  #   verbs:
-  #   - "get"
-  #   - "list"
-  #   - "watch"
+clusterRole:
+  name: elastic-agent
+  rules:
+  - apiGroups: [""]
+    resources:
+    - pods
+    - nodes
+    - namespaces
+    - events
+    - services
+    - configmaps
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+    - leases
+    verbs:
+    - get
+    - create
+    - update
+  - nonResourceURLs:
+    - "/metrics"
+    verbs:
+    - get
+  - apiGroups: ["extensions"]
+    resources:
+      - replicasets
+    verbs: 
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - "apps"
+    resources:
+    - statefulsets
+    - deployments
+    - replicasets
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/stats
+    verbs:
+    - get
+  - apiGroups:
+    - "batch"
+    resources:
+    - jobs
+    verbs:
+    - "get"
+    - "list"
+    - "watch"

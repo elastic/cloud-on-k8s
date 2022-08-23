@@ -15,6 +15,9 @@ tests:
           path: spec.version
           value: 8.2.3
       - equal:
+          path: spec.config
+          value: {}
+      - equal:
           path: spec.daemonSet.podTemplate.spec.containers[0].name
           value: agent
       - equal:

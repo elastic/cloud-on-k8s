@@ -28,3 +28,31 @@ tests:
       - equal:
           path: roleRef.apiGroup
           value: rbac.authorization.k8s.io
+  - it: should render cluster role binding in default values properly
+    release:
+      name: quickstart
+      namespace: testing
+    asserts:
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: metadata.name
+          value: elastic-agent
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+      - equal:
+          path: subjects[0].namespace
+          value: testing
+      - equal:
+          path: subjects[0].name
+          value: elastic-agent
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - equal:
+          path: roleRef.name
+          value: elastic-agent
+      - equal:
+          path: roleRef.apiGroup
+          value: rbac.authorization.k8s.io
