@@ -147,7 +147,7 @@ kubectl annotate serviceaccount gcs-sa \
 +
 . Create an Elasticsearch cluster, referencing the Kubernetes service account
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
@@ -174,7 +174,7 @@ The AWS IAM roles for service accounts feature allows you to give Elasticsearch 
 
 Follow https://aws.amazon.com/premiumsupport/knowledge-center/eks-restrict-s3-bucket/[the AWS documentation] to set this feature up, specifically you need to:
 
-. Define an IAM policy file, called `iam-policy.json` in this example
+. Define an IAM policy file, called `iam-policy.json` in this example, giving access to an S3 bucket called `my_bucket`
 +
 [source,json]
 ----
@@ -317,7 +317,7 @@ NOTE: You can skip this step if you want to create a new trust store that does n
 keytool -importcert -keystore cacerts -storepass changeit -file tls.crt -alias my-custom-s3-svc
 ----
 +
-NOTE:  You need to have the Java Runtime environment with the keytool installed locally for this step. `changeit` is the default password used by the JVM, but it can be changed with `keytool` as well.
+NOTE:  You need to have the Java Runtime environment with the `keytool` installed locally for this step. `changeit` is the default password used by the JVM, but it can be changed with `keytool` as well.
 . Create a Kubernetes secret with the amended trust store
 +
 [source,sh]
