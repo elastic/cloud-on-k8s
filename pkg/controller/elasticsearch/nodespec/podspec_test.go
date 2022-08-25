@@ -6,6 +6,7 @@ package nodespec
 
 import (
 	"context"
+	"path"
 	"sort"
 	"testing"
 
@@ -23,6 +24,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
@@ -241,11 +244,21 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	initContainers, err := initcontainer.NewInitContainers(transportCertificatesVolume(sampleES.Name), nil, nil)
 	require.NoError(t, err)
 	// init containers should be patched with volume and inherited env vars and image
-	headlessSvcEnvVar := corev1.EnvVar{Name: "HEADLESS_SERVICE_NAME", Value: "name-es-nodeset-1"}
+	// init container env vars come in a slightly different order than main container ones which is an artefact of how the pod template builder works
+	initContainerEnv := defaults.ExtendPodDownwardEnvVars(
+		[]corev1.EnvVar{
+			{Name: "my-env", Value: "my-value"},
+			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.ProbeUserName)},
+			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
+			{Name: settings.EnvReadinessProbeProtocol, Value: sampleES.Spec.HTTP.Protocol()},
+			{Name: settings.HeadlessServiceName, Value: HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name))},
+			{Name: "NSS_SDB_USE_CACHE", Value: "no"},
+		}...,
+	)
 	esDockerImage := "docker.elastic.co/elasticsearch/elasticsearch:7.2.0"
 	for i := range initContainers {
 		initContainers[i].Image = esDockerImage
-		initContainers[i].Env = append(initContainers[i].Env, headlessSvcEnvVar)
+		initContainers[i].Env = initContainerEnv
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 		initContainers[i].Resources = DefaultResources
 	}
@@ -288,7 +301,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
 				Image:        esDockerImage,
-				Env:          defaults.ExtendPodDownwardEnvVars(headlessSvcEnvVar),
+				Env:          initContainerEnv,
 				VolumeMounts: volumeMounts,
 				Resources:    DefaultResources, // inherited from main container
 			}),
