@@ -287,6 +287,8 @@ PUT /_snapshot/my_s3_repository
 === Use S3-compatible services
 
 The following example assumes that you have deployed and configured a S3 compatible object store like https://min.io[MinIO] in your Kubernetes cluster and that you have created a bucket in said service, called `es-repo` in this example. We also assume an Elasticsearch cluster is deployed, called `es` in this example.
+Most importantly the steps describing how to customize the JVM trust store are only necessary if your S3-compatible service is using TLS certificates that are not issued by a well known certificate authority.
+
 [source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/v1
