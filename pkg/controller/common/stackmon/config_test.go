@@ -66,7 +66,7 @@ param2: value2
 	"caCertProvided": true,
 	"caSecretName": "monitored-es-monitoring-default-monitoring-ca",
 	"url": "https://monitoring-es-http.default.svc:9200",
-	"version": "8.3.1"
+	"version": "8.4.0"
 }
 `,
 						},
