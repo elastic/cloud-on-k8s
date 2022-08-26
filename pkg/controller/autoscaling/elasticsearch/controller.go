@@ -198,7 +198,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	results := &reconciler.Results{}
 
 	// Call the main function
-	reconciledEs, reconcileInternalErr := r.reconcileInternal(ctx, es, esa.Status, statusBuilder, autoscaledNodeSets, &esa)
+	reconciledEs, reconcileInternalErr := r.reconcileInternal(ctx, es, statusBuilder, autoscaledNodeSets, &esa)
 	if reconcileInternalErr != nil {
 		// we do not return immediately as not all errors prevent to compute a reconciled Elasticsearch resource.
 		results.WithError(reconcileInternalErr)
@@ -228,7 +228,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		}
 		return results.WithError(err).Aggregate()
 	}
-	return results.WithResult(defaultResult(&esa)).Aggregate()
+	return results.WithResults(defaultResult(&esa)).Aggregate()
 }
 
 // reportAsUnhealthy reports the autoscaler as inactive in the status.
@@ -337,16 +337,21 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 	return results.Aggregate()
 }
 
-func defaultResult(autoscalingSpecification v1alpha1.AutoscalingSpec) reconcile.Result {
+func defaultResult(autoscalingSpecification v1alpha1.AutoscalingResource) *reconciler.Results {
+	results := reconciler.Results{}
 	requeueAfter := v1alpha1.DefaultPollingPeriod
-	pollingPeriod := autoscalingSpecification.GetPollingPeriod()
+	pollingPeriod, err := autoscalingSpecification.GetPollingPeriod()
+	if err != nil {
+		return results.WithError(err)
+	}
 	if pollingPeriod != nil {
 		requeueAfter = pollingPeriod.Duration
 	}
-	return reconcile.Result{
-		Requeue:      true,
-		RequeueAfter: requeueAfter,
-	}
+	return results.WithResult(
+		reconcile.Result{
+			Requeue:      true,
+			RequeueAfter: requeueAfter,
+		})
 }
 
 func newElasticsearchClient(

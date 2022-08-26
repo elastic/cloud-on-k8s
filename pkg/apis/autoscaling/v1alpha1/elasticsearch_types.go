@@ -28,7 +28,7 @@ type ElasticsearchAutoscaler struct {
 	Status v1alpha1.ElasticsearchAutoscalerStatus `json:"status,omitempty"`
 }
 
-var _ v1alpha1.AutoscalingSpec = &ElasticsearchAutoscaler{}
+var _ v1alpha1.AutoscalingResource = &ElasticsearchAutoscaler{}
 
 // ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscaler resource.
 type ElasticsearchAutoscalerSpec struct {
@@ -42,18 +42,25 @@ type ElasticsearchAutoscalerSpec struct {
 	PollingPeriod *metav1.Duration `json:"pollingPeriod,omitempty"`
 }
 
-func (esa *ElasticsearchAutoscaler) GetAutoscalingPolicySpecs() v1alpha1.AutoscalingPolicySpecs {
+func (esa *ElasticsearchAutoscaler) GetAutoscalingPolicySpecs() (v1alpha1.AutoscalingPolicySpecs, error) {
 	if esa == nil {
-		return nil
+		return nil, nil
 	}
-	return esa.Spec.AutoscalingPolicySpecs
+	return esa.Spec.AutoscalingPolicySpecs, nil
 }
 
-func (esa *ElasticsearchAutoscaler) GetPollingPeriod() *metav1.Duration {
+func (esa *ElasticsearchAutoscaler) GetPollingPeriod() (*metav1.Duration, error) {
 	if esa == nil {
-		return nil
+		return nil, nil
 	}
-	return esa.Spec.PollingPeriod
+	return esa.Spec.PollingPeriod, nil
+}
+
+func (esa *ElasticsearchAutoscaler) GetElasticsearchAutoscalerStatus() (v1alpha1.ElasticsearchAutoscalerStatus, error) {
+	if esa == nil {
+		return v1alpha1.ElasticsearchAutoscalerStatus{}, nil
+	}
+	return esa.Status, nil
 }
 
 // ElasticsearchRef is a reference to a secret that exists in the same namespace.

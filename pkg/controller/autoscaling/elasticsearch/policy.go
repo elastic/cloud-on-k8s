@@ -19,7 +19,7 @@ import (
 func updatePolicies(
 	ctx context.Context,
 	log logr.Logger,
-	autoscalingSpec v1alpha1.AutoscalingSpec,
+	autoscalingResource v1alpha1.AutoscalingResource,
 	esclient client.AutoscalingClient,
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_autoscaling_policies", tracing.SpanTypeApp)
@@ -29,8 +29,12 @@ func updatePolicies(
 		log.Error(err, "Error while deleting policies")
 		return err
 	}
+	autoscalingPolicySpecs, err := autoscalingResource.GetAutoscalingPolicySpecs()
+	if err != nil {
+		return err
+	}
 	// Create the expected autoscaling policies
-	for _, rp := range autoscalingSpec.GetAutoscalingPolicySpecs() {
+	for _, rp := range autoscalingPolicySpecs {
 		if err := esclient.CreateAutoscalingPolicy(ctx, rp.Name, rp.AutoscalingPolicy); err != nil {
 			log.Error(err, "Error while updating an autoscaling policy", "policy", rp.Name)
 			return err

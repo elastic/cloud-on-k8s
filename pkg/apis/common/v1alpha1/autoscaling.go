@@ -45,9 +45,10 @@ type AutoscalingPolicy struct {
 // -- Elastic Cloud on K8S specific structures
 
 // +kubebuilder:object:generate=false
-type AutoscalingSpec interface {
-	GetAutoscalingPolicySpecs() AutoscalingPolicySpecs
-	GetPollingPeriod() *metav1.Duration
+type AutoscalingResource interface {
+	GetAutoscalingPolicySpecs() (AutoscalingPolicySpecs, error)
+	GetPollingPeriod() (*metav1.Duration, error)
+	GetElasticsearchAutoscalerStatus() (ElasticsearchAutoscalerStatus, error)
 }
 
 type AutoscalingPolicySpecs []AutoscalingPolicySpec

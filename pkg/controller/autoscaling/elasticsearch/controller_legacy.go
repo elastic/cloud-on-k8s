@@ -139,7 +139,7 @@ func (r *ReconcileElasticsearchAutoscalingAnnotation) Reconcile(ctx context.Cont
 	results := &reconciler.Results{}
 
 	// Call the main function
-	reconciledEs, err := r.reconcileInternal(ctx, es, autoscalingStatus, statusBuilder, autoscaledNodeSets, autoscalingSpecification)
+	reconciledEs, err := r.reconcileInternal(ctx, es, statusBuilder, autoscaledNodeSets, es)
 	if err != nil {
 		// we do not return immediately as not all errors prevent to compute a reconciled Elasticsearch resource.
 		results.WithError(err)
@@ -160,5 +160,5 @@ func (r *ReconcileElasticsearchAutoscalingAnnotation) Reconcile(ctx context.Cont
 		}
 		return results.WithError(err).Aggregate()
 	}
-	return results.WithResult(defaultResult(autoscalingSpecification)).Aggregate()
+	return results.WithResults(defaultResult(es)).Aggregate()
 }

@@ -476,7 +476,7 @@ func (es Elasticsearch) AutoscalingAnnotation() string {
 	return es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
 }
 
-var _ v1alpha1.AutoscalingSpec = &AutoscalingSpec{}
+var _ v1alpha1.AutoscalingResource = &Elasticsearch{}
 
 // AutoscalingSpec is the root object of the autoscaling specification in the Elasticsearch resource definition.
 // +kubebuilder:object:generate=false
@@ -491,12 +491,28 @@ type AutoscalingSpec struct {
 	Elasticsearch Elasticsearch `json:"-"`
 }
 
-func (as AutoscalingSpec) GetAutoscalingPolicySpecs() v1alpha1.AutoscalingPolicySpecs {
-	return as.AutoscalingPolicySpecs
+func (es Elasticsearch) GetAutoscalingPolicySpecs() (v1alpha1.AutoscalingPolicySpecs, error) {
+	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
+	if err != nil {
+		return nil, err
+	}
+	return autoscalingSpecification.AutoscalingPolicySpecs, nil
 }
 
-func (as AutoscalingSpec) GetPollingPeriod() *metav1.Duration {
-	return as.PollingPeriod
+func (es Elasticsearch) GetPollingPeriod() (*metav1.Duration, error) {
+	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
+	if err != nil {
+		return nil, err
+	}
+	return autoscalingSpecification.PollingPeriod, nil
+}
+
+func (es Elasticsearch) GetElasticsearchAutoscalerStatus() (v1alpha1.ElasticsearchAutoscalerStatus, error) {
+	autoscalingStatus, err := ElasticsearchAutoscalerStatusFrom(es) //nolint:staticcheck
+	if err != nil {
+		return v1alpha1.ElasticsearchAutoscalerStatus{}, err
+	}
+	return autoscalingStatus, nil
 }
 
 // GetAutoscalingSpecificationFromAnnotation unmarshal autoscaling specifications from an Elasticsearch resource.

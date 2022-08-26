@@ -6,7 +6,12 @@ package driver
 
 import (
 	"context"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -17,16 +22,22 @@ import (
 // when autoscaling is enabled. This is to avoid situations where resources have been manually
 // deleted or replaced by an external event. The Elasticsearch controller should then wait for
 // the Elasticsearch autoscaling controller to update again the resources in the NodeSets.
-func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
-	if !es.IsAutoscalingAnnotationSet() {
-		return true, nil
-	}
-	log := ulog.FromContext(ctx)
-	autoscalingSpec, err := es.GetAutoscalingSpecificationFromAnnotation() 
+func (d *defaultDriver) autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
+	autoscalingResource, err := d.getAssociatedAutoscalingResource(ctx, es)
 	if err != nil {
 		return false, err
 	}
-	autoscalingStatus, err := esv1.ElasticsearchAutoscalerStatusFrom(es) //nolint:staticcheck
+	if autoscalingResource == nil {
+		// Cluster is not managed by an autoscaler.
+		return true, nil
+	}
+
+	log := ulog.FromContext(ctx)
+	autoscalingSpecs, err := autoscalingResource.GetAutoscalingPolicySpecs()
+	if err != nil {
+		return false, err
+	}
+	autoscalingStatus, err := autoscalingResource.GetElasticsearchAutoscalerStatus()
 	if err != nil {
 		return false, err
 	}
@@ -35,7 +46,7 @@ func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool
 		return false, err
 	}
 	for _, nodeSet := range es.Spec.NodeSets {
-		nodeSetAutoscalingSpec, err := nodeSet.GetAutoscalingSpecFor(v, autoscalingSpec.AutoscalingPolicySpecs)
+		nodeSetAutoscalingSpec, err := nodeSet.GetAutoscalingSpecFor(v, autoscalingSpecs)
 		if err != nil {
 			return false, err
 		}
@@ -66,4 +77,36 @@ func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool
 	}
 
 	return true, nil
+}
+
+const (
+	autoscalerWithDeprecatedAnnotation = "cluster has both the autoscaling annotation and an autoscaler resource associate, please remove the elasticsearch.alpha.elastic.co/autoscaling-* annotations"
+	deprecatedAnnotation               = "the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource"
+)
+
+func (d *defaultDriver) getAssociatedAutoscalingResource(ctx context.Context, es esv1.Elasticsearch) (v1alpha1.AutoscalingResource, error) {
+	// Let's try to detect any associated autoscaler
+	autoscalers := &esav1alpha1.ElasticsearchAutoscalerList{}
+	if err := d.Client.List(ctx, autoscalers, client.InNamespace(es.Namespace)); err != nil {
+		return nil, err
+	}
+
+	var autoscalingResource v1alpha1.AutoscalingResource
+	for _, autoscaler := range autoscalers.Items {
+		if autoscaler.Spec.ElasticsearchRef.Name == es.Name {
+			autoscalingResource = &autoscaler
+		}
+	}
+
+	log := ulog.FromContext(ctx)
+	if es.IsAutoscalingAnnotationSet() {
+		if autoscalingResource != nil {
+			log.Info(autoscalerWithDeprecatedAnnotation)
+			d.Recorder().Event(&es, corev1.EventTypeWarning, events.EventReasonDeprecated, autoscalerWithDeprecatedAnnotation)
+			return autoscalingResource, nil
+		}
+		d.Recorder().Event(&es, corev1.EventTypeWarning, events.EventReasonDeprecated, deprecatedAnnotation)
+		return es, nil
+	}
+	return autoscalingResource, nil
 }
