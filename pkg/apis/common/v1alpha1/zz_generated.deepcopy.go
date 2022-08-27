@@ -190,6 +190,11 @@ func (in *AutoscalingStatusBuilder) DeepCopyInto(out *AutoscalingStatusBuilder) 
 			(*out)[key] = val
 		}
 	}
+	if in.online != nil {
+		in, out := &in.online, &out.online
+		*out = new(bool)
+		**out = **in
+	}
 	if in.policyStatusBuilder != nil {
 		in, out := &in.policyStatusBuilder, &out.policyStatusBuilder
 		*out = make(map[string]*AutoscalingPolicyStatusBuilder, len(*in))

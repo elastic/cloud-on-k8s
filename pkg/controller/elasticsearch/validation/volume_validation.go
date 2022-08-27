@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/autoscaling"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -72,7 +73,19 @@ func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
 func validPVCModification(ctx context.Context, current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
-	if proposed.IsAutoscalingAnnotationSet() {
+
+	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, k8sClient, proposed, nil)
+	if err != nil {
+		log.Error(
+			err,
+			"Error while trying to check if this cluster is managed by the autoscaling controller, skip volume validation",
+			"namespace", proposed.Namespace,
+			"es_name", proposed.Name,
+		)
+		return errs
+	}
+
+	if autoscalingResource != nil {
 		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
 		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
 		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.
