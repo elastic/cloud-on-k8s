@@ -114,10 +114,16 @@ func buildBeatConfig(
 	// if metrics monitoring is enabled, then
 	// 1. enable the metrics http endpoint for the metricsbeat sidecar to consume
 	// 2. disable internal metrics monitoring endpoint
+	// 3. disable stderr, and syslog monitoring
+	// 4. enable files monitoring, and configure path
 	if monitoring.IsMetricsDefined(&params.Beat) {
 		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"http.enabled":       true,
 			"monitoring.enabled": false,
+			"logging.to_stderr":  false,
+			"logging.to_syslog":  false,
+			"logging.to_files":   true,
+			"logging.files.path": "/var/log/beat",
 		})); err != nil {
 			return nil, err
 		}

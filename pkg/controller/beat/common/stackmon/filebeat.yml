@@ -4,6 +4,14 @@ filebeat:
     id: filebeatlogs
     paths:
       - /var/log/*.log
+      - /var/log/beat/*
       - /usr/share/filebeat/data/registry/filebeat/*.json
+
+path.home: /usr/share/filebeat-sidecar
+path.config: /usr/share/filebeat-sidecar/config
+path.data: /usr/share/filebeat-sidecar/data
+path.logs: /usr/share/filebeat-sidecar/logs
+http.enabled: false
+monitoring.enabled: false
 
 # Elasticsearch output configuration is generated and added here
