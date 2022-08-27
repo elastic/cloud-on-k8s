@@ -292,7 +292,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 		},
 		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
-			Status:             corev1.ConditionFalse,
+			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
@@ -302,15 +302,12 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-	)
-	// Insert a new limited status if there is none.
-	if newStatus.Conditions.Index(v1alpha1.ElasticsearchAutoscalerLimited) < 0 {
-		newStatus.Conditions = newStatus.Conditions.MergeWith(v1alpha1.Condition{
+		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
-		})
-	}
+		},
+	)
 	esa.Status = *newStatus
 	return r.updateStatus(ctx, log, esa)
 }
