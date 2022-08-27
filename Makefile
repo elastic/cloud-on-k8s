@@ -396,12 +396,15 @@ else
 endif
 	
 
+TARGETPLATFORM ?= "linux/amd64"
+
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
+		--build-arg TARGETPLATFORM='$(TARGETPLATFORM)' \
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
