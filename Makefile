@@ -396,7 +396,7 @@ else
 endif
 	
 
-TARGETPLATFORM ?= "linux/amd64"
+TARGETPLATFORM ?= linux/amd64
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
