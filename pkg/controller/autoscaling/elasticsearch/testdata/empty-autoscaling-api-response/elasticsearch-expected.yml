@@ -68,6 +68,7 @@ spec:
         - name: elasticsearch
           resources:
             limits:
+              cpu: "6"
               memory: 8Gi
             requests:
               cpu: "6"
@@ -93,6 +94,7 @@ spec:
         - name: elasticsearch
           resources:
             limits:
+              cpu: "2"
               memory: 2Gi
             requests:
               cpu: "2"

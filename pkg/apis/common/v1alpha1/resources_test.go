@@ -217,6 +217,7 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 			want: NodeResources{
 				Limits: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceMemory: resource.MustParse("16Gi"),
+					corev1.ResourceCPU:    resource.MustParse("2"),
 				},
 				Requests: map[corev1.ResourceName]resource.Quantity{
 					corev1.ResourceMemory: resource.MustParse("8Gi"),
@@ -231,7 +232,9 @@ func TestNodeResources_UpdateLimits(t *testing.T) {
 					MemoryRange: &QuantityRange{
 						RequestsToLimitsRatio: qPtr("0.0"),
 					},
-					CPURange: nil,
+					CPURange: &QuantityRange{
+						RequestsToLimitsRatio: qPtr("0.0"),
+					},
 				},
 			},
 			fields: fields{

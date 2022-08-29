@@ -55,6 +55,15 @@ spec:
   nodeSets:
     - name: master
       count: 3
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              # Specify both limits and requests to benefit from the desired nodes API / Elasticsearch resources aware management.
+              resources:
+                limits:
+                  memory: 4Gi
+                  cpu: 2
       config:
         node:
           roles: [ "master" ]

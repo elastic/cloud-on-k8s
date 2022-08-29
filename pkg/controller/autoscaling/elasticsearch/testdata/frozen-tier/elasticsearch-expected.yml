@@ -45,7 +45,7 @@ metadata:
           "name": "di-hot",
           "nodeSets": [{ "name": "di-hot", "nodeCount": 2 }],
           "resources": {
-            "limits": { "memory": "2Gi" },
+            "limits": { "memory": "2Gi", "cpu": "1" },
             "requests": { "cpu": "1", "memory": "2Gi", "storage": "4Gi" }
           },
           "state": [],
@@ -54,7 +54,7 @@ metadata:
           "name": "di-frozen",
           "nodeSets": [{"name": "di-frozen","nodeCount": 1}],
           "resources": {
-            "limits": {"memory": "3Gi"},
+            "limits": {"memory": "3Gi", "cpu": "2"},
             "requests": {"cpu": "2","memory": "3Gi","storage": "2Gi"}
           },
           "state": [],
@@ -64,7 +64,7 @@ metadata:
           "nodeSets": [{"name": "ml", "nodeCount": 0
           }],
           "resources": {
-            "limits": {"memory": "2Gi"},
+            "limits": {"memory": "2Gi", "cpu": "2"},
             "requests": {"cpu": "2","memory": "2Gi","storage": "1Gi"}
           },
           "state": [],
@@ -103,6 +103,7 @@ spec:
           resources:
             limits:
               memory: 2Gi
+              cpu: "1"
             requests:
               cpu: "1"
               memory: 2Gi
@@ -128,6 +129,7 @@ spec:
         - name: elasticsearch
           resources:
             limits:
+              cpu: "2"
               memory: 3Gi
             requests:
               cpu: "2"
@@ -154,6 +156,7 @@ spec:
         - name: elasticsearch
           resources:
             limits:
+              cpu: "2"
               memory: 2Gi
             requests:
               cpu: "2"

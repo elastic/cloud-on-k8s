@@ -21,7 +21,7 @@ var (
 
 	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
 	// resources specification. By default, we don't want a CPU limit, hence a default value of 0.0
-	defaultCPURequestsToLimitsRatio = 0.0
+	defaultCPURequestsToLimitsRatio = 1.0
 
 	// DefaultPollingPeriod is the default period between 2 Elasticsearch autoscaling API polls.
 	DefaultPollingPeriod = 60 * time.Second
