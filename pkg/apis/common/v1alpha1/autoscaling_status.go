@@ -164,8 +164,8 @@ type PolicyState struct {
 
 type AutoscalingStatusBuilder struct {
 	// Surface specific autoscaling events
-	ScalingLimitEvents set.StringSet
-	OtherEvents        set.StringSet
+	scalingLimitEvents    set.StringSet
+	nonScalingLimitEvents set.StringSet
 
 	// Online/Offline status
 	online        *bool
@@ -178,9 +178,9 @@ type AutoscalingStatusBuilder struct {
 // NewAutoscalingStatusBuilder creates a new autoscaling status builder.
 func NewAutoscalingStatusBuilder() *AutoscalingStatusBuilder {
 	return &AutoscalingStatusBuilder{
-		ScalingLimitEvents:  set.Make(),
-		OtherEvents:         set.Make(),
-		policyStatusBuilder: make(map[string]*AutoscalingPolicyStatusBuilder),
+		scalingLimitEvents:    set.Make(),
+		nonScalingLimitEvents: set.Make(),
+		policyStatusBuilder:   make(map[string]*AutoscalingPolicyStatusBuilder),
 	}
 }
 
@@ -235,9 +235,9 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	for _, policyStateBuilder := range asb.policyStatusBuilder {
 		for eventType := range policyStateBuilder.states {
 			if eventType == VerticalScalingLimitReached || eventType == HorizontalScalingLimitReached {
-				asb.ScalingLimitEvents.Add(policyStateBuilder.policyName)
+				asb.scalingLimitEvents.Add(policyStateBuilder.policyName)
 			} else {
-				asb.OtherEvents.Add(policyStateBuilder.policyName)
+				asb.nonScalingLimitEvents.Add(policyStateBuilder.policyName)
 			}
 		}
 		policyStates[i] = policyStateBuilder.Build()
@@ -246,13 +246,15 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 
 	now := metav1.Now()
 	var conditions Conditions
-	if asb.ScalingLimitEvents.Count() > 0 {
+
+	// Update the ElasticsearchAutoscalerLimited condition.
+	if asb.scalingLimitEvents.Count() > 0 {
 		conditions = conditions.MergeWith(
 			Condition{
 				Type:               ElasticsearchAutoscalerLimited,
 				Status:             corev1.ConditionTrue,
 				LastTransitionTime: now,
-				Message:            fmt.Sprintf("Limit reached for policies %s", strings.Join(asb.ScalingLimitEvents.AsSlice(), ",")),
+				Message:            fmt.Sprintf("Limit reached for policies %s", strings.Join(asb.scalingLimitEvents.AsSortedSlice(), ",")),
 			})
 	} else {
 		conditions = conditions.MergeWith(
@@ -262,7 +264,9 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 				LastTransitionTime: now,
 			})
 	}
-	if asb.OtherEvents.Count() > 0 {
+
+	// Update the ElasticsearchAutoscalerHealthy condition if there is any other event to report.
+	if asb.nonScalingLimitEvents.Count() > 0 {
 		conditions = conditions.MergeWith(
 			Condition{
 				Type:               ElasticsearchAutoscalerHealthy,
@@ -270,7 +274,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 				LastTransitionTime: now,
 				Message: fmt.Sprintf(
 					"Issues reported for the following policies: [%s]. Check operator logs, Kubernetes events, and policies status for more details",
-					strings.Join(asb.OtherEvents.AsSlice(), ","),
+					strings.Join(asb.nonScalingLimitEvents.AsSortedSlice(), ","),
 				),
 			})
 	} else {
@@ -292,7 +296,9 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	)
 
 	// Set online status
-	if asb.online == nil {
+	switch {
+	case asb.online == nil:
+		// Unlikely to happen since online status should be set early by the driver.
 		conditions = conditions.MergeWith(
 			Condition{
 				Type:               ElasticsearchAutoscalerOnline,
@@ -300,7 +306,8 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 				LastTransitionTime: now,
 			},
 		)
-	} else if *asb.online {
+	case *asb.online:
+		// The operator attempted a call to the Elasticsearch API
 		conditions = conditions.MergeWith(
 			Condition{
 				Type:               ElasticsearchAutoscalerOnline,
@@ -309,7 +316,8 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 				Message:            asb.onlineMessage,
 			},
 		)
-	} else {
+	default:
+		// The operator did not attempt a call to the Elasticsearch API, or the call failed.
 		conditions = conditions.MergeWith(
 			Condition{
 				Type:               ElasticsearchAutoscalerOnline,
