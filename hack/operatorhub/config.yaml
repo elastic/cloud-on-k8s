@@ -5,6 +5,9 @@ crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
     description: Instance of an Elasticsearch cluster
+  - name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
+    displayName: Elasticsearch Autoscaler
+    description: Instance of an Elasticsearch autoscaler
   - name: kibanas.kibana.k8s.elastic.co
     displayName: Kibana
     description: Kibana instance
