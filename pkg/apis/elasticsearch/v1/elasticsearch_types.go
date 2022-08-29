@@ -6,10 +6,11 @@ package v1
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
@@ -508,7 +509,7 @@ func (es Elasticsearch) GetPollingPeriod() (*metav1.Duration, error) {
 }
 
 func (es Elasticsearch) GetElasticsearchAutoscalerStatus() (v1alpha1.ElasticsearchAutoscalerStatus, error) {
-	autoscalingStatus, err := ElasticsearchAutoscalerStatusFrom(es) //nolint:staticcheck
+	autoscalingStatus, err := ElasticsearchAutoscalerStatusFrom(es)
 	if err != nil {
 		return v1alpha1.ElasticsearchAutoscalerStatus{}, err
 	}

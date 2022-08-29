@@ -7,10 +7,11 @@ package autoscaling
 import (
 	"context"
 
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 
 	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
@@ -39,7 +40,7 @@ func GetAssociatedAutoscalingResource(
 	var autoscalingResource v1alpha1.AutoscalingResource
 	for _, autoscaler := range autoscalers.Items {
 		if autoscaler.Spec.ElasticsearchRef.Name == es.Name {
-			autoscalingResource = &autoscaler
+			autoscalingResource = autoscaler.DeepCopy()
 		}
 	}
 	if !es.IsAutoscalingAnnotationSet() {

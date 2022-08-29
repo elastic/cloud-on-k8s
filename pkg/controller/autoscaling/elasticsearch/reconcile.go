@@ -24,9 +24,7 @@ import (
 func reconcileElasticsearch(
 	log logr.Logger,
 	es *esv1.Elasticsearch,
-	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
 	nextClusterResources v1alpha1.ClusterResources,
-	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 ) error {
 	nextResourcesByNodeSet := nextClusterResources.ByNodeSet()
 	for i := range es.Spec.NodeSets {

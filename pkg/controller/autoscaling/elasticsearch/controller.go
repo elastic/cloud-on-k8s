@@ -7,14 +7,16 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ptr "k8s.io/utils/pointer"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ptr "k8s.io/utils/pointer"
-	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -122,11 +124,13 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
-	r.Watches.ReferencedResources.AddHandler(watches.NamedWatch{
+	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch{
 		Name:    dyamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,
-	})
+	}); err != nil {
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
 
 	if common.IsUnmanaged(ctx, &esa) {
 		msg := "Object is currently not managed by this controller. Skipping reconciliation"
@@ -319,7 +323,6 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 ) (reconcile.Result, error) {
 	results := &reconciler.Results{}
 	if err := r.Client.Status().Update(ctx, &esa); err != nil {
-		tracing.CaptureError(ctx, err)
 		if apierrors.IsConflict(err) {
 			log.V(1).Info(
 				"Conflict while updating the status",
@@ -329,7 +332,7 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 			)
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
 		}
-		return results.WithError(err).Aggregate()
+		return results.WithError(tracing.CaptureError(ctx, err)).Aggregate()
 	}
 	return results.Aggregate()
 }

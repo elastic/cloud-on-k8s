@@ -7,10 +7,11 @@ package elasticsearch
 import (
 	"context"
 
-	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
@@ -151,7 +152,9 @@ func (r *ReconcileElasticsearchAutoscalingAnnotation) Reconcile(ctx context.Cont
 	}
 
 	// Update the autoscaling status annotation
-	esv1.UpdateAutoscalingStatus(reconciledEs, statusBuilder.Build()) //nolint:staticcheck
+	if err := esv1.UpdateAutoscalingStatus(reconciledEs, statusBuilder.Build()); err != nil { //nolint:staticcheck
+		return results.WithError(err).Aggregate()
+	}
 
 	// Update the Elasticsearch resource
 	if err := r.Client.Update(ctx, reconciledEs); err != nil {

@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 
 	"github.com/go-logr/logr"

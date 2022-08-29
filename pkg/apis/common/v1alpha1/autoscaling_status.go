@@ -6,11 +6,13 @@ package v1alpha1
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 const (

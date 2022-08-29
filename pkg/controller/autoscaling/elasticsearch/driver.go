@@ -7,9 +7,14 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
-	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sort"
 	"strings"
+
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
+
+	"github.com/go-logr/logr"
+	"go.elastic.co/apm/v2"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -18,9 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/go-logr/logr"
-	"go.elastic.co/apm/v2"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (r *baseReconcileAutoscaling) reconcileInternal(
@@ -213,7 +215,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	status.EmitEvents(es, r.recorder, statusBuilder.Build())
 
 	// Update the Elasticsearch resource with the calculated resources.
-	if err := reconcileElasticsearch(log, &es, statusBuilder, nextClusterResources, currentAutoscalingStatus); err != nil {
+	if err := reconcileElasticsearch(log, &es, nextClusterResources); err != nil {
 		errors = append(errors, err)
 	}
 	if len(errors) > 0 {
@@ -260,7 +262,7 @@ func (r *baseReconcileAutoscaling) doOfflineReconciliation(
 	status.EmitEvents(es, r.recorder, statusBuilder.Build())
 
 	// Update the Elasticsearch manifest
-	if err := reconcileElasticsearch(log, &es, statusBuilder, clusterNodeSetsResources, currentAutoscalingStatus); err != nil {
+	if err := reconcileElasticsearch(log, &es, clusterNodeSetsResources); err != nil {
 		return nil, tracing.CaptureError(ctx, err)
 	}
 
