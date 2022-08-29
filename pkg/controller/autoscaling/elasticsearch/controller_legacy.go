@@ -11,8 +11,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -22,13 +20,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
-	// LegacyControllerName is the name of the legacy Elasticsearch autoscaling controller. It reads the autoscaling specification in an annotation,
-	// which was the first way to expose the autoscaling API, before a dedicated CRD has been introduced.
-	// While the constant name used starts with the "legacy" wording, the value starts with "deprecated" instead. It is to make it explicit to the user,
-	// through the logs that this controller should no longer be used.
+	// LegacyControllerName is the name of the legacy Elasticsearch autoscaling controller. It reads the autoscaling specification from
+	// an annotation, which was the first way to expose the autoscaling API, before a dedicated CRD has been introduced.
+	// While the constant name below starts with the "legacy" word, the value starts with "deprecated" instead. It is to make
+	// it explicit to the user, through the logs that this controller should no longer be used.
 	LegacyControllerName = "deprecated-elasticsearch-autoscaling"
 
 	deprecationMessage = "The use of the Elasticsearch autoscaling annotation is deprecated, please consider moving to the ElasticsearchAutoscaler custom resource."

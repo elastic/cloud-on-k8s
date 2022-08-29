@@ -30,19 +30,23 @@ const (
 )
 
 const (
-	// ElasticsearchAutoscalerActive status is True when compute (CPU and memory) and storage resources can be calculated.
+	// ElasticsearchAutoscalerActive status is True when the ElasticsearchAutoscaler resource is managed by the operator and the target
+	// Elasticsearch cluster does exist. It makes it possible to attempt to calculate the required compute and storage resources
+	// for the targeted cluster.
 	ElasticsearchAutoscalerActive ConditionType = "Active"
 
-	// ElasticsearchAutoscalerHealthy status is true if resources have been calculated for all the resources and
-	// no error has been encountered during the reconciliation process.
+	// ElasticsearchAutoscalerHealthy status is True if resources have been calculated for all the autoscaling policies
+	// and no error has been encountered during the reconciliation process.
+	// The fact that this condition is False does not necessarily imply that the calculation of resources has failed
+	// for all the tiers.
 	ElasticsearchAutoscalerHealthy ConditionType = "Healthy"
 
-	// ElasticsearchAutoscalerLimited status is true when a resource limit is reached.
+	// ElasticsearchAutoscalerLimited status is True when a resource limit is reached.
 	ElasticsearchAutoscalerLimited ConditionType = "Limited"
 
-	// ElasticsearchAutoscalerOnline status is true if the Elasticsearch API was available
+	// ElasticsearchAutoscalerOnline status is True if the Elasticsearch API is available
 	// For example, it is expected for this condition to be False if the cluster is being bootstrapped, it should however
-	// become True when operator is able to connect to Elasticsearch.
+	// become True when the operator is able to connect to Elasticsearch.
 	ElasticsearchAutoscalerOnline ConditionType = "Online"
 )
 
