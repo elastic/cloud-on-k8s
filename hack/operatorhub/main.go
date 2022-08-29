@@ -578,6 +578,11 @@ type Images struct {
 		DockerImageDigest string `json:"docker_image_digest"`
 		Id                string `json:"_id"`
 		CreationDate      string `json:"creation_date"`
+		Repositories      []struct {
+			Tags []struct {
+				Name string `json:"name"`
+			} `json:"tags"`
+		} `json:"repositories"`
 	} `json:"data"`
 }
 
@@ -595,11 +600,17 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	req.Header.Set("X-API-KEY", apiKey)
 
 	q := req.URL.Query()
-	q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
+	// This filter does not work any longer.  Redhat case is open to find working filter.
+	// In the interim, we're going to get the most recent 4 published, undeleted images
+	// sorted by descending creation date, and loop through them.
+	// q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
+	q.Add("filter", "repositories.published==true;deleted==false")
+	q.Add("page_size", "4")
+	q.Add("sort_by", "creation_date[desc]")
 	req.URL.RawQuery = q.Encode()
 
 	client := http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 60 * time.Second,
 	}
 	res, err := client.Do(req)
 	if err != nil {
@@ -615,19 +626,23 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	if err := json.NewDecoder(res.Body).Decode(&images); err != nil {
 		return "", err
 	}
-	if len(images.Data) > 1 {
-		fmt.Fprintf(os.Stderr, "\nid                       creation_date                    docker_image_digest\n")
-		for _, image := range images.Data {
-			fmt.Fprintf(os.Stderr, "%s %s %s\n", image.Id, image.CreationDate, image.DockerImageDigest)
-		}
-		return "", fmt.Errorf("found %d images with tag %s in RedHat catalog while only one is expected", len(images.Data), version)
-	}
+
 	if len(images.Data) == 0 {
-		return "", fmt.Errorf("no image with tag %s in RedHat catalog", version)
+		return "", fmt.Errorf("no published, undeleted images found in RedHat catalog")
 	}
-	imageDigest := images.Data[0].DockerImageDigest
+
+	var imageDigest string
+	for _, image := range images.Data {
+		for _, repo := range image.Repositories {
+			for _, tag := range repo.Tags {
+				if tag.Name == version {
+					imageDigest = image.DockerImageDigest
+				}
+			}
+		}
+	}
 	if imageDigest == "" {
-		return "", fmt.Errorf("image digest for %s is empty", version)
+		return "", fmt.Errorf("no recent images found for %s", version)
 	}
 	return imageDigest, nil
 }
