@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
@@ -55,17 +56,17 @@ func TestAutoscaling(t *testing.T) {
 	// * A data tier with 2 initial nodes.
 	// * A ML tier with no node initially started.
 	autoscalingSpecBuilder := NewAutoscalingSpecBuilder(t).
-		withPolicy("data-ingest", []string{"data", "ingest"}, esv1.AutoscalingResources{
-			CPURange:       &esv1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-			MemoryRange:    &esv1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
-			StorageRange:   &esv1.QuantityRange{Min: resource.MustParse("10Gi"), Max: resource.MustParse("20Gi")},
-			NodeCountRange: esv1.CountRange{Min: 2, Max: 4},
+		withPolicy("data-ingest", []string{"data", "ingest"}, v1alpha1.AutoscalingResources{
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
+			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("10Gi"), Max: resource.MustParse("20Gi")},
+			NodeCountRange: v1alpha1.CountRange{Min: 2, Max: 4},
 		}).
-		withPolicy("ml", []string{"ml"}, esv1.AutoscalingResources{
-			CPURange:       &esv1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-			MemoryRange:    &esv1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
-			StorageRange:   &esv1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
-			NodeCountRange: esv1.CountRange{Min: 0, Max: 2},
+		withPolicy("ml", []string{"ml"}, v1alpha1.AutoscalingResources{
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
+			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
+			NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 2},
 		})
 
 	name := "test-autoscaling"
@@ -225,24 +226,24 @@ func newNodeSet(name string, roles []string, count int32, limits corev1.Resource
 // AutoscalingSpecBuilder helps to build and update autoscaling policies.
 type AutoscalingSpecBuilder struct {
 	t        *testing.T
-	policies map[string]esv1.AutoscalingPolicySpec
+	policies map[string]v1alpha1.AutoscalingPolicySpec
 }
 
 func NewAutoscalingSpecBuilder(t *testing.T) *AutoscalingSpecBuilder {
 	return &AutoscalingSpecBuilder{
 		t:        t,
-		policies: make(map[string]esv1.AutoscalingPolicySpec),
+		policies: make(map[string]v1alpha1.AutoscalingPolicySpec),
 	}
 }
 
 // withPolicy adds or replaces an autoscaling policy.
-func (ab *AutoscalingSpecBuilder) withPolicy(policy string, roles []string, resources esv1.AutoscalingResources) *AutoscalingSpecBuilder {
-	ab.policies[policy] = esv1.AutoscalingPolicySpec{
-		NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{
+func (ab *AutoscalingSpecBuilder) withPolicy(policy string, roles []string, resources v1alpha1.AutoscalingResources) *AutoscalingSpecBuilder {
+	ab.policies[policy] = v1alpha1.AutoscalingPolicySpec{
+		NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
 			Name: policy,
-			AutoscalingPolicy: esv1.AutoscalingPolicy{
+			AutoscalingPolicy: v1alpha1.AutoscalingPolicy{
 				Roles:    roles,
-				Deciders: make(map[string]esv1.DeciderSettings),
+				Deciders: make(map[string]v1alpha1.DeciderSettings),
 			},
 		},
 		AutoscalingResources: resources,
