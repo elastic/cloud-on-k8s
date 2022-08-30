@@ -23,6 +23,7 @@ const (
 // NodeSetsResources models for all the nodeSets managed by a same autoscaling policy:
 // * the desired resources quantities (cpu, memory, storage) expected in the nodeSet specifications
 // * the individual number of nodes (count) in each nodeSet
+// +kubebuilder:object:generate=false
 type NodeSetsResources struct {
 	// Name is the name of the autoscaling policy to witch this resources belong to.
 	Name string `json:"name"`
@@ -41,6 +42,7 @@ func NewNodeSetsResources(name string, nodeSetNames []string) NodeSetsResources 
 }
 
 // ClusterResources models the desired resources (CPU, memory, storage and number of nodes) for all the autoscaling policies in a cluster.
+// +kubebuilder:object:generate=false
 type ClusterResources []NodeSetsResources
 
 // NodeResources holds the resources to be used by each node managed by an autoscaling policy.
@@ -259,6 +261,7 @@ func (nr NodeResources) ToInt64() NodeResourcesInt64 {
 	return rs64
 }
 
+// +kubebuilder:object:generate=false
 type NodeSetResources struct {
 	NodeCount int32
 	*NodeSetsResources

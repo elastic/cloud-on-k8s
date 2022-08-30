@@ -101,6 +101,7 @@ func (s *ElasticsearchAutoscalerStatus) LastModificationTime(policyName string) 
 	return metav1.Time{}, false
 }
 
+// +kubebuilder:object:generate=false
 type AutoscalingPolicyStatusBuilder struct {
 	policyName           string
 	nodeSetsResources    NodeSetsResources
@@ -166,6 +167,7 @@ type PolicyState struct {
 	Messages []string             `json:"messages"`
 }
 
+// +kubebuilder:object:generate=false
 type AutoscalingStatusBuilder struct {
 	// Surface specific autoscaling events
 	scalingLimitEvents    set.StringSet
