@@ -7,6 +7,8 @@ package elasticsearch
 import (
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/autoscaling"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 )
 
@@ -73,9 +74,9 @@ func reconcileElasticsearch(
 }
 
 func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {
-	onlyOneVolumeClaimTemplate, volumeClaimTemplate := validation.HasAtMostOnePersistentVolumeClaim(nodeSet)
+	onlyOneVolumeClaimTemplate, volumeClaimTemplate := autoscaling.HasAtMostOnePersistentVolumeClaim(nodeSet)
 	if !onlyOneVolumeClaimTemplate {
-		return nil, fmt.Errorf(validation.UnexpectedVolumeClaimError)
+		return nil, fmt.Errorf(autoscaling.UnexpectedVolumeClaimError)
 	}
 	if volumeClaimTemplate == nil {
 		// Init a new volume claim template

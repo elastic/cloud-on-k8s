@@ -57,6 +57,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling"
+	esavalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -935,8 +936,9 @@ func setupWebhook(
 		}
 	}
 
-	// esv1 validating webhook is wired up differently, in order to access the k8s client
+	// Elasticsearch and ElasticsearchAutoscaling validating webhooks re wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
+	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

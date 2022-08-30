@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ptr "k8s.io/utils/pointer"
@@ -28,6 +30,7 @@ import (
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
@@ -106,7 +109,7 @@ func dyamicWatchName(request reconcile.Request) string {
 }
 
 func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, ControllerName, "es_autoscaler_name", request)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, ControllerName, "esa_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
@@ -134,7 +137,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	if common.IsUnmanaged(ctx, &esa) {
 		msg := "Object is currently not managed by this controller. Skipping reconciliation"
-		log.Info(msg, "namespace", request.Namespace, "es_autoscaler_name", request.Name)
+		log.Info(msg, "namespace", request.Namespace, "esa_name", request.Name)
 		return r.reportAsInactive(ctx, log, esa, msg)
 	}
 
@@ -143,16 +146,10 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	if err := r.Get(ctx, esNamespacedName, &es); err != nil {
 		if apierrors.IsNotFound(err) {
 			msg := fmt.Sprintf("Elasticsearch resource %s/%s not found", esNamespacedName.Namespace, esNamespacedName.Name)
-			log.Info(msg, "namespace", request.Namespace, "es_autoscaler_name", request.Name, "es_name", esNamespacedName.Name, "error", err.Error())
+			log.Info(msg, "namespace", request.Namespace, "esa_name", request.Name, "es_name", esNamespacedName.Name, "error", err.Error())
 			return r.reportAsInactive(ctx, log, esa, msg)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	if es.IsAutoscalingAnnotationSet() {
-		err := fmt.Errorf("deprecated autoscaling annotation %s found on Elasticsearch %s/%s", esv1.ElasticsearchAutoscalingSpecAnnotationName, esNamespacedName.Namespace, esNamespacedName.Namespace)
-		log.Error(err, "Cannot use the Elasticsearch Autoscaler resource and the autoscaling annotation", "namespace", request.Namespace, "es_autoscaler_name", request.Name, "es_name", esNamespacedName.Name, "error", err.Error())
-		return r.reportAsInactive(ctx, log, esa, err.Error())
 	}
 
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
@@ -165,6 +162,29 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
 		return licenseCheckRequeue, err
+	}
+
+	// Validate the autoscaling specification
+	if validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker); validationErr != nil || runtimeErr != nil {
+		if validationErr != nil {
+			log.Error(
+				validationErr,
+				"ElasticsearchAutoscaler manifest validation failed",
+				"namespace", es.Namespace,
+				"esa_name", es.Name,
+			)
+		}
+		if runtimeErr != nil {
+			log.Error(
+				runtimeErr,
+				"Runtime error while validating ElasticsearchAutoscaler manifest",
+				"namespace", es.Namespace,
+				"esa_name", es.Name,
+			)
+		}
+		err := errors.NewAggregate([]error{validationErr, runtimeErr})
+		_, _ = r.reportAsUnhealthy(ctx, log, esa, err.Error())
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Get autoscaling policies and the associated node sets.
@@ -180,7 +200,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		"Autoscaling policies and node sets",
 		"policies", autoscaledNodeSets.Names(),
 		"namespace", request.Namespace,
-		"es_autoscaler_name", request.Name,
+		"esa_name", request.Name,
 	)
 
 	// Import existing resources in the current Status if the cluster is managed by some autoscaling policies but
@@ -327,7 +347,7 @@ func (r *ReconcileElasticsearchAutoscaler) updateStatus(
 			log.V(1).Info(
 				"Conflict while updating the status",
 				"namespace", esa.Namespace,
-				"es_autoscaler_name", esa.Name,
+				"esa_name", esa.Name,
 				"error", err.Error(),
 			)
 			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()

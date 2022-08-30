@@ -10,6 +10,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
+const (
+	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// we duplicate it as a constant here for practical purposes.
+	Kind = "ElasticsearchAutoscaler"
+)
+
 // +kubebuilder:object:root=true
 
 // ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kubernetes cluster.
