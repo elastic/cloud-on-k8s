@@ -51,6 +51,7 @@ const (
 	yamlSeparator = "---\n"
 
 	ImagesEndpoint = "https://catalog.redhat.com/api/containers/v1/projects/certification/id/%s/images"
+	MAX_IMAGES     = 4
 )
 
 type cmdArgs struct {
@@ -600,12 +601,14 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	req.Header.Set("X-API-KEY", apiKey)
 
 	q := req.URL.Query()
-	// "repositories.tags.name" filter does not work any longer.  See https://github.com/elastic/cloud-on-k8s/issues/XXXX.
+	// "repositories.tags.name" filter does not work any longer.  See https://github.com/elastic/cloud-on-k8s/issues/5985.
 	// In the interim, we're going to get the most recent 4 published, undeleted images
 	// sorted by descending creation date, and loop through them.
-	// q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
+	//
+	// TODO: Revert to "q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))",
+	// remove the page_size and sort_by query parameters and the MAX_IMAGES constant once resolved.
 	q.Add("filter", "repositories.published==true;deleted==false")
-	q.Add("page_size", "4")
+	q.Add("page_size", fmt.Sprintf("%d", MAX_IMAGES))
 	q.Add("sort_by", "creation_date[desc]")
 	req.URL.RawQuery = q.Encode()
 
@@ -642,7 +645,7 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 		}
 	}
 	if imageDigest == "" {
-		return "", fmt.Errorf("no recent images found for %s", version)
+		return "", fmt.Errorf("no published and undeleted image for version %s found in the %d most recent items returned by the catalog API", version, MAX_IMAGES)
 	}
 	return imageDigest, nil
 }
