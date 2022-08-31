@@ -600,7 +600,7 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	req.Header.Set("X-API-KEY", apiKey)
 
 	q := req.URL.Query()
-	// This filter does not work any longer.  Redhat case is open to find working filter.
+	// "repositories.tags.name" filter does not work any longer.  See https://github.com/elastic/cloud-on-k8s/issues/XXXX.
 	// In the interim, we're going to get the most recent 4 published, undeleted images
 	// sorted by descending creation date, and loop through them.
 	// q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
