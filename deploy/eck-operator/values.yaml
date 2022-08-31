@@ -182,6 +182,9 @@ config:
   # enableLeaderElection specifies whether leader election should be enabled
   enableLeaderElection: true
 
+  # Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation.
+  elasticsearchObservationInterval: 10s
+
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
 podMonitor:
