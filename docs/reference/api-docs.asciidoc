@@ -485,7 +485,7 @@ LogsMonitoring holds a list of Elasticsearch clusters which receive logs data fr
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
 |===
 
 
@@ -502,7 +502,7 @@ MetricsMonitoring holds a list of Elasticsearch clusters which receive monitorin
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
+| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
 |===
 
 
@@ -1164,58 +1164,6 @@ InProgressOperations provides details about in progress changes applied by the o
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-logsmonitoring"]
-=== LogsMonitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-monitoring[$$Monitoring$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-metricsmonitoring"]
-=== MetricsMonitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-monitoring[$$Monitoring$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-monitoring"]
-=== Monitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
-| *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
-|===
-
-
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-newnode"]
 === NewNode 
 
@@ -1726,59 +1674,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
-| *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-logsmonitoring"]
-=== LogsMonitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-metricsmonitoring"]
-=== MetricsMonitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-monitoring[$$Monitoring$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`elasticsearchRefs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$] array__ | ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster. Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-monitoring"]
-=== Monitoring 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Kibana.
-| *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which will receive log data from this Kibana.
+| *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana. See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 |===
 
 
