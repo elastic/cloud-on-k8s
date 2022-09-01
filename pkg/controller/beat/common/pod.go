@@ -160,6 +160,12 @@ func buildPodTemplate(
 		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
 			return podTemplate, err
 		}
+		// Add shared volume for Unix socket between containers.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "shared-data",
+			ReadOnly:  false,
+			MountPath: "/var/shared",
+		})
 		volumes = append(volumes, sideCar.Volumes...)
 		sideCars = append(sideCars, sideCar.Container)
 	}

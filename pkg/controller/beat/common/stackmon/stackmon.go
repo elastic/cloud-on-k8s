@@ -12,11 +12,12 @@ import (
 	"fmt"
 	"text/template"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
@@ -42,27 +43,6 @@ func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMon
 }
 
 func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {
-	config, err := settings.NewCanonicalConfigFrom(beat.Spec.Config.Data)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
-
-	// Default metricbeat monitoring port
-	var httpPort uint64 = 5066
-	var p httpPortSetting
-	if err := config.Unpack(&p); err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
-
-	// if http.port is set in beats configuration, then use the port.
-	if p.PortData != nil {
-		portData, ok := p.PortData.(uint64)
-		if !ok {
-			return stackmon.BeatSidecar{}, fmt.Errorf("while configuring beats stack monitoring: 'http.port' must be an int")
-		}
-		httpPort = portData
-	}
-
 	if err := beat.ElasticsearchRef().IsValid(); err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -76,8 +56,8 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		// returning specific error here so this operation can be retried.
 		return stackmon.BeatSidecar{}, ErrMonitoringClusterUUIDUnavailable
 	}
-	var beatTemplate *template.Template
-	if beatTemplate, err = template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate); err != nil {
+	beatTemplate, err := template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate)
+	if err != nil {
 		return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
 	}
 	var byteBuffer bytes.Buffer
@@ -86,13 +66,15 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		URL         string
 	}{
 		ClusterUUID: uuid,
-		URL:         fmt.Sprintf("http://localhost:%d", httpPort),
+		// https://www.elastic.co/guide/en/beats/metricbeat/current/configuration-metricbeat.html#module-http-config-options
+		// Beat module http options require "http+" to be appended to unix sockets.
+		URL: fmt.Sprintf("http+%s", GetStackMonitoringSocketURL(beat)),
 	}
 	if err := beatTemplate.Execute(&byteBuffer, data); err != nil {
 		return stackmon.BeatSidecar{}, fmt.Errorf("while templating beats stack monitoring configuration: %w", err)
 	}
 
-	return stackmon.NewMetricBeatSidecar(
+	sidecar, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
 		commonv1.BeatMonitoringAssociationType,
@@ -100,13 +82,39 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		version,
 		byteBuffer.String(),
 		common_name.NewNamer("beat"),
-		fmt.Sprintf("http://localhost:%d", httpPort),
+		GetStackMonitoringSocketURL(beat),
 		"",
 		"",
 		false,
 	)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	// Add shared volume for Unix socket between containers.
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
+		Name:      "shared-data",
+		MountPath: "/var/shared",
+		ReadOnly:  false,
+	})
+	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
+		Name: "shared-data",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	return sidecar, nil
 }
 
-type httpPortSetting struct {
-	PortData interface{} `config:"http.port"`
+// GetStackMonitoringSocketURL will return a path to a Unix socket that will be used to expose and query metrics.
+// Unix sockets are used instead of network ports to avoid situations where "hostNetwork: true" is enabled on multiple
+// Beat daemonsets, along with stack monitoring, which will cause 2 pods to try and bind to the same port on the
+// Node's host network, which will cause bind errors. (bind: address already in use)
+func GetStackMonitoringSocketURL(beat *v1beta1.Beat) string {
+	// TODO: Enable when Beats as containers in Windows is supported: https://github.com/elastic/beats/issues/16814
+	// if runtime.GOOS == "windows" {
+	// 	return fmt.Sprintf("npipe:///%s-%s-%s.sock", beat.Spec.Type, beat.GetNamespace(), beat.GetName())
+	// }
+	return fmt.Sprintf("unix:///var/shared/%s-%s-%s.sock", beat.Spec.Type, beat.GetNamespace(), beat.GetName())
 }

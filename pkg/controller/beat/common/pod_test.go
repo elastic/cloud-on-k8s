@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash"
 	"hash/fnv"
-	"net/url"
 	"reflect"
 	"testing"
 
@@ -78,6 +77,7 @@ func Test_buildPodTemplate(t *testing.T) {
 		Spec: v1beta1.BeatSpec{
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
+			Type:             "filebeat",
 			ElasticsearchRef: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"},
 			Monitoring: commonv1.Monitoring{
 				Metrics: commonv1.MetricsMonitoring{
@@ -341,9 +341,7 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 
 		var cfg metricbeatConfig
 		assert.NoError(t, yaml.Unmarshal(data, &cfg))
-		u, err := url.Parse(cfg.MetricBeat.Modules[0].Hosts[0])
-		require.NoError(t, err)
-		assert.Equal(t, "3033", u.Port())
+		assert.Equal(t, fmt.Sprintf("http+unix:///var/shared/%s-%s-%s.sock", beat.Spec.Type, beat.Namespace, beat.Name), cfg.MetricBeat.Modules[0].Hosts[0])
 	}
 	if monitoring.IsLogsDefined(&beat) {
 		assert.True(t, containersContains(pod.Spec.Containers, "logs-monitoring-sidecar"))

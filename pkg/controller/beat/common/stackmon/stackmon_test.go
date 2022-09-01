@@ -73,12 +73,19 @@ func TestMetricBeat(t *testing.T) {
 				ReadOnly:  true,
 				MountPath: "/etc/metricbeat-config",
 			},
+			{
+				Name:      "shared-data",
+				ReadOnly:  false,
+				MountPath: "/var/shared",
+			},
 		},
 	}
-	beatYml := `metricbeat:
+	beatYml := `http:
+  enabled: false
+metricbeat:
   modules:
   - hosts:
-    - http://localhost:5066
+    - http+unix:///var/shared/metricbeat-test-beat.sock
     metricsets:
     - stats
     - state
@@ -88,6 +95,7 @@ func TestMetricBeat(t *testing.T) {
       enabled: true
 monitoring:
   cluster_uuid: abcd1234
+  enabled: false
 output:
   elasticsearch:
     hosts:
@@ -119,6 +127,10 @@ output:
 			{
 				Name:         "beat-metricbeat-config",
 				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.BoolPtr(false)}},
+			},
+			{
+				Name:         "shared-data",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 			},
 		},
 	}

@@ -183,7 +183,12 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name: "no association, user config, with metrics monitoring enabled",
 			beat: beatv1beta1.Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "beat",
+					Namespace: "test",
+				},
 				Spec: beatv1beta1.BeatSpec{
+					Type:   "filebeat",
 					Config: userCfg,
 					Monitoring: commonv1.Monitoring{
 						Metrics: commonv1.MetricsMonitoring{
@@ -197,7 +202,22 @@ func Test_buildBeatConfig(t *testing.T) {
 					},
 				},
 			},
-			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]bool{"http.enabled": true, "monitoring.enabled": false})),
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]interface{}{
+				"http": map[string]interface{}{
+					"enabled": true,
+					"host":    "unix:///var/shared/filebeat-test-beat.sock",
+					"port":    nil,
+				},
+				"monitoring.enabled": false,
+				"logging": map[string]interface{}{
+					"files": map[string]string{
+						"path": "/var/log/beat",
+					},
+					"to_files":  true,
+					"to_stderr": false,
+					"to_syslog": false,
+				},
+			})),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -113,12 +114,16 @@ func buildBeatConfig(
 
 	// if metrics monitoring is enabled, then
 	// 1. enable the metrics http endpoint for the metricsbeat sidecar to consume
-	// 2. disable internal metrics monitoring endpoint
-	// 3. disable stderr, and syslog monitoring
-	// 4. enable files monitoring, and configure path
+	// 2. set http.host to a unix socket
+	// 3. disable http.port, as unix sockets are used to communicate
+	// 4. disable internal metrics monitoring endpoint
+	// 5. disable stderr, and syslog monitoring
+	// 6. enable files monitoring, and configure path
 	if monitoring.IsMetricsDefined(&params.Beat) {
 		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"http.enabled":       true,
+			"http.host":          stackmon.GetStackMonitoringSocketURL(&params.Beat),
+			"http.port":          nil,
 			"monitoring.enabled": false,
 			"logging.to_stderr":  false,
 			"logging.to_syslog":  false,
