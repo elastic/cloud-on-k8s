@@ -1,0 +1,74 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  annotations:
+    common.k8s.elastic.co/controller-version: 1.4.0
+    elasticsearch.k8s.elastic.co/cluster-uuid: FghvC9XFS16wDXdAusm9yg
+  name: testes
+  namespace: testns
+  uid: 0e400c1f-57ff-4d6e-99e7-ce9ab8a83930
+spec:
+  nodeSets:
+  - config:
+      node:
+        roles:
+        - master
+    count: 1
+    name: master
+  - config:
+      node:
+        roles:
+        - data
+        - ingest
+    count: 8
+    name: di
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 8Gi
+            requests:
+              cpu: "6"
+              memory: 8Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 4Gi
+  - config:
+      node:
+        roles:
+        - ml
+    count: 1
+    name: ml
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: "2"
+              memory: 2Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  version: 7.11.0
+status:
+  availableNodes: 10
+  health: green
+  phase: Ready
+  version: 7.11.0

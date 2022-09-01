@@ -1,0 +1,76 @@
+---
+apiVersion: autoscaling.k8s.elastic.co/v1alpha1
+kind: ElasticsearchAutoscaler
+metadata:
+  name: test-autoscaler
+  namespace: testns
+spec:
+  elasticsearchRef:
+    name: testes
+  policies:
+    - name: di
+      roles: ["data", "ingest"]
+      deciders:
+        proactive_storage:
+          forecast_window: 5m
+      resources:
+        nodeCount:
+          min: 9
+          max: 9
+        cpu:
+          min: 2
+          max: 6
+        memory:
+          min: 2Gi
+          max: 8Gi
+        storage:
+          min: 1Gi
+          max: 4Gi
+    - name: ml
+      roles: [ "ml" ]
+      deciders:
+        ml:
+          down_scale_delay: 5m
+      resources:
+        nodeCount:
+          min: 3
+          max: 9
+        cpu:
+          min: 2
+          max: 2
+        memory:
+          min: 2Gi
+          max: 6Gi
+        storage:
+          min: 1Gi
+          max: 2Gi
+status:
+  policies:
+    - name: di
+      nodeSets:
+        - name: di
+          nodeCount: 9
+      resources:
+        limits:
+          cpu: '6'
+          memory: 8Gi
+        requests:
+          cpu: '6'
+          memory: 8Gi
+          storage: 4Gi
+      state: [ ]
+      lastModificationTime: '2021-01-17T05:59:22Z'
+    - name: ml
+      nodeSets:
+        - name: ml
+          nodeCount: 3
+      resources:
+        limits:
+          cpu: '2'
+          memory: 2Gi
+        requests:
+          cpu: '2'
+          memory: 2Gi
+          storage: 1Gi
+      state: [ ]
+      lastModificationTime: '2021-01-17T13:25:18Z'
