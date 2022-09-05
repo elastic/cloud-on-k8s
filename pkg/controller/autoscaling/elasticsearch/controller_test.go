@@ -43,14 +43,35 @@ func TestReconcile(t *testing.T) {
 		manifestsDir string
 		isOnline     bool
 	}
+	type wantedErr struct {
+		message string
+		fatal   bool
+	}
 	tests := []struct {
 		name       string
 		fields     fields
 		args       args
 		want       reconcile.Result
 		wantEvents []string
-		wantErr    bool
+		wantErr    *wantedErr
 	}{
+		{
+			name: "User should not use both the Autoscaling CRD and the annotation",
+			fields: fields{
+				recorder:       record.NewFakeRecorder(1000),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			args: args{
+				manifestsDir: "annotation",
+				isOnline:     false,
+			},
+			want: defaultRequeue,
+			wantErr: &wantedErr{ // Autoscaling API error should be returned.
+				message: `ElasticsearchAutoscaler.autoscaling.k8s.elastic.co "test-autoscaler" is invalid: metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: "elasticsearch.alpha.elastic.co/autoscaling-spec": Cannot use the ElasticsearchAutoscaler resource and the autoscaling annotation at the same time, please remove the annotation`,
+				fatal:   true, // We are not expecting the autoscaling controller to update the cluster.
+			},
+			wantEvents: []string{},
+		},
 		{
 			name: "Frozen decider only returns capacity at the tier level",
 			fields: fields{
@@ -63,7 +84,6 @@ func TestReconcile(t *testing.T) {
 				isOnline:     true,
 			},
 			want:       defaultRequeue,
-			wantErr:    false,
 			wantEvents: []string{},
 		},
 		{
@@ -78,7 +98,6 @@ func TestReconcile(t *testing.T) {
 				isOnline:     true,
 			},
 			want:       defaultRequeue,
-			wantErr:    false,
 			wantEvents: []string{},
 		},
 		{
@@ -92,8 +111,11 @@ func TestReconcile(t *testing.T) {
 				manifestsDir: "min-nodes-increased-by-user",
 				isOnline:     true, // Online, but an error will be raised when updating the autoscaling policies.
 			},
-			want:       defaultRequeue, // we still expect the default requeue to be set even if there was an error
-			wantErr:    true,           // Autoscaling API error should be returned.
+			want: defaultRequeue, // we still expect the default requeue to be set even if there was an error
+			wantErr: &wantedErr{ // Autoscaling API error should be returned.
+				message: "simulated error while calling DeleteAutoscalingAutoscalingPolicies",
+				fatal:   false, // We do expect the controller to fall back on the offline mode.
+			},
 			wantEvents: []string{},
 		},
 		{
@@ -171,7 +193,6 @@ func TestReconcile(t *testing.T) {
 				Requeue:      false,
 				RequeueAfter: 0,
 			},
-			wantErr:    false,
 			wantEvents: []string{},
 		},
 		{
@@ -186,7 +207,6 @@ func TestReconcile(t *testing.T) {
 				isOnline:     true,
 			},
 			want:       defaultRequeue,
-			wantErr:    false,
 			wantEvents: []string{},
 		},
 	}
@@ -236,9 +256,17 @@ func TestReconcile(t *testing.T) {
 					Namespace: "testns",
 					Name:      "test-autoscaler",
 				}})
-			if (err != nil) != tt.wantErr {
+			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("autoscaling.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.wantErr != nil {
+				require.Error(t, err)
+				// We expect a specific error from the controller, check the message
+				require.Equal(t, tt.wantErr.message, err.Error())
+				if tt.wantErr.fatal {
+					return
+				}
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileElasticsearchAutoscaler.reconcileInternal() = %v, want %v", got, tt.want)
