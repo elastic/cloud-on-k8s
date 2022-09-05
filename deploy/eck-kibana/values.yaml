@@ -20,6 +20,10 @@
 #
 version: 8.2.3
 
+# License of Elasticsearch. basic or enterprise
+#
+license: basic
+
 # Labels that will be applied to Kibana.
 #
 labels: {}
