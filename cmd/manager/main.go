@@ -936,7 +936,7 @@ func setupWebhook(
 		}
 	}
 
-	// Elasticsearch and ElasticsearchAutoscaling validating webhooks re wired up differently, in order to access the k8s client
+	// Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 

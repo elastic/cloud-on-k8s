@@ -20,8 +20,7 @@ var (
 	defaultMemoryRequestsToLimitsRatio = 1.0
 
 	// defaultCPURequestsToLimitsRatio is the default ratio used to convert a CPU request to a CPU limit in the Pod
-	// resources specification. By default, we want to have the same value for both the memory request and the memory
-	// limit.
+	// resources specification. By default, we want to have the same value for both the CPU request and the CPU limit.
 	defaultCPURequestsToLimitsRatio = 1.0
 
 	// DefaultPollingPeriod is the default period between 2 Elasticsearch autoscaling API polls.
