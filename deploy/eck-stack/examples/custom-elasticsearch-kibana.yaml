@@ -8,6 +8,10 @@ eck-elasticsearch:
   #
   version: 8.2.3
 
+  # Elastic license. basic or enterprise
+  #
+  license: basic
+
   nodeSets:
   - name: default
     count: 1
@@ -39,6 +43,10 @@ eck-kibana:
   # Version of Kibana.
   #
   version: 8.2.3
+
+  # Elastic license. basic or enterprise
+  #
+  license: basic
   
   spec:
     # Count of Kibana replicas to create.
