@@ -20,7 +20,7 @@
 #
 version: 8.2.3
 
-# License of Elasticsearch. basic or enterprise
+# Elastic license. basic or enterprise
 #
 license: basic
 
