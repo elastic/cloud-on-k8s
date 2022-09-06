@@ -9,9 +9,12 @@ spec:
   policies:
     - name: di
       roles: ["data", "ingest" , "transform"]
-      deciders:
-        proactive_storage:
-          forecast_window: 5m
+      ## Autoscaling deciders (https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-deciders.html) come with
+      ## default settings. Uncomment the lines below to adjust the deciders settings.
+      #deciders:
+      ## 'proactive_storage' is only provided as an example, each role comes with specific individual autoscaling deciders.
+      #  proactive_storage:
+      #    forecast_window: 5m
       resources:
         nodeCount:
           min: 3
@@ -28,9 +31,6 @@ spec:
     - name: ml
       roles:
         - ml
-      deciders:
-        ml:
-          down_scale_delay: 10m
       resources:
         nodeCount:
           min: 1
