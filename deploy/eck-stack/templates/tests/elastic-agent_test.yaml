@@ -1,10 +1,10 @@
 suite: test elastic-agent
 templates:
-  - charts/eck-elastic-agent/templates/elastic-agent.yaml
+  - charts/eck-agent/templates/elastic-agent.yaml
 tests:
   - it: should render quickstart properly
     set:
-      eck-elastic-agent.enabled: true
+      eck-agent.enabled: true
     release:
       name: quickstart
     asserts:
@@ -12,7 +12,7 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-elastic-agent
+          value: quickstart-eck-agent
       - equal:
           path: spec.version
           value: 8.2.3
@@ -26,7 +26,7 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-elastic-agent
+          value: quickstart-eck-agent
       - equal:
           path: spec.version
           value: 8.2.3
@@ -61,7 +61,7 @@ templates:
 tests:
   - it: should render quickstart properly
     set:
-      eck-elastic-agent.enabled: true
+      eck-agent.enabled: true
     release:
       name: quickstart
     asserts:

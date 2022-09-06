@@ -12,14 +12,12 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Fleet Server Agent version is required" .Values.version }}
-  {{- if not (hasKey .Values.spec "mode") }}
-  {{- fail "spec.mode of 'fleet' is required for fleet-server" }}
-  {{- else if (not (eq .Values.spec.mode "fleet")) }}
-  {{- fail "spec.mode of 'fleet' is required for fleet-server" }}
+  mode: fleet
+  fleetServerEnabled: true
+  {{- if (hasKey .Values.spec "mode") }}
+  {{- fail "spec.mode cannot be changed" }}
   {{- end }}
-  {{- if not (hasKey .Values.spec "fleetServerEnabled") }}
-  {{- fail "spec.fleetServerEnabled is required to be true for fleet-server" }}
-  {{- else if (not (.Values.spec.fleetServerEnabled)) }}
-  {{- fail "spec.fleetServerEnabled is required to be true for fleet-server" }}
+  {{- if (hasKey .Values.spec "fleetServerEnabled") }}
+  {{- fail "spec.fleetServerEnabled cannot be changed" }}
   {{- end }}
   {{- toYaml .Values.spec | nindent 2 }}

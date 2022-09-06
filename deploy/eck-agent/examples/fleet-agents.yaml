@@ -1,4 +1,5 @@
-# Version of Elastic Agent.
+# The following example should only be used in conjunction with the 'eck-fleet-server' Helm Chart,
+# and shows how the Agents can be deployed as a daemonset, and controlled by Fleet Server.
 #
 version: 8.2.3
 
@@ -9,6 +10,10 @@ spec:
   kibanaRef:
     name: eck-kibana
   mode: fleet
+  # config needs to be disabled when fleet mode is enabled.
+  config: null
+  # elasticsearchRefs must be empty when fleet mode is enabled.
+  elasticsearchRefs: []
 
   daemonSet:
     podTemplate:

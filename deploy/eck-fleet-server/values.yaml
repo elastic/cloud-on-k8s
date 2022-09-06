@@ -53,9 +53,6 @@ spec:
     #
     # namespace: default
   
-  mode: fleet
-  fleetServerEnabled: true
-
   # Daemonset, or Deployment specification for the type of Fleet Server Agent specified.
   # At least one is required of [daemonSet, deployment].
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model

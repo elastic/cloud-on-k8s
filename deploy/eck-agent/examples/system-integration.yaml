@@ -1,3 +1,6 @@
+# The following example should only be used in Agent "standalone" mode,
+# and should not be used when Agent is used with Fleet Server.
+#
 version: 8.2.3
 spec:
   elasticsearchRefs:

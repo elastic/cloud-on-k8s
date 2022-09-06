@@ -5,11 +5,11 @@ dependencies:
 - name: eck-kibana
   repository: file://../eck-kibana
   version: 0.1.0
-- name: eck-elastic-agent
-  repository: file://../eck-elastic-agent
+- name: eck-agent
+  repository: file://../eck-agent
   version: 0.1.0
 - name: eck-fleet-server
   repository: file://../eck-fleet-server
   version: 0.1.0
-digest: sha256:bbdeec660cbe7ba4214cbfaa9ed079f7d330f70807ee4c36c21b85e51f9d541d
-generated: "2022-08-18T08:43:23.09912-05:00"
+digest: sha256:7ba1535f580239d29519c14ea2f8569b9027cd02efc60a9dbdcbe9db4b8b2f7e
+generated: "2022-09-06T08:49:00.523689-05:00"

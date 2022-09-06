@@ -86,7 +86,7 @@ eck-kibana:
             name: kubernetes
           name: kubernetes-1
 
-eck-elastic-agent:
+eck-agent:
   enabled: true
 
   # Version of Elastic Agent.

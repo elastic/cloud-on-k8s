@@ -72,7 +72,7 @@ The following table lists the configurable parameters of the eck-stack chart and
 | --------- | ----------- | ------- |
 | `eck-elasticsearch.enabled` | If `true`, create an Elasticsearch resource (using the eck-elasticsearch Chart) | `true` |
 | `eck-kibana.enabled` | If `true`, create a Kibana resource (using the eck-kibana Chart) | `true` |
-| `eck-elastic-agent.enabled` | If `true`, create an Elastic Agent resource (using the eck-elastic-agent Chart) | `false` |
+| `eck-agent.enabled` | If `true`, create an Elastic Agent resource (using the eck-agent Chart) | `false` |
 | `eck-fleet-server.enabled` | If `true`, create an Elastic Fleet Agent resource (using the eck-fleet-server Chart) | `false` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.

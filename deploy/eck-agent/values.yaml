@@ -1,10 +1,10 @@
 ---
-# Default values for eck-elastic-agent.
+# Default values for eck-agent.
 # This is a YAML-formatted file.
 
 # Overridable names of the Elastic Agent resource.
 # By default, this is the Release name set for the chart,
-# followed by 'eck-elastic-agent'.
+# followed by 'eck-agent'.
 #
 # nameOverride will override the name of the Chart with the name set here,
 # so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'

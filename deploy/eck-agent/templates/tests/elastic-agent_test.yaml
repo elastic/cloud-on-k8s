@@ -10,7 +10,7 @@ tests:
           of: Agent
       - equal:
           path: metadata.name
-          value: quickstart-eck-elastic-agent
+          value: quickstart-eck-agent
       - equal:
           path: spec.version
           value: 8.2.3
