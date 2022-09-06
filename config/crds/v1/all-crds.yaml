@@ -2411,7 +2411,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which receive monitoring data from an associated resource.
+                      which receive monitoring data from this resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -3717,7 +3717,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which receive monitoring data from an associated resource.
+                      which receive monitoring data from this resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -7720,7 +7720,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which receive monitoring data from an associated resource.
+                      which receive monitoring data from this resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of

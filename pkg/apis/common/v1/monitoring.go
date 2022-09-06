@@ -7,7 +7,7 @@ package v1
 // Monitoring holds references to both the metrics, and logs Elasticsearch clusters for
 // configuring stack monitoring.
 type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which receive monitoring data from an associated resource.
+	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this resource.
 	// +kubebuilder:validation:Optional
 	Metrics MetricsMonitoring `json:"metrics,omitempty"`
 	// Logs holds references to Elasticsearch clusters which receive log data from an associated resource.

@@ -521,7 +521,7 @@ Monitoring holds references to both the metrics, and logs Elasticsearch clusters
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from an associated resource.
+| *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from this resource.
 | *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which receive log data from an associated resource.
 |===
 
