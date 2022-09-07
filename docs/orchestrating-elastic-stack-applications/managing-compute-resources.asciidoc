@@ -86,7 +86,7 @@ spec:
 [id="{p}-elasticsearch-cpu"]
 ==== CPU resources
 
-The value set for CPU limits or requests directly impacts the Elasticsearch `node.processors` setting. The following table gives the default value for `node.processors` given the cpu limits and requests set on the `elasticsearch` container:
+The value set for CPU limits or requests directly impacts the Elasticsearch `node.processors` setting. By default Elasticsearch automatically detects the number of processors and sets the thread pool settings based on it. The following table gives the default value for `node.processors` given the CPU limits and requests set on the `elasticsearch` container:
 
 [cols="h,m,m", options="header"]
 |===
