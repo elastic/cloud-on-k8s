@@ -1,5 +1,5 @@
 # Docker image for the E2E tests runner
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.0
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.1
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
