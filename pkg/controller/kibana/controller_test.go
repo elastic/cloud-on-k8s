@@ -426,7 +426,7 @@ func newK8sFailingStatusUpdateClient(initObjs ...runtime.Object) *k8sFailingStat
 	}
 }
 
-func (k *k8sFailingStatusUpdateClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (k *k8sFailingStatusUpdateClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return k.client.Get(ctx, key, obj)
 }
 
