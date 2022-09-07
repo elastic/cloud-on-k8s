@@ -2477,11 +2477,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.12.0
-Time    : 2022-05-26T15:48:00Z
+Version : v1.13.0
+Time    : 2022-09-06T09:57:54Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.13.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -18590,11 +18590,11 @@ License:
 
 --------------------------------------------------------------------------------
 Module  : github.com/pelletier/go-toml/v2
-Version : v2.0.1
-Time    : 2022-05-10T13:43:26Z
+Version : v2.0.5
+Time    : 2022-08-26T13:15:03Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.0.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.0.5/LICENSE:
 
 The MIT License (MIT)
 
@@ -19611,11 +19611,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/subosito/gotenv
-Version : v1.3.0
-Time    : 2022-05-23T15:35:22Z
+Version : v1.4.1
+Time    : 2022-08-23T08:47:41Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/subosito/gotenv@v1.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/subosito/gotenv@v1.4.1/LICENSE:
 
 The MIT License (MIT)
 
@@ -21125,11 +21125,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/ini.v1
-Version : v1.66.4
-Time    : 2022-02-10T10:18:52Z
+Version : v1.67.0
+Time    : 2022-08-08T11:35:30Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/ini.v1@v1.66.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/ini.v1@v1.67.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
