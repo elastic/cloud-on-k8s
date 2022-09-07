@@ -609,11 +609,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gobuffalo/flect
-Version : v0.2.5
-Time    : 2022-03-12T03:50:42Z
+Version : v0.3.0
+Time    : 2022-09-03T14:24:51Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gobuffalo/flect@v0.2.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gobuffalo/flect@v0.3.0/LICENSE:
 
 The MIT License (MIT)
 
