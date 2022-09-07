@@ -3814,11 +3814,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.24.4
-Time    : 2022-08-18T02:36:54Z
+Version : v0.25.0
+Time    : 2022-08-23T22:36:35Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.24.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.0/LICENSE:
 
 
                                  Apache License
@@ -4026,11 +4026,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.24.4/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.24.4
-Time    : 2022-03-31T22:54:01Z
+Version : v0.25.0
+Time    : 2022-08-05T00:17:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.24.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.0/LICENSE:
 
 
                                  Apache License
@@ -4238,11 +4238,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.24.4/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.24.4
-Time    : 2022-08-18T02:42:58Z
+Version : v0.25.0
+Time    : 2022-08-23T22:42:32Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.24.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.25.0/LICENSE:
 
 
                                  Apache License
@@ -4651,11 +4651,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20220210201930-3a6ce19ff2f9
-Time    : 2022-02-10T20:19:30Z
+Version : v0.0.0-20220728103510-ee6ede2d64ed
+Time    : 2022-07-28T10:35:10Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220210201930-3a6ce19ff2f9/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220728103510-ee6ede2d64ed/LICENSE:
 
 
                                  Apache License
@@ -4863,11 +4863,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20220210201930
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.12.3
-Time    : 2022-07-06T17:35:34Z
+Version : v0.13.0
+Time    : 2022-08-25T20:00:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.12.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.13.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7592,12 +7592,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 --------------------------------------------------------------------------------
-Module  : github.com/emicklei/go-restful
-Version : v2.9.5+incompatible
-Time    : 2019-05-16T08:07:22Z
+Module  : github.com/emicklei/go-restful/v3
+Version : v3.8.0
+Time    : 2022-06-06T05:54:42Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/emicklei/go-restful@v2.9.5+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/emicklei/go-restful/v3@v3.8.0/LICENSE:
 
 Copyright (c) 2012,2013 Ernest Micklei
 
@@ -7629,6 +7629,41 @@ Time    : 2021-10-21T16:40:42Z
 Licence : BSD-3-Clause
 
 Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch@v4.12.0+incompatible/LICENSE:
+
+Copyright (c) 2014, Evan Phoenix
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+* Neither the name of the Evan Phoenix nor the names of its contributors 
+  may be used to endorse or promote products derived from this software 
+  without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/evanphx/json-patch/v5
+Version : v5.6.0
+Time    : 2021-10-20T18:47:23Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/github.com/evanphx/json-patch/v5@v5.6.0/LICENSE:
 
 Copyright (c) 2014, Evan Phoenix
 All rights reserved.
@@ -7788,11 +7823,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-logr/zapr
-Version : v1.2.0
-Time    : 2021-10-20T19:06:37Z
+Version : v1.2.3
+Time    : 2022-02-16T20:31:30Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-logr/zapr@v1.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-logr/zapr@v1.2.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -17884,12 +17919,42 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
-Module  : github.com/onsi/gomega
-Version : v1.18.1
-Time    : 2022-01-27T19:11:22Z
+Module  : github.com/onsi/ginkgo/v2
+Version : v2.1.4
+Time    : 2022-04-26T18:00:31Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.18.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.1.4/LICENSE:
+
+Copyright (c) 2013-2014 Onsi Fakhouri
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/onsi/gomega
+Version : v1.19.0
+Time    : 2022-03-25T19:12:09Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.19.0/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
@@ -19876,11 +19941,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.0.0-20220708220712-1185a9018129
-Time    : 2022-07-08T22:07:12Z
+Version : v0.0.0-20220722155237-a158d28d115b
+Time    : 2022-07-22T15:52:37Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220708220712-1185a9018129/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.0.0-20220722155237-a158d28d115b/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19950,11 +20015,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.0.0-20220601150217-0de741cfad7f
-Time    : 2022-06-01T15:02:17Z
+Version : v0.0.0-20220722155255-886fb9371eb4
+Time    : 2022-07-22T15:52:55Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20220601150217-0de741cfad7f/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20220722155255-886fb9371eb4/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -19987,11 +20052,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20220715151400-c0bba94af5f8
-Time    : 2022-07-15T15:14:00Z
+Version : v0.0.0-20220722155257-8c9f86f7a55f
+Time    : 2022-07-22T15:52:57Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20220715151400-c0bba94af5f8/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20220722155257-8c9f86f7a55f/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20061,11 +20126,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/time
-Version : v0.0.0-20220210224613-90d013bbcef8
-Time    : 2022-02-10T22:46:13Z
+Version : v0.0.0-20220609170525-579cf78fd858
+Time    : 2022-06-09T17:05:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.0.0-20220210224613-90d013bbcef8/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.0.0-20220609170525-579cf78fd858/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20098,11 +20163,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.1.11
-Time    : 2022-06-09T15:02:08Z
+Version : v0.1.12
+Time    : 2022-07-27T16:29:04Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.1.11/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.1.12/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -21668,11 +21733,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.24.2
-Time    : 2022-06-17T04:34:09Z
+Version : v0.25.0
+Time    : 2022-08-23T23:04:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.24.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.25.0/LICENSE:
 
 
                                  Apache License
@@ -21880,11 +21945,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.24.2
-Time    : 2022-06-17T04:07:19Z
+Version : v0.25.0
+Time    : 2022-08-23T22:44:45Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.25.0/LICENSE:
 
 
                                  Apache License
@@ -22092,11 +22157,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.24.2/LICE
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/kube-openapi
-Version : v0.0.0-20220328201542-3ee0da9b0b42
-Time    : 2022-03-28T20:15:42Z
+Version : v0.0.0-20220803162953-67bda5d908f1
+Time    : 2022-08-03T16:29:53Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-20220328201542-3ee0da9b0b42/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-20220803162953-67bda5d908f1/LICENSE:
 
 
                                  Apache License
@@ -22304,11 +22369,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-2022032
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/json
-Version : v0.0.0-20211208200746-9f7c6b3444d2
-Time    : 2021-12-08T20:07:46Z
+Version : v0.0.0-20220713155537-f223a00ba0e2
+Time    : 2022-07-13T15:55:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/json@v0.0.0-20211208200746-9f7c6b3444d2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/json@v0.0.0-20220713155537-f223a00ba0e2/LICENSE:
 
 Files other than internal/golang/* licensed under:
 
@@ -22552,11 +22617,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/structured-merge-diff/v4
-Version : v4.2.1
-Time    : 2021-12-04T18:42:31Z
+Version : v4.2.3
+Time    : 2022-08-02T16:37:45Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/structured-merge-diff/v4@v4.2.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
