@@ -45,3 +45,13 @@ To see all resources installed by the helm chart
 ```sh
 kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack
 ```
+
+## Licensing
+
+### ECK Operator Helm Chart
+
+The ECK Operator is licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license), and is free to use under the limitations defined within the License.
+
+### ECK Stack/Resources Helm Charts
+
+The ECK Stack and Resources (eck-stack, eck-elasticsearch, eck-kibana, etc) Helm Charts are also licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license), but require an [Elastic Enterprise](https://www.elastic.co/subscriptions) license for use.
