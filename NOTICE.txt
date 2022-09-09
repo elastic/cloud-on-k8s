@@ -640,11 +640,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.5.8
-Time    : 2022-04-26T20:49:16Z
+Version : v0.5.9
+Time    : 2022-09-02T22:41:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.9/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
