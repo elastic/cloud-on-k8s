@@ -9,34 +9,30 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/errors"
-
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ptr "k8s.io/utils/pointer"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
+	ptr "k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -118,7 +114,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	var esa autoscalingv1alpha1.ElasticsearchAutoscaler
 	if err := r.Get(ctx, request.NamespacedName, &esa); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.V(1).Info("ElasticsearchAutoscaler %s/%s not found")
+			log.V(1).Info("ElasticsearchAutoscaler not found", request.Namespace, "esa_name", request.Name)
 			r.Watches.ReferencedResources.RemoveHandlerForKey(dyamicWatchName(request))
 			return reconcile.Result{}, nil
 		}
@@ -240,8 +236,9 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	results.WithResult(updateStatus)
 
 	if reconciledEs == nil {
-		// no reconciled Elasticsearch has been returned, likely to be the case if a fatal error prevented
-		// to calculate the new compute and storage resources.
+		// No Elasticsearch resource, with up-to-date compute and storage resources, has been returned.
+		// It's likely to be the case if a fatal error prevented to calculate resources from the Elasticsearch
+		// autoscaling API or if an "offline" reconciliation failed.
 		return results.Aggregate()
 	}
 
