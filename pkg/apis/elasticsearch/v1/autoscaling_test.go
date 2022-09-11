@@ -8,11 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/blang/semver/v4"
-
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"

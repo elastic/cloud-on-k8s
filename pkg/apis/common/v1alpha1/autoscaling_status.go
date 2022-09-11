@@ -26,6 +26,8 @@ const (
 	UnexpectedNodeStorageCapacity AutoscalingEventType = "UnexpectedNodeStorageCapacity"
 	VerticalScalingLimitReached   AutoscalingEventType = "VerticalScalingLimitReached"
 
+	// NotOnlineErrorMessage is a generic error message to be used in Conditions. It's used to let the user know that
+	// the Elasticsearch autoscaling API was not used in the last reconciliation attempt.
 	NotOnlineErrorMessage string = "An error prevented the use of the autoscaling API"
 )
 
@@ -44,8 +46,8 @@ const (
 	// ElasticsearchAutoscalerLimited status is True when a resource limit is reached.
 	ElasticsearchAutoscalerLimited ConditionType = "Limited"
 
-	// ElasticsearchAutoscalerOnline status is True if the Elasticsearch API is available
-	// For example, it is expected for this condition to be False if the cluster is being bootstrapped, it should however
+	// ElasticsearchAutoscalerOnline status is True if the Elasticsearch API is available.
+	// For example, it is expected for this condition to be False if the cluster is being bootstrapped, however it should
 	// become True when the operator is able to connect to Elasticsearch.
 	ElasticsearchAutoscalerOnline ConditionType = "Online"
 )

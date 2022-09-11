@@ -54,7 +54,7 @@ type NodeResources struct {
 
 // NodeSetNodeCount models the number of nodes expected in a given NodeSet.
 type NodeSetNodeCount struct {
-	// NodeSet name.
+	// Name of the Nodeset.
 	Name string `json:"name"`
 	// NodeCount is the number of nodes, as computed by the autoscaler, expected in this NodeSet.
 	NodeCount int32 `json:"nodeCount"`
@@ -236,7 +236,7 @@ type NodeResourcesInt64 struct {
 	Limits   ResourceListInt64 `json:"limits,omitempty"`
 }
 
-// ToInt64 converts all the resource quantities to int64, mostly to be logged and build dashboard.
+// ToInt64 converts all the resource quantities to int64, mostly to be logged and to build dashboards.
 func (nr NodeResources) ToInt64() NodeResourcesInt64 {
 	rs64 := NodeResourcesInt64{
 		Requests: make(ResourceListInt64),
