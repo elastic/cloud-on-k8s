@@ -352,6 +352,7 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 //
 // Example:
 // metricbeat:
+//
 //	modules:
 //	  - hosts:
 //	    - http://example.com:3033
