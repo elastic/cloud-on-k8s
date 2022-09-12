@@ -82,7 +82,7 @@ type BeatSpec struct {
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
 	// Monitoring enables you to collect and ship logs and metrics for this Beat.
-	// Metricbeat and/or Filebeat sidecars are configured and send monitoring data to a
+	// Metricbeat and/or Filebeat sidecars are configured and send monitoring data to an
 	// Elasticsearch monitoring cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`

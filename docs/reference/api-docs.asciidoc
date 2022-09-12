@@ -509,7 +509,7 @@ MetricsMonitoring holds a list of Elasticsearch clusters which receive monitorin
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-monitoring"]
 === Monitoring 
 
-Monitoring holds references to both the metrics, and logs Elasticsearch clusters for configuring stack monitoring.
+Monitoring holds references to both the metrics, and logs Elasticsearch clusters for configuring Stack Monitoring.
 
 .Appears In:
 ****

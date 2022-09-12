@@ -350,10 +350,8 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 
 // metricbeatConfig represents the MetricBeat configuration for testing purposes.
 //
-// example:
-//
+// Example:
 // metricbeat:
-//
 //	modules:
 //	  - hosts:
 //	    - http://example.com:3033

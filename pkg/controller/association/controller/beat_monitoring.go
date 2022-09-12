@@ -21,7 +21,7 @@ import (
 )
 
 // AddBeatMonitoring reconciles an association between Beat and Elasticsearch clusters for Stack Monitoring.
-// Beat is configured to use internal collectors to send its monitoring data to the Elasticsearch referenced in the association.
+// Beat is configured with sidecars to send its monitoring data to the Elasticsearch referenced in the association.
 func AddBeatMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &beatv1b1.Beat{} },

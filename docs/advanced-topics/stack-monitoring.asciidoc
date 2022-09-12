@@ -11,7 +11,7 @@ endif::[]
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
 on Elasticsearch, Kibana and Beats to collect and ship their metrics and logs to a dedicated monitoring cluster.
 
-To enable stack monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
+To enable Stack Monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
 
 [source,yaml,subs="attributes,callouts"]
 ----
@@ -82,7 +82,7 @@ spec:
 
 NOTE: You can configure an Elasticsearch cluster to monitor itself.
 
-NOTE: If stack monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
+NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
 
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
