@@ -27,7 +27,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
-	github.com/tsenart/vegeta v12.7.0+incompatible
+	github.com/tsenart/vegeta/v12 v12.8.4
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.1.0
 	go.elastic.co/apm/module/apmhttp/v2 v2.1.0
 	go.elastic.co/apm/module/apmzap/v2 v2.1.0
@@ -56,11 +56,9 @@ require (
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.12.0 // indirect
-	github.com/dgryski/go-gk v0.0.0-20140819190930-201884a44051 // indirect
 	github.com/docker/cli v20.10.17+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.17+incompatible // indirect
@@ -136,7 +134,6 @@ require (
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.elastic.co/fastjson v1.1.0 // indirect
@@ -173,5 +170,8 @@ exclude (
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 )
 
-// this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
-replace github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654
+// both of these dependencies are used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin both of these
+replace (
+	github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654
+	github.com/dgryski/go-lttb => github.com/dgryski/go-lttb v0.0.0-20210302151804-4a713d71336c
+)
