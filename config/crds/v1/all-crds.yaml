@@ -3334,7 +3334,7 @@ spec:
                           in a given NodeSet.
                         properties:
                           name:
-                            description: NodeSet name.
+                            description: Name of the Nodeset.
                             type: string
                           nodeCount:
                             description: NodeCount is the number of nodes, as computed
