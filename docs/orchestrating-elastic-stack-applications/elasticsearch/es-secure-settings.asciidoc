@@ -9,7 +9,7 @@ endif::[]
 = Secure settings
 
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
-The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch. The ECK operator keeps watching the secrets for changes and will update the Elasticsearch keystore when it detects a change.
+The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch. The ECK operator continues to watch the secrets for changes and will update the Elasticsearch keystore when it detects a change.
 
 == Basic usage
 
