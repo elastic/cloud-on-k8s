@@ -41,7 +41,6 @@ func Span(ctx *context.Context) func() {
 
 	span, newCtx := apm.StartSpan(*ctx, name, SpanTypeApp)
 	*ctx = newCtx
-
 	return func() {
 		span.End()
 	}

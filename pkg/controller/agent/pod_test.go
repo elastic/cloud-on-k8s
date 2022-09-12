@@ -249,8 +249,9 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref",
 			params: Params{
-				Agent:  agent,
-				Client: k8s.NewFakeClient(),
+				Context: context.Background(),
+				Agent:   agent,
+				Client:  k8s.NewFakeClient(),
 			},
 			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
@@ -274,8 +275,9 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, without fleet server, with fleet server ref, with kibana ref, token override",
 			params: Params{
-				Agent:  agent,
-				Client: k8s.NewFakeClient(),
+				Context: context.Background(),
+				Agent:   agent,
+				Client:  k8s.NewFakeClient(),
 			},
 			fleetToken:         testToken,
 			podTemplateBuilder: podTemplateBuilderWithFleetTokenSet,
@@ -293,7 +295,8 @@ func Test_applyEnvVars(t *testing.T) {
 		{
 			name: "elastic agent, with fleet server, with kibana ref",
 			params: Params{
-				Agent: agent2,
+				Context: context.Background(),
+				Agent:   agent2,
 				Client: k8s.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{Name: "agent-agent-http", Namespace: "default"},
@@ -815,7 +818,7 @@ func Test_getFleetSetupKibanaEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupKibanaEnvVars(tt.agent, k8s.NewFakeClient(), tt.fleetToken)
+			gotEnvVars, gotErr := getFleetSetupKibanaEnvVars(context.Background(), tt.agent, k8s.NewFakeClient(), tt.fleetToken)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -988,7 +991,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(tt.agent, tt.client, EnrollmentAPIKey{})
+			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(context.Background(), tt.agent, tt.client, EnrollmentAPIKey{})
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -1108,7 +1111,7 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(tt.agent, tt.client, EnrollmentAPIKey{})
+			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.agent, tt.client, EnrollmentAPIKey{})
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)

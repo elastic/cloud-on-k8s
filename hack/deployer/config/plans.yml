@@ -6,7 +6,7 @@ plans:
   kubernetesVersion: 1.21
   machineType: n1-standard-8
   serviceAccount: true
-  psp: true
+  enforceSecurityPolicies: true
   # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
@@ -21,7 +21,7 @@ plans:
   kubernetesVersion: 1.21
   machineType: n1-standard-8
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: true
   gke:
     region: europe-west1
     localSsdCount: 1
@@ -46,9 +46,9 @@ plans:
   clusterName: ci
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: true
-  psp: false
+  enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   aks:
     nodeCount: 3
@@ -59,9 +59,9 @@ plans:
   clusterName: dev
   provider: aks
   kubernetesVersion: 1.22.6
-  machineType: Standard_D8d_v5
+  machineType: Standard_D8s_v3
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: true
   aks:
     nodeCount: 3
     location: northeurope
@@ -107,6 +107,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
+  enforceSecurityPolicies: true
   kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
@@ -119,6 +120,7 @@ plans:
   provider: eks
   machineType: m6gd.2xlarge
   serviceAccount: false
+  enforceSecurityPolicies: true
   kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
@@ -132,6 +134,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   kubernetesVersion: 1.20
+  enforceSecurityPolicies: true
   eks:
     region: eu-west-2
     nodeCount: 3
@@ -143,7 +146,7 @@ plans:
   kubernetesVersion: 1.15
   machineType: n1-standard-8
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: false
   gke:
     region: europe-west2
     localSsdCount: 1
@@ -155,6 +158,7 @@ plans:
   clientVersion: 0.14.0
   provider: kind
   kubernetesVersion: 1.22.9
+  enforceSecurityPolicies: true
   kind:
     nodeCount: 3
     nodeImage: kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105
@@ -165,6 +169,7 @@ plans:
   clientVersion: 0.14.0
   provider: kind
   kubernetesVersion: 1.22.9
+  enforceSecurityPolicies: true
   kind:
     nodeCount: 3
     nodeImage: kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105

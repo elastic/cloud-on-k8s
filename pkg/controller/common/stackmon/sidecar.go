@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +20,7 @@ import (
 )
 
 func NewMetricBeatSidecar(
+	ctx context.Context,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 	resource monitoring.HasMonitoring,
@@ -45,12 +47,12 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
+	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
 }
 
-func NewFileBeatSidecar(client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
+	return NewBeatSidecar(ctx, client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
@@ -62,11 +64,11 @@ type BeatSidecar struct {
 	Volumes      []corev1.Volume
 }
 
-func NewBeatSidecar(client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
+func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
 	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
 ) (BeatSidecar, error) {
 	// build the beat config
-	config, err := newBeatConfig(client, beatName, resource, associations, baseConfig)
+	config, err := newBeatConfig(ctx, client, beatName, resource, associations, baseConfig)
 	if err != nil {
 		return BeatSidecar{}, err
 	}

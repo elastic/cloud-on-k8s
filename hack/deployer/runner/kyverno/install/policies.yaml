@@ -1,0 +1,186 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0
+    kyverno.io/kubernetes-version: "1.22-1.23"
+    policies.kyverno.io/description: >-
+      Privileged mode disables most security mechanisms and must not be allowed. This policy
+      ensures Pods do not call for privileged mode.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: privileged-containers
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - 'default' # default namespace may hold local volume provisioner Pods on GKE
+                - "*-system"
+                - "local-path-storage"
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchExpressions:
+                  - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
+      validate:
+        message: >-
+          Privileged mode is disallowed. The fields spec.containers[*].securityContext.privileged
+          and spec.initContainers[*].securityContext.privileged must be unset or set to `false`.
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(privileged): "false"
+            =(initContainers):
+              - =(securityContext):
+                  =(privileged): "false"
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root-user
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root User
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.6.0
+    kyverno.io/kubernetes-version: "1.22-1.23"
+    policies.kyverno.io/description: >-
+      Containers must be required to run as non-root users. This policy ensures
+      `runAsUser` is either unset or set to a number greater than zero.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: run-as-non-root-user
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - "*-system"
+                - "local-path-storage"
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            selector:
+              matchExpressions:
+                - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
+      validate:
+        message: >-
+          Running as root is not allowed. The fields spec.securityContext.runAsUser,
+          spec.containers[*].securityContext.runAsUser, spec.initContainers[*].securityContext.runAsUser,
+          and spec.ephemeralContainers[*].securityContext.runAsUser must be unset or
+          set to a number greater than zero.
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsUser): ">0"
+            =(ephemeralContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            =(initContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            containers:
+            - =(securityContext):
+                =(runAsUser): ">0"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-path
+  annotations:
+    policies.kyverno.io/title: Disallow hostPath
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod,Volume
+    kyverno.io/kyverno-version: 1.6.0
+    kyverno.io/kubernetes-version: "1.22-1.23"
+    policies.kyverno.io/description: >-
+      HostPath volumes let Pods use host directories and volumes in containers.
+      Using host resources can be used to access shared data or escalate privileges
+      and should not be allowed. This policy ensures no hostPath volumes are in use.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: host-path
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - 'default' # default namespace may hold local volume provisioner Pods on GKE
+                - "*-system"
+                - "local-path-storage"
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchExpressions:
+                  - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
+      validate:
+        message: >-
+          HostPath volumes are forbidden. The field spec.volumes[*].hostPath must be unset.
+        pattern:
+          spec:
+            =(volumes):
+              - X(hostPath): "null"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-automount-sa-token
+  annotations:
+    policies.kyverno.io/title: Restrict Auto-Mount of Service Account Tokens
+    policies.kyverno.io/category: Sample
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod,ServiceAccount
+    policies.kyverno.io/description: >-
+      Kubernetes automatically mounts ServiceAccount credentials in each Pod.
+      The ServiceAccount may be assigned roles allowing Pods to access API resources.
+      Blocking this ability is an extension of the least privilege best practice and should
+      be followed if Pods do not need to speak to the API server to function.
+      This policy ensures that mounting of these ServiceAccount tokens is blocked.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: validate-automountServiceAccountToken
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - 'default' # default namespace may hold local volume provisioner Pods on GKE
+                - "*-system"
+                - "local-path-storage"
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchExpressions:
+                  - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
+      validate:
+        message: "Auto-mounting of Service Account tokens is not allowed."
+        pattern:
+          spec:
+            automountServiceAccountToken: "false"

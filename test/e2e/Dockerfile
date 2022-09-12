@@ -1,5 +1,5 @@
 # Docker image for the E2E tests runner
-FROM --platform=$TARGETPLATFORM golang:1.18.4
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.1
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -13,7 +13,7 @@ WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 # create the go test cache directory
 RUN mkdir -p /.cache && chmod 777 /.cache
 
-# non-root user to support restricted PSP
+# non-root user to support restricted security policies
 RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
 USER 1001
 

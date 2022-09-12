@@ -5,6 +5,7 @@
 package stackmon
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -148,7 +149,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := tc.kb()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, kbv1.KibanaContainerName)
-			_, err := WithMonitoring(fakeClient, builder, kb)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, kb)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))

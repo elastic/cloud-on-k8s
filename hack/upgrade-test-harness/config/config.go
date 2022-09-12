@@ -6,7 +6,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -35,7 +34,7 @@ func (f *File) ReleasePos(name string) (int, error) {
 
 // Load the configuration from a YAML file.
 func Load(path string) (*File, error) {
-	confBytes, err := ioutil.ReadFile(path)
+	confBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

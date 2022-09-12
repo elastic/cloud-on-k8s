@@ -70,3 +70,6 @@ hack/pipeline-validator/validator
 
 # ignore helm chart dependencies in eck-stack chart
 deploy/eck-stack/charts/*
+
+# Ignore eck-stack lockfile to allow upgrading of dependencies/child charts.
+deploy/eck-stack/Chart.lock

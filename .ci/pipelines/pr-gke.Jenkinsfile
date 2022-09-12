@@ -62,7 +62,7 @@ pipeline {
                 }
                 stage("create-k8s-cluster") {
                     steps {
-                        sh 'make -C .ci TARGET="run-deployer apply-psp" ci'
+                        sh 'make -C .ci TARGET="run-deployer" ci'
                     }
                 }
             }

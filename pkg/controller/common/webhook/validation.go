@@ -5,6 +5,8 @@
 package webhook
 
 import (
+	"context"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,10 +15,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func (v *validatingWebhook) commonValidations(req admission.Request, obj runtime.Object) error {
-	errorList := hasRequestedLicenseLevel(obj, v.licenseChecker)
+func (v *validatingWebhook) commonValidations(ctx context.Context, req admission.Request, obj runtime.Object) error {
+	errorList := hasRequestedLicenseLevel(ctx, obj, v.licenseChecker)
 	if len(errorList) > 0 {
 		return apierrors.NewInvalid(schema.GroupKind{
 			Group: req.Kind.Group,
@@ -26,7 +29,8 @@ func (v *validatingWebhook) commonValidations(req admission.Request, obj runtime
 	return nil
 }
 
-func hasRequestedLicenseLevel(obj runtime.Object, checker license.Checker) field.ErrorList {
+func hasRequestedLicenseLevel(ctx context.Context, obj runtime.Object, checker license.Checker) field.ErrorList {
+	whlog := ulog.FromContext(ctx).WithName("common-webhook")
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
@@ -34,7 +38,7 @@ func hasRequestedLicenseLevel(obj runtime.Object, checker license.Checker) field
 		return nil // we do not want to block admission because of it
 	}
 	var errs field.ErrorList
-	ok, err := license.HasRequestedLicenseLevel(annotations, checker)
+	ok, err := license.HasRequestedLicenseLevel(ctx, annotations, checker)
 	if err != nil {
 		whlog.Error(err, "while checking license level during validation")
 		return nil

@@ -46,3 +46,4 @@ data:
     namespaces: [{{ join "," .Values.managedNamespaces  }}]
     {{- end }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}
+    elasticsearch-observation-interval: {{ .Values.config.elasticsearchObservationInterval }}

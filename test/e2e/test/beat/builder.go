@@ -31,11 +31,6 @@ import (
 )
 
 const (
-	PSPClusterRoleName            = "elastic-beat-restricted"
-	AuditbeatPSPClusterRoleName   = "elastic-auditbeat-restricted"
-	PacketbeatPSPClusterRoleName  = "elastic-packetbeat-restricted"
-	JournalbeatPSPClusterRoleName = "elastic-journalbeat-restricted"
-
 	AutodiscoverClusterRoleName = "elastic-beat-autodiscover"
 	MetricbeatClusterRoleName   = "elastic-beat-metricbeat"
 )
@@ -201,14 +196,6 @@ func (b Builder) WithNamespace(namespace string) Builder {
 
 func (b Builder) WithRestrictedSecurityContext() Builder {
 	b.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
-
-	return b
-}
-
-func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	for i := range b.PodTemplate.Spec.Containers {
-		b.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-	}
 
 	return b
 }

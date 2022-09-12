@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // isPodScheduled returns if the Pod is scheduled. If true it also returns the node name.
@@ -71,7 +72,7 @@ func annotatePodWithNodeLabels(ctx context.Context, c k8s.Client, pod corev1.Pod
 	if len(podAnnotations) == 0 {
 		return nil
 	}
-	log.Info("Setting Pod annotations from node labels", "err", err, "namespace", es.Namespace, "es_name", es.Name, "pod", pod.Name, "annotations", podAnnotations)
+	ulog.FromContext(ctx).Info("Setting Pod annotations from node labels", "err", err, "namespace", es.Namespace, "es_name", es.Name, "pod", pod.Name, "annotations", podAnnotations)
 	mergePatch, err := json.Marshal(map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"annotations": podAnnotations,

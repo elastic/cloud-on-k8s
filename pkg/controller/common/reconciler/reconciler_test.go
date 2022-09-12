@@ -265,6 +265,7 @@ func TestReconcileResource(t *testing.T) {
 			args := tt.args()
 			p := Params{
 				Client:           client,
+				Context:          context.Background(),
 				Owner:            args.Owner,
 				Expected:         args.Expected,
 				Reconciled:       args.Reconciled,

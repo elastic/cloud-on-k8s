@@ -90,7 +90,7 @@ func Test_certIsValid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CertIsValid(tt.cert, tt.safetyMargin); got != tt.want {
+			if got := CertIsValid(context.Background(), tt.cert, tt.safetyMargin); got != tt.want {
 				t.Errorf("CertIsValid() = %v, want %v", got, tt.want)
 			}
 		})
@@ -137,7 +137,7 @@ func Test_canReuseCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CanReuseCA(tt.ca(), DefaultRotateBefore); got != tt.want {
+			if got := CanReuseCA(context.Background(), tt.ca(), DefaultRotateBefore); got != tt.want {
 				t.Errorf("CanReuseCA() = %v, want %v", got, tt.want)
 			}
 		})
@@ -172,7 +172,7 @@ func checkCASecrets(
 ) {
 	t.Helper()
 	// ca cert should be valid
-	require.True(t, CertIsValid(*ca.Cert, DefaultRotateBefore))
+	require.True(t, CertIsValid(context.Background(), *ca.Cert, DefaultRotateBefore))
 
 	// expiration date should be correctly set
 	require.True(t, ca.Cert.NotBefore.After(time.Now().Add(-1*time.Hour)))
@@ -204,7 +204,7 @@ func checkCASecrets(
 	require.NotEmpty(t, internalCASecret.Data[KeyFileName])
 
 	// secret should be ok to parse as a CA
-	parsedCa := BuildCAFromSecret(internalCASecret)
+	parsedCa := BuildCAFromSecret(context.Background(), internalCASecret)
 	require.NotNil(t, parsedCa)
 	// and return the ca
 	require.True(t, ca.Cert.Equal(parsedCa.Cert))
@@ -409,7 +409,7 @@ func Test_buildCAFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca := BuildCAFromSecret(tt.internalSecret)
+			ca := BuildCAFromSecret(context.Background(), tt.internalSecret)
 			if !reflect.DeepEqual(ca, tt.wantCa) {
 				t.Errorf("CaFromSecrets() got = %v, want %v", ca, tt.wantCa)
 			}

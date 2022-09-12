@@ -21,8 +21,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("elasticsearch-controller")
-
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
@@ -76,7 +74,7 @@ func applyLinkedLicense(
 			// - the user manually started a trial at the stack level (eg. by clicking a button in Kibana when
 			// trying to access a commercial feature). While this is not a supported use case,
 			// we tolerate it to avoid a bad user experience because trials can only be started once.
-			log.V(1).Info("Preserving existing stack-level trial license",
+			ulog.FromContext(ctx).V(1).Info("Preserving existing stack-level trial license",
 				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
 			return nil
 		default:
@@ -143,6 +141,7 @@ func updateLicense(
 // Elasticsearch API.
 func startTrial(ctx context.Context, c esclient.LicenseClient, esCluster types.NamespacedName) error {
 	response, err := c.StartTrial(ctx)
+	log := ulog.FromContext(ctx)
 	if err != nil && esclient.IsForbidden(err) {
 		log.Info("failed to start trial most likely because trial was activated previously",
 			"err", err.Error(),

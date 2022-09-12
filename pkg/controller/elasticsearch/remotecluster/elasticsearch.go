@@ -22,8 +22,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-var log = ulog.Log.WithName("remotecluster")
-
 const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
 // UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
@@ -50,12 +48,12 @@ func UpdateSettings(
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return true, err
 	}
 	if !enabled && isRemoteClustersSpec {
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
@@ -70,13 +68,13 @@ func UpdateSettings(
 // have been declared in the Elasticsearch spec. The purpose is to delete remote clusters which were managed by
 // the operator but are not desired anymore, without removing the ones which have been added by the user.
 // The following algorithm is used:
-// 1. Get the list of the previously declared remote clusters from the annotation
-// 2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
-// 3. For each remote cluster in the annotation which is not in the Spec, either:
-//   3.1 Schedule its deletion from the Elasticsearch settings
-//   3.2 Otherwise remove it from the annotation
-// 4. Update the annotation on the Elasticsearch object
-// 5. Apply the settings through the Elasticsearch API
+//  1. Get the list of the previously declared remote clusters from the annotation
+//  2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
+//  3. For each remote cluster in the annotation which is not in the Spec, either:
+//     3.1 Schedule its deletion from the Elasticsearch settings
+//     3.2 Otherwise remove it from the annotation
+//  4. Update the annotation on the Elasticsearch object
+//  5. Apply the settings through the Elasticsearch API
 func updateSettingsInternal(
 	ctx context.Context,
 	remoteClustersInSpec map[string]esv1.RemoteCluster,
@@ -139,7 +137,7 @@ func updateSettingsInternal(
 		// Apply the settings
 		sort.Strings(remoteClustersToUpdate)
 		sort.Strings(remoteClustersToDelete)
-		log.Info("Updating remote cluster settings",
+		ulog.FromContext(ctx).Info("Updating remote cluster settings",
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 			"updated_remote_clusters", remoteClustersToUpdate,

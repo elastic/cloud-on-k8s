@@ -29,7 +29,7 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 
 	image, err := clientImageName(driverID, clientVersion, dockerfileName)
 	if err != nil {
-		return "", fmt.Errorf("while calculting docker image name %w", err)
+		return "", fmt.Errorf("while calculating docker image name %w", err)
 	}
 
 	if exists := checkImageExists(image); exists {

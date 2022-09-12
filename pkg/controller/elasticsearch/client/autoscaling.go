@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 )
 
@@ -83,14 +85,25 @@ func (ac AutoscalingCapacityInfo) IsEmpty() bool {
 }
 
 // AutoscalingCapacity models a capacity value as received by Elasticsearch.
-type AutoscalingCapacity int64
+type AutoscalingCapacity struct {
+	resource.Quantity
+}
 
-// Value return the int64 value returned by Elasticsearch. It returns 0 if no value has been set by Elasticsearch.
+// Value returns the int64 value returned by Elasticsearch. It returns 0 if no value has been set by Elasticsearch.
 func (ac *AutoscalingCapacity) Value() int64 {
 	if ac == nil {
 		return 0
 	}
-	return int64(*ac)
+	return ac.Quantity.Value()
+}
+
+// MilliValue returns the int64 representation of a float returned by Elasticsearch. The int64 returned is the value
+// returned by Elasticsearch multiplied by 1000. It returns 0 if no value has been set by Elasticsearch.
+func (ac *AutoscalingCapacity) MilliValue() int64 {
+	if ac == nil {
+		return 0
+	}
+	return ac.Quantity.MilliValue()
 }
 
 // IsEmpty returns true if the value is nil.
@@ -104,8 +117,9 @@ func (ac *AutoscalingCapacity) IsZero() bool {
 }
 
 type AutoscalingResources struct {
-	Storage *AutoscalingCapacity `yaml:"storage" json:"storage,omitempty"`
-	Memory  *AutoscalingCapacity `yaml:"memory" json:"memory,omitempty"`
+	Processors *AutoscalingCapacity `yaml:"processors" json:"processors,omitempty"`
+	Storage    *AutoscalingCapacity `yaml:"storage" json:"storage,omitempty"`
+	Memory     *AutoscalingCapacity `yaml:"memory" json:"memory,omitempty"`
 }
 
 // IsEmpty returns true if all the resource values are empty (no values, 0 being considered as a value).

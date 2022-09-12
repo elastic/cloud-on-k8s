@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"go.elastic.co/apm/module/apmelasticsearch/v2"
-
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
@@ -67,7 +65,7 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 	}
 
 	return &http.Client{
-		Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
+		Transport: &transportConfig,
 		Timeout:   timeout,
 	}
 }

@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -176,7 +175,7 @@ func (c *config) HasDigestPinning() bool {
 }
 
 func loadConfig(path string) (*config, error) {
-	confBytes, err := ioutil.ReadFile(path)
+	confBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", path, err)
 	}

@@ -77,6 +77,7 @@ const expectedTelemetryTemplate = `eck:
         distinct_node_labels_count: {{ .ElasticsearchTemplateData.DistinctNodeLabelsCount }}
         resource_count: {{ .ElasticsearchTemplateData.ResourceWithNodeLabelsCount }}
 {{- end }}
+      helm_resource_count: 0
       pod_count: {{ .ElasticsearchTemplateData.PodCount }}
       resource_count: {{ .ElasticsearchTemplateData.ResourceCount }}
       stack_monitoring_logs_count: {{ .ElasticsearchTemplateData.StackMonitoringLogsCount }}
@@ -85,6 +86,7 @@ const expectedTelemetryTemplate = `eck:
       pod_count: 0
       resource_count: 0
     kibanas:
+      helm_resource_count: 0
       pod_count: 0
       resource_count: 1
     maps:

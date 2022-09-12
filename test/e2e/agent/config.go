@@ -24,6 +24,7 @@ const (
       monitoring_enabled:
       - logs
       - metrics
+      unenroll_timeout: 900
       is_default_fleet_server: true
       package_policies:
       - name: fleet_server-1
@@ -219,6 +220,8 @@ inputs:
     - mountPath: /var/log
       name: varlog
   dnsPolicy: ClusterFirstWithHostNet
+  securityContext:
+    runAsUser: 0
   terminationGracePeriodSeconds: 30
   volumes:
   - hostPath:

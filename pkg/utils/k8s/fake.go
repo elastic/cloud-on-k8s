@@ -33,7 +33,7 @@ func NewFailingClient(err error) Client {
 	return failingClient{err: err}
 }
 
-func (fc failingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (fc failingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return fc.err
 }
 

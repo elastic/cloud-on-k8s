@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -98,14 +99,14 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	isEsAssocConfigured, err := association.IsConfiguredIfSet(kb.EsAssociation(), d.recorder)
+	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, kb.EsAssociation(), d.recorder)
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !isEsAssocConfigured {
 		return results
 	}
-	isEntAssocConfigured, err := association.IsConfiguredIfSet(kb.EntAssociation(), d.recorder)
+	isEntAssocConfigured, err := association.IsConfiguredIfSet(ctx, kb.EntAssociation(), d.recorder)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -138,7 +139,7 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	logger := log.WithValues("namespace", kb.Namespace, "kb_name", kb.Name)
+	logger := ulog.FromContext(ctx)
 	assocAllowed, err := association.AllowVersion(d.version, kb, logger, d.Recorder())
 	if err != nil {
 		return results.WithError(err)
@@ -180,7 +181,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	deploymentStatus, err := common.DeploymentStatus(state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -234,7 +235,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(d.client, *kb, keystoreResources, volumes)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes)
 	if err != nil {
 		return deployment.Params{}, err
 	}

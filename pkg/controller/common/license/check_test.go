@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"crypto/x509"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 const testNS = "test-system"
 
 func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
+	ctx := context.Background()
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)
 
@@ -32,14 +34,14 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	trialState, err := NewTrialState()
 	require.NoError(t, err)
 	validTrialLicenseFixture := emptyTrialLicenseFixture
-	require.NoError(t, trialState.InitTrialLicense(&validTrialLicenseFixture))
+	require.NoError(t, trialState.InitTrialLicense(ctx, &validTrialLicenseFixture))
 
 	validLegacyTrialFixture := EnterpriseLicense{
 		License: LicenseSpec{
 			Type: LicenseTypeLegacyTrial,
 		},
 	}
-	require.NoError(t, trialState.InitTrialLicense(&validLegacyTrialFixture))
+	require.NoError(t, trialState.InitTrialLicense(ctx, &validLegacyTrialFixture))
 
 	expiredTrialLicense := validTrialLicenseFixture
 	expiredTrialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(-1 * time.Hour))
@@ -124,7 +126,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 				operatorNamespace: testNS,
 				publicKey:         tt.fields.publicKey,
 			}
-			got, err := lc.EnterpriseFeaturesEnabled()
+			got, err := lc.EnterpriseFeaturesEnabled(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Checker.EnterpriseFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -148,7 +150,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 	trialState, err := NewTrialState()
 	require.NoError(t, err)
 	validTrialLicenseFixture := emptyTrialLicenseFixture
-	require.NoError(t, trialState.InitTrialLicense(&validTrialLicenseFixture))
+	require.NoError(t, trialState.InitTrialLicense(context.Background(), &validTrialLicenseFixture))
 	validTrialLicense := asRuntimeObject(validTrialLicenseFixture)
 
 	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
@@ -227,7 +229,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,
 			}
-			got, err := lc.CurrentEnterpriseLicense()
+			got, err := lc.CurrentEnterpriseLicense(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Checker.CurrentEnterpriseLicense() err = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -251,7 +253,7 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 	trialState, err := NewTrialState()
 	require.NoError(t, err)
 	validTrialLicenseFixture := emptyTrialLicenseFixture
-	require.NoError(t, trialState.InitTrialLicense(&validTrialLicenseFixture))
+	require.NoError(t, trialState.InitTrialLicense(context.Background(), &validTrialLicenseFixture))
 	validTrialLicense := asRuntimeObject(validTrialLicenseFixture)
 
 	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
@@ -326,7 +328,7 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,
 			}
-			licenseType, err := lc.ValidOperatorLicenseKeyType()
+			licenseType, err := lc.ValidOperatorLicenseKeyType(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Checker.ValidOperatorLicenseKeyType() err = %v, wantErr %v", err, tt.wantErr)
 			}

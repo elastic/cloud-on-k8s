@@ -24,8 +24,6 @@ const (
 	ServiceAccountUsernamePrefix = "system:serviceaccount:"
 )
 
-var log = ulog.Log.WithName("access-review")
-
 type AccessReviewer interface {
 	// AccessAllowed checks that the given ServiceAccount is allowed to get an other object.
 	AccessAllowed(ctx context.Context, serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error)
@@ -76,7 +74,7 @@ func (s *SubjectAccessReviewer) AccessAllowed(ctx context.Context, serviceAccoun
 	if err != nil {
 		return false, err
 	}
-	log.V(1).Info(
+	ulog.FromContext(ctx).V(1).Info(
 		"Access review", "result", sar.Status,
 		"service_account", serviceAccount,
 		"source_namespace", sourceNamespace,
