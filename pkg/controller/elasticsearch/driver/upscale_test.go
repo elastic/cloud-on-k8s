@@ -555,6 +555,7 @@ func Test_adjustResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(&tt.args.es)
 			ctx := upscaleCtx{
+				parentCtx:    context.Background(),
 				es:           tt.args.es,
 				k8sClient:    k8sClient,
 				expectations: expectations.NewExpectations(k8sClient),

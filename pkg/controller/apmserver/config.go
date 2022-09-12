@@ -44,7 +44,7 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 // specification and then reconcile the underlying secret.
 func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
-	cfg, err := newConfigFromSpec(client, as)
+	cfg, err := newConfigFromSpec(ctx, client, as)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -68,18 +68,18 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 	return reconciler.ReconcileSecret(ctx, client, expectedConfigSecret, as)
 }
 
-func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
+func newConfigFromSpec(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
 	cfg := settings.MustCanonicalConfig(map[string]interface{}{
 		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
 		APMServerSecretToken: "${SECRET_TOKEN}",
 	})
 
-	esConfig, err := newElasticsearchConfigFromSpec(c, apmv1.ApmEsAssociation{ApmServer: as})
+	esConfig, err := newElasticsearchConfigFromSpec(ctx, c, apmv1.ApmEsAssociation{ApmServer: as})
 	if err != nil {
 		return nil, err
 	}
 
-	kibanaConfig, err := newKibanaConfigFromSpec(c, apmv1.ApmKibanaAssociation{ApmServer: as})
+	kibanaConfig, err := newKibanaConfigFromSpec(ctx, c, apmv1.ApmKibanaAssociation{ApmServer: as})
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalCo
 	return cfg, nil
 }
 
-func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssociation) (*settings.CanonicalConfig, error) {
+func newElasticsearchConfigFromSpec(ctx context.Context, c k8s.Client, esAssociation apmv1.ApmEsAssociation) (*settings.CanonicalConfig, error) {
 	esAssocConf, err := esAssociation.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 	}
 
 	// Get username and password
-	credentials, err := association.ElasticsearchAuthSettings(c, &esAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, c, &esAssociation)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssoc
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
 }
 
-func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAssociation) (*settings.CanonicalConfig, error) {
+func newKibanaConfigFromSpec(ctx context.Context, c k8s.Client, kibanaAssociation apmv1.ApmKibanaAssociation) (*settings.CanonicalConfig, error) {
 	kbAssocConf, err := kibanaAssociation.AssociationConf()
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAsso
 	}
 
 	// Get username and password
-	credentials, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
+	credentials, err := association.ElasticsearchAuthSettings(ctx, c, &kibanaAssociation)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,74 @@
+{
+  "policies": {
+    "di": {
+      "required_capacity": {
+        "node": {
+          "processors": 4.0,
+          "storage": 3722575856
+        },
+        "total": {
+          "processors": 49.0,
+          "storage": 29780606848
+        }
+      },
+      "current_capacity": {
+        "node": {
+          "processors": 6.0,
+          "storage": 4193976320,
+          "memory": 8589934592
+        },
+        "total": {
+          "processors": 48.0,
+          "storage": 33384038400,
+          "memory": 68719476736
+        }
+      },
+      "current_nodes": [
+        {
+          "name": "testes-es-di-0"
+        },
+        {
+          "name": "testes-es-di-1"
+        },
+        {
+          "name": "testes-es-di-2"
+        },
+        {
+          "name": "testes-es-di-3"
+        },
+        {
+          "name": "testes-es-di-4"
+        },
+        {
+          "name": "testes-es-di-5"
+        },
+        {
+          "name": "testes-es-di-6"
+        },
+        {
+          "name": "testes-es-di-7"
+        }
+      ],
+      "deciders": {
+        "storage": {
+          "required_capacity": {
+            "node": {
+              "storage": 3722575856
+            },
+            "total": {
+              "storage": 29780606848
+            }
+          },
+          "reason_summary": "storage ok",
+          "reason_details": {
+            "reason": "storage ok",
+            "unassigned": 0,
+            "assigned": 0,
+            "forecasted": 0,
+            "forecast_window": "5m"
+          }
+        }
+      }
+    }
+  }
+}

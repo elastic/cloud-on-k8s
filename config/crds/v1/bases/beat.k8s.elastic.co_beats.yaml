@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.9.1
+    controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
   name: beats.beat.k8s.elastic.co
 spec:
@@ -1152,9 +1152,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -1173,6 +1170,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -1223,9 +1221,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -1247,6 +1242,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -1709,13 +1705,13 @@ spec:
                                   type: string
                                 ports:
                                   description: List of ports to expose from the container.
-                                    Exposing a port here gives the system additional
-                                    information about the network connections a container
-                                    uses, but is primarily informational. Not specifying
-                                    a port here DOES NOT prevent that port from being
-                                    exposed. Any port which is listening on the default
-                                    "0.0.0.0" address inside a container will be accessible
-                                    from the network. Cannot be updated.
+                                    Not specifying a port here DOES NOT prevent that
+                                    port from being exposed. Any port which is listening
+                                    on the default "0.0.0.0" address inside a container
+                                    will be accessible from the network. Modifying
+                                    this array with strategic merge patch may corrupt
+                                    the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255.
+                                    Cannot be updated.
                                   items:
                                     description: ContainerPort represents a network
                                       port in a single container.
@@ -2503,9 +2499,7 @@ spec:
                               This list cannot be specified when creating a pod, and
                               it cannot be modified by updating the pod spec. In order
                               to add an ephemeral container to an existing pod, use
-                              the pod's ephemeralcontainers subresource. This field
-                              is beta-level and available on clusters that haven't
-                              disabled the EphemeralContainers feature gate.
+                              the pod's ephemeralcontainers subresource.
                             items:
                               description: "An EphemeralContainer is a temporary container
                                 that you may add to an existing Pod for user-initiated
@@ -2516,9 +2510,7 @@ spec:
                                 if an ephemeral container causes the Pod to exceed
                                 its resource allocation. \n To add an ephemeral container,
                                 use the ephemeralcontainers subresource of an existing
-                                Pod. Ephemeral containers may not be removed or restarted.
-                                \n This is a beta feature available on clusters that
-                                haven't disabled the EphemeralContainers feature gate."
+                                Pod. Ephemeral containers may not be removed or restarted."
                               properties:
                                 args:
                                   description: 'Arguments to the entrypoint. The image''s
@@ -2581,9 +2573,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -2602,6 +2591,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -2652,9 +2642,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -2676,6 +2663,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -3900,6 +3888,20 @@ spec:
                             description: 'Use the host''s pid namespace. Optional:
                               Default to false.'
                             type: boolean
+                          hostUsers:
+                            description: 'Use the host''s user namespace. Optional:
+                              Default to true. If set to true or not present, the
+                              pod will be run in the host user namespace, useful for
+                              when the pod needs a feature only available to the host
+                              user namespace, such as loading a kernel module with
+                              CAP_SYS_MODULE. When set to false, a new userns is created
+                              for the pod. Setting false is useful for mitigating
+                              container breakout vulnerabilities even allowing users
+                              to run their containers as root without actually having
+                              root privileges on the host. This field is alpha-level
+                              and is only honored by servers that enable the UserNamespacesSupport
+                              feature.'
+                            type: boolean
                           hostname:
                             description: Specifies the hostname of the Pod If not
                               specified, the pod's hostname will be set to a system-defined
@@ -4005,9 +4007,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -4026,6 +4025,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -4076,9 +4076,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -4100,6 +4097,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -4562,13 +4560,13 @@ spec:
                                   type: string
                                 ports:
                                   description: List of ports to expose from the container.
-                                    Exposing a port here gives the system additional
-                                    information about the network connections a container
-                                    uses, but is primarily informational. Not specifying
-                                    a port here DOES NOT prevent that port from being
-                                    exposed. Any port which is listening on the default
-                                    "0.0.0.0" address inside a container will be accessible
-                                    from the network. Cannot be updated.
+                                    Not specifying a port here DOES NOT prevent that
+                                    port from being exposed. Any port which is listening
+                                    on the default "0.0.0.0" address inside a container
+                                    will be accessible from the network. Modifying
+                                    this array with strategic merge patch may corrupt
+                                    the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255.
+                                    Cannot be updated.
                                   items:
                                     description: ContainerPort represents a network
                                       port in a single container.
@@ -5318,19 +5316,18 @@ spec:
                               this is set. \n If the OS field is set to linux, the
                               following fields must be unset: -securityContext.windowsOptions
                               \n If the OS field is set to windows, following fields
-                              must be unset: - spec.hostPID - spec.hostIPC - spec.securityContext.seLinuxOptions
-                              - spec.securityContext.seccompProfile - spec.securityContext.fsGroup
-                              - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls
-                              - spec.shareProcessNamespace - spec.securityContext.runAsUser
-                              - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups
-                              - spec.containers[*].securityContext.seLinuxOptions
+                              must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers
+                              - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile
+                              - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy
+                              - spec.securityContext.sysctls - spec.shareProcessNamespace
+                              - spec.securityContext.runAsUser - spec.securityContext.runAsGroup
+                              - spec.securityContext.supplementalGroups - spec.containers[*].securityContext.seLinuxOptions
                               - spec.containers[*].securityContext.seccompProfile
                               - spec.containers[*].securityContext.capabilities -
                               spec.containers[*].securityContext.readOnlyRootFilesystem
                               - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation
                               - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser
-                              - spec.containers[*].securityContext.runAsGroup This
-                              is a beta field and requires the IdentifyPodOS feature"
+                              - spec.containers[*].securityContext.runAsGroup"
                             properties:
                               name:
                                 description: 'Name is the name of the operating system.
@@ -5767,6 +5764,21 @@ spec:
                                       type: object
                                   type: object
                                   x-kubernetes-map-type: atomic
+                                matchLabelKeys:
+                                  description: MatchLabelKeys is a set of pod label
+                                    keys to select the pods over which spreading will
+                                    be calculated. The keys are used to lookup values
+                                    from the incoming pod labels, those key-value
+                                    labels are ANDed with labelSelector to select
+                                    the group of existing pods over which spreading
+                                    will be calculated for the incoming pod. Keys
+                                    that don't exist in the incoming pod labels will
+                                    be ignored. A null or empty list means only match
+                                    against labelSelector.
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
                                 maxSkew:
                                   description: 'MaxSkew describes the degree to which
                                     pods may be unevenly distributed. When `whenUnsatisfiable=DoNotSchedule`,
@@ -5815,11 +5827,35 @@ spec:
                                     new pod with the same labelSelector cannot be
                                     scheduled, because computed skew will be 3(3 -
                                     0) if new Pod is scheduled to any of the three
-                                    zones, it will violate MaxSkew. \n This is an
-                                    alpha field and requires enabling MinDomainsInPodTopologySpread
-                                    feature gate."
+                                    zones, it will violate MaxSkew. \n This is a beta
+                                    field and requires the MinDomainsInPodTopologySpread
+                                    feature gate to be enabled (enabled by default)."
                                   format: int32
                                   type: integer
+                                nodeAffinityPolicy:
+                                  description: "NodeAffinityPolicy indicates how we
+                                    will treat Pod's nodeAffinity/nodeSelector when
+                                    calculating pod topology spread skew. Options
+                                    are: - Honor: only nodes matching nodeAffinity/nodeSelector
+                                    are included in the calculations. - Ignore: nodeAffinity/nodeSelector
+                                    are ignored. All nodes are included in the calculations.
+                                    \n If this value is nil, the behavior is equivalent
+                                    to the Honor policy. This is a alpha-level feature
+                                    enabled by the NodeInclusionPolicyInPodTopologySpread
+                                    feature flag."
+                                  type: string
+                                nodeTaintsPolicy:
+                                  description: "NodeTaintsPolicy indicates how we
+                                    will treat node taints when calculating pod topology
+                                    spread skew. Options are: - Honor: nodes without
+                                    taints, along with tainted nodes for which the
+                                    incoming pod has a toleration, are included. -
+                                    Ignore: node taints are ignored. All nodes are
+                                    included. \n If this value is nil, the behavior
+                                    is equivalent to the Ignore policy. This is a
+                                    alpha-level feature enabled by the NodeInclusionPolicyInPodTopologySpread
+                                    feature flag."
+                                  type: string
                                 topologyKey:
                                   description: TopologyKey is the key of node labels.
                                     Nodes that have a label with this key and identical
@@ -5828,12 +5864,12 @@ spec:
                                     try to put balanced number of pods into each bucket.
                                     We define a domain as a particular instance of
                                     a topology. Also, we define an eligible domain
-                                    as a domain whose nodes match the node selector.
-                                    e.g. If TopologyKey is "kubernetes.io/hostname",
-                                    each Node is a domain of that topology. And, if
-                                    TopologyKey is "topology.kubernetes.io/zone",
-                                    each zone is a domain of that topology. It's a
-                                    required field.
+                                    as a domain whose nodes meet the requirements
+                                    of nodeAffinityPolicy and nodeTaintsPolicy. e.g.
+                                    If TopologyKey is "kubernetes.io/hostname", each
+                                    Node is a domain of that topology. And, if TopologyKey
+                                    is "topology.kubernetes.io/zone", each zone is
+                                    a domain of that topology. It's a required field.
                                   type: string
                                 whenUnsatisfiable:
                                   description: 'WhenUnsatisfiable indicates how to
@@ -7649,8 +7685,7 @@ spec:
                               by the daemonset on any given node can double if the
                               readiness check fails, and so resource intensive daemonsets
                               should take into account that they may cause evictions
-                              during disruption. This is beta field and enabled/disabled
-                              by DaemonSetUpdateSurge feature gate.'
+                              during disruption.'
                             x-kubernetes-int-or-string: true
                           maxUnavailable:
                             anyOf:
@@ -8755,9 +8790,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -8776,6 +8808,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -8826,9 +8859,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -8850,6 +8880,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -9312,13 +9343,13 @@ spec:
                                   type: string
                                 ports:
                                   description: List of ports to expose from the container.
-                                    Exposing a port here gives the system additional
-                                    information about the network connections a container
-                                    uses, but is primarily informational. Not specifying
-                                    a port here DOES NOT prevent that port from being
-                                    exposed. Any port which is listening on the default
-                                    "0.0.0.0" address inside a container will be accessible
-                                    from the network. Cannot be updated.
+                                    Not specifying a port here DOES NOT prevent that
+                                    port from being exposed. Any port which is listening
+                                    on the default "0.0.0.0" address inside a container
+                                    will be accessible from the network. Modifying
+                                    this array with strategic merge patch may corrupt
+                                    the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255.
+                                    Cannot be updated.
                                   items:
                                     description: ContainerPort represents a network
                                       port in a single container.
@@ -10106,9 +10137,7 @@ spec:
                               This list cannot be specified when creating a pod, and
                               it cannot be modified by updating the pod spec. In order
                               to add an ephemeral container to an existing pod, use
-                              the pod's ephemeralcontainers subresource. This field
-                              is beta-level and available on clusters that haven't
-                              disabled the EphemeralContainers feature gate.
+                              the pod's ephemeralcontainers subresource.
                             items:
                               description: "An EphemeralContainer is a temporary container
                                 that you may add to an existing Pod for user-initiated
@@ -10119,9 +10148,7 @@ spec:
                                 if an ephemeral container causes the Pod to exceed
                                 its resource allocation. \n To add an ephemeral container,
                                 use the ephemeralcontainers subresource of an existing
-                                Pod. Ephemeral containers may not be removed or restarted.
-                                \n This is a beta feature available on clusters that
-                                haven't disabled the EphemeralContainers feature gate."
+                                Pod. Ephemeral containers may not be removed or restarted."
                               properties:
                                 args:
                                   description: 'Arguments to the entrypoint. The image''s
@@ -10184,9 +10211,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -10205,6 +10229,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -10255,9 +10280,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -10279,6 +10301,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -11503,6 +11526,20 @@ spec:
                             description: 'Use the host''s pid namespace. Optional:
                               Default to false.'
                             type: boolean
+                          hostUsers:
+                            description: 'Use the host''s user namespace. Optional:
+                              Default to true. If set to true or not present, the
+                              pod will be run in the host user namespace, useful for
+                              when the pod needs a feature only available to the host
+                              user namespace, such as loading a kernel module with
+                              CAP_SYS_MODULE. When set to false, a new userns is created
+                              for the pod. Setting false is useful for mitigating
+                              container breakout vulnerabilities even allowing users
+                              to run their containers as root without actually having
+                              root privileges on the host. This field is alpha-level
+                              and is only honored by servers that enable the UserNamespacesSupport
+                              feature.'
+                            type: boolean
                           hostname:
                             description: Specifies the hostname of the Pod If not
                               specified, the pod's hostname will be set to a system-defined
@@ -11608,9 +11645,6 @@ spec:
                                           value. Cannot be used if value is not empty.
                                         properties:
                                           configMapKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a ConfigMap.
                                             properties:
                                               key:
@@ -11629,6 +11663,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                           fieldRef:
                                             description: 'Selects a field of the pod:
                                               supports metadata.name, metadata.namespace,
@@ -11679,9 +11714,6 @@ spec:
                                             type: object
                                             x-kubernetes-map-type: atomic
                                           secretKeyRef:
-                                            allOf:
-                                            - x-kubernetes-map-type: atomic
-                                            - x-kubernetes-map-type: atomic
                                             description: Selects a key of a secret
                                               in the pod's namespace
                                             properties:
@@ -11703,6 +11735,7 @@ spec:
                                             required:
                                             - key
                                             type: object
+                                            x-kubernetes-map-type: atomic
                                         type: object
                                     required:
                                     - name
@@ -12165,13 +12198,13 @@ spec:
                                   type: string
                                 ports:
                                   description: List of ports to expose from the container.
-                                    Exposing a port here gives the system additional
-                                    information about the network connections a container
-                                    uses, but is primarily informational. Not specifying
-                                    a port here DOES NOT prevent that port from being
-                                    exposed. Any port which is listening on the default
-                                    "0.0.0.0" address inside a container will be accessible
-                                    from the network. Cannot be updated.
+                                    Not specifying a port here DOES NOT prevent that
+                                    port from being exposed. Any port which is listening
+                                    on the default "0.0.0.0" address inside a container
+                                    will be accessible from the network. Modifying
+                                    this array with strategic merge patch may corrupt
+                                    the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255.
+                                    Cannot be updated.
                                   items:
                                     description: ContainerPort represents a network
                                       port in a single container.
@@ -12921,19 +12954,18 @@ spec:
                               this is set. \n If the OS field is set to linux, the
                               following fields must be unset: -securityContext.windowsOptions
                               \n If the OS field is set to windows, following fields
-                              must be unset: - spec.hostPID - spec.hostIPC - spec.securityContext.seLinuxOptions
-                              - spec.securityContext.seccompProfile - spec.securityContext.fsGroup
-                              - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls
-                              - spec.shareProcessNamespace - spec.securityContext.runAsUser
-                              - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups
-                              - spec.containers[*].securityContext.seLinuxOptions
+                              must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers
+                              - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile
+                              - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy
+                              - spec.securityContext.sysctls - spec.shareProcessNamespace
+                              - spec.securityContext.runAsUser - spec.securityContext.runAsGroup
+                              - spec.securityContext.supplementalGroups - spec.containers[*].securityContext.seLinuxOptions
                               - spec.containers[*].securityContext.seccompProfile
                               - spec.containers[*].securityContext.capabilities -
                               spec.containers[*].securityContext.readOnlyRootFilesystem
                               - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation
                               - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser
-                              - spec.containers[*].securityContext.runAsGroup This
-                              is a beta field and requires the IdentifyPodOS feature"
+                              - spec.containers[*].securityContext.runAsGroup"
                             properties:
                               name:
                                 description: 'Name is the name of the operating system.
@@ -13370,6 +13402,21 @@ spec:
                                       type: object
                                   type: object
                                   x-kubernetes-map-type: atomic
+                                matchLabelKeys:
+                                  description: MatchLabelKeys is a set of pod label
+                                    keys to select the pods over which spreading will
+                                    be calculated. The keys are used to lookup values
+                                    from the incoming pod labels, those key-value
+                                    labels are ANDed with labelSelector to select
+                                    the group of existing pods over which spreading
+                                    will be calculated for the incoming pod. Keys
+                                    that don't exist in the incoming pod labels will
+                                    be ignored. A null or empty list means only match
+                                    against labelSelector.
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
                                 maxSkew:
                                   description: 'MaxSkew describes the degree to which
                                     pods may be unevenly distributed. When `whenUnsatisfiable=DoNotSchedule`,
@@ -13418,11 +13465,35 @@ spec:
                                     new pod with the same labelSelector cannot be
                                     scheduled, because computed skew will be 3(3 -
                                     0) if new Pod is scheduled to any of the three
-                                    zones, it will violate MaxSkew. \n This is an
-                                    alpha field and requires enabling MinDomainsInPodTopologySpread
-                                    feature gate."
+                                    zones, it will violate MaxSkew. \n This is a beta
+                                    field and requires the MinDomainsInPodTopologySpread
+                                    feature gate to be enabled (enabled by default)."
                                   format: int32
                                   type: integer
+                                nodeAffinityPolicy:
+                                  description: "NodeAffinityPolicy indicates how we
+                                    will treat Pod's nodeAffinity/nodeSelector when
+                                    calculating pod topology spread skew. Options
+                                    are: - Honor: only nodes matching nodeAffinity/nodeSelector
+                                    are included in the calculations. - Ignore: nodeAffinity/nodeSelector
+                                    are ignored. All nodes are included in the calculations.
+                                    \n If this value is nil, the behavior is equivalent
+                                    to the Honor policy. This is a alpha-level feature
+                                    enabled by the NodeInclusionPolicyInPodTopologySpread
+                                    feature flag."
+                                  type: string
+                                nodeTaintsPolicy:
+                                  description: "NodeTaintsPolicy indicates how we
+                                    will treat node taints when calculating pod topology
+                                    spread skew. Options are: - Honor: nodes without
+                                    taints, along with tainted nodes for which the
+                                    incoming pod has a toleration, are included. -
+                                    Ignore: node taints are ignored. All nodes are
+                                    included. \n If this value is nil, the behavior
+                                    is equivalent to the Ignore policy. This is a
+                                    alpha-level feature enabled by the NodeInclusionPolicyInPodTopologySpread
+                                    feature flag."
+                                  type: string
                                 topologyKey:
                                   description: TopologyKey is the key of node labels.
                                     Nodes that have a label with this key and identical
@@ -13431,12 +13502,12 @@ spec:
                                     try to put balanced number of pods into each bucket.
                                     We define a domain as a particular instance of
                                     a topology. Also, we define an eligible domain
-                                    as a domain whose nodes match the node selector.
-                                    e.g. If TopologyKey is "kubernetes.io/hostname",
-                                    each Node is a domain of that topology. And, if
-                                    TopologyKey is "topology.kubernetes.io/zone",
-                                    each zone is a domain of that topology. It's a
-                                    required field.
+                                    as a domain whose nodes meet the requirements
+                                    of nodeAffinityPolicy and nodeTaintsPolicy. e.g.
+                                    If TopologyKey is "kubernetes.io/hostname", each
+                                    Node is a domain of that topology. And, if TopologyKey
+                                    is "topology.kubernetes.io/zone", each zone is
+                                    a domain of that topology. It's a required field.
                                   type: string
                                 whenUnsatisfiable:
                                   description: 'WhenUnsatisfiable indicates how to

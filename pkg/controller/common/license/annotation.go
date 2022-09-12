@@ -5,13 +5,14 @@
 package license
 
 import (
+	"context"
 	"strings"
 )
 
 const Annotation = "eck.k8s.elastic.co/license"
 
 // HasRequestedLicenseLevel returns true if the operator license level matches the level expressed in the map of annotations.
-func HasRequestedLicenseLevel(annotations map[string]string, checker Checker) (bool, error) {
+func HasRequestedLicenseLevel(ctx context.Context, annotations map[string]string, checker Checker) (bool, error) {
 	requestedLevel, exists := annotations[Annotation]
 	if !exists {
 		return true, nil // no annotation no restrictions
@@ -23,5 +24,5 @@ func HasRequestedLicenseLevel(annotations map[string]string, checker Checker) (b
 	if requestedLicenseType == LicenseTypeBasic {
 		return true, nil // basic is always allowed
 	}
-	return checker.EnterpriseFeaturesEnabled() // if enterprise features are on, everything is allowed.
+	return checker.EnterpriseFeaturesEnabled(ctx) // if enterprise features are on, everything is allowed.
 }

@@ -35,7 +35,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, kb kbv1.Kiba
 	}
 
 	if monitoring.IsMetricsDefined(&kb) {
-		b, err := Metricbeat(client, kb)
+		b, err := Metricbeat(ctx, client, kb)
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, kb kbv1.Kiba
 	}
 
 	if monitoring.IsLogsDefined(&kb) {
-		b, err := Filebeat(client, kb)
+		b, err := Filebeat(ctx, client, kb)
 		if err != nil {
 			return err
 		}

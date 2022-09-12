@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -128,8 +129,8 @@ type Client interface {
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
-func Timeout(es esv1.Elasticsearch) time.Duration {
-	return annotation.ExtractTimeout(es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
+func Timeout(ctx context.Context, es esv1.Elasticsearch) time.Duration {
+	return annotation.ExtractTimeout(ctx, es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
 func formatAsSeconds(d time.Duration) string {
@@ -149,11 +150,13 @@ func NewElasticsearchClient(
 	timeout time.Duration,
 	debug bool,
 ) Client {
+	client := commonhttp.Client(dialer, caCerts, timeout)
+	client.Transport = apmelasticsearch.WrapRoundTripper(client.Transport)
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     commonhttp.Client(dialer, caCerts, timeout),
+		HTTP:     client,
 		es:       es,
 		debug:    debug,
 	}

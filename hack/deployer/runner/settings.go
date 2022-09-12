@@ -5,7 +5,7 @@
 package runner
 
 import (
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v3"
 
@@ -29,17 +29,17 @@ type Plan struct {
 	MachineType       string `yaml:"machineType"`
 	// Abbreviations not all-caps to allow merging with mergo in  `merge` as mergo does not understand struct tags and
 	// we use lowercase in the YAML
-	Gke            *GKESettings   `yaml:"gke,omitempty"`
-	Aks            *AKSSettings   `yaml:"aks,omitempty"`
-	Ocp            *OCPSettings   `yaml:"ocp,omitempty"`
-	Ocp3           *OCP3Settings  `yaml:"ocp3,omitempty"`
-	Eks            *EKSSettings   `yaml:"eks,omitempty"`
-	Kind           *KindSettings  `yaml:"kind,omitempty"`
-	Tanzu          *TanzuSettings `yaml:"tanzu,omitempty"`
-	VaultInfo      vault.Info     `yaml:"vaultInfo,omitempty"`
-	ServiceAccount bool           `yaml:"serviceAccount"`
-	Psp            bool           `yaml:"psp"`
-	DiskSetup      string         `yaml:"diskSetup"`
+	Gke                     *GKESettings   `yaml:"gke,omitempty"`
+	Aks                     *AKSSettings   `yaml:"aks,omitempty"`
+	Ocp                     *OCPSettings   `yaml:"ocp,omitempty"`
+	Ocp3                    *OCP3Settings  `yaml:"ocp3,omitempty"`
+	Eks                     *EKSSettings   `yaml:"eks,omitempty"`
+	Kind                    *KindSettings  `yaml:"kind,omitempty"`
+	Tanzu                   *TanzuSettings `yaml:"tanzu,omitempty"`
+	VaultInfo               vault.Info     `yaml:"vaultInfo,omitempty"`
+	ServiceAccount          bool           `yaml:"serviceAccount"`
+	EnforceSecurityPolicies bool           `yaml:"enforceSecurityPolicies"`
+	DiskSetup               string         `yaml:"diskSetup"`
 }
 
 // GKESettings encapsulates settings specific to GKE
@@ -110,7 +110,7 @@ type RunConfig struct {
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
-	yml, err := ioutil.ReadFile(plansFile)
+	yml, err := os.ReadFile(plansFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}
@@ -121,7 +121,7 @@ func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
 		return Plans{}, RunConfig{}, err
 	}
 
-	yml, err = ioutil.ReadFile(runConfigFile)
+	yml, err = os.ReadFile(runConfigFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}

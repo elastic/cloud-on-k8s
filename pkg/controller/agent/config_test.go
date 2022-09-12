@@ -5,7 +5,7 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -136,7 +136,7 @@ func TestExtractConnectionSettings(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotConnectionSettings, _, gotErr := extractPodConnectionSettings(tt.agent, tt.client, tt.assocType)
+			gotConnectionSettings, _, gotErr := extractPodConnectionSettings(context.Background(), tt.agent, tt.client, tt.assocType)
 
 			require.Equal(t, tt.wantConnectionSettings, gotConnectionSettings)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -157,7 +157,7 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 	}
 
 	// setup cert fixtures
-	bytes, err := ioutil.ReadFile(filepath.Join("testdata", "ca.crt"))
+	bytes, err := os.ReadFile(filepath.Join("testdata", "ca.crt"))
 	require.NoError(t, err)
 	certs, err := certificates.ParsePEMCerts(bytes)
 	require.NoError(t, err)

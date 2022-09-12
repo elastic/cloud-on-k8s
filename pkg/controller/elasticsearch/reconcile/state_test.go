@@ -5,6 +5,7 @@
 package reconcile
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -339,7 +340,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := MustNewState(tt.cluster)
-			s.UpdateClusterHealth(tt.args.observedHealth).UpdateMinRunningVersion(tt.args.resourcesState)
+			s.UpdateClusterHealth(tt.args.observedHealth).UpdateMinRunningVersion(context.Background(), tt.args.resourcesState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
 			}
@@ -450,7 +451,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s, err := NewState(tt.es)
 			assert.NoError(t, err)
-			got := s.UpdateMinRunningVersion(tt.resourcesState)
+			got := s.UpdateMinRunningVersion(context.Background(), tt.resourcesState)
 			conditionIndex := got.Conditions.Index(esv1.RunningDesiredVersion)
 			if conditionIndex < 0 {
 				t.Fatalf("Elasticsearch status should contain condition esv1.RunningDesiredVersion")

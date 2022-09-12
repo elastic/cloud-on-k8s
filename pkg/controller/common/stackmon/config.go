@@ -6,6 +6,7 @@ package stackmon
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -36,7 +37,7 @@ type beatConfig struct {
 	volumes  []volume.VolumeLike
 }
 
-func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
+func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
 	if len(associations) != 1 {
 		// should never happen because of the pre-creation validation
 		return beatConfig{}, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
@@ -44,7 +45,7 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 	assoc := associations[0]
 
 	// build the output section of the beat configuration file
-	outputCfg, caVolume, err := buildOutputConfig(client, assoc)
+	outputCfg, caVolume, err := buildOutputConfig(ctx, client, assoc)
 	if err != nil {
 		return beatConfig{}, err
 	}
@@ -102,8 +103,8 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 	}, err
 }
 
-func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
-	credentials, err := association.ElasticsearchAuthSettings(client, assoc)
+func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
+	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
 		return nil, volume.SecretVolume{}, err
 	}
@@ -117,6 +118,10 @@ func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[strin
 		"password": credentials.Password,
 		"hosts":    []string{assocConf.GetURL()},
 	}
+
+	// Elasticsearch certificate might have been generated for a "public" hostname,
+	// and therefore not being valid for the internal URL.
+	outputConfig["ssl.verification_mode"] = "certificate"
 
 	caDirPath := fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",

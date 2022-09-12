@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.18.4 as builder
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.1 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -42,11 +42,11 @@ LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, 
       org.opencontainers.image.version="$VERSION" \
       org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
 
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
 COPY config/eck.yaml /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/
 
-ENTRYPOINT ["./elastic-operator"]
+ENTRYPOINT ["/elastic-operator"]
 CMD ["manager"]

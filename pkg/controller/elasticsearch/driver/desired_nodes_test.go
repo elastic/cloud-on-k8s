@@ -9,8 +9,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -492,7 +493,7 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 
 			wantClient := wantClient{}
 			if tt.want.testdata != "" {
-				parsedRequest, err := ioutil.ReadFile("testdata/desired_nodes/" + tt.want.testdata)
+				parsedRequest, err := os.ReadFile("testdata/desired_nodes/" + tt.want.testdata)
 				assert.NoError(t, err)
 				wantClient.request = string(parsedRequest)
 				// Elasticsearch UID must have been used as the history ID
@@ -795,14 +796,14 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 			assert.Equal(t, want.version, gotVersion)
 
 			// Compare the request
-			gotRequest, err := ioutil.ReadAll(req.Body)
+			gotRequest, err := io.ReadAll(req.Body)
 			assert.NoError(t, err)
 			require.JSONEq(t, want.request, string(gotRequest))
 		}
 
 		return &http.Response{
 			StatusCode: statusCode,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`{"acknowledged":true}`)),
+			Body:       io.NopCloser(bytes.NewBufferString(`{"acknowledged":true}`)),
 		}
 	})
 	return &desiredNodesFakeClient{Client: c}

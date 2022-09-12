@@ -10,10 +10,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"go.elastic.co/apm/module/apmhttp/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,8 +27,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
@@ -52,6 +55,7 @@ type VersionUpgrade struct {
 
 // Handle Enterprise Search version upgrades if necessary, by toggling read-only mode.
 func (r *VersionUpgrade) Handle(ctx context.Context) error {
+	log := ulog.FromContext(ctx)
 	expectedVersion, err := version.Parse(r.ent.Spec.Version)
 	if err != nil {
 		return err
@@ -113,7 +117,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Enabling read-only mode for version upgrade",
+	ulog.FromContext(ctx).Info("Enabling read-only mode for version upgrade",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name, "target_version", r.ent.Spec.Version)
 
 	// call the Enterprise Search API
@@ -138,7 +142,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Disabling read-only mode",
+	ulog.FromContext(ctx).Info("Disabling read-only mode",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name)
 
 	// call the Enterprise Search API
@@ -168,11 +172,15 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 		if err != nil {
 			return err
 		}
-		httpClient = commonhttp.Client(r.dialer, tlsCerts, 0)
+		httpClient = apmhttp.WrapClient(
+			commonhttp.Client(r.dialer, tlsCerts, 0),
+			apmhttp.WithClientRequestName(tracing.RequestName),
+			apmhttp.WithClientSpanType("external.enterprisesearch"),
+		)
 		defer httpClient.CloseIdleConnections()
 	}
 
-	request, err := r.readOnlyModeRequest(enabled)
+	request, err := r.readOnlyModeRequest(ctx, enabled)
 	if err != nil {
 		return err
 	}
@@ -188,7 +196,7 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -205,8 +213,8 @@ func (r *VersionUpgrade) serviceURL() string {
 }
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
-func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
-	credentials, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
+func (r *VersionUpgrade) readOnlyModeRequest(ctx context.Context, enabled bool) (*http.Request, error) {
+	credentials, err := association.ElasticsearchAuthSettings(ctx, r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
 	}

@@ -57,8 +57,8 @@ func NewPodTemplateBuilder(base corev1.PodTemplateSpec, containerName string) *P
 	return builder.setDefaults()
 }
 
-// getContainer retrieves the main Container from the pod template
-func (b *PodTemplateBuilder) getContainer() *corev1.Container {
+// MainContainer retrieves the main Container from the pod template or nil if not found.
+func (b *PodTemplateBuilder) MainContainer() *corev1.Container {
 	for i, c := range b.PodTemplate.Spec.Containers {
 		if c.Name == b.containerName {
 			return &b.PodTemplate.Spec.Containers[i]
@@ -68,13 +68,13 @@ func (b *PodTemplateBuilder) getContainer() *corev1.Container {
 }
 
 func (b *PodTemplateBuilder) setContainerDefaulter() {
-	b.containerDefaulter = container.NewDefaulter(b.getContainer())
+	b.containerDefaulter = container.NewDefaulter(b.MainContainer())
 }
 
 // setDefaults sets up a default Container in the pod template,
 // and disables service account token auto mount.
 func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
-	userContainer := b.getContainer()
+	userContainer := b.MainContainer()
 	if userContainer == nil {
 		// create the default Container if not provided by the user
 		b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{Name: b.containerName})
@@ -228,7 +228,7 @@ func (b *PodTemplateBuilder) WithContainers(containers ...corev1.Container) *Pod
 // Defaults:
 // - If the init container contains an empty image field, it's inherited from the main container.
 // - VolumeMounts from the main container are added to the init container VolumeMounts, unless they would conflict
-//   with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
+// with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
 // - default environment variables
 //
 // This method can also be used to set some additional environment variables.

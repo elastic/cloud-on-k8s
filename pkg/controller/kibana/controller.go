@@ -41,8 +41,6 @@ const (
 	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
 )
 
-var log = ulog.Log.WithName(controllerName)
-
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
@@ -143,8 +141,8 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&kb) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+	if common.IsUnmanaged(ctx, &kb) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -164,7 +162,7 @@ func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Reque
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
 	state := NewState(request, kb)
-
+	log := ulog.FromContext(ctx)
 	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
 	// note that this deferred function is modifying the return values, which are named return values, which allows this
 	// to function properly.
@@ -206,7 +204,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	defer span.End()
 
 	if err := kb.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -225,7 +223,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", state.Kibana.Namespace,
 		"kibana_name", state.Kibana.Name,

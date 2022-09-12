@@ -23,11 +23,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
-
-var log = ulog.Log.WithName("elasticsearch-user")
 
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
 // Kubernetes secret mounted in the Elasticsearch Pods.
@@ -50,7 +47,7 @@ func ReconcileUsersAndRoles(
 	defer span.End()
 
 	// build aggregate roles and file realms
-	roles, err := aggregateRoles(c, es, watched, recorder)
+	roles, err := aggregateRoles(ctx, c, es, watched, recorder)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -100,7 +97,7 @@ func aggregateFileRealm(
 	}
 
 	// watch & fetch user-provided file realm & roles
-	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, existingFileRealm, watched, recorder)
+	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(ctx, c, es, existingFileRealm, watched, recorder)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
@@ -138,12 +135,13 @@ func aggregateFileRealm(
 }
 
 func aggregateRoles(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 ) (RolesFileContent, error) {
-	userProvided, err := reconcileUserProvidedRoles(c, es, watched, recorder)
+	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)
 	if err != nil {
 		return RolesFileContent{}, err
 	}

@@ -5,7 +5,7 @@
 package certificates
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -252,7 +252,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 }
 
 func loadFileBytes(fileName string) []byte {
-	contents, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
+	contents, err := os.ReadFile(filepath.Join("testdata", fileName))
 	if err != nil {
 		panic(err)
 	}
