@@ -10,7 +10,7 @@ The following Elastic Stack resources are currently supported.
 - Elasticsearch
 - Kibana
 - Elastic Agent
-- Fleet Server Agent
+- Fleet Server
 
 Additional resources will be supported in future releases of this Helm Chart.
 

@@ -25,7 +25,7 @@ eck-kibana:
 eck-agent:
   enabled: false
 
-# If enabled, will use the eck-fleet-server chart and deploy a Fleet Server Agent resource.
+# If enabled, will use the eck-fleet-server chart and deploy a Fleet Server resource.
 #
 eck-fleet-server:
   enabled: false

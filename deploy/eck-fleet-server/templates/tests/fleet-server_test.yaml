@@ -1,8 +1,8 @@
-suite: test fleet server agent
+suite: test fleet server
 templates:
   - templates/fleet-server.yaml
 tests:
-  - it: should render default fleet server agent properly
+  - it: should render default fleet server properly
     release:
       name: quickstart
     asserts:

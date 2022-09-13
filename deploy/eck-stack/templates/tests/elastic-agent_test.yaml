@@ -73,7 +73,7 @@ tests:
       - equal:
           path: spec.version
           value: 8.2.3
-  - it: should render fleet server agent in custom fleet example properly
+  - it: should render fleet server in custom fleet example properly
     values:
       - ../../examples/fleet-agents.yaml
     release:

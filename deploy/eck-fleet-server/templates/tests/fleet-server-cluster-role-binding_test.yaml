@@ -1,4 +1,4 @@
-suite: test fleet server agent
+suite: test fleet server
 templates:
   - templates/cluster-role-binding.yaml
 tests:
