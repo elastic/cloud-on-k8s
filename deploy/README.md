@@ -48,6 +48,6 @@ kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-
 
 ## Licensing
 
-The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the opeartor, but require different subscription levels.
+The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator, but require different subscription levels.
 
 The ECK Operator Helm Chart can be used with a Basic license for free, while the ECK Stack and Resources Helm Charts require an [Elastic Enterprise License](https://www.elastic.co/subscriptions) for use.
