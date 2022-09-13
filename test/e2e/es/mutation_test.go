@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	vegeta "github.com/tsenart/vegeta/lib"
+	vegeta "github.com/tsenart/vegeta/v12/lib"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
