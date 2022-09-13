@@ -124,6 +124,34 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Allowed(""),
 		},
 		{
+			name: "request from un-managed namespace is ignored, and just accepted",
+			fields: fields{
+				set.Make("elastic"),
+				&agentv1alpha1.Agent{},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Delete,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "unmanaged",
+								Labels: map[string]string{
+									"test": "label1",
+								},
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "7.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Allowed(""),
+		},
+		{
 			name: "update agent is allowed when label is updated",
 			fields: fields{
 				set.Make("elastic"),

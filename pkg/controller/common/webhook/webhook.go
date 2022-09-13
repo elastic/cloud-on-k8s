@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	admissionv1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -18,6 +19,14 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
+
+// validatableObject is the object to be validated, along with methods
+// that allow retrieval of namespace and name to ignore any objects
+// that are outside of the operator's managed namespaces.
+type validatableObject interface {
+	admission.Validator
+	metav1.Object
+}
 
 // SetupValidatingWebhookWithConfig will register a set of validation functions
 // at a given path, with a given controller manager, ensuring that the objects
@@ -61,7 +70,7 @@ func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
 	whlog := ulog.FromContext(ctx).WithName("common-webhook")
 
-	obj, ok := v.validator.DeepCopyObject().(admission.Validator)
+	obj, ok := v.validator.DeepCopyObject().(validatableObject)
 	if !ok {
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("object (%T) to be validated couldn't be converted to admission.Validator", v.validator))
 	}
@@ -70,6 +79,13 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 	if err != nil {
 		whlog.Error(err, "decoding object from webhook request into type (%T)", obj)
 		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	// If this resource is not within the set of managed namespaces
+	// for this operator ignore this request.
+	if v.managedNamespaces.Count() > 0 && !v.managedNamespaces.Has(obj.GetNamespace()) {
+		whlog.V(1).Info("Skip resource validation", "name", obj.GetName(), "namespace", obj.GetNamespace())
+		return admission.Allowed("")
 	}
 
 	if err := v.commonValidations(ctx, req, obj); err != nil {
