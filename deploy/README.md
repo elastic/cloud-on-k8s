@@ -75,4 +75,10 @@ The Helm unit tests can be manually invoked for any of the charts with the follo
 ```
 cd deploy/eck-stack
 helm unittest -3 -f 'templates/tests/*.yaml' .
-```
+``````
+
+## Licensing
+
+The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator, but require different subscription levels.
+
+The ECK Operator Helm Chart can be used with a Basic license for free, while the ECK Stack and Resources Helm Charts require an [Elastic Enterprise License](https://www.elastic.co/subscriptions) for use.
