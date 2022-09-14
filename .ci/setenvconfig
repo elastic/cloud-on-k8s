@@ -21,12 +21,28 @@ write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 if [[ ${BUILD_ID:-} == "" ]]; then
   BUILD_NUMBER=0 # keeping all build_numbers as numbers
   BUILD_TAG=local-dev-$(date +%s)t
-  # need to be declared but not required for local execution
-  VAULT_ROLE_ID="dev"
-  VAULT_SECRET_ID="dev"
 fi
 
-VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+# need to be declared but not required for local/buildkite execution
+VAULT_ROLE_ID="${VAULT_ROLE_ID:-dev}"
+VAULT_SECRET_ID="${VAULT_SECRET_ID:-dev}"
+
+# Jenkins
+if [[ ${BUILD_ID:-} != "" ]]; then
+
+  VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+
+# Buildkite
+elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
+
+  VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s"
+
+# Dev local execution
+else
+
+  VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+
+fi
 
 # main
 
@@ -43,6 +59,8 @@ case $environment in
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -76,6 +94,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -151,6 +171,8 @@ clusterVersion=$2
 clusterName=$3
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -192,6 +214,8 @@ kindVersion=$3
 ipFamily=$4
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -233,6 +257,8 @@ TESTS_MATCH="${TESTS_MATCH:-^Test}"
 E2E_TAGS="${E2E_TAGS:-e2e}"
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -271,6 +297,8 @@ CFG
 clusterName=$2
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 E2E_DEPLOY_CHAOS_JOB=true
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
@@ -308,6 +336,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -344,6 +374,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -379,6 +411,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -412,6 +446,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -448,6 +484,8 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
@@ -487,6 +525,8 @@ testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "/go/src/github.com/
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=${isSnapshotVersion}
@@ -524,6 +564,10 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
+GCLOUD_PROJECT=$GCLOUD_PROJECT
+
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -577,6 +621,8 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 REGISTRY_NAMESPACE=eck-snapshots
 IMG_SUFFIX=
 
@@ -594,6 +640,8 @@ ENV
 ###############
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 REGISTRY_NAMESPACE=eck
 IMG_SUFFIX=
 
@@ -612,6 +660,8 @@ ENV
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
