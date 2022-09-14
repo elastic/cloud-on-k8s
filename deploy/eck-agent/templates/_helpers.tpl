@@ -38,7 +38,7 @@ helm.sh/chart: {{ include "elasticagent.chart" . }}
 {{ include "elasticagent.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Values.labels }}
-{{ .Values.labels }}
+{{ toYaml .Values.labels }}
 {{- end }}
 {{- end }}
 
