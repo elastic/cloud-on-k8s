@@ -163,6 +163,8 @@ integration-xml: clean generate-crds-v1
 
 lint:
 	golangci-lint run
+
+manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:

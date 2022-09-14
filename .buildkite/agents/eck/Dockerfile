@@ -76,6 +76,12 @@ RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHEL
     mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
     rm shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz
 
+# kubeval
+RUN curl -fsSLO https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz && \
+    tar -xf kubeval-linux-amd64.tar.gz && \
+    mv kubeval /usr/local/bin && \
+    rm kubeval-linux-amd64.tar.gz
+
 # gotestsum to generate xUnit compatible XML for tests
 ENV GOTESTSUM_VERSION=1.8.0
 RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \

@@ -50,6 +50,12 @@ steps:
         agents:
           memory: "4G"
 
+      - label: ":go: manifest-gen-tests"
+        command: "make manifest-gen-test"
+
+      - label: ":go: helm-tests"
+        command: "make helm-test"
+
   - group: e2e-tests
     steps:
 
