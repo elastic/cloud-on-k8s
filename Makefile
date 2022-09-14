@@ -162,13 +162,13 @@ integration-xml: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
-	golangci-lint run
+	GOGC=50 golangci-lint run --verbose
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
+	shellcheck --external-sources $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 upgrade-test: docker-build docker-push
 	@hack/upgrade-test-harness/run.sh
