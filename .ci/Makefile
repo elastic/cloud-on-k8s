@@ -28,8 +28,8 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
-CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
+CI_SHA1  := $(shell sha1sum $(ROOT_DIR)/.buildkite/agents/eck/Dockerfile | cut -c-8)
+CI_IMAGE ?= docker.elastic.co/eck-dev/bk-agent:$(CI_SHA1)
 
 # volume used to share files between CI container and OCP3 Ansible container
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
@@ -63,7 +63,7 @@ ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
 		../hack/retry.sh 5 docker build \
-			-f $(ROOT_DIR)/.ci/Dockerfile \
+			-f $(ROOT_DIR)/.buildkite/agents/eck/Dockerfile \
 			-t $(CI_IMAGE) \
 			--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" \
 			$(ROOT_DIR) && \
