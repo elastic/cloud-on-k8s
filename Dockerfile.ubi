@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-902.1661794353
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-941
 
 # Update the base image packages to the latest versions
 RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all
