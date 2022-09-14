@@ -19,8 +19,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -93,6 +95,20 @@ func Test_buildPodTemplate(t *testing.T) {
 						{
 							Name:      "testes",
 							Namespace: "ns",
+						},
+					},
+				},
+			},
+			DaemonSet: &beatv1beta1.DaemonSetSpec{
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: "filebeat",
+								SecurityContext: &corev1.SecurityContext{
+									RunAsUser: pointer.Int64(0),
+								},
+							},
 						},
 					},
 				},
@@ -333,7 +349,6 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 		// ensure the metricsbeat sidecar exists
 		assert.True(t, containersContains(pod.Spec.Containers, "metrics-monitoring-sidecar"))
 
-		// ensure that the beat's metrics port can be set, and used in the sidecar
 		var secret corev1.Secret
 		assert.NoError(t, client.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("%s-beat-monitoring-metricbeat-config", beat.Name), Namespace: beat.Namespace}, &secret))
 		data, ok := secret.Data["metricbeat.yml"]
@@ -342,9 +357,25 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 		var cfg metricbeatConfig
 		assert.NoError(t, yaml.Unmarshal(data, &cfg))
 		assert.Equal(t, fmt.Sprintf("http+unix:///var/shared/%s-%s-%s.sock", beat.Spec.Type, beat.Namespace, beat.Name), cfg.MetricBeat.Modules[0].Hosts[0])
+		if runningAsRoot(beat) {
+			for _, container := range pod.Spec.Containers {
+				if container.Name == "metrics-monitoring-sidecar" {
+					require.NotNil(t, container.SecurityContext)
+					assert.Equal(t, int64(0), *container.SecurityContext.RunAsUser)
+				}
+			}
+		}
 	}
 	if monitoring.IsLogsDefined(&beat) {
 		assert.True(t, containersContains(pod.Spec.Containers, "logs-monitoring-sidecar"))
+		if runningAsRoot(beat) {
+			for _, container := range pod.Spec.Containers {
+				if container.Name == "logs-monitoring-sidecar" {
+					require.NotNil(t, container.SecurityContext)
+					assert.Equal(t, int64(0), *container.SecurityContext.RunAsUser)
+				}
+			}
+		}
 	}
 }
 
@@ -378,4 +409,148 @@ func newHash(initialData string) hash.Hash32 {
 	dataHash := fnv.New32a()
 	_, _ = dataHash.Write([]byte(initialData))
 	return dataHash
+}
+
+func Test_runningAsRoot(t *testing.T) {
+	tests := []struct {
+		name string
+		beat beatv1beta1.Beat
+		want bool
+	}{
+		{
+			name: "beat deployment running as root should return true",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Deployment: &beatv1beta1.DeploymentSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "filebeat",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(0),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "beat daemonset running as root should return true",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					DaemonSet: &beatv1beta1.DaemonSetSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "filebeat",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(0),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "beat deployment running as non-root should return false",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Deployment: &beatv1beta1.DeploymentSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "filebeat",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(1),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "beat daemonset running as non-root should return false",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					DaemonSet: &beatv1beta1.DaemonSetSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "filebeat",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(1),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "beat deployment with no security context should return false",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Deployment: &beatv1beta1.DeploymentSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:            "filebeat",
+										SecurityContext: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "beat daemonset with no security context should return false",
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					DaemonSet: &beatv1beta1.DaemonSetSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:            "filebeat",
+										SecurityContext: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := runningAsRoot(tt.beat); got != tt.want {
+				t.Errorf("runningAsRoot() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

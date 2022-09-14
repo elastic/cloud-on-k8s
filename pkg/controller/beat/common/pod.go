@@ -10,7 +10,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	beat_stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -146,6 +148,11 @@ func buildPodTemplate(
 			return podTemplate, err
 		}
 		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
 		sideCars = append(sideCars, sideCar.Container)
 	}
 
@@ -167,6 +174,11 @@ func buildPodTemplate(
 			MountPath: "/var/shared",
 		})
 		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
 		sideCars = append(sideCars, sideCar.Container)
 	}
 
@@ -190,6 +202,28 @@ func buildPodTemplate(
 		WithContainers(sideCars...)
 
 	return builder.PodTemplate, nil
+}
+
+func runningAsRoot(beat beatv1beta1.Beat) bool {
+	if beat.Spec.DaemonSet != nil {
+		for _, container := range beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	if beat.Spec.Deployment != nil {
+		for _, container := range beat.Spec.Deployment.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func createDataVolume(dp DriverParams) volume.VolumeLike {
