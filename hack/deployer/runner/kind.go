@@ -201,6 +201,7 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 	}
 	// We need the docker socket so that kind can bootstrap
 	cmd := exec.NewCommand(`docker run --rm \
+		--userns=host \
 		-v {{.SharedVolume}}:/home \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \

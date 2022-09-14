@@ -46,7 +46,7 @@ ci-interactive:
 
 ci-internal: ci-build-image
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
-	  docker run --rm -t $(DOCKER_OPTS) \
+	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
