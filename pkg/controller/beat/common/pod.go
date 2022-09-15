@@ -147,6 +147,12 @@ func buildPodTemplate(
 		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
 			return podTemplate, err
 		}
+		// Add shared volume for logs consumption.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "filebeat-logs",
+			ReadOnly:  false,
+			MountPath: "/usr/share/filebeat/logs",
+		})
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{

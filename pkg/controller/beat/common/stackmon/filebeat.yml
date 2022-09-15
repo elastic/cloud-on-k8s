@@ -4,7 +4,7 @@ filebeat:
     id: filebeatlogs
     paths:
       - /var/log/*.log
-      - /var/log/beat/*
+      - /usr/share/filebeat/logs/*
       - /usr/share/filebeat/data/registry/filebeat/*.json
 
 http.enabled: false

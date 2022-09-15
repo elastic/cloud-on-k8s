@@ -39,7 +39,24 @@ var (
 )
 
 func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string) (stackmon.BeatSidecar, error) {
-	return stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
+	sidecar, err := stackmon.NewFileBeatSidecar(ctx, client, resource, version, filebeatConfig, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	// Add shared volume for logs consumption.
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
+		Name:      "filebeat-logs",
+		MountPath: "/usr/share/filbeat/logs",
+		ReadOnly:  false,
+	})
+	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
+		Name: "filebeat-logs",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	return sidecar, nil
 }
 
 func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, version string) (stackmon.BeatSidecar, error) {

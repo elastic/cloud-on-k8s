@@ -128,7 +128,7 @@ func buildBeatConfig(
 			"logging.to_stderr":  false,
 			"logging.to_syslog":  false,
 			"logging.to_files":   true,
-			"logging.files.path": "/var/log/beat",
+			"logging.files.path": "/usr/share/filebeat/logs",
 		})); err != nil {
 			return nil, err
 		}
