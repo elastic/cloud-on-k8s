@@ -75,6 +75,6 @@ data:
 ----
 
 
-== More Examples
+== More examples
 
-Check <<{p}-snapshots,How to create automated snapshots>> for an example use case that illustrates how secure settings can be used to set up automated Elasticsearch snapshots to an GCS storage bucket.
+Check <<{p}-snapshots,How to create automated snapshots>> for an example use case that illustrates how secure settings can be used to set up automated Elasticsearch snapshots to a GCS storage bucket.
