@@ -47,7 +47,7 @@ func Filebeat(ctx context.Context, client k8s.Client, resource monitoring.HasMon
 	// Add shared volume for logs consumption.
 	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, corev1.VolumeMount{
 		Name:      "filebeat-logs",
-		MountPath: "/usr/share/filbeat/logs",
+		MountPath: "/usr/share/filebeat/logs",
 		ReadOnly:  false,
 	})
 	sidecar.Volumes = append(sidecar.Volumes, corev1.Volume{
