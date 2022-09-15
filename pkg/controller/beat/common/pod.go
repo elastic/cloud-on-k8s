@@ -200,14 +200,20 @@ func buildPodTemplate(
 		WithAnnotations(annotations).
 		WithResources(defaultResources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
 		WithInitContainerDefaults().
 		WithContainers(sideCars...)
 
-	return builder.PodTemplate, nil
+	// If logs monitoring is enabled, do not include the "-e" startup option for the Beat
+	// so that it does not log only to stderr, and writes log file for filebeat to consume.
+	if monitoring.IsLogsDefined(&params.Beat) {
+		builder = builder.WithArgs("-c", ConfigMountPath)
+		return builder.PodTemplate, nil
+	}
+
+	return builder.WithArgs("-e", "-c", ConfigMountPath).PodTemplate, nil
 }
 
 func runningAsRoot(beat beatv1beta1.Beat) bool {

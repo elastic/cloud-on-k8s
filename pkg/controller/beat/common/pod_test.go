@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/strings/slices"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
@@ -376,6 +377,11 @@ func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod co
 				}
 			}
 		}
+		assert.False(
+			t,
+			slices.Contains(pod.Spec.Containers[0].Args, "-e"),
+			"container args %v should not contain '-e' when logs stack monitoring is enabled", pod.Spec.Containers[0].Args,
+		)
 	}
 }
 
