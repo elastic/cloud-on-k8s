@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
+// Error is a custom error type that captures the resource that contained an erroneous license file for use in Kubernetes events.
 type Error struct {
 	Source runtime.Object
 	Err    error

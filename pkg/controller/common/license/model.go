@@ -75,7 +75,7 @@ func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 
 // IsValidType returns true if the license type is set to one of the allowed values: enterprise or enterprise_trial.
 // Other values are possible to occur if a user mistakenly uploads a cluster license instead of an orchestration license
-// as the schema is otherwise compatible
+// as the schema is otherwise compatible.
 func (l EnterpriseLicense) IsValidType() bool {
 	return l.IsTrial() || l.License.Type == LicenseTypeEnterprise
 }

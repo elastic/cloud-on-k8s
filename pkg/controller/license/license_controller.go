@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -160,7 +161,7 @@ type ReconcileLicenses struct {
 func (r *ReconcileLicenses) findLicense(ctx context.Context, c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
-		ulog.FromContext(ctx).Info("Ignoring invalid license objects", "errors", errs)
+		ulog.FromContext(ctx).Error(utilerrors.NewAggregate(errs), "Ignoring invalid license objects")
 		recordInvalidLicenseEvents(errs, r.recorder)
 	}
 	valid := func(l license.EnterpriseLicense) (bool, error) {
@@ -173,7 +174,7 @@ func recordInvalidLicenseEvents(errs []error, recorder record.EventRecorder) {
 	for _, err := range errs {
 		var licenseErr *license.Error
 		if errors.As(err, &licenseErr) {
-			recorder.Event(licenseErr.Source, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+			recorder.Event(licenseErr.Source, corev1.EventTypeWarning, events.EventReasonInvalidLicense, err.Error())
 		}
 	}
 }
