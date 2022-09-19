@@ -11,10 +11,10 @@ endif::[]
 To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 
 . Register the snapshot repository with the Elasticsearch API.
-. Set up a Snapshot Lifecycle Management Policy via https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[API] or the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Kibana UI]
+. Set up a Snapshot Lifecycle Management Policy through https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[API] or the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Kibana UI]
 
 
-NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by default from version 8.0. On older versions of Elasticsearch or if another snapshot repository plugin should be used you have to <<{p}-install-plugin>>
+NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by default from version 8.0. On older versions of Elasticsearch, or if another snapshot repository plugin should be used, you have to <<{p}-install-plugin>>.
 
 For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html[Snapshot and Restore] in the Elasticsearch documentation.
 
@@ -126,8 +126,8 @@ Follow the instructions in the https://cloud.google.com/kubernetes-engine/docs/h
 
 . Create or update your Kubernetes cluster with `--workload-pool=PROJECT_ID.svc.id.goog` enabled, where `PROJECT_ID` is your Google project ID
 . Create a namespace and a Kubernetes service account (`test-gcs` and `gcs-sa` in this example)
-. Create the bucket, the Google service account (`gcp-sa` in this example, note that both Google and Kubernetes have the concept of a service account, this is about the former) and set the relevant permissions through Google Cloud console or gcloud CLI
-. Allow the Kubernetes service account to impersonate the Google service:
+. Create the bucket, the Google service account (`gcp-sa` in this example. Note that both Google and Kubernetes have the concept of a service account and this example is referring to the former) and set the relevant permissions through Google Cloud console or gcloud CLI
+. Allow the Kubernetes service account to impersonate the Google service account:
 +
 [source,sh]
 ----
@@ -244,6 +244,7 @@ spec:
   version: {version}
   nodeSets:
   - name: default
+    count: 3
     podTemplate:
       spec:
         serviceAccountName: aws-sa
@@ -278,7 +279,7 @@ PUT /_snapshot/my_s3_repository
 {
   "type": "s3",
   "settings": {
-    "bucket": "my_bucket",
+    "bucket": "my_bucket"
   }
 }
 ----
@@ -286,7 +287,7 @@ PUT /_snapshot/my_s3_repository
 [id="{p}-s3-compatible"]
 === Use S3-compatible services
 
-The following example assumes that you have deployed and configured a S3 compatible object store like https://min.io[MinIO] in your Kubernetes cluster and that you have created a bucket in said service, called `es-repo` in this example. We also assume an Elasticsearch cluster is deployed, called `es` in this example.
+The following example assumes that you have deployed and configured a S3 compatible object store like https://min.io[MinIO] that can be reached from the Kubernetes cluster, and also that you have created a bucket in said service, called `es-repo` in this example. We also assume an Elasticsearch cluster is deployed, called `es` in this example.
 Most importantly the steps describing how to customize the JVM trust store are only necessary if your S3-compatible service is using TLS certificates that are not issued by a well known certificate authority.
 
 [source,yaml,subs="attributes"]
@@ -383,15 +384,15 @@ POST _snapshot/my_s3_repository
 ----
 +
 <1> Whether or not you need to enable `path_style_access` depends on your choice of S3-compatible storage service and how it is deployed. If it is exposed through a standard Kubernetes service it is likely you need this option
-<2> Replace this is with the actual endpoint of your S3-compatible service
+<2> Replace this with the actual endpoint of your S3-compatible service
 
 [id="{p}-install-plugin"]
 === Install a snapshot repository plugin
 
-If you are running a version of Elasticsearch before 8.0 or you need a snapshot repository plugin that is not already pre-installed you have to install the plugin yourself. To install the snapshot repository plugin, you can either use a <<{p}-custom-images,custom image>> or <<{p}-init-containers-plugin-downloads,add your own init container>> which
+If you are running a version of Elasticsearch before 8.0 or you need a snapshot repository plugin that is not already pre-installed you have to install the plugin yourself. To install the snapshot repository plugin, you can either use a <<{p}-custom-images,custom image>> or <<{p}-init-containers-plugin-downloads, add your own init container>> which
 installs the plugin when the Pod is created.
 
-To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following one:
+To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following:
 
 [source,yaml,subs="attributes"]
 ----
