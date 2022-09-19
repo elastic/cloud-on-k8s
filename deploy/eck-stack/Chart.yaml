@@ -7,19 +7,19 @@ description: |
   * Kibana
 kubeVersion: ">= 1.20.0-0"
 type: application
-version: 0.1.0
+version: 0.1.1
 
 dependencies:
   - name: eck-elasticsearch
     condition: eck-elasticsearch.enabled
-    version: "0.1.1"
+    version: "0.1.2"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-elasticsearch"
     repository: "https://helm.elastic.co"
   - name: eck-kibana
     condition: eck-kibana.enabled
-    version: "0.1.1"
+    version: "0.1.2"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-kibana"

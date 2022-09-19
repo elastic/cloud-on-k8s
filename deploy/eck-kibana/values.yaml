@@ -20,6 +20,11 @@
 #
 version: 8.2.3
 
+# License type to use, allowed values are `basic` and `enterprise`.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-licensing.html
+#
+licenseType: enterprise
+
 # Labels that will be applied to Kibana.
 #
 labels: {}
