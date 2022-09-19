@@ -211,7 +211,7 @@ func Test_buildBeatConfig(t *testing.T) {
 				"monitoring.enabled": false,
 				"logging": map[string]interface{}{
 					"files": map[string]string{
-						"path": "/var/log/beat",
+						"path": "/usr/share/filebeat/logs",
 					},
 					"to_files":  true,
 					"to_stderr": false,
