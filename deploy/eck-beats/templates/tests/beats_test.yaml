@@ -20,4 +20,3 @@ tests:
       - equal:
           path: spec.daemonSet.podTemplate.spec.containers[0].securityContext.runAsUser
           value: 0
-
