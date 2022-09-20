@@ -165,6 +165,95 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				return ps
 			}),
 		},
+		{
+			name: "running elastic agent, with fleet server, without es/kb association and without TLS",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "default",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+				},
+				Client: k8s.NewFakeClient(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent-agent-http",
+						Namespace: "default",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name: "http",
+								Port: 8220,
+							},
+						},
+					},
+				}),
+			},
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = nil
+
+				ps.Containers[0].VolumeMounts = nil
+
+				ps.Containers[0].Ports = []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 8220,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				}
+
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{
+						Name:  "FLEET_SERVER_ENABLE",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_SERVER_INSECURE_HTTP",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_URL",
+						Value: "http://agent-agent-http.default.svc:8220",
+					},
+					{
+						Name:  "FLEET_SERVER_HOST",
+						Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								APIVersion: "v1", FieldPath: "status.podIP",
+							},
+						},
+					},
+					{
+						Name:  "CONFIG_PATH",
+						Value: "/usr/share/elastic-agent",
+					},
+				}
+
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+
+				return ps
+			}),
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fleetCerts := &certificates.CertificatesSecret{

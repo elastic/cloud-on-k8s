@@ -349,6 +349,16 @@ func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	return b
 }
 
+func (b Builder) WithTLSDisabled(disabled bool) Builder {
+	if b.Agent.Spec.HTTP.TLS.SelfSignedCertificate == nil {
+		b.Agent.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
+	} else {
+		b.Agent.Spec.HTTP.TLS.SelfSignedCertificate = b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
+	}
+	b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Agent.Name,
