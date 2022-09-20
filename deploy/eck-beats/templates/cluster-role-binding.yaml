@@ -26,8 +26,10 @@ subjects:
     namespace: {{ .namespace | default $.Release.Namespace | quote }}
 {{- end }}
 {{- end }}
+{{- if .Values.clusterRoleBinding.roleRef }}
 roleRef:
   kind: {{ .Values.clusterRoleBinding.roleRef.kind }}
   name: {{ .Values.clusterRoleBinding.roleRef.name }}
   apiGroup: {{ .Values.clusterRoleBinding.roleRef.apiGroup }}
+{{- end }}
 {{- end }}
