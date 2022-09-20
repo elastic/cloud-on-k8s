@@ -6,5 +6,12 @@ metadata:
   name: {{ .Values.clusterRole.name }}
   labels:
     {{- include "fleet-server.labels" . | nindent 4 }}
+    {{- if .Values.clusterRole.labels }}
+    {{- toYaml .Values.clusterRole.labels | nindent 4 }}
+    {{- end }}
+  {{- if .Values.clusterRole.annotations }}
+  annotations:
+    {{- toYaml .Values.clusterRole.annotations | nindent 4 }}
+  {{- end }}
 rules: {{- toYaml .Values.clusterRole.rules | nindent 2 }}
 {{- end }}

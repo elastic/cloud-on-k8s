@@ -6,10 +6,20 @@ metadata:
   name: {{ .Values.clusterRoleBinding.name }}
   labels:
     {{- include "fleet-server.labels" . | nindent 4 }}
-subjects:  {{- range $i, $subject := .Values.clusterRoleBinding.subjects }}
-- kind: {{ $subject.kind }}
-  name: {{ $subject.name }}
-  namespace: {{ $subject.namespace | default $.Release.Namespace }}
+    {{- if .Values.clusterRoleBinding.labels }}
+    {{- toYaml .Values.clusterRoleBinding.labels | nindent 4 }}
+    {{- end }}
+  {{- if .Values.clusterRoleBinding.annotations }}
+  annotations:
+    {{- toYaml .Values.clusterRoleBinding.annotations | nindent 4 }}
+  {{- end }}
+{{- if .Values.clusterRoleBinding.subjects }}
+subjects:
+{{- range .Values.clusterRoleBinding.subjects }}
+  - kind: {{ .kind }}
+    name: {{ .name }}
+    namespace: {{ .namespace | default $.Release.Namespace | quote }}
+{{- end }}
 {{- end }}
 roleRef:
   kind: {{ .Values.clusterRoleBinding.roleRef.kind }}
