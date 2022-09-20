@@ -7,11 +7,11 @@ metadata:
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
     {{- if .Values.clusterRole.labels }}
-    {{- toYaml .Values.clusterRole.labels | indent 4 }}
+    {{- toYaml .Values.clusterRole.labels | nindent 4 }}
     {{- end }}
   {{- if .Values.clusterRole.annotations }}
   annotations:
-    {{- toYaml .Values.clusterRole.annotations | indent 4 }}
+    {{- toYaml .Values.clusterRole.annotations | nindent 4 }}
   {{- end }}
 rules: {{- toYaml .Values.clusterRole.rules | nindent 2 }}
 {{- end }}

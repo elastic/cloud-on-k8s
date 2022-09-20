@@ -8,7 +8,7 @@ metadata:
   annotations:
     eck.k8s.elastic.co/license: enterprise
     {{- if .Values.annotations }}
-    {{- toYaml .Values.annotations | indent 4 }}
+    {{- toYaml .Values.annotations | nindent 4 }}
     {{- end }}
 spec:
   version: {{ required "A Fleet Server version is required" .Values.version }}
