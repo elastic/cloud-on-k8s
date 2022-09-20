@@ -5,7 +5,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ .Values.clusterRoleBinding.name }}
   labels:
-    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- include "elasticagent.labels" . | nindent 4 }}
     {{- if .Values.clusterRoleBinding.labels }}
     {{- toYaml .Values.clusterRoleBinding.labels | nindent 4 }}
     {{- end }}
