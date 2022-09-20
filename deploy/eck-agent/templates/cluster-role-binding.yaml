@@ -9,9 +9,14 @@ metadata:
     {{- if .Values.clusterRoleBinding.labels }}
     {{- toYaml .Values.clusterRoleBinding.labels | nindent 4 }}
     {{- end }}
-  {{- if .Values.clusterRoleBinding.annotations }}
+  {{- if or .Values.annotations .Values.clusterRoleBinding.annotations }}
   annotations:
-    {{- toYaml .Values.clusterRoleBinding.annotations | nindent 4 }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.clusterRoleBinding.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 {{- if .Values.clusterRoleBinding.subjects }}
 subjects:
