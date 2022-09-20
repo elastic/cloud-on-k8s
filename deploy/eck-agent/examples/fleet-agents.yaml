@@ -10,8 +10,6 @@ spec:
   kibanaRef:
     name: eck-kibana
   mode: fleet
-  # config needs to be disabled when fleet mode is enabled.
-  config: null
   # elasticsearchRefs must be empty when fleet mode is enabled.
   elasticsearchRefs: []
 
@@ -24,75 +22,3 @@ spec:
         automountServiceAccountToken: true
         securityContext:
           runAsUser: 0
-
-serviceAccount:
-  name: elastic-agent
-
-clusterRole:
-  name: elastic-agent
-  rules:
-  - apiGroups: [""]
-    resources:
-    - pods
-    - nodes
-    - namespaces
-    - events
-    - services
-    - configmaps
-    verbs:
-    - get
-    - watch
-    - list
-  - apiGroups: ["coordination.k8s.io"]
-    resources:
-    - leases
-    verbs:
-    - get
-    - create
-    - update
-  - nonResourceURLs:
-    - "/metrics"
-    verbs:
-    - get
-  - apiGroups: ["extensions"]
-    resources:
-      - replicasets
-    verbs: 
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "apps"
-    resources:
-    - statefulsets
-    - deployments
-    - replicasets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - ""
-    resources:
-    - nodes/stats
-    verbs:
-    - get
-  - apiGroups:
-    - "batch"
-    resources:
-    - jobs
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-
-clusterRoleBinding:
-  name: elastic-agent
-  subjects:
-  - kind: ServiceAccount
-    name: elastic-agent
-    namespace: default
-  roleRef:
-    kind: ClusterRole
-    name: elastic-agent
-    apiGroup: rbac.authorization.k8s.io
