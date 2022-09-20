@@ -3,7 +3,7 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.21
+  kubernetesVersion: 1.22
   machineType: n1-standard-8
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -18,7 +18,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.21
+  kubernetesVersion: 1.22
   machineType: n1-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
