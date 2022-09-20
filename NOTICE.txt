@@ -3814,11 +3814,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.25.0
-Time    : 2022-08-23T22:36:35Z
+Version : v0.25.1
+Time    : 2022-09-16T14:36:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.1/LICENSE:
 
 
                                  Apache License
@@ -4026,11 +4026,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.25.0
-Time    : 2022-08-05T00:17:19Z
+Version : v0.25.1
+Time    : 2022-09-09T22:35:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.1/LICENSE:
 
 
                                  Apache License
@@ -4238,11 +4238,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.25.0
-Time    : 2022-08-23T22:42:32Z
+Version : v0.25.1
+Time    : 2022-09-16T14:57:45Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.25.1/LICENSE:
 
 
                                  Apache License
@@ -17920,11 +17920,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/ginkgo/v2
-Version : v2.1.4
-Time    : 2022-04-26T18:00:31Z
+Version : v2.1.6
+Time    : 2022-08-30T16:41:38Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.1.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.1.6/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
@@ -17950,11 +17950,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/gomega
-Version : v1.19.0
-Time    : 2022-03-25T19:12:09Z
+Version : v1.20.1
+Time    : 2022-08-26T19:44:27Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.19.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.20.1/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
