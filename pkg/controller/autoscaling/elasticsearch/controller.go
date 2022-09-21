@@ -137,6 +137,18 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		return r.reportAsInactive(ctx, log, esa, msg)
 	}
 
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !enabled {
+		log.Info(enterpriseFeaturesDisabledMsg)
+		r.recorder.Eventf(&esa, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
+		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
+		// We still schedule a reconciliation in case a valid license is applied later
+		return licenseCheckRequeue, err
+	}
+
 	// Fetch the Elasticsearch resource
 	var es esv1.Elasticsearch
 	if err := r.Get(ctx, esNamespacedName, &es); err != nil {
@@ -146,18 +158,6 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 			return r.reportAsInactive(ctx, log, esa, msg)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if !enabled {
-		log.Info(enterpriseFeaturesDisabledMsg)
-		r.recorder.Eventf(&es, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
-		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
-		// We still schedule a reconciliation in case a valid license is applied later
-		return licenseCheckRequeue, err
 	}
 
 	// Validate the autoscaling specification
