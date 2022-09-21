@@ -255,7 +255,6 @@ func (hc *ContinuousHealthCheck) Start() {
 					continue
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
-				defer cancel()
 				health, err := client.GetClusterHealth(ctx)
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
@@ -265,14 +264,17 @@ func (hc *ContinuousHealthCheck) Start() {
 						// cluster has been unavailable for too long
 						hc.AppendErr(clusterUnavailability.Errors())
 					}
+					cancel()
 					continue
 				}
 				clusterUnavailability.markAvailable()
 				if health.Status == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
+					cancel()
 					continue
 				}
 				hc.SuccessCount++
+				cancel()
 			}
 		}
 	}()
