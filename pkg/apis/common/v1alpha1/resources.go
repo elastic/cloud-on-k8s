@@ -120,8 +120,7 @@ func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.Reso
 	return *mergedResources
 }
 
-// MaxMerge merge the specified resource into the NodeResources only if its quantity is greater
-// than the existing one.
+// MaxMerge merges the specified resource into the NodeResources only if its quantity is greater than the existing one.
 func (nr *NodeResources) MaxMerge(
 	other corev1.ResourceRequirements,
 	resourceName corev1.ResourceName,
