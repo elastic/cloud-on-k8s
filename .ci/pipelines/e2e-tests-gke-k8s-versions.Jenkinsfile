@@ -35,17 +35,6 @@ pipeline {
         }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.20") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, '1.20', "eck-gke20-${BUILD_NUMBER}-e2e")
-                        }
-                    }
-                }
                 stage("1.21") {
                     agent {
                         label 'linux'
@@ -65,6 +54,28 @@ pipeline {
                         unstash "source"
                         script {
                             runWith(lib, failedTests, '1.22', "eck-gke22-${BUILD_NUMBER}-e2e")
+                        }
+                    }
+                }
+                stage("1.23") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, '1.23', "eck-gke23-${BUILD_NUMBER}-e2e")
+                        }
+                    }
+                }
+                stage("1.24") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runWith(lib, failedTests, '1.24', "eck-gke24-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
@@ -92,7 +103,12 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["eck-gke20-${BUILD_NUMBER}-e2e", "eck-gke21-${BUILD_NUMBER}-e2e", "eck-gke22-${BUILD_NUMBER}-e2e"]
+                clusters = [
+                    "eck-gke21-${BUILD_NUMBER}-e2e",
+                    "eck-gke22-${BUILD_NUMBER}-e2e",
+                    "eck-gke23-${BUILD_NUMBER}-e2e",
+                    "eck-gke24-${BUILD_NUMBER}-e2e"
+                ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
