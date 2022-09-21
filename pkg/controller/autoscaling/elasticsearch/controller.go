@@ -100,7 +100,7 @@ func NewReconcilers(mgr manager.Manager, params operator.Parameters) (*Reconcile
 		}
 }
 
-func dyamicWatchName(request reconcile.Request) string {
+func dynamicWatchName(request reconcile.Request) string {
 	return fmt.Sprintf("%s-%s-referenced-es-watch", request.Namespace, request.Name)
 }
 
@@ -114,8 +114,8 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	var esa autoscalingv1alpha1.ElasticsearchAutoscaler
 	if err := r.Get(ctx, request.NamespacedName, &esa); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.V(1).Info("ElasticsearchAutoscaler not found", request.Namespace, "esa_name", request.Name)
-			r.Watches.ReferencedResources.RemoveHandlerForKey(dyamicWatchName(request))
+			log.V(1).Info("ElasticsearchAutoscaler not found", "namespace", request.Namespace, "esa_name", request.Name)
+			r.Watches.ReferencedResources.RemoveHandlerForKey(dynamicWatchName(request))
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -124,7 +124,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
 	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch{
-		Name:    dyamicWatchName(request),
+		Name:    dynamicWatchName(request),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,
 	}); err != nil {
@@ -237,7 +237,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	if reconciledEs == nil {
 		// No Elasticsearch resource, with up-to-date compute and storage resources, has been returned.
-		// It's likely to be the case if a fatal error prevented to calculate resources from the Elasticsearch
+		// It's likely to be the case if a fatal error prevented resource calculation from the Elasticsearch
 		// autoscaling API or if an "offline" reconciliation failed.
 		return results.Aggregate()
 	}

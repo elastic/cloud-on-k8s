@@ -44,7 +44,7 @@ type ElasticsearchAutoscalerSpec struct {
 	AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs `json:"policies"`
 
 	// +kubebuilder:validation:Optional
-	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	// PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API.
 	PollingPeriod *metav1.Duration `json:"pollingPeriod,omitempty"`
 }
 
@@ -69,7 +69,7 @@ func (esa *ElasticsearchAutoscaler) GetElasticsearchAutoscalerStatus() (v1alpha1
 	return esa.Status, nil
 }
 
-// ElasticsearchRef is a reference to a secret that exists in the same namespace.
+// ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the same namespace.
 type ElasticsearchRef struct {
 	// Name is the name of the Elasticsearch resource to scale automatically.
 	// +kubebuilder:validation:MinLength=1

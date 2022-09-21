@@ -80,7 +80,7 @@ type AutoscalingResources struct {
 	MemoryRange  *QuantityRange `json:"memory,omitempty"`
 	StorageRange *QuantityRange `json:"storage,omitempty"`
 
-	// NodeCountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by a same autoscaling policy.
+	// NodeCountRange is used to model the minimum and the maximum number of nodes over all the NodeSets managed by the same autoscaling policy.
 	NodeCountRange CountRange `json:"nodeCount"`
 }
 
