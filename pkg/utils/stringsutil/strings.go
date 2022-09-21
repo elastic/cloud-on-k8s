@@ -98,14 +98,12 @@ func Truncate(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	truncated := ""
 	count := 0
-	for _, char := range s {
-		truncated += string(char)
+	for i := range s {
 		count++
-		if count >= n {
-			break
+		if count > n {
+			return s[:i]
 		}
 	}
-	return truncated
+	return s
 }
