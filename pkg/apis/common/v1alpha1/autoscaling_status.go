@@ -28,7 +28,7 @@ const (
 
 	// NotOnlineErrorMessage is a generic error message to be used in Conditions. It's used to let the user know that
 	// the Elasticsearch autoscaling API was not used in the last reconciliation attempt.
-	NotOnlineErrorMessage string = "An error prevented the use of the autoscaling API"
+	NotOnlineErrorMessage string = "An error prevented resource calculation from the Elasticsearch autoscaling API"
 )
 
 const (

@@ -44,7 +44,7 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
-						Message: "An error prevented the use of the autoscaling API.",
+						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
 					Condition{
 						Type:   ElasticsearchAutoscalerLimited,
@@ -93,7 +93,7 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
-						Message: "An error prevented the use of the autoscaling API.",
+						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
 					Condition{
 						Type:   ElasticsearchAutoscalerLimited,
@@ -278,7 +278,7 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
-						Message: "An error prevented the use of the autoscaling API. Issues reported for the following policies: [policy0,policy1]. Check operator logs, Kubernetes events, and policies status for more details",
+						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API. Issues reported for the following policies: [policy0,policy1]. Check operator logs, Kubernetes events, and policies status for more details",
 					},
 					Condition{
 						Type:    ElasticsearchAutoscalerLimited,

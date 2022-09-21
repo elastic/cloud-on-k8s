@@ -3182,8 +3182,8 @@ spec:
               Elasticsearch autoscaler resource.
             properties:
               elasticsearchRef:
-                description: ElasticsearchRef is a reference to a secret that exists
-                  in the same namespace.
+                description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                  that exists in the same namespace.
                 properties:
                   name:
                     description: Name is the name of the Elasticsearch resource to
@@ -3290,7 +3290,7 @@ spec:
                         nodeCount:
                           description: NodeCountRange is used to model the minimum
                             and the maximum number of nodes over all the NodeSets
-                            managed by a same autoscaling policy.
+                            managed by the same autoscaling policy.
                           properties:
                             max:
                               description: Max represents the maximum number of nodes
@@ -3352,8 +3352,8 @@ spec:
                   type: object
                 type: array
               pollingPeriod:
-                description: PollingPeriod is the period at which to synchronize and
-                  poll the Elasticsearch autoscaling API.
+                description: PollingPeriod is the period at which to synchronize with
+                  the Elasticsearch autoscaling API.
                 type: string
             required:
             - policies
