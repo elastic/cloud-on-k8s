@@ -206,14 +206,26 @@ func buildPodTemplate(
 		WithInitContainerDefaults().
 		WithContainers(sideCars...)
 
-	// If logs monitoring is enabled, do not include the "-e" startup option for the Beat
-	// so that it does not log only to stderr, and writes log file for filebeat to consume.
+	// If logs monitoring is enabled, remove the "-e" argument from the main container
+	// if it exists, and do not include the "-e" startup option for the Beat so that
+	// it does not log only to stderr, and writes log file for filebeat to consume.
 	if monitoring.IsLogsDefined(&params.Beat) {
+		if main := builder.MainContainer(); main != nil {
+			removeLogToStderrOption(main)
+		}
 		builder = builder.WithArgs("-c", ConfigMountPath)
 		return builder.PodTemplate, nil
 	}
 
 	return builder.WithArgs("-e", "-c", ConfigMountPath).PodTemplate, nil
+}
+
+func removeLogToStderrOption(container *corev1.Container) {
+	for i, arg := range container.Args {
+		if arg == "-e" {
+			container.Args = append(container.Args[:i], container.Args[i+1:]...)
+		}
+	}
 }
 
 func runningAsRoot(beat beatv1beta1.Beat) bool {

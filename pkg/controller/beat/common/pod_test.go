@@ -109,6 +109,8 @@ func Test_buildPodTemplate(t *testing.T) {
 								SecurityContext: &corev1.SecurityContext{
 									RunAsUser: pointer.Int64(0),
 								},
+								// The "-e" in these arguments should be removed
+								Args: []string{"-e", "-c", "/etc/beat.yml", "-system.hostfs=/hostfs"},
 							},
 						},
 					},
