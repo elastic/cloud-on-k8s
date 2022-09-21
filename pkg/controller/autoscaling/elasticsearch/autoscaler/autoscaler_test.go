@@ -512,7 +512,7 @@ func getPolicyStates(status v1alpha1.ElasticsearchAutoscalerStatus, policyName s
 	return nil
 }
 
-// - AutoscalingAnnotation builder
+// - AutoscalingSpec builder
 
 type AutoscalingSpecBuilder struct {
 	name                       string

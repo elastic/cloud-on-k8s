@@ -480,6 +480,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 				},
 				checker: yesCheck,
 			},
+			wantValidationError: nil, // we do support configurations in which the volume claim is not the default (as long as there's only one)
 		},
 		{
 			name: "More than one volume claim",
