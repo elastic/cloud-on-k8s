@@ -308,14 +308,14 @@ ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscal
 |===
 | Field | Description
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchref[$$ElasticsearchRef$$]__ | 
-| *`pollingPeriod`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#duration-v1-meta[$$Duration$$]__ | PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+| *`pollingPeriod`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#duration-v1-meta[$$Duration$$]__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API.
 |===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchref"]
 === ElasticsearchRef 
 
-ElasticsearchRef is a reference to a secret that exists in the same namespace.
+ElasticsearchRef is a reference to an Elasticsearch cluster that exists in the same namespace.
 
 .Appears In:
 ****
