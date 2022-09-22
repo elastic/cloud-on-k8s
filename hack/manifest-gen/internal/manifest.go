@@ -14,6 +14,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
@@ -72,6 +73,8 @@ func Generate(opts *GenerateFlags) error {
 	client.ReleaseName = "elastic-operator"
 	client.Namespace = opts.OperatorNamespace
 	client.PostRenderer = helmLabelRemover{}
+	fakeKubeVersion, _ := chartutil.ParseKubeVersion("v9.99.99")
+	client.KubeVersion = fakeKubeVersion
 
 	vals, err := valueOpts.MergeValues(getter.All(settings))
 	if err != nil {
