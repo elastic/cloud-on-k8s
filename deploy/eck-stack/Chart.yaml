@@ -5,7 +5,7 @@ description: |
   Currently supported:
   * Elasticsearch
   * Kibana
-kubeVersion: ">= 1.20.0-0"
+kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.1.0
 
