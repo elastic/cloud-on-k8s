@@ -5074,11 +5074,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.9.2
-Time    : 2022-06-29T13:46:06Z
+Version : v0.10.0
+Time    : 2022-09-16T19:10:49Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.9.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.10.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
