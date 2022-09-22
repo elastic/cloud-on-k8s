@@ -84,7 +84,7 @@ NOTE: You can configure an Elasticsearch cluster to monitor itself.
 
 NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
 
-NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the filebeat sidecar to consume the Beat's log files.
+NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the Filebeat sidecar to consume the Beat's log files.
 
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
