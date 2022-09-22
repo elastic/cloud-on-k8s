@@ -172,7 +172,7 @@ spec:
 
 The AWS IAM roles for service accounts feature allows you to give Elasticsearch restricted access to a S3 bucket without having to expose and store AWS credentials directly in Elasticsearch. This requires you to run the ECK operator on Amazon's EKS offering and an https://www.elastic.co/guide/en/elasticsearch/reference/8.1/repository-s3.html#iam-kubernetes-service-accounts[Elasticsearch cluster running at least version 8.1].
 
-Follow https://aws.amazon.com/premiumsupport/knowledge-center/eks-restrict-s3-bucket/[the AWS documentation] to set this feature up, specifically you need to:
+Follow https://aws.amazon.com/premiumsupport/knowledge-center/eks-restrict-s3-bucket/[the AWS documentation] to set this feature up. Specifically you need to:
 
 . Define an IAM policy file, called `iam-policy.json` in this example, giving access to an S3 bucket called `my_bucket`
 +
