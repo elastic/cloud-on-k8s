@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 8.4.1
+  version: 8.4.2
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -179,7 +179,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.4.1
+  version: 8.4.2
   nodeSets:
   - name: default
     count: 3
@@ -191,7 +191,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.4.1
+  version: 8.4.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
