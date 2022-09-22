@@ -10,72 +10,35 @@ endif::[]
 
 To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 
-. Ensure you have the necessary Elasticsearch storage plugin installed.
-. Add snapshot repository credentials to the Elasticsearch keystore.
 . Register the snapshot repository with the Elasticsearch API.
-. Set up a https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[CronJob] to take snapshots on a schedule.
+. Set up a Snapshot Lifecycle Management Policy through https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[API] or the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Kibana UI]
 
-The examples described in the following sections use the https://www.elastic.co/guide/en/elasticsearch/plugins/7.17/repository-gcs.html[Google Cloud Storage Repository Plugin].
 
-NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by default from version 8.0.
+NOTE: Support for S3, GCS and Azure repositories is bundled in Elasticsearch by default from version 8.0. On older versions of Elasticsearch, or if another snapshot repository plugin should be used, you have to <<{p}-install-plugin>>.
 
-For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
+For more information on Elasticsearch snapshots, check https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html[Snapshot and Restore] in the Elasticsearch documentation.
 
-[id="{p}-install-plugin"]
-== Install the storage repository plugin
+What follows is a non-exhaustive list of configuration examples. The first example might be worth reading even if you are targeting a Cloud provider other than GCP as it covers adding snapshot repository credentials to the Elasticsearch keystore and illustrates the basic workflow of setting up a snapshot repository:
 
-To install the storage repository plugin, you can either use a <<{p}-custom-images,custom image>> or <<{p}-init-containers-plugin-downloads,add your own init container>> which
-installs the plugin when the Pod is created.
+* <<{p}-basic-snapshot-gcs>>
 
-To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following one:
+The next two examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
 
-[source,yaml,subs="attributes"]
-----
-apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
-kind: Elasticsearch
-metadata:
-  name: elasticsearch-sample
-spec:
-  version: {version}
-  image: your/custom/image:tag
-  nodeSets:
-  - name: default
-    count: 1
-----
+* <<{p}-gke-workload-identiy>>
+* <<{p}-iam-service-accounts>>
 
-Alternatively, install the plugin when the Pod is created by using an init container:
+The final example illustrates how to configure secure and trusted communication when you
 
-[source,yaml,subs="attributes"]
-----
-apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
-kind: Elasticsearch
-metadata:
-  name: elasticsearch-sample
-spec:
-  version: {version}
-  nodeSets:
-  - name: default
-    count: 1
-    podTemplate:
-      spec:
-        initContainers:
-        - name: install-plugins
-          command:
-          - sh
-          - -c
-          - |
-            bin/elasticsearch-plugin install --batch repository-gcs
-----
+* <<{p}-s3-compatible>>
 
-Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:
 
-[source,sh]
-----
-kubectl apply -f elasticsearch.yaml
-----
+== Configuration examples
+
+[id="{p}-basic-snapshot-gcs"]
+=== Basic snapshot repository setup using GCS as an example
 
 [id="{p}-secure-settings"]
-== Configure GCS credentials through the Elasticsearch keystore
+==== Configure GCS credentials through the Elasticsearch keystore
 
 The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, check https://www.elastic.co/guide/en/elasticsearch/reference/current/repository-gcs.html[Google Cloud Storage Repository].
 
@@ -131,7 +94,7 @@ kubectl apply -f elasticsearch.yml
 GCS credentials are automatically propagated into each Elasticsearch node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
 
 [id="{p}-create-repository"]
-== Register the repository in Elasticsearch
+==== Register the repository in Elasticsearch
 
 . Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana version 7.4.0 or higher, or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
 
@@ -155,57 +118,327 @@ PUT /_snapshot/my_gcs_repository
 PUT /_snapshot/my_gcs_repository/test-snapshot
 ----
 
-[id="{p}-setup-cronjob"]
-== Periodic snapshots with Snapshot Lifecycle Management
+[id="{p}-gke-workload-identiy"]
+=== Use GKE Workload Identity
+GKE Workload Identity allows a Kubernetes service account to impersonate a Google Cloud IAM service account and therefore to configure a snapshot repository in Elasticsearch without storing Google Cloud credentials in Elasticsearch itself. This feature requires your Kubernetes cluster to run on GKE and your Elasticsearch cluster to run at least https://github.com/elastic/elasticsearch/pull/71239[version 7.13] and https://github.com/elastic/elasticsearch/pull/82974[version 8.1] when using searchable snapshots.
 
-You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots (in version 7.4.0 or higher).
+Follow the instructions in the https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity[GKE documentation] to configure workload identity, specifically:
 
-The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] allows you to manage these policies directly in Kibana.
-
-
-== Periodic snapshots with a CronJob
-
-If you are running older versions of Elasticsearch without the snapshot lifecycle management feature, you can still set up a simple CronJob to take a snapshot every day.
-
-. Make an HTTP request against the appropriate endpoint, using a daily snapshot naming format. Elasticsearch credentials are mounted as a volume into the job's Pod:
-+
-[source,yaml]
-----
-# snapshotter.yml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: elasticsearch-sample-snapshotter
-spec:
-  schedule: "@daily"
-  concurrencyPolicy: Forbid
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: snapshotter
-            image: centos:7
-            volumeMounts:
-              - name: es-basic-auth
-                mountPath: /mnt/elastic/es-basic-auth
-            command:
-            - /bin/bash
-            args:
-            - -c
-            - 'curl -s -i -k -u "elastic:$(</mnt/elastic/es-basic-auth/elastic)" -XPUT "https://elasticsearch-sample-es-http:9200/_snapshot/my_gcs_repository/%3Csnapshot-%7Bnow%2Fd%7D%3E" | tee /dev/stderr | grep "200 OK"'
-          restartPolicy: OnFailure
-          volumes:
-          - name: es-basic-auth
-            secret:
-              secretName: elasticsearch-sample-elastic-user
-----
-
-. Apply it to the Kubernetes cluster:
+. Create or update your Kubernetes cluster with `--workload-pool=PROJECT_ID.svc.id.goog` enabled, where `PROJECT_ID` is your Google project ID
+. Create a namespace and a Kubernetes service account (`test-gcs` and `gcs-sa` in this example)
+. Create the bucket, the Google service account (`gcp-sa` in this example. Note that both Google and Kubernetes have the concept of a service account and this example is referring to the former) and set the relevant permissions through Google Cloud console or gcloud CLI
+. Allow the Kubernetes service account to impersonate the Google service account:
 +
 [source,sh]
 ----
-kubectl apply -f snapshotter.yml
+gcloud iam service-accounts add-iam-policy-binding gcp-sa@PROJECT_ID.iam.gserviceaccount.com \
+--role roles/iam.workloadIdentityUser \
+--member "serviceAccount:PROJECT_ID.svc.id.goog[test-gcs/gcs-sa]"
+----
++
+.  Add the `iam.gke.io/gcp-service-account` annotation on the Kubernetes service account
++
+[source,sh]
+----
+kubectl annotate serviceaccount gcs-sa \
+    --namespace test-gcs \
+    iam.gke.io/gcp-service-account=gcp-sa@PROJECT_ID.iam.gserviceaccount.com
+----
++
+. Create an Elasticsearch cluster, referencing the Kubernetes service account
++
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-gcs-sample
+  namespace: test-gcs
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: gcs-sa
+    count: 3
+----
++
+. Create the snapshot repository as described in <<{p}-create-repository>>
+
+[id="{p}-iam-service-accounts"]
+=== Use AWS IAM roles for service accounts (IRSA)
+
+The AWS IAM roles for service accounts feature allows you to give Elasticsearch restricted access to a S3 bucket without having to expose and store AWS credentials directly in Elasticsearch. This requires you to run the ECK operator on Amazon's EKS offering and an https://www.elastic.co/guide/en/elasticsearch/reference/8.1/repository-s3.html#iam-kubernetes-service-accounts[Elasticsearch cluster running at least version 8.1].
+
+Follow https://aws.amazon.com/premiumsupport/knowledge-center/eks-restrict-s3-bucket/[the AWS documentation] to set this feature up. Specifically you need to:
+
+. Define an IAM policy file, called `iam-policy.json` in this example, giving access to an S3 bucket called `my_bucket`
++
+[source,json]
+----
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucketMultipartUploads",
+                "s3:ListBucketVersions",
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": "arn:aws:s3:::my_bucket"
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:AbortMultipartUpload",
+                "s3:DeleteObject",
+                "s3:ListMultipartUploadParts"
+            ],
+            "Resource": "arn:aws:s3:::my_bucket/*"
+        }
+    ]
+}
+----
++
+. Create the policy using AWS CLI tooling, using the name `eck-snapshots` in this example
++
+[source,sh]
+----
+aws iam create-policy \
+    --policy-name eck-snapshots \
+    --policy-document file://iam-policy.json
+----
++
+. Use `eksctl` to create an IAM role and create and annotate a Kubernetes service account with it. The service account is called `aws-sa` in the `default` namespace in this example.
++
+[source,sh,subs="attributes,callouts"]
+----
+eksctl create iamserviceaccount \
+  --name aws-sa \
+  --namespace default \
+  --cluster YOUR_CLUSTER \ <1>
+  --attach-policy-arn arn:aws:iam::YOUR_IAM_ARN:policy/eck-snapshots \ <2>
+  --approve
+----
++
+<1> Replace `YOUR_CLUSTER` with your actual EKS cluster name
+<2> Replace with the actual AWS IAM ARN for the policy you just created
++
+. Create an Elasticsearch cluster referencing the service account
++
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        serviceAccountName: aws-sa
+        containers:
+        - name: elasticsearch
+          env:
+          - name: AWS_WEB_IDENTITY_TOKEN_FILE
+            value: "/usr/share/elasticsearch/config/repository-s3/aws-web-identity-token-file" <1>
+          - name: AWS_ROLE_ARN
+            value: "arn:aws:iam::YOUR_ROLE_ARN_HERE" <2>
+          volumeMounts:
+          - name: aws-iam-token
+            mountPath: /usr/share/elasticsearch/config/repository-s3
+        volumes:
+          - name: aws-iam-token
+            projected:
+              sources:
+              - serviceAccountToken:
+                  audience: sts.amazonaws.com
+                  expirationSeconds: 86400
+                  path: aws-web-identity-token-file
+----
++
+<1> Elasticsearch expects the service account token to be projected to exactly this path
+<2> Replace with the actual `AWS_ROLE_ARN` for the IAM role you created in step 3
++
+. Create the snapshot repository as described in <<{p}-create-repository>> but of type `s3`
++
+[source,sh]
+----
+PUT /_snapshot/my_s3_repository
+{
+  "type": "s3",
+  "settings": {
+    "bucket": "my_bucket"
+  }
+}
 ----
 
-For more details, check https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].
+[id="{p}-s3-compatible"]
+=== Use S3-compatible services
+
+The following example assumes that you have deployed and configured a S3 compatible object store like https://min.io[MinIO] that can be reached from the Kubernetes cluster, and also that you have created a bucket in said service, called `es-repo` in this example. The example also assumes an Elasticsearch cluster named `es` is deployed within the cluster.
+Most importantly the steps describing how to customize the JVM trust store are only necessary if your S3-compatible service is using TLS certificates that are not issued by a well known certificate authority.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  nodeSets:
+  - name: mixed
+    count: 3
+----
+
+
+. Extract the cacerts JVM trust store from one of the running Elasticsearch nodes.
++
+[source,sh]
+----
+kubectl cp es-es-mixed-0:/usr/share/elasticsearch/jdk/lib/security/cacerts cacerts
+----
++
+NOTE: You can skip this step if you want to create a new trust store that does not contain any well known CAs that Elasticsearch trusts by default. Be aware that this limits Elasticsearch's ability to communicate with TLS secured endpoints to those for which you add CA certificates in the next steps.
+. Obtain the CA certificate used to sign the certificate of your S3-compatible service. We assume it is called `tls.crt`
+. Add the certificate to the JVM trust store from step 1
++
+[source,sh]
+----
+keytool -importcert -keystore cacerts -storepass changeit -file tls.crt -alias my-custom-s3-svc
+----
++
+NOTE:  You need to have the Java Runtime environment with the `keytool` installed locally for this step. `changeit` is the default password used by the JVM, but it can be changed with `keytool` as well.
+. Create a Kubernetes secret with the amended trust store
++
+[source,sh]
+----
+kubectl create secret generic custom-truststore --from-file=cacerts
+----
++
+. Create a Kubernetes secret with the credentials for your object store bucket
++
+[source,sh]
+----
+kubectl create secret generic snapshot-settings \
+   --from-literal=s3.client.default.access_key=$YOUR_ACCESS_KEY \
+   --from-literal=s3.client.default.secret_key=$YOUR_SECRET_ACCESS_KEY
+----
++
+. Update your Elasticsearch cluster to use the trust store and credentials from the Kubernetes secrets
++
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  secureSettings:
+  - secretName: snapshot-settings
+  nodeSets:
+  - name: mixed
+    count: 3
+    podTemplate:
+      spec:
+        volumes:
+        - name: custom-truststore
+          secret:
+            secretName: additional-certs
+        containers:
+        - name: elasticsearch
+          volumeMounts:
+          - name: custom-truststore
+            mountPath: /usr/share/elasticsearch/config/custom-truststore
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Djavax.net.ssl.trustStore=/usr/share/elasticsearch/config/custom-truststore/cacerts -Djavax.net.ssl.keyStorePassword=changeit"
+----
++
+. Create the snapshot repository
++
+[source,sh,subs="attributes,callouts"]
+----
+POST _snapshot/my_s3_repository
+{
+  "type": "s3",
+  "settings": {
+    "bucket": "es-repo",
+    "path_style_access": true,	<1>
+    "endpoint": "https://mys3service.default.svc.cluster.local/" <2>
+  }
+}
+----
++
+<1> Whether or not you need to enable `path_style_access` depends on your choice of S3-compatible storage service and how it is deployed. If it is exposed through a standard Kubernetes service it is likely you need this option
+<2> Replace this with the actual endpoint of your S3-compatible service
+
+[id="{p}-install-plugin"]
+=== Install a snapshot repository plugin
+
+If you are running a version of Elasticsearch before 8.0 or you need a snapshot repository plugin that is not already pre-installed you have to install the plugin yourself. To install the snapshot repository plugin, you can either use a <<{p}-custom-images,custom image>> or <<{p}-init-containers-plugin-downloads, add your own init container>> which
+installs the plugin when the Pod is created.
+
+To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  image: your/custom/image:tag
+  nodeSets:
+  - name: default
+    count: 1
+----
+
+Alternatively, install the plugin when the Pod is created by using an init container:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
+----
+
+Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:
+
+[source,sh]
+----
+kubectl apply -f elasticsearch.yaml
+----
+
+
+
+
