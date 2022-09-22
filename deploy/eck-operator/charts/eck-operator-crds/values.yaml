@@ -4,4 +4,4 @@ global:
   # This is used for tasks specific to generating the all-in-one.yaml file.
   manifestGen: false
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
-  kubeVersion: 1.16.0
+  kubeVersion: 1.21.0

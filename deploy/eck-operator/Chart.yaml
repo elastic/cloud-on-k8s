@@ -15,7 +15,7 @@ version: 2.5.0-SNAPSHOT
 
 appVersion: 2.5.0-SNAPSHOT
 
-kubeVersion: ">=1.12.0-0"
+kubeVersion: ">=1.21.0-0"
 
 keywords:
   - Elasticsearch
