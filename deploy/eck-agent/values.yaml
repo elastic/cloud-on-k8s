@@ -77,7 +77,7 @@ spec:
   # Configuration of Agent, specifically used in Agent standalone mode.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
   #
-  config: {}
+  config: null
 
 # ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
 # require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
