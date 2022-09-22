@@ -7,11 +7,10 @@ package elasticsearch
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
-
 	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )

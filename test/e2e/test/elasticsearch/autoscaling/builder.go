@@ -214,7 +214,7 @@ func (ab *AutoscalingBuilder) WithPolicy(policy string, roles []string, resource
 	return ab
 }
 
-// WithFixedDecider set a setting for the fixed decider on an already existing policy.
+// WithFixedDecider sets a setting for the fixed decider on an already existing policy.
 func (ab *AutoscalingBuilder) WithFixedDecider(policy string, fixedDeciderSettings map[string]string) *AutoscalingBuilder {
 	policySpec, exists := ab.policies[policy]
 	if !exists {
