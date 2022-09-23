@@ -73,7 +73,12 @@ func Generate(opts *GenerateFlags) error {
 	client.ReleaseName = "elastic-operator"
 	client.Namespace = opts.OperatorNamespace
 	client.PostRenderer = helmLabelRemover{}
-	fakeKubeVersion, _ := chartutil.ParseKubeVersion("v9.99.99")
+	// Arbitrarily sets a k8s version greater than the min required version in the Chart, otherwise v1.20 is used by default
+	// because Helm doesn't connect to a real K8S API server (clientOnly = true).
+	fakeKubeVersion, err := chartutil.ParseKubeVersion("v9.99.99")
+	if err != nil {
+		return fmt.Errorf("invalid fake kube version %q: %s", fakeKubeVersion, err)
+	}
 	client.KubeVersion = fakeKubeVersion
 
 	vals, err := valueOpts.MergeValues(getter.All(settings))
