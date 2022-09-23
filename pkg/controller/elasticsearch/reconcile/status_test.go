@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/pointer"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
@@ -61,7 +62,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 				return s
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
-				Conditions: esv1.Conditions{
+				Conditions: commonv1alpha1.Conditions{
 					{
 						Type:    "ElasticsearchIsReachable",
 						Status:  "False",
@@ -155,7 +156,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: esv1.Conditions{
+					Conditions: commonv1alpha1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -198,7 +199,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: esv1.Conditions{
+				Conditions: commonv1alpha1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "False",
@@ -278,7 +279,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: esv1.Conditions{
+					Conditions: commonv1alpha1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -300,7 +301,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: esv1.Conditions{
+				Conditions: commonv1alpha1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "True",
@@ -330,7 +331,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: esv1.Conditions{
+					Conditions: commonv1alpha1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -352,7 +353,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: esv1.Conditions{
+				Conditions: commonv1alpha1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "True",
@@ -382,7 +383,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: esv1.Conditions{
+					Conditions: commonv1alpha1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "False",
@@ -412,7 +413,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: esv1.Conditions{
+				Conditions: commonv1alpha1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "False",

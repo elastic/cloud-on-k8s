@@ -1,0 +1,28 @@
+---
+apiVersion: autoscaling.k8s.elastic.co/v1alpha1
+kind: ElasticsearchAutoscaler
+metadata:
+  name: test-autoscaler
+  namespace: testns
+spec:
+  elasticsearchRef:
+    name: testes
+  policies:
+    - name: di
+      roles: ["data", "ingest"]
+      deciders:
+        proactive_storage:
+          forecast_window: 5m
+      resources:
+        nodeCount:
+          min: 3
+          max: 10
+        cpu:
+          min: 2
+          max: 6
+        memory:
+          min: 2Gi
+          max: 8Gi
+        storage:
+          min: 1Gi
+          max: 4Gi

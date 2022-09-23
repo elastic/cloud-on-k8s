@@ -173,8 +173,8 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
 		}
 
-		// Check if this nodeSet has the master role. If autoscaling is enabled the count value in the NodeSet might not be initially set.
-		seenMaster = seenMaster || (cfg.Node.IsConfiguredWithRole(esv1.MasterRole) && !cfg.Node.IsConfiguredWithRole(esv1.VotingOnlyRole) && ns.Count > 0) || es.IsAutoscalingDefined()
+		// Check if this nodeSet has the master role.
+		seenMaster = seenMaster || (cfg.Node.IsConfiguredWithRole(esv1.MasterRole) && !cfg.Node.IsConfiguredWithRole(esv1.VotingOnlyRole) && ns.Count > 0)
 	}
 
 	if !seenMaster {

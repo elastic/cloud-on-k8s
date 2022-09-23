@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -156,10 +157,16 @@ func TestNewReporter(t *testing.T) {
 		&s2,
 		&s3,
 		&s4,
+		&esav1alpha1.ElasticsearchAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+				Name:      "autoscaled-with-crd",
+			},
+		},
 		&esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
-				Name:      "autoscaled",
+				Name:      "autoscaled-with-annotation",
 				Annotations: map[string]string{
 					esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
 				},
@@ -354,7 +361,7 @@ func TestNewReporter(t *testing.T) {
       pod_count: 8
       resource_count: 2
     elasticsearches:
-      autoscaled_resource_count: 1
+      autoscaled_resource_count: 2
       helm_resource_count: 1
       pod_count: 10
       resource_count: 4

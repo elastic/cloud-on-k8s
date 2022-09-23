@@ -1,46 +1,69 @@
 ---
+apiVersion: autoscaling.k8s.elastic.co/v1alpha1
+kind: ElasticsearchAutoscaler
+metadata:
+  name: autoscaling-sample
+spec:
+  elasticsearchRef:
+    name: elasticsearch-sample
+  policies:
+    - name: di
+      roles: ["data", "ingest" , "transform"]
+      ## Autoscaling deciders (https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-deciders.html) come with
+      ## default settings. Uncomment the lines below to adjust the deciders settings.
+      #deciders:
+      ## 'proactive_storage' is only provided as an example, each role comes with specific individual autoscaling deciders.
+      #  proactive_storage:
+      #    forecast_window: 5m
+      resources:
+        nodeCount:
+          min: 3
+          max: 8
+        cpu:
+          min: 2
+          max: 8
+        memory:
+          min: 2Gi
+          max: 16Gi
+        storage:
+          min: 64Gi
+          max: 512Gi
+    - name: ml
+      roles:
+        - ml
+      resources:
+        nodeCount:
+          min: 1
+          max: 9
+        cpu:
+          min: 1
+          max: 4
+        memory:
+          min: 2Gi
+          max: 8Gi
+        storage:
+          min: 1Gi
+          max: 1Gi
+
+---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: autoscaling-sample
-  annotations:
-    elasticsearch.alpha.elastic.co/autoscaling-spec: |
-      {
-          "policies": [{
-              "name": "di",
-              "roles": ["data", "ingest" , "transform"],
-              "deciders": {
-                "proactive_storage": {
-                    "forecast_window": "5m"
-                }
-              },
-              "resources": {
-                  "nodeCount": { "min": 3, "max": 8 },
-                  "cpu": { "min": 2, "max": 8 },
-                  "memory": { "min": "2Gi", "max": "16Gi" },
-                  "storage": { "min": "64Gi", "max": "512Gi" }
-              }
-          },
-          {
-              "name": "ml",
-              "roles": ["ml"],
-              "deciders": {
-                  "ml": {
-                      "down_scale_delay": "10m"
-                  }
-              },
-              "resources": {
-                  "nodeCount": { "min": 1, "max": 9 },
-                  "cpu": { "min": 1, "max": 4 },
-                  "memory": { "min": "2Gi", "max": "8Gi" }
-              }
-          }]
-      }
+  name: elasticsearch-sample
 spec:
   version: 8.4.2
   nodeSets:
     - name: master
-      count: 1
+      count: 3
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              # Specify both limits and requests to benefit from the desired nodes API / Elasticsearch resources aware management.
+              resources:
+                limits:
+                  memory: 4Gi
+                  cpu: 2
       config:
         node:
           roles: [ "master" ]
