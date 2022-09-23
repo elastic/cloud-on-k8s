@@ -7,6 +7,7 @@ package driver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -498,8 +499,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				wantClient.request = string(parsedRequest)
 				// Elasticsearch UID must have been used as the history ID
 				wantClient.historyID = es.UID
-				// Elasticsearch generation must have been used as the version
-				wantClient.version = es.Generation
 			}
 
 			esClient := fakeEsClient(t, "8.3.0", tt.args.esClientError, wantClient)
@@ -760,7 +759,6 @@ func (c *desiredNodesFakeClient) DeleteDesiredNodes(ctx context.Context) error {
 
 type wantClient struct {
 	historyID types.UID
-	version   int64
 	request   string
 }
 
@@ -773,9 +771,18 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 		if !strings.HasPrefix(req.URL.Path, "/_internal/desired_nodes") {
 			t.Fatalf("Elasticsearch client has been called on unknown path: %s", req.URL.Path)
 		}
+		desiredNodesVersion := int64(123)
 		statusCode := 200
 		if err {
 			statusCode = 500
+		}
+		if req.Method == http.MethodGet {
+			resp, err := json.Marshal(client.LatestDesiredNodes{Version: desiredNodesVersion})
+			require.NoError(t, err)
+			return &http.Response{
+				StatusCode: statusCode,
+				Body:       io.NopCloser(bytes.NewReader(resp)),
+			}
 		}
 
 		if want.request != "" {
@@ -793,7 +800,8 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 
 			// Compare history and version
 			assert.Equal(t, want.historyID, gotHistoryID)
-			assert.Equal(t, want.version, gotVersion)
+			// we only ever test one iteration of desired nodes updates so simply increment the version from _latest by one
+			assert.Equal(t, desiredNodesVersion+1, gotVersion)
 
 			// Compare the request
 			gotRequest, err := io.ReadAll(req.Body)

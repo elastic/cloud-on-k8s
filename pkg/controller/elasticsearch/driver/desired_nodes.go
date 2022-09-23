@@ -69,7 +69,14 @@ func (d *defaultDriver) updateDesiredNodes(
 		results.WithReconciliationState(defaultRequeue.WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"))
 	}
 	if esReachable {
-		return results.WithError(esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), d.ES.Generation, esclient.DesiredNodes{DesiredNodes: nodes}))
+		latestDesiredNodes, err := esClient.GetLatestDesiredNodes(ctx)
+		if err != nil && !esclient.IsNotFound(err) {
+			// ignore 404 but error out on anything else
+			return results.WithError(err)
+		}
+
+		nextVersion := latestDesiredNodes.Version + 1
+		return results.WithError(esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), nextVersion, esclient.DesiredNodes{DesiredNodes: nodes}))
 	}
 	return results.WithReconciliationState(defaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
 }
