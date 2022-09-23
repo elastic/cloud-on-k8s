@@ -11,9 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
@@ -47,7 +45,7 @@ func (m *cpu) NodeResourceQuantity() resource.Quantity {
 		m.statusBuilder.
 			ForPolicy(m.autoscalingSpec.Name).
 			RecordEvent(
-				status.VerticalScalingLimitReached,
+				v1alpha1.VerticalScalingLimitReached,
 				fmt.Sprintf("Required CPU per node %s is greater than the maximum allowed: %s", m.requiredNodeCPUCapacity, m.autoscalingSpec.CPURange.Max.String()),
 			)
 	}
@@ -80,7 +78,7 @@ func (m *cpu) NodeResourceQuantity() resource.Quantity {
 	return *quantity
 }
 
-func (m *cpu) NodeCount(nodeCapacity resources.NodeResources) int32 {
+func (m *cpu) NodeCount(nodeCapacity v1alpha1.NodeResources) int32 {
 	nodeCPU := nodeCapacity.GetRequest(corev1.ResourceCPU)
 	return getNodeCount(
 		m.log,
@@ -94,10 +92,10 @@ func (m *cpu) NodeCount(nodeCapacity resources.NodeResources) int32 {
 
 func NewCPURecommender(
 	log logr.Logger,
-	statusBuilder *status.AutoscalingStatusBuilder,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
 	autoscalingPolicyResult client.AutoscalingPolicyResult,
-	currentAutoscalingStatus status.Status,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 ) (Recommender, error) {
 	// Check if user expects the resource to be managed by the autoscaling controller
 	hasResourceRange := autoscalingSpec.CPURange != nil
@@ -107,7 +105,7 @@ func NewCPURecommender(
 		!autoscalingPolicyResult.RequiredCapacity.Total.Processors.IsEmpty()
 
 	if hasRequirement && autoscalingSpec.CPURange == nil {
-		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(status.CPURequired, "Min and max CPU must be specified")
+		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(v1alpha1.CPURequired, "Min and max CPU must be specified")
 		return nil, fmt.Errorf("min and max CPU must be specified")
 	}
 

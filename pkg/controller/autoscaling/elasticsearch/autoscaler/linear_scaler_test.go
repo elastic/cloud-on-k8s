@@ -9,7 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 // q is a shorthand for resource.MustParse, the only purpose is to make unit tests more readable.
@@ -25,7 +25,7 @@ func qPtr(quantity string) *resource.Quantity {
 func Test_memoryFromStorage(t *testing.T) {
 	type args struct {
 		requiredStorageCapacity resource.Quantity
-		autoscalingSpec         esv1.AutoscalingPolicySpec
+		autoscalingSpec         v1alpha1.AutoscalingPolicySpec
 	}
 	tests := []struct {
 		name       string
@@ -118,7 +118,7 @@ func Test_memoryFromStorage(t *testing.T) {
 func Test_cpuFromMemory(t *testing.T) {
 	type args struct {
 		requiredMemoryCapacity resource.Quantity
-		autoscalingSpec        esv1.AutoscalingPolicySpec
+		autoscalingSpec        v1alpha1.AutoscalingPolicySpec
 	}
 	tests := []struct {
 		name    string

@@ -14,8 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -24,13 +24,13 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 	type args struct {
 		statefulSets          []runtime.Object
 		es                    esv1.Elasticsearch
-		autoscalingPolicySpec esv1.AutoscalingPolicySpec
+		autoscalingPolicySpec v1alpha1.AutoscalingPolicySpec
 		nodeSets              []string
 	}
 	tests := []struct {
 		name                  string
 		args                  args
-		wantNodeSetsResources *resources.NodeSetsResources
+		wantNodeSetsResources *v1alpha1.NodeSetsResources
 		wantErr               bool
 	}{
 		{
@@ -38,9 +38,9 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 			args: args{
 				statefulSets: []runtime.Object{ /* no existing StatefulSet */ },
 				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
-					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources:   esv1.AutoscalingResources{StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
+					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
+					AutoscalingResources:   v1alpha1.AutoscalingResources{StorageRange: &v1alpha1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
 			wantNodeSetsResources: nil,
@@ -63,15 +63,15 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 					),
 				},
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
-					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources:   esv1.AutoscalingResources{StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
+					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
+					AutoscalingResources:   v1alpha1.AutoscalingResources{StorageRange: &v1alpha1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")}}},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNodeSetsResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},
@@ -100,19 +100,19 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 					),
 				},
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
-					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources: esv1.AutoscalingResources{
-						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
+					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
+					AutoscalingResources: v1alpha1.AutoscalingResources{
+						MemoryRange:  &v1alpha1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &v1alpha1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNodeSetsResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory:  resource.MustParse("32Gi"),
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
@@ -142,19 +142,19 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 					),
 				},
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
-					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources: esv1.AutoscalingResources{
-						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
+					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
+					AutoscalingResources: v1alpha1.AutoscalingResources{
+						MemoryRange:  &v1alpha1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &v1alpha1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
-			wantNodeSetsResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("32Gi"),
 					},
@@ -179,7 +179,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 					),
 				},
 				es:                    esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"}},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"}},
 				nodeSets:              []string{"nodeset-1", "nodeset-2"},
 			},
 			wantErr:               true,
@@ -203,20 +203,20 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 					),
 				},
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
-				autoscalingPolicySpec: esv1.AutoscalingPolicySpec{
-					NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{Name: "aspec"},
-					AutoscalingResources: esv1.AutoscalingResources{
-						MemoryRange:  &esv1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
-						StorageRange: &esv1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
+				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
+					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
+					AutoscalingResources: v1alpha1.AutoscalingResources{
+						MemoryRange:  &v1alpha1.QuantityRange{Min: resource.MustParse("12Gi"), Max: resource.MustParse("64Gi")},
+						StorageRange: &v1alpha1.QuantityRange{Min: resource.MustParse("7Gi"), Max: resource.MustParse("50Gi")},
 					},
 				},
 				nodeSets: []string{"nodeset-1", "nodeset-2"},
 			},
 			wantErr: false,
-			wantNodeSetsResources: &resources.NodeSetsResources{
+			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					},

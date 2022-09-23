@@ -96,8 +96,8 @@ go-generate:
 
 generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
-	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
+	# Webhook definitions exist in pkg/apis, pkg/controller/elasticsearch/validation and pkg/controller/autoscaling/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
@@ -436,7 +436,7 @@ ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it 
 endif
 
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 8.4.0
+E2E_STACK_VERSION          ?= 8.4.2
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m

@@ -193,6 +193,19 @@ rules:
       - patch
       - delete
   - apiGroups:
+      - autoscaling.k8s.elastic.co
+    resources:
+      - elasticsearchautoscalers
+      - elasticsearchautoscalers/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
       - kibana.k8s.elastic.co
     resources:
       - kibanas

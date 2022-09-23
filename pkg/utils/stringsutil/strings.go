@@ -93,3 +93,17 @@ func SortStringSlice(s []string) {
 		return s[i] < s[j]
 	})
 }
+
+func Truncate(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	count := 0
+	for i := range s {
+		count++
+		if count > n {
+			return s[:i]
+		}
+	}
+	return s
+}

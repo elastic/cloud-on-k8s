@@ -176,3 +176,73 @@ func TestDifference(t *testing.T) {
 		})
 	}
 }
+
+func TestTruncate(t *testing.T) {
+	type args struct {
+		s string
+		n int
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "String is smaller than n",
+			args: args{
+				s: "small",
+				n: 1024,
+			},
+			want: "small",
+		},
+		{
+			name: "n is 0",
+			args: args{
+				s: "foo",
+				n: 0,
+			},
+			want: "",
+		},
+		{
+			name: "n is negative",
+			args: args{
+				s: "foo",
+				n: -1,
+			},
+			want: "",
+		},
+		{
+			name: "Truncate with unicode",
+			args: args{
+				s: "你好，世界!",
+				n: 2,
+			},
+			want: "你好",
+		},
+		{
+			name: "Truncate a sample stacktrace",
+			args: args{
+				s: `github.com/test/project/a/package/test.Foo
+	/go/src/github.com/test/project/a/package/test/foo.go:42
+github.com/test/project/a/package/foo.Foo
+	/go/src/github.com/test/project/a/package/foo/bar.go:4242
+testing.tRunner
+	/usr/local/go/src/testing/testing.go:424242"`,
+				n: 256,
+			},
+			want: `github.com/test/project/a/package/test.Foo
+	/go/src/github.com/test/project/a/package/test/foo.go:42
+github.com/test/project/a/package/foo.Foo
+	/go/src/github.com/test/project/a/package/foo/bar.go:4242
+testing.tRunner
+	/usr/local/go/src/testing/testing.go:`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Truncate(tt.args.s, tt.args.n); got != tt.want {
+				t.Errorf("Truncate() = \n%v\nwant \n%v", got, tt.want)
+			}
+		})
+	}
+}

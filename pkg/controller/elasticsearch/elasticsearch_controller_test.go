@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
@@ -162,7 +163,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						ObservedGeneration:   2,
 						Phase:                esv1.ElasticsearchResourceInvalid,
 						Health:               esv1.ElasticsearchUnknownHealth,
-						Conditions:           esv1.Conditions{esv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
 						InProgressOperations: noInProgressOperations,
 					},
 				).BuildAndCopy(),
@@ -217,7 +218,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						ObservedGeneration:   2,
 						Phase:                esv1.ElasticsearchResourceInvalid,
 						Health:               esv1.ElasticsearchUnknownHealth,
-						Conditions:           esv1.Conditions{esv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
 						InProgressOperations: noInProgressOperations,
 					},
 				).BuildAndCopy(),

@@ -14,12 +14,11 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	. "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
@@ -43,7 +42,7 @@ func TestClient_CreateAutoscalingPolicy(t *testing.T) {
 				Request:    req,
 			}
 		})
-		in := esv1.AutoscalingPolicy{
+		in := v1alpha1.AutoscalingPolicy{
 			Roles: []string{"data", "ingest"},
 		}
 		assert.NoError(t, testClient.CreateAutoscalingPolicy(context.Background(), "di", in))
