@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 8.2.3 # needs to less or equal to e2e-monitor version
+  version: 8.4.0 # needs to less or equal to e2e-monitor version
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -174,7 +174,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.3.1
+          version: 8.4.2
       data_stream:
         namespace: default
       processors:
