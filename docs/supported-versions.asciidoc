@@ -1,5 +1,5 @@
 * Kubernetes 1.20-1.24
-* OpenShift 4.6-4.10
+* OpenShift 4.7-4.11
 * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 * Helm: 3.2.0+
 * Elasticsearch, Kibana, APM Server: 6.8+, 7.1+, 8+

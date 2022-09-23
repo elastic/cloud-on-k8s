@@ -18,7 +18,7 @@ Current features:
 Supported versions:
 
 *  Kubernetes 1.20-1.24
-*  OpenShift 4.6-4.10
+*  OpenShift 4.7-4.11
 *  Elasticsearch, Kibana, APM Server: 6.8+, 7.1+, 8+
 *  Enterprise Search: 7.7+, 8+
 *  Beats: 7.0+, 8+
