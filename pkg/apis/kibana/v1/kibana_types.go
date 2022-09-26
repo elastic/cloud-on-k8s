@@ -108,30 +108,7 @@ type KibanaSpec struct {
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	Monitoring Monitoring `json:"monitoring,omitempty"`
-}
-
-type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Kibana.
-	// +kubebuilder:validation:Optional
-	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which will receive log data from this Kibana.
-	// +kubebuilder:validation:Optional
-	Logs LogsMonitoring `json:"logs,omitempty"`
-}
-
-type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
-}
-
-type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana

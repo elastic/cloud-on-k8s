@@ -9,9 +9,9 @@ endif::[]
 = Stack Monitoring
 
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
-on Elasticsearch and Kibana to collect and ship their metrics and logs to a dedicated monitoring cluster.
+on Elasticsearch, Kibana and Beats to collect and ship their metrics and logs to a dedicated monitoring cluster.
 
-To enable stack monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
+To enable Stack Monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
 
 [source,yaml,subs="attributes,callouts"]
 ----
@@ -57,12 +57,34 @@ spec:
       - name: monitoring
         namespace: observability <1>
   count: 1
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: monitored-sample
+spec:
+  type: filebeat
+  version: {version}
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
 <2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana instance are running in the same namespace.
+<3> The use of `namespace` is optional if the Elasticsearch cluster and the Beats instance are running in the same namespace.
 
 NOTE: You can configure an Elasticsearch cluster to monitor itself.
+
+NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
+
+NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the Filebeat sidecar to consume the Beat's log files.
 
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 

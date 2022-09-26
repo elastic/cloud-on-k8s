@@ -190,9 +190,9 @@ func TestNewReporter(t *testing.T) {
 				Name:      "monitored",
 			},
 			Spec: esv1.ElasticsearchSpec{
-				Monitoring: esv1.Monitoring{
-					Logs:    esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
-					Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+				Monitoring: commonv1.Monitoring{
+					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 				},
 			},
 			Status: esv1.ElasticsearchStatus{
@@ -441,8 +441,8 @@ func TestReporter_report(t *testing.T) {
 							Name:      "monitored",
 						},
 						Spec: esv1.ElasticsearchSpec{
-							Monitoring: esv1.Monitoring{
-								Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							Monitoring: commonv1.Monitoring{
+								Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 							},
 						},
 						Status: esv1.ElasticsearchStatus{
@@ -455,8 +455,8 @@ func TestReporter_report(t *testing.T) {
 							Name:      "monitored2",
 						},
 						Spec: esv1.ElasticsearchSpec{
-							Monitoring: esv1.Monitoring{
-								Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							Monitoring: commonv1.Monitoring{
+								Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 							},
 						},
 						Status: esv1.ElasticsearchStatus{
@@ -492,8 +492,8 @@ func TestReporter_report(t *testing.T) {
 							Name:      "monitored",
 						},
 						Spec: esv1.ElasticsearchSpec{
-							Monitoring: esv1.Monitoring{
-								Logs: esv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+							Monitoring: commonv1.Monitoring{
+								Logs: commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 							},
 						},
 						Status: esv1.ElasticsearchStatus{

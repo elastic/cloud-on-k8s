@@ -6,13 +6,16 @@ package common
 
 import (
 	"context"
+	"errors"
 	"hash/fnv"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	beat_stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
 	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
@@ -99,7 +102,10 @@ func Reconcile(
 
 	podTemplate, err := buildPodTemplate(params, defaultImage, configHash)
 	if err != nil {
-		return results.WithError(err), params.Status
+		if errors.Is(err, beat_stackmon.ErrMonitoringClusterUUIDUnavailable) {
+			results.WithReconciliationState(reconciler.RequeueAfter(10 * time.Second).WithReason("ElasticsearchRef UUID unavailable while configuring Beats stack monitoring"))
+		}
+		return results, params.Status
 	}
 	var reconcileResults *reconciler.Results
 	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params)

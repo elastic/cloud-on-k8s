@@ -18,8 +18,8 @@ var (
 	monitoringEsRef   = commonv1.ObjectSelector{Name: "monitoring", Namespace: "observability"}
 	sampleMonitoredEs = esv1.Elasticsearch{
 		Spec: esv1.ElasticsearchSpec{
-			Monitoring: esv1.Monitoring{
-				Metrics: esv1.MetricsMonitoring{
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{monitoringEsRef},
 				},
 			},
@@ -46,8 +46,8 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with metrics monitoring defined but not configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -59,8 +59,8 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with metrics monitoring defined and configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -75,8 +75,8 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with logs monitoring defined and configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Logs: esv1.LogsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -91,11 +91,11 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with metrics and logs monitoring defined and partially configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
-						Logs: esv1.LogsMonitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m2", Namespace: "b"}},
 						},
 					},
@@ -110,11 +110,11 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with metrics and logs monitoring defined and partially configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
-						Logs: esv1.LogsMonitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m2", Namespace: "b"}},
 						},
 					},
@@ -129,11 +129,11 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with logs and metrics monitoring defined and configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
-						Logs: esv1.LogsMonitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -148,18 +148,18 @@ func TestIsReconcilable(t *testing.T) {
 			name: "with distinct logs and metrics monitoring defined and configured",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
-						Logs: esv1.LogsMonitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m2", Namespace: "b"}},
 						},
 					},
 				},
 				AssocConfs: map[commonv1.ObjectSelector]commonv1.AssociationConf{
-					commonv1.ObjectSelector{Name: "m1", Namespace: "b"}: {URL: "https://m1.xyz", AuthSecretName: "-"},
-					commonv1.ObjectSelector{Name: "m2", Namespace: "b"}: {URL: "https://m2.xyz", AuthSecretName: "-"},
+					{Name: "m1", Namespace: "b"}: {URL: "https://m1.xyz", AuthSecretName: "-"},
+					{Name: "m2", Namespace: "b"}: {URL: "https://m2.xyz", AuthSecretName: "-"},
 				},
 			},
 			want: true,

@@ -131,33 +131,10 @@ type ElasticsearchSpec struct {
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	Monitoring Monitoring `json:"monitoring,omitempty"`
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
-}
-
-type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
-	// +kubebuilder:validation:Optional
-	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
-	// +kubebuilder:validation:Optional
-	Logs LogsMonitoring `json:"logs,omitempty"`
-}
-
-type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
-}
-
-type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.

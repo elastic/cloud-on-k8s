@@ -33,11 +33,11 @@ func TestValidate(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
-						Logs: esv1.LogsMonitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -50,8 +50,8 @@ func TestValidate(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.13.1",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "m1", Namespace: "b"}},
 						},
 					},
@@ -64,8 +64,8 @@ func TestValidate(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
-					Monitoring: esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{Name: "m1", Namespace: "b"},
 								{Name: "m2", Namespace: "c"},
@@ -81,8 +81,8 @@ func TestValidate(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.14.0",
-					Monitoring: esv1.Monitoring{
-						Logs: esv1.LogsMonitoring{
+					Monitoring: commonv1.Monitoring{
+						Logs: commonv1.LogsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{
 								{Name: "m1", Namespace: "b"},
 								{Name: "m2", Namespace: "c"},

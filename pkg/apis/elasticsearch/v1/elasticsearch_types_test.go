@@ -344,11 +344,11 @@ func Test_AssociationConfs(t *testing.T) {
 			},
 		},
 		Spec: ElasticsearchSpec{
-			Monitoring: Monitoring{
-				Metrics: MetricsMonitoring{
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{metricsEsRef},
 				},
-				Logs: LogsMonitoring{
+				Logs: commonv1.LogsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{{
 						Name:      "logs",
 						Namespace: "default"},
