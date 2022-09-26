@@ -1,0 +1,107 @@
+suite: test elastic-agent
+templates:
+  - charts/eck-agent/templates/elastic-agent.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      eck-agent.enabled: true
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-agent
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: should render agent in custom fleet example properly
+    values:
+      - ../../examples/fleet-agents.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-agent
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.kibanaRef.name
+          value: kibana
+      - equal:
+          path: spec.fleetServerRef.name
+          value: fleet-server
+      - equal:
+          path: spec.mode
+          value: fleet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.serviceAccountName
+          value: elastic-agent
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.securityContext.runAsUser
+          value: 0
+---
+suite: test fleet-agent
+templates:
+  - charts/eck-fleet-server/templates/fleet-server.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      eck-agent.enabled: true
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-fleet-server
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: should render fleet server in custom fleet example properly
+    values:
+      - ../../examples/fleet-agents.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Agent
+      - equal:
+          path: metadata.name
+          value: fleet-server
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.kibanaRef.name
+          value: kibana
+      - equal:
+          path: spec.mode
+          value: fleet
+      - equal:
+          path: spec.fleetServerEnabled
+          value: true
+      - equal:
+          path: spec.deployment.podTemplate.spec.serviceAccountName
+          value: fleet-server
+      - equal:
+          path: spec.deployment.podTemplate.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.deployment.podTemplate.spec.securityContext.runAsUser
+          value: 0

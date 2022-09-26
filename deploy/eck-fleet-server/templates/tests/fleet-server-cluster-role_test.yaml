@@ -1,0 +1,71 @@
+suite: test fleet server
+templates:
+  - templates/cluster-role.yaml
+tests:
+  - it: should render default cluster role properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: fleet-server
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[0].resources
+          value:
+          - pods
+          - namespaces
+          - nodes
+      - equal:
+          path: rules[0].verbs
+          value:
+          - get
+          - watch
+          - list
+      - equal:
+          path: rules[1].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[1].resources
+          value:
+          - leases
+      - equal:
+          path: rules[1].verbs
+          value:
+          - get
+          - create
+          - update
+  - it: should render custom labels and annotations properly.
+    set:
+      labels:
+        test: label
+      annotations:
+        test: annotation
+      clusterRole:
+        annotations:
+          clusterRole: annotation
+        labels:
+          clusterRole: label
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-fleet-server
+            clusterRole: label
+            helm.sh/chart: eck-fleet-server-0.1.0
+            test: label
+      - equal:
+          path: metadata.annotations
+          value:
+            clusterRole: annotation
+            test: annotation
