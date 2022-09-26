@@ -265,7 +265,7 @@ spec:
     Supported versions:
 
 
-    * Kubernetes 1.20-1.24
+    * Kubernetes 1.21-1.25
 
     * OpenShift 4.7-4.11
 
@@ -373,7 +373,7 @@ spec:
   - email: eck@elastic.co
     name: Elastic
   maturity: stable
-  minKubeVersion: 1.16.0
+  minKubeVersion: 1.21.0
   provider:
     name: Elastic
   replaces: {{ .PackageName }}.v{{ .PrevVersion }}

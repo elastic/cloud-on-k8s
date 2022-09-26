@@ -36,91 +36,102 @@ pipeline {
         stage('Run tests on different versions of vanilla K8s') {
             // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
             parallel {
-                stage("1.20.15") {
+                stage("1.21.14") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.20.15@sha256:6f2d011dffe182bad80b85f6c00e8ca9d86b5b8922cdf433d53575c4c5212248", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.21.14@sha256:f9b4d3d1112f24a7254d2ee296f177f628f9b4c1b32f0006567af11b91c1f301", "0.15.0", "ipv4")
                         }
                     }
                 }
-                stage("1.21.12") {
+                stage("1.22.13 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.21.12@sha256:f316b33dd88f8196379f38feb80545ef3ed44d9197dca1bfd48bcb1583210207", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959", "0.15.0", "ipv4")
                         }
                     }
                 }
-                stage("1.22.9 IPv4") {
+                stage("1.22.13 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959", "0.15.0", "ipv6")
                         }
                     }
                 }
-                stage("1.22.9 IPv6") {
+                stage("1.23.10 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105", "0.14.0", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.23.10@sha256:f047448af6a656fae7bc909e2fab360c18c487ef3edc93f06d78cdfd864b2d12", "0.15.0", "ipv4")
                         }
                     }
                 }
-                stage("1.23.6 IPv4") {
+                stage("1.23.10 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.23.10@sha256:f047448af6a656fae7bc909e2fab360c18c487ef3edc93f06d78cdfd864b2d12", "0.15.0", "ipv6")
                         }
                     }
                 }
-                stage("1.23.6 IPv6") {
+                stage("1.24.4 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae", "0.14.0", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.24.4@sha256:adfaebada924a26c2c9308edd53c6e33b3d4e453782c0063dc0028bdebaddf98", "0.15.0", "ipv4")
                         }
                     }
                 }
-                stage("1.24.1 IPv4") {
+                stage("1.24.4 IPv6") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c", "0.14.0", "ipv4")
+                            runTests(lib, failedTests, "kindest/node:v1.24.4@sha256:adfaebada924a26c2c9308edd53c6e33b3d4e453782c0063dc0028bdebaddf98", "0.15.0", "ipv6")
                         }
                     }
                 }
-                stage("1.24.1 IPv6") {
+                stage("1.25.1 IPv4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c", "0.14.0", "ipv6")
+                            runTests(lib, failedTests, "kindest/node:v1.25.1@sha256:d20e58f5a5e89678dbedc6748cad0fba01b0f2df386cb16594bcba39be53b447", "0.15.0", "ipv4")
+                        }
+                    }
+                }
+                stage("1.25.1 IPv6") {
+                    agent {
+                        label 'eck'
+                    }
+                    steps {
+                        unstash "source"
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.25.1@sha256:d20e58f5a5e89678dbedc6748cad0fba01b0f2df386cb16594bcba39be53b447", "0.15.0", "ipv6")
                         }
                     }
                 }
