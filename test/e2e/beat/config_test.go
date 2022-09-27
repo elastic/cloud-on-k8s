@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/journalbeat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/packetbeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
@@ -49,33 +50,59 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
-func TestMetricbeatDefaultConfigWithStackMonitoring(t *testing.T) {
-	name := "test-mb-default-cfg"
+func TestMetricbeatDefaultConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name                string
+		withStackMonitoring bool
+	}{
+		{
+			name:                "without stack monitoring",
+			withStackMonitoring: false,
+		},
+		{
+			name:                "with stack monitoring",
+			withStackMonitoring: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// only execute this test on supported versions when stack monitoring is enabled
+			err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+			if tt.withStackMonitoring && err != nil {
+				t.SkipNow()
+			}
 
-	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+			name := "test-mb-default-cfg"
 
-	testPodBuilder := beat.NewPodBuilder(name)
+			esBuilder := elasticsearch.NewBuilder(name).
+				WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	mbBuilder := beat.NewBuilder(name).
-		WithType(metricbeat.Type).
-		WithRoles(beat.MetricbeatClusterRoleName, beat.AutodiscoverClusterRoleName).
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithMonitoring(esBuilder.Ref()).
-		WithESValidations(
-			beat.HasEventFromBeat(metricbeat.Type),
-			beat.HasEvent("event.dataset:system.cpu"),
-			beat.HasEvent("event.dataset:system.load"),
-			beat.HasEvent("event.dataset:system.memory"),
-			beat.HasEvent("event.dataset:system.network"),
-			beat.HasEvent("event.dataset:system.process"),
-			beat.HasEvent("event.dataset:system.process.summary"),
-			beat.HasEvent("event.dataset:system.fsstat"),
-		)
+			testPodBuilder := beat.NewPodBuilder(name)
 
-	mbBuilder = beat.ApplyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+			mbBuilder := beat.NewBuilder(name).
+				WithType(metricbeat.Type).
+				WithRoles(beat.MetricbeatClusterRoleName, beat.AutodiscoverClusterRoleName).
+				WithElasticsearchRef(esBuilder.Ref()).
+				WithESValidations(
+					beat.HasEventFromBeat(metricbeat.Type),
+					beat.HasEvent("event.dataset:system.cpu"),
+					beat.HasEvent("event.dataset:system.load"),
+					beat.HasEvent("event.dataset:system.memory"),
+					beat.HasEvent("event.dataset:system.network"),
+					beat.HasEvent("event.dataset:system.process"),
+					beat.HasEvent("event.dataset:system.process.summary"),
+					beat.HasEvent("event.dataset:system.fsstat"),
+				)
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
+			if tt.withStackMonitoring {
+				mbBuilder = mbBuilder.WithMonitoring(esBuilder.Ref())
+			}
+
+			mbBuilder = beat.ApplyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+
+			test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
+		})
+	}
+
 }
 
 func TestHeartbeatConfig(t *testing.T) {
