@@ -7,6 +7,7 @@ package driver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +36,7 @@ import (
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
@@ -43,9 +45,10 @@ import (
 
 func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 	type args struct {
-		esReachable    bool
-		esClientError  bool
-		k8sClientError bool
+		esReachable       bool
+		esClientError     bool
+		k8sClientError    bool
+		orchestrationHint *hints.DesiredNodesHint
 	}
 	type wantCondition struct {
 		status   corev1.ConditionStatus
@@ -105,6 +108,52 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 			want: want{
 				result:   wantResult{},
 				testdata: "happy_path.json",
+				condition: &wantCondition{
+					status:   corev1.ConditionTrue,
+					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
+				},
+			},
+		},
+		{
+			name: "With orchestration hint",
+			args: args{
+				esReachable: true,
+				orchestrationHint: &hints.DesiredNodesHint{
+					Version: 123,
+					Hash:    "2328297597",
+				},
+			},
+			esBuilder: newEs("8.3.0").
+				withNodeSet(
+					nodeSet("master", 3).
+						withCPU("2222m", "3141m").
+						withMemory("2333Mi", "2333Mi").
+						withStorage("1Gi", "1Gi").pvcCreated(true).
+						withNodeCfg(map[string]interface{}{
+							"node.roles":              []string{"master"},
+							"node.name":               "${POD_NAME}",
+							"path.data":               "/usr/share/elasticsearch/data",
+							"network.publish_host":    "${POD_IP}",
+							"http.publish_host":       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
+							"node.attr.k8s_node_name": "${NODE_NAME}",
+						}),
+				).withNodeSet(
+				nodeSet("hot", 3).
+					withCPU("", "1"). // Setting only limits is also fine.
+					withMemory("", "4Gi").
+					withStorage("10Gi", "50Gi").pvcCreated(true).
+					withNodeCfg(map[string]interface{}{
+						"node.roles":              []string{"data", "ingest"},
+						"node.name":               "${POD_NAME}",
+						"path.data":               "/usr/share/elasticsearch/data",
+						"network.publish_host":    "${POD_IP}",
+						"http.publish_host":       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
+						"node.attr.k8s_node_name": "${NODE_NAME}",
+					}),
+			),
+			want: want{
+				result: wantResult{},
+				// no request expected here
 				condition: &wantCondition{
 					status:   corev1.ConditionTrue,
 					messages: []string{"Successfully calculated compute and storage resources from Elasticsearch resource generation "},
@@ -474,6 +523,10 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				assert.FailNow(t, "fatal: %s", err)
 			}
 
+			if tt.args.orchestrationHint != nil {
+				reconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{DesiredNodes: tt.args.orchestrationHint})
+			}
+
 			var k8sClient k8s.Client
 
 			if tt.args.k8sClientError {
@@ -498,8 +551,6 @@ func Test_defaultDriver_updateDesiredNodes(t *testing.T) {
 				wantClient.request = string(parsedRequest)
 				// Elasticsearch UID must have been used as the history ID
 				wantClient.historyID = es.UID
-				// Elasticsearch generation must have been used as the version
-				wantClient.version = es.Generation
 			}
 
 			esClient := fakeEsClient(t, "8.3.0", tt.args.esClientError, wantClient)
@@ -760,7 +811,6 @@ func (c *desiredNodesFakeClient) DeleteDesiredNodes(ctx context.Context) error {
 
 type wantClient struct {
 	historyID types.UID
-	version   int64
 	request   string
 }
 
@@ -773,9 +823,18 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 		if !strings.HasPrefix(req.URL.Path, "/_internal/desired_nodes") {
 			t.Fatalf("Elasticsearch client has been called on unknown path: %s", req.URL.Path)
 		}
+		desiredNodesVersion := int64(123)
 		statusCode := 200
 		if err {
 			statusCode = 500
+		}
+		if req.Method == http.MethodGet {
+			resp, err := json.Marshal(client.LatestDesiredNodes{Version: desiredNodesVersion})
+			require.NoError(t, err)
+			return &http.Response{
+				StatusCode: statusCode,
+				Body:       io.NopCloser(bytes.NewReader(resp)),
+			}
 		}
 
 		if want.request != "" {
@@ -793,12 +852,15 @@ func fakeEsClient(t *testing.T, esVersion string, err bool, want wantClient) *de
 
 			// Compare history and version
 			assert.Equal(t, want.historyID, gotHistoryID)
-			assert.Equal(t, want.version, gotVersion)
+			// we only ever test one iteration of desired nodes updates so simply increment the version from _latest by one
+			assert.Equal(t, desiredNodesVersion+1, gotVersion)
 
 			// Compare the request
 			gotRequest, err := io.ReadAll(req.Body)
 			assert.NoError(t, err)
 			require.JSONEq(t, want.request, string(gotRequest))
+		} else if req.Method != http.MethodDelete { // delete is captured through the fake ES client
+			t.Fatalf("Unexpected request %s %s", req.Method, req.URL.Path)
 		}
 
 		return &http.Response{

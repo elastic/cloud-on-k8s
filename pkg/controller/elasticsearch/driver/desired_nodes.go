@@ -13,10 +13,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 )
 
@@ -69,7 +71,26 @@ func (d *defaultDriver) updateDesiredNodes(
 		results.WithReconciliationState(defaultRequeue.WithReason("Storage capacity is not available in all PVC statuses, requeue to refine the capacity reported in the desired nodes API"))
 	}
 	if esReachable {
-		return results.WithError(esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), d.ES.Generation, esclient.DesiredNodes{DesiredNodes: nodes}))
+		latestDesiredNodes, err := esClient.GetLatestDesiredNodes(ctx)
+		if err != nil && !esclient.IsNotFound(err) {
+			// ignore 404 but error out on anything else
+			return results.WithError(err)
+		}
+
+		nodesHash := hash.HashObject(nodes)
+		if d.ReconcileState.OrchestrationHints().DesiredNodes.Equals(latestDesiredNodes.Version, nodesHash) {
+			return results
+		}
+
+		nextVersion := latestDesiredNodes.Version + 1
+		err = esClient.UpdateDesiredNodes(ctx, string(d.ES.UID), nextVersion, esclient.DesiredNodes{DesiredNodes: nodes})
+		if err == nil {
+			d.ReconcileState.UpdateOrchestrationHints(hints.OrchestrationsHints{DesiredNodes: &hints.DesiredNodesHint{
+				Version: nextVersion,
+				Hash:    nodesHash,
+			}})
+		}
+		return results.WithError(err)
 	}
 	return results.WithReconciliationState(defaultRequeue.WithReason("Waiting for Elasticsearch to be available to update the desired nodes API"))
 }
