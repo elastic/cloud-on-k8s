@@ -12,8 +12,6 @@ RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${CLIE
     mv oc /usr/local/bin/oc && \
     rm openshift-client-linux-${CLIENT_VERSION}.tar.gz
 
-FROM scratch
-# be able to make TLS requests to the GCloud API
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6
 COPY --from=builder /usr/local/bin/openshift-install .
 COPY --from=builder /usr/local/bin/oc .
