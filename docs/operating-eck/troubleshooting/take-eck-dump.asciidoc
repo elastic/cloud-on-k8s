@@ -28,6 +28,8 @@ eck-diagnostics -o <operator-namespaces> -r <resources-namespaces>
 
 By default, the tool automatically runs link:https://github.com/elastic/support-diagnostics[support diagnostics] for every Elasticsearch cluster and Kibana instance. This requires the temporary deployment of additional Pods into the Kubernetes cluster. If this is not what you want, you can turn off the feature by specifying the `--run-stack-diagnostics=false` flag.
 
+In air-gapped environments with no access to the `docker.elastic.co` registry, you should copy the latest support-diagnostics Docker image to your internal image registry and then run the tool with the additional flag `--diagnostic-image <custom-support-diagnostics-image-name>`.
+
 
 [float]
 == Example
