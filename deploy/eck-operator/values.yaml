@@ -51,7 +51,15 @@ podSecurityContext:
   runAsNonRoot: true
 
 # securityContext defines the security context of the operator container.
-securityContext: {}
+securityContext:
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
 
 # nodeSelector defines the node selector for the operator pod.
 nodeSelector: {}
