@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"net/url"
 	"path"
 	"sort"
 
@@ -75,6 +74,7 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+	FleetServerHost                  = "FLEET_SERVER_HOST"
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
@@ -205,7 +205,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
-	// ES, Kibana and FleetServer connection info are inject using environment variables
+	// ES, Kibana and FleetServer connection info are injected using environment variables
 	builder, err = applyEnvVars(params, fleetToken, builder)
 	if err != nil {
 		return nil, err
@@ -223,11 +223,6 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 					FleetCertsVolumeName,
 					FleetCertsMountPath,
 				))
-		} else {
-			// Force FLEET_SERVER_HOST environment variable to Pod IP, as without this, Fleet Server only binds to localhost.
-			builder = builder.WithEnv(corev1.EnvVar{Name: "FLEET_SERVER_HOST", Value: "", ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-			}})
 		}
 	}
 
@@ -285,6 +280,13 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.
 		}
 	} else if _, err := reconciler.ReconcileSecret(params.Context, params.Client, envVarsSecret, &params.Agent); err != nil {
 		return nil, err
+	}
+
+	if params.Agent.Spec.FleetServerEnabled && !params.Agent.Spec.HTTP.TLS.Enabled() {
+		// Force FLEET_SERVER_HOST environment variable to Pod IP, as without this, Fleet Server only binds to localhost.
+		builder = builder.WithEnv(corev1.EnvVar{Name: FleetServerHost, Value: "", ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+		}})
 	}
 
 	return builder, nil
@@ -521,12 +523,7 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 		}
 		fleetCfg[FleetURL] = assocConf.GetURL()
 
-		u, err := url.Parse(fleetCfg[FleetURL])
-		if err != nil {
-			return nil, pkgerrors.Wrap(err, "while parsing fleet url")
-		}
-
-		if u.Scheme == "http" {
+		if agent.Spec.HTTP.Protocol() == "http" {
 			fleetCfg[FleetInsecure] = "true"
 		}
 
