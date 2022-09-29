@@ -11,6 +11,7 @@ import (
 	"hash"
 	"path"
 	"sort"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -521,9 +522,10 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 		if err != nil {
 			return nil, err
 		}
-		fleetCfg[FleetURL] = assocConf.GetURL()
+		fleetURL := assocConf.GetURL()
+		fleetCfg[FleetURL] = fleetURL
 
-		if agent.Spec.HTTP.Protocol() == "http" {
+		if !strings.Contains(fleetURL, "https://") {
 			fleetCfg[FleetInsecure] = "true"
 		}
 
