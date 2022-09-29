@@ -226,15 +226,6 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "http://agent-agent-http.default.svc:8220",
 					},
 					{
-						Name:  "FLEET_SERVER_HOST",
-						Value: "",
-						ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{
-								APIVersion: "v1", FieldPath: "status.podIP",
-							},
-						},
-					},
-					{
 						Name:  "CONFIG_PATH",
 						Value: "/usr/share/elastic-agent",
 					},
@@ -301,7 +292,7 @@ func Test_applyEnvVars(t *testing.T) {
 		URL:            "kb-url",
 	})
 	agent.GetAssociations()[1].SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "fs-url",
+		URL:            "https://fs-url",
 		CACertProvided: true,
 	})
 
@@ -354,7 +345,7 @@ func Test_applyEnvVars(t *testing.T) {
 						Key:                  "FLEET_ENROLLMENT_TOKEN",
 						Optional:             &f,
 					}}},
-					{Name: "FLEET_URL", Value: "fs-url"},
+					{Name: "FLEET_URL", Value: "https://fs-url"},
 				},
 			},
 			wantSecretData: map[string][]byte{
@@ -376,7 +367,7 @@ func Test_applyEnvVars(t *testing.T) {
 					{Name: "FLEET_ENROLLMENT_TOKEN", Value: "custom"},
 					{Name: "FLEET_CA", Value: "/mnt/elastic-internal/fleetserver-association/default/fs/certs/ca.crt"},
 					{Name: "FLEET_ENROLL", Value: "true"},
-					{Name: "FLEET_URL", Value: "fs-url"},
+					{Name: "FLEET_URL", Value: "https://fs-url"},
 				},
 			},
 			wantSecretData: nil,
@@ -932,8 +923,28 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assoc.SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "url",
+		URL:            "https://fleet-server",
 		CACertProvided: true,
+	})
+
+	assocNoTLS := &agentv1alpha1.AgentFleetServerAssociation{
+		Agent: &agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent",
+				Namespace: "ns",
+			},
+			Spec: agentv1alpha1.AgentSpec{
+				FleetServerRef: commonv1.ObjectSelector{
+					Name:      "fleet-server",
+					Namespace: "ns",
+				},
+			},
+		},
+	}
+
+	assocNoTLS.SetAssociationConf(&commonv1.AssociationConf{
+		URL:            "http://fleet-server",
+		CACertProvided: false,
 	})
 
 	assocWithKibanaRef := &agentv1alpha1.AgentFleetServerAssociation{
@@ -956,7 +967,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assocWithKibanaRef.SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "url",
+		URL:            "https://fleet-server",
 		CACertProvided: true,
 	})
 
@@ -1042,7 +1053,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 			wantErr: false,
 			wantEnvVars: map[string]string{
 				"FLEET_CA":  "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
-				"FLEET_URL": "url",
+				"FLEET_URL": "https://fleet-server",
 			},
 			client: k8s.NewFakeClient(),
 		},
@@ -1053,7 +1064,17 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 			wantEnvVars: map[string]string{
 				"FLEET_ENROLL": "true",
 				"FLEET_CA":     "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
-				"FLEET_URL":    "url",
+				"FLEET_URL":    "https://fleet-server",
+			},
+			client: k8s.NewFakeClient(),
+		},
+		{
+			name:    "fleet server not enabled, fleet server ref no tls, no kibana ref",
+			agent:   *assocNoTLS.Agent,
+			wantErr: false,
+			wantEnvVars: map[string]string{
+				"FLEET_INSECURE": "true",
+				"FLEET_URL":      "http://fleet-server",
 			},
 			client: k8s.NewFakeClient(),
 		},
