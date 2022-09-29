@@ -75,7 +75,6 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
-	FleetServerHost                  = "FLEET_SERVER_HOST"
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
@@ -282,13 +281,6 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.
 	} else if _, err := reconciler.ReconcileSecret(params.Context, params.Client, envVarsSecret, &params.Agent); err != nil {
 		return nil, err
 	}
-
-	// if params.Agent.Spec.FleetServerEnabled && !params.Agent.Spec.HTTP.TLS.Enabled() {
-	// 	// Force FLEET_SERVER_HOST environment variable to Pod IP, as without this, Fleet Server only binds to localhost.
-	// 	builder = builder.WithEnv(corev1.EnvVar{Name: FleetServerHost, Value: "", ValueFrom: &corev1.EnvVarSource{
-	// 		FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-	// 	}})
-	// }
 
 	return builder, nil
 }
