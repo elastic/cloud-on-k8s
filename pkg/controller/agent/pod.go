@@ -282,12 +282,12 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.
 		return nil, err
 	}
 
-	if params.Agent.Spec.FleetServerEnabled && !params.Agent.Spec.HTTP.TLS.Enabled() {
-		// Force FLEET_SERVER_HOST environment variable to Pod IP, as without this, Fleet Server only binds to localhost.
-		builder = builder.WithEnv(corev1.EnvVar{Name: FleetServerHost, Value: "", ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-		}})
-	}
+	// if params.Agent.Spec.FleetServerEnabled && !params.Agent.Spec.HTTP.TLS.Enabled() {
+	// 	// Force FLEET_SERVER_HOST environment variable to Pod IP, as without this, Fleet Server only binds to localhost.
+	// 	builder = builder.WithEnv(corev1.EnvVar{Name: FleetServerHost, Value: "", ValueFrom: &corev1.EnvVarSource{
+	// 		FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+	// 	}})
+	// }
 
 	return builder, nil
 }
