@@ -229,6 +229,9 @@ CFG
   e2e/main)
 ######################################
 
+TESTS_MATCH="${TESTS_MATCH:-^Test}"
+E2E_TAGS="${E2E_TAGS:-e2e}"
+
 write_env <<ENV
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
