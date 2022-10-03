@@ -33,7 +33,7 @@ if [[ ${BUILD_ID:-} != "" ]]; then
   VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
 
   # BUILD_NUMBER is set by Jenkins
-  # VAULT_ROLE_ID and VAULT_SECRET_ID are set in the Jenkins pipeline definitions
+  # GCLOUD_PROJECT, VAULT_ROLE_ID and VAULT_SECRET_ID are set in the Jenkins pipeline definitions
 
 # Buildkite
 elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
@@ -41,6 +41,8 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
   CI_PLATFORM=bk
 
   VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s"
+
+  GCLOUD_PROJECT=$(vault read -field=gcloud_project ${VAULT_ROOT_PATH}/k8s)
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
 
@@ -596,8 +598,6 @@ clusterName="eck-${CI_PLATFORM}-e2e-pr-${BUILD_NUMBER}"
 
 write_env <<ENV
 VAULT_ROOT_PATH=$VAULT_ROOT_PATH
-
-GCLOUD_PROJECT=$GCLOUD_PROJECT
 
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
