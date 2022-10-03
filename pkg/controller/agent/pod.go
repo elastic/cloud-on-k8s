@@ -517,7 +517,7 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 		fleetURL := assocConf.GetURL()
 		fleetCfg[FleetURL] = fleetURL
 
-		if !strings.Contains(fleetURL, "https://") {
+		if !strings.HasPrefix(fleetURL, "https://") {
 			fleetCfg[FleetInsecure] = "true"
 		}
 
