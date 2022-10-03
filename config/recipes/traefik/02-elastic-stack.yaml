@@ -41,6 +41,10 @@ metadata:
   labels:
     app: hulk
 spec:
+  config:
+    xpack.fleet.packages:
+    - name: apm
+      version: latest
   version: 8.4.2
   count: 1
   elasticsearchRef:
