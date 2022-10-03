@@ -17,6 +17,11 @@ write_env()               { cat > $ROOT/.env; }
 write_deployer_config()   { cat > $ROOT/deployer-config.yml; }
 write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
+PROJECT_PATH=/go/src/github.com/elastic/cloud-on-k8s
+if [[ "${BUILDKITE_AGENT_NAME:-}" =~ k8s ]]; then
+  PROJECT_PATH=$(pwd)
+fi
+
 # detect dev local execution
 if [[ ${BUILD_ID:-} == "" ]]; then
   BUILD_NUMBER=0 # keeping all build_numbers as numbers
@@ -65,9 +70,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -101,9 +106,9 @@ REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 TESTS_MATCH=$TESTS_MATCH
 E2E_TAGS=$TEST_TAGS
 
@@ -177,9 +182,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -220,9 +225,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -264,9 +269,9 @@ REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=e2e/main
 BUILD_NUMBER=$BUILD_NUMBER
@@ -305,10 +310,10 @@ REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 export E2E_DEPLOY_CHAOS_JOB=true
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=e2e/resilience
 BUILD_NUMBER=$BUILD_NUMBER
@@ -342,9 +347,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -380,9 +385,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -417,9 +422,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -453,9 +458,9 @@ E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
 E2E_TAGS=es kb apm ent beat agent
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -490,9 +495,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -521,7 +526,7 @@ CFG
 clusterName=$2
 stackVersion=$3
 isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
-testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "/go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key";; esac)
+testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
@@ -531,9 +536,9 @@ IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=${isSnapshotVersion}
 
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 TEST_LICENSE_PKEY_PATH=$testLicensePKeyPath
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=${operatorImage}
 E2E_STACK_VERSION=${stackVersion}
@@ -573,10 +578,10 @@ REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 TESTS_MATCH=TestSmoke
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=pr
 BUILD_NUMBER=$BUILD_NUMBER
@@ -627,7 +632,7 @@ REGISTRY_NAMESPACE=eck-snapshots
 IMG_SUFFIX=
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=true
 IMG_VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
@@ -646,7 +651,7 @@ REGISTRY_NAMESPACE=eck
 IMG_SUFFIX=
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=false
 IMG_VERSION=$TAG_NAME
@@ -667,7 +672,7 @@ REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=yes
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 ENV
 ;;
 
