@@ -5,18 +5,19 @@ agents:
   memory: "2G"
 
 steps:
+
   - group: build
     steps:
 
       - label: ":docker: operator container image"
         commands:
-          - .ci/setenvconfig pr bk
+          - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
           - make operator-buildah
 
       - label: ":docker: e2e-tests container image"
         commands:
-          - .ci/setenvconfig pr bk
+          - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
           - make e2e-buildah
 
@@ -34,7 +35,7 @@ steps:
 
       - label: ":go: checks"
         commands:
-          - .ci/setenvconfig pr bk
+          - touch .env
           - make check-license-header check-predicates shellcheck reattach-pv
 
   - group: tests
@@ -56,10 +57,15 @@ steps:
       - label: ":go: helm-tests"
         command: "make helm-test"
 
+  # Different e2e tests are run depending on the branch and the build source
+
   - group: e2e-tests
     steps:
 
-      - label: ":k8s: e2e-tests on Kind"
+      # Run TestSmoke on Kind on every commit in PR branch
+
+      - label: ":k8s: pr e2e-tests"
+        branches: "!main"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -69,3 +75,26 @@ steps:
             - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
+
+      # Run all e2e tests on GKE on every commit in main
+
+      - label: ":k8s: main e2e-tests"
+        if: build.branch == "main" && build.source != "schedule"
+        agents:
+          memory: "4G"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make run-deployer
+          - make e2e-run
+        artifact_paths:
+          - "eck-diagnostic-*.zip"
+
+      # Run all e2e tests on all k8s distributions at midnight from the main branch
+
+      - label: ":k8s: nightly e2e-tests"
+        if: build.branch == "main" && build.source == "schedule"
+        commands:
+            - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+
+
