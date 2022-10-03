@@ -26,6 +26,8 @@ fi
 VAULT_ROLE_ID="${VAULT_ROLE_ID:-dev}"
 VAULT_SECRET_ID="${VAULT_SECRET_ID:-dev}"
 
+environment=${1:-""}
+
 # Jenkins
 if [[ ${BUILD_ID:-} != "" ]]; then
 
@@ -46,6 +48,10 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
 
+  if [[ "$environment" =~ e2e/* ]]; then
+    JKS_PARAM_OPERATOR_IMAGE=$(make print-operator-image)
+  fi
+
 # Dev local execution
 else
 
@@ -64,7 +70,6 @@ write_stack_version_def <<ENV
 []
 ENV
 
-environment=${1:-""}
 case $environment in
 
 ######################################
