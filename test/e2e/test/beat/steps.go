@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
@@ -117,6 +119,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				// don't check association statuses that may vary across tests
 				beat.Status.ElasticsearchAssociationStatus = ""
 				beat.Status.KibanaAssociationStatus = ""
+				beat.Status.MonitoringAssociationsStatus = nil
 				beat.Status.ObservedGeneration = 0
 
 				expected := beatv1beta1.BeatStatus{
@@ -132,8 +135,8 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					beat.Status.ExpectedNodes = 0
 					beat.Status.AvailableNodes = 0
 				}
-				if beat.Status != expected {
-					return fmt.Errorf("expected status %+v but got %+v", expected, beat.Status)
+				if !cmp.Equal(beat.Status, expected) {
+					return fmt.Errorf("expected status %+v, got diff: %s", expected, cmp.Diff(beat.Status, expected))
 				}
 				return nil
 			}),
@@ -182,6 +185,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+		checks.BeatsMonitoredStep(&b, k),
 	}
 }
 

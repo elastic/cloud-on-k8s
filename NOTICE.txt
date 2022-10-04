@@ -1288,11 +1288,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.7.2
-Time    : 2022-06-09T20:15:18Z
+Version : v1.8.0
+Time    : 2022-09-20T14:11:29Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.7.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.8.0/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -3814,11 +3814,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.25.0
-Time    : 2022-08-23T22:36:35Z
+Version : v0.25.2
+Time    : 2022-09-21T22:49:15Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.2/LICENSE:
 
 
                                  Apache License
@@ -4026,11 +4026,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.25.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.25.0
-Time    : 2022-08-05T00:17:19Z
+Version : v0.25.2
+Time    : 2022-09-19T09:40:30Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.2/LICENSE:
 
 
                                  Apache License
@@ -4238,11 +4238,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.25.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.25.0
-Time    : 2022-08-23T22:42:32Z
+Version : v0.25.2
+Time    : 2022-09-21T22:57:17Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.25.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.25.2/LICENSE:
 
 
                                  Apache License
@@ -5074,11 +5074,11 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.9.2
-Time    : 2022-06-29T13:46:06Z
+Version : v0.10.0
+Time    : 2022-09-16T19:10:49Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.9.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.10.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14641,11 +14641,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/sdk
-Version : v0.5.1
-Time    : 2022-06-09T19:25:24Z
+Version : v0.6.0
+Time    : 2022-09-20T12:57:08Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/sdk@v0.6.0/LICENSE:
 
 Mozilla Public License, version 2.0
 
@@ -17920,11 +17920,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/ginkgo/v2
-Version : v2.1.4
-Time    : 2022-04-26T18:00:31Z
+Version : v2.1.6
+Time    : 2022-08-30T16:41:38Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.1.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.1.6/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
@@ -17950,11 +17950,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/gomega
-Version : v1.19.0
-Time    : 2022-03-25T19:12:09Z
+Version : v1.20.1
+Time    : 2022-08-26T19:44:27Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.19.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/gomega@v1.20.1/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 

@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/v2/hack/config-extractor
 
-go 1.17
+go 1.19
 
 require (
 	k8s.io/api v0.22.4

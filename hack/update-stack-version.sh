@@ -44,3 +44,5 @@ bump_version test/e2e/test/version.go
 bump_version test/e2e/stack_test.go
 bump_version hack/operatorhub/config.yaml
 bump_version Makefile
+bump_version deploy/eck-elasticsearch/values.yaml
+bump_version deploy/eck-kibana/values.yaml

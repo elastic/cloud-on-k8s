@@ -328,7 +328,7 @@ image::images/metrics-explorer-cpu.png[cgroup CPU perforamce chart]
 [id="{p}-monitor-compute-resources-stack-monitoring"]
 ==== Monitoring Elasticsearch CPU using Stack Monitoring
 
-If link:{p}-stack-monitoring.html[stack monitoring] is enabled, the pressure applied by the CPU cgroup controller to an Elasticsearch node can be evaluated from the *Stack Monitoring* page in Kibana.
+If link:{p}-stack-monitoring.html[Stack Monitoring] is enabled, the pressure applied by the CPU cgroup controller to an Elasticsearch node can be evaluated from the *Stack Monitoring* page in Kibana.
 
 . On the *Stack Monitoring* page select the Elasticsearch node you want to monitor.
 . Select the *Advanced* tab.

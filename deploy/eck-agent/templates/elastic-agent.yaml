@@ -1,0 +1,18 @@
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ include "elasticagent.fullname" . }}
+  labels:
+    {{- include "elasticagent.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: enterprise
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "An Elastic Agent version is required" .Values.version }}
+  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
+  {{ fail "At least one of daemonSet or deployment is required" }}
+  {{- end }}
+  {{- toYaml .Values.spec | nindent 2 }}

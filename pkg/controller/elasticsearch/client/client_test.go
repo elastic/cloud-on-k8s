@@ -278,6 +278,16 @@ func TestAPIError_Error(t *testing.T) {
 				`StackTrace: RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
+			name: "JSON non-error response",
+			fields: fields{newAPIError(context.Background(), &http.Response{
+				StatusCode: 408,
+				Status:     "408 Request Timeout",
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.TimeoutSample)),
+			})},
+			want: "408 Request Timeout: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
+		},
+
+		{
 			name: "non-JSON error response",
 			fields: fields{newAPIError(context.Background(), &http.Response{
 				StatusCode: 500,

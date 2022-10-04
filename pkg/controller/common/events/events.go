@@ -6,8 +6,12 @@ package events
 
 // Event reasons for the Elastic stack controller
 const (
+	// EventReasonDeprecated describes events that were due to a deprecated resource being submitted by the user.
+	EventReasonDeprecated = "Deprecated"
 	// EventReasonDelayed describes events where a requested change was delayed e.g. to prevent data loss.
 	EventReasonDelayed = "Delayed"
+	// EventReasonInvalidLicense describes events where a user configured an invalid license for the operator.
+	EventReasonInvalidLicense = "InvalidLicense"
 	// EventReasonStalled describes events where a requested change is stalled and may not make progress without user
 	// intervention. There are transient states e.g. during a nodeSet rename where shards still do not have a place to
 	// move to until the new nodes come up and Elasticsearch will report a stalled shutdown. There are however also

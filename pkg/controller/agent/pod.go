@@ -11,6 +11,7 @@ import (
 	"hash"
 	"path"
 	"sort"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -58,10 +59,12 @@ const (
 	VersionLabelName = "agent.k8s.elastic.co/version"
 
 	// Below are the names of environment variables used to configure Elastic Agent to Fleet connection in Fleet mode.
-	FleetEnroll          = "FLEET_ENROLL"
-	FleetEnrollmentToken = "FLEET_ENROLLMENT_TOKEN"
-	FleetCA              = "FLEET_CA"
-	FleetURL             = "FLEET_URL"
+	FleetEnroll             = "FLEET_ENROLL"
+	FleetEnrollmentToken    = "FLEET_ENROLLMENT_TOKEN"
+	FleetCA                 = "FLEET_CA"
+	FleetURL                = "FLEET_URL"
+	FleetInsecure           = "FLEET_INSECURE"
+	FleetServerInsecureHTTP = "FLEET_SERVER_INSECURE_HTTP"
 
 	// Below are the names of environment variables used to configure Fleet Server and its connection to Elasticsearch
 	// in Fleet mode.
@@ -202,22 +205,25 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 		return nil, err
 	}
 
-	// ES, Kibana and FleetServer connection info are inject using environment variables
+	// ES, Kibana and FleetServer connection info are injected using environment variables
 	builder, err = applyEnvVars(params, fleetToken, builder)
 	if err != nil {
 		return nil, err
 	}
 
 	if params.Agent.Spec.FleetServerEnabled {
-		// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
-		builder = builder.WithVolumeLikes(
-			volume.NewSecretVolumeWithMountPath(
-				fleetCerts.Name,
-				FleetCertsVolumeName,
-				FleetCertsMountPath,
-			))
-
 		builder = builder.WithPorts([]corev1.ContainerPort{{Name: params.Agent.Spec.HTTP.Protocol(), ContainerPort: FleetServerPort, Protocol: corev1.ProtocolTCP}})
+
+		// Only add certificate volumes if TLS is enabled.
+		if params.Agent.Spec.HTTP.TLS.Enabled() {
+			// ECK creates CA and a certificate for Fleet Server to use. This volume contains those.
+			builder = builder.WithVolumeLikes(
+				volume.NewSecretVolumeWithMountPath(
+					fleetCerts.Name,
+					FleetCertsVolumeName,
+					FleetCertsMountPath,
+				))
+		}
 	}
 
 	builder = builder.
@@ -489,7 +495,9 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 		}
 
 		fleetCfg[FleetURL] = fleetURL
-		fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		if agent.Spec.HTTP.TLS.Enabled() {
+			fleetCfg[FleetCA] = path.Join(FleetCertsMountPath, certificates.CAFileName)
+		}
 		// Fleet Server needs a policy ID to bootstrap itself unless a policy marked as default is used.
 		if agent.Spec.KibanaRef.IsDefined() && !fleetToken.isEmpty() {
 			fleetCfg[FleetServerPolicyID] = fleetToken.PolicyID
@@ -506,7 +514,13 @@ func getFleetSetupFleetEnvVars(_ context.Context, agent agentv1alpha1.Agent, cli
 		if err != nil {
 			return nil, err
 		}
-		fleetCfg[FleetURL] = assocConf.GetURL()
+		fleetURL := assocConf.GetURL()
+		fleetCfg[FleetURL] = fleetURL
+
+		if !strings.HasPrefix(fleetURL, "https://") {
+			fleetCfg[FleetInsecure] = "true"
+		}
+
 		if assocConf.GetCACertProvided() {
 			fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
 		}
@@ -521,9 +535,14 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, agent agentv1alpha1.Ag
 	}
 
 	fleetServerCfg := map[string]string{
-		FleetServerEnable:  "true",
-		FleetServerCert:    path.Join(FleetCertsMountPath, certificates.CertFileName),
-		FleetServerCertKey: path.Join(FleetCertsMountPath, certificates.KeyFileName),
+		FleetServerEnable: "true",
+	}
+
+	if agent.Spec.HTTP.TLS.Enabled() {
+		fleetServerCfg[FleetServerCert] = path.Join(FleetCertsMountPath, certificates.CertFileName)
+		fleetServerCfg[FleetServerCertKey] = path.Join(FleetCertsMountPath, certificates.KeyFileName)
+	} else {
+		fleetServerCfg[FleetServerInsecureHTTP] = "true"
 	}
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()

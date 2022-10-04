@@ -9,15 +9,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/math"
 )
 
 // cpuFromMemory computes a CPU quantity within the specified allowed range by the user proportionally
 // to the amount of memory requested by the autoscaling API.
 // Invalid memory and CPU ranges with max less than min are rejected during pre-creation/update validation.
-func cpuFromMemory(requiredMemoryCapacity resource.Quantity, memoryRange, cpuRange esv1.QuantityRange) resource.Quantity {
+func cpuFromMemory(requiredMemoryCapacity resource.Quantity, memoryRange, cpuRange v1alpha1.QuantityRange) resource.Quantity {
 	allowedMemoryRange := memoryRange.Max.Value() - memoryRange.Min.Value()
 	if allowedMemoryRange == 0 {
 		// Can't scale CPU as min and max for memory are equal
@@ -50,7 +49,7 @@ func cpuFromMemory(requiredMemoryCapacity resource.Quantity, memoryRange, cpuRan
 // memoryFromStorage computes a memory quantity within the specified allowed range by the user proportionally
 // to the amount of storage requested by the autoscaling API.
 // Invalid storage and memory ranges with max less than min are rejected during pre-creation/update validation.
-func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, memoryRange esv1.QuantityRange) resource.Quantity {
+func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, memoryRange v1alpha1.QuantityRange) resource.Quantity {
 	allowedStorageRange := storageRange.Max.Value() - storageRange.Min.Value()
 	if allowedStorageRange == 0 {
 		// Can't scale memory as min and max for storage are equal
@@ -71,8 +70,8 @@ func memoryFromStorage(requiredStorageCapacity resource.Quantity, storageRange, 
 	requiredMemoryCapacity := memoryRange.Min.Value() + requiredAdditionalMemoryCapacity
 
 	// Round up memory to the next GiB
-	requiredMemoryCapacity = math.RoundUp(requiredMemoryCapacity, resources.GiB)
-	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/resources.GiB))
+	requiredMemoryCapacity = math.RoundUp(requiredMemoryCapacity, v1alpha1.GiB)
+	resourceMemoryAsGiga := resource.MustParse(fmt.Sprintf("%dGi", requiredMemoryCapacity/v1alpha1.GiB))
 
 	if resourceMemoryAsGiga.Cmp(memoryRange.Max) > 0 {
 		resourceMemoryAsGiga = memoryRange.Max.DeepCopy()

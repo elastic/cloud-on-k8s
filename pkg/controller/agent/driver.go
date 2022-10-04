@@ -108,7 +108,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 
 	configHash := fnv.New32a()
 	var fleetCerts *certificates.CertificatesSecret
-	if params.Agent.Spec.FleetServerEnabled {
+	if params.Agent.Spec.FleetServerEnabled && params.Agent.Spec.HTTP.TLS.Enabled() {
 		var caResults *reconciler.Results
 		fleetCerts, caResults = certificates.Reconciler{
 			K8sClient:             params.Client,

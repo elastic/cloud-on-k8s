@@ -10,14 +10,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 type AutoscalingClient interface {
 	// DeleteAutoscalingPolicies deletes all the autoscaling policies in a cluster.
 	DeleteAutoscalingPolicies(ctx context.Context) error
 	// CreateAutoscalingPolicy creates a new autoscaling policy.
-	CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy esv1.AutoscalingPolicy) error
+	CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy v1alpha1.AutoscalingPolicy) error
 	// GetAutoscalingCapacity returns the capacity for the autoscaling policies declared in a cluster.
 	GetAutoscalingCapacity(ctx context.Context) (AutoscalingCapacityResult, error)
 	// UpdateMLNodesSettings helps to manage machine learning settings required by the ML decider to work correctly.
@@ -36,7 +36,7 @@ type MachineLearningSettingsGroup struct {
 	UseAutoMachineMemoryPercent bool   `json:"xpack.ml.use_auto_machine_memory_percent"`
 }
 
-func (c *clientV7) CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy esv1.AutoscalingPolicy) error {
+func (c *clientV7) CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy v1alpha1.AutoscalingPolicy) error {
 	path := fmt.Sprintf("/_autoscaling/policy/%s", policyName)
 	return c.put(ctx, path, autoscalingPolicy, nil)
 }

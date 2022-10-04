@@ -92,6 +92,7 @@ func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType
 		License: commonlicense.LicenseSpec{
 			ExpiryDateInMillis: expiry.Unix() * 1000,
 			StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
+			Type:               "enterprise",
 			ClusterLicenses: []commonlicense.ElasticsearchLicense{
 				{
 					License: client.License{

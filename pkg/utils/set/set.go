@@ -65,3 +65,9 @@ func (set StringSet) AsSlice() sort.StringSlice {
 	}
 	return sl
 }
+
+func (set StringSet) AsSortedSlice() sort.StringSlice {
+	sl := set.AsSlice()
+	sl.Sort()
+	return sl
+}

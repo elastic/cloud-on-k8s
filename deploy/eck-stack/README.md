@@ -9,6 +9,8 @@ The following Elastic Stack resources are currently supported.
 
 - Elasticsearch
 - Kibana
+- Elastic Agent
+- Fleet Server
 - Beats
 
 Additional resources will be supported in future releases of this Helm Chart.
@@ -71,6 +73,8 @@ The following table lists the configurable parameters of the eck-stack chart and
 | --------- | ----------- | ------- |
 | `eck-elasticsearch.enabled` | If `true`, create an Elasticsearch resource (using the eck-elasticsearch Chart) | `true` |
 | `eck-kibana.enabled` | If `true`, create a Kibana resource (using the eck-kibana Chart) | `true` |
+| `eck-agent.enabled` | If `true`, create an Elastic Agent resource (using the eck-agent Chart) | `false` |
+| `eck-fleet-server.enabled` | If `true`, create a Fleet Server resource (using the eck-fleet-server Chart) | `false` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
 

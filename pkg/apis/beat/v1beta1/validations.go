@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
@@ -24,6 +25,7 @@ var (
 		checkSingleConfigSource,
 		checkSpec,
 		checkAssociations,
+		checkMonitoring,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -110,7 +112,14 @@ func checkSpec(b *Beat) field.ErrorList {
 }
 
 func checkAssociations(b *Beat) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), b.Spec.KibanaRef)
-	return append(err1, err2...)
+	err3 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), b.GetMonitoringMetricsRefs()...)
+	err4 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), b.GetMonitoringLogsRefs()...)
+	return append(err1, append(err2, append(err3, err4...)...)...)
+}
+
+func checkMonitoring(b *Beat) field.ErrorList {
+	return validations.Validate(b, b.Spec.Version)
 }

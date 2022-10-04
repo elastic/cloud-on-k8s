@@ -188,9 +188,9 @@ func TestExternalESStackMonitoring(t *testing.T) {
 					}
 
 					monitoringEsRef := []commonv1.ObjectSelector{{SecretName: extRefSecretName}}
-					es.Spec.Monitoring = esv1.Monitoring{
-						Metrics: esv1.MetricsMonitoring{ElasticsearchRefs: monitoringEsRef},
-						Logs:    esv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
+					es.Spec.Monitoring = commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: monitoringEsRef},
+						Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: monitoringEsRef},
 					}
 
 					return k.Client.Update(context.Background(), &es)

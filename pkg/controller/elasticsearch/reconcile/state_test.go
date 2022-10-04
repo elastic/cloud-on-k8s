@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -357,8 +358,8 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 		return corev1.Pod{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}
 	}
 	type want struct {
-		ver       string         // expected version to be set in the status
-		condition esv1.Condition // expected esv1.RunningDesiredVersion condition
+		ver       string                   // expected version to be set in the status
+		condition commonv1alpha1.Condition // expected esv1.RunningDesiredVersion condition
 	}
 	tests := []struct {
 		name           string
@@ -375,7 +376,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			},
 			want: want{
 				ver: "7.7.0",
-				condition: esv1.Condition{
+				condition: commonv1alpha1.Condition{
 					Type:    esv1.RunningDesiredVersion,
 					Status:  corev1.ConditionTrue,
 					Message: "All nodes are running version 7.7.0",
@@ -391,7 +392,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			},
 			want: want{
 				ver: "7.7.0",
-				condition: esv1.Condition{
+				condition: commonv1alpha1.Condition{
 					Type:    esv1.RunningDesiredVersion,
 					Status:  corev1.ConditionFalse,
 					Message: "Upgrading from 7.7.0 to 7.7.1",
@@ -407,7 +408,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			},
 			want: want{
 				ver: "7.7.0",
-				condition: esv1.Condition{
+				condition: commonv1alpha1.Condition{
 					Type:    esv1.RunningDesiredVersion,
 					Status:  corev1.ConditionFalse,
 					Message: "Upgrading from 7.7.0 to 7.7.1",
@@ -423,7 +424,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			},
 			want: want{
 				ver: "",
-				condition: esv1.Condition{
+				condition: commonv1alpha1.Condition{
 					Type:    esv1.RunningDesiredVersion,
 					Status:  corev1.ConditionUnknown,
 					Message: "No running version reported",
@@ -439,7 +440,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			},
 			want: want{
 				ver: "7.7.0",
-				condition: esv1.Condition{
+				condition: commonv1alpha1.Condition{
 					Type:    esv1.RunningDesiredVersion,
 					Status:  corev1.ConditionUnknown,
 					Message: "Error while parsing desired version: No Major.Minor.Patch elements found",
@@ -467,7 +468,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 	}
 }
 
-func conditionsEqual(c1, c2 esv1.Condition) bool {
+func conditionsEqual(c1, c2 commonv1alpha1.Condition) bool {
 	return c1.Message == c2.Message &&
 		c1.Type == c2.Type &&
 		c1.Status == c2.Status

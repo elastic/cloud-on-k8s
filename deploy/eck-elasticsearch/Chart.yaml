@@ -1,7 +1,7 @@
 apiVersion: v2
 name: eck-elasticsearch
 description: A Helm chart to deploy Elasticsearch managed by the ECK Operator.
-kubeVersion: ">= 1.20.0-0"
+kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.1.1
 sources:

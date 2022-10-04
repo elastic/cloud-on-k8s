@@ -205,19 +205,25 @@ func (b Builder) WithGlobalCA(v bool) Builder {
 // WithAPMIntegration adds configuration that makes Kibana install APM integration on start up. Starting with 8.0.0,
 // index templates for APM Server are not installed by APM Server, but during APM integration installation in Kibana.
 func (b Builder) WithAPMIntegration() Builder {
-	if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+	v := version.MustParse(b.Kibana.Spec.Version)
+	if v.LT(version.MinFor(8, 0, 0)) {
 		// configuring APM integration is not necessary below 8.0.0, no-op
 		return b
 	}
 
-	return b.WithConfig(map[string]interface{}{
+	config := map[string]interface{}{
 		"xpack.fleet.packages": []map[string]interface{}{
 			{
 				"name":    "apm",
 				"version": "latest",
 			},
 		},
-	})
+	}
+	// use the snapshot integration package registry on pre-release version tests
+	if len(v.Pre) > 0 {
+		config["xpack.fleet.registryUrl"] = "https://epr-snapshot.elastic.co"
+	}
+	return b.WithConfig(config)
 }
 
 func (b Builder) WithConfig(config map[string]interface{}) Builder {

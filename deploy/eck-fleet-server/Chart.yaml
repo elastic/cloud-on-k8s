@@ -1,0 +1,11 @@
+apiVersion: v2
+name: eck-fleet-server
+description: A Helm chart to deploy Elastic Fleet Server as an Agent managed by the ECK Operator.
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.1.0
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+  - https://github.com/elastic/elastic-agent
+  - https://github.com/elastic/fleet-server
+  - https://www.elastic.co/guide/en/fleet/current/fleet-overview.html

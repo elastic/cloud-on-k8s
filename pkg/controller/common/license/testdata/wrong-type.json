@@ -1,0 +1,13 @@
+{
+  "license": {
+    "uid": "57E312E2-6EA0-49D0-8E65-AA5017742ACF",
+    "type": "platinum",
+    "issue_date_in_millis": 1548115200000,
+    "expiry_date_in_millis": 1561247999999,
+    "max_nodes": 100,
+    "issued_to": "test org",
+    "issuer": "test issuer",
+    "signature": "test signature platinum",
+    "start_date_in_millis": 1548115200000
+  }
+}

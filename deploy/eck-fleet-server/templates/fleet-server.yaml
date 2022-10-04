@@ -1,0 +1,23 @@
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: {{ include "fleet-server.fullname" . }}
+  labels:
+    {{- include "fleet-server.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: enterprise
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "A Fleet Server version is required" .Values.version }}
+  mode: fleet
+  fleetServerEnabled: true
+  {{- if (hasKey .Values.spec "mode") }}
+  {{- fail "spec.mode cannot be changed" }}
+  {{- end }}
+  {{- if (hasKey .Values.spec "fleetServerEnabled") }}
+  {{- fail "spec.fleetServerEnabled cannot be changed" }}
+  {{- end }}
+  {{- toYaml .Values.spec | nindent 2 }}

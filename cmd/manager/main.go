@@ -57,6 +57,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling"
+	esavalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -824,6 +825,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
+		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},
 	}
 
 	for _, c := range assocControllers {
@@ -935,8 +937,9 @@ func setupWebhook(
 		}
 	}
 
-	// esv1 validating webhook is wired up differently, in order to access the k8s client
+	// Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
+	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

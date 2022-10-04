@@ -24,4 +24,23 @@ const (
     }
 }
 `
+	TimeoutSample = `
+{
+  "cluster_name" : "testcluster",
+  "status" : "yellow",
+  "timed_out" : true,
+  "number_of_nodes" : 1,
+  "number_of_data_nodes" : 1,
+  "active_primary_shards" : 1,
+  "active_shards" : 1,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 1,
+  "delayed_unassigned_shards": 0,
+  "number_of_pending_tasks" : 1,
+  "number_of_in_flight_fetch": 0,
+  "task_max_waiting_in_queue_millis": 0,
+  "active_shards_percent_as_number": 50.0
+}
+`
 )

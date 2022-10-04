@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -132,8 +133,16 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 			if latestDesiredNodes.HistoryID != string(es.UID) {
 				return fmt.Errorf("expected desired nodes history ID %s, but got %s from the API", string(es.UID), latestDesiredNodes.HistoryID)
 			}
-			if es.Generation != latestDesiredNodes.Version {
-				return fmt.Errorf("expected desired nodes version %d, but got %d from the API", es.Generation, latestDesiredNodes.Version)
+			orchestrationsHints, err := hints.NewFrom(es)
+			if err != nil {
+				return err
+			}
+			if orchestrationsHints.DesiredNodes == nil {
+				return fmt.Errorf("expected desired nodes version to be persisted in orchestration hints but was nil")
+			}
+			versionFromHint := orchestrationsHints.DesiredNodes.Version
+			if versionFromHint != latestDesiredNodes.Version {
+				return fmt.Errorf("expected desired nodes version %d, but got %d from the API", versionFromHint, latestDesiredNodes.Version)
 			}
 			return nil
 		}),

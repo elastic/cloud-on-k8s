@@ -1,0 +1,145 @@
+suite: test elastic agent cluster role
+templates:
+  - templates/cluster-role.yaml
+tests:
+  - it: should render cluster role in fleet agents example properly
+    values:
+      - ../../examples/fleet-agents.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: elastic-agent
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[0].resources
+          value:
+          - pods
+          - nodes
+          - namespaces
+          - events
+          - services
+          - configmaps
+      - equal:
+          path: rules[0].verbs
+          value:
+          - get
+          - watch
+          - list
+      - equal:
+          path: rules[1].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[1].resources
+          value:
+          - leases
+      - equal:
+          path: rules[1].verbs
+          value:
+          - get
+          - create
+          - update
+  - it: should render cluster role in default values properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: elastic-agent
+      - equal:
+          path: rules[2].nonResourceURLs
+          value:
+          - "/metrics"
+      - equal:
+          path: rules[2].verbs
+          value:
+          - get
+      - equal:
+          path: rules[3].apiGroups[0]
+          value: "extensions"
+      - equal:
+          path: rules[3].resources
+          value:
+          - replicasets
+      - equal:
+          path: rules[3].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[4].apiGroups[0]
+          value: apps
+      - equal:
+          path: rules[4].resources
+          value:
+          - statefulsets
+          - deployments
+          - replicasets
+      - equal:
+          path: rules[4].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[5].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[5].resources
+          value:
+          - nodes/stats
+      - equal:
+          path: rules[5].verbs
+          value:
+          - get
+      - equal:
+          path: rules[6].apiGroups[0]
+          value: batch
+      - equal:
+          path: rules[6].resources
+          value:
+          - jobs
+      - equal:
+          path: rules[6].verbs
+          value:
+          - get
+          - list
+          - watch
+  - it: should render custom labels and annotations properly.
+    set:
+      labels:
+        test: label
+      annotations:
+        test: annotation
+      clusterRole:
+        annotations:
+          clusterRole: annotation
+        labels:
+          clusterRole: label
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-agent
+            clusterRole: label
+            helm.sh/chart: eck-agent-0.1.0
+            test: label
+      - equal:
+          path: metadata.annotations
+          value:
+            clusterRole: annotation
+            test: annotation

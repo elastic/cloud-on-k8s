@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.9.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: kibanas.kibana.k8s.elastic.co
 spec:
@@ -562,7 +562,7 @@ spec:
                 properties:
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
-                      will receive log data from this Kibana.
+                      receive log data from an associated resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of
@@ -609,7 +609,7 @@ spec:
                     type: object
                   metrics:
                     description: Metrics holds references to Elasticsearch clusters
-                      which will receive monitoring data from this Kibana.
+                      which receive monitoring data from this resource.
                     properties:
                       elasticsearchRefs:
                         description: ElasticsearchRefs is a reference to a list of

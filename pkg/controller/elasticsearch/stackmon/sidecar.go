@@ -53,12 +53,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	filebeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
-
-	return filebeat, nil
+	return stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers

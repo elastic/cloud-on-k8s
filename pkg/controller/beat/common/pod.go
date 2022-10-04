@@ -10,11 +10,16 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	beat_stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -118,6 +123,7 @@ func buildPodTemplate(
 	volumes := make([]corev1.Volume, 0, len(vols))
 	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
 	var initContainers []corev1.Container
+	var sideCars []corev1.Container
 
 	for _, v := range vols {
 		volumes = append(volumes, v.Volume())
@@ -128,6 +134,58 @@ func buildPodTemplate(
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
 		volumes = append(volumes, keystoreResources.Volume)
 		initContainers = append(initContainers, keystoreResources.InitContainer)
+	}
+
+	if monitoring.IsLogsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "logs-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		// Add shared volume for logs consumption.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "filebeat-logs",
+			ReadOnly:  false,
+			MountPath: "/usr/share/filebeat/logs",
+		})
+		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
+		sideCars = append(sideCars, sideCar.Container)
+	}
+
+	if monitoring.IsMetricsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "metrics-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		// Add shared volume for Unix socket between containers.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "shared-data",
+			ReadOnly:  false,
+			MountPath: "/var/shared",
+		})
+		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
+		sideCars = append(sideCars, sideCar.Container)
 	}
 
 	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
@@ -142,13 +200,54 @@ func buildPodTemplate(
 		WithAnnotations(annotations).
 		WithResources(defaultResources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults()
+		WithInitContainerDefaults().
+		WithContainers(sideCars...)
 
-	return builder.PodTemplate, nil
+	// If logs monitoring is enabled, remove the "-e" argument from the main container
+	// if it exists, and do not include the "-e" startup option for the Beat so that
+	// it does not log only to stderr, and writes log file for filebeat to consume.
+	if monitoring.IsLogsDefined(&params.Beat) {
+		if main := builder.MainContainer(); main != nil {
+			removeLogToStderrOption(main)
+		}
+		builder = builder.WithArgs("-c", ConfigMountPath)
+		return builder.PodTemplate, nil
+	}
+
+	return builder.WithArgs("-e", "-c", ConfigMountPath).PodTemplate, nil
+}
+
+func removeLogToStderrOption(container *corev1.Container) {
+	for i, arg := range container.Args {
+		if arg == "-e" {
+			container.Args = append(container.Args[:i], container.Args[i+1:]...)
+		}
+	}
+}
+
+func runningAsRoot(beat beatv1beta1.Beat) bool {
+	if beat.Spec.DaemonSet != nil {
+		for _, container := range beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	if beat.Spec.Deployment != nil {
+		for _, container := range beat.Spec.Deployment.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func createDataVolume(dp DriverParams) volume.VolumeLike {

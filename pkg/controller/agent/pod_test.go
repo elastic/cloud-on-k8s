@@ -165,6 +165,86 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				return ps
 			}),
 		},
+		{
+			name: "running elastic agent, with fleet server, without es/kb association and without TLS",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "default",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+				},
+				Client: k8s.NewFakeClient(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent-agent-http",
+						Namespace: "default",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name: "http",
+								Port: 8220,
+							},
+						},
+					},
+				}),
+			},
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = nil
+
+				ps.Containers[0].VolumeMounts = nil
+
+				ps.Containers[0].Ports = []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 8220,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				}
+
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{
+						Name:  "FLEET_SERVER_ENABLE",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_SERVER_INSECURE_HTTP",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_URL",
+						Value: "http://agent-agent-http.default.svc:8220",
+					},
+					{
+						Name:  "CONFIG_PATH",
+						Value: "/usr/share/elastic-agent",
+					},
+				}
+
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+
+				return ps
+			}),
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fleetCerts := &certificates.CertificatesSecret{
@@ -212,7 +292,7 @@ func Test_applyEnvVars(t *testing.T) {
 		URL:            "kb-url",
 	})
 	agent.GetAssociations()[1].SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "fs-url",
+		URL:            "https://fs-url",
 		CACertProvided: true,
 	})
 
@@ -265,7 +345,7 @@ func Test_applyEnvVars(t *testing.T) {
 						Key:                  "FLEET_ENROLLMENT_TOKEN",
 						Optional:             &f,
 					}}},
-					{Name: "FLEET_URL", Value: "fs-url"},
+					{Name: "FLEET_URL", Value: "https://fs-url"},
 				},
 			},
 			wantSecretData: map[string][]byte{
@@ -287,7 +367,7 @@ func Test_applyEnvVars(t *testing.T) {
 					{Name: "FLEET_ENROLLMENT_TOKEN", Value: "custom"},
 					{Name: "FLEET_CA", Value: "/mnt/elastic-internal/fleetserver-association/default/fs/certs/ca.crt"},
 					{Name: "FLEET_ENROLL", Value: "true"},
-					{Name: "FLEET_URL", Value: "fs-url"},
+					{Name: "FLEET_URL", Value: "https://fs-url"},
 				},
 			},
 			wantSecretData: nil,
@@ -843,8 +923,28 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assoc.SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "url",
+		URL:            "https://fleet-server",
 		CACertProvided: true,
+	})
+
+	assocNoTLS := &agentv1alpha1.AgentFleetServerAssociation{
+		Agent: &agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "agent",
+				Namespace: "ns",
+			},
+			Spec: agentv1alpha1.AgentSpec{
+				FleetServerRef: commonv1.ObjectSelector{
+					Name:      "fleet-server",
+					Namespace: "ns",
+				},
+			},
+		},
+	}
+
+	assocNoTLS.SetAssociationConf(&commonv1.AssociationConf{
+		URL:            "http://fleet-server",
+		CACertProvided: false,
 	})
 
 	assocWithKibanaRef := &agentv1alpha1.AgentFleetServerAssociation{
@@ -867,7 +967,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	}
 
 	assocWithKibanaRef.SetAssociationConf(&commonv1.AssociationConf{
-		URL:            "url",
+		URL:            "https://fleet-server",
 		CACertProvided: true,
 	})
 
@@ -953,7 +1053,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 			wantErr: false,
 			wantEnvVars: map[string]string{
 				"FLEET_CA":  "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
-				"FLEET_URL": "url",
+				"FLEET_URL": "https://fleet-server",
 			},
 			client: k8s.NewFakeClient(),
 		},
@@ -964,7 +1064,17 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 			wantEnvVars: map[string]string{
 				"FLEET_ENROLL": "true",
 				"FLEET_CA":     "/mnt/elastic-internal/fleetserver-association/ns/fleet-server/certs/ca.crt",
-				"FLEET_URL":    "url",
+				"FLEET_URL":    "https://fleet-server",
+			},
+			client: k8s.NewFakeClient(),
+		},
+		{
+			name:    "fleet server not enabled, fleet server ref no tls, no kibana ref",
+			agent:   *assocNoTLS.Agent,
+			wantErr: false,
+			wantEnvVars: map[string]string{
+				"FLEET_INSECURE": "true",
+				"FLEET_URL":      "http://fleet-server",
 			},
 			client: k8s.NewFakeClient(),
 		},

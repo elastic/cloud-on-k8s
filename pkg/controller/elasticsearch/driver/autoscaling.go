@@ -8,7 +8,9 @@ import (
 	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/autoscaling"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
@@ -16,22 +18,31 @@ import (
 // when autoscaling is enabled. This is to avoid situations where resources have been manually
 // deleted or replaced by an external event. The Elasticsearch controller should then wait for
 // the Elasticsearch autoscaling controller to update again the resources in the NodeSets.
-func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
-	if !es.IsAutoscalingDefined() {
+func (d *defaultDriver) autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
+	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, d.Client, es, d.Recorder())
+	if err != nil {
+		return false, err
+	}
+	if autoscalingResource == nil {
+		// Cluster is not managed by an autoscaler.
 		return true, nil
 	}
-	log := ulog.FromContext(ctx)
-	autoscalingSpec, err := es.GetAutoscalingSpecification()
-	if err != nil {
-		return false, err
-	}
-	autoscalingStatus, err := status.From(es)
-	if err != nil {
-		return false, err
-	}
 
+	log := ulog.FromContext(ctx)
+	autoscalingSpecs, err := autoscalingResource.GetAutoscalingPolicySpecs()
+	if err != nil {
+		return false, err
+	}
+	autoscalingStatus, err := autoscalingResource.GetElasticsearchAutoscalerStatus()
+	if err != nil {
+		return false, err
+	}
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return false, err
+	}
 	for _, nodeSet := range es.Spec.NodeSets {
-		nodeSetAutoscalingSpec, err := autoscalingSpec.GetAutoscalingSpecFor(nodeSet)
+		nodeSetAutoscalingSpec, err := nodeSet.GetAutoscalingSpecFor(v, autoscalingSpecs)
 		if err != nil {
 			return false, err
 		}
@@ -48,7 +59,7 @@ func autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool
 			)
 			return false, nil
 		}
-		inSync, err := expectedNodeSetsResources.Match(esv1.ElasticsearchContainerName, nodeSet)
+		inSync, err := resources.Match(expectedNodeSetsResources, esv1.ElasticsearchContainerName, nodeSet)
 		if err != nil {
 			return false, err
 		}

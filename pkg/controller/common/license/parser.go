@@ -6,6 +6,7 @@ package license
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 )
@@ -21,6 +22,9 @@ func ParseEnterpriseLicense(raw map[string][]byte) (EnterpriseLicense, error) {
 	err = json.Unmarshal(bytes, &license)
 	if err != nil {
 		return license, errors.Wrapf(err, "license cannot be unmarshalled")
+	}
+	if !license.IsValidType() {
+		return license, fmt.Errorf("[%s] license [%s] is not an enterprise license. Only orchestration licenses of type enterprise or enterprise_trial are supported", license.License.Type, license.License.UID)
 	}
 
 	return license, nil

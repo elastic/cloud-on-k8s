@@ -1,0 +1,112 @@
+---
+# Default values for eck-fleet-server.
+# This is a YAML-formatted file.
+
+# Overridable names of the Fleet Server resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-fleet-server'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Fleet Server resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Elastic Fleet Server.
+#
+version: 8.2.3
+
+# Labels that will be applied to Elastic Fleet Server.
+#
+labels: {}
+
+# Annotations that will be applied to Elastic Fleet Server.
+#
+annotations: {}
+
+spec:
+  # Referenced resources are below and both elasticsearchRefs and kibanaRef are required for a functional Fleet Server.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
+  #
+  # Reference to ECK-managed Kibana resource.
+  #
+  kibanaRef:
+    name: quickstart
+    # Optional namespace reference to Kibana resource.
+    # If not specified, then the namespace of the Fleet Server resource
+    # will be assumed.
+    #
+    # namespace: default
+
+  # References to ECK-managed Elasticsearch resource.
+  # This is required for fleet server.
+  #
+  elasticsearchRefs:
+  - name: quickstart
+    # Optional namespace reference to Elasticsearch resource.
+    # If not specified, then the namespace of the Fleet Server resource
+    # will be assumed.
+    #
+    # namespace: default
+  
+  # Daemonset, or Deployment specification for the type of Fleet Server specified.
+  # At least one is required of [daemonSet, deployment].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
+  #
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: fleet-server
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+
+# ServiceAccount to be used by Elastic Fleet Server. Some Fleet Server features (such as autodiscover or Kubernetes module metricsets)
+# require that Fleet Server Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+serviceAccount:
+  name: fleet-server
+  # namespace: optional-namespace
+
+# ClusterRoleBinding to be used by Elastic Fleet Server. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRoleBinding:
+  name: fleet-server
+  subjects:
+  - kind: ServiceAccount
+    name: fleet-server
+    # namespace: default
+  roleRef:
+    kind: ClusterRole
+    name: fleet-server
+    apiGroup: rbac.authorization.k8s.io
+
+# ClusterRole to be used by Elastic Fleet Server. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRole:
+  name: fleet-server
+  rules:
+  - apiGroups: [""]
+    resources:
+    - pods
+    - namespaces
+    - nodes
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+    - leases
+    verbs:
+    - get
+    - create
+    - update

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
@@ -246,7 +247,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			if isManagedByHelm(es.Labels) {
 				stats.HelmManagedResourceCount++
 			}
-			if es.IsAutoscalingDefined() {
+			if es.IsAutoscalingAnnotationSet() {
 				stats.AutoscaledResourceCount++
 			}
 			if es.HasDownwardNodeLabels() {
@@ -267,6 +268,15 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
 		}
 	}
+
+	var esaList esav1alpha1.ElasticsearchAutoscalerList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &esaList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+		stats.AutoscaledResourceCount += int32(len(esaList.Items))
+	}
+
 	return "elasticsearches", stats, nil
 }
 

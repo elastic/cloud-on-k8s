@@ -1,0 +1,165 @@
+---
+# Default values for eck-agent.
+# This is a YAML-formatted file.
+
+# Overridable names of the Elastic Agent resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-agent'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Fleet Agent resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Elastic Agent.
+#
+version: 8.2.3
+
+# Labels that will be applied to Elastic Agent.
+#
+labels: {}
+
+# Annotations that will be applied to Elastic Agent.
+#
+annotations: {}
+
+spec:
+  # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
+  #
+  # Reference to ECK-managed Kibana instance.
+  #
+  # kibanaRef:
+  #   name: quickstart
+    # Optional namespace reference to Kibana instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
+    #
+    # namespace: default
+
+  # Reference to ECK-managed Elasticsearch instance.
+  #
+  elasticsearchRefs:
+  - name: elasticsearch
+    # Optional namespace reference to Elasticsearch instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
+    #
+    # namespace: default
+  
+  # Reference to ECK-managed Fleet Server instance.
+  #
+  # fleetServerRef:
+  #   name: fleet-server
+    # Optional namespace reference to Fleet Server instance.
+    # If not specified, then the namespace of the Agent instance
+    # will be assumed.
+    #
+    # namespace: default
+
+  # Daemonset, or Deployment specification for Agent.
+  # At least one is required of [daemonSet, deployment].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-chose-the-deployment-model
+  #
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+
+  # Configuration of Agent, specifically used in Agent standalone mode.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent.html
+  #
+  config: null
+
+# ServiceAccount to be used by Elastic Agent. Some Elastic Agent features, such as the Kubernetes integration,
+# require that Agent Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+serviceAccount:
+  name: elastic-agent
+  # { .Release.Namespace } is used here by default, but can be specified.
+  # namespace: optional-namespace
+
+# ClusterRoleBinding to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRoleBinding:
+  name: elastic-agent
+  subjects:
+  - kind: ServiceAccount
+    name: elastic-agent
+    # { .Release.Namespace } is used here by default, but can be specified.
+    # namespace: default
+  roleRef:
+    kind: ClusterRole
+    name: elastic-agent
+    apiGroup: rbac.authorization.k8s.io
+
+# ClusterRole to be used by Elastic Agent. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-role-based-access-control
+#
+clusterRole:
+  name: elastic-agent
+  rules:
+  - apiGroups: [""]
+    resources:
+    - pods
+    - nodes
+    - namespaces
+    - events
+    - services
+    - configmaps
+    verbs:
+    - get
+    - watch
+    - list
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+    - leases
+    verbs:
+    - get
+    - create
+    - update
+  - nonResourceURLs:
+    - "/metrics"
+    verbs:
+    - get
+  - apiGroups: ["extensions"]
+    resources:
+      - replicasets
+    verbs: 
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - "apps"
+    resources:
+    - statefulsets
+    - deployments
+    - replicasets
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/stats
+    verbs:
+    - get
+  - apiGroups:
+    - "batch"
+    resources:
+    - jobs
+    verbs:
+    - "get"
+    - "list"
+    - "watch"
