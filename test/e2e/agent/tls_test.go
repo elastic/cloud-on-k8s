@@ -15,29 +15,31 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
-func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
-	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
+// TestFleetAgentWithoutTLS tests a Fleet Server, and Elastic Agent with TLS disabled for the HTTP layer.
+func TestFleetAgentWithoutTLS(t *testing.T) {
+	version := test.Ctx().ElasticStackVersion
 
-	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
-
-	name := "test-agent-upgrade"
+	name := "test-fleet-agent-notls"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithVersion(srcVersion).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithVersion(version).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithTLSDisabled(true)
 
 	kbBuilder := kibana.NewBuilder(name).
-		WithVersion(srcVersion).
+		WithVersion(version).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1)
+		WithNodeCount(1).
+		WithTLSDisabled(true)
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
 		WithRoles(agent.AgentFleetModeRoleName).
-		WithVersion(srcVersion).
+		WithVersion(version).
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithKibanaRef(kbBuilder.Ref()).
+		WithTLSDisabled(true).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
@@ -45,11 +47,11 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), false))
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
-		WithVersion(srcVersion).
+		WithVersion(version).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
@@ -57,14 +59,6 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
 
-	test.RunMutations(
-		t,
-		[]test.Builder{esBuilder, kbBuilder, fleetServerBuilder, agentBuilder},
-		[]test.Builder{
-			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
-			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),
-			fleetServerBuilder.WithVersion(dstVersion),
-			agentBuilder.WithVersion(dstVersion).WithMutatedFrom(&agentBuilder),
-		},
-	)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).
+		RunSequential(t)
 }

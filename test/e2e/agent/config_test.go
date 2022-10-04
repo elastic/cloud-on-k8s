@@ -159,7 +159,7 @@ func TestFleetMode(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
@@ -173,9 +173,13 @@ func TestFleetMode(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
 }
 
-func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
+func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector, tlsEnabled bool) map[string]interface{} {
 	t.Helper()
 	kibanaConfig := map[string]interface{}{}
+	scheme := "https"
+	if !tlsEnabled {
+		scheme = "http"
+	}
 
 	v, err := version.Parse(agentVersion)
 	if err != nil {
@@ -190,7 +194,8 @@ func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSele
 	}
 	kibanaConfig["xpack.fleet.agents.elasticsearch.hosts"] = []string{
 		fmt.Sprintf(
-			"https://%s-es-http.%s.svc:9200",
+			"%s://%s-es-http.%s.svc:9200",
+			scheme,
 			esRef.Name,
 			esRef.Namespace,
 		),
@@ -198,7 +203,8 @@ func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSele
 
 	kibanaConfig["xpack.fleet.agents.fleet_server.hosts"] = []string{
 		fmt.Sprintf(
-			"https://%s-agent-http.%s.svc:8220",
+			"%s://%s-agent-http.%s.svc:8220",
+			scheme,
 			fsRef.Name,
 			fsRef.Namespace,
 		),
