@@ -18,6 +18,17 @@ KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
+# Allow FIPS compliance by means of BoringCrypto build tag.
+ENABLE_FIPS ?= false
+
+# From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
+#
+# Experiments are exposed to the build in the following ways:
+# - Build tag goexperiment.x is set if experiment x (lower case) is enabled.
+ifeq ($(ENABLE_FIPS),true)
+	GO_TAGS += goexperiment.boringcrypto
+endif
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
@@ -127,7 +138,7 @@ generate-notice-file:
 generate-image-dependencies:
 	@hack/licence-detector/generate-image-deps.sh
 
-elastic-operator: generate
+elastic-operator:
 	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 clean:
