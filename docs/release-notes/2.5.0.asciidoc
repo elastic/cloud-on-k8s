@@ -25,6 +25,7 @@
 * Elasticsearch: always set discovery.seed_hosts to empty array {pull}5950[#5950] (issue: {issue}5834[#5834])
 * [Autoscaling] Add CPU recommender {pull}5924[#5924] (issue: {issue}5823[#5823])
 * ECK resources Helm chart - Elastic Agent & Elastic Fleet Server Agent {pull}5889[#5889] (issue: {issue}5505[#5505])
+* Log correlation for operator APM traces {pull}5883[#5883]
 
 [[bug-2.5.0]]
 [float]
