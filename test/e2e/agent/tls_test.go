@@ -9,6 +9,7 @@ package agent
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -17,28 +18,32 @@ import (
 
 // TestFleetAgentWithoutTLS tests a Fleet Server, and Elastic Agent with TLS disabled for the HTTP layer.
 func TestFleetAgentWithoutTLS(t *testing.T) {
-	version := test.Ctx().ElasticStackVersion
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	name := "test-fleet-agent-notls"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithVersion(version).
+		WithVersion(v.String()).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithTLSDisabled(true).
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithTLSDisabled(true)
+
+	// API keys are not automatically enabled in versions < 8.0.0 when TLS is disabled.
+	if v.LT(version.MustParse("8.0.0")) {
+		esBuilder = esBuilder.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"xpack.security.authc.api_key.enabled": "true",
 			},
 		})
+	}
 
 	kbBuilder := kibana.NewBuilder(name).
-		WithVersion(version).
+		WithVersion(v.String()).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
 		WithTLSDisabled(true)
 
 	fleetServerBuilder := agent.NewBuilder(name + "-fs").
 		WithRoles(agent.AgentFleetModeRoleName).
-		WithVersion(version).
+		WithVersion(v.String()).
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
@@ -56,7 +61,7 @@ func TestFleetAgentWithoutTLS(t *testing.T) {
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
-		WithVersion(version).
+		WithVersion(v.String()).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
