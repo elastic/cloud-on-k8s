@@ -23,7 +23,12 @@ func TestFleetAgentWithoutTLS(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(version).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithTLSDisabled(true)
+		WithTLSDisabled(true).
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": {
+				"xpack.security.authc.api_key.enabled": "true",
+			},
+		})
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithVersion(version).
