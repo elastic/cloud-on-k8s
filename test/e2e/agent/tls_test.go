@@ -20,14 +20,20 @@ import (
 func TestFleetAgentWithoutTLS(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
+	// Disabling TLS for fleet isn't supported before 7.16, as Elasticsearch doesn't allow
+	// api keys to be enabled when TLS is disabled.
+	if v.LT(version.MustParse("7.16.0")) {
+		t.SkipNow()
+	}
+
 	name := "test-fleet-agent-notls"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(v.String()).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithTLSDisabled(true)
 
-	// API keys are not automatically enabled in versions < 8.0.0 when TLS is disabled.
-	if v.LT(version.MustParse("8.0.0")) {
+	// API keys are not automatically enabled in versions >= 7.16.0 and < 8.0.0 when TLS is disabled.
+	if v.LT(version.MustParse("8.0.0")) && v.GTE(version.MustParse("7.16.0")) {
 		esBuilder = esBuilder.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"xpack.security.authc.api_key.enabled": "true",
