@@ -21,14 +21,6 @@ LOG_VERBOSITY ?= 1
 # Allow FIPS compliance by means of BoringCrypto build tag.
 ENABLE_FIPS ?= false
 
-# From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
-#
-# Experiments are exposed to the build in the following ways:
-# - Build tag goexperiment.x is set if experiment x (lower case) is enabled.
-ifeq ($(ENABLE_FIPS),true)
-	GO_TAGS += goexperiment.boringcrypto
-endif
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
@@ -61,6 +53,20 @@ OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
 OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8:$(IMG_VERSION)
 OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
 OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION)
+
+# From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
+#
+# Experiments are exposed to the build in the following ways:
+# - Build tag goexperiment.x is set if experiment x (lower case) is enabled.
+#
+# Also, if fips is enabled, push fips versions of all builds to container registrys.
+ifeq ($(ENABLE_FIPS),true)
+	GO_TAGS += goexperiment.boringcrypto
+	OPERATOR_IMAGE               ?= $(BASE_IMG)-fips:$(IMG_VERSION)
+	OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)	
+endif
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
