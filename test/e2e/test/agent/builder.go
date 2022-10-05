@@ -356,6 +356,7 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 		b.Agent.Spec.HTTP.TLS.SelfSignedCertificate = b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
 	b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	b.Agent.Spec.HTTP.TLS.Certificate.SecretName = ""
 	return b
 }
 
