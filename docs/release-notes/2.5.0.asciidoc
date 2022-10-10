@@ -12,7 +12,7 @@
 
 * Autoscaling Elasticsearch: Introduce a dedicated custom resource {pull}5978[#5978] (issue: {issue}5997[#5997])
 * ECK resources Helm chart - Elastic Agent & Elastic Fleet Server Agent {pull}5889[#5889] (issue: {issue}5505[#5505])
-* Enable beats stack monitoring configuration {pull}5878[#5878] (issue: {issue}5563[#5563])
+* Enable Beats stack monitoring configuration {pull}5878[#5878] (issue: {issue}5563[#5563])
 
 [[enhancement-2.5.0]]
 [float]
