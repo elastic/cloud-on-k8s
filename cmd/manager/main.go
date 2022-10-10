@@ -84,6 +84,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/v2/pkg/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -231,6 +232,14 @@ func Command() *cobra.Command {
 		operator.ExposedNodeLabels,
 		[]string{},
 		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods, empty by default",
+	)
+	cmd.Flags().Int(
+		operator.PasswordHashCacheSize,
+		0,
+		fmt.Sprintf(
+			"Sets the size of the password hash cache. Default size is inferred from %s. Caching is disabled if explicitly set to 0 or any negative value",
+			operator.MaxConcurrentReconcilesFlag,
+		),
 	)
 	cmd.Flags().String(
 		operator.IPFamilyFlag,
@@ -586,6 +595,17 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// default hash cache is arbitrarily set to 5 x MaxConcurrentReconcilesFlag
+	hashCacheSize := viper.GetInt(operator.MaxConcurrentReconcilesFlag) * 5
+	if viper.IsSet(operator.PasswordHashCacheSize) {
+		hashCacheSize = viper.GetInt(operator.PasswordHashCacheSize)
+	}
+	passwordHasher, err := cryptutil.NewPasswordHasher(hashCacheSize)
+	if err != nil {
+		log.Error(err, "failed to create hash cache")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -602,6 +622,7 @@ func startOperator(ctx context.Context) error {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
+		PasswordHasher:            passwordHasher,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),

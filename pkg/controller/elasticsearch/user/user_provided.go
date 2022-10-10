@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -40,7 +41,15 @@ func UserProvidedRolesWatchName(es types.NamespacedName) string { //nolint:reviv
 
 // reconcileUserProvidedFileRealm returns the aggregate file realm from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
-func reconcileUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existing filerealm.Realm, watched watches.DynamicWatches, recorder record.EventRecorder) (filerealm.Realm, error) {
+func reconcileUserProvidedFileRealm(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	existing filerealm.Realm,
+	watched watches.DynamicWatches,
+	recorder record.EventRecorder,
+	passwordHasher cryptutil.PasswordHasher,
+) (filerealm.Realm, error) {
 	esKey := k8s.ExtractNamespacedName(&es)
 	secretNames := make([]string, 0, len(es.Spec.Auth.FileRealm))
 	for _, secretRef := range es.Spec.Auth.FileRealm {
@@ -57,7 +66,7 @@ func reconcileUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.E
 	); err != nil {
 		return filerealm.Realm{}, err
 	}
-	return retrieveUserProvidedFileRealm(ctx, c, es, existing, recorder)
+	return retrieveUserProvidedFileRealm(ctx, c, es, existing, recorder, passwordHasher)
 }
 
 // reconcileUserProvidedRoles returns aggregate roles from the referenced sources in the es spec.
@@ -123,7 +132,14 @@ func retrieveUserProvidedRoles(
 }
 
 // retrieveUserProvidedFileRealm builds a Realm from aggregated user-provided secrets specified in the es spec.
-func retrieveUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existing filerealm.Realm, recorder record.EventRecorder) (filerealm.Realm, error) {
+func retrieveUserProvidedFileRealm(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	existing filerealm.Realm,
+	recorder record.EventRecorder,
+	passwordHasher cryptutil.PasswordHasher,
+) (filerealm.Realm, error) {
 	log := ulog.FromContext(ctx)
 	aggregated := filerealm.New()
 	for _, fileRealmSource := range es.Spec.Auth.FileRealm {
@@ -142,7 +158,7 @@ func retrieveUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.El
 		var err error
 		switch k8s.GetSecretEntriesCount(secret, basicAuthSecretKeys...) {
 		case 2:
-			realm, err = realmFromBasicAuthSecret(secret, existing)
+			realm, err = realmFromBasicAuthSecret(secret, existing, passwordHasher)
 		case 1:
 			// At least one of the expected keys for basic auth was present. This could be a user mistake let's create
 			// an event and log it.
@@ -160,7 +176,7 @@ func retrieveUserProvidedFileRealm(ctx context.Context, c k8s.Client, es esv1.El
 	return aggregated, nil
 }
 
-func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (filerealm.Realm, error) {
+func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm, passwordHasher cryptutil.PasswordHasher) (filerealm.Realm, error) {
 	realm := filerealm.New()
 	nsn := k8s.ExtractNamespacedName(&secret)
 	// errors on GetSecretEntry for username/password are really programmer errors here as we check the key presence
@@ -188,7 +204,8 @@ func realmFromBasicAuthSecret(secret corev1.Secret, existing filerealm.Realm) (f
 		return realm, err
 	}
 
-	passwordHash, err := reuseOrGenerateHash(user, existing)
+	existingHash := existing.PasswordHashForUser(user.Name)
+	passwordHash, err := passwordHasher.ReuseOrGenerateHash(user.Password, existingHash)
 	if err != nil {
 		return filerealm.Realm{}, err
 	}

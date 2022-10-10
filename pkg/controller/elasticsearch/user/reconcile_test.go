@@ -16,12 +16,23 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
+var testPasswordHasher cryptutil.PasswordHasher
+
+func init() {
+	passwordHasher, err := cryptutil.NewPasswordHasher(0)
+	if err != nil {
+		panic(err)
+	}
+	testPasswordHasher = passwordHasher
+}
+
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -74,7 +85,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 
 func Test_aggregateFileRealm(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-	fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()

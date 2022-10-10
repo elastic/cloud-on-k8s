@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	esvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
@@ -28,6 +29,8 @@ type Parameters struct {
 	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
+	// PasswordHasher is the password hash generator used by the operator.
+	PasswordHasher cryptutil.PasswordHasher
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
 	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.
