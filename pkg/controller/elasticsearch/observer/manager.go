@@ -44,8 +44,13 @@ func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 
 // ObservedStateResolver returns a function that returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client) func() esv1.ElasticsearchHealth {
-	observer := m.Observe(ctx, cluster, esClient)
+func (m *Manager) ObservedStateResolver(
+	ctx context.Context,
+	cluster esv1.Elasticsearch,
+	esClient client.Client,
+	doFirstObservation bool,
+) func() esv1.ElasticsearchHealth {
+	observer := m.Observe(ctx, cluster, esClient, doFirstObservation)
 	return func() esv1.ElasticsearchHealth {
 		return observer.LastHealth()
 	}
@@ -61,7 +66,7 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client) *Observer {
+func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, doFirstObservation bool) *Observer {
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(ctx, cluster)
 
@@ -69,9 +74,9 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 
 	switch {
 	case !exists:
-		return m.createOrReplaceObserver(nsName, settings, esClient)
+		return m.createOrReplaceObserver(nsName, settings, esClient, doFirstObservation)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		return m.createOrReplaceObserver(nsName, settings, esClient)
+		return m.createOrReplaceObserver(nsName, settings, esClient, doFirstObservation)
 	case exists && settings.ObservationInterval <= 0:
 		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
 		return m.getAndObserveSynchronously(nsName)
@@ -90,7 +95,7 @@ func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elas
 }
 
 // createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
-func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings Settings, esClient client.Client, doFirstObservation bool) *Observer {
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
@@ -102,7 +107,7 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 	}
 
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
-	observer.Start()
+	observer.Start(doFirstObservation)
 
 	m.observers[cluster] = observer
 

@@ -71,9 +71,11 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 // Start starts the Observer in a separate goroutine after a first synchronous observation.
 // The first observation is synchronous to allow to retrieve the cluster state immediately after the start.
 // Then, observations are performed periodically in a separate goroutine until the observer stop channel is closed.
-func (o *Observer) Start() {
-	// initial synchronous observation
-	o.observe()
+func (o *Observer) Start(doFirstObservation bool) {
+	if doFirstObservation {
+		// initial synchronous observation
+		o.observe()
+	}
 	if o.settings.ObservationInterval <= 0 {
 		return // asynchronous observations are effectively disabled
 	}
