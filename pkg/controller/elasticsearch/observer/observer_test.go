@@ -41,7 +41,7 @@ func fakeEsClient200(user client.BasicAuth) client.Client {
 func createAndRunTestObserver(onObs OnObservation) *Observer {
 	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{ObservationInterval: 1 * time.Microsecond}, onObs)
-	obs.Start(true)
+	obs.Start(context.Background(), true)
 	return obs
 }
 
@@ -55,9 +55,9 @@ func TestObserver_observe(t *testing.T) {
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
 	}
-	observer.observe()
+	observer.observe(context.Background())
 	require.Equal(t, int32(1), atomic.LoadInt32(&counter))
-	observer.observe()
+	observer.observe(context.Background())
 	require.Equal(t, int32(2), atomic.LoadInt32(&counter))
 }
 
@@ -69,7 +69,7 @@ func TestObserver_observe_nilFunction(t *testing.T) {
 		onObservation: nilFunc,
 	}
 	// should not panic
-	observer.observe()
+	observer.observe(context.Background())
 }
 
 func TestNewObserver(t *testing.T) {
@@ -97,7 +97,7 @@ func TestObserver_Stop(t *testing.T) {
 	}
 	observer := createAndRunTestObserver(onObservation)
 	// force at least one observation
-	observer.observe()
+	observer.observe(context.Background())
 	// stop the observer
 	observer.Stop()
 	// should be safe to call multiple times

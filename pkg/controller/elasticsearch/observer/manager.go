@@ -74,12 +74,12 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 
 	switch {
 	case !exists:
-		return m.createOrReplaceObserver(nsName, settings, esClient, doFirstObservation)
+		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, doFirstObservation)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		return m.createOrReplaceObserver(nsName, settings, esClient, doFirstObservation)
+		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, doFirstObservation)
 	case exists && settings.ObservationInterval <= 0:
 		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
-		return m.getAndObserveSynchronously(nsName)
+		return m.getAndObserveSynchronously(ctx, nsName)
 	default:
 		esClient.Close()
 		return observer
@@ -95,7 +95,7 @@ func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elas
 }
 
 // createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
-func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings Settings, esClient client.Client, doFirstObservation bool) *Observer {
+func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.NamespacedName, settings Settings, esClient client.Client, doFirstObservation bool) *Observer {
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
@@ -107,7 +107,7 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 	}
 
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
-	observer.Start(doFirstObservation)
+	observer.Start(ctx, doFirstObservation)
 
 	m.observers[cluster] = observer
 
@@ -115,14 +115,14 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 }
 
 // getAndObserveSynchronously retrieves the currently configured observer and trigger a synchronous observation.
-func (m *Manager) getAndObserveSynchronously(cluster types.NamespacedName) *Observer {
+func (m *Manager) getAndObserveSynchronously(ctx context.Context, cluster types.NamespacedName) *Observer {
 	m.observerLock.RLock()
 	defer m.observerLock.RUnlock()
 
 	// invariant: this method must only be called when existence of observer is given
 	observer := m.observers[cluster]
 	// force a synchronous observation
-	observer.observe()
+	observer.observe(ctx)
 	return observer
 }
 

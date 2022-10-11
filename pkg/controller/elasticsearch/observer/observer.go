@@ -71,10 +71,10 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 // Start starts the Observer in a separate goroutine after a first synchronous observation.
 // The first observation is synchronous to allow to retrieve the cluster state immediately after the start.
 // Then, observations are performed periodically in a separate goroutine until the observer stop channel is closed.
-func (o *Observer) Start(doFirstObservation bool) {
+func (o *Observer) Start(ctx context.Context, doFirstObservation bool) {
 	if doFirstObservation {
 		// initial synchronous observation
-		o.observe()
+		o.observe(ctx)
 	}
 	if o.settings.ObservationInterval <= 0 {
 		return // asynchronous observations are effectively disabled
@@ -87,7 +87,7 @@ func (o *Observer) Start(doFirstObservation bool) {
 		for {
 			select {
 			case <-ticker.C:
-				o.observe()
+				o.observe(context.Background())
 			case <-o.stopChan:
 				log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
 				return
@@ -113,11 +113,12 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 
 // observe retrieves the current ES state, executes onObservation,
 // and stores the new state
-func (o *Observer) observe() {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), nonNegativeTimeout(o.settings.ObservationInterval))
+func (o *Observer) observe(ctx context.Context) {
+	defer tracing.Span(&ctx)()
+	ctx, cancelFunc := context.WithTimeout(ctx, nonNegativeTimeout(o.settings.ObservationInterval))
 	defer cancelFunc()
 
-	if o.settings.Tracer != nil {
+	if o.settings.Tracer != nil && apm.TransactionFromContext(ctx) == nil {
 		tx := o.settings.Tracer.StartTransaction(name, string(tracing.PeriodicTxType))
 		defer tx.End()
 		ctx = apm.ContextWithTransaction(ctx, tx)
@@ -130,10 +131,13 @@ func (o *Observer) observe() {
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastHealth(), newHealth)
 	}
+	o.updateHealth(ctx, newHealth)
+}
 
+func (o *Observer) updateHealth(ctx context.Context, newHealth esv1.ElasticsearchHealth) {
 	o.mutex.Lock()
+	defer o.mutex.Unlock()
 	o.lastHealth = newHealth
-	o.mutex.Unlock()
 }
 
 func nonNegativeTimeout(observationInterval time.Duration) time.Duration {
