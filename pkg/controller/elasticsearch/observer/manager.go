@@ -14,6 +14,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -67,6 +68,7 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
 func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, isServiceReady bool) *Observer {
+	defer tracing.Span(&ctx)()
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(ctx, cluster)
 
@@ -75,10 +77,10 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 	switch {
 	case !exists:
 		// This Elasticsearch resource has not being observed yet, create the observer and maybe do a first observation.
-		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, isServiceReady)
+		observer = m.createOrReplaceObserver(ctx, nsName, settings, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		// This Elasticsearch resource is already being observed, no need to do a first observation.
-		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, false)
+		// This Elasticsearch resource is already being observed asynchronously, no need to do a first observation.
+		observer = m.createOrReplaceObserver(ctx, nsName, settings, esClient)
 	case exists && settings.ObservationInterval <= 0:
 		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
 		return m.getAndObserveSynchronously(ctx, nsName)
@@ -87,6 +89,14 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 		esClient.Close()
 		return observer
 	}
+
+	if !exists && isServiceReady {
+		// there was no existing observer and Service is ready: let's try an initial synchronous observation
+		observer.observe(ctx)
+	}
+	// start the new observer
+	observer.Start()
+	return observer
 }
 
 // extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
@@ -98,7 +108,8 @@ func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elas
 }
 
 // createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
-func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.NamespacedName, settings Settings, esClient client.Client, doFirstObservation bool) *Observer {
+// The new observer is not started, it is up to the caller to invoke observer.Start(ctx)
+func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
@@ -108,12 +119,8 @@ func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.Nam
 		observer.Stop()
 		delete(m.observers, cluster)
 	}
-
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
-	observer.Start(ctx, doFirstObservation)
-
 	m.observers[cluster] = observer
-
 	return observer
 }
 
