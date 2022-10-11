@@ -48,9 +48,9 @@ func (m *Manager) ObservedStateResolver(
 	ctx context.Context,
 	cluster esv1.Elasticsearch,
 	esClient client.Client,
-	doFirstObservation bool,
+	isServiceReady bool,
 ) func() esv1.ElasticsearchHealth {
-	observer := m.Observe(ctx, cluster, esClient, doFirstObservation)
+	observer := m.Observe(ctx, cluster, esClient, isServiceReady)
 	return func() esv1.ElasticsearchHealth {
 		return observer.LastHealth()
 	}
@@ -66,7 +66,7 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, doFirstObservation bool) *Observer {
+func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, isServiceReady bool) *Observer {
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(ctx, cluster)
 
@@ -74,13 +74,16 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 
 	switch {
 	case !exists:
-		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, doFirstObservation)
+		// This Elasticsearch resource has not being observed yet, create the observer and maybe do a first observation.
+		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, isServiceReady)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, doFirstObservation)
+		// This Elasticsearch resource is already being observed, no need to do a first observation.
+		return m.createOrReplaceObserver(ctx, nsName, settings, esClient, false)
 	case exists && settings.ObservationInterval <= 0:
 		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
 		return m.getAndObserveSynchronously(ctx, nsName)
 	default:
+		// No change, close the provided Client and return the existing observer.
 		esClient.Close()
 		return observer
 	}

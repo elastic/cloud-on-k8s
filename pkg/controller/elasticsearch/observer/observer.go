@@ -131,10 +131,10 @@ func (o *Observer) observe(ctx context.Context) {
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastHealth(), newHealth)
 	}
-	o.updateHealth(ctx, newHealth)
+	o.updateHealth(newHealth)
 }
 
-func (o *Observer) updateHealth(ctx context.Context, newHealth esv1.ElasticsearchHealth) {
+func (o *Observer) updateHealth(newHealth esv1.ElasticsearchHealth) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 	o.lastHealth = newHealth
