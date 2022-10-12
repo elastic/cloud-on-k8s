@@ -40,7 +40,7 @@
 [float]
 === Documentation improvements
 
-* Adding License files for Helm Charts and Updating Chart README {pull}6008[#6008] (issue: {issue}6005[#6005])
+* Add License files for Helm Charts and Updating Chart README {pull}6008[#6008] (issue: {issue}6005[#6005])
 * Rewrite snapshot documentation and add CSP specific setups {pull}5969[#5969] (issues: {issue}5230[#5230], {issue}5652[#5652])
 * Restructure secure settings docs and minor additions {pull}5965[#5965] (issue: {issue}5425[#5425])
 * Update documentation to clarify ES node.processors section. {pull}5941[#5941] (issue: {issue}5940[#5940])
