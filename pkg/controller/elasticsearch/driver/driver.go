@@ -154,7 +154,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
 
-	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder(), d.OperatorParameters.PasswordHasher)
 	if err != nil {
 		return results.WithError(err)
 	}

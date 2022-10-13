@@ -158,7 +158,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
-			gotFileRealm, err := reconcileUserProvidedFileRealm(context.Background(), c, tt.es, filerealm.New(), tt.watched, recorder)
+			gotFileRealm, err := reconcileUserProvidedFileRealm(context.Background(), c, tt.es, filerealm.New(), tt.watched, recorder, testPasswordHasher)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantFileRealm, gotFileRealm)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
@@ -363,7 +363,7 @@ func Test_realmFromBasicAuthSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := realmFromBasicAuthSecret(tt.args.secret, tt.args.existing)
+			got, err := realmFromBasicAuthSecret(tt.args.secret, tt.args.existing, testPasswordHasher)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("realmFromBasicAuthSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return

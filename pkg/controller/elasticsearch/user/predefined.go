@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -36,7 +36,14 @@ const (
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
-func reconcileElasticUser(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existingFileRealm, userProvidedFileRealm filerealm.Realm) (users, error) {
+func reconcileElasticUser(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	existingFileRealm,
+	userProvidedFileRealm filerealm.Realm,
+	passwordHasher cryptutil.PasswordHasher,
+) (users, error) {
 	secretName := esv1.ElasticUserSecret(es.Name)
 	// if user has set up the elastic user via the file realm do not create the operator managed secret to avoid confusion
 	if userProvidedFileRealm.PasswordHashForUser(ElasticUserName) != nil {
@@ -58,11 +65,18 @@ func reconcileElasticUser(ctx context.Context, c k8s.Client, es esv1.Elasticsear
 		// Don't set an ownerRef for the elastic user secret, likely to be copied into different namespaces.
 		// See https://github.com/elastic/cloud-on-k8s/issues/3986.
 		false,
+		passwordHasher,
 	)
 }
 
 // reconcileInternalUsers reconciles a single secret holding the internal users passwords.
-func reconcileInternalUsers(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileInternalUsers(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	existingFileRealm filerealm.Realm,
+	passwordHasher cryptutil.PasswordHasher,
+) (users, error) {
 	return reconcilePredefinedUsers(
 		ctx,
 		c,
@@ -75,6 +89,7 @@ func reconcileInternalUsers(ctx context.Context, c k8s.Client, es esv1.Elasticse
 		},
 		esv1.InternalUsersSecret(es.Name),
 		true,
+		passwordHasher,
 	)
 }
 
@@ -88,6 +103,7 @@ func reconcilePredefinedUsers(
 	users users,
 	secretName string,
 	setOwnerRef bool,
+	passwordHasher cryptutil.PasswordHasher,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
@@ -97,7 +113,7 @@ func reconcilePredefinedUsers(
 	if err != nil {
 		return nil, err
 	}
-	users, err = reuseOrGenerateHashes(users, existingFileRealm)
+	users, err = reuseOrGenerateHashes(users, existingFileRealm, passwordHasher)
 	if err != nil {
 		return nil, err
 	}
@@ -152,24 +168,16 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 }
 
 // reuseOrGenerateHashes updates the users with existing hashes from the given file realm, or generates new ones.
-func reuseOrGenerateHashes(users users, fileRealm filerealm.Realm) (users, error) {
+func reuseOrGenerateHashes(users users, fileRealm filerealm.Realm, passwordHasher cryptutil.PasswordHasher) (users, error) {
 	for i, u := range users {
-		hash, err := reuseOrGenerateHash(u, fileRealm)
+		existingHash := fileRealm.PasswordHashForUser(u.Name)
+		hash, err := passwordHasher.ReuseOrGenerateHash(u.Password, existingHash)
 		if err != nil {
 			return nil, err
 		}
 		users[i].PasswordHash = hash
 	}
 	return users, nil
-}
-
-// reuseOrGenerateHash updates the user with an existing hash from the given file realm, or generates a new one.
-func reuseOrGenerateHash(u user, fileRealm filerealm.Realm) ([]byte, error) {
-	existingHash := fileRealm.PasswordHashForUser(u.Name)
-	if bcrypt.CompareHashAndPassword(existingHash, u.Password) == nil {
-		return existingHash, nil
-	}
-	return bcrypt.GenerateFromPassword(u.Password, bcrypt.DefaultCost)
 }
 
 func GetMonitoringUserPassword(c k8s.Client, nsn types.NamespacedName) (string, error) {
