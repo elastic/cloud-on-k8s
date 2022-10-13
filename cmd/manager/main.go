@@ -180,6 +180,11 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
+		operator.ContainerSuffixFlag,
+		"",
+		fmt.Sprintf("Suffix to be appended to container images by default. Cannot be combined with %s", operator.UBIOnlyFlag),
+	)
+	cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
@@ -284,7 +289,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
-		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
+		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Cannot be combined with %s", operator.ContainerSuffixFlag),
 	)
 	cmd.Flags().Bool(
 		operator.ValidateStorageClassFlag,
@@ -459,6 +464,17 @@ func startOperator(ctx context.Context) error {
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
+
+	// allow users to specify a container suffix unless --ubi-only mode is active
+	suffix := viper.GetString(operator.ContainerSuffixFlag)
+	if len(suffix) > 0 {
+		if viper.IsSet(operator.UBIOnlyFlag) {
+			err := fmt.Errorf("must not combine %s and %s flags", operator.UBIOnlyFlag, operator.ContainerSuffixFlag)
+			log.Error(err, "Illegal flag combination")
+			return err
+		}
+		container.SetContainerSuffix(suffix)
+	}
 
 	// enforce UBI stack images if requested
 	ubiOnly := viper.GetBool(operator.UBIOnlyFlag)

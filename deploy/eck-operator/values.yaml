@@ -151,6 +151,9 @@ config:
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
 
+  # containerSuffix suffix to be appended to container images by default. Cannot be combined with -ubiOnly flag
+  # containerSuffix: ""
+
   # maxConcurrentReconciles is the number of concurrent reconciliation operations to perform per controller.
   maxConcurrentReconciles: "3"
 
