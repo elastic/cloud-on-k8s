@@ -237,7 +237,7 @@ func Command() *cobra.Command {
 		operator.PasswordHashCacheSize,
 		0,
 		fmt.Sprintf(
-			"Sets the size of the password hash cache. Default size is inferred from %s. Caching is disabled if explicitly set to 0 or any negative value",
+			"Sets the size of the password hash cache. Default size is inferred from %s. Caching is disabled if explicitly set to 0 or any negative value.",
 			operator.MaxConcurrentReconcilesFlag,
 		),
 	)
