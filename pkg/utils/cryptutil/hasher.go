@@ -60,7 +60,7 @@ func (h *lruHashCache) ReuseOrGenerateHash(password, existingHash []byte) ([]byt
 		}
 	}
 
-	// No existing hash or exiting hash is not valid
+	// No existing hash or existing hash is not valid
 	hash, err := h.generateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
