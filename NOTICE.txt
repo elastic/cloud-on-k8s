@@ -3878,11 +3878,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.3.7
-Time    : 2021-08-10T18:28:16Z
+Version : v0.3.8
+Time    : 2022-10-11T16:58:47Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.3.7/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.3.8/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
