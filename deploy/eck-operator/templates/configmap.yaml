@@ -11,6 +11,7 @@ data:
     log-verbosity: {{ int .Values.config.logVerbosity }}
     metrics-port: {{ int .Values.config.metricsPort }}
     container-registry: {{ .Values.config.containerRegistry }}
+    container-suffix: {{ .Values.config.containerSuffix }}
     max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
     ca-cert-validity: {{ .Values.config.caValidity }}
     ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
