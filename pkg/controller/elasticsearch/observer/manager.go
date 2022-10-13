@@ -110,6 +110,7 @@ func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elas
 // createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
 // The new observer is not started, it is up to the caller to invoke observer.Start(ctx)
 func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+	defer tracing.Span(&ctx)()
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
@@ -126,6 +127,7 @@ func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.Nam
 
 // getAndObserveSynchronously retrieves the currently configured observer and trigger a synchronous observation.
 func (m *Manager) getAndObserveSynchronously(ctx context.Context, cluster types.NamespacedName) *Observer {
+	defer tracing.Span(&ctx)()
 	m.observerLock.RLock()
 	defer m.observerLock.RUnlock()
 
