@@ -14,11 +14,11 @@ For upgrades of Elastic Stack applications like Elasticsearch or Kibana, check <
 [float]
 [id="{p}-ga-upgrade"]
 == Before you upgrade to ECK {eck_version}
-The upgrade process results in an update to all the existing managed resources. This potentially triggers a rolling restart of all Elasticsearch and Kibana pods. This <<{p}-beta-to-ga-rolling-restart, list>> details the affected target versions that will cause a rolling restart. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Furthermore, <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
+The upgrade process results in an update to all the existing managed resources. This potentially triggers a rolling restart of all Elasticsearch and Kibana pods. This <<{p}-beta-to-ga-rolling-restart, list>> details the affected target versions that will cause a rolling restart. If you have a large Elasticsearch cluster or multiple Elastic Stack deployments, the rolling restart could cause a performance degradation. When you plan to upgrade ECK for production workloads, take into consideration the time required to upgrade the ECK operator plus the time required to roll all managed workloads and Elasticsearch clusters. Check for more information on how to <<{p}-beta-to-ga-rolling-restart, control the rolling restarts during the upgrade>>.
 
 Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to make sure that the release does not contain any breaking changes that could affect you. The <<release-highlights-{eck_version},release highlights document>> provides more details and possible workarounds for any breaking changes or known issues in each release.
 
-Note that the release notes and highlights only list the changes since the last release. If you are skipping over any intermediate versions during the upgrade -- such as going directly from 1.0.0 to {eck_version} -- review the release notes and highlights of each of the skipped releases to fully understand all the breaking changes you might encounter during and after the upgrade.
+Note that the release notes and highlights only list the changes since the last release. If during the upgrade you skip any intermediate versions and go for example from 1.0.0 directly to {eck_version}, review the release notes and highlights of each of the skipped releases to understand all the breaking changes you might encounter during and after the upgrade.
 
 [float]
 [id="{p}-upgrade-instructions"]
@@ -70,7 +70,7 @@ If you are using ECK through an OLM-managed distribution channel like link:https
 [float]
 === Upgrading from ECK 1.9 or earlier
 
-Operator Lifecycle Manager (OLM) and OpenShift OperatorHub users that run with automatic upgrades enabled, are advised to set the `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before upgrading to ECK 2.0 or later. If not set ECK can fail to link:https://github.com/elastic/cloud-on-k8s/issues/5061[auto-detect] the correct security context configuration and Elasticsearch Pods may not be allowed to run.
+Operator Lifecycle Manager (OLM) and OpenShift OperatorHub users that run with automatic upgrades enabled, are advised to set the `set-default-security-context` link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[operator flag] explicitly before upgrading to ECK 2.0 or later. If not set, ECK can fail to link:https://github.com/elastic/cloud-on-k8s/issues/5061[auto-detect] the correct security context configuration and Elasticsearch Pods may not be allowed to run.
 
 [float]
 === Upgrading from ECK 2.0 or later
