@@ -533,7 +533,7 @@ To establish trust, the Pod needs to update the CA store through a call to `upda
 Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
 
 === Fleet Server initialization fails on minikube when CNI is disabled
-When deployed with ECK, the Fleet Server pod makes an http call to itself during fleet initialization using its service endpoint. Since a link:https://github.com/kubernetes/minikube/issues/1568[pod cannot reach itself through its service on minikube] when CNI is disabled, the call hangs until the connection times out and the pod goes into a crash loop.
+When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during Fleet initialization using its Service. Since a link:https://github.com/kubernetes/minikube/issues/1568[Pod cannot reach itself through its Service on minikube] when CNI is disabled, the call hangs until the connection times out and the Pod enters a crash loop.
 
 Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 
