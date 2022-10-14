@@ -1660,11 +1660,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.8.0
-Time    : 2022-09-20T14:11:29Z
+Version : v1.8.1
+Time    : 2022-10-12T17:59:34Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.8.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.8.1/LICENSE:
 
 Mozilla Public License, version 2.0
 
