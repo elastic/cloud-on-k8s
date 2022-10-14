@@ -9,7 +9,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Running in air-gapped environments
 
-The ECK operator can be run in an air-gapped environment without access to the open internet when configured accordingly.
+The ECK operator can be run in an air-gapped environment without access to the open internet when it is configured not to pull container images from `docker.elastic.co`.
 
 By default ECK does not require you to specify the container image for each Elastic Stack application you deploy.
 [source,yaml,subs="attributes,+macros,callouts"]
