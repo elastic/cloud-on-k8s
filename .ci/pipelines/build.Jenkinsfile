@@ -38,6 +38,7 @@ pipeline {
                     steps {
                         sh '.ci/setenvconfig build'
                         sh 'make -C .ci license.key TARGET=ci-release ci'
+                        sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci ENABLE_FIPS=true'
                     }
                 }
                 stage('Upload YAML manifest to S3') {
