@@ -200,6 +200,7 @@ func (k *KindDriver) cmd(args ...string) *exec.Command {
 		"Args":            args,
 	}
 	// We need the docker socket so that kind can bootstrap
+	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	cmd := exec.NewCommand(`docker run --rm \
 		--userns=host \
 		-v {{.SharedVolume}}:/home \

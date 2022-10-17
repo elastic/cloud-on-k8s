@@ -362,7 +362,7 @@ CFG
 ######################################
 
 ocpVersion=$2
-clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocp_version})-$BUILD_NUMBER"
+clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
 
 write_env <<ENV
 VAULT_ROOT_PATH=$VAULT_ROOT_PATH
@@ -387,7 +387,7 @@ write_deployer_config <<CFG
 id: ocp-ci
 overrides:
   clusterName: ${clusterName}
-  clientVersion: ${ocp_version}
+  clientVersion: ${ocpVersion}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID

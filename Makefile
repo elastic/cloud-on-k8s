@@ -168,6 +168,7 @@ manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:
+	# --external-sources because .buildkite/scripts/common/get-test-artifacts.sh source .env
 	shellcheck --external-sources $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 upgrade-test: docker-build docker-push

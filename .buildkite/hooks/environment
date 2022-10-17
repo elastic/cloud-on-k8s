@@ -1,9 +1,0 @@
-#!/bin/bash
-set -eu
-
-if [[ "${OVERRIDE_BUILDKITE_REPO:-}" != "" ]]; then
-
-	echo "--- :house_with_garden: Setting up BUILDKITE_REPO to $OVERRIDE_BUILDKITE_REPO"
-	export BUILDKITE_REPO=$OVERRIDE_BUILDKITE_REPO
-
-fi

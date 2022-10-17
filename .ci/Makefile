@@ -45,6 +45,7 @@ ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
 ci-internal: ci-build-image
+	# --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
 	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
