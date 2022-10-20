@@ -51,7 +51,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.1.0 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.1 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.23.0 | MIT
-| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20220411220226-7b82a4e95df4 | BSD-3-Clause
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.1.0 | BSD-3-Clause
 | link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.4.0 | BSD-3-Clause
 | link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.4.0 | Apache-2.0
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.1 | MIT
@@ -185,11 +185,11 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.6.0 | MIT
 | link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20200224162631-6cc2880d07d6 | BSD-3-Clause
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0-dev.0.20220419223038-86c51ed26bb4 | BSD-3-Clause
-| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20220722155237-a158d28d115b | BSD-3-Clause
+| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.1.0 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20220718184931-c8730f7fcb92 | BSD-3-Clause
 | link:https://golang.org/x/sync[$$golang.org/x/sync$$] | v0.0.0-20220722155255-886fb9371eb4 | BSD-3-Clause
-| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20220722155257-8c9f86f7a55f | BSD-3-Clause
-| link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.0.0-20210927222741-03fcf44c2211 | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.1.0 | BSD-3-Clause
+| link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.1.0 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20220609170525-579cf78fd858 | BSD-3-Clause
 | link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.1.12 | BSD-3-Clause
 | link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.2.0 | Apache-2.0
