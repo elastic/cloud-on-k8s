@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/net v0.0.0-20190311183353-d8887717615a
+	golang.org/x/net v0.1.0
 	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be
 )
 
