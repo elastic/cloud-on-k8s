@@ -24,3 +24,8 @@ An additional field `observedGeneration` is now maintained within Elasticsearch 
 ==== Allowing upgrade predicates to be selectively disabled
 
 Starting with ECK 2.1, the Elasticsearch clusters can have certain upgrade 'predicates' (rules) disabled on a case-by-case basis using annotations on the Elasticsearch custom resource, which allow full control over what rules are considered during the Elasticsearch upgrade process. Selectively disabling the predicates is extremely risky, and carries a high chance of either data loss, or causing a cluster to become completely unavailable. This feature is therefore intended exclusively as a troubleshooting mechanism of last resort. Check the link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-orchestration.html#k8s-advanced-upgrade-control[documentation] for more details.
+
+[float]
+[id="{p}-210-known-issues"]
+=== Known issues
+- Under certain circumstances the operator will keep restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.
