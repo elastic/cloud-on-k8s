@@ -55,6 +55,7 @@ PRE_STOP_MAX_WAIT_SECONDS=${PRE_STOP_MAX_WAIT_SECONDS:=300}
 PRE_STOP_ADDITIONAL_WAIT_SECONDS=${PRE_STOP_ADDITIONAL_WAIT_SECONDS:=50}
 START_TIME=$(date +%s)
 while true; do
+   ELAPSED_TIME=$(($(date +%s) - $START_TIME))
 
    if [ $ELAPSED_TIME -gt $PRE_STOP_MAX_WAIT_SECONDS ]; then
       echo "timed out waiting for Pod IP removal from service"
