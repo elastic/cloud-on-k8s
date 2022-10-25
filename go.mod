@@ -27,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tsenart/vegeta/v12 v12.8.4
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.1.0
 	go.elastic.co/apm/module/apmhttp/v2 v2.1.0
