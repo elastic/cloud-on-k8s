@@ -29,3 +29,4 @@ When orchestrating Elasticsearch version 7.15.2 or later ECK will use the new li
 === Known issues
 
 - When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 its Pods will enter a `CrashLoopBackoff`. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.
