@@ -173,7 +173,10 @@ func expectedVolumeClaims(es esv1.Elasticsearch, oldEsName string) map[types.Nam
 					claim = claimTemplate
 				}
 			}
-			claim.Name = claimName(es, oldEsName, nodeSet.Name, i)
+			claim.Name = fmt.Sprintf(
+				"%s-%s",
+				volume.ElasticsearchDataVolumeName,
+				sset.PodName(esv1.StatefulSet(es.Name, nodeSet.Name), i))
 			claim.Namespace = es.Namespace
 			if claim.Namespace == "" {
 				claim.Namespace = "default"
@@ -189,19 +192,6 @@ func expectedVolumeClaims(es esv1.Elasticsearch, oldEsName string) map[types.Nam
 		}
 	}
 	return claims
-}
-
-// claimName generates the name of the expected volume claim given an Elasticsearch cluster, a nodeSet name
-// an ordinal, and potentially an old Elasticsearch cluster name.
-func claimName(es esv1.Elasticsearch, oldEsName string, nodeSetName string, ordinal int32) string {
-	esName := es.Name
-	if oldEsName != "" {
-		esName = oldEsName
-	}
-	return fmt.Sprintf(
-		"%s-%s",
-		volume.ElasticsearchDataVolumeName,
-		sset.PodName(esv1.StatefulSet(esName, nodeSetName), ordinal))
 }
 
 // findReleasedPVs returns the list of Released PersistentVolumes.
@@ -233,22 +223,34 @@ func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedNam
 		if pv.Spec.ClaimRef == nil {
 			continue
 		}
-		// The following regex defines the expected persistent volume claim name format
-		// The regex patters for both EsName, and NodeSetName groups are directly from apimachinery validation:
-		// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/validation/validation.go#L178
-		r := regexp.MustCompile(`^elasticsearch-data-(?P<EsName>[a-z0-9]([-a-z0-9]*[a-z0-9])+)-es-(?P<NodeSetName>[a-z0-9]([-a-z0-9]*[a-z0-9])+)-(?P<Ordinal>[0-9]+)$`)
-		regexMatches := r.FindStringSubmatch(pv.Spec.ClaimRef.Name)
-		// 4 matches are expected here, as the first match is the full string, and the next are EsName, NodeSetName, and Ordinal.
-		if len(regexMatches) != 4 {
-			continue
+		expectedClaimName := pv.Spec.ClaimRef.Name
+		// if you're building a newly named cluster, from a previous cluster's PVs, we'll
+		// need to extract the nodeSetName, and ordinal from the PV's claimref.Name,
+		// and replace the expected claim name to be the newly generated cluster's name.
+		if oldEsName != "" {
+			// The following regex defines the expected persistent volume claim name format
+			// The regex patters for both EsName, and NodeSetName groups are directly from apimachinery validation:
+			// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/validation/validation.go#L178
+			r := regexp.MustCompile(`^elasticsearch-data-([a-z0-9]([-a-z0-9]*[a-z0-9])?)-es-([a-z0-9]([-a-z0-9]*[a-z0-9])?)-([0-9])+$`)
+			regexMatches := r.FindStringSubmatch(pv.Spec.ClaimRef.Name)
+			// 6 matches are expected here, as the first match is the full string, and the next are EsName+internal match, NodeSetName+internal match, and Ordinal.
+			if len(regexMatches) != 6 {
+				fmt.Printf("expected 6 regex, got %d: %v", len(regexMatches), regexMatches)
+				continue
+			}
+			nodeSetName := regexMatches[3]
+			strOrdinal := regexMatches[5]
+			ordinal, err := strconv.Atoi(strOrdinal)
+			if err != nil {
+				continue
+			}
+			expectedClaimName = fmt.Sprintf(
+				"%s-%s",
+				volume.ElasticsearchDataVolumeName,
+				sset.PodName(esv1.StatefulSet(es.Name, nodeSetName), int32(ordinal)))
 		}
-		nodeSetName := regexMatches[2]
-		strOrdinal := regexMatches[3]
-		ordinal, err := strconv.Atoi(strOrdinal)
-		if err != nil {
-			continue
-		}
-		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: claimName(es, oldEsName, nodeSetName, int32(ordinal))}]
+
+		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: expectedClaimName}]
 		if !expected {
 			continue
 		}
@@ -278,6 +280,7 @@ func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRu
 		// match.claim now stores the created claim metadata
 		// patch the volume spec to match the new claim
 		match.volume.Spec.ClaimRef.UID = match.claim.UID
+		match.volume.Spec.ClaimRef.Name = match.claim.Name
 		match.volume.Spec.ClaimRef.ResourceVersion = match.claim.ResourceVersion
 		if !dryRun {
 			if err := c.Update(context.Background(), &match.volume); err != nil {
