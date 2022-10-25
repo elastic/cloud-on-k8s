@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,6 +30,7 @@ import (
 
 const (
 	esManifestFlag = "elasticsearch-manifest"
+	oldEsNameFlag  = "old-elasticsearch-name"
 	dryRunFlag     = "dry-run"
 )
 
@@ -39,6 +42,8 @@ var Cmd = &cobra.Command{
 		if dryRun {
 			fmt.Println("Running in dry run mode")
 		}
+
+		oldEsName := viper.GetString(oldEsNameFlag)
 
 		err := esv1.AddToScheme(scheme.Scheme)
 		exitOnErr(err)
@@ -52,14 +57,14 @@ var Cmd = &cobra.Command{
 		err = checkElasticsearchNotFound(c, es)
 		exitOnErr(err)
 
-		expectedClaims := expectedVolumeClaims(es)
+		expectedClaims := expectedVolumeClaims(es, oldEsName)
 		err = checkClaimsNotFound(c, expectedClaims)
 		exitOnErr(err)
 
 		releasedPVs, err := findReleasedPVs(c)
 		exitOnErr(err)
 
-		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims)
+		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims, es, oldEsName)
 		exitOnErr(err)
 
 		err = createAndBindClaims(c, matches, dryRun)
@@ -75,6 +80,11 @@ func init() {
 		esManifestFlag,
 		"",
 		"path pointing to the Elasticsearch yaml manifest",
+	)
+	Cmd.Flags().String(
+		oldEsNameFlag,
+		"",
+		"name of previous Elasticsearch cluster (to use existing volumes)",
 	)
 	Cmd.Flags().Bool(
 		dryRunFlag,
@@ -152,8 +162,8 @@ func checkClaimsNotFound(c k8s.Client, claims map[types.NamespacedName]v1.Persis
 }
 
 // expectedVolumeClaims builds the list of PersistentVolumeClaim that we expect to exist for the given
-// Elasticsearch cluster.
-func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.PersistentVolumeClaim {
+// Elasticsearch cluster, or oldEsName, if given.
+func expectedVolumeClaims(es esv1.Elasticsearch, oldEsName string) map[types.NamespacedName]v1.PersistentVolumeClaim {
 	claims := make(map[types.NamespacedName]v1.PersistentVolumeClaim, es.Spec.NodeCount())
 	for _, nodeSet := range es.Spec.NodeSets {
 		for i := int32(0); i < nodeSet.Count; i++ {
@@ -163,10 +173,7 @@ func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.Per
 					claim = claimTemplate
 				}
 			}
-			claim.Name = fmt.Sprintf(
-				"%s-%s",
-				volume.ElasticsearchDataVolumeName,
-				sset.PodName(esv1.StatefulSet(es.Name, nodeSet.Name), i))
+			claim.Name = claimName(es, oldEsName, nodeSet.Name, i)
 			claim.Namespace = es.Namespace
 			if claim.Namespace == "" {
 				claim.Namespace = "default"
@@ -182,6 +189,19 @@ func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.Per
 		}
 	}
 	return claims
+}
+
+// claimName generates the name of the expected volume claim given an Elasticsearch cluster, a nodeSet name
+// an ordinal, and potentially an old Elasticsearch cluster name.
+func claimName(es esv1.Elasticsearch, oldEsName string, nodeSetName string, ordinal int32) string {
+	esName := es.Name
+	if oldEsName != "" {
+		esName = oldEsName
+	}
+	return fmt.Sprintf(
+		"%s-%s",
+		volume.ElasticsearchDataVolumeName,
+		sset.PodName(esv1.StatefulSet(esName, nodeSetName), ordinal))
 }
 
 // findReleasedPVs returns the list of Released PersistentVolumes.
@@ -207,13 +227,28 @@ type MatchingVolumeClaim struct {
 }
 
 // matchPVsWithClaim iterates over existing pvs to match them to an expected pvc.
-func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim) ([]MatchingVolumeClaim, error) {
+func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim, es esv1.Elasticsearch, oldEsName string) ([]MatchingVolumeClaim, error) {
 	matches := make([]MatchingVolumeClaim, 0, len(pvs))
 	for _, pv := range pvs {
 		if pv.Spec.ClaimRef == nil {
 			continue
 		}
-		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: pv.Spec.ClaimRef.Name}]
+		// The following regex defines the expected persistent volume claim name format
+		// The regex patters for both EsName, and NodeSetName groups are directly from apimachinery validation:
+		// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/validation/validation.go#L178
+		r := regexp.MustCompile(`^elasticsearch-data-(?P<EsName>[a-z0-9]([-a-z0-9]*[a-z0-9])+)-es-(?P<NodeSetName>[a-z0-9]([-a-z0-9]*[a-z0-9])+)-(?P<Ordinal>[0-9]+)$`)
+		regexMatches := r.FindStringSubmatch(pv.Spec.ClaimRef.Name)
+		// 4 matches are expected here, as the first match is the full string, and the next are EsName, NodeSetName, and Ordinal.
+		if len(regexMatches) != 4 {
+			continue
+		}
+		nodeSetName := regexMatches[2]
+		strOrdinal := regexMatches[3]
+		ordinal, err := strconv.Atoi(strOrdinal)
+		if err != nil {
+			continue
+		}
+		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: claimName(es, oldEsName, nodeSetName, int32(ordinal))}]
 		if !expected {
 			continue
 		}
