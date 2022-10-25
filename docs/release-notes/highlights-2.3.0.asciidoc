@@ -58,4 +58,4 @@ The default ECK operator container image is now based on the link:https://github
 [float]
 [id="{p}-230-known-issues"]
 === Known issues
-- Under certain circumstances the operator will keep restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.
