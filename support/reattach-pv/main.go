@@ -249,7 +249,8 @@ func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedNam
 			expectedClaimName = fmt.Sprintf(
 				"%s-%s",
 				volume.ElasticsearchDataVolumeName,
-				sset.PodName(esv1.StatefulSet(es.Name, nodeSetName), int32(ordinal)))
+				// Maximum int32 is 2,147,483,647; pretty sure we're never getting near that in a statefulset replica size.
+				sset.PodName(esv1.StatefulSet(es.Name, nodeSetName), int32(ordinal))) // #nosec G109
 		}
 
 		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: expectedClaimName}]
