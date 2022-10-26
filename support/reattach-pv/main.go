@@ -41,8 +41,6 @@ var Cmd = &cobra.Command{
 			fmt.Println("Running in dry run mode")
 		}
 
-		oldEsName := viper.GetString(oldEsNameFlag)
-
 		err := esv1.AddToScheme(scheme.Scheme)
 		exitOnErr(err)
 
@@ -62,7 +60,7 @@ var Cmd = &cobra.Command{
 		releasedPVs, err := findReleasedPVs(c)
 		exitOnErr(err)
 
-		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims, es, oldEsName)
+		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims, es, viper.GetString(oldEsNameFlag))
 		exitOnErr(err)
 
 		err = createAndBindClaims(c, matches, dryRun)
