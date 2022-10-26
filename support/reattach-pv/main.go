@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -218,13 +216,6 @@ type MatchingVolumeClaim struct {
 
 // matchPVsWithClaim iterates over existing pvs to match them to an expected pvc.
 func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim, es esv1.Elasticsearch, oldESName string) ([]MatchingVolumeClaim, error) {
-	// The following regex defines the expected persistent volume claim name format.
-	// The regex patterns for both EsName, and NodeSetName groups are directly from apimachinery validation:
-	// https://github.com/kubernetes/apimachinery/blob/6809593a70331498e028baf9baa3b14b10c75214/pkg/util/validation/validation.go#L178
-	var (
-		r = regexp.MustCompile(fmt.Sprintf(`^elasticsearch-data-(%s)-es-([a-z0-9]([-a-z0-9]*[a-z0-9])?)-([0-9])+$`, oldESName))
-	)
-
 	matches := make([]MatchingVolumeClaim, 0, len(pvs))
 	for _, pv := range pvs {
 		if pv.Spec.ClaimRef == nil {
@@ -232,25 +223,10 @@ func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedNam
 		}
 		expectedClaimName := pv.Spec.ClaimRef.Name
 		// if you're building a newly named cluster, from a previous cluster's PVs, we'll
-		// need to extract the nodeSetName, and ordinal from the PV's claimref.Name,
-		// and replace the expected claim name to be the newly generated cluster's name.
+		// need to replace the old cluster's name, with the new cluster's name to try and match
+		// against the set of generated claims.
 		if oldESName != "" {
-			regexMatches := r.FindStringSubmatch(pv.Spec.ClaimRef.Name)
-			// 5 matches are expected here, as the first match is the full string, and the next is the ES name, NodeSetName+internal match, and Ordinal.
-			if len(regexMatches) != 5 {
-				continue
-			}
-			nodeSetName := regexMatches[2]
-			strOrdinal := regexMatches[4]
-			ordinal, err := strconv.Atoi(strOrdinal)
-			if err != nil {
-				continue
-			}
-			expectedClaimName = fmt.Sprintf(
-				"%s-%s",
-				volume.ElasticsearchDataVolumeName,
-				// Maximum int32 is 2,147,483,647; pretty sure we're never getting near that in a statefulset replica size.
-				sset.PodName(esv1.StatefulSet(es.Name, nodeSetName), int32(ordinal))) // #nosec G109
+			expectedClaimName = strings.ReplaceAll(expectedClaimName, pvcPrefix(oldESName), pvcPrefix(es.Name))
 		}
 
 		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: expectedClaimName}]
@@ -267,6 +243,10 @@ func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedNam
 		return nil, fmt.Errorf("found %d matching volumes but expected %d", len(matches), len(claims))
 	}
 	return matches, nil
+}
+
+func pvcPrefix(clusterName string) string {
+	return esv1.ESNamer.Suffix(fmt.Sprintf("%s-%s", volume.ElasticsearchDataVolumeName, clusterName))
 }
 
 // bindNewClaims creates the given PersistentVolumeClaims, and update the matching PersistentVolumes
