@@ -211,6 +211,12 @@ func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 	return false, errors.New("no master found in ClusterBootstrappedForZen2")
 }
 
+func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
+	var response ClusterState
+	err := c.get(ctx, "/_cluster/state", &response)
+	return response, err
+}
+
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
 	newURL, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
 	if err != nil {
