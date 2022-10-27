@@ -40,7 +40,7 @@ go build
 ./reattach-pv --elasticsearch-manifest cluster-A.yml --dry-run
 
 # or re-create the cluster with a new name
-reattach-pv --elasticsearch-manifest cluster-B.yml --old-elasticsearch-name cluster-A --dry-run
+./reattach-pv --elasticsearch-manifest cluster-B.yml --old-elasticsearch-name cluster-A --dry-run
 
 # if everything seems ok, execute one of the 2 previous commands again without the dry-run flag
 ```
