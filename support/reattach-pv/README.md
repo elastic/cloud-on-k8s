@@ -8,24 +8,14 @@ This tool can be used to recreate an Elasticsearch cluster by reusing orphaned P
 
 This tool can only be used when the following conditions are met:
 
-1. If re-building a cluster that was deleted, and no longer exists.
-
 * The Elasticsearch resource to re-create does not exist in Kubernetes.
-* All PersistentVolumeClaims of the previous cluster do not exist anymore.
-* All PersistentVolumes of the previous cluster still exist with the status `Released`.
-* The Elasticsearch resource to re-create has the exact same specs as the deleted one. Same cluster name, same node sets, same count, etc.
+* All PersistentVolumes of the deleted cluster still exist with the status `Released`.
+* The Elasticsearch resource to re-create has the exact same nodeSet specifications as the deleted one (same nodeSet names and counts).
 * The current default kubectl context targets the desired Kubernetes cluster.
 
-2. If building a new cluster, with a new name, from existing unused PVs from a previously deleted, and re-created cluster
-
-* The Elasticsearch resource to create does not exist in Kubernetes. (The previous cluster with the previous name can exist, using new PVs)
-* All PersistentVolumes of the previous cluster still exist with the status `Released`.
-* The Elasticsearch resource to create has the exact same specs (same node sets, same count, etc.) as the deleted, and re-created one, but with different cluster name.
-* The current default kubectl context targets the desired Kubernetes cluster.
+The Elasticsearch resource to be recreated can have the same name as the deleted one or a new name. In the second case, you must provide the name of the deleted cluster through the flag `--old-elasticsearch-name`.
 
 ## Usage
-
-### To recreate a previously deleted cluster that does not currently exist.
 
 ```
 Recreate an Elasticsearch cluster by reattaching existing released PersistentVolumes
@@ -45,9 +35,15 @@ Example:
 ```
 # build the binary with a recent Go version
 go build
-# perform a dry run first
+
+# re-create the cluster with the same name
 ./reattach-pv --elasticsearch-manifest elasticsearch.yml --dry-run
-# then, execute again without the dry-run flag
+
+# optionally re-create the cluster with a new name
+reattach-pv --elasticsearch-manifest cluster-B.yml --old-elasticsearch-name cluster-A --dry-run
+
+# if everything seems ok, execute one of the 2 previous commands again without the dry-run flag
+# (or optionally with the --old-elasticsearch-name flag)
 ./reattach-pv --elasticsearch-manifest elasticsearch.yml
 ```
 
