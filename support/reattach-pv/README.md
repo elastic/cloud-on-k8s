@@ -30,49 +30,19 @@ Flags:
       --old-elasticsearch-name string   name of previous Elasticsearch cluster (to use existing volumes)
 ```
 
-Example:
+Example assuming cluster-A was accidently deleted:
 
 ```
 # build the binary with a recent Go version
 go build
 
 # re-create the cluster with the same name
-./reattach-pv --elasticsearch-manifest elasticsearch.yml --dry-run
+./reattach-pv --elasticsearch-manifest cluster-A.yml --dry-run
 
-# optionally re-create the cluster with a new name
-reattach-pv --elasticsearch-manifest cluster-B.yml --old-elasticsearch-name cluster-A --dry-run
+# or re-create the cluster with a new name
+./reattach-pv --elasticsearch-manifest cluster-B.yml --old-elasticsearch-name cluster-A --dry-run
 
 # if everything seems ok, execute one of the 2 previous commands again without the dry-run flag
-# (or optionally with the --old-elasticsearch-name flag)
-./reattach-pv --elasticsearch-manifest elasticsearch.yml
-```
-
-### To create a new cluster, with a new name, from a previously deleted cluster
-
-```
-Create a newly-named Elasticsearch cluster by reattaching existing released PersistentVolumes
-
-Usage:
-  reattach-pv [flags]
-
-Flags:
-      --dry-run                         do not apply any Kubernetes resource change
-      --elasticsearch-manifest string   path pointing to the Elasticsearch yaml manifest
-  -h, --help                            help for reattach-pv
-      --old-elasticsearch-name string   name of previous Elasticsearch cluster (to use existing volumes)
-```
-
-Example assuming `clusterA` was accidently deleted, then re-created with new data volumes, and is in use.
-Previous PersistentVolumes for `clusterA` still exist, and will be used to build `clusterB`.
-
-```
-# build the binary with a recent Go version
-go build
-# perform a dry run first
-# elasticsearch.yaml contains newly-named cluster (ex: `clusterB`)
-./reattach-pv --elasticsearch-manifest elasticsearch.yml --dry-run --old-elasticsearch-name clusterA
-# then, execute again without the dry-run flag
-./reattach-pv --elasticsearch-manifest elasticsearch.yml --old-elasticsearch-name clusterA
 ```
 
 ## How it works
