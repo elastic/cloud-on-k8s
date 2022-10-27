@@ -28,7 +28,7 @@ eck-diagnostics -o <operator-namespaces> -r <resources-namespaces>
 
 By default, the tool automatically runs link:https://github.com/elastic/support-diagnostics[support diagnostics] for every Elasticsearch cluster and Kibana instance. This requires the temporary deployment of additional Pods into the Kubernetes cluster. If this is not what you want, you can turn off the feature by specifying the `--run-stack-diagnostics=false` flag.
 
-Check <<{p}-eck-diag-air-gapped>> if you want to run support diagnostics for Elastic Stack applications without access to the open internet.
+Check <<{p}-eck-diag-air-gapped>> if you want to run support diagnostics in environments without access to the open internet.
 
 [float]
 == Example

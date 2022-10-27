@@ -48,7 +48,7 @@ NOTE: Providing the correct version is always required as ECK reasons about APIs
 
 The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[AWS Elastic Container Registry].
 
-If your custom images follow the naming convention adapted by the official images and you only want to use your custom images you can also simply <<{p}-container-registry-override, override the container registry>>.
+If your custom images follow the naming convention adopted by the official images, and you only want to use your custom images, you can also simply <<{p}-container-registry-override, override the container registry>>.
 
 For more information, check the following references:
 
