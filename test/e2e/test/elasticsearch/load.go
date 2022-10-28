@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v7"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
