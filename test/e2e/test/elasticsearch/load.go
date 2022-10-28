@@ -35,7 +35,7 @@ type LoadTestResult struct {
 	NumRequests  int32
 	TestDuration time.Duration
 	ReqPerSecond float64
-	Errors       []error
+	Errors       map[string]int
 }
 
 func (ltr LoadTestResult) String() string {
@@ -65,7 +65,7 @@ func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch) (*LoadTest, error) {
 			DialContext:         portforward.NewForwardingDialer().DialContext,
 			MaxIdleConnsPerHost: 0,
 			DisableKeepAlives:   true,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		}
 	}
 	client, err := elasticsearch.NewClient(cfg)
@@ -110,7 +110,7 @@ func (lt *LoadTest) req() {
 		lt.errors = append(lt.errors, fmt.Errorf("failed request: %s", info.Status()))
 	}
 	defer info.Body.Close()
-	io.Copy(io.Discard, info.Body)
+	_, _ = io.Copy(io.Discard, info.Body)
 }
 
 func (lt *LoadTest) Stop() LoadTestResult {
@@ -120,9 +120,18 @@ func (lt *LoadTest) Stop() LoadTestResult {
 	defer lt.RUnlock()
 
 	testDur := stopped.Sub(lt.start)
+	errReport := map[string]int{}
+	for _, e := range lt.errors {
+		errStr := e.Error()
+		_, exists := errReport[errStr]
+		if !exists {
+			errReport[errStr] = 0
+		}
+		errReport[errStr]++
+	}
 	return LoadTestResult{
 		Success:      len(lt.errors) == 0,
-		Errors:       lt.errors,
+		Errors:       errReport,
 		NumRequests:  lt.numberRequests,
 		TestDuration: testDur,
 		ReqPerSecond: float64(lt.numberRequests) / testDur.Seconds(),

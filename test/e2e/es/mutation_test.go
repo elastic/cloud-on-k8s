@@ -258,7 +258,7 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(0)
+		WithPreStopAdditionalWaitSeconds(90)
 
 	var loadTest *elasticsearch.LoadTest
 	var err error
