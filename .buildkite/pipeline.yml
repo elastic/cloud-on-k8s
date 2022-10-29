@@ -1,6 +1,6 @@
 
 agents:
-  image: "docker.elastic.co/eck-dev/bk-agent:latest"
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
   cpu: "4"
   memory: "2G"
 
