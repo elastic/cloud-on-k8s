@@ -96,12 +96,3 @@ steps:
         if: build.branch == "main" && build.source == "schedule"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
-
-
-=======
-agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-
-steps:
-  - command: 'echo "pipeline is coming"'
->>>>>>> upstream/main
