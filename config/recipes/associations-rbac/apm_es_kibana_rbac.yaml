@@ -99,6 +99,10 @@ metadata:
 spec:
   version: 8.4.2
   count: 1
+  config:
+    xpack.fleet.packages:
+    - name: apm
+      version: latest
   elasticsearchRef:
     name: "elasticsearch-sample"
     namespace: "elasticsearch-ns"

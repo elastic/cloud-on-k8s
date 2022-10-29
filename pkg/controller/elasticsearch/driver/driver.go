@@ -154,7 +154,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	warnUnsupportedDistro(resourcesState.AllPods, d.ReconcileState.Recorder)
 
-	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder(), d.OperatorParameters.PasswordHasher)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -181,6 +181,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	if min == nil {
 		min = &d.Version
 	}
+
+	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	observedState := d.Observers.ObservedStateResolver(
 		ctx,
 		d.ES,
@@ -191,6 +197,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			*min,
 			trustedHTTPCertificates,
 		),
+		isServiceReady,
 	)
 
 	// Always update the Elasticsearch state bits with the latest observed state.
@@ -232,11 +239,6 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		trustedHTTPCertificates,
 	)
 	defer esClient.Close()
-
-	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
-	if err != nil {
-		return results.WithError(err)
-	}
 
 	// use unknown health as a proxy for a cluster not responding to requests
 	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth

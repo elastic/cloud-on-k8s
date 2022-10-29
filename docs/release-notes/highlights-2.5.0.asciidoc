@@ -1,0 +1,27 @@
+[[release-highlights-2.5.0]]
+== 2.5.0 release highlights
+
+[float]
+[id="{p}-250-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.5.0 of {n}. Check <<release-notes-2.5.0>> for the full list of changes.
+
+[float]
+[id="{p}-250-autoscaling-crd"]
+==== Autoscaling Elasticsearch: Introducing a dedicated custom resource
+
+The ECK operator has had experimental support for autoscaling Elasticsearch since version 1.5.0. With this release we are removing the experimental label and giving the autoscaling specification its own custom resource definition with improved status reporting compared to the experimental implementation. Read our updated <<{p}-autoscaling, docs>> for more details.
+
+
+[float]
+[id="{p}-250-agent-fleet-helm-chart"]
+==== Helm charts for Elastic Agent and Fleet Server
+
+We are adding two new Helm charts for workloads managed by the ECK operator. Charts for Elastic Agent and Fleet Server are complementing the existing charts for Elasticsearch and Kibana. They can be used individually or as part of our existing Elastic Stack Helm chart. Get started by reading the  <<{p}-stack-helm-chart, docs>>.
+
+[float]
+[id="{p}-250-beats-stack-monitoring"]
+==== Stack Monitoring for Beats
+Stack Monitoring in ECK refers to shipping logs and metrics from Elastic Stack applications via a sidecar container to a monitoring cluster. With support for Elasticsearch and Kibana available since version 1.7.0 we are closing a gap by adding support for Beats as well. It can be configured simply by adding the name and namespace of a monitoring cluster to your Beats manifest. Find examples in the <<{p}-stack-monitoring, docs>>.
+
