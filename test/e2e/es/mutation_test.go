@@ -270,7 +270,7 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 			return test.StepList{}.WithStep(test.Step{
 				Name: "Starting to load test",
 				Test: func(t *testing.T) {
-					loadTest, err = elasticsearch.NewLoadTest(k, b.Elasticsearch)
+					loadTest, err = elasticsearch.NewLoadTest(k, b.Elasticsearch, 10)
 					require.NoError(t, err)
 					loadTest.Start()
 				},
