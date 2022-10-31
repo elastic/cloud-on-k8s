@@ -7,8 +7,6 @@ spec:
   kibanaRef:
     name: kibana
   config:
-    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
-    filebeat.inputs: []
     packetbeat.interfaces.device: any
     packetbeat.protocols:
     - type: dns

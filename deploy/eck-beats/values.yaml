@@ -20,13 +20,6 @@
 #
 version: 8.3.3
 
-# Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
-#
-# Note: This is required to be set, or the release install will fail.
-#
-type: ""
-
 # Labels that will be applied to Elastic Beats.
 #
 labels: {}
@@ -36,6 +29,13 @@ labels: {}
 annotations: {}
 
 spec:
+  # Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+  #
+  # Note: This is required to be set, or the release install will fail.
+  #
+  type: ""
+
   # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
   #

@@ -6,7 +6,7 @@ tests:
     release:
       name: quickstart
     set:
-      type: "filebeat"
+      spec.type: "filebeat"
     asserts:
       - isKind:
           of: Beat
@@ -16,3 +16,6 @@ tests:
       - equal:
           path: spec.version
           value: 8.3.3
+      - equal:
+          path: spec.type
+          value: filebeat

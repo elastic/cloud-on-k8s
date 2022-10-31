@@ -12,7 +12,7 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Beat version is required" .Values.version }}
-  type: {{ required "A Beat type is required" .Values.type }}
+  type: {{ required "A Beat type is required" .Values.spec.type }}
   {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
   {{ fail "At least one of daemonSet or deployment is required for a functional Beat" }}
   {{- end }}

@@ -1,14 +1,10 @@
 name: heartbeat
-type: heartbeat
 version: 8.3.3
 spec:
+  type: heartbeat
   elasticsearchRef:
     name: elasticsearch
   config:
-    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
-    filebeat.inputs: []
-    # Since processors is used in the default values, this needs to be removed with an empty list. 
-    processors: []
     heartbeat.monitors:
     - type: tcp
       schedule: '@every 5s'
@@ -26,5 +22,3 @@ spec:
       spec:
         securityContext:
           runAsUser: 0
-  # Since there is an existing daemonSet in the default values, it must be moved by using 'null'.
-  daemonSet: null

@@ -1,14 +1,12 @@
 name: auditbeat
-type: auditbeat
 version: 8.3.3
 spec:
+  type: auditbeat
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
     name: kibana
   config:
-    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
-    filebeat.inputs: []
     auditbeat.modules:
     - module: file_integrity
       paths:
