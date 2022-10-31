@@ -60,14 +60,16 @@ func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch, requestPerSec int) (*
 		Username:  esuser.ElasticUserName,
 		Password:  password,
 		CACert:    caCert,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
 	}
 	if test.Ctx().AutoPortForwarding {
 		cfg.Transport = &http.Transport{
-			Proxy:               http.ProxyFromEnvironment,
-			DialContext:         portforward.NewForwardingDialer().DialContext,
-			MaxIdleConnsPerHost: 0,
-			DisableKeepAlives:   true,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			Proxy:             http.ProxyFromEnvironment,
+			DialContext:       portforward.NewForwardingDialer().DialContext,
+			DisableKeepAlives: true,
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		}
 	}
 	client, err := elasticsearch.NewClient(cfg)
