@@ -2,9 +2,11 @@ suite: test beats
 templates:
   - templates/beats.yaml
 tests:
-  - it: should render default filebeat properly
+  - it: should render filebeat properly, when type is set
     release:
       name: quickstart
+    set:
+      type: "filebeat"
     asserts:
       - isKind:
           of: Beat
@@ -14,9 +16,3 @@ tests:
       - equal:
           path: spec.version
           value: 8.3.3
-      - equal:
-          path: spec.daemonSet.podTemplate.spec.containers[0].name
-          value: filebeat
-      - equal:
-          path: spec.daemonSet.podTemplate.spec.containers[0].securityContext.runAsUser
-          value: 0
