@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -52,7 +53,7 @@ func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch) (*LoadTest, error) {
 	if err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:9200/", esv1.HTTPService(es.Name), es.Namespace)
+	url := services.InternalServiceURL(es)
 	cfg := elasticsearch.Config{
 		Addresses: []string{url},
 		Username:  esuser.ElasticUserName,
