@@ -25,10 +25,10 @@ require (
 	github.com/prometheus/client_golang v1.13.0
 	github.com/prometheus/common v0.37.0
 	github.com/sethvargo/go-password v0.2.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.1.0
 	go.elastic.co/apm/module/apmhttp/v2 v2.1.0
 	go.elastic.co/apm/module/apmzap/v2 v2.1.0
@@ -64,7 +64,6 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.20+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
-	github.com/elastic/elastic-transport-go/v8 v8.0.0-alpha // indirect
 	github.com/elastic/go-licenser v0.4.0 // indirect
 	github.com/elastic/go-sysinfo v1.7.1 // indirect
 	github.com/elastic/go-windows v1.0.1 // indirect

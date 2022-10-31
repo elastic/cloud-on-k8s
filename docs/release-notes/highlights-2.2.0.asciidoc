@@ -58,3 +58,4 @@ The <<{p}-stack-monitoring,Stack Monitoring>> feature is fully operational to be
 [id="{p}-220-known-issues"]
 === Known issues
 - The migration to service account tokens can lead to unavailability of Kibana and Fleet Server which is especially noticeable on larger Elasticsearch clusters with many nodes. ECK 2.3 enables a migration without downtime. It is recommended to upgrade to ECK 2.3 to avoid this issue or to quickly restore availability on already affected installations. More details can be found in the link:https://github.com/elastic/cloud-on-k8s/issues/5684#issuecomment-1164614176[linked GitHub issue].
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.

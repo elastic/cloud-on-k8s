@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/ghodss/yaml v1.0.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.12.0
 	k8s.io/api v0.22.4
 	k8s.io/apiextensions-apiserver v0.22.4
