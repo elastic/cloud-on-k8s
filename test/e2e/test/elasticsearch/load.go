@@ -26,14 +26,15 @@ type LoadTest struct {
 	client         *elasticsearch.Client
 	start          time.Time
 	stop           chan bool
+	requestsPerSec int64
 	errors         []error
-	numberRequests int32
+	numberRequests int64
 	sync.RWMutex
 }
 
 type LoadTestResult struct {
 	Success      bool
-	NumRequests  int32
+	NumRequests  int64
 	TestDuration time.Duration
 	ReqPerSecond float64
 	Errors       map[string]int
@@ -44,7 +45,7 @@ func (ltr LoadTestResult) String() string {
 		ltr.Success, ltr.TestDuration, ltr.NumRequests, ltr.ReqPerSecond, ltr.Errors)
 }
 
-func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch) (*LoadTest, error) {
+func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch, requestPerSec int) (*LoadTest, error) {
 	caCert, err := k.GetHTTPCertsBytes(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
@@ -74,8 +75,9 @@ func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch) (*LoadTest, error) {
 		return nil, err
 	}
 	return &LoadTest{
-		client: client,
-		stop:   make(chan bool, 1),
+		client:         client,
+		stop:           make(chan bool, 1),
+		requestsPerSec: int64(requestPerSec),
 	}, nil
 }
 
@@ -88,6 +90,7 @@ func (lt *LoadTest) Start() {
 			case <-lt.stop:
 				return
 			default:
+				time.Sleep(lt.timeUntilNextReq())
 				lt.req()
 				continue
 			}
@@ -136,4 +139,20 @@ func (lt *LoadTest) Stop() LoadTestResult {
 		TestDuration: testDur,
 		ReqPerSecond: float64(lt.numberRequests) / testDur.Seconds(),
 	}
+}
+
+func (lt *LoadTest) timeUntilNextReq() time.Duration {
+	lt.RWMutex.RLock()
+	defer lt.RWMutex.RUnlock()
+
+	elapsed := time.Now().Sub(lt.start)
+	expectedNumRequests := lt.requestsPerSec * int64(elapsed.Seconds())
+	if lt.numberRequests < expectedNumRequests {
+		// we made fewer requests that expected probably due to slow responses from server continue immediately
+		return 0
+	}
+	every := int64(time.Second) / lt.requestsPerSec
+	expectedTimeSpend := time.Duration((lt.numberRequests + 1) * every)
+	return expectedTimeSpend - elapsed
+
 }
