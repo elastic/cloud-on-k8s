@@ -145,7 +145,7 @@ func (lt *LoadTest) timeUntilNextReq() time.Duration {
 	lt.RWMutex.RLock()
 	defer lt.RWMutex.RUnlock()
 
-	elapsed := time.Now().Sub(lt.start)
+	elapsed := time.Since(lt.start)
 	expectedNumRequests := lt.requestsPerSec * int64(elapsed.Seconds())
 	if lt.numberRequests < expectedNumRequests {
 		// we made fewer requests that expected probably due to slow responses from server continue immediately
@@ -154,5 +154,4 @@ func (lt *LoadTest) timeUntilNextReq() time.Duration {
 	every := int64(time.Second) / lt.requestsPerSec
 	expectedTimeSpend := time.Duration((lt.numberRequests + 1) * every)
 	return expectedTimeSpend - elapsed
-
 }
