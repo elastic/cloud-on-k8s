@@ -84,6 +84,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/v2/pkg/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/telemetry"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/fs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -179,6 +180,11 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
+		operator.ContainerSuffixFlag,
+		"",
+		fmt.Sprintf("Suffix to be appended to container images by default. Cannot be combined with %s", operator.UBIOnlyFlag),
+	)
+	cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
@@ -232,6 +238,14 @@ func Command() *cobra.Command {
 		[]string{},
 		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods, empty by default",
 	)
+	cmd.Flags().Int(
+		operator.PasswordHashCacheSize,
+		0,
+		fmt.Sprintf(
+			"Sets the size of the password hash cache. Default size is inferred from %s. Caching is disabled if explicitly set to 0 or any negative value.",
+			operator.MaxConcurrentReconcilesFlag,
+		),
+	)
 	cmd.Flags().String(
 		operator.IPFamilyFlag,
 		"",
@@ -275,7 +289,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.UBIOnlyFlag,
 		false,
-		"Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.",
+		fmt.Sprintf("Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Cannot be combined with %s", operator.ContainerSuffixFlag),
 	)
 	cmd.Flags().Bool(
 		operator.ValidateStorageClassFlag,
@@ -451,6 +465,17 @@ func startOperator(ctx context.Context) error {
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
+	// allow users to specify a container suffix unless --ubi-only mode is active
+	suffix := viper.GetString(operator.ContainerSuffixFlag)
+	if len(suffix) > 0 {
+		if viper.IsSet(operator.UBIOnlyFlag) {
+			err := fmt.Errorf("must not combine %s and %s flags", operator.UBIOnlyFlag, operator.ContainerSuffixFlag)
+			log.Error(err, "Illegal flag combination")
+			return err
+		}
+		container.SetContainerSuffix(suffix)
+	}
+
 	// enforce UBI stack images if requested
 	ubiOnly := viper.GetBool(operator.UBIOnlyFlag)
 	if ubiOnly {
@@ -586,6 +611,17 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	// default hash cache is arbitrarily set to 5 x MaxConcurrentReconcilesFlag
+	hashCacheSize := viper.GetInt(operator.MaxConcurrentReconcilesFlag) * 5
+	if viper.IsSet(operator.PasswordHashCacheSize) {
+		hashCacheSize = viper.GetInt(operator.PasswordHashCacheSize)
+	}
+	passwordHasher, err := cryptutil.NewPasswordHasher(hashCacheSize)
+	if err != nil {
+		log.Error(err, "failed to create hash cache")
+		return err
+	}
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -602,6 +638,7 @@ func startOperator(ctx context.Context) error {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
+		PasswordHasher:            passwordHasher,
 		MaxConcurrentReconciles:   viper.GetInt(operator.MaxConcurrentReconcilesFlag),
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),

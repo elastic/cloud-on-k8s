@@ -112,7 +112,7 @@ func TestManager_Observe(t *testing.T) {
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), tt.clusterToObserveClient)
+			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), tt.clusterToObserveClient, true)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -181,8 +181,8 @@ func TestManager_ObserveSync(t *testing.T) {
 			name := cluster("es1")
 			cluster := esObject(name)
 			results := []esv1.ElasticsearchHealth{
-				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
-				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient, true)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient, true)(),
 			}
 			require.Equal(t, tt.expectedHealth, results)
 			tt.manager.StopObserving(name) // let's clean up the go-routines
@@ -277,9 +277,9 @@ func TestManager_AddObservationListener(t *testing.T) {
 		close(doneCh)
 	}()
 	// observe 2 clusters
-	obs1 := m.Observe(ctx, cluster1, fakeEsClient200(client.BasicAuth{}))
+	obs1 := m.Observe(ctx, cluster1, fakeEsClient200(client.BasicAuth{}), true)
 	defer obs1.Stop()
-	obs2 := m.Observe(ctx, cluster2, fakeEsClient200(client.BasicAuth{}))
+	obs2 := m.Observe(ctx, cluster2, fakeEsClient200(client.BasicAuth{}), true)
 	defer obs2.Stop()
 	<-doneCh
 }

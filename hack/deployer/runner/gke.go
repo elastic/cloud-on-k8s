@@ -184,6 +184,13 @@ func (d *GKEDriver) setupLabelsForGCEProvider() error {
 			continue
 		}
 		// This is a GCE storage class patch it
+
+		// start by removing the label that makes the storage class managed by the addon manager to prevent it from being recreated before us
+		err := exec.NewCommand(fmt.Sprintf(`kubectl label sc %s "addonmanager.kubernetes.io/mode"-`, storageClass.Name)).WithoutStreaming().Run()
+		if err != nil {
+			return err
+		}
+
 		if storageClass.Parameters == nil {
 			storageClass.Parameters = make(map[string]string)
 		}

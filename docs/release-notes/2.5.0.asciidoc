@@ -1,0 +1,74 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.5.0]]
+== {n} version 2.5.0
+
+
+
+[[feature-2.5.0]]
+[float]
+=== New features
+
+* Autoscaling Elasticsearch: Introduce a dedicated custom resource {pull}5978[#5978] (issue: {issue}5997[#5997])
+* ECK resources Helm chart - Elastic Agent & Elastic Fleet Server Agent {pull}5889[#5889] (issue: {issue}5505[#5505])
+* Enable Beats stack monitoring configuration {pull}5878[#5878] (issue: {issue}5563[#5563])
+
+[[enhancement-2.5.0]]
+[float]
+=== Enhancements
+
+* Surface Kubernetes client rate limiter metrics {pull}6007[#6007]
+* Add Elasticsearch observation interval as configurable value to Helm Chart {pull}5989[#5989] (issue: {issue}5988[#5988])
+* Don't log non-standard ES JSON error responses as errors {pull}5971[#5971] (issue: {issue}5473[#5473])
+* Report incorrect license type in logs and events {pull}5966[#5966] (issue: {issue}5963[#5963])
+* Inherit all environment variables from ES container in initContainers {pull}5962[#5962] (issue: {issue}5577[#5577])
+* Elasticsearch: always set discovery.seed_hosts to empty array {pull}5950[#5950] (issue: {issue}5834[#5834])
+* [Autoscaling] Add CPU recommender {pull}5924[#5924] (issue: {issue}5823[#5823])
+* Log correlation for operator APM traces {pull}5883[#5883]
+
+[[bug-2.5.0]]
+[float]
+=== Bug fixes
+
+* Increment desired nodes version on each call {pull}6037[#6037] (issue: {issue}5979[#5979])
+* Ignore unmanaged namespaces in webhook validation for all resources. {pull}6013[#6013] (issue: {issue}5814[#5814])
+* Fix helm chart rendering issues associated with indentation {pull}6004[#6004]
+* Stack monitoring: trust custom cert. in output configuration {pull}5945[#5945] (issue: {issue}5917[#5917])
+
+[[docs-2.5.0]]
+[float]
+=== Documentation improvements
+
+* Add License files for Helm Charts and Updating Chart README {pull}6008[#6008] (issue: {issue}6005[#6005])
+* Rewrite snapshot documentation and add CSP specific setups {pull}5969[#5969] (issues: {issue}5230[#5230], {issue}5652[#5652])
+* Restructure secure settings docs and minor additions {pull}5965[#5965] (issue: {issue}5425[#5425])
+* Update documentation to clarify ES node.processors section. {pull}5941[#5941] (issue: {issue}5940[#5940])
+* Fix typo in "manage compute resources" doc {pull}5929[#5929]
+
+[[nogroup-2.5.0]]
+[float]
+=== Misc
+
+* Update module go to 1.19 {pull}6040[#6040]
+* Update k8s to v0.25.2 {pull}6032[#6032]
+* Update module sigs.k8s.io/controller-tools to v0.10.0 {pull}6031[#6031]
+* Update module helm.sh/helm/v3 to v3.10.0 {pull}6030[#6030]
+* Update module github.com/hashicorp/vault/api to v1.8.0 {pull}6022[#6022]
+* Update k8s to v0.25.1 {pull}6018[#6018]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.6-941 {pull}6012[#6012]
+* Update module k8s.io/klog/v2 to v2.80.1 {pull}6009[#6009]
+* Update module github.com/google/go-cmp to v0.5.9 {pull}6006[#6006]
+* Update docker.io/library/golang Docker tag to v1.19.1 {pull}6003[#6003]
+* Update module github.com/spf13/viper to v1.13.0 {pull}6001[#6001]
+* Update module github.com/gobuffalo/flect to v0.3.0 {pull}5996[#5996]
+* Update module sigs.k8s.io/controller-runtime to v0.13.0 {pull}5995[#5995]
+* Update module go.uber.org/zap to v1.23.0 {pull}5972[#5972]
+* Update golang to 1.19 {pull}5939[#5939]
+* Update module github.com/prometheus/client_golang to v1.13.0 {pull}5930[#5930]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.13.9 {pull}5918[#5918]
+* Update dependency registry.access.redhat.com/ubi8/ubi-minimal to v8.6-902 {pull}5914[#5914]
+* Update module github.com/stretchr/testify to v1.8.0 {pull}5912[#5912]
+* Update module github.com/prometheus/common to v0.37.0 {pull}5911[#5911]
+* Update module github.com/google/go-containerregistry to v0.11.0 {pull}5910[#5910]
+
