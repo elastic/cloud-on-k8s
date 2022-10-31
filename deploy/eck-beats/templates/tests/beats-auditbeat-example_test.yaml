@@ -1,4 +1,4 @@
-suite: test auditbeats
+suite: test auditbeat
 templates:
   - templates/beats.yaml
 tests:

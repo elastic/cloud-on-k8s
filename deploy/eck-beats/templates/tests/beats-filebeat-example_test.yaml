@@ -1,4 +1,4 @@
-suite: test filebeats
+suite: test filebeat
 templates:
   - templates/beats.yaml
 tests:

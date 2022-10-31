@@ -1,4 +1,4 @@
-suite: test metricbeats
+suite: test metricbeat
 templates:
   - templates/beats.yaml
 tests:
@@ -53,7 +53,7 @@ tests:
           path: spec.daemonSet.podTemplate.spec.hostNetwork
           value: true
 ---
-suite: test beats cluster role
+suite: test beat cluster role
 templates:
   - templates/cluster-role.yaml
 tests:
@@ -193,7 +193,7 @@ tests:
             clusterRoleBinding: annotation
             test: annotation
 ---
-suite: test beats service account
+suite: test beat service account
 templates:
   - templates/service-account.yaml
 tests:
