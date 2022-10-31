@@ -56,10 +56,12 @@ func NewLoadTest(k *test.K8sClient, es esv1.Elasticsearch, requestPerSec int) (*
 	}
 	url := services.InternalServiceURL(es)
 	cfg := elasticsearch.Config{
-		Addresses: []string{url},
-		Username:  esuser.ElasticUserName,
-		Password:  password,
-		CACert:    caCert,
+		Addresses:             []string{url},
+		Username:              esuser.ElasticUserName,
+		Password:              password,
+		CACert:                caCert,
+		DiscoverNodesOnStart:  true,
+		DiscoverNodesInterval: 10 * time.Second,
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
 		},
