@@ -91,7 +91,6 @@ func (lt *LoadTest) Start() {
 				continue
 			}
 		}
-
 	}()
 }
 
