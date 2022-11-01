@@ -45,8 +45,8 @@ func (c *baseClient) Close() {
 
 func (c *baseClient) equal(c2 *baseClient) bool {
 	// handle nil case
-	if c2 == nil && c != nil {
-		return false
+	if c2 == nil {
+		return c == nil
 	}
 	// compare ca certs
 	if len(c.caCerts) != len(c2.caCerts) {
