@@ -1660,11 +1660,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.8.1
-Time    : 2022-10-12T17:59:34Z
+Version : v1.8.2
+Time    : 2022-10-31T13:52:04Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.8.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.8.2/LICENSE:
+
+Copyright (c) 2015 HashiCorp, Inc.
 
 Mozilla Public License, version 2.0
 
@@ -10929,11 +10931,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-plugin
-Version : v1.4.3
-Time    : 2021-08-10T16:42:03Z
+Version : v1.4.5
+Time    : 2022-08-18T16:09:05Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-plugin@v1.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-plugin@v1.4.5/LICENSE:
 
 Mozilla Public License, version 2.0
 
