@@ -32,7 +32,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/google/uuid[$$github.com/google/uuid$$] | v1.3.0 | BSD-3-Clause
 | link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.1.1 | MPL-2.0
 | link:https://github.com/hashicorp/golang-lru[$$github.com/hashicorp/golang-lru$$] | v0.5.4 | MPL-2.0
-| link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.8.1 | MPL-2.0
+| link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.8.2 | MPL-2.0
 | link:https://github.com/imdario/mergo[$$github.com/imdario/mergo$$] | v0.3.13 | BSD-3-Clause
 | link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.6 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
@@ -117,7 +117,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/hashicorp/go-cleanhttp[$$github.com/hashicorp/go-cleanhttp$$] | v0.5.2 | MPL-2.0
 | link:https://github.com/hashicorp/go-hclog[$$github.com/hashicorp/go-hclog$$] | v1.2.0 | MIT
 | link:https://github.com/hashicorp/go-immutable-radix[$$github.com/hashicorp/go-immutable-radix$$] | v1.3.1 | MPL-2.0
-| link:https://github.com/hashicorp/go-plugin[$$github.com/hashicorp/go-plugin$$] | v1.4.3 | MPL-2.0
+| link:https://github.com/hashicorp/go-plugin[$$github.com/hashicorp/go-plugin$$] | v1.4.5 | MPL-2.0
 | link:https://github.com/hashicorp/go-retryablehttp[$$github.com/hashicorp/go-retryablehttp$$] | v0.6.6 | MPL-2.0
 | link:https://github.com/hashicorp/go-rootcerts[$$github.com/hashicorp/go-rootcerts$$] | v1.0.2 | MPL-2.0
 | link:https://github.com/hashicorp/go-secure-stdlib[$$github.com/hashicorp/go-secure-stdlib/mlock$$] | v0.1.1 | MPL-2.0
