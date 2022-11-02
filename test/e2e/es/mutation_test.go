@@ -257,8 +257,13 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(90)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(7, 0, 0)) {
+		// 6.x can have in excess of 60 seconds of unavailability during rolling upgrades when the current master node
+		// is rolled and is not well suited for this kind of test. If we want to keep testing with 6.x we could
+		// introduce a version specific unavailability budget similar to the existing ContinuousHealthCheck.
+		t.Skip("Skipping test for versions below 7.x")
+	}
 
 	var loadTest *elasticsearch.LoadTest
 	var err error
