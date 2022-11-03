@@ -18,6 +18,7 @@ endif::[]
 - <<{p}-installing-eck>>
 - <<{p}-upgrading-eck>>
 - <<{p}-uninstalling-eck>>
+- <<{p}-air-gapped>>
 --
 
 include::operator-config.asciidoc[leveloffset=+1]
@@ -29,3 +30,4 @@ include::troubleshooting.asciidoc[leveloffset=+1]
 include::installing-eck.asciidoc[leveloffset=+1]
 include::upgrading-eck.asciidoc[leveloffset=+1]
 include::uninstalling-eck.asciidoc[leveloffset=+1]
+include::air-gapped.asciidoc[leveloffset=+1]
