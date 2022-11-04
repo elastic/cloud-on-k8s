@@ -40,13 +40,13 @@ pipeline {
                         stage("build and push operator image") {
                             steps {
                                 sh '.ci/setenvconfig build'
-                                sh 'make -C .ci license.key TARGET=ci-release ci'
+                                sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci'
                             }
                         }
                         stage("build and push operator image in FIPS mode") {
                             steps {
                                 sh '.ci/setenvconfig build'
-                                sh 'make -C .ci license.key TARGET=ci-release ci ENABLE_FIPS=true'
+                                sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci ENABLE_FIPS=true'
                             }
                         }
                     }
