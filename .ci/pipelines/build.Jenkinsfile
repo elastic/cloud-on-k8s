@@ -34,11 +34,6 @@ pipeline {
                         sh 'make -C .ci TARGET=ci ci'
                     }
                 }
-                stage('Run ci checks prior to build') {
-                    steps {
-                        sh 'make -C .ci TARGET=ci-check ci'
-                    }
-                }
                 stage('build') {
                     failFast true
                     parallel {
