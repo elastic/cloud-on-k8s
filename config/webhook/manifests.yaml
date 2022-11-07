@@ -225,6 +225,27 @@ webhooks:
     - mapsservers
   sideEffects: None
 - admissionReviewVersions:
+  - v1alpha1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-scp-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - stackconfigpolicy.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - stackconfigpolicies
+  sideEffects: None
+- admissionReviewVersions:
   - v1
   - v1beta1
   clientConfig:
