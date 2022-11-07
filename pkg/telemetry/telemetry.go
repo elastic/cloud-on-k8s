@@ -25,6 +25,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -121,6 +122,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}
 		entStats,
 		agentStats,
 		mapsStats,
+		scpStats,
 	} {
 		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
@@ -411,4 +413,58 @@ func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 		}
 	}
 	return "maps", stats, nil
+}
+
+func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stackConfigPoliciesKey := "stackconfigpolicies"
+	settingsKey := "settings"
+	configuredResourcesCountKey := "configured_resources_count"
+	clusterSettingsCountKey := "cluster_settings_count"
+	snapshotRepositoriesCountKey := "snapshot_repositories_count"
+	snapshotLifecyclePoliciesCountKey := "snapshot_lifecycle_policies_count"
+	stats := map[string]interface{}{
+		resourceCount:               0,
+		configuredResourcesCountKey: 0,
+		settingsKey: map[string]int{
+			clusterSettingsCountKey:           0,
+			snapshotRepositoriesCountKey:      0,
+			snapshotLifecyclePoliciesCountKey: 0,
+		},
+	}
+
+	var scpList policyv1alpha1.StackConfigPolicyList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &scpList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, scp := range scpList.Items {
+			count, ok := stats[resourceCount].(int)
+			if !ok {
+				return "", nil, fmt.Errorf("invalid type for %s.%s", stackConfigPoliciesKey, resourceCount)
+			}
+			stats[resourceCount] = count + 1
+			configuredCount, ok := stats[configuredResourcesCountKey].(int)
+			if !ok {
+				return "", nil, fmt.Errorf("invalid type for %s.%s", stackConfigPoliciesKey, configuredResourcesCountKey)
+			}
+			stats[configuredResourcesCountKey] = configuredCount + scp.Status.Resources
+			settingsStats, ok := stats[settingsKey].(map[string]int)
+			if !ok {
+				return "", nil, fmt.Errorf("invalid type for %s.%s", stackConfigPoliciesKey, settingsKey)
+			}
+
+			if scp.Spec.Elasticsearch.ClusterSettings != nil {
+				settingsStats[clusterSettingsCountKey] += len(scp.Spec.Elasticsearch.ClusterSettings.Data)
+			}
+			if scp.Spec.Elasticsearch.SnapshotRepositories != nil {
+				settingsStats[snapshotRepositoriesCountKey] += len(scp.Spec.Elasticsearch.SnapshotRepositories.Data)
+			}
+			if scp.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
+				settingsStats[snapshotLifecyclePoliciesCountKey] += len(scp.Spec.Elasticsearch.SnapshotLifecyclePolicies.Data)
+			}
+			stats[settingsKey] = settingsStats
+		}
+	}
+	return stackConfigPoliciesKey, stats, nil
 }
