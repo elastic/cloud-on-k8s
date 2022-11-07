@@ -70,9 +70,9 @@ func (r roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx = apm.ContextWithSpan(ctx, span)
 	req = apmhttp.RequestWithContext(ctx, req)
 	span.Context.SetHTTPRequest(req)
-	span.Context.SetServiceTarget(apm.ServiceTargetSpanContext{
-		Name: "Kubernetes API server",
-		Type: "Kubernetes",
+	span.Context.SetDestinationService(apm.DestinationServiceSpanContext{
+		Name:     "Kubernetes API server",
+		Resource: "Kubernetes",
 	})
 	span.Context.SetDatabase(apm.DatabaseSpanContext{
 		Statement: requestName,
