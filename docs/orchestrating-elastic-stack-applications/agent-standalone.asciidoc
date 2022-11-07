@@ -21,7 +21,7 @@ NOTE: Running standalone Elastic Agent on ECK is compatible only with Stack vers
 
 . Apply the following specification to deploy Elastic Agent with the System metrics integration to harvest CPU metrics from the Agent Pods. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
 +
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
 apiVersion: agent.k8s.elastic.co/v1alpha1
@@ -32,7 +32,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0 <1>
   config:
     inputs:
       - name: system-1
@@ -58,6 +62,8 @@ spec:
             period: 10s
 EOF
 ----
++
+<1> The root user is required to persist state in a hostPath volume. See <<{p}-turn-off-hostpath>> on how to disable this feature.
 +
 Check <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
 
@@ -124,7 +130,7 @@ You can upgrade the Elastic Agent version or change settings by editing the YAML
 
 The Elastic Agent configuration is defined in the `config` element:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -134,7 +140,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0 <1>
   config:
     inputs:
       - name: system-1
@@ -160,6 +170,8 @@ spec:
             period: 10s
 ----
 
+<1> The root user is required to persist state in a hostPath volume. See <<{p}-turn-off-hostpath>> on how to disable this feature.
+
 Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -171,7 +183,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   configRef:
     secretName: system-cpu-config
 ---
@@ -223,7 +239,11 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   elasticsearchRefs:
   - name: quickstart
     outputName: default
@@ -265,7 +285,11 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   config:
     outputs:
       default:
@@ -293,6 +317,10 @@ metadata:
 spec:
   version: {version}
   daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
     strategy:
       type: RollingUpdate
       rollingUpdate:
@@ -322,6 +350,8 @@ spec:
       spec:
         automountServiceAccountToken: true
         serviceAccountName: elastic-agent
+        securityContext:
+          runAsUser: 0
 ...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -410,7 +440,7 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
 
-
+[id="{p}-turn-off-hostpath"]
 === Storing local state in host path volume
 Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
 If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
