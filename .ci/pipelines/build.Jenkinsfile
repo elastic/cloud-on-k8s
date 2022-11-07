@@ -38,12 +38,18 @@ pipeline {
                     failFast true
                     parallel {
                         stage("build and push operator image") {
+                            agent {
+                                label 'linux'
+                            }
                             steps {
                                 sh '.ci/setenvconfig build'
                                 sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci'
                             }
                         }
                         stage("build and push operator image in FIPS mode") {
+                            agent {
+                                label 'linux'
+                            }
                             steps {
                                 sh '.ci/setenvconfig build'
                                 sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci ENABLE_FIPS=true'
