@@ -43,7 +43,7 @@ pipeline {
                             }
                             steps {
                                 sh '.ci/setenvconfig build'
-                                sh 'make -C .ci license.key TARGET=ci-release ci'
+                                sh 'make -C .ci license.key TARGET="generate-crds-v1 build-operator-multiarch-image" ci'
                                 sh 'make -C .ci yaml-upload'
                             }
                         }
