@@ -37,34 +37,28 @@ pipeline {
                 stage('build') {
                     failFast true
                     parallel {
-                        stage("build and push operator image") {
+                        stage("build and push operator image and manifests") {
                             agent {
                                 label 'linux'
                             }
                             steps {
                                 sh '.ci/setenvconfig build'
-                                sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci'
+                                sh 'make -C .ci license.key TARGET=ci-release ci'
+                                sh 'make -C .ci yaml-upload'
                             }
                         }
-                        stage("build and push operator image in FIPS mode") {
+                        stage("build and push operator image and manifests in FIPS mode") {
                             agent {
                                 label 'linux'
                             }
+                            environment {
+                                ENABLE_FIPS="true"
+                            }
                             steps {
                                 sh '.ci/setenvconfig build'
-                                sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci ENABLE_FIPS=true'
+                                sh 'make -C .ci license.key TARGET=ci-release ci'
+                                sh 'make -C .ci yaml-upload'
                             }
-                        }
-                    }
-                }
-                stage('Upload YAML manifest to S3') {
-                    environment {
-                        VERSION="${sh(returnStdout: true, script: '. ./.env; echo $IMG_VERSION').trim()}"
-                    }
-
-                    steps {
-                        script {
-                            sh 'make -C .ci yaml-upload'
                         }
                     }
                 }
