@@ -62,10 +62,10 @@ OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION
 # Also, if fips is enabled, push fips versions of all builds to container registrys.
 ifeq ($(ENABLE_FIPS),true)
 	GO_TAGS += goexperiment.boringcrypto
-	OPERATOR_IMAGE               ?= $(BASE_IMG)-fips:$(IMG_VERSION)
-	OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)	
+	OPERATOR_IMAGE               := $(BASE_IMG)-fips:$(IMG_VERSION)
+	OPERATOR_IMAGE_UBI           := $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)	
 endif
 
 print-operator-image:
