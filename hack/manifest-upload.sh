@@ -9,10 +9,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR=${SCRIPT_DIR}/../config
 S3_ECK_DIR="${S3_ECK_DIR:-s3://download.elasticsearch.org/downloads/eck}"
-
-if [[ "$ENABLE_FIPS" == "true" ]]; then
-	VERSION="$VERSION-fips"
-fi
 YAML_DST_DIR="${S3_ECK_DIR}/${VERSION}"
 
 for manifest in operator.yaml crds.yaml; do
