@@ -47,7 +47,7 @@ pipeline {
                                 sh 'make -C .ci yaml-upload'
                             }
                         }
-                        stage("build and push operator image and manifests in FIPS mode") {
+                        stage("build and push operator image in FIPS mode") {
                             agent {
                                 label 'linux'
                             }
