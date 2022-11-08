@@ -113,10 +113,10 @@ yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
 yaml-upload: AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
 yaml-upload: AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
 yaml-upload:
-ifndef VERSION
-	$(error VERSION not set to upload YAML to S3)
+ifndef IMG_VERSION
+	$(error IMG_VERSION not set to upload YAML to S3)
 endif
 	@ $(MAKE) \
-		DOCKER_OPTS="-e ENABLE_FIPS=$(ENABLE_FIPS) -e VERSION=$(VERSION) -e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
+		DOCKER_OPTS="-e ENABLE_FIPS=$(ENABLE_FIPS) -e VERSION=$(IMG_VERSION) -e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
 		DOCKER_CMD="hack/manifest-upload.sh" \
 		ci-internal
