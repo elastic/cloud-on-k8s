@@ -1924,7 +1924,6 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 
 .Resource Types
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy[$$StackConfigPolicy$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicylist[$$StackConfigPolicyList$$]
 
 
 
@@ -1947,55 +1946,6 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policyphase"]
-=== PolicyPhase (string) 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus[$$ResourcePolicyStatus$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]
-****
-
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policystatuserror"]
-=== PolicyStatusError 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus[$$ResourcePolicyStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`version`* __integer__ | 
-| *`errors`* __string array__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus"]
-=== ResourcePolicyStatus 
-
-ResourcePolicyStatus models the status of the policy for one resource to be configured.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policyphase[$$PolicyPhase$$]__ | 
-| *`currentVersion`* __integer__ | 
-| *`expectedVersion`* __integer__ | 
-| *`error`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policystatuserror[$$PolicyStatusError$$]__ | 
-|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy"]
@@ -2003,10 +1953,7 @@ ResourcePolicyStatus models the status of the policy for one resource to be conf
 
 StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluster.
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicylist[$$StackConfigPolicyList$$]
-****
+
 
 [cols="25a,75a", options="header"]
 |===
@@ -2016,25 +1963,6 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]__ | 
-| *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus[$$StackConfigPolicyStatus$$]__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicylist"]
-=== StackConfigPolicyList 
-
-StackConfigPolicyList contains a list of StackConfigPolicy resources.
-
-
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`apiVersion`* __string__ | `stackconfigpolicy.k8s.elastic.co/v1alpha1`
-| *`kind`* __string__ | `StackConfigPolicyList`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#listmeta-v1-meta[$$ListMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
-
-| *`items`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy[$$StackConfigPolicy$$] array__ | 
 |===
 
 
@@ -2054,29 +1982,6 @@ StackConfigPolicyList contains a list of StackConfigPolicy resources.
 | *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#labelselector-v1-meta[$$LabelSelector$$]__ | 
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-namespacedsecretsource[$$NamespacedSecretSource$$] array__ | 
 | *`elasticsearch`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicystatus"]
-=== StackConfigPolicyStatus 
-
-
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy[$$StackConfigPolicy$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`resourcesStatuses`* __object (keys:string, values:xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-resourcepolicystatus[$$ResourcePolicyStatus$$])__ | ResourcesStatuses holds the status for each resource to be configured.
-| *`resources`* __integer__ | Resources is the number of resources to be configured.
-| *`ready`* __integer__ | Ready is the number of resources successfully configured.
-| *`errors`* __integer__ | Errors is the number of resources which have an incorrect configuration
-| *`readyCount`* __string__ | ReadyCount is a Human representation of the number of resources successfully configured.
-| *`phase`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-policyphase[$$PolicyPhase$$]__ | Phase is the phase of the StackConfigPolicy.
-| *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this StackConfigPolicy.
 |===
 
 
