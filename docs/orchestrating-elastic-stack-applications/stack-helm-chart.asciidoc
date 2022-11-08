@@ -46,6 +46,18 @@ helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 ----
 
 [float]
+[id="{p}-install-fleet-agent-elasticsearch-kibana-helm"]
+== Installing Fleet Server with Elastic Agents along with Elasticsearch and Kibana using the eck-stack Helm Chart
+
+The following section builds upon the previous section, and allows installing Fleet Server, and Fleet-managed Elastic Agents along with Elasticsearch and Kibana.
+
+[source,sh]
+----
+# Install an eck-managed Elasticsearch, Kibana, Fleet Server, and managed Elastic Agents using custom values.
+helm install eck-stack-with-fleet elastic/eck-stack --values https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/examples/agent/fleet-agents.yaml -n elastic-stack
+----
+
+[float]
 [id="{p}-eck-stack-individual-components"]
 === Installing individual components of the Elastic Stack using the Helm Charts
 
