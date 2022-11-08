@@ -63,7 +63,7 @@ spec:
 EOF
 ----
 +
-<1> The root user is required to persist state in a hostPath volume. See <<{p}-turn-off-hostpath>> on how to disable this feature.
+<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> on how to disable this feature.
 +
 Check <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
 
@@ -170,7 +170,7 @@ spec:
             period: 10s
 ----
 
-<1> The root user is required to persist state in a hostPath volume. See <<{p}-turn-off-hostpath>> on how to disable this feature.
+<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> on how to disable this feature.
 
 Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
@@ -440,7 +440,6 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
 
-[id="{p}-turn-off-hostpath"]
 === Storing local state in host path volume
 Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
 If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
