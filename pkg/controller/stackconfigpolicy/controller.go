@@ -213,6 +213,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
+		status.Phase = policyv1alpha1.InvalidPhase
+		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
 		return results.WithError(err), status
 	}
 

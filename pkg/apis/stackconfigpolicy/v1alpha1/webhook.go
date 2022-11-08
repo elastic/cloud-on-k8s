@@ -27,6 +27,7 @@ var (
 	defaultChecks = []func(*StackConfigPolicy) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
+		validSettings,
 	}
 )
 
@@ -82,4 +83,21 @@ func checkNoUnknownFields(policy *StackConfigPolicy) field.ErrorList {
 
 func checkNameLength(policy *StackConfigPolicy) field.ErrorList {
 	return commonv1.CheckNameLength(policy)
+}
+
+func validSettings(policy *StackConfigPolicy) field.ErrorList {
+	settingsCount := 0
+	if policy.Spec.Elasticsearch.ClusterSettings != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.ClusterSettings.Data)
+	}
+	if policy.Spec.Elasticsearch.SnapshotRepositories != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.SnapshotRepositories.Data)
+	}
+	if policy.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.SnapshotLifecyclePolicies.Data)
+	}
+	if settingsCount == 0 {
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
+	}
+	return nil
 }

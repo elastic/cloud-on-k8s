@@ -11,9 +11,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
@@ -30,21 +32,24 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
-		/*{
+		{
 			Name:      "unknown-field",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkStackConfigPolicy(uid)
 				m.SetAnnotations(map[string]string{
-					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
+					corev1.LastAppliedConfigAnnotation: `{
+						"metadata":{"name": "scp", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },
+						"spec":{"unknown": "blurb"}
+					}`,
 				})
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`"unknown": unknown field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown`,
 			),
-		},*/
+		},
 		{
 			Name:      "long-name",
 			Operation: admissionv1beta1.Create,
@@ -58,6 +63,23 @@ func TestWebhook(t *testing.T) {
 				`metadata.name: Too long: must have at most 36 bytes`,
 			),
 		},
+		{
+			Name:      "no-settings",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{
+					SnapshotRepositories:      nil,
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: nil},
+					ClusterSettings:           &commonv1.Config{Data: map[string]interface{}{}},
+				}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				"Elasticsearch settings are mandatory and must not be empty",
+			),
+		},
 	}
 
 	validator := &policyv1alpha1.StackConfigPolicy{}
@@ -68,12 +90,12 @@ func TestWebhook(t *testing.T) {
 func mkStackConfigPolicy(uid string) *policyv1alpha1.StackConfigPolicy {
 	return &policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
+			Name: "config-policy-test",
 			UID:  types.UID(uid),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				SnapshotRepositories: nil,
+				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
 			},
 		},
 	}

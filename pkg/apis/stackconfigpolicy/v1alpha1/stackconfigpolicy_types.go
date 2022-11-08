@@ -112,10 +112,11 @@ type StackConfigPolicyStatus struct {
 type PolicyPhase string
 
 const (
+	UnknownPhase         PolicyPhase = "Unknown"
 	ReadyPhase           PolicyPhase = "Ready"
 	ApplyingChangesPhase PolicyPhase = "ApplyingChanges"
+	InvalidPhase         PolicyPhase = "Invalid"
 	ErrorPhase           PolicyPhase = "Error"
-	UnknownPhase         PolicyPhase = "Unknown"
 	ConflictPhase        PolicyPhase = "Conflict"
 )
 
@@ -124,7 +125,8 @@ var phaseOrder = map[PolicyPhase]int{
 	UnknownPhase:         -1,
 	ReadyPhase:           0,
 	ApplyingChangesPhase: 1,
-	ErrorPhase:           2,
+	InvalidPhase:         2,
+	ErrorPhase:           3,
 	ConflictPhase:        4,
 }
 
