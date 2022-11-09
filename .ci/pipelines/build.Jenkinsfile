@@ -38,6 +38,9 @@ pipeline {
                     failFast true
                     parallel {
                         stage("build and push operator image and manifests") {
+                            agent {
+                                label 'linux'
+                            }
                             steps {
                                 sh '.ci/setenvconfig build'
                                 sh 'make -C .ci license.key TARGET="generate-crds-v1 build-operator-multiarch-image" ci'
@@ -45,6 +48,9 @@ pipeline {
                             }
                         }
                         stage("build and push operator image in FIPS mode") {
+                            agent {
+                                label 'linux'
+                            }
                             environment {
                                 ENABLE_FIPS="true"
                             }
@@ -80,7 +86,7 @@ pipeline {
     post {
         success {
             script {
-                def operatorImage = sh(returnStdout: true, script: 'make print-operator-image').trim()
+                def operatorImage = sh(returnStdout: true, script: '.ci/setenvconfig build && make print-operator-image').trim()
                 if (isWeekday()) {
                     build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                         parameters: [
