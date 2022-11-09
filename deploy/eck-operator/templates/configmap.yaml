@@ -25,6 +25,9 @@ data:
     {{- end }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
+    {{- if .Values.config.kubeClientQPS }}
+    telemetry-interval: {{ .Values.config.kubeClientQPS }}
+    {{- end }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
     distribution-channel: {{ .Values.telemetry.distributionChannel }}

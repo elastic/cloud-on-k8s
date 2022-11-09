@@ -256,6 +256,11 @@ func Command() *cobra.Command {
 		60*time.Second,
 		"Timeout for requests made by the Kubernetes API client.",
 	)
+	cmd.Flags().Float32(
+		operator.KubeClientQPS,
+		0,
+		"Kubernetes API client queries per second.",
+	)
 	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
 		true,
@@ -488,6 +493,11 @@ func startOperator(ctx context.Context) error {
 	if err != nil {
 		log.Error(err, "Failed to obtain client configuration")
 		return err
+	}
+
+	if qps := float32(viper.GetFloat64(operator.KubeClientQPS)); qps > 0 {
+		cfg.QPS = qps
+		cfg.Burst = int(qps * 2)
 	}
 
 	// set up APM  tracing if configured
