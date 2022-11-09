@@ -38,9 +38,6 @@ pipeline {
                     failFast true
                     parallel {
                         stage("build and push operator image and manifests") {
-                            agent {
-                                label 'linux'
-                            }
                             steps {
                                 sh '.ci/setenvconfig build'
                                 sh 'make -C .ci license.key TARGET="generate-crds-v1 build-operator-multiarch-image" ci'
@@ -48,9 +45,6 @@ pipeline {
                             }
                         }
                         stage("build and push operator image in FIPS mode") {
-                            agent {
-                                label 'linux'
-                            }
                             environment {
                                 ENABLE_FIPS="true"
                             }
