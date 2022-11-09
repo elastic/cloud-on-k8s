@@ -14,6 +14,7 @@ vault := ../hack/retry.sh 5 vault
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
+VAULT_ROOT_PATH ?= secret/devops-ci/cloud-on-k8s
 
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifndef VAULT_TOKEN

@@ -35,7 +35,6 @@ steps:
 
       - label: ":go: checks"
         commands:
-          - touch .env
           - make check-license-header check-predicates shellcheck reattach-pv
 
   - group: tests
