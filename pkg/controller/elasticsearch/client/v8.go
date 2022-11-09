@@ -29,6 +29,12 @@ func (c *clientV8) SyncedFlush(ctx context.Context) error {
 	return errors.New("synced flush is not supported in Elasticsearch 8.x")
 }
 
+func (c *clientV8) GetClusterState(ctx context.Context) (ClusterState, error) {
+	var response ClusterState
+	err := c.get(ctx, "/_cluster/state", &response)
+	return response, err
+}
+
 // Equal returns true if c2 can be considered the same as c
 func (c *clientV8) Equal(c2 Client) bool {
 	other, ok := c2.(*clientV8)

@@ -212,9 +212,7 @@ func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 }
 
 func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
-	var response ClusterState
-	err := c.get(ctx, "/_cluster/state", &response)
-	return response, err
+	return ClusterState{}, errors.New("cluster state is not supported in Elasticsearch 6.x")
 }
 
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {

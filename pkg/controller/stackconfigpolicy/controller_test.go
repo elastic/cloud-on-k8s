@@ -203,12 +203,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			pre: func(r ReconcileStackConfigPolicy) {
 				// after the reconciliation, settings are empty
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.NotEmpty(t, secret.GetSettings().State.ClusterSettings.Data)
+				assert.NotEmpty(t, secret.Settings.State.ClusterSettings.Data)
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Empty(t, secret.GetSettings().State.ClusterSettings.Data)
+				assert.Empty(t, secret.Settings.State.ClusterSettings.Data)
 			},
 			wantErr: false,
 		},
@@ -222,12 +222,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.NotEmpty(t, secret.GetSettings().State.ClusterSettings)
+				assert.NotEmpty(t, secret.Settings.State.ClusterSettings)
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.Empty(t, secret.GetSettings().State.ClusterSettings.Data)
+				assert.Empty(t, secret.Settings.State.ClusterSettings.Data)
 			},
 			wantErr: false,
 		},
@@ -279,13 +279,13 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.5.0"}, events)
 
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
-				assert.Equal(t, 0, policy.Status.Resources)
+				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
 			},
-			wantErr:          false,
-			wantRequeue:      false,
-			wantRequeueAfter: false,
+			wantErr:          true,
+			wantRequeue:      true,
+			wantRequeueAfter: true,
 		},
 		{
 			name: "Elasticsearch cluster is unreachable",
@@ -314,11 +314,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "40mb", secret.GetSettings().State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				assert.Equal(t, "40mb", secret.Settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				secret := r.getSecret(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "42mb", secret.GetSettings().State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				assert.Equal(t, "42mb", secret.Settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{

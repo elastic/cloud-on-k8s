@@ -498,7 +498,7 @@ type ShutdownResponse struct {
 	Nodes []NodeShutdown `json:"nodes"`
 }
 
-// ClusterState represents the internal representation of the cluster state
+// ClusterState models the internal representation of the cluster state
 type ClusterState struct {
 	Metadata Metadata `json:"metadata"`
 }

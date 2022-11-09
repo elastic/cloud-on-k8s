@@ -42,8 +42,8 @@ func NewSettingsSecret(current *SettingsSecret, es types.NamespacedName, policy 
 
 	// do not increment version if hash hasn't changed
 	if current != nil && !current.hasChanged(settings) {
-		version = current.version
-		settings.Metadata.Version = current.settings.Metadata.Version
+		version = current.Version
+		settings.Metadata.Version = current.Settings.Metadata.Version
 	}
 
 	// prepare the SettingsSecret
@@ -65,8 +65,8 @@ func NewSettingsSecret(current *SettingsSecret, es types.NamespacedName, policy 
 				settingsSecretKey: settingsBytes,
 			},
 		},
-		settings: settings,
-		version:  version,
+		Settings: settings,
+		Version:  version,
 	}
 
 	return settingsSecret, nil
@@ -86,31 +86,21 @@ func NewSettingsSecretFromSecret(secret corev1.Secret) (SettingsSecret, error) {
 
 	return SettingsSecret{
 		Secret:   secret,
-		settings: settings,
-		version:  version,
+		Settings: settings,
+		Version:  version,
 	}, nil
 }
 
 // SettingsSecret wraps a Secret used to store File based Settings and the corresponding Settings and their version stored in it.
 type SettingsSecret struct {
 	corev1.Secret
-	settings Settings
-	version  int64
+	Settings Settings
+	Version  int64
 }
 
 // hasChanged compares the hash of the given settings with the hash stored in the annotation of the Settings Secret.
 func (s SettingsSecret) hasChanged(newSettings Settings) bool {
 	return s.Annotations[settingsHashAnnotationName] != newSettings.hash()
-}
-
-// GetVersion returns the Settings version.
-func (s SettingsSecret) GetVersion() int64 {
-	return s.version
-}
-
-// GetSettings returns the Settings.
-func (s SettingsSecret) GetSettings() Settings {
-	return s.settings
 }
 
 // CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
@@ -122,12 +112,7 @@ func (s SettingsSecret) CanBeOwnedBy(policy policyv1alpha1.StackConfigPolicy) (r
 		return reconciler.SoftOwnerRef{}, true
 	}
 	// or the owner is already the given policy
-	policyOwner := reconciler.SoftOwnerRef{
-		Namespace: policy.Namespace,
-		Name:      policy.Name,
-		Kind:      policy.Kind,
-	}
-	canBeOwned := currentOwner.Kind == policyOwner.Kind && currentOwner.Namespace == policyOwner.Namespace && currentOwner.Name == policyOwner.Name
+	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
 	return currentOwner, canBeOwned
 }
 
@@ -147,22 +132,11 @@ func (s *SettingsSecret) SetSecureSettings(ctx context.Context, c k8s.Client, po
 		return nil
 	}
 
-	/*hashes := ""
-	for _, secretRef := range policy.Spec.SecureSettings {
-		var secret corev1.Secret
-		err := c.Get(ctx, types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.SecretName}, &secret)
-		if err != nil {
-			return err
-		}
-		hashes += hash.HashObject(secret.Data)
-	}*/
-
 	bytes, err := json.Marshal(policy.Spec.SecureSettings)
 	if err != nil {
 		return err
 	}
 	s.Annotations[SecureSettingsSecretsAnnotationName] = string(bytes)
-	// s.Annotations[SecureSettingsHashAnnotationName] = hash.HashObject(hashes)
 	return nil
 }
 

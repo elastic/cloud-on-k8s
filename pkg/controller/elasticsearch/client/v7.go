@@ -92,6 +92,10 @@ func (c *clientV7) DeleteVotingConfigExclusions(ctx context.Context, waitForRemo
 	return nil
 }
 
+func (c *clientV7) GetClusterState(ctx context.Context) (ClusterState, error) {
+	return ClusterState{}, errors.New("cluster state is not supported in Elasticsearch 7.x")
+}
+
 func (c *clientV7) Equal(c2 Client) bool {
 	other, ok := c2.(*clientV7)
 	if !ok {

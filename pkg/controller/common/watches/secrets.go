@@ -17,12 +17,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 )
 
-// WatchUserProvidedSecrets registers a watch for user-provided secrets that are in the same namespace than the watcher.
+// WatchUserProvidedSecrets registers a watch for user-provided secrets that are in the same namespace as the watcher.
 // Only one watch per watcher is registered:
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
 // - if there is no secret provided by the user, remove the watch.
 func WatchUserProvidedSecrets(
-	watcher types.NamespacedName, // resource to which the watches are attached (eg. an Elasticsearch object)
+	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
 	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []string, // user-provided secrets to watch
@@ -39,7 +39,7 @@ func WatchUserProvidedSecrets(
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
 // - if there is no secret provided by the user, remove the watch.
 func WatchUserProvidedNamespacedSecrets(
-	watcher types.NamespacedName, // resource to which the watches are attached (eg. an Elasticsearch object)
+	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
 	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []commonv1.NamespacedSecretSource, // secrets to watch

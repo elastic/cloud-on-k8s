@@ -157,11 +157,12 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusInPhase(resource types.NamespacedName, phase PolicyPhase, msg string) {
+func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string) {
 	s.ResourcesStatuses[resource.String()] = ResourcePolicyStatus{
 		Phase: phase,
 		Error: PolicyStatusError{Errors: []string{msg}},
 	}
+	s.update()
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
@@ -175,10 +176,11 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		status.Phase = ApplyingChangesPhase
 	}
 	s.ResourcesStatuses[resource.String()] = status
+	s.update()
 }
 
-// Update updates the policy status from its resources statuses.
-func (s *StackConfigPolicyStatus) Update() {
+// update updates the policy status from its resources statuses.
+func (s *StackConfigPolicyStatus) update() {
 	s.Resources = len(s.ResourcesStatuses)
 	s.Phase = ReadyPhase
 	s.Ready = 0

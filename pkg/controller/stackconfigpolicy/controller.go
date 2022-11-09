@@ -31,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -50,6 +49,8 @@ const (
 
 var (
 	fileBasedSettingsMinimumVersion = version.From(8, 5, 0)
+
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}
 )
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -161,11 +162,6 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 		return reconcile.Result{}, nil
 	}
 
-	// remove any previous Finalizers
-	if err := finalizer.RemoveAll(ctx, r.Client, &policy); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	// the StackConfigPolicy will be deleted nothing to do other than remove the watches
 	if policy.IsMarkedForDeletion() {
 		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&policy))
@@ -184,8 +180,6 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 
 	return results.Aggregate()
 }
-
-var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}
 
 // esMap is a type alias for a Map of Elasticsearch indexed by NamespaceName useful to manipulate the Elasticsearch
 // clusters configured by a StackConfigPolicy.
@@ -244,6 +238,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
 
+		// keep the list of ES to be configured
+		esNsn := k8s.ExtractNamespacedName(&es)
+		configuredResources[esNsn] = es
+
 		// File based Settings is available from ES 8.5.0
 		v, err := version.Parse(es.Spec.Version)
 		if err != nil {
@@ -252,13 +250,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		if v.LT(fileBasedSettingsMinimumVersion) {
 			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, fileBasedSettingsMinimumVersion)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
-			log.Error(err, fmt.Sprintf("Failed to apply stack config policy %s/%s", policy.Namespace, policy.Name))
+			results.WithError(err)
+			status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
 			continue
 		}
-
-		// keep the list of ES to be configured
-		esNsn := k8s.ExtractNamespacedName(&es)
-		configuredResources[esNsn] = es
 
 		// the file Settings Secret must exist, if not it will be created empty by the ES controller
 		var secret corev1.Secret
@@ -282,8 +277,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			err = fmt.Errorf("conflict: resource Elasticsearch %s/%s already configured by StackConfigpolicy %s/%s", es.Namespace, es.Name, currentOwner.Namespace, currentOwner.Name)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			status.UpdateResourceStatusInPhase(esNsn, policyv1alpha1.ConflictPhase, err.Error())
-			status.Update()
+			status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error())
 			continue
 		}
 
@@ -308,19 +302,14 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		// get /_cluster/state to get the Settings currently configured in ES
 		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
 		if err != nil {
-			currentSettings.Errors = &esclient.FileSettingsErrors{
-				Errors: []string{err.Error()},
-			}
+			status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
 			// requeue if ES not reachable
 			results.WithResult(defaultRequeue)
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expected.GetVersion()))
-		status.Update()
+		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expected.Version))
 	}
-
-	status.Update()
 
 	// reset Settings secrets for resources no longer selected by this policy
 	err = resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources)
@@ -432,11 +421,9 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 			Namespace: s.Namespace,
 			Name:      s.Labels[eslabel.ClusterNameLabelName],
 		}
-		if configuredEs != nil {
-			_, exist := configuredEs[esNsn]
-			if exist {
-				continue
-			}
+		_, exist := configuredEs[esNsn]
+		if exist {
+			continue
 		}
 
 		log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
