@@ -210,7 +210,7 @@ pipeline {
 }
 
 def runWith(lib, failedTests, clusterName, stackVersion) {
-    sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
+    sh ".ci/setenvconfig e2e/stack-versions $stackVersion $clusterName"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-test-artifacts TARGET=ci-e2e ci")
 

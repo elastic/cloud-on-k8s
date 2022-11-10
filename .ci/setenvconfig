@@ -554,7 +554,8 @@ CFG
 ######################################
 
 stackVersion=$2
-clusterName="eck-${CI_PLATFORM}-e2e-stack-$(sed "s|\.||g" <<< $stackVersion)-${BUILD_NUMBER}"
+generatedClusterName="eck-${CI_PLATFORM}-e2e-stack-$(sed "s|\.||g" <<< $stackVersion)-${BUILD_NUMBER}"
+clusterName=${3:-$generatedClusterName}
 
 isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
 testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
