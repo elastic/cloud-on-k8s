@@ -41,12 +41,12 @@ pipeline {
         stage('Run checks') {
             steps {
                 sh '.ci/setenvconfig dev/build'
-                sh 'make -C .ci TARGET=ci-check ci'
+                sh 'make -C .ci license.key TARGET=ci-check ci'
             }
         }
          stage("Build dev operator image") {
             steps {
-                sh('make -C .ci license.key TARGET=ci-release ci')
+                sh('make -C .ci TARGET=ci-release ci')
             }
          }
         stage('Run tests for different stack versions in GKE') {

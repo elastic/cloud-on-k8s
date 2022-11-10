@@ -27,7 +27,7 @@ pipeline {
                 stage('Run checks') {
                     steps {
                         sh '.ci/setenvconfig build'
-                        sh 'make -C .ci TARGET=ci-check ci'
+                        sh 'make -C .ci license.key TARGET=ci-check ci'
                     }
                 }
                 stage('Run unit and integration tests') {
