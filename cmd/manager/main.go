@@ -259,7 +259,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Float32(
 		operator.KubeClientQPS,
 		0,
-		"Kubernetes API client queries per second.",
+		"Maximum number of queries per second to the Kubernetes API.",
 	)
 	cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
