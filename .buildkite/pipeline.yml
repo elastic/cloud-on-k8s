@@ -35,6 +35,7 @@ steps:
 
       - label: ":go: checks"
         commands:
+          - .ci/setenvconfig pr
           - make check-license-header check-predicates shellcheck reattach-pv
 
   - group: tests

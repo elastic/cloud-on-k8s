@@ -26,6 +26,7 @@ pipeline {
             stages {
                 stage('Run checks') {
                     steps {
+                        sh '.ci/setenvconfig build'
                         sh 'make -C .ci TARGET=ci-check ci'
                     }
                 }
@@ -86,7 +87,7 @@ pipeline {
     post {
         success {
             script {
-                def operatorImage = sh(returnStdout: true, script: 'whoami && ls -l .env ; .ci/setenvconfig build && make print-operator-image').trim()
+                def operatorImage = sh(returnStdout: true, script: '.ci/setenvconfig build && make print-operator-image').trim()
                 if (isWeekday()) {
                     build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                         parameters: [
