@@ -48,7 +48,7 @@ pipeline {
             }
             steps {
                 sh '.ci/setenvconfig e2e/main'
-                sh 'make -C .ci TARGET=ci-check ci'
+                sh 'make -C .ci license.key TARGET=ci-check ci'
             }
         }
         stage("E2E tests") {
