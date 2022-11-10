@@ -26,6 +26,7 @@ pipeline {
             stages {
                 stage('Run checks') {
                     steps {
+                        sh '.ci/setenvconfig build'
                         sh 'make -C .ci TARGET=ci-check ci'
                     }
                 }

@@ -40,12 +40,12 @@ pipeline {
         }
         stage('Run checks') {
             steps {
+                sh '.ci/setenvconfig dev/build'
                 sh 'make -C .ci TARGET=ci-check ci'
             }
         }
          stage("Build dev operator image") {
             steps {
-                sh '.ci/setenvconfig dev/build'
                 sh('make -C .ci license.key TARGET=ci-release ci')
             }
          }
