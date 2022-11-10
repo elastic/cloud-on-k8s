@@ -813,7 +813,7 @@ CFG
 ######################################
 
 ocpVersion=$2
-clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocp_version})-$BUILD_NUMBER"
+clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
 
 write_deployer_config <<CFG
 id: ocp-ci
