@@ -28,6 +28,7 @@ const (
 	PasswordHashCacheSize                = "password-hash-cache-size"
 	IPFamilyFlag                         = "ip-family"
 	KubeClientTimeout                    = "kube-client-timeout"
+	KubeClientQPS                        = "kube-client-qps"
 	ManageWebhookCertsFlag               = "manage-webhook-certs"
 	MaxConcurrentReconcilesFlag          = "max-concurrent-reconciles"
 	MetricsPortFlag                      = "metrics-port"
