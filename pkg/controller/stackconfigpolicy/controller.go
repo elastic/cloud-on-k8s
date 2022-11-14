@@ -436,6 +436,10 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
+		if apierrors.IsNotFound(err) {
+			// Elasticsearch has just been deleted
+			return nil
+		}
 
 		return filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false)
 	}
