@@ -213,7 +213,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Reste orphan soft owned secrets when an Elasticsearch is no more configured by a StackConfigPolicy",
+			name: "Reset orphan soft owned secrets when an Elasticsearch is no more configured by a StackConfigPolicy",
 			args: args{
 				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, orphanSecretFixture, orphanEsFixture),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},

@@ -295,7 +295,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		if _, err := reconciler.ReconcileSecret(ctx, r.Client, expected.Secret, &es); err != nil {
+		if err := filesettings.ReconcileSecret(ctx, r.Client, expected.Secret, es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -436,28 +436,7 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 			return err
 		}
 
-		expected, err := filesettings.NewSettingsSecret(nil, esNsn, nil)
-		if err != nil {
-			return err
-		}
-
-		reconciled := &corev1.Secret{}
-		err = reconciler.ReconcileResource(reconciler.Params{
-			Context:    ctx,
-			Client:     c,
-			Owner:      &es,
-			Expected:   &expected.Secret,
-			Reconciled: reconciled,
-			NeedsUpdate: func() bool {
-				return !reflect.DeepEqual(expected.Data, reconciled.Data)
-			},
-			UpdateReconciled: func() {
-				expected.Secret.DeepCopyInto(reconciled)
-			},
-		})
-		if err != nil {
-			return err
-		}
+		return filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false)
 	}
 	return nil
 }

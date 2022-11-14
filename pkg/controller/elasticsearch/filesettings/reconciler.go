@@ -6,6 +6,7 @@ package filesettings
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,8 +40,31 @@ func ReconcileEmptyFileSettingsSecret(
 	if err != nil {
 		return err
 	}
-	if _, err := reconciler.ReconcileSecret(ctx, c, expected.Secret, &es); err != nil {
-		return err
-	}
-	return nil
+
+	return ReconcileSecret(ctx, c, expected.Secret, es)
+}
+
+// ReconcileSecret reconciles the given file settings Secret for the given Elasticsearch.
+// reconciler.ReconcileSecret is not used because its usage is for custom-provided Secret where we want to preserve
+// existing annotations. Here we need to be able to reset annotations to reset a file settings Secret.
+func ReconcileSecret(
+	ctx context.Context,
+	c k8s.Client,
+	expected corev1.Secret,
+	es esv1.Elasticsearch,
+) error {
+	reconciled := &corev1.Secret{}
+	return reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
+		Client:     c,
+		Owner:      &es,
+		Expected:   &expected,
+		Reconciled: reconciled,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(expected.Data, reconciled.Data)
+		},
+		UpdateReconciled: func() {
+			expected.DeepCopyInto(reconciled)
+		},
+	})
 }
