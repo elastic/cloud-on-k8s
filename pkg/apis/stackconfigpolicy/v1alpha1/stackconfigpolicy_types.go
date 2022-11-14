@@ -162,7 +162,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 		Phase: phase,
 		Error: PolicyStatusError{Errors: []string{msg}},
 	}
-	s.update()
+	s.Update()
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
@@ -176,11 +176,11 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		status.Phase = ApplyingChangesPhase
 	}
 	s.ResourcesStatuses[resource.String()] = status
-	s.update()
+	s.Update()
 }
 
-// update updates the policy status from its resources statuses.
-func (s *StackConfigPolicyStatus) update() {
+// Update updates the policy status from its resources statuses.
+func (s *StackConfigPolicyStatus) Update() {
 	s.Resources = len(s.ResourcesStatuses)
 	s.Phase = ReadyPhase
 	s.Ready = 0
