@@ -146,7 +146,7 @@ type PolicyStatusError struct {
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
 	status := StackConfigPolicyStatus{
 		ResourcesStatuses:  map[string]ResourcePolicyStatus{},
-		Phase:              UnknownPhase,
+		Phase:              ReadyPhase,
 		ObservedGeneration: scp.Generation,
 	}
 	status.setReadyCount()
@@ -182,7 +182,6 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 // Update updates the policy status from its resources statuses.
 func (s *StackConfigPolicyStatus) Update() {
 	s.Resources = len(s.ResourcesStatuses)
-	s.Phase = ReadyPhase
 	s.Ready = 0
 	s.Error = 0
 	for _, status := range s.ResourcesStatuses {
