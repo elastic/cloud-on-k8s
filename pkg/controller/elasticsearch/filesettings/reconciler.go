@@ -7,6 +7,7 @@ package filesettings
 import (
 	"context"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +37,7 @@ func ReconcileEmptyFileSettingsSecret(
 	}
 
 	// no secret, reconcile a new empty file settings
-	expected, err := NewSettingsSecret(nil, k8s.ExtractNamespacedName(&es), nil)
+	expected, err := NewSettingsSecret(time.Now().UnixNano(), nil, k8s.ExtractNamespacedName(&es), nil)
 	if err != nil {
 		return err
 	}

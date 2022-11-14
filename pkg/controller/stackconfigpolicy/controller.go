@@ -282,7 +282,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// create the expected Settings Secret
-		expected, err := filesettings.NewSettingsSecret(&current, esNsn, &policy)
+		newVersion := time.Now().UnixNano()
+		expected, err := filesettings.NewSettingsSecret(newVersion, &current, esNsn, &policy)
 		if err != nil {
 			return results.WithError(err), status
 		}

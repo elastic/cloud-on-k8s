@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -56,8 +55,7 @@ func (s *Settings) hash() string {
 }
 
 // NewSettings returns empty new Settings with their version created from the epoch time.
-func NewSettings() (int64, Settings) {
-	version := time.Now().UnixNano()
+func NewSettings(version int64) (int64, Settings) {
 	return version, Settings{
 		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: defaultCompatibilityVersion},
 		State:    newSettingsState(),

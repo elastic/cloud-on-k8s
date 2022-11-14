@@ -5,6 +5,7 @@
 package filesettings
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -34,18 +35,23 @@ func Test_newSettingsSecret(t *testing.T) {
 	}
 
 	// no policy
-	ss, err := NewSettingsSecret(nil, es, nil)
+
+	version := time.Now().UnixNano()
+	ss, err := NewSettingsSecret(version, nil, es, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", ss.Namespace)
 	assert.Equal(t, "esName-es-file-settings", ss.Name)
 	assert.Equal(t, 0, len(ss.Settings.State.ClusterSettings.Data))
+	assert.Equal(t, version, ss.Version)
 
 	// policy
-	ss, err = NewSettingsSecret(nil, es, &policy)
+	version2 := time.Now().UnixNano()
+	ss, err = NewSettingsSecret(version2, nil, es, &policy)
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", ss.Namespace)
 	assert.Equal(t, "esName-es-file-settings", ss.Name)
 	assert.Equal(t, 1, len(ss.Settings.State.ClusterSettings.Data))
+	assert.Equal(t, version2, ss.Version)
 }
 
 func Test_SettingsSecret_hasChanged(t *testing.T) {
@@ -68,42 +74,29 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 			},
 		}}
 
-	tick := time.Now().UnixNano()
-	_, emptySettings := NewSettings()
+	version := time.Now().UnixNano()
+	_, expectedEmptySettings := NewSettings(version)
 
 	// no policy -> emptySettings
-	ss, err := NewSettingsSecret(nil, es, nil)
+	ss, err := NewSettingsSecret(version, nil, es, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, false, ss.hasChanged(emptySettings))
-	assert.Greater(t, ss.Version, tick)
+	assert.Equal(t, false, ss.hasChanged(expectedEmptySettings))
+	assert.Equal(t, version, ss.Version)
 
 	// policy without settings -> emptySettings
-	_, sameSettings := NewSettings()
+	_, sameSettings := NewSettings(version)
 	err = sameSettings.updateState(es, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, false, ss.hasChanged(sameSettings))
+	assert.Equal(t, strconv.FormatInt(version, 10), sameSettings.Metadata.Version)
 
 	// new policy -> settings changed
-	_, newSettings := NewSettings()
+	newVersion := time.Now().UnixNano()
+	_, newSettings := NewSettings(newVersion)
 	err = newSettings.updateState(es, otherPolicy)
 	assert.NoError(t, err)
 	assert.Equal(t, true, ss.hasChanged(newSettings))
-}
-
-func Test_SettingsSecret_getVersion(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-
-	tick1 := time.Now().UnixNano()
-	ss, err := NewSettingsSecret(nil, es, nil)
-	tick2 := time.Now().UnixNano()
-	assert.NoError(t, err)
-
-	v := ss.Version
-	assert.LessOrEqual(t, tick1, v)
-	assert.LessOrEqual(t, v, tick2)
+	assert.Equal(t, strconv.FormatInt(newVersion, 10), newSettings.Metadata.Version)
 }
 
 func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
@@ -131,7 +124,7 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	}
 
 	// empty settings can be owned by any policy
-	ss, err := NewSettingsSecret(nil, es, nil)
+	ss, err := NewSettingsSecret(time.Now().UnixNano(), nil, es, nil)
 	assert.NoError(t, err)
 	_, canBeOwned := ss.CanBeOwnedBy(policy)
 	assert.Equal(t, true, canBeOwned)
@@ -175,7 +168,7 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
 
-	ss, err := NewSettingsSecret(nil, es, nil)
+	ss, err := NewSettingsSecret(time.Now().UnixNano(), nil, es, nil)
 	assert.NoError(t, err)
 
 	secureSettings, err := ss.getSecureSettings()

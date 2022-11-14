@@ -29,8 +29,8 @@ const (
 )
 
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
-func NewSettingsSecret(current *SettingsSecret, es types.NamespacedName, policy *policyv1alpha1.StackConfigPolicy) (SettingsSecret, error) {
-	version, settings := NewSettings()
+func NewSettingsSecret(version int64, current *SettingsSecret, es types.NamespacedName, policy *policyv1alpha1.StackConfigPolicy) (SettingsSecret, error) {
+	version, settings := NewSettings(version)
 
 	// update the settings according the config policy
 	if policy != nil {
