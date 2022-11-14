@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esClient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -63,8 +62,8 @@ func TestStackConfigPolicy(t *testing.T) {
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"label": "test-scp"},
 			},
-			SecureSettings: []commonv1.NamespacedSecretSource{
-				{Namespace: test.Ctx().ManagedNamespace(1), SecretName: "secure-settings-1"},
+			SecureSettings: []commonv1.SecretSource{
+				{SecretName: "secure-settings-1"},
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
@@ -132,7 +131,7 @@ func TestStackConfigPolicy(t *testing.T) {
 					assert.NoError(t, err)
 
 					var settings ClusterSettings
-					err = checks.Request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
+					err = Request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
 					if err != nil {
 						return err
 					}

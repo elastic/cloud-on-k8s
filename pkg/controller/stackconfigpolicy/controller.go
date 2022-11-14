@@ -291,7 +291,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		expected.SetSoftOwner(policy)
 
 		// add the Secure Settings Secret sources to the Settings Secret
-		if err := expected.SetSecureSettings(ctx, r.Client, policy); err != nil {
+		if err := expected.SetSecureSettings(policy); err != nil {
 			return results.WithError(err), status
 		}
 

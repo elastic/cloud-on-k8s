@@ -5,18 +5,15 @@
 package filesettings
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_newSettingsSecret(t *testing.T) {
@@ -161,15 +158,6 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 		Namespace: "esNs",
 		Name:      "esName",
 	}
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "esNs",
-			Name:      "esNs-es-file-settings",
-			Annotations: map[string]string{
-				"policy.k8s.elastic.co/secure-settings-secrets": "secure-settings-secret",
-			},
-		},
-	}
 	policy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "policyNs",
@@ -184,10 +172,8 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			Name:      "otherPolicyName",
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			SecureSettings: []commonv1.NamespacedSecretSource{{SecretName: "secure-settings-secret"}},
+			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
-
-	client := k8s.NewFakeClient(&secret)
 
 	ss, err := NewSettingsSecret(nil, es, nil)
 	assert.NoError(t, err)
@@ -196,15 +182,15 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.SetSecureSettings(context.Background(), client, policy)
+	err = ss.SetSecureSettings(policy)
 	assert.NoError(t, err)
 	secureSettings, err = ss.getSecureSettings()
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.SetSecureSettings(context.Background(), client, otherPolicy)
+	err = ss.SetSecureSettings(otherPolicy)
 	assert.NoError(t, err)
 	secureSettings, err = ss.getSecureSettings()
 	assert.NoError(t, err)
-	assert.Equal(t, []commonv1.NamespacedSecretSource{{SecretName: "secure-settings-secret"}}, secureSettings)
+	assert.Equal(t, []commonv1.NamespacedSecretSource{{Namespace: otherPolicy.Namespace, SecretName: "secure-settings-secret"}}, secureSettings)
 }

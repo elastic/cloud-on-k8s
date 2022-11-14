@@ -118,8 +118,8 @@ spec:
                 x-kubernetes-map-type: atomic
               secureSettings:
                 items:
-                  description: NamespacedSecretSource defines a data source based
-                    on a Kubernetes Secret in a given namespace.
+                  description: SecretSource defines a data source based on a Kubernetes
+                    Secret.
                   properties:
                     entries:
                       description: Entries define how to project each key-value pair
@@ -143,14 +143,10 @@ spec:
                         - key
                         type: object
                       type: array
-                    namespace:
-                      description: Namespace is the namespace of the secret.
-                      type: string
                     secretName:
                       description: SecretName is the name of the secret.
                       type: string
                   required:
-                  - namespace
                   - secretName
                   type: object
                 type: array

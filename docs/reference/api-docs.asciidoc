@@ -595,23 +595,6 @@ Monitoring holds references to both the metrics, and logs Elasticsearch clusters
 |===
 
 
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-namespacedsecretsource"]
-=== NamespacedSecretSource 
-
-NamespacedSecretSource defines a data source based on a Kubernetes Secret in a given namespace.
-
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]
-****
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`namespace`* __string__ | Namespace is the namespace of the secret.
-| *`secretName`* __string__ | SecretName is the name of the secret.
-| *`entries`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-keytopath[$$KeyToPath$$] array__ | Entries define how to project each key-value pair in the secret to filesystem paths. If not defined, all keys will be projected to similarly named paths in the filesystem. If defined, only the specified keys will be projected to the corresponding paths.
-|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector"]
@@ -695,6 +678,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -1980,7 +1964,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 |===
 | Field | Description
 | *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#labelselector-v1-meta[$$LabelSelector$$]__ | 
-| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-namespacedsecretsource[$$NamespacedSecretSource$$] array__ | 
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | 
 | *`elasticsearch`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]__ | 
 |===
 

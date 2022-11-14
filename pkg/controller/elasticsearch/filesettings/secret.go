@@ -127,12 +127,17 @@ func (s *SettingsSecret) SetSoftOwner(policy policyv1alpha1.StackConfigPolicy) {
 }
 
 // SetSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
-func (s *SettingsSecret) SetSecureSettings(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy) error {
+func (s *SettingsSecret) SetSecureSettings(policy policyv1alpha1.StackConfigPolicy) error {
 	if len(policy.Spec.SecureSettings) == 0 {
 		return nil
 	}
 
-	bytes, err := json.Marshal(policy.Spec.SecureSettings)
+	secretSources := make([]commonv1.NamespacedSecretSource, len(policy.Spec.SecureSettings))
+	for i, src := range policy.Spec.SecureSettings {
+		secretSources[i] = commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries}
+	}
+
+	bytes, err := json.Marshal(secretSources)
 	if err != nil {
 		return err
 	}

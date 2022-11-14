@@ -52,9 +52,9 @@ type StackConfigPolicyList struct {
 }
 
 type StackConfigPolicySpec struct {
-	ResourceSelector metav1.LabelSelector              `json:"resourceSelector,omitempty"`
-	SecureSettings   []commonv1.NamespacedSecretSource `json:"secureSettings,omitempty"`
-	Elasticsearch    ElasticsearchConfigPolicySpec     `json:"elasticsearch,omitempty"`
+	ResourceSelector metav1.LabelSelector          `json:"resourceSelector,omitempty"`
+	SecureSettings   []commonv1.SecretSource       `json:"secureSettings,omitempty"`
+	Elasticsearch    ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
