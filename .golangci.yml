@@ -107,3 +107,7 @@ issues:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
         - unparam
+    - path: pkg/controller/common/tracing/apmclientgo/client.go
+      linters:
+        - staticcheck
+      text: SA1019
