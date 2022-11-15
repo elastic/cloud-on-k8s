@@ -510,7 +510,6 @@ KeyToPath defines how to map a key in a Secret object to a filesystem path.
 
 .Appears In:
 ****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-namespacedsecretsource[$$NamespacedSecretSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$]
 ****
 
@@ -593,8 +592,6 @@ Monitoring holds references to both the metrics, and logs Elasticsearch clusters
 | *`metrics`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-metricsmonitoring[$$MetricsMonitoring$$]__ | Metrics holds references to Elasticsearch clusters which receive monitoring data from this resource.
 | *`logs`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-logsmonitoring[$$LogsMonitoring$$]__ | Logs holds references to Elasticsearch clusters which receive log data from an associated resource.
 |===
-
-
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector"]

@@ -10,6 +10,7 @@ processor:
     - "NodeSet(List|ConfigError)$"
     - "Autoscaling*"
     - "(NodeSets|NodeSet|Cluster)Resources"
+    - NamespacedSecretSource
   ignoreFields:
     - "TypeMeta$"
 
