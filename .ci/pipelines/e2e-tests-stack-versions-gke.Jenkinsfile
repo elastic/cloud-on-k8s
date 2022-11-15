@@ -46,17 +46,6 @@ pipeline {
                         }
                     }
                 }
-                stage("7.12.x") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        unstash "source"
-                        script {
-                            runWith(lib, failedTests, "eck-712-${BUILD_NUMBER}-e2e", "7.12.1")
-                        }
-                    }
-                }
                 stage("7.13.x") {
                     agent {
                         label 'linux'
@@ -163,7 +152,7 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-84-${BUILD_NUMBER}-e2e", "8.4.1")
+                            runWith(lib, failedTests, "eck-84-${BUILD_NUMBER}-e2e", "8.4.3")
                         }
                     }
                }
@@ -197,7 +186,6 @@ pipeline {
             script {
                 clusters = [
                     "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-712-${BUILD_NUMBER}-e2e",
                     "eck-713-${BUILD_NUMBER}-e2e",
                     "eck-714-${BUILD_NUMBER}-e2e",
                     "eck-715-${BUILD_NUMBER}-e2e",
@@ -222,7 +210,7 @@ pipeline {
 }
 
 def runWith(lib, failedTests, clusterName, stackVersion) {
-    sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
+    sh ".ci/setenvconfig e2e/stack-versions $stackVersion $clusterName"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-test-artifacts TARGET=ci-e2e ci")
 

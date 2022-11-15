@@ -84,7 +84,7 @@ metadata:
   name: elasticsearch-sample
   namespace: elasticsearch-ns
 spec:
-  version: 8.4.2
+  version: 8.5.0
   nodeSets:
     - name: default
       count: 1
@@ -97,7 +97,7 @@ metadata:
   name: kibana-sample
   namespace: kibana-ns
 spec:
-  version: 8.4.2
+  version: 8.5.0
   count: 1
   config:
     xpack.fleet.packages:
@@ -115,7 +115,7 @@ metadata:
   name: apm-apm-sample
   namespace: apmserver-ns
 spec:
-  version: 8.4.2
+  version: 8.5.0
   count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
