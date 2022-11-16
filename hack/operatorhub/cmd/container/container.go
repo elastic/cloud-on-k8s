@@ -13,22 +13,32 @@ import (
 	"github.com/spf13/viper"
 
 	pkg_container "github.com/elastic/cloud-on-k8s/hack/operatorhub/pkg/container"
+	pkg_preflight "github.com/elastic/cloud-on-k8s/hack/operatorhub/pkg/preflight"
 )
 
 // Command will return the container command
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "container",
-		Short:        "push and publish eck operator container to redhat catalog",
-		Long:         "Push and/or Publish eck operator container image to redhat catalog",
+		Short:        "push and publish eck operator container to quay.io",
+		Long:         "Push and/or Publish eck operator container image to quay.io",
 		PreRunE:      PreRunE,
 		SilenceUsage: true,
 	}
 
+	preflightCmd := &cobra.Command{
+		Use:          "preflight",
+		Short:        "run preflight tests against container",
+		Long:         "Run preflight tests against container",
+		SilenceUsage: true,
+		PreRunE:      defaultPreRunE,
+		RunE:         DoPreflight,
+	}
+
 	publishCmd := &cobra.Command{
 		Use:          "publish",
-		Short:        "publish existing eck operator container image within redhat catalog",
-		Long:         "Publish existing eck operator container image within redhat catalog",
+		Short:        "publish existing eck operator container image within quay.io",
+		Long:         "Publish existing eck operator container image within quay.io",
 		SilenceUsage: true,
 		PreRunE:      defaultPreRunE,
 		RunE:         DoPublish,
@@ -36,8 +46,8 @@ func Command() *cobra.Command {
 
 	pushCmd := &cobra.Command{
 		Use:          "push",
-		Short:        "push eck operator container image to redhat catalog",
-		Long:         "Push eck operator container image to redhat catalog",
+		Short:        "push eck operator container image to quay.io",
+		Long:         "Push eck operator container image to quay.io",
 		SilenceUsage: true,
 		PreRunE:      defaultPreRunE,
 		RunE:         DoPush,
@@ -51,10 +61,10 @@ func Command() *cobra.Command {
 	)
 
 	cmd.PersistentFlags().StringP(
-		"redhat-connect-registry-key",
+		"registry-password",
 		"r",
 		"",
-		"registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)",
+		"registry password used to communicate with Quay.io (REGISTRY_PASSWORD)",
 	)
 
 	cmd.PersistentFlags().StringP(
@@ -81,13 +91,13 @@ func Command() *cobra.Command {
 	cmd.PersistentFlags().Bool(
 		"enable-vault",
 		false,
-		"Enable vault functionality to try and automatically read 'redhat-connect-registry-key', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)",
+		"Enable vault functionality to try and automatically read 'registry-password', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)",
 	)
 
 	cmd.PersistentFlags().String(
 		"vault-secret",
 		"",
-		"When --enable-vault is set, attempts to read 'redhat-connect-registry-key', and 'api-key' data from given vault secret location",
+		"When --enable-vault is set, attempts to read 'registry-password', and 'api-key' data from given vault secret location",
 	)
 
 	cmd.PersistentFlags().String(
@@ -109,7 +119,7 @@ func Command() *cobra.Command {
 		"The duration the publish operation will wait on image being scanned before failing the process completely. (SCAN_TIMEOUT)",
 	)
 
-	cmd.AddCommand(pushCmd, publishCmd)
+	cmd.AddCommand(pushCmd, preflightCmd, publishCmd)
 
 	return cmd
 }
@@ -143,8 +153,8 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("api-key must be set")
 	}
 
-	if viper.GetString("redhat-connect-registry-key") == "" {
-		return fmt.Errorf("redhat-connect-registry-key must be set")
+	if viper.GetString("registry-password") == "" {
+		return fmt.Errorf("registry-password must be set")
 	}
 
 	if viper.GetString("project-id") == "" {
@@ -174,24 +184,40 @@ func defaultPreRunE(cmd *cobra.Command, args []string) error {
 // DoPublish will publish an existing image within the redhat catalog.
 func DoPublish(_ *cobra.Command, _ []string) error {
 	return pkg_container.PublishImage(pkg_container.PublishConfig{
-		ProjectID:                viper.GetString("project-id"),
-		Tag:                      viper.GetString("tag"),
-		RedhatCatalogAPIKey:      viper.GetString("api-key"),
-		RedhatConnectRegistryKey: viper.GetString("redhat-connect-registry-key"),
-		RepositoryID:             viper.GetString("repository-id"),
-		Force:                    viper.GetBool("force"),
-		ImageScanTimeout:         viper.GetDuration("scan-timeout"),
+		ProjectID:           viper.GetString("project-id"),
+		Tag:                 viper.GetString("tag"),
+		RegistryPassword:    viper.GetString("registry-password"),
+		RedhatCatalogAPIKey: viper.GetString("api-key"),
+		RepositoryID:        viper.GetString("repository-id"),
+		Force:               viper.GetBool("force"),
+		ImageScanTimeout:    viper.GetDuration("scan-timeout"),
 	})
+}
+
+func DoPreflight(_ *cobra.Command, _ []string) error {
+	err := pkg_container.LoginToRegistry(viper.GetString("project-id"), viper.GetString("registry-password"))
+	if err != nil {
+		return err
+	}
+	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", viper.GetString("project-id"), viper.GetString("tag"))
+	results, err := pkg_preflight.Run(containerImage)
+	if err != nil {
+		return err
+	}
+	if len(results.Errors) > 0 {
+		return fmt.Errorf("container contains errors: %v", results.Errors)
+	}
+	return nil
 }
 
 // DoPush will push an image to the redhat registry for scanning.
 func DoPush(_ *cobra.Command, _ []string) error {
 	return pkg_container.PushImage(pkg_container.PushConfig{
-		ProjectID:                viper.GetString("project-id"),
-		Tag:                      viper.GetString("tag"),
-		RedhatCatalogAPIKey:      viper.GetString("api-key"),
-		RedhatConnectRegistryKey: viper.GetString("redhat-connect-registry-key"),
-		RepositoryID:             viper.GetString("repository-id"),
-		Force:                    viper.GetBool("force"),
+		ProjectID:           viper.GetString("project-id"),
+		Tag:                 viper.GetString("tag"),
+		RegistryPassword:    viper.GetString("registry-password"),
+		RedhatCatalogAPIKey: viper.GetString("api-key"),
+		RepositoryID:        viper.GetString("repository-id"),
+		Force:               viper.GetBool("force"),
 	})
 }

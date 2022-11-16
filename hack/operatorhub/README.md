@@ -50,14 +50,14 @@ Available Commands:
 
 Flags:
   -a, --api-key string                       api key to use when communicating with redhat catalog api (API_KEY)
-      --enable-vault                         Enable vault functionality to try and automatically read 'redhat-connect-registry-key', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)
+      --enable-vault                         Enable vault functionality to try and automatically read 'registry-password', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)
   -F, --force                                force will force the attempted pushing of remote images, even when the exact version is found remotely. (FORCE)
   -h, --help                                 help for container
   -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
-  -r, --redhat-connect-registry-key string   registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)
+  -r, --registry-password string   registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)
   -R, --repository-id string                 repository project id (ospid) within the redhat technology portal (REPOSITORY_ID) (default "ospid-664938b1-f0c8-4989-99de-be0992395aa0")
       --vault-addr string                    Vault address to use when enable-vault is set
-      --vault-secret string                  When --enable-vault is set, attempts to read 'redhat-connect-registry-key', and 'api-key' data from given vault secret location
+      --vault-secret string                  When --enable-vault is set, attempts to read 'registry-password', and 'api-key' data from given vault secret location
       --vault-token string                   Vault token to use when enable-vault is set
 
 Global Flags:
@@ -81,7 +81,7 @@ The `container publish` sub-command will perform the following tasks:
 
 *notes*
 - `api-key` is the redhat api key that exists within the keybase application
-- `redhat-connect-registry-key` is the JWT that can be obtained by logging into [redhat connect](https://connect.redhat.com) and clicking [Push Image Manually](https://connect.redhat.com/projects/5fa1f9fc4bbec60adbc8cc94/images/upload-image), which will then show you a `Registry Key`
+- `registry-password` is the JWT that can be obtained by logging into [redhat connect](https://connect.redhat.com) and clicking [Push Image Manually](https://connect.redhat.com/projects/5fa1f9fc4bbec60adbc8cc94/images/upload-image), which will then show you a `Registry Key`
 - both of these can be contained within a secret in vault, and be pulled directly from vault
 
 Usage without vault
@@ -110,7 +110,7 @@ version            3
 Key                            Value
 ---                            -----
 api-key                        random-api-key
-redhat-connect-registry-key    very.long.jwt
+registry-password              password
 ```
 
 ### Bundle
@@ -221,7 +221,7 @@ Flags:
   -K, --keep-temp-files                      keep temporary files around for investigation after script completes (KEEP_TEMP_FILES)
   -V, --prev-version string                  Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)
   -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
-  -r, --redhat-connect-registry-key string   registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)
+  -r, --registry-password string   registry key used to communicate with redhat docker registry (REGISTRY_PASSWORD)
   -R, --repository-id string                 repository project id (ospid) within the redhat technology portal (REPOSITORY_ID) (default "ospid-664938b1-f0c8-4989-99de-be0992395aa0")
   -s, --stack-version string                 Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)
   -P, --submit-pull-request                  attempt to submit PR to https://github.com/redhat-openshift-ecosystem/certified-operators repo? (SUBMIT_PULL_REQUEST)
@@ -239,7 +239,7 @@ The `all` command will run all above operations in a single command, including
 #### Usage
 
 ```shell
-./redhat all -a 'api-key-in-keybase' -r 'extremely-long-registry-key-jwt' \
+./redhat all -a 'api-key-in-keybase' -r 'registry-password' \
   -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email' \
   -t '1.9.2' -s '7.16.0' -V '1.9.1' -y ../../config/crds.yaml -y ./../config/operator.yaml
 ```

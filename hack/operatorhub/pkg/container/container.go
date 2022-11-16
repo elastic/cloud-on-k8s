@@ -23,36 +23,37 @@ import (
 )
 
 const (
-	eckOperatorFormat        = "docker.elastic.co/eck/eck-operator:%s"
-	redhatConnectRegistryURL = "scan.connect.redhat.com"
+	eckOperatorFormat = "docker.elastic.co/eck/eck-operator:%s"
+	registryURL       = "quay.io"
 )
 
 var (
-	errImageNotFound                     = fmt.Errorf("image not found")
-	catalogAPIURL                        = "https://catalog.redhat.com/api/containers/v1"
-	eckOperatorRedhatRepositoryReference = "scan.connect.redhat.com/%s/eck-operator:%s"
+	errImageNotFound             = fmt.Errorf("image not found")
+	catalogAPIURL                = "https://catalog.redhat.com/api/containers/v1"
+	eckOperatorRegistryReference = "%s/redhat-isv-containers/%s/eck-operator:%s"
+	registryUsername             = "redhat-isv-containers+%s-robot"
 )
 
 type PushConfig struct {
-	HTTPClient               *http.Client
-	ProjectID                string
-	Tag                      string
-	RedhatConnectRegistryKey string
-	RedhatCatalogAPIKey      string
-	RepositoryID             string
-	Force                    bool
+	HTTPClient          *http.Client
+	ProjectID           string
+	Tag                 string
+	RegistryPassword    string
+	RedhatCatalogAPIKey string
+	RepositoryID        string
+	Force               bool
 }
 
 // PublishConfig is the configuration for the publish command
 type PublishConfig struct {
-	HTTPClient               *http.Client
-	ProjectID                string
-	Tag                      string
-	RedhatConnectRegistryKey string
-	RedhatCatalogAPIKey      string
-	RepositoryID             string
-	Force                    bool
-	ImageScanTimeout         time.Duration
+	HTTPClient          *http.Client
+	ProjectID           string
+	Tag                 string
+	RegistryPassword    string
+	RedhatCatalogAPIKey string
+	RepositoryID        string
+	Force               bool
+	ImageScanTimeout    time.Duration
 }
 
 // PushImage will push an image to the redhat catalog if it is determined
@@ -115,6 +116,31 @@ func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string
 	return true, nil
 }
 
+func LoginToRegistry(projectID, password string) error {
+	cf, err := config.Load(os.Getenv("DOCKER_CONFIG"))
+	if err != nil {
+		return fmt.Errorf("failed to load docker configuration: %w", err)
+	}
+
+	authConfig := config_types.AuthConfig{
+		Username:      fmt.Sprintf(registryUsername, projectID),
+		Password:      password,
+		ServerAddress: registryURL,
+	}
+
+	creds := cf.GetCredentialsStore(registryURL)
+	err = creds.Store(authConfig)
+	if err != nil {
+		return fmt.Errorf("failed to store auth configuration for %s: %w", registryURL, err)
+	}
+
+	err = cf.Save()
+	if err != nil {
+		return fmt.Errorf("failed to save docker configuration: %w", err)
+	}
+	return nil
+}
+
 func defaultHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: 10 * time.Second,
@@ -135,7 +161,6 @@ func getImages(httpClient *http.Client, apiKey, projectID, tag string) ([]Image,
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-API-KEY", apiKey)
-	// req.SetBasicAuth("Bearer", c.RedhatCatalogAPIKey)
 
 	var res *http.Response
 	if res, err = httpClient.Do(req); err != nil {
@@ -174,33 +199,14 @@ func pruneDeletedImages(images []Image) *Image {
 
 func pushImageToProject(c PushConfig) error {
 	pterm.Printf("logging in to docker, and saving configuration: ")
-	cf, err := config.Load(os.Getenv("DOCKER_CONFIG"))
+	err := LoginToRegistry(c.ProjectID, c.RegistryPassword)
 	if err != nil {
 		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("failed to load docker configuration: %w", err)
-	}
-
-	authConfig := config_types.AuthConfig{
-		Username:      "unused",
-		Password:      c.RedhatConnectRegistryKey,
-		ServerAddress: redhatConnectRegistryURL,
-	}
-
-	creds := cf.GetCredentialsStore(redhatConnectRegistryURL)
-	err = creds.Store(authConfig)
-	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("failed to store auth configuration for %s: %w", redhatConnectRegistryURL, err)
-	}
-
-	err = cf.Save()
-	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("failed to save docker configuration: %w", err)
+		return err
 	}
 	pterm.Println(pterm.Green("✓"))
 
-	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRedhatRepositoryReference, c.RepositoryID, c.Tag)
+	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.RepositoryID, c.Tag)
 	pterm.Printf("pushing image (%s) to redhat connect docker registry: ", formattedEckOperatorRedhatReference)
 	err = crane.Copy(fmt.Sprintf(eckOperatorFormat, c.Tag), formattedEckOperatorRedhatReference, crane.WithPlatform(&v1.Platform{
 		OS:           "linux",

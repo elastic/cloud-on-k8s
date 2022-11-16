@@ -43,7 +43,7 @@ func attemptVault() error {
 		return fmt.Errorf("failed to convert secrets data to map: %T %#v", secret.Data["data"], secret.Data["data"])
 	}
 
-	for _, k := range []string{"api-key", "redhat-connect-registry-key"} {
+	for _, k := range []string{"api-key", "registry-password"} {
 		value, ok := data[k]
 		if ok {
 			viper.Set(k, value)
