@@ -12,11 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_getCurrentRemoteClusters(t *testing.T) {
@@ -183,7 +183,7 @@ func TestUpdateSettings(t *testing.T) {
 					nil,
 					esv1.RemoteCluster{
 						Name:             "ns2-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2", Namespace: "ns2"},
 					},
 				),
 			},
@@ -213,7 +213,7 @@ func TestUpdateSettings(t *testing.T) {
 					nil,
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2"},
 					}),
 			},
 			wantGetRemoteClusterSettingsCalled:    true,
@@ -252,7 +252,7 @@ func TestUpdateSettings(t *testing.T) {
 					},
 					esv1.RemoteCluster{
 						Name:             "ns2-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2", Namespace: "ns2"},
 					},
 				),
 			},
@@ -292,7 +292,7 @@ func TestUpdateSettings(t *testing.T) {
 					},
 					esv1.RemoteCluster{
 						Name:             "ns2-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2", Namespace: "ns2"},
 					},
 				),
 			},
@@ -334,10 +334,10 @@ func TestUpdateSettings(t *testing.T) {
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2"},
 					}, esv1.RemoteCluster{
 						Name:             "ns1-es3",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es3"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es3"},
 					}),
 			},
 			wantGetRemoteClusterSettingsCalled:    true,
@@ -378,7 +378,7 @@ func TestUpdateSettings(t *testing.T) {
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2"},
 					}),
 			},
 			wantRequeue:                           true,
@@ -407,7 +407,7 @@ func TestUpdateSettings(t *testing.T) {
 					nil,
 					esv1.RemoteCluster{
 						Name:             "es2-ns2",
-						ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns2", Name: "es2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Namespace: "ns2", Name: "es2"},
 					}),
 			},
 			wantGetRemoteClusterSettingsCalled:    false,
@@ -454,11 +454,11 @@ func TestUpdateSettings(t *testing.T) {
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es2"},
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es4",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es4"},
+						ElasticsearchRef: commonv1.LocalObjectSelector{Name: "es4"},
 					},
 				),
 			},

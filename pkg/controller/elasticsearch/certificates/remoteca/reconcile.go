@@ -13,12 +13,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -29,19 +29,20 @@ const (
 func Labels(esName string) client.MatchingLabels {
 	return map[string]string{
 		label.ClusterNameLabelName: esName,
-		common.TypeLabelName:       TypeLabelValue,
+		labels.TypeLabelName:       TypeLabelValue,
 	}
 }
 
 // Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
 func Reconcile(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	transportCA certificates.CA,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		Labels(es.Name),
@@ -77,6 +78,6 @@ func Reconcile(
 			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
 		},
 	}
-	_, err := reconciler.ReconcileSecret(c, expected, &es)
+	_, err := reconciler.ReconcileSecret(ctx, c, expected, &es)
 	return err
 }

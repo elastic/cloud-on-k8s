@@ -7,6 +7,8 @@ package v1
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTLSOptions_Enabled(t *testing.T) {
@@ -193,6 +195,127 @@ func TestObjectSelector_WithDefaultNamespace(t *testing.T) {
 			}
 			if got := o.WithDefaultNamespace(tt.args.defaultNamespace); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("WithDefaultNamespace() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestObjectSelector_IsDefined(t *testing.T) {
+	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsDefined())
+	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsDefined())
+	assert.Equal(t, false, (&ObjectSelector{}).IsDefined())
+}
+
+func TestObjectSelector_IsExternal(t *testing.T) {
+	assert.Equal(t, false, ObjectSelector{Name: "n"}.IsExternal())
+	assert.Equal(t, true, ObjectSelector{SecretName: "s"}.IsExternal())
+}
+
+func TestObjectSelector_IsValid(t *testing.T) {
+	tests := []struct {
+		name           string
+		objectSelector ObjectSelector
+		wantErr        bool
+	}{
+		{
+			name:           "empty object: OK",
+			objectSelector: ObjectSelector{},
+			wantErr:        false,
+		},
+		{
+			name: "name, namespace and serviceName: OK",
+			objectSelector: ObjectSelector{
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and namespace: OK",
+			objectSelector: ObjectSelector{
+				Name:      "a",
+				Namespace: "b",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and serviceName: OK",
+			objectSelector: ObjectSelector{
+				Name:        "a",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "secretName: OK",
+			objectSelector: ObjectSelector{
+				SecretName: "s",
+			},
+			wantErr: false,
+		},
+		{
+			name: "secretName and name: KO",
+			objectSelector: ObjectSelector{
+				SecretName: "s",
+				Name:       "a",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName and serviceName: KO",
+			objectSelector: ObjectSelector{
+				SecretName:  "s",
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName and namespace: KO",
+			objectSelector: ObjectSelector{
+				SecretName: "s",
+				Namespace:  "b",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName, namespace and serviceName: KO",
+			objectSelector: ObjectSelector{
+				SecretName:  "s",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName, name, namespace and serviceName: KO",
+			objectSelector: ObjectSelector{
+				SecretName:  "s",
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "namespace: KO",
+			objectSelector: ObjectSelector{
+				Namespace: "b",
+			},
+			wantErr: true,
+		},
+		{
+			name: "serviceName: KO",
+			objectSelector: ObjectSelector{
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.objectSelector.IsValid(); (got != nil) != tt.wantErr {
+				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
 			}
 		})
 	}

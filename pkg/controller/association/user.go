@@ -7,21 +7,22 @@ package association
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
@@ -84,7 +85,7 @@ func reconcileEsUserSecret(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 
 	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
@@ -96,7 +97,7 @@ func reconcileEsUserSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
-			Labels:    common.AddCredentialsLabel(labels),
+			Labels:    commonlabels.AddCredentialsLabel(labels),
 		},
 		Data: map[string][]byte{},
 	}
@@ -104,7 +105,7 @@ func reconcileEsUserSecret(
 	var password []byte
 	// reuse the existing password if there's one
 	var existingSecret corev1.Secret
-	err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
+	err := c.Get(ctx, k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -115,7 +116,7 @@ func reconcileEsUserSecret(
 	}
 	expectedSecret.Data[usrKey.Name] = password
 
-	if _, err := reconciler.ReconcileSecret(c, expectedSecret, association.Associated()); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, c, expectedSecret, association.Associated()); err != nil {
 		return err
 	}
 
@@ -142,7 +143,7 @@ func reconcileEsUserSecret(
 	}
 
 	var existingUserSecret corev1.Secret
-	if err := c.Get(context.Background(), k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(ctx, k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -164,6 +165,6 @@ func reconcileEsUserSecret(
 	expectedEsUser.Data[esuser.PasswordHashField] = bcryptHash
 
 	owner := es // user is owned by the es resource in es namespace
-	_, err = reconciler.ReconcileSecret(c, expectedEsUser, &owner)
+	_, err = reconciler.ReconcileSecret(ctx, c, expectedEsUser, &owner)
 	return err
 }

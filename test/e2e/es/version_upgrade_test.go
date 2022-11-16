@@ -2,16 +2,16 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
 import (
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
@@ -23,7 +23,7 @@ func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -45,7 +45,7 @@ func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -68,7 +68,7 @@ func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
 		t.Skipf("Skipping test because Elasticsearch 6.8.x does not have an ARM build")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -94,7 +94,7 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -129,7 +129,7 @@ func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 		t.Skipf("Skipping due to a known issue: https://github.com/elastic/elasticsearch/issues/80265")
 	}
 
-	srcVersion := test.MinVersion68x
+	srcVersion := test.LatestReleasedVersion6x
 	dstVersion := test.Ctx().ElasticStackVersion
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
@@ -149,7 +149,7 @@ func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
 
 func TestVersionUpgradeSingleToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
@@ -166,12 +166,44 @@ func TestVersionUpgradeSingleToLatest7x(t *testing.T) {
 
 func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
-	dstVersion := test.LatestVersion7x
+	dstVersion := test.LatestReleasedVersion7x
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	initial := elasticsearch.NewBuilder("test-version-up-2-to-7x").
+		WithVersion(srcVersion).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	mutated := initial.WithNoESTopology().
 		WithVersion(dstVersion).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	RunESMutation(t, initial, mutated)
+}
+
+func TestVersionUpgradeSingleToLatest8x(t *testing.T) {
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-1-to-8x").
+		WithVersion(srcVersion).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	mutated := initial.WithNoESTopology().
+		WithVersion(dstVersion).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	RunESMutation(t, initial, mutated)
+}
+
+func TestVersionUpgradeTwoNodesToLatest8x(t *testing.T) {
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-2-to-8x").
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().

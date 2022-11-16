@@ -3,14 +3,14 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.20
+  kubernetesVersion: 1.22
   machineType: n1-standard-8
   serviceAccount: true
-  psp: true
+  enforceSecurityPolicies: true
   # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
-    region: europe-west2
+    region: europe-west6
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
@@ -18,10 +18,10 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.20
+  kubernetesVersion: 1.22
   machineType: n1-standard-8
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: true
   gke:
     region: europe-west1
     localSsdCount: 1
@@ -45,25 +45,27 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.21.2
+  kubernetesVersion: 1.24.6
   machineType: Standard_D8s_v3
   serviceAccount: true
-  psp: false
+  enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   aks:
     nodeCount: 3
     location: westeurope
+    zones: "1 2 3"
 - id: aks-dev
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.21.2
+  kubernetesVersion: 1.24.6
   machineType: Standard_D8s_v3
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: true
   aks:
     nodeCount: 3
     location: northeurope
+    zones: "1 2 3"
 - id: ocp-ci
   operation: create
   clusterName: ci
@@ -71,12 +73,12 @@ plans:
   machineType: n1-standard-8
   serviceAccount: true
   ocp:
-    region: europe-west2
+    region: europe-west6
     nodeCount: 3
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.7.0
+  clientVersion: 4.10.12
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -105,10 +107,11 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
+  enforceSecurityPolicies: true
   kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
-    region: eu-west-3
+    region: ap-northeast-3
     nodeCount: 3
     nodeAMI: auto
 - id: eks-arm-ci
@@ -117,6 +120,7 @@ plans:
   provider: eks
   machineType: m6gd.2xlarge
   serviceAccount: false
+  enforceSecurityPolicies: true
   kubernetesVersion: 1.20
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
@@ -130,6 +134,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   kubernetesVersion: 1.20
+  enforceSecurityPolicies: true
   eks:
     region: eu-west-2
     nodeCount: 3
@@ -141,7 +146,7 @@ plans:
   kubernetesVersion: 1.15
   machineType: n1-standard-8
   serviceAccount: false
-  psp: false
+  enforceSecurityPolicies: false
   gke:
     region: europe-west2
     localSsdCount: 1
@@ -150,22 +155,24 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.11.0
+  clientVersion: 0.15.0
   provider: kind
-  kubernetesVersion: 1.21.1
+  kubernetesVersion: 1.22.13
+  enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.21.1
+    nodeImage: kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.11.0
+  clientVersion: 0.15.0
   provider: kind
-  kubernetesVersion: 1.21.1
+  kubernetesVersion: 1.22.13
+  enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.21.1
+    nodeImage: kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959
     ipFamily: ipv4
 - id: tanzu-ci
   operation: create
@@ -176,7 +183,7 @@ plans:
   tanzu:
     location: eastus
     nodeCount: 3
-    installerImage: cloudonk8s.azurecr.io/tanzu-ci:47a15de6827f
+    installerImage: cloudonk8s.azurecr.io/tanzu-ci:1.5.4
 - id: tanzu-dev
   operation: create
   clusterName: tkg-dev
@@ -185,4 +192,4 @@ plans:
   tanzu:
     location: westeurope
     nodeCount: 3
-    installerImage: cloudonk8s.azurecr.io/tanzu-ci:47a15de6827f
+    installerImage: cloudonk8s.azurecr.io/tanzu-ci:1.5.4

@@ -1,0 +1,66 @@
+suite: test elasticsearch
+templates:
+  - charts/eck-elasticsearch/templates/elasticsearch.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      eck-elasticsearch.version: 8.2.0
+      eck-kibana.enabled: false
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: elasticsearch
+      - equal:
+          path: spec.version
+          value: 8.2.0
+  - it: name override should work properly
+    set:
+      eck-elasticsearch.nameOverride: override
+      eck-elasticsearch.fullnameOverride: null
+      eck-kibana.enabled: false
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      eck-elasticsearch.fullnameOverride: override
+      eck-kibana.enabled: false
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: override
+  - it: should render custom elasticsearch using values file properly
+    set:
+      eck-kibana.enabled: false
+    values:
+      - ../../examples/custom-elasticsearch-kibana.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.nodeSets[0].name
+          value: default
+      - equal:
+          path: spec.nodeSets[0].volumeClaimTemplates[0].metadata.name
+          value: elasticsearch-data
+      - equal:
+          path: spec.nodeSets[0].volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 100Gi

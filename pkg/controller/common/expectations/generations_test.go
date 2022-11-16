@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func newStatefulSet(name string, uid types.UID, generation int64) appsv1.StatefulSet {
@@ -110,9 +110,9 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 				e.ExpectGeneration(tt.expectGenerations[i])
 				require.Contains(t, e.generations, k8s.ExtractNamespacedName(&tt.expectGenerations[i]))
 			}
-			satisfied, err := e.GenerationsSatisfied()
+			pendingGenerations, err := e.PendingGenerations()
 			require.NoError(t, err)
-			require.Equal(t, tt.wantSatisfied, satisfied)
+			require.Equal(t, tt.wantSatisfied, len(pendingGenerations) == 0)
 			require.Equal(t, tt.wantExpectedGenerations, e.generations)
 		})
 	}

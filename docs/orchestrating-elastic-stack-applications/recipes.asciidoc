@@ -1,0 +1,19 @@
+:page_id: recipes
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Recipes
+
+This section includes recipes that provide configuration examples for some common use cases.
+
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/gclb[Expose Elasticsearch and Kibana using a Google Cloud Load Balancer (GCLB)]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/istio-gateway[Expose Elasticsearch and Kibana using Istio ingress gateway]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/logstash[Using Logstash with ECK]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/maps[Expose Elastic Maps Server and Kibana using a Kubernetes Ingress]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/psp[Secure your cluster with Pod Security Policies]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/traefik[Use Traefik to expose Elastic Stack applications]
+
+WARNING: Compared to other configuration examples that are consistently tested, like <<{p}-elastic-agent-fleet-configuration-examples,fleet-managed Elastic Agent on ECK>>, <<{p}-elastic-agent-configuration-examples,standalone Elastic Agent on ECK>>, or <<{p}-beat-configuration-examples,Beats on ECK>>, the recipes in this section are not regularly tested by our automation system, and therefore should not be considered to be production-ready. 

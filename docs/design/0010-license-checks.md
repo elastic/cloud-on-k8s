@@ -13,15 +13,15 @@ behaviour are any commercial features available to licensed operators only.
 
 ## Decision Drivers 
 
-* we currently suppport multiple deployment options for the operator: single namespace and multi-namespace.
-* for the activation of commerical features we need a minimal amount of protection against tampering.
-* we see admission controllers as optional means of verification and don't want to rely on them for functionality that does not exist in other places as well.
+* we currently support multiple deployment options for the operator: single namespace and multi-namespace.
+* for the activation of commercial features we need a minimal amount of protection against tampering.
+* we consider admission controllers as optional means of verification and don't want to rely on them for functionality that does not exist in other places as well.
 * we regard licenses as somewhat sensitive data that should not be shared freely across all namespaces and controllers.
   
 
 ## Considered Options
 
-1. Configure license statically at operator startup (e.g. via shared secret bound in all instances) or via simple flag for trial mode
+1. Configure license statically at operator startup (for example through shared secret bound in all instances) or with a simple flag for trial mode
 2. Configure license dynamically and use admission control to label resources (licensed-until timestamp) 
 3. Create a shared secret (`ControllerLicense`) in every relevant namespace with tamper proof evidence of the current Enterprise license 
 
@@ -32,7 +32,7 @@ Option 3.
 
 ### Additional design details
 
-Create a new CRD e.g. called `ControllerLicense` that will be created
+Create a new CRD called `ControllerLicense` that will be created
 by the (global) license controller. It CAN use the same signer we use
 for the Enterprise licenses but a different installation specific
 private/public key pair.
@@ -47,7 +47,7 @@ The license controller MUST create controller licenses only when either a valid
 Enterprise license or a valid Enterprise trial license is present in the system. It CAN
 issue controller licenses with shorter lifetimes than the Enterprise license and 
 auto-extend them as needed to limit the impact of accidental license leaks. But license leaks 
-are currently understood to be much less a concern than  cluster licenses leaks as controller licenses have no validity 
+are currently understood to be much less a concern than cluster licenses leaks as controller licenses have no validity 
 outside of the operator installation that has created them.  
 
 
@@ -86,7 +86,7 @@ secret would need to be deployed into the managed namespace not into
 the control plane namespace. Unless of course we run everything in one
 namespace anyway or we implement a custom client
 that has access to the control plane namespace of the namespace
-operator (the latter is the underlying assumption for the graph above).
+operator (the latter is the underlying assumption for the license controller graph).
 
 ### Positive Consequences 
 
@@ -112,7 +112,7 @@ operator (the latter is the underlying assumption for the graph above).
 * Good, because it simplifies the decision for the trial vs. basic decision on cluster creation (but: we might not need that at all if we start with basic by default).
 * Good, because it is independent of the deployment scenario chosen for the operator.
 * Bad, because it does not solve the burden of proof for commercial feature enablement.
-  We would still need a copy of the actual license in all namespaces that have controllers with commericial features (currently only the global one).
+  We would still need a copy of the actual license in all namespaces that have controllers with commercial features (currently only the global one).
 * Bad, because it would require an operator restart to update license information.   
 
 ### Dynamically configured license and admission controller

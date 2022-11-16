@@ -10,6 +10,16 @@ spec:
     count: 3
     config:
       node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+          - name: elasticsearch
+            env:
+              - name: PRE_STOP_MAX_WAIT_SECONDS
+                value: "0"
+              - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
+                value: "0"
+
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana

@@ -9,9 +9,9 @@ endif::[]
 = Stack Monitoring
 
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
-on Elasticsearch and Kibana to collect and ship their metrics and logs to a dedicated monitoring cluster.
+on Elasticsearch, Kibana and Beats to collect and ship their metrics and logs to a dedicated monitoring cluster.
 
-To enable stack monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
+To enable Stack Monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
 
 [source,yaml,subs="attributes,callouts"]
 ----
@@ -57,18 +57,93 @@ spec:
       - name: monitoring
         namespace: observability <1>
   count: 1
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: monitored-sample
+spec:
+  type: filebeat
+  version: {version}
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <3>
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
 <2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana instance are running in the same namespace.
+<3> The use of `namespace` is optional if the Elasticsearch cluster and the Beats instance are running in the same namespace.
 
-CAUTION: You cannot configure an Elasticsearch cluster to monitor itself, the monitoring cluster has to be a separate cluster.
+NOTE: You can configure an Elasticsearch cluster to monitor itself.
+
+NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
+
+NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the Filebeat sidecar to consume the Beat's log files.
 
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 
 You can send metrics and logs to two different Elasticsearch monitoring clusters.
 
-You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (see link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
+You can also enable Stack Monitoring on Elasticsearch only or on Kibana only. In the latter case, Kibana will not be available on the Stack Monitoring Kibana page (check link:https://www.elastic.co/guide/en/kibana/current/monitoring-data.html#monitoring-data[View monitoring data in Kibana]).
+
+== Connect to an external monitoring Elasticsearch cluster
+
+If you want to connect to a monitoring Elasticsearch cluster not managed by ECK, you can reference a Secret instead of an Elastisearch cluster in the `monitoring` section through the `secretName` attribute:
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: monitored-sample
+  namespace: production
+spec:
+  version: {version}
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - secretName: monitoring-metrics-es-ref <1>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring-logs
+        namespace: observability <2>
+        serviceName: monitoring-logs-es-coordinating-nodes <2>
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+----
+
+<1> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
+<2> The `namespace` and `serviceName` attributes can only be used in conjunction with `name`, not with `secretName`.
+
+The referenced Secret must contain the following connection information:
+
+- `url`: the URL to reach the Elasticsearch cluster
+- `username`: the username of the user to be authenticated to the Elasticsearch cluster
+- `password`: the password of the user to be authenticated to the Elasticsearch cluster
+- `ca.crt`: the CA certificate in PEM format to secure communication to the Elasticsearch cluster (optional)
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: monitoring-metrics-es-ref
+stringData:
+  url: https://mon1.es.abcd-42.xyz.elastic-cloud.com:9243
+  username: monitoring-user
+  password: REDACTED
+----
+
+The user referenced in the Secret must have been created beforehand.
 
 == When to use it
 
@@ -77,7 +152,7 @@ This feature is a good solution if you need to monitor your Elastic applications
 - to Metricbeat to allow queriying the k8s API
 - to Filebeat to deploy a privileged DaemonSet
 
-However, for maximum efficiency and minimising resource consumption, or advanced use cases that require specific Beats configurations, you can deploy a standalone Metricbeat Deployment and a Filebeat Daemonset. See the <<{p}-beat-configuration-examples,Beats configuration Examples>> for more information.
+However, for maximum efficiency and minimising resource consumption, or advanced use cases that require specific Beats configurations, you can deploy a standalone Metricbeat Deployment and a Filebeat Daemonset. Check the <<{p}-beat-configuration-examples,Beats configuration Examples>> for more information.
 
 == How it works
 
@@ -137,17 +212,17 @@ You can customize the Filebeat and Metricbeat containers through the Pod templat
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 spec:
+  monitoring:
+    metrics:
+      elasticsearchRef:
+        name: monitoring
+        namespace: observability
+    logs:
+      elasticsearchRef:
+        name: monitoring
+        namespace: observability
   nodeSets:
   - name: default
-    monitoring:
-      metrics:
-        elasticsearchRef:
-          name: monitoring
-          namespace: observability
-      logs:
-        elasticsearchRef:
-          name: monitoring
-          namespace: observability
     podTemplate:
       spec:
         containers:

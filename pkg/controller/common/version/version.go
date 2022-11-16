@@ -74,7 +74,7 @@ func Parse(v string) (Version, error) {
 	return semver.Parse(v)
 }
 
-// Parse attempts to parse a version string and panics if it fails.
+// MustParse attempts to parse a version string and panics if it fails.
 func MustParse(v string) Version {
 	return semver.MustParse(v)
 }

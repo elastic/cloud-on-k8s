@@ -16,11 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func entWithConfigRef(secretName string) entv1.EnterpriseSearch {
@@ -182,7 +182,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.ent)
+			got, err := getOrCreateReusableSettings(context.Background(), tt.args.c, tt.args.ent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -337,7 +337,7 @@ func TestReconcileConfig(t *testing.T) {
 				"host: https://elasticsearch-sample-es-http.default.svc:9200",
 				"password: mypassword",
 				"ssl:",
-				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
 				"enabled: true",
 				"username: ns-sample-ent-user",
 				"ent_search:",
@@ -386,7 +386,7 @@ func TestReconcileConfig(t *testing.T) {
 				"host: https://elasticsearch-sample-es-http.default.svc:9200",
 				"password: mypassword",
 				"ssl:",
-				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
 				"enabled: true",
 				"username: ns-sample-ent-user",
 				"ent_search:",
@@ -431,6 +431,77 @@ func TestReconcileConfig(t *testing.T) {
 				"external_url: https://my.own.dns.com", // overridden default setting
 				"filebeat_log_directory: /var/log/enterprise-search",
 				"foo: bar", // new setting
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "without auth source as of 7.14",
+			runtimeObjs: nil,
+			ent: entv1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1.EnterpriseSearchSpec{
+					Version: "7.14.0",
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"ent_search",
+				"external_url: https://localhost:3002",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name:        "with user-provided auth config overrides",
+			runtimeObjs: nil,
+			ent: entv1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1.EnterpriseSearchSpec{
+					Version: "7.10.0",
+					Config: &commonv1.Config{Data: map[string]interface{}{
+						"ent_search.auth.native1.source.": "elasticsearch-native", // customized auth
+					}},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				"allow_es_settings_modification: true",
+				"ent_search:",
+				"auth",
+				"native1",
+				"source",
+				"elasticsearch-native",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"external_url: https://localhost:3002",
 				"listen_host: 0.0.0.0",
 				"log_directory: /var/log/enterprise-search",
 				"ssl:",
@@ -505,7 +576,7 @@ func TestReconcileConfig(t *testing.T) {
 			}
 
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -686,7 +757,7 @@ secret_session_key: alreadysetsessionkey
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent, corev1.IPv4Protocol)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol)
 			require.NoError(t, err)
 			cfg, err := settings.ParseConfig(got.Data["enterprise-search.yml"])
 			require.NoError(t, err)
@@ -820,7 +891,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent, tt.ipFamily)
+			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

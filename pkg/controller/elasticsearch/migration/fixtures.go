@@ -7,14 +7,14 @@ package migration
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func loadFileBytes(fileName string) []byte {
-	contents, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
+	contents, err := os.ReadFile(filepath.Join("testdata", fileName))
 	if err != nil {
 		panic(err)
 	}
@@ -23,12 +23,24 @@ func loadFileBytes(fileName string) []byte {
 }
 
 type fakeShardLister struct {
-	shards esclient.Shards
-	err    error
+	shards           esclient.Shards
+	hasShardActivity bool
+	err              error
+}
+
+func (f *fakeShardLister) HasShardActivity(_ context.Context) (bool, error) {
+	return f.hasShardActivity, nil
 }
 
 func (f *fakeShardLister) GetShards(_ context.Context) (esclient.Shards, error) {
 	return f.shards, f.err
+}
+
+func NewFakeShardListerWithShardActivity(shards esclient.Shards) esclient.ShardLister {
+	return &fakeShardLister{
+		shards:           shards,
+		hasShardActivity: true,
+	}
 }
 
 func NewFakeShardLister(shards esclient.Shards) esclient.ShardLister {

@@ -7,18 +7,20 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	. "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	. "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func TestClient_CreateAutoscalingPolicy(t *testing.T) {
@@ -35,12 +37,12 @@ func TestClient_CreateAutoscalingPolicy(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
 		})
-		in := esv1.AutoscalingPolicy{
+		in := v1alpha1.AutoscalingPolicy{
 			Roles: []string{"data", "ingest"},
 		}
 		assert.NoError(t, testClient.CreateAutoscalingPolicy(context.Background(), "di", in))
@@ -61,7 +63,7 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -73,11 +75,11 @@ func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
 func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	testClient := NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, "/_autoscaling/capacity", req.URL.Path)
-		fixture, err := ioutil.ReadFile(filepath.Join("testdata", "autoscaling.json"))
+		fixture, err := os.ReadFile(filepath.Join("testdata", "autoscaling.json"))
 		assert.NoError(t, err)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewReader(fixture)),
+			Body:       io.NopCloser(bytes.NewReader(fixture)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -95,12 +97,14 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		t,
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
-				Storage: newCapacity(165155770),
-				Memory:  nil, // No memory capacity expected for the data deciders
+				Processors: newCapacity("2.5"),
+				Storage:    newCapacity("165155770"),
+				Memory:     nil, // No memory capacity expected for the data deciders
 			},
 			Total: AutoscalingResources{
-				Storage: newCapacity(3069911040),
-				Memory:  nil, // No memory capacity expected for the data deciders
+				Processors: newCapacity("5.0"),
+				Storage:    newCapacity("3069911040"),
+				Memory:     nil, // No memory capacity expected for the data deciders
 			},
 		},
 		dataCapacity.RequiredCapacity,
@@ -111,12 +115,12 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		t,
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
-				Storage: newCapacity(1023303680),
-				Memory:  newCapacity(2147483648),
+				Storage: newCapacity("1023303680"),
+				Memory:  newCapacity("2147483648"),
 			},
 			Total: AutoscalingResources{
-				Storage: newCapacity(3069911040),
-				Memory:  newCapacity(6442450944),
+				Storage: newCapacity("3069911040"),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 		dataCapacity.CurrentCapacity,
@@ -140,11 +144,11 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
-				Memory:  newCapacity(3221225472),
+				Memory:  newCapacity("3221225472"),
 			},
 			Total: AutoscalingResources{
 				Storage: nil, // No storage capacity expected from the ML decider
-				Memory:  newCapacity(6442450944),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 	)
@@ -155,11 +159,11 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 		AutoscalingCapacityInfo{
 			Node: AutoscalingResources{
 				Storage: nil,
-				Memory:  newCapacity(3221225472),
+				Memory:  newCapacity("3221225472"),
 			},
 			Total: AutoscalingResources{
 				Storage: nil,
-				Memory:  newCapacity(6442450944),
+				Memory:  newCapacity("6442450944"),
 			},
 		},
 		mlCapacity.CurrentCapacity,
@@ -173,7 +177,7 @@ func TestClient_GetAutoscalingCapacity(t *testing.T) {
 	)
 }
 
-func newCapacity(i int) *AutoscalingCapacity {
-	v := AutoscalingCapacity(int64(i))
+func newCapacity(q string) *AutoscalingCapacity {
+	v := AutoscalingCapacity{Quantity: resource.MustParse(q)}
 	return &v
 }

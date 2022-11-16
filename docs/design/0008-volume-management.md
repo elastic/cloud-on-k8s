@@ -10,7 +10,7 @@ We decided to rely on StatefulSets to manage PersistentVolumes. While this ADR r
 ## Context and Problem Statement
 
 The aim of this document is to capture some scenarios where a pvc gets orphaned and define how the “reuse pvc” mechanism must behave.
-This document does not deal with the reuse of a PVC after the spec of the cluster has been updated _(i.e. "inline" VS "grow-and-shrink" updates)_.
+This document does not deal with the reuse of a PVC after the spec of the cluster has been updated _(that is, "inline" VS "grow-and-shrink" updates)_.
 It is a complex scenario which deserves its own ADR.
 
 
@@ -25,7 +25,7 @@ The reasons can be classified into 2 main categories:
   * Hardware failure
   * VM instance is deleted
   * Kernel panic
-  * Any runtime panic (e.g. `containerd` crash)
+  * Any runtime panic (for example `containerd` crash)
   * Eviction, but it is not supposed to happen as long as we use a [QoS class of Guaranteed](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed)
 * There is an **external voluntary** disruption
   * The node hosting the Pod is drained because, some _(non exhaustive)_ examples are:
@@ -88,7 +88,7 @@ The solution must be able to handle the following use cases:
 
 ### UC1: The K8S cluster is suffering a external involuntary disruption and the volumes cannot be recovered
 
-In this scenario we must consider the data as permanently lost _(e.g. vm with local storage has been destroyed)_.
+In this scenario we must consider the data as permanently lost _(for example vm with local storage has been destroyed)_.
 
 We need to give a way to the user to instruct the Elastic operator that:
 * It should immediately move the volume into a `Recovering` strategy.
@@ -102,7 +102,7 @@ If it takes to much time to schedule the pod then the volume is moved into one o
 ### UC3: As an admin I want to plan a voluntary disruption and the volumes cannot be recovered
 
 In this scenario the administrator want to definitively evacuate a node and the data will not be available
-anymore (e.g.: a server with a local storage is definitively removed from the cluster)
+anymore (for example, a server with a local storage is definitively removed from the cluster)
 
 It is usually done in two steps:
 
@@ -132,7 +132,7 @@ The annotation `elasticsearch.k8s.elastic.co/delete` can be set on a PVC with th
 
 `kubectl` can be extended with new sub-commands: https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/
 
-e.g.:
+for example:
 ```bash
 $ kubectl elastic migrate elasticsearch-sample-es-qlvprlqnnk -n default # will migrate the data then delete the pod and the pvc
 $ kubectl elastic delete elasticsearch-sample-es-qlvprlqnnk -n default # will delete the pod **and** the pvc
@@ -151,7 +151,7 @@ Pros:
 
 Cons:
 * If the volume can't be recovered the user will have to remove the `Finalizer`
-* Administrator has to `uncordon` the node and delete manually _(a.k.a. error prone)_ the `PVC` if he wants to drain it.
+* Administrator has to `uncordon` the node and delete manually _(also known as error prone)_ the `PVC` if he wants to drain it.
 
 ### Option 2
 Pros:

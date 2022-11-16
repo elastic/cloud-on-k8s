@@ -7,75 +7,117 @@ package pdb
 import (
 	"context"
 
-	"k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
+func Reconcile(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
 	expected, err := expectedPDB(es, statefulSets)
 	if err != nil {
 		return err
 	}
 	if expected == nil {
-		return deleteDefaultPDB(k8sClient, es)
+		return deleteDefaultPDB(ctx, k8sClient, es)
 	}
 
 	// label the PDB with a hash of its content, for comparison purposes
 	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
-	// reconcile actual vs. expected
-	var actual v1beta1.PodDisruptionBudget
-	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(expected), &actual)
-	if err != nil && apierrors.IsNotFound(err) {
-		return k8sClient.Create(context.Background(), expected)
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return err
 	}
 
-	if hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(actual.Labels) {
-		// Actual does not match expected, let's update the PDB.
-		// PDB Spec cannot be updated, we'll have to delete then recreate.
-		// Which means there is a time window in between where we don't have a PDB anymore.
-		// TODO: this is not true anymore starting k8s 1.15+ and this PR https://github.com/kubernetes/kubernetes/pull/69867
-		if err := deleteDefaultPDB(k8sClient, es); err != nil {
-			return err
-		}
-		return k8sClient.Create(context.Background(), expected)
+	if v1Available {
+		reconciled := &policyv1.PodDisruptionBudget{}
+		return reconciler.ReconcileResource(
+			reconciler.Params{
+				Context:    ctx,
+				Client:     k8sClient,
+				Owner:      &es,
+				Expected:   expected,
+				Reconciled: reconciled,
+				NeedsUpdate: func() bool {
+					return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
+				},
+				UpdateReconciled: func() {
+					expected.DeepCopyInto(reconciled)
+				},
+			},
+		)
 	}
 
-	return nil
+	// Fall back to v1beta1
+	reconciled := &policyv1beta1.PodDisruptionBudget{}
+	converted := convert(expected)
+	return reconciler.ReconcileResource(
+		reconciler.Params{
+			Context:    ctx,
+			Client:     k8sClient,
+			Owner:      &es,
+			Expected:   converted,
+			Reconciled: reconciled,
+			NeedsUpdate: func() bool {
+				return hash.GetTemplateHashLabel(converted.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
+			},
+			UpdateReconciled: func() {
+				converted.DeepCopyInto(reconciled)
+			},
+		},
+	)
 }
 
 // deleteDefaultPDB deletes the default pdb if it exists.
-func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
+func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
-	pdb := v1beta1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
-		},
+
+	v1Available, err := isPDBV1Available(k8sClient)
+	if err != nil {
+		return err
 	}
-	if err := k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	var pdb client.Object
+	if v1Available {
+		pdb = &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      esv1.DefaultPodDisruptionBudget(es.Name),
+			},
+		}
+	} else {
+		pdb = &policyv1beta1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      esv1.DefaultPodDisruptionBudget(es.Name),
+			},
+		}
+	}
+
+	if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(pdb), pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	} else if apierrors.IsNotFound(err) {
 		// already deleted, which is fine
 		return nil
 	}
-	if err := k8sClient.Delete(context.Background(), &pdb); err != nil && !apierrors.IsNotFound(err) {
+	if err := k8sClient.Delete(ctx, pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil
@@ -83,7 +125,7 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*policyv1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
@@ -92,7 +134,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1b
 		template = &commonv1.PodDisruptionBudgetTemplate{}
 	}
 
-	expected := v1beta1.PodDisruptionBudget{
+	expected := policyv1.PodDisruptionBudget{
 		ObjectMeta: template.ObjectMeta,
 	}
 
@@ -119,7 +161,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1b
 
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
-func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
+func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) policyv1.PodDisruptionBudgetSpec {
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
@@ -127,7 +169,7 @@ func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1be
 
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
-	return v1beta1.PodDisruptionBudgetSpec{
+	return policyv1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{

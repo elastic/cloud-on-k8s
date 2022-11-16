@@ -9,18 +9,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 func Test_distributeFairly(t *testing.T) {
 	type args struct {
-		nodeSets          resources.NodeSetNodeCountList
+		nodeSets          v1alpha1.NodeSetNodeCountList
 		expectedNodeCount int32
 	}
 	tests := []struct {
 		name             string
 		args             args
-		expectedNodeSets resources.NodeSetNodeCountList
+		expectedNodeSets v1alpha1.NodeSetNodeCountList
 	}{
 		{
 			name: "nodeSet is nil, no panic",
@@ -33,26 +33,26 @@ func Test_distributeFairly(t *testing.T) {
 		{
 			name: "nodeSet is empty, no panic",
 			args: args{
-				nodeSets:          []resources.NodeSetNodeCount{},
+				nodeSets:          []v1alpha1.NodeSetNodeCount{},
 				expectedNodeCount: 2,
 			},
-			expectedNodeSets: []resources.NodeSetNodeCount{},
+			expectedNodeSets: []v1alpha1.NodeSetNodeCount{},
 		},
 		{
 			name: "One nodeSet",
 			args: args{
-				nodeSets:          []resources.NodeSetNodeCount{{Name: "nodeset-1"}},
+				nodeSets:          []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1"}},
 				expectedNodeCount: 2,
 			},
-			expectedNodeSets: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}},
+			expectedNodeSets: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}},
 		},
 		{
 			name: "Two nodeSet",
 			args: args{
-				nodeSets:          []resources.NodeSetNodeCount{{Name: "nodeset-1"}, {Name: "nodeset-2"}},
+				nodeSets:          []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1"}, {Name: "nodeset-2"}},
 				expectedNodeCount: 3,
 			},
-			expectedNodeSets: []resources.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}, {Name: "nodeset-2", NodeCount: 1}},
+			expectedNodeSets: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 2}, {Name: "nodeset-2", NodeCount: 1}},
 		},
 	}
 	for _, tt := range tests {

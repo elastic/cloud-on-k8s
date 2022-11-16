@@ -1,0 +1,10 @@
+apiVersion: v2
+name: eck-agent
+description: A Helm chart to deploy Elastic Agent managed by the ECK Operator.
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.1.0
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+  - https://github.com/elastic/elastic-agent
+icon: https://images.contentstack.io/v3/assets/bltefdd0b53724fa2ce/blt77c2da6e0198746e/620ac24e6662ca0a6f617114/icon-agent-32-color.svg

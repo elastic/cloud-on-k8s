@@ -451,3 +451,70 @@ func TestNewCanonicalConfigFrom(t *testing.T) {
 		})
 	}
 }
+
+func TestCanonicalConfig_HasChildConfig(t *testing.T) {
+	tests := []struct {
+		name string
+		c    *CanonicalConfig
+		key  string
+		want bool
+	}{
+		{
+			name: "nil config",
+			c:    nil,
+			key:  "x",
+			want: false,
+		},
+		{
+			name: "empty config",
+			c:    MustCanonicalConfig(map[string]interface{}{}),
+			key:  "x",
+			want: false,
+		},
+		{
+			name: "valid top-level key but not a child config",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"x": "y",
+			}),
+			key:  "x",
+			want: false,
+		},
+		{
+			name: "valid top level key",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"x": map[string]interface{}{
+					"y": "1",
+					"z": "2",
+				},
+			}),
+			key:  "x",
+			want: true,
+		},
+		{
+			name: "valid nested  key",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"x": map[string]interface{}{
+					"y": map[string]interface{}{},
+					"z": "2",
+				},
+			}),
+			key:  "x.y",
+			want: true,
+		},
+		{
+			name: "absent key",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"x": "y",
+			}),
+			key:  "z",
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.c.HasChildConfig(tt.key); got != tt.want {
+				t.Errorf("HasChildConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

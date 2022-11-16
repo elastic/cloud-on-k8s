@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"context"
 	"crypto"
 	cryptorand "crypto/rand"
 	"crypto/x509"
@@ -15,8 +16,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // PodKeyFileName returns the name of the private key entry for a specific pod in a transport certificates secret.
@@ -32,14 +34,16 @@ func PodCertFileName(podName string) string {
 // ensureTransportCertificatesSecretContentsForPod ensures that the transport certificates secret has the correct
 // content for a specific pod
 func ensureTransportCertificatesSecretContentsForPod(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	secret *corev1.Secret,
 	pod corev1.Pod,
 	ca *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) error {
+	log := ulog.FromContext(ctx)
 	// verify that the secret contains a parsable and compatible private key
-	privateKey := certificates.GetCompatiblePrivateKey(ca.PrivateKey, secret, PodKeyFileName(pod.Name))
+	privateKey := certificates.GetCompatiblePrivateKey(ctx, ca.PrivateKey, secret, PodKeyFileName(pod.Name))
 
 	// if we need a new private key, generate it
 	if privateKey == nil {
@@ -56,7 +60,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 		secret.Data[PodKeyFileName(pod.Name)] = pemPrivateKey
 	}
 
-	if shouldIssueNewCertificate(es, *secret, pod, privateKey, ca, rotationParams.RotateBefore) {
+	if shouldIssueNewCertificate(ctx, es, *secret, pod, privateKey, ca, rotationParams.RotateBefore) {
 		log.Info(
 			"Issuing new certificate",
 			"pod_name", pod.Name,
@@ -101,6 +105,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
 func shouldIssueNewCertificate(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	secret corev1.Secret,
 	pod corev1.Pod,
@@ -108,7 +113,8 @@ func shouldIssueNewCertificate(
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
-	certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
+	log := ulog.FromContext(ctx)
+	certCommonName := buildCertificateCommonName(pod, es)
 
 	generalNames, err := buildGeneralNames(es, pod)
 	if err != nil {
@@ -117,12 +123,12 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	cert := extractTransportCert(secret, pod, certCommonName)
+	cert := extractTransportCert(ctx, secret, pod, certCommonName)
 	if cert == nil {
 		return true
 	}
 
-	if !certificates.PrivateMatchesPublicKey(cert.PublicKey, privateKey) {
+	if !certificates.PrivateMatchesPublicKey(ctx, cert.PublicKey, privateKey) {
 		log.Info(
 			"Certificate belongs do a different public key, should issue new",
 			"namespace", pod.Namespace,
@@ -189,7 +195,8 @@ func shouldIssueNewCertificate(
 }
 
 // extractTransportCert extracts the transport certificate for the pod with the commonName from the Secret
-func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
+func extractTransportCert(ctx context.Context, secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
+	log := ulog.FromContext(ctx)
 	certData, ok := secret.Data[PodCertFileName(pod.Name)]
 	if !ok {
 		log.Info("No tls certificate found in secret",

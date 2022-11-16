@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 // -- ES Client mock
@@ -44,7 +44,8 @@ type fakeESClient struct { //nolint:maligned
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
 	GetClusterRoutingAllocationCallCount int
 
-	Shutdowns map[string]esclient.NodeShutdown
+	Shutdowns            map[string]esclient.NodeShutdown
+	DeleteShutdownCalled bool
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -124,7 +125,8 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 	return esclient.ShutdownResponse{Nodes: ns}, nil
 }
 
-func (f *fakeESClient) DeleteShutdown(ctx context.Context, nodeID string) error {
+func (f *fakeESClient) DeleteShutdown(_ context.Context, _ string) error {
+	f.DeleteShutdownCalled = true
 	return nil
 }
 

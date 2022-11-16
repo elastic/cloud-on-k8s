@@ -10,13 +10,18 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/pointer"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	beat_stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -30,8 +35,8 @@ const (
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
-	// ConfigChecksumLabel is a label used to store a Beat config checksum.
-	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
+	// ConfigHashAnnotationName is an annotation used to store a Beat config hash.
+	ConfigHashAnnotationName = "beat.k8s.elastic.co/config-hash"
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.
 	VersionLabelName = "beat.k8s.elastic.co/version"
@@ -40,11 +45,11 @@ const (
 var (
 	defaultResources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceMemory: resource.MustParse("300Mi"),
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 		},
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceMemory: resource.MustParse("300Mi"),
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 		},
 	}
@@ -70,11 +75,12 @@ func initContainerParameters(typ string) keystore.InitContainerParameters {
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	configHash hash.Hash,
+	configHash hash.Hash32,
 ) (corev1.PodTemplateSpec, error) {
 	podTemplate := params.GetPodTemplate()
 
-	keystoreResources, err := keystore.NewResources(
+	keystoreResources, err := keystore.ReconcileResources(
+		params.Context,
 		params,
 		&params.Beat,
 		namer,
@@ -97,15 +103,19 @@ func buildPodTemplate(
 		dataVolume,
 	}
 
-	for _, association := range params.Beat.GetAssociations() {
-		if !association.AssociationConf().CAIsConfigured() {
+	for _, assoc := range params.Beat.GetAssociations() {
+		assocConf, err := assoc.AssociationConf()
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		if !assocConf.CAIsConfigured() {
 			continue
 		}
-		caSecretName := association.AssociationConf().GetCASecretName()
+		caSecretName := assocConf.GetCASecretName()
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("%s-certs", association.AssociationType()),
-			certificatesDir(association),
+			fmt.Sprintf("%s-certs", assoc.AssociationType()),
+			certificatesDir(assoc),
 		)
 		vols = append(vols, caVolume)
 	}
@@ -113,6 +123,7 @@ func buildPodTemplate(
 	volumes := make([]corev1.Volume, 0, len(vols))
 	volumeMounts := make([]corev1.VolumeMount, 0, len(vols))
 	var initContainers []corev1.Container
+	var sideCars []corev1.Container
 
 	for _, v := range vols {
 		volumes = append(volumes, v.Volume())
@@ -125,20 +136,118 @@ func buildPodTemplate(
 		initContainers = append(initContainers, keystoreResources.InitContainer)
 	}
 
+	if monitoring.IsLogsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "logs-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		// Add shared volume for logs consumption.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "filebeat-logs",
+			ReadOnly:  false,
+			MountPath: "/usr/share/filebeat/logs",
+		})
+		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
+		sideCars = append(sideCars, sideCar.Container)
+	}
+
+	if monitoring.IsMetricsDefined(&params.Beat) {
+		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version)
+		if err != nil {
+			return podTemplate, err
+		}
+		// name of container must be adjusted from default, or it will not be added to
+		// pod template builder because of duplicative names.
+		sideCar.Container.Name = "metrics-monitoring-sidecar"
+		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
+			return podTemplate, err
+		}
+		// Add shared volume for Unix socket between containers.
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "shared-data",
+			ReadOnly:  false,
+			MountPath: "/var/shared",
+		})
+		volumes = append(volumes, sideCar.Volumes...)
+		if runningAsRoot(params.Beat) {
+			sideCar.Container.SecurityContext = &corev1.SecurityContext{
+				RunAsUser: pointer.Int64(0),
+			}
+		}
+		sideCars = append(sideCars, sideCar.Container)
+	}
+
 	labels := maps.Merge(NewLabels(params.Beat), map[string]string{
-		ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-		VersionLabelName:    spec.Version})
+		VersionLabelName: spec.Version})
+
+	annotations := map[string]string{
+		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
+	}
+
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(defaultResources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults()
+		WithInitContainerDefaults().
+		WithContainers(sideCars...)
 
-	return builder.PodTemplate, nil
+	// If logs monitoring is enabled, remove the "-e" argument from the main container
+	// if it exists, and do not include the "-e" startup option for the Beat so that
+	// it does not log only to stderr, and writes log file for filebeat to consume.
+	if monitoring.IsLogsDefined(&params.Beat) {
+		if main := builder.MainContainer(); main != nil {
+			removeLogToStderrOption(main)
+		}
+		builder = builder.WithArgs("-c", ConfigMountPath)
+		return builder.PodTemplate, nil
+	}
+
+	return builder.WithArgs("-e", "-c", ConfigMountPath).PodTemplate, nil
+}
+
+func removeLogToStderrOption(container *corev1.Container) {
+	for i, arg := range container.Args {
+		if arg == "-e" {
+			container.Args = append(container.Args[:i], container.Args[i+1:]...)
+		}
+	}
+}
+
+func runningAsRoot(beat beatv1beta1.Beat) bool {
+	if beat.Spec.DaemonSet != nil {
+		for _, container := range beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	if beat.Spec.Deployment != nil {
+		for _, container := range beat.Spec.Deployment.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func createDataVolume(dp DriverParams) volume.VolumeLike {

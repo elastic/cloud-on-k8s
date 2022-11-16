@@ -8,11 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func HasEventFromBeat(name beatcommon.Type) ValidationFunc {
@@ -75,7 +75,7 @@ func checkEvent(url string, check func(int) error) ValidationFunc {
 			return err
 		}
 		defer res.Body.Close()
-		resultBytes, err := ioutil.ReadAll(res.Body)
+		resultBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			return err
 		}

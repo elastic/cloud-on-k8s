@@ -10,14 +10,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/go-test/deep"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (
@@ -147,7 +147,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 	defer response.Body.Close()
 	var results client.SearchResults
-	resultBytes, err := ioutil.ReadAll(response.Body)
+	resultBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}

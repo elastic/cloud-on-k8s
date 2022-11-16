@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build agent e2e
+//go:build agent || e2e
 
 package agent
 
@@ -10,10 +10,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 func TestWebhook(t *testing.T) {
@@ -28,7 +29,7 @@ func TestWebhook(t *testing.T) {
 			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Spec: v1alpha1.AgentSpec{
-			Version: test.LatestVersion7x,
+			Version: test.LatestReleasedVersion7x,
 		},
 	}
 

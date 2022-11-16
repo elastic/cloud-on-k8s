@@ -15,9 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 func TestWebhook(t *testing.T) {
@@ -158,6 +158,76 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
+			),
+		},
+		{
+			Name:      "version-downgrade with override",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.6.1"
+				return serialize(t, apm)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.5.1"
+				apm.Annotations = map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "named-es-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns", ServiceName: "essvc"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "secret-named-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-kibana-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname", Name: "kbname"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.kibanaRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-namespace",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				apm := mkApmServer(uid)
+				apm.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

@@ -8,18 +8,18 @@ import (
 	"context"
 	"fmt"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Constants to use for the config files in a Kibana pod.
@@ -70,7 +70,7 @@ func ReconcileConfigSecret(
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
 
 	settingsYamlBytes, err := kbSettings.Render()
@@ -95,14 +95,14 @@ func ReconcileConfigSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
 			Name:      SecretName(kb),
-			Labels: common.AddCredentialsLabel(map[string]string{
+			Labels: labels.AddCredentialsLabel(map[string]string{
 				KibanaNameLabelName: kb.Name,
 			}),
 		},
 		Data: data,
 	}
 
-	_, err = reconciler.ReconcileSecret(client, expected, &kb)
+	_, err = reconciler.ReconcileSecret(ctx, client, expected, &kb)
 	return err
 }
 

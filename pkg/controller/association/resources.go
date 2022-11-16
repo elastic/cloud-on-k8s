@@ -7,15 +7,17 @@ package association
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
@@ -29,14 +31,14 @@ func deleteOrphanedResources(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
 ) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 
 	var associatedLabels client.MatchingLabels = info.Labels(associated)
 
 	// List all the Secrets involved in an association (users and ca)
 	var secrets corev1.SecretList
-	if err := c.List(context.Background(), &secrets, associatedLabels); err != nil {
+	if err := c.List(ctx, &secrets, associatedLabels); err != nil {
 		return err
 	}
 
@@ -49,8 +51,8 @@ func deleteOrphanedResources(
 		}
 
 		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
-		log.Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
-		if err := c.Delete(context.Background(), &secret); err != nil && !apierrors.IsNotFound(err) {
+		ulog.FromContext(ctx).Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
+		if err := c.Delete(ctx, &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 

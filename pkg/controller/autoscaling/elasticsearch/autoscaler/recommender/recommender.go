@@ -11,11 +11,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/math"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/math"
 )
 
 // Recommender implements the logic to calculate the resource quantity required for a given resource at both node
@@ -29,15 +27,15 @@ type Recommender interface {
 	NodeResourceQuantity() resource.Quantity
 	// NodeCount returns the advised number of Pods required to fulfill the resource required by Elasticsearch given
 	// resources allocated to a single node.
-	NodeCount(nodeCapacity resources.NodeResources) int32
+	NodeCount(nodeCapacity v1alpha1.NodeResources) int32
 }
 
 // base is a struct shared by all the recommenders.
 type base struct {
 	log                      logr.Logger
-	statusBuilder            *status.AutoscalingStatusBuilder
-	autoscalingSpec          esv1.AutoscalingPolicySpec
-	currentAutoscalingStatus status.Status
+	statusBuilder            *v1alpha1.AutoscalingStatusBuilder
+	autoscalingSpec          v1alpha1.AutoscalingPolicySpec
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus
 }
 
 // nilRecommender is a recommender which never return a recommendation.
@@ -59,7 +57,7 @@ func (n *nilRecommender) TotalQuantity() resource.Quantity {
 	return resource.Quantity{}
 }
 
-func (n *nilRecommender) NodeCount(_ resources.NodeResources) int32 {
+func (n *nilRecommender) NodeCount(_ v1alpha1.NodeResources) int32 {
 	return 0
 }
 
@@ -68,18 +66,18 @@ func (n *nilRecommender) NodeCount(_ resources.NodeResources) int32 {
 // set by the user in the autoscaling specification.
 func getResourceValue(
 	log logr.Logger,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
-	statusBuilder *status.AutoscalingStatusBuilder,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
 	resourceType string,
 	nodeRequired *client.AutoscalingCapacity, // node required capacity as returned by the Elasticsearch API
 	totalRequired *client.AutoscalingCapacity, // tier required capacity as returned by the Elasticsearch API, considered as optional
-	quantityRange esv1.QuantityRange, // as expressed by the user
+	quantityRange v1alpha1.QuantityRange, // as expressed by the user
 ) resource.Quantity {
 	max := quantityRange.Max.Value()
 	// Surface the situation where a resource is exhausted.
 	if nodeRequired.Value() > max {
 		// Elasticsearch requested more capacity per node than allowed by the user
-		err := fmt.Errorf("node required %s is greater than the maximum one", resourceType)
+		err := fmt.Errorf("%s required per node is greater than the maximum one", resourceType)
 		log.Error(
 			err, err.Error(),
 			"scope", "node",
@@ -91,8 +89,8 @@ func getResourceValue(
 		statusBuilder.
 			ForPolicy(autoscalingSpec.Name).
 			RecordEvent(
-				status.VerticalScalingLimitReached,
-				fmt.Sprintf("Node required %s %d is greater than max allowed: %d", resourceType, nodeRequired.Value(), max),
+				v1alpha1.VerticalScalingLimitReached,
+				fmt.Sprintf("%s required per node, %d, is greater than the maximum allowed: %d", resourceType, nodeRequired.Value(), max),
 			)
 	}
 
@@ -111,7 +109,7 @@ func getResourceValue(
 	}
 
 	// Try to round up to the next GiB value
-	nodeResource = math.RoundUp(nodeResource, resources.GiB)
+	nodeResource = math.RoundUp(nodeResource, v1alpha1.GiB)
 
 	// Always ensure that the calculated resource quantity is at least equal to the min. limit provided by the user.
 	if nodeResource < quantityRange.Min.Value() {
@@ -124,14 +122,14 @@ func getResourceValue(
 		nodeResource = max
 	}
 
-	return resources.ResourceToQuantity(nodeResource)
+	return v1alpha1.ResourceToQuantity(nodeResource)
 }
 
 // getNodeCount calculates the number of nodes to deploy in a tier to comply with the capacity requested by Elasticsearch.
 func getNodeCount(
 	log logr.Logger,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
-	statusBuilder *status.AutoscalingStatusBuilder,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
 	resourceName string, // used for logging and in events
 	nodeResourceCapacity int64, // resource capacity of a single node, for example the memory of a node in the tier
 	totalRequiredCapacity int64, // required capacity at the tier level
@@ -162,7 +160,7 @@ func getNodeCount(
 		statusBuilder.
 			ForPolicy(autoscalingSpec.Name).
 			RecordEvent(
-				status.HorizontalScalingLimitReached,
+				v1alpha1.HorizontalScalingLimitReached,
 				fmt.Sprintf("Can't provide total required %s %d, max number of nodes is %d, requires %d nodes", resourceName, totalRequiredCapacity, maxNodes, minNodes+nodeToAdd),
 			)
 	}

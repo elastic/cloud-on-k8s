@@ -2,19 +2,18 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package common_test
+package common
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
-func Test_CalculateHealth(t *testing.T) {
+func Test_calculateHealth(t *testing.T) {
 	type params struct {
 		esAssoc            bool
 		esAssocEstablished bool
@@ -158,7 +157,8 @@ func Test_CalculateHealth(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := beatcommon.CalculateHealth(tt.associations, tt.ready, tt.desired)
+			got, err := calculateHealth(tt.associations, tt.ready, tt.desired)
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}

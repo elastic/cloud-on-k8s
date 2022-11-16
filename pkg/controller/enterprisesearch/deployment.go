@@ -7,13 +7,13 @@ package enterprisesearch
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
@@ -21,15 +21,22 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ent entv1.EnterpriseSearch,
 	configHash string,
 ) (appsv1.Deployment, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploy := deployment.New(r.deploymentParams(ent, configHash))
-	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
+	deployParams, err := r.deploymentParams(ent, configHash)
+	if err != nil {
+		return appsv1.Deployment{}, err
+	}
+	deploy := deployment.New(deployParams)
+	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ent)
 }
 
-func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) deployment.Params {
-	podSpec := newPodSpec(ent, configHash)
+func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string) (deployment.Params, error) {
+	podSpec, err := newPodSpec(ent, configHash)
+	if err != nil {
+		return deployment.Params{}, err
+	}
 
 	deploymentLabels := Labels(ent.Name)
 
@@ -38,12 +45,13 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            DeploymentName(ent.Name),
-		Namespace:       ent.Namespace,
-		Replicas:        ent.Spec.Count,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
-	}
+		Name:                 DeploymentName(ent.Name),
+		Namespace:            ent.Namespace,
+		Replicas:             ent.Spec.Count,
+		Selector:             deploymentLabels,
+		Labels:               deploymentLabels,
+		RevisionHistoryLimit: ent.Spec.RevisionHistoryLimit,
+		PodTemplateSpec:      podSpec,
+		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
+	}, nil
 }

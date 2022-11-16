@@ -6,6 +6,7 @@ package license
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -18,11 +19,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestMemFromJavaOpts(t *testing.T) {
@@ -137,9 +138,9 @@ func TestAggregator(t *testing.T) {
 	client := k8s.NewFakeClient(objects...)
 	aggregator := Aggregator{client: client}
 
-	val, err := aggregator.AggregateMemory()
+	val, err := aggregator.AggregateMemory(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 349.940350976, inGB(val))
+	require.Equal(t, 325.9073486328125, inGiB(val))
 }
 
 func readObjects(t *testing.T, filePath string) []runtime.Object {

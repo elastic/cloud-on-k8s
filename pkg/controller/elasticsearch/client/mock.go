@@ -5,11 +5,11 @@
 package client
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 type RoundTripFunc func(req *http.Request) *http.Response
@@ -36,7 +36,7 @@ func NewMockClientWithUser(v version.Version, u BasicAuth, fn RoundTripFunc) Cli
 func NewMockResponse(statusCode int, r *http.Request, body string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
-		Body:       ioutil.NopCloser(strings.NewReader(body)),
+		Body:       io.NopCloser(strings.NewReader(body)),
 		Header:     make(http.Header),
 		Request:    r,
 	}

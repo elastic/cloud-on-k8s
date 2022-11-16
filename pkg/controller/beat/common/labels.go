@@ -5,8 +5,8 @@
 package common
 
 import (
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 
 func NewLabels(beat beatv1beta1.Beat) map[string]string {
 	return map[string]string{
-		common.TypeLabelName: TypeLabelValue,
+		labels.TypeLabelName: TypeLabelValue,
 		NameLabelName:        beat.Name,
 	}
 }

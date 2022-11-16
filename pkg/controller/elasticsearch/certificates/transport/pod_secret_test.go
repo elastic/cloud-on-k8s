@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 )
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
@@ -92,6 +93,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			}
 
 			if got := shouldIssueNewCertificate(
+				context.Background(),
 				testES,
 				tt.args.secret,
 				*tt.args.pod,
@@ -225,6 +227,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			beforeSecret := tt.secret.DeepCopy()
 
 			err := ensureTransportCertificatesSecretContentsForPod(
+				context.Background(),
 				testES,
 				tt.secret,
 				*tt.pod,

@@ -8,10 +8,12 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
 )
 
 const (
@@ -23,7 +25,7 @@ overrides:
     address: %s
     token: %s
 `
-	EKSVaultPath            = "secret/devops-ci/cloud-on-k8s/ci-aws-k8s-operator"
+	EKSVaultPath            = "ci-aws-k8s-operator"
 	clusterCreationTemplate = `apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
@@ -42,9 +44,9 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key" //nolint:gosec
-	credentialsTemplate = `[default]
+	awsAccessKeyID     = "aws_access_key_id"
+	awsSecretAccessKey = "aws_secret_access_key" //nolint:gosec
+	awsAuthTemplate    = `[default]
 %s = %s
 %s = %s`
 )
@@ -61,12 +63,12 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 		plan: plan,
 		ctx: map[string]interface{}{
 			"ClusterName":       plan.ClusterName,
-			"Region":            plan.EKS.Region,
+			"Region":            plan.Eks.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"NodeCount":         plan.EKS.NodeCount,
+			"NodeCount":         plan.Eks.NodeCount,
 			"MachineType":       plan.MachineType,
-			"NodeAMI":           plan.EKS.NodeAMI,
-			"WorkDir":           plan.EKS.WorkDir,
+			"NodeAMI":           plan.Eks.NodeAMI,
+			"WorkDir":           plan.Eks.WorkDir,
 		},
 	}, nil
 }
@@ -79,8 +81,8 @@ type EKSDriver struct {
 	ctx     map[string]interface{}
 }
 
-func (e *EKSDriver) newCmd(cmd string) *Command {
-	return NewCommand(cmd).
+func (e *EKSDriver) newCmd(cmd string) *exec.Command {
+	return exec.NewCommand(cmd).
 		AsTemplate(e.ctx)
 }
 
@@ -97,7 +99,8 @@ func (e *EKSDriver) Execute() error {
 	case DeleteAction:
 		if exists {
 			log.Printf("Deleting cluster ...")
-			return e.newCmd("eksctl delete cluster -v 0 --name {{.ClusterName}} --region {{.Region}}").Run()
+			// --wait to surface failures to delete all resources in the Cloud formation
+			return e.newCmd("eksctl delete cluster -v 0 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
 		}
 		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:
@@ -111,12 +114,15 @@ func (e *EKSDriver) Execute() error {
 			if err := template.Must(template.New("").Parse(clusterCreationTemplate)).Execute(&createCfg, e.ctx); err != nil {
 				return fmt.Errorf("while formatting cluster create cfg %w", err)
 			}
-			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
+			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
+			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
+				return err
+			}
+			if err := e.GetCredentials(); err != nil {
 				return err
 			}
 		} else {
@@ -143,7 +149,7 @@ func (e *EKSDriver) ensureWorkDir() error {
 	if e.ctx["WorkDir"] != "" {
 		return nil
 	}
-	dir, err := ioutil.TempDir("", e.ctx["ClusterName"].(string))
+	dir, err := os.MkdirTemp("", e.ctx["ClusterName"].(string))
 	if err != nil {
 		return err
 	}
@@ -160,7 +166,8 @@ func (e *EKSDriver) GetCredentials() error {
 		return err
 	}
 	log.Printf("Writing kubeconfig")
-	return e.newCmd("eksctl utils write-kubeconfig --cluster {{.ClusterName}} --region {{.Region}}").Run()
+	// call `aws eks update-kubeconfig` instead of `eksctl utils write-kubeconfig` to write a valid kubeconfig for k8s >= 1.24 (https://github.com/aws/aws-cli/issues/6920)
+	return e.newCmd("aws eks update-kubeconfig --name {{.ClusterName}} --region {{.Region}}").Run()
 }
 
 func (e *EKSDriver) clusterExists() (bool, error) {
@@ -186,7 +193,7 @@ func (e *EKSDriver) auth() error {
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
 func (e *EKSDriver) fetchSecrets() error {
-	client, err := NewClient(*e.plan.VaultInfo)
+	client, err := vault.NewClient(e.plan.VaultInfo)
 	if err != nil {
 		return err
 	}
@@ -223,8 +230,8 @@ func (e *EKSDriver) writeAWSCredentials() error {
 		return nil
 	}
 	log.Printf("Writing aws credentials")
-	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
-	return ioutil.WriteFile(file, []byte(fileContents), 0600)
+	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
+	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
 var _ Driver = &EKSDriver{}

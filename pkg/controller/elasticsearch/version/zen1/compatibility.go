@@ -5,14 +5,16 @@
 package zen1
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // versionCompatibleWithZen1 returns true if the given Elasticsearch version is compatible with zen1.
@@ -21,14 +23,15 @@ func versionCompatibleWithZen1(v version.Version) bool {
 }
 
 // IsCompatibleWithZen1 returns true if the given StatefulSet is compatible with zen1.
-func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
-	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen1)
+func IsCompatibleWithZen1(ctx context.Context, statefulSet appsv1.StatefulSet) bool {
+	return sset.ESVersionMatch(ctx, statefulSet, versionCompatibleWithZen1)
 }
 
 // AtLeastOneNodeCompatibleWithZen1 returns true if at least one of the following conditions is true:
 // 1. There is at least one 6.x node in the actual masters.
 // 2. The given StatefulSetList contains at least one StatefulSet compatible with zen1.
 func AtLeastOneNodeCompatibleWithZen1(
+	ctx context.Context,
 	statefulSets sset.StatefulSetList,
 	c k8s.Client,
 	es esv1.Elasticsearch,
@@ -44,7 +47,7 @@ func AtLeastOneNodeCompatibleWithZen1(
 	if zen1PodExists {
 		return true, nil
 	}
-	return sset.AtLeastOneESVersionMatch(statefulSets, versionCompatibleWithZen1), nil
+	return sset.AtLeastOneESVersionMatch(ctx, statefulSets, versionCompatibleWithZen1), nil
 }
 
 func atLeasOnePodCompatibleWithZen1(pods []corev1.Pod) (bool, error) {

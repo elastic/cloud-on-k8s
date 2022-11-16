@@ -15,7 +15,7 @@ When using remote cluster connections with ECK, the setup process depends on whe
 [id="{p}-remote-clusters-connect-internal"]
 == Connect from an Elasticsearch cluster running in the same Kubernetes cluster
 
-NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing,the license documentation>> for more details about managing licenses.
+NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
 To create a remote cluster connection to another Elasticsearch cluster deployed within the same Kubernetes cluster, specify the `remoteClusters` attribute in your Elasticsearch spec.
 
@@ -51,7 +51,7 @@ NOTE: While it is technically possible to configure remote cluster connections u
 You can configure a remote cluster connection to an ECK-managed Elasticsearch cluster from another cluster running outside the Kubernetes cluster as follows:
 
 . Make sure that both clusters trust each other's certificate authority.
-. Configure the remote cluster connection via the Elasticsearch REST API.
+. Configure the remote cluster connection through the Elasticsearch REST API.
 
 Consider the following example:
 
@@ -71,9 +71,9 @@ kubectl get secret cluster-one-es-transport-certs-public \
 -o go-template='{{index .data "ca.crt" | base64decode}}' > remote.ca.crt
 ----
 
-You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
+You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, take the CA certificate that you have just extracted and add it to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
 
-NOTE: Beware of copying the source Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
+NOTE: Beware of copying the source Secret as-is into a different namespace. Check <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
 NOTE: CA certificates are automatically rotated after one year by default. You can link:k8s-operator-config.html[configure] this period. Make sure to keep the copy of the certificates Secret up-to-date.
 
@@ -115,9 +115,9 @@ spec:
   version: {version}
 ----
 
-. Repeat the above steps to add the CA of `cluster-two` to `cluster-one` as well.
+. Repeat steps 1 and 2 to add the CA of `cluster-two` to `cluster-one` as well.
 
-=== Configure the remote cluster connection via the Elasticsearch REST API
+=== Configure the remote cluster connection through the Elasticsearch REST API
 
 Expose the transport layer of `cluster-one`.
 
@@ -133,7 +133,7 @@ spec:
       spec:
         type: LoadBalancer <1>
 ----
-<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively, expose the service via one of the Kubernetes Ingress controllers that support TCP services.
+<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively, expose the service through one of the Kubernetes Ingress controllers that support TCP services.
 
 Finally, configure `cluster-one` as a remote cluster in `cluster-two` using the Elasticsearch REST API:
 
@@ -154,4 +154,4 @@ PUT _cluster/settings
 }
 ----
 <1> Use "proxy" mode as `cluster-two` will be connecting to `cluster-one` through the Kubernetes service abstraction.
-<2> Replace `${LOADBALANCER_IP}` with the IP address assigned to the `LoadBalancer` configured above. If you have configured a DNS entry for the service, you can use the DNS name instead of the IP address as well.
+<2> Replace `${LOADBALANCER_IP}` with the IP address assigned to the `LoadBalancer` configured in the previous code sample. If you have configured a DNS entry for the service, you can use the DNS name instead of the IP address as well.

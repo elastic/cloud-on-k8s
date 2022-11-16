@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -80,7 +80,7 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	log = logf.Log.WithName("streamTestJobOutput_withError")
 
 	stopLogStream := make(chan struct{})
-	sampleLogs, err := ioutil.ReadFile("testdata/stream.json")
+	sampleLogs, err := os.ReadFile("testdata/stream.json")
 	require.NoError(t, err)
 	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, true)
 
@@ -88,7 +88,7 @@ func Test_helper_streamTestJobOutput_withError(t *testing.T) {
 	writer := bytes.NewBuffer([]byte{})
 	streamTestJobOutput(streamProvider, goLangTestTimestampParser, writer, streamErrors, stopLogStream)
 
-	got, err := ioutil.ReadAll(writer)
+	got, err := io.ReadAll(writer)
 	require.NoError(t, err)
 
 	// Check that we had one error
@@ -103,7 +103,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	log = logf.Log.WithName("streamTestJobOutput")
 
 	stopLogStream := make(chan struct{})
-	sampleLogs, err := ioutil.ReadFile("testdata/stream.json")
+	sampleLogs, err := os.ReadFile("testdata/stream.json")
 	require.NoError(t, err)
 	streamProvider := NewFakeLogStreamProvider(sampleLogs, stopLogStream, false)
 
@@ -112,7 +112,7 @@ func Test_helper_streamTestJobOutput(t *testing.T) {
 	streamTestJobOutput(streamProvider, goLangTestTimestampParser, writer, streamErrors, stopLogStream)
 
 	// Check that the data are the expected ones
-	got, err := ioutil.ReadAll(writer)
+	got, err := io.ReadAll(writer)
 	require.NoError(t, err)
 
 	errorCount := len(streamErrors)
@@ -134,7 +134,7 @@ func Test_goLangTestTimestampParser(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				line: `{"Time":"2020-08-19T07:55:30.02987855Z","Action":"output","Package":"github.com/elastic/cloud-on-k8s/test/e2e/beat","Test":"TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready","Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
+				line: `{"Time":"2020-08-19T07:55:30.02987855Z","Action":"output","Package":"github.com/elastic/cloud-on-k8s/v2/test/e2e/beat","Test":"TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready","Output":"=== RUN   TestBeatKibanaRefWithTLSDisabled/All_expected_Pods_should_eventually_be_ready\n"}`,
 			},
 			want: time.Date(2020, time.August, 19, 07, 55, 30, 29878550, time.UTC),
 		},

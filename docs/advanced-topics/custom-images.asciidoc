@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Create custom images
 
-You can create your own custom application images ({eck_resources_list}) instead of using the base images provided by Elastic. You might want to do this to have a canonical image with all the necessary plugins pre-loaded rather than <<{p}-init-containers-plugin-downloads,installing them via an init container>> each time a Pod starts.  You must use the official image as the base for custom images. For example, if you want to create an Elasticsearch {version} image with the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
+You can create your own custom application images ({eck_resources_list}) instead of using the base images provided by Elastic. You might want to do this to have a canonical image with all the necessary plugins pre-loaded rather than <<{p}-init-containers-plugin-downloads,installing them through an init container>> each time a Pod starts.  You must use the official image as the base for custom images. For example, if you want to create an Elasticsearch {version} image with the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-icu.html[ICU Analysis Plugin], you can do the following:
 
 
 
@@ -16,22 +16,22 @@ You can create your own custom application images ({eck_resources_list}) instead
 [subs="attributes"]
 ----
 FROM docker.elastic.co/elasticsearch/elasticsearch:{version}
-RUN bin/elasticsearch-plugin install --batch repository-gcs
+RUN bin/elasticsearch-plugin install --batch analysis-icu
 ----
 
 . Build the image with:
 +
 [subs="attributes"]
 ----
-docker build --tag elasticsearch-gcs:{version}
+docker build --tag elasticsearch-icu:{version}
 ----
 
-There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry. See https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[Using Container Registry with Google Cloud] for more information. To use the image, you can then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
+There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry. Check https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[Using Container Registry with Google Cloud] for more information. To use the image, you can then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
 
 [subs="attributes"]
 ----
-docker tag elasticsearch-gcs:{version} gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
-docker push gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
+docker tag elasticsearch-icu:{version} gcr.io/$PROJECT-ID/elasticsearch-icu:{version}
+docker push gcr.io/$PROJECT-ID/elasticsearch-icu:{version}
 ----
 
 
@@ -41,12 +41,14 @@ Configure your Elasticsearch specification to use the newly pushed image, for ex
 ----
 spec:
   version: {version}
-  image: gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
+  image: gcr.io/$PROJECT-ID/elasticsearch-icu:{version}
 ----
 
 NOTE: Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 
 The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[AWS Elastic Container Registry].
+
+If your custom images follow the naming convention adopted by the official images, and you only want to use your custom images, you can also simply <<{p}-container-registry-override, override the container registry>>.
 
 For more information, check the following references:
 
@@ -56,16 +58,3 @@ For more information, check the following references:
 - https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html[Amazon Elastic Container Registry]
 - https://docs.openshift.com/container-platform/4.1/registry/architecture-component-imageregistry.html[OpenShift Container Platform registry]
 
-
-[float]
-[id="{p}-container-registry-override"]
-== Override the default container registry
-
-When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. See <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
-
-The operator expects container images to be located at specific paths in the default container registry. Make sure that your container images are stored at the right path and are tagged correctly with the stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from stack version {version}, the following image paths should exist:
-
-
-* +my.registry/elasticsearch/elasticsearch:{version}+
-* +my.registry/kibana/kibana:{version}+
-* +my.registry/apm/apm-server:{version}+

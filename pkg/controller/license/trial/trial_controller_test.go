@@ -19,9 +19,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	licensing "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -89,9 +90,9 @@ func simulateLicenseInit(t *testing.T, k k8s.Client, secret corev1.Secret) licen
 	}
 	state, err := licensing.NewTrialState()
 	require.NoError(t, err)
-	err = state.InitTrialLicense(&l)
+	err = state.InitTrialLicense(context.Background(), &l)
 	require.NoError(t, err)
-	require.NoError(t, licensing.UpdateEnterpriseLicense(k, secret, l))
+	require.NoError(t, licensing.UpdateEnterpriseLicense(context.Background(), k, secret, l))
 	return state
 }
 
@@ -302,10 +303,10 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:            tt.fields.Client,
-				recorder:          record.NewFakeRecorder(10),
-				trialState:        tt.fields.trialState,
-				operatorNamespace: testNs,
+				Client:     tt.fields.Client,
+				Parameters: operator.Parameters{OperatorNamespace: testNs},
+				recorder:   record.NewFakeRecorder(10),
+				trialState: tt.fields.trialState,
 			}
 			_, err := r.Reconcile(context.Background(), reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -431,12 +432,12 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:            tt.fields.Client,
-				recorder:          record.NewFakeRecorder(10),
-				trialState:        tt.fields.trialState,
-				operatorNamespace: testNs,
+				Client:     tt.fields.Client,
+				Parameters: operator.Parameters{OperatorNamespace: testNs},
+				recorder:   record.NewFakeRecorder(10),
+				trialState: tt.fields.trialState,
 			}
-			if err := r.reconcileTrialStatus(trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {
+			if err := r.reconcileTrialStatus(context.Background(), trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileTrialStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.assertions != nil {

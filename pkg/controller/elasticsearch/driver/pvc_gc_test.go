@@ -15,10 +15,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.StatefulSet {
@@ -177,7 +177,7 @@ func TestGarbageCollectPVCs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := GarbageCollectPVCs(tt.args.k8sClient, tt.args.es, tt.args.actualStatefulSets, tt.args.expectedStatefulSets); (err != nil) != tt.wantErr {
+			if err := GarbageCollectPVCs(context.Background(), tt.args.k8sClient, tt.args.es, tt.args.actualStatefulSets, tt.args.expectedStatefulSets); (err != nil) != tt.wantErr {
 				t.Errorf("GarbageCollectPVCs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var retrievedPVCs corev1.PersistentVolumeClaimList

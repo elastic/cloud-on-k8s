@@ -5,20 +5,22 @@
 package nodespec
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
@@ -55,6 +57,7 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
 }
 
 func BuildStatefulSet(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	nodeSet esv1.NodeSet,
@@ -76,7 +79,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
@@ -107,9 +110,8 @@ func BuildStatefulSet(
 			},
 			// we don't care much about pods creation ordering, and manage deletion ordering ourselves,
 			// so we're fine with the StatefulSet controller spawning all pods in parallel
-			PodManagementPolicy: appsv1.ParallelPodManagement,
-			// use default revision history limit
-			RevisionHistoryLimit: nil,
+			PodManagementPolicy:  appsv1.ParallelPodManagement,
+			RevisionHistoryLimit: es.Spec.RevisionHistoryLimit,
 			// build a headless service per StatefulSet, matching the StatefulSet labels
 			ServiceName: HeadlessServiceName(statefulSetName),
 			Selector: &metav1.LabelSelector{

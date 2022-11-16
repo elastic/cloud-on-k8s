@@ -9,42 +9,34 @@ import (
 	"crypto/x509"
 	"time"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-type CertificateResources struct {
-	// TrustedHTTPCertificates contains the latest HTTP certificates that should be trusted.
-	TrustedHTTPCertificates []*x509.Certificate
-
-	// TransportCA is the CA used for Transport certificates
-	TransportCA *certificates.CA
-}
-
-// Reconcile reconciles the certificates of a cluster.
-func Reconcile(
+// ReconcileHTTP reconciles the HTTP layer certificates of a cluster.
+func ReconcileHTTP(
 	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	services []corev1.Service,
+	globalCA *certificates.CA,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
-) (*CertificateResources, *reconciler.Results) {
-	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
+) ([]*x509.Certificate, *reconciler.Results) {
+	span, _ := apm.StartSpan(ctx, "reconcile_http_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	var results *reconciler.Results
@@ -70,6 +62,7 @@ func Reconcile(
 		Namer:          esv1.ESNamer,
 		Labels:         certsLabels,
 		Services:       services,
+		GlobalCA:       globalCA,
 		CACertRotation: caRotation,
 		CertRotation:   certRotation,
 		// ES is able to hot-reload TLS certificates: let's keep secrets around even though TLS is disabled.
@@ -82,28 +75,58 @@ func Reconcile(
 		return nil, results
 	}
 
-	// reconcile transport CA and certs
-	transportCA, err := transport.ReconcileOrRetrieveCA(
-		driver,
-		es,
-		certsLabels,
-		caRotation,
-	)
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
 	if err != nil {
 		return nil, results.WithError(err)
 	}
+
+	return trustedHTTPCertificates, nil
+}
+
+// ReconcileTransport reconciles the transport layer certificates of a cluster.
+func ReconcileTransport(
+	ctx context.Context,
+	driver driver.Interface,
+	es esv1.Elasticsearch,
+	globalCA *certificates.CA,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
+) *reconciler.Results {
+	span, ctx := apm.StartSpan(ctx, "reconcile_transport_certs", tracing.SpanTypeApp)
+	defer span.End()
+
+	results := reconciler.NewResult(ctx)
+
+	// label certificates secrets with the cluster name
+	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
+
+	// reconcile transport CA and certs
+	transportCA, err := transport.ReconcileOrRetrieveCA(
+		ctx,
+		driver,
+		es,
+		certsLabels,
+		globalCA,
+		caRotation,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
 	// make sure to requeue before the CA cert expires
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
-	})
+	results.WithReconciliationState(
+		reconciler.
+			RequeueAfter(certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore)).
+			ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
+	)
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
-		return nil, results.WithError(err)
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA); err != nil {
+		return results.WithError(err)
 	}
 
 	// reconcile transport certificates
 	transportResults := transport.ReconcileTransportCertificatesSecrets(
+		ctx,
 		driver.K8sClient(),
 		transportCA,
 		es,
@@ -111,21 +134,13 @@ func Reconcile(
 	)
 
 	// reconcile remote clusters certificate authorities
-	if err := remoteca.Reconcile(driver.K8sClient(), es, *transportCA); err != nil {
+	if err := remoteca.Reconcile(ctx, driver.K8sClient(), es, *transportCA); err != nil {
 		results.WithError(err)
 	}
 
 	if results.WithResults(transportResults).HasError() {
-		return nil, results
+		return results
 	}
 
-	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
-	return &CertificateResources{
-		TrustedHTTPCertificates: trustedHTTPCertificates,
-		TransportCA:             transportCA,
-	}, results
+	return results
 }

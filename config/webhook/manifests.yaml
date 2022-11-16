@@ -1,4 +1,3 @@
-
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -246,4 +245,26 @@ webhooks:
     - UPDATE
     resources:
     - elasticsearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-esa-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - autoscaling.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearchautoscalers
   sideEffects: None

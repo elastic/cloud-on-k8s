@@ -8,13 +8,13 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 type APIError struct {
@@ -59,13 +59,12 @@ func DoRequest(client *http.Client, ems v1alpha1.ElasticMapsServer, method, path
 	if err != nil {
 		return nil, fmt.Errorf("while making request: %w", err)
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, &APIError{
 			StatusCode: resp.StatusCode,
 			msg:        fmt.Sprintf("fail to request %s, status is %d)", path, resp.StatusCode),
 		}
 	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }

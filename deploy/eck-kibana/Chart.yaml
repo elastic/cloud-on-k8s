@@ -1,0 +1,10 @@
+apiVersion: v2
+name: eck-kibana
+description: A Helm chart to deploy Kibana managed by the ECK Operator.
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.1.1
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+  - https://github.com/elastic/kibana
+icon: https://helm.elastic.co/icons/kibana.png

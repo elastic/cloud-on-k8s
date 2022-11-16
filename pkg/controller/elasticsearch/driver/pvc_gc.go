@@ -10,11 +10,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 // GarbageCollectPVCs ensures PersistentVolumeClaims created for the given es resource are deleted
@@ -25,6 +26,7 @@ import (
 // * leftover PVCs created for StatefulSets that do not exist anymore
 // * leftover PVCs created for StatefulSets replicas that don't exist anymore (eg. downscale from 5 to 3 nodes)
 func GarbageCollectPVCs(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	es esv1.Elasticsearch,
 	actualStatefulSets sset.StatefulSetList,
@@ -34,13 +36,13 @@ func GarbageCollectPVCs(
 	var pvcs corev1.PersistentVolumeClaimList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := k8sClient.List(context.Background(), &pvcs, ns, matchLabels); err != nil {
+	if err := k8sClient.List(ctx, &pvcs, ns, matchLabels); err != nil {
 		return err
 	}
 	for _, pvc := range pvcsToRemove(pvcs.Items, actualStatefulSets, expectedStatefulSets) {
 		pvc := pvc
-		log.Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
-		if err := k8sClient.Delete(context.Background(), &pvc); err != nil {
+		ulog.FromContext(ctx).Info("Deleting PVC", "namespace", pvc.Namespace, "pvc_name", pvc.Name)
+		if err := k8sClient.Delete(ctx, &pvc); err != nil {
 			return err
 		}
 	}

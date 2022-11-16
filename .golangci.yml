@@ -1,5 +1,5 @@
 run:
-  timeout: 300s
+  timeout: 360s
 
 linters-settings:
   exhaustive:
@@ -47,6 +47,7 @@ linters:
     - nlreturn
     - paralleltest
     - rowserrcheck
+    - scopelint
     - sqlclosecheck
     - stylecheck
     - testpackage
@@ -71,7 +72,6 @@ linters:
     - gosec
     - gosimple
     - govet
-    - ifshort
     - importas
     - ineffassign
     - makezero
@@ -84,7 +84,6 @@ linters:
     - prealloc
     - predeclared
     - revive
-    - scopelint
     - staticcheck
     - structcheck
     - thelper
@@ -107,6 +106,8 @@ issues:
   exclude-rules:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
-        - goconst
-        - scopelint
         - unparam
+    - path: pkg/controller/common/tracing/apmclientgo/client.go
+      linters:
+        - staticcheck
+      text: SA1019

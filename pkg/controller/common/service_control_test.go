@@ -13,10 +13,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestReconcileService(t *testing.T) {
@@ -257,6 +257,9 @@ func Test_needsDelete(t *testing.T) {
 }
 
 func Test_applyServerSideValues(t *testing.T) {
+	ptr := func(policyType corev1.ServiceInternalTrafficPolicyType) *corev1.ServiceInternalTrafficPolicyType {
+		return &policyType
+	}
 	type args struct {
 		expected   corev1.Service
 		reconciled corev1.Service
@@ -285,7 +288,7 @@ func Test_applyServerSideValues(t *testing.T) {
 			}},
 		},
 		{
-			name: "Reconciled ClusterIP[s] is not used if the reconciled ClusterIP[s] are not valid IPs",
+			name: "Reconciled ClusterIP[s] is also used if the reconciled ClusterIP[s] are not valid IPs",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
@@ -297,6 +300,8 @@ func Test_applyServerSideValues(t *testing.T) {
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:            corev1.ServiceTypeClusterIP,
+				ClusterIP:       "None",
+				ClusterIPs:      []string{"None"},
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 			}},
 		},
@@ -513,6 +518,32 @@ func Test_applyServerSideValues(t *testing.T) {
 				ClusterIP:       "1.2.3.4",
 				SessionAffinity: corev1.ServiceAffinityClientIP,
 				IPFamilies:      []corev1.IPFamily{corev1.IPv6Protocol},
+			}},
+		},
+		{
+			name: "Reconciled InternalTrafficPolicy is used if the expected one is empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+			}},
+		},
+		{
+			name: "Expected InternalTrafficPolicy is used if not empty",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyCluster),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				InternalTrafficPolicy: ptr(corev1.ServiceInternalTrafficPolicyLocal),
 			}},
 		},
 	}

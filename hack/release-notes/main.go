@@ -11,7 +11,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/elastic/cloud-on-k8s/hack/release-notes/github"
+	"github.com/elastic/cloud-on-k8s/v2/hack/release-notes/github"
 )
 
 const (
@@ -45,6 +45,7 @@ var (
 		">feature":     "New features",
 		">enhancement": "Enhancements",
 		">bug":         "Bug fixes",
+		">docs":        "Documentation improvements",
 		noGroup:        "Misc",
 	}
 
@@ -54,13 +55,13 @@ var (
 		">feature",
 		">enhancement",
 		">bug",
+		">docs",
 		noGroup,
 	}
 
 	ignoredLabels = map[string]struct{}{
 		">non-issue":                 {},
 		">refactoring":               {},
-		">docs":                      {},
 		">test":                      {},
 		":ci":                        {},
 		"backport":                   {},

@@ -8,18 +8,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
@@ -51,7 +50,7 @@ func Test_buildBeatConfig(t *testing.T) {
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
-	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
+	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities:
    - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
 	outputYaml := settings.MustParseConfig([]byte(`output:
   elasticsearch:
@@ -60,7 +59,6 @@ func Test_buildBeatConfig(t *testing.T) {
     password: "123"
     username: elastic
 `))
-
 	withAssoc := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -77,10 +75,19 @@ func Test_buildBeatConfig(t *testing.T) {
 	withAssocWithCA := *withAssoc.DeepCopy()
 
 	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssocWithCA}
-	esAssocWithCA.AssociationConf().CACertProvided = true
+	esAssocWithCA.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "secret",
+		AuthSecretKey:  "elastic",
+		CACertProvided: true,
+		CASecretName:   "secret2",
+		URL:            "url",
+	})
+	assocConf, err := esAssocWithCA.AssociationConf()
+	require.NoError(t, err)
+	assocConf.CACertProvided = true
 
-	withAssocWithCAWithonfig := *withAssocWithCA.DeepCopy()
-	withAssocWithCAWithonfig.Spec.Config = userCfg
+	withAssocWithCAWithConfig := *withAssocWithCA.DeepCopy()
+	withAssocWithCAWithConfig.Spec.Config = userCfg
 
 	withAssocWithConfig := *withAssoc.DeepCopy()
 	withAssocWithConfig.Spec.Config = userCfg
@@ -101,7 +108,8 @@ func Test_buildBeatConfig(t *testing.T) {
 			name: "no association, user config",
 			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
 				Config: userCfg,
-			}},
+			},
+			},
 			want: userCanonicalCfg,
 		},
 		{
@@ -112,9 +120,11 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 		{
 			name: "no association, managed and user configs",
-			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
-				Config: userCfg,
-			}},
+			beat: beatv1beta1.Beat{
+				Spec: beatv1beta1.BeatSpec{
+					Config: userCfg,
+				},
+			},
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg),
 		},
@@ -153,7 +163,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:   "association with ca, user config",
 			client: clientWithSecret,
-			beat:   withAssocWithCAWithonfig,
+			beat:   withAssocWithCAWithConfig,
 			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
 		},
 		{
@@ -166,16 +176,54 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:          "association with ca, user and managed configs",
 			client:        clientWithSecret,
-			beat:          withAssocWithCAWithonfig,
+			beat:          withAssocWithCAWithConfig,
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
+		},
+		{
+			name: "no association, user config, with metrics monitoring enabled",
+			beat: beatv1beta1.Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "beat",
+					Namespace: "test",
+				},
+				Spec: beatv1beta1.BeatSpec{
+					Type:   "filebeat",
+					Config: userCfg,
+					Monitoring: commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
+							ElasticsearchRefs: []commonv1.ObjectSelector{
+								{
+									Name:      "testesref",
+									Namespace: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]interface{}{
+				"http": map[string]interface{}{
+					"enabled": true,
+					"host":    "unix:///var/shared/filebeat-test-beat.sock",
+					"port":    nil,
+				},
+				"monitoring.enabled": false,
+				"logging": map[string]interface{}{
+					"files": map[string]string{
+						"path": "/usr/share/filebeat/logs",
+					},
+					"to_files":  true,
+					"to_stderr": false,
+					"to_syslog": false,
+				},
+			})),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Logger:        logr.DiscardLogger{},
 				Watches:       watches.NewDynamicWatches(),
 				EventRecorder: nil,
 				Beat:          tt.beat,
@@ -183,7 +231,10 @@ func Test_buildBeatConfig(t *testing.T) {
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 
-			require.Empty(t, diff)
+			if len(diff) != 0 {
+				wantBytes, _ := tt.want.Render()
+				t.Errorf("buildBeatConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotYaml)))
+			}
 			require.Equal(t, gotErr != nil, tt.wantErr)
 		})
 	}
@@ -282,13 +333,17 @@ setup.kibana:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildKibanaConfig(tt.args.client, tt.args.associated)
+			got, err := BuildKibanaConfig(context.Background(), tt.args.client, tt.args.associated)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildKibanaConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			diff := tt.want.Diff(got, nil)
-			require.Empty(t, diff)
+			if len(diff) != 0 {
+				wantBytes, _ := tt.want.Render()
+				gotBytes, _ := got.Render()
+				t.Errorf("BuildKibanaConfig() got unexpected differences: %s", cmp.Diff(string(wantBytes), string(gotBytes)))
+			}
 		})
 	}
 }
@@ -369,7 +424,6 @@ func Test_getUserConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
-				Logger:        log.NullLogger{},
 				Client:        tt.client,
 				EventRecorder: &record.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),

@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -21,14 +20,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
 	esManifestFlag = "elasticsearch-manifest"
+	oldEsNameFlag  = "old-elasticsearch-name"
 	dryRunFlag     = "dry-run"
 )
 
@@ -60,7 +60,7 @@ var Cmd = &cobra.Command{
 		releasedPVs, err := findReleasedPVs(c)
 		exitOnErr(err)
 
-		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims)
+		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims, es, viper.GetString(oldEsNameFlag))
 		exitOnErr(err)
 
 		err = createAndBindClaims(c, matches, dryRun)
@@ -76,6 +76,11 @@ func init() {
 		esManifestFlag,
 		"",
 		"path pointing to the Elasticsearch yaml manifest",
+	)
+	Cmd.Flags().String(
+		oldEsNameFlag,
+		"",
+		"name of previous Elasticsearch cluster (to use existing volumes)",
 	)
 	Cmd.Flags().Bool(
 		dryRunFlag,
@@ -93,7 +98,7 @@ func main() {
 
 // esFromFile parses an Elasticsearch resource from the given yaml manifest path.
 func esFromFile(path string) (esv1.Elasticsearch, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return esv1.Elasticsearch{}, err
 	}
@@ -208,13 +213,21 @@ type MatchingVolumeClaim struct {
 }
 
 // matchPVsWithClaim iterates over existing pvs to match them to an expected pvc.
-func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim) ([]MatchingVolumeClaim, error) {
+func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim, es esv1.Elasticsearch, oldESName string) ([]MatchingVolumeClaim, error) {
 	matches := make([]MatchingVolumeClaim, 0, len(pvs))
 	for _, pv := range pvs {
 		if pv.Spec.ClaimRef == nil {
 			continue
 		}
-		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: pv.Spec.ClaimRef.Name}]
+		expectedClaimName := pv.Spec.ClaimRef.Name
+		// if you're building a newly named cluster, from a previous cluster's PVs, we'll
+		// need to replace the old cluster's name, with the new cluster's name to try and match
+		// against the set of generated claims.
+		if oldESName != "" {
+			expectedClaimName = strings.ReplaceAll(expectedClaimName, pvcPrefix(oldESName), pvcPrefix(es.Name))
+		}
+
+		claim, expected := claims[types.NamespacedName{Namespace: pv.Spec.ClaimRef.Namespace, Name: expectedClaimName}]
 		if !expected {
 			continue
 		}
@@ -228,6 +241,10 @@ func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedNam
 		return nil, fmt.Errorf("found %d matching volumes but expected %d", len(matches), len(claims))
 	}
 	return matches, nil
+}
+
+func pvcPrefix(clusterName string) string {
+	return esv1.ESNamer.Suffix(fmt.Sprintf("%s-%s", volume.ElasticsearchDataVolumeName, clusterName))
 }
 
 // bindNewClaims creates the given PersistentVolumeClaims, and update the matching PersistentVolumes
@@ -244,6 +261,7 @@ func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRu
 		// match.claim now stores the created claim metadata
 		// patch the volume spec to match the new claim
 		match.volume.Spec.ClaimRef.UID = match.claim.UID
+		match.volume.Spec.ClaimRef.Name = match.claim.Name
 		match.volume.Spec.ClaimRef.ResourceVersion = match.claim.ResourceVersion
 		if !dryRun {
 			if err := c.Update(context.Background(), &match.volume); err != nil {

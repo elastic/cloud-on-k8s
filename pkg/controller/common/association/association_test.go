@@ -6,16 +6,17 @@ package association
 
 import (
 	"crypto/sha256"
+	"hash/fnv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func associationFixture(conf *commonv1.AssociationConf) commonv1.Association {
@@ -81,13 +82,13 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			configHashPassed := sha256.New224()
+			configHashPassed := fnv.New32a()
 			gotErr := writeAuthSecretToConfigHash(tt.client, tt.assoc, configHashPassed)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 
-			configHash := sha256.New224()
+			configHash := fnv.New32a()
 			_, _ = configHash.Write([]byte(tt.wantHashed))
-			require.Equal(t, configHash.Sum(nil), configHashPassed.Sum(nil))
+			require.Equal(t, configHash.Sum32(), configHashPassed.Sum32())
 		})
 	}
 }
@@ -105,16 +106,36 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 			assoc: associationFixture(nil),
 		},
 		{
-			name:   "association ca secret missing",
+			name:   "association with a custom cert without ca",
 			client: k8s.NewFakeClient(),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: false,
+				CASecretName:   "ca-secret-name",
+			}),
+			wantHashed: "",
+			wantErr:    false,
+		},
+		{
+			name:   "association without ca",
+			client: k8s.NewFakeClient(),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CACertProvided: false,
+			}),
+			wantHashed: "",
+			wantErr:    false,
+		},
+		{
+			name:   "association with ca, ca secret missing",
+			client: k8s.NewFakeClient(),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
 		{
-			name: "association ca secret data missing",
+			name: "association with ca, ca secret present, ca.crt missing",
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-name",
@@ -122,24 +143,26 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 				},
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
 		{
-			name: "association ca secret data present",
+			name: "association with ca, ca secret and ca.crt present",
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "ca-secret-name",
 					Namespace: "test-ns",
 				},
 				Data: map[string][]byte{
-					certificates.CertFileName: []byte("456"),
+					certificates.CAFileName: []byte("456"),
 				},
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
-				CASecretName: "ca-secret-name",
+				CACertProvided: true,
+				CASecretName:   "ca-secret-name",
 			}),
 			wantHashed: "456",
 		},

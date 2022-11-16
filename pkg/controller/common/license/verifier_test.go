@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -17,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
 )
 
 func TestLicenseVerifier_ValidSignature(t *testing.T) {
@@ -261,7 +262,7 @@ func TestVerifier_Valid(t *testing.T) {
 			v := &Verifier{
 				PublicKey: tt.fields.PublicKey,
 			}
-			if got := v.Valid(tt.args.l, tt.args.now); !reflect.DeepEqual(got, tt.want) {
+			if got := v.Valid(context.Background(), tt.args.l, tt.args.now); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Verifier.Valid() = %v, want %v", got, tt.want)
 			}
 		})

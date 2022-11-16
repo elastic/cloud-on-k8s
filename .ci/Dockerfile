@@ -1,22 +1,20 @@
 # Docker image used for continuous integration
-FROM golang:1.17.5
+FROM docker.io/library/golang:1.19.3
 
-ENV GOLANGCILINT_VERSION=1.38.0
-ENV SHELLCHECK_VERSION=0.7.1
+ENV GOLANGCILINT_VERSION=1.48.0
+ENV SHELLCHECK_VERSION=0.8.0
 ENV KUBEBUILDER_VERSION=2.3.1
-ENV GCLOUD_VERSION=353.0.0
-ENV KUBECTL_VERSION=1.14.7
-ENV DOCKER_VERSION=19.03.13
-ENV DOCKER_BUILDX_VERSION=0.4.2
-ENV GOTESTSUM_VERSION=0.5.0
-ENV KIND_VERSION_0_8=0.8.1
-ENV KIND_VERSION_0_9=0.9.0
-ENV OPENSHIFT_TOOLS_VERSION=4.7.0
+ENV GCLOUD_VERSION=381.0.0
+ENV KUBECTL_VERSION=1.19.16
+ENV DOCKER_VERSION=19.03.14
+ENV DOCKER_BUILDX_VERSION=0.8.2
+ENV GOTESTSUM_VERSION=1.8.0
 ENV EKSCTL_VERSION=0.74.0
-ENV ECK_DIAG_VERSION=1.0.1
+ENV ECK_DIAG_VERSION=1.2.0
+ENV HELM_VERSION=3.9.1
 
 # golangci-lint
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
+RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
 # kubebuilder to get required tools (etcd, apiserver, etc.)
@@ -47,7 +45,7 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     rm docker-${DOCKER_VERSION}.tgz
 
 # Docker buildx extension for building multi-arch images
-RUN mkdir -p ~/.docker/cli-plugins && \ 
+RUN mkdir -p ~/.docker/cli-plugins && \
     curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-amd64 && \
     chmod a+x ~/.docker/cli-plugins/docker-buildx
 
@@ -70,9 +68,6 @@ RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHEL
     mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
     rm shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz
 
-# Azure CLI to provision AKS clusters
-RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
-
 # gotestsum to generate xUnit compatible XML for tests
 RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
     tar xzf gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
@@ -87,6 +82,13 @@ RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/v${EKSCT
     tar xzf eksctl_Linux_amd64.tar.gz && \
     mv eksctl /usr/local/bin/eksctl && \
     rm eksctl_Linux_amd64.tar.gz
+
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod 700 get_helm.sh && \
+    ./get_helm.sh -v v${HELM_VERSION} --no-sudo && \
+    rm get_helm.sh
+
+RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
 
 # Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

@@ -17,12 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestReconcileTransportCertificatesSecrets(t *testing.T) {
@@ -190,7 +190,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
-			if got := ReconcileTransportCertificatesSecrets(k8sClient, tt.args.ca, *tt.args.es, tt.args.rotationParams); !reflect.DeepEqual(got, tt.want) {
+			if got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, *tt.args.es, tt.args.rotationParams); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileTransportCertificatesSecrets() = %v, want %v", got, tt.want)
 			}
 			// Check Secrets
@@ -247,7 +247,7 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteStatefulSetTransportCertificate(tt.args.client, tt.args.es.Namespace, tt.args.ssetName)
+			err := DeleteStatefulSetTransportCertificate(context.Background(), tt.args.client, tt.args.es.Namespace, tt.args.ssetName)
 			tt.assertErr(t, err)
 		})
 	}
@@ -259,9 +259,10 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 		es     esv1.Elasticsearch
 	}
 	tests := []struct {
-		name      string
-		args      args
-		assertErr func(*testing.T, error)
+		name       string
+		args       args
+		wantDelete bool
+		wantErr    bool
 	}{
 		{
 			name: "Former cluster transport Secret exists",
@@ -274,10 +275,8 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				}),
 				es: testES,
 			},
-			assertErr: func(t *testing.T, err error) {
-				t.Helper()
-				assert.Nil(t, err)
-			},
+			wantDelete: true,
+			wantErr:    false,
 		},
 		{
 			name: "Former cluster transport Secret does not exist",
@@ -285,19 +284,34 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 				client: k8s.NewFakeClient(),
 				es:     testES,
 			},
-			assertErr: func(t *testing.T, err error) {
-				t.Helper()
-				assert.NotNil(t, err)
-				assert.True(t, errors.IsNotFound(err))
-			},
+			wantDelete: false,
+			wantErr:    false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteLegacyTransportCertificate(tt.args.client, tt.args.es)
-			tt.assertErr(t, err)
+			trackedClient := trackingK8sClient{
+				Client: tt.args.client,
+			}
+			err := DeleteLegacyTransportCertificate(context.Background(), &trackedClient, tt.args.es)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteLegacyTransportCertificate wantErr %v, got %v", tt.wantErr, err)
+			}
+			if tt.wantDelete != trackedClient.deleteCalled {
+				t.Errorf("DeleteLegacyTransportCertificate wantDelete %v, deleteCalled %v", tt.wantDelete, trackedClient.deleteCalled)
+			}
 		})
 	}
+}
+
+type trackingK8sClient struct {
+	k8s.Client
+	deleteCalled bool
+}
+
+func (t *trackingK8sClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	t.deleteCalled = true
+	return t.Client.Delete(ctx, obj, opts...)
 }
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
@@ -400,7 +414,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ensureTransportCertificatesSecretExists(tt.args.c, tt.args.owner, esv1.StatefulSet(testES.Name, "sset1"))
+			got, err := ensureTransportCertificatesSecretExists(context.Background(), tt.args.c, tt.args.owner, esv1.StatefulSet(testES.Name, "sset1"))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -12,10 +13,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestConfigSecretName(t *testing.T) {
@@ -149,7 +150,7 @@ func TestReconcileConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReconcileConfig(tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
+			if err := ReconcileConfig(context.Background(), tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// config in the apiserver should be the expected one

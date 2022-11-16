@@ -1,0 +1,69 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.2.0]]
+== {n} version 2.2.0
+
+
+
+
+[[enhancement-2.2.0]]
+[float]
+=== Enhancements
+
+* Report total managed memory in GiB and raw bytes {pull}5527[#5527] (issue: {issue}5465[#5465])
+* Use service accounts for Kibana and Fleet Server {pull}5468[#5468] (issue: {issue}5244[#5244])
+* Support custom Secret for associating external Elastic resources not managed by ECK {pull}5240[#5240] (issue: {issue}5078[#5078])
+
+[[bug-2.2.0]]
+[float]
+=== Bug fixes
+
+* Delete old shutdowns before creating new ones {pull}5629[#5629] (issue: {issue}5628[#5628])
+* Do not delete restart shutdowns before node rejoins cluster {pull}5618[#5618] (issue: {issue}5617[#5617])
+* Update operator Pod to speed up secret propagation {pull}5519[#5519] (issue: {issue}3321[#3321])
+* Reset phase on each reconciliation in Elasticsearch status {pull}5507[#5507] (issue: {issue}5506[#5506])
+* Make nodes field in status optional {pull}5496[#5496] (issue: {issue}5493[#5493])
+* Make sure to read association configuration again from annotations if it was cleared {pull}5489[#5489] (issue: {issue}4709[#4709])
+* Avoid unnecessary DELETE for non-existent secrets {pull}5488[#5488] (issue: {issue}5450[#5450])
+* Avoid unnecessary DELETE calls to manage legacy transport secret {pull}5461[#5461] (issue: {issue}5450[#5450])
+* Avoid unnecessary UPDATE calls when reconciling PVC owner refs {pull}5459[#5459] (issue: {issue}5451[#5451])
+* Do not upgrade all Elasticsearch nodes of a given tier at once {pull}5452[#5452] (issue: {issue}1753[#1753])
+* Operatorhub: Ensure local YAML files have a proper "end of directives" marker {pull}5447[#5447]
+
+[[docs-2.2.0]]
+[float]
+=== Documentation improvements
+
+* Add 8+ to supported versions list to avoid confusion {pull}5612[#5612] (issue: {issue}5609[#5609])
+* Fix Stack Monitoring doc example rendering {pull}5602[#5602]
+* Remove "experimental" from Helm chart description {pull}5588[#5588] (issue: {issue}4796[#4796])
+* Update license usage data example {pull}5569[#5569]
+* Fix YAML example in custom HTTP certificate doc {pull}5529[#5529]
+* Update the license documentation {pull}5509[#5509] (issue: {issue}5475[#5475])
+* Remove ECK 1.7 from the list of versions that cause a restart on upgrade {pull}5503[#5503]
+* Add known issue for Red Hat certified operator upgrades {pull}5492[#5492]
+* Update example with init container to increase vm.max_map_count {pull}5469[#5469] (issue: {issue}5410[#5410])
+* Fix latinisms occurrences {pull}5456[#5456] (issue: {issue}5306[#5306])
+* Add explicit assumptions before the installation steps {pull}5455[#5455] (issue: {issue}5275[#5275])
+
+[[nogroup-2.2.0]]
+[float]
+=== Misc
+
+* Update dependency golang to v1.17.9 {pull}5597[#5597]
+* Update module go.uber.org/automaxprocs to v1.5.0 {pull}5552[#5552]
+* Update module github.com/gobuffalo/flect to v0.2.5 {pull}5550[#5550]
+* Update module sigs.k8s.io/controller-runtime to v0.11.2 {pull}5541[#5541]
+* Update module github.com/prometheus/common to v0.33.0 {pull}5530[#5530]
+* Update module github.com/hashicorp/vault/api to v1.5.0 {pull}5522[#5522]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.13.6 {pull}5521[#5521]
+* Update module github.com/prometheus/client_golang to v1.12.1 {pull}5517[#5517]
+* Update module github.com/jonboulle/clockwork to v0.2.3 {pull}5516[#5516]
+* Update module k8s.io/klog/v2 to v2.60.1 {pull}5502[#5502]
+* Update module github.com/go-logr/logr to v1.2.3 {pull}5494[#5494]
+* Update k8s to v0.23.5 {pull}5491[#5491]
+* Update module github.com/stretchr/testify to v1.7.1 {pull}5476[#5476]
+* Update module github.com/spf13/cobra to v1.4.0 {pull}5463[#5463]
+* Update module helm.sh/helm/v3 to v3.8.1 {pull}5454[#5454]
+

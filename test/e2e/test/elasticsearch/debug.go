@@ -7,10 +7,10 @@ package elasticsearch
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func printShardsAndAllocation(clientFactory func() (client.Client, error)) func() {
@@ -42,7 +42,7 @@ func printResponse(esClient client.Client, url string) {
 		return
 	}
 	defer response.Body.Close()
-	bytes, err := ioutil.ReadAll(response.Body)
+	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Printf("error while reading response body: %v \n", err)
 		return

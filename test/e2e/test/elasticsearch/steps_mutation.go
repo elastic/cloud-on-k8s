@@ -13,13 +13,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
 
 const (
@@ -34,11 +35,17 @@ func clusterUnavailabilityThreshold(b Builder) time.Duration {
 		cluster = b.MutatedFrom.Elasticsearch
 	}
 	v := version.MustParse(cluster.Spec.Version)
-	if (&v).GTE(version.MustParse("7.2.0")) {
+	switch {
+	case (&v).GTE(version.MinFor(8, 3, 0)):
+		// as of 8.3. we see longer unavailability. This increases the timeout until the underlying problem is better understood,
+		// see: https://github.com/elastic/cloud-on-k8s/issues/5865
+		return 40 * time.Second
+	case (&v).GTE(version.MinFor(7, 2, 0)):
 		// in version 7.2 and above, there is usually close to zero unavailability when a master node is killed
-		// we still keep an arbitrary safety margin
+		// we still keep an arbitrary safety margin.
 		return 20 * time.Second
 	}
+
 	// in other versions (< 7.2), we commonly get about 50sec unavailability, and more on a stressed test environment
 	// let's take a larger arbitrary safety margin
 	return 120 * time.Second
@@ -60,7 +67,9 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				for k, v := range b.Elasticsearch.Annotations {
 					curEs.Annotations[k] = v
 				}
-				curEs.Spec = b.Elasticsearch.Spec
+				// defensive copy as the spec struct contains nested objects like ucfg.Config that don't marshal/unmarshal
+				// without losing type information making later comparisons with deepEqual fail.
+				curEs.Spec = *b.Elasticsearch.Spec.DeepCopy()
 				// may error-out with a conflict if the resource is updated concurrently
 				// hence the usage of `test.Eventually`
 				return k.Client.Update(context.Background(), &curEs)
@@ -71,19 +80,31 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
+	var clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation int64
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
 	mutatedFrom := b.MutatedFrom
+	isMutated := true
 	if mutatedFrom == nil {
 		// cluster mutates to itself (same spec)
 		mutatedFrom = &b
+		isMutated = false
 	}
 
-	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
-	changeBudgetWatcher := NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch)
+	watchers := []test.Watcher{
+		newNodeShutdownWatcher(b.Elasticsearch),
+	}
+
+	isNonHAUpgrade := IsNonHAUpgrade(b)
+	if !isNonHAUpgrade {
+		watchers = append(watchers,
+			NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch),
+			NewMasterChangeBudgetWatcher(b.Elasticsearch),
+		)
+	}
 
 	//nolint:thelper
-	return test.StepList{
+	steps := test.StepList{
 		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
@@ -94,10 +115,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Skip: func() bool {
-				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node cluster.
-				// The cluster will become either unavailable (single node) or red (multi-nodes) when
-				// that node goes down.
-				return IsRollingUpgradeFromOneDataNode(b)
+				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node or non-HA cluster.
+				// The cluster will become either unavailable (1 or 2 node cluster due to loss of quorum) or red
+				// (single data node when that node goes down).
+				return isNonHAUpgrade
 			},
 			Test: func(t *testing.T) {
 				var err error
@@ -106,29 +127,36 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				continuousHealthChecks.Start()
 			},
 		},
-		masterChangeBudgetWatcher.StartStep(k),
-		changeBudgetWatcher.StartStep(k),
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-	}.
-		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
+		generation.RetrieveGenerationsStep(&b.Elasticsearch, k, &clusterGenerationBeforeMutation, &clusterObservedGenerationBeforeMutation),
+	}
+
+	for _, watcher := range watchers {
+		// avoid closure over loop iteration variable which will become the receiver of StartStep
+		// leading to only one watchFn being executed
+		w := watcher
+		steps = steps.WithStep(w.StartStep(k))
+	}
+
+	//nolint:thelper
+	steps = steps.WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-			masterChangeBudgetWatcher.StopStep(k),
-			changeBudgetWatcher.StopStep(k),
+			generation.CompareObjectGenerationsStep(&b.Elasticsearch, k, isMutated, clusterGenerationBeforeMutation, clusterObservedGenerationBeforeMutation),
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
-					return IsRollingUpgradeFromOneDataNode(b)
+					return isNonHAUpgrade
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
-					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
+					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 				},
 			},
 			test.Step{
@@ -141,13 +169,29 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				}),
 			},
 		})
+
+	for _, watcher := range watchers {
+		w := watcher
+		steps = steps.WithStep(w.StopStep(k))
+	}
+	return steps
 }
 
-func IsRollingUpgradeFromOneDataNode(b Builder) bool {
+// IsNonHASpec return true if the cluster specified as not highly available.
+// A cluster of less than 3 nodes is by definition not HA and will see some downtime during upgrades.
+// A cluster with just one data node will also see some index-level unavailability.
+// We have this as a separate function in tests because in production code we base this decision on actually existing
+// Pods in combination with expected Pods. Using the spec allows to control test flows before the cluster has been
+// created.
+func IsNonHASpec(es esv1.Elasticsearch) bool {
+	return MustNumMasterNodes(es) < 3 || MustNumDataNodes(es) == 1
+}
+
+func IsNonHAUpgrade(b Builder) bool {
 	if b.MutatedFrom == nil {
 		return false
 	}
-	if MustNumDataNodes(b.MutatedFrom.Elasticsearch) == 1 && b.TriggersRollingUpgrade() {
+	if IsNonHASpec(b.MutatedFrom.Elasticsearch) && b.TriggersRollingUpgrade() {
 		return true
 	}
 	return false
@@ -203,40 +247,34 @@ func (hc *ContinuousHealthCheck) Start() {
 				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
 				client, err := hc.esClientFactory()
 				if err != nil {
-					// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
-					// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
-					// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
-					// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
-					// so here we do the opposite: catch expected apiserver errors, and consider the rest are network errors.
-					switch err.(type) { //nolint:errorlint
-					case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
+					fmt.Printf("error while creating the Elasticsearch client: %s", err)
+					if !errors.As(err, &PotentialNetworkError) {
 						// explicit apiserver error, consider as healthcheck failure
 						hc.AppendErr(err)
-					default:
-						// likely a network error, log and ignore
-						fmt.Printf("error while creating the Elasticsearch client: %s", err)
 					}
 					continue
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
-				defer cancel()
 				health, err := client.GetClusterHealth(ctx)
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.
-					clusterUnavailability.markUnavailable()
+					clusterUnavailability.markUnavailable(err)
 					if clusterUnavailability.hasExceededThreshold() {
 						// cluster has been unavailable for too long
-						hc.AppendErr(err)
+						hc.AppendErr(clusterUnavailability.Errors())
 					}
+					cancel()
 					continue
 				}
 				clusterUnavailability.markAvailable()
 				if health.Status == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
+					cancel()
 					continue
 				}
 				hc.SuccessCount++
+				cancel()
 			}
 		}
 	}()
@@ -250,16 +288,21 @@ func (hc *ContinuousHealthCheck) Stop() {
 type clusterUnavailability struct {
 	start     time.Time
 	threshold time.Duration
+	errors    []error
 }
 
-func (cu *clusterUnavailability) markUnavailable() {
+func (cu *clusterUnavailability) markUnavailable(err error) {
 	if cu.start.IsZero() {
 		cu.start = time.Now()
+	}
+	if err != nil {
+		cu.errors = append(cu.errors, err)
 	}
 }
 
 func (cu *clusterUnavailability) markAvailable() {
 	cu.start = time.Time{}
+	cu.errors = nil
 }
 
 func (cu *clusterUnavailability) hasExceededThreshold() bool {
@@ -267,4 +310,8 @@ func (cu *clusterUnavailability) hasExceededThreshold() bool {
 		return false
 	}
 	return time.Since(cu.start) >= cu.threshold
+}
+
+func (cu *clusterUnavailability) Errors() error {
+	return k8serrors.NewAggregate(cu.errors)
 }

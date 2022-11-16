@@ -5,7 +5,8 @@
 package license
 
 import (
-	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -13,9 +14,11 @@ import (
 )
 
 func TestParseEnterpriseLicenses(t *testing.T) {
-	good, err := ioutil.ReadFile("testdata/test-license.json")
+	good, err := os.ReadFile("testdata/test-license.json")
 	require.NoError(t, err)
-	bad, err := ioutil.ReadFile("testdata/test-error.json")
+	bad, err := os.ReadFile("testdata/test-error.json")
+	require.NoError(t, err)
+	platinum, err := os.ReadFile("testdata/wrong-type.json")
 	require.NoError(t, err)
 
 	type args struct {
@@ -25,7 +28,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 		name    string
 		args    args
 		want    EnterpriseLicense
-		wantErr bool
+		wantErr string
 	}{
 		{
 			name: "single license",
@@ -34,8 +37,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 					FileName: good,
 				},
 			},
-			want:    expectedLicenseSpec,
-			wantErr: false,
+			want: expectedLicenseSpec,
 		},
 		{
 			name: "malformed license",
@@ -44,7 +46,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 					FileName: bad,
 				},
 			},
-			wantErr: true,
+			wantErr: "license cannot be unmarshalled:",
 		},
 		{
 			name: "different key",
@@ -53,14 +55,34 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 					"_": good,
 				},
 			},
-			want:    expectedLicenseSpec,
-			wantErr: false,
+			want: expectedLicenseSpec,
+		},
+		{
+			name: "wrong type",
+			args: args{
+				raw: map[string][]byte{
+					FileName: platinum,
+				},
+			},
+			want: EnterpriseLicense{
+				License: LicenseSpec{
+					UID:                "57E312E2-6EA0-49D0-8E65-AA5017742ACF",
+					IssueDateInMillis:  1548115200000,
+					ExpiryDateInMillis: 1561247999999,
+					IssuedTo:           "test org",
+					Issuer:             "test issuer",
+					StartDateInMillis:  1548115200000,
+					Type:               "platinum",
+					Signature:          "test signature platinum",
+				},
+			},
+			wantErr: "is not an enterprise license",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ParseEnterpriseLicense(tt.args.raw)
-			if (err != nil) != tt.wantErr {
+			if (err != nil) != (len(tt.wantErr) > 0) && strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("ParseEnterpriseLicense() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}

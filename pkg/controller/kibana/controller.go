@@ -9,7 +9,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"go.elastic.co/apm"
+	"github.com/pkg/errors"
+	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,27 +22,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
-	controllerName      = "kibana-controller"
-	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
+	controllerName           = "kibana-controller"
+	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
 )
-
-var log = ulog.Log.WithName(controllerName)
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -56,9 +54,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
-	client := mgr.GetClient()
 	return &ReconcileKibana{
-		Client:         client,
+		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
@@ -126,65 +123,80 @@ type ReconcileKibana struct {
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.params.Tracer, request.NamespacedName, "kibana")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "kibana_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
-	if err := association.FetchWithAssociations(ctx, r.Client, request, &kb); err != nil {
+	err := r.Client.Get(ctx, request.NamespacedName, &kb)
+	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return reconcile.Result{}, r.onDelete(types.NamespacedName{
-				Namespace: request.Namespace,
-				Name:      request.Name,
-			})
+			return reconcile.Result{}, r.onDelete(ctx,
+				types.NamespacedName{
+					Namespace: request.Namespace,
+					Name:      request.Name,
+				})
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&kb) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+	if common.IsUnmanaged(ctx, &kb) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{}, nil
 	}
 
 	// Remove any previous Finalizers
-	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
+	if err := finalizer.RemoveAll(ctx, r.Client, &kb); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Kibana will be deleted nothing to do other than remove the watches
 	if kb.IsMarkedForDeletion() {
-		return reconcile.Result{}, r.onDelete(k8s.ExtractNamespacedName(&kb))
+		return reconcile.Result{}, r.onDelete(ctx, k8s.ExtractNamespacedName(&kb))
 	}
 
 	// main reconciliation logic
 	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (result reconcile.Result, err error) {
+	state := NewState(request, kb)
+	log := ulog.FromContext(ctx)
+	// defer the updating of status to ensure that the status is updated regardless of the outcome of the reconciliation.
+	// note that this deferred function is modifying the return values, which are named return values, which allows this
+	// to function properly.
+	defer func() {
+		statusErr := r.updateStatus(ctx, state)
+		if statusErr != nil && apierrors.IsConflict(statusErr) {
+			log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
+			result = reconcile.Result{Requeue: true}
+		} else if statusErr != nil {
+			finalError := statusErr
+			if err != nil {
+				finalError = errors.Wrapf(err, "while updating status: %s", statusErr)
+			}
+			log.Error(finalError, "Error while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
+			err = finalError
+		}
+	}()
+
 	// Run validation in case the webhook is disabled
-	if err := r.validate(ctx, kb); err != nil {
-		return reconcile.Result{}, err
+	if err = r.validate(ctx, kb); err != nil {
+		return result, err
 	}
 
-	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
+	var driver *driver
+	driver, err = newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	state := NewState(request, kb)
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
-	// update status
-	err = r.updateStatus(ctx, state)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return reconcile.Result{Requeue: true}, nil
-	}
-
-	res, err := results.WithError(err).Aggregate()
+	result, err = results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, "Reconciliation error: %v", err)
-	return res, err
+	return result, err
 }
 
 func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
@@ -192,7 +204,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	defer span.End()
 
 	if err := kb.ValidateCreate(); err != nil {
-		log.Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
@@ -211,21 +223,21 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", state.Kibana.Namespace,
 		"kibana_name", state.Kibana.Name,
 		"status", state.Kibana.Status,
 	)
-	return common.UpdateStatus(r.Client, state.Kibana)
+	return common.UpdateStatus(ctx, r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onDelete(obj types.NamespacedName) error {
+func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, obj, kbv1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, kbv1.Kind)
 }
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana
@@ -240,5 +252,7 @@ type State struct {
 // NewState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
 func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
-	return State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+	newState := State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+	newState.Kibana.Status.ObservedGeneration = kb.Generation
+	return newState
 }

@@ -9,7 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 // q is a shorthand for resource.MustParse, the only purpose is to make unit tests more readable.
@@ -25,7 +25,7 @@ func qPtr(quantity string) *resource.Quantity {
 func Test_memoryFromStorage(t *testing.T) {
 	type args struct {
 		requiredStorageCapacity resource.Quantity
-		autoscalingSpec         esv1.AutoscalingPolicySpec
+		autoscalingSpec         v1alpha1.AutoscalingPolicySpec
 	}
 	tests := []struct {
 		name       string
@@ -80,6 +80,31 @@ func Test_memoryFromStorage(t *testing.T) {
 			},
 			wantMemory: qPtr("2Gi"),
 		},
+		// Test that there is no out of bounds error with invalid ranges even though it shouldn't happen thanks to the validation layer.°
+		{
+			name: "Invalid memory range: max less than min",
+			args: args{
+				requiredStorageCapacity: q("2Gi"),
+				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("4Gi", "1Gi").WithStorage("2Gi", "2Gi").Build(),
+			},
+			wantMemory: qPtr("4Gi"),
+		},
+		{
+			name: "Invalid storage range: max less than min",
+			args: args{
+				requiredStorageCapacity: q("2Gi"),
+				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("2Gi", "2Gi").WithStorage("3Gi", "1Gi").Build(),
+			},
+			wantMemory: qPtr("2Gi"),
+		},
+		{
+			name: "Invalid memory and storage ranges: max less than min",
+			args: args{
+				requiredStorageCapacity: q("2Gi"),
+				autoscalingSpec:         NewAutoscalingSpecBuilder("my-autoscaling-policy").WithMemory("4Gi", "1Gi").WithStorage("3Gi", "2Gi").Build(),
+			},
+			wantMemory: qPtr("1Gi"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -93,7 +118,7 @@ func Test_memoryFromStorage(t *testing.T) {
 func Test_cpuFromMemory(t *testing.T) {
 	type args struct {
 		requiredMemoryCapacity resource.Quantity
-		autoscalingSpec        esv1.AutoscalingPolicySpec
+		autoscalingSpec        v1alpha1.AutoscalingPolicySpec
 	}
 	tests := []struct {
 		name    string
@@ -131,6 +156,31 @@ func Test_cpuFromMemory(t *testing.T) {
 				autoscalingSpec:        NewAutoscalingSpecBuilder("my-autoscaling-policy").WithCPU("4", "4").WithMemory("1Gi", "3Gi").Build(),
 			},
 			wantCPU: qPtr("4000m"),
+		},
+		// Test that there is no out of bounds error with invalid ranges even though it shouldn't happen thanks to the validation layer.
+		{
+			name: "Invalid memory range: max less than min",
+			args: args{
+				requiredMemoryCapacity: q("2Gi"),
+				autoscalingSpec:        NewAutoscalingSpecBuilder("my-autoscaling-policy").WithCPU("4", "1").WithMemory("2Gi", "2Gi").Build(),
+			},
+			wantCPU: qPtr("4000m"),
+		},
+		{
+			name: "Invalid CPU range: max less than min",
+			args: args{
+				requiredMemoryCapacity: q("2Gi"),
+				autoscalingSpec:        NewAutoscalingSpecBuilder("my-autoscaling-policy").WithCPU("4", "4").WithMemory("3Gi", "2Gi").Build(),
+			},
+			wantCPU: qPtr("4000m"),
+		},
+		{
+			name: "Invalid CPU and memory ranges: max less than min",
+			args: args{
+				requiredMemoryCapacity: q("2Gi"),
+				autoscalingSpec:        NewAutoscalingSpecBuilder("my-autoscaling-policy").WithCPU("4", "1").WithMemory("3Gi", "2Gi").Build(),
+			},
+			wantCPU: qPtr("1000m"),
 		},
 	}
 	for _, tt := range tests {

@@ -5,7 +5,7 @@
 [id="{p}-110-new-and-notable"]
 === New and notable
 
-New and notable changes in version 1.1.0 of {n}. See <<release-notes-1.1.0>> for the full list of changes.
+New and notable changes in version 1.1.0 of {n}. Check <<release-notes-1.1.0>> for the full list of changes.
 
 [float]
 [id="{p}-110-remote-clusters"]
@@ -32,7 +32,7 @@ Validation has been extended to more ECK resource types to catch invalid configu
 [id="{p}-110-rbac"]
 ==== Enforce RBAC on associations
 
-Access control policies can be enforced on cross-namespace Elasticsearch associations created by Kibana and APM Server instances. This feature is disabled by default to avoid breaking existing deployments. See <<{p}-restrict-cross-namespace-associations>> for more information.
+Access control policies can be enforced on cross-namespace Elasticsearch associations created by Kibana and APM Server instances. This feature is disabled by default to avoid breaking existing deployments. Check <<{p}-restrict-cross-namespace-associations>> for more information.
 
 
 [float]
@@ -57,13 +57,13 @@ The default container registry used by the operator can be configured to ease de
 [id="{p}-110-breaking-roles"]
 ==== Removal of operator roles
 
-The concept of `global` and `namespace` operator roles no longer exists, and as such, the `--operator-roles` flag has been removed. Instead, you can configure the operator to manage a pre-defined set of namespaces by passing a comma-separated list of namespaces to the `--namespaces` flag (default behaviour is to manage all namespaces). Instead of the `webhook` role, use the dedicated `--enable-webhook` flag to manage the webhook. See <<{p}-operator-config>> for more information about operator configuration flags.
+The concept of `global` and `namespace` operator roles no longer exists, and as such, the `--operator-roles` flag has been removed. Instead, you can configure the operator to manage a pre-defined set of namespaces by passing a comma-separated list of namespaces to the `--namespaces` flag (default behaviour is to manage all namespaces). Instead of the `webhook` role, use the dedicated `--enable-webhook` flag to manage the webhook. Check <<{p}-operator-config>> for more information about operator configuration flags.
 
 [float]
 [id="{p}-110-breaking-port-names"]
 ==== Container port name change
 
-Container ports of managed resources are now named according to the protocol (`https` for TLS enabled ports and `http` for TLS disabled ports). Previously they were named `http` regardless of the protocol being used. If you have any configurations that refer to the container ports by name (Ingress configurations, for example), review those to ensure that they use the correct name. One option may be to temporarily change to targeting the port number (e.g. `9200` for Elasticsearch), rather than the name, before updating ECK. Once the container port is updated to the new name, you can change to targeting the port name again.
+Container ports of managed resources are now named according to the protocol (`https` for TLS enabled ports and `http` for TLS disabled ports). Previously they were named `http` regardless of the protocol being used. If you have any configurations that refer to the container ports by name (Ingress configurations, for example), review those to ensure that they use the correct name. One option may be to temporarily change to targeting the port number (for example `9200` for Elasticsearch), rather than the name, before updating ECK. Once the container port is updated to the new name, you can change to targeting the port name again.
 
 [float]
 [id="{p}-110-breaking-readiness-probe"]

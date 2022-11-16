@@ -1,0 +1,22 @@
+{{- if .Values.clusterRole }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.clusterRole.name }}
+  labels:
+    {{- include "elasticagent.labels" . | nindent 4 }}
+    {{- if .Values.clusterRole.labels }}
+    {{- toYaml .Values.clusterRole.labels | nindent 4 }}
+    {{- end }}
+  {{- if or .Values.annotations .Values.clusterRole.annotations }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.clusterRole.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+rules: {{- toYaml .Values.clusterRole.rules | nindent 2 }}
+{{- end }}

@@ -6,6 +6,8 @@ package driver
 
 import (
 	"context"
+	"reflect"
+	"sort"
 	"sync"
 	"testing"
 
@@ -19,23 +21,83 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/bootstrap"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 var onceDone = &sync.Once{}
 
 func init() {
 	onceDone.Do(func() {})
+}
+
+func Test_podsToCreate(t *testing.T) {
+	type args struct {
+		actualStatefulSets   sset.StatefulSetList
+		expectedStatefulSets sset.StatefulSetList
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "StatefulSet does not exist yet",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(8)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts1-5", "sts1-6", "sts1-7", "sts2-0", "sts2-1"},
+		},
+		{
+			name: "StatefulSet with no replica",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(0)}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts2-0", "sts2-1"},
+		},
+		{
+			name: "StatefulSet removed",
+			args: args{
+				actualStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(5)}},
+				},
+				expectedStatefulSets: []appsv1.StatefulSet{
+					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(2)}},
+				},
+			},
+			want: []string{"sts2-0", "sts2-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := podsToCreate(tt.args.actualStatefulSets, tt.args.expectedStatefulSets)
+			sort.Strings(got)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("podsToCreate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
@@ -262,41 +324,6 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	require.Len(t, es.Annotations, 2) // initial master nodes + sset to recreate
 }
 
-func Test_isReplicaIncrease(t *testing.T) {
-	tests := []struct {
-		name     string
-		actual   appsv1.StatefulSet
-		expected appsv1.StatefulSet
-		want     bool
-	}{
-		{
-			name:     "increase",
-			actual:   sset.TestSset{Replicas: 3}.Build(),
-			expected: sset.TestSset{Replicas: 5}.Build(),
-			want:     true,
-		},
-		{
-			name:     "decrease",
-			actual:   sset.TestSset{Replicas: 5}.Build(),
-			expected: sset.TestSset{Replicas: 3}.Build(),
-			want:     false,
-		},
-		{
-			name:     "same value",
-			actual:   sset.TestSset{Replicas: 3}.Build(),
-			expected: sset.TestSset{Replicas: 3}.Build(),
-			want:     false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := isReplicaIncrease(tt.actual, tt.expected); got != tt.want {
-				t.Errorf("isReplicaIncrease() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_adjustStatefulSetReplicas(t *testing.T) {
 	type args struct {
 		state              *upscaleState
@@ -417,9 +444,9 @@ func Test_adjustZenConfig(t *testing.T) {
 			es:          bootstrappedES,
 			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
 			pods: []runtime.Object{
-				newTestPod("masters-0").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
-				newTestPod("masters-1").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
-				newTestPod("masters-2").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
+				newTestPod("masters-1").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
+				newTestPod("masters-2").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
 			},
 			wantMinimumMasterNodesSet: true,
 			wantInitialMasterNodesSet: false,
@@ -452,7 +479,7 @@ func Test_adjustZenConfig(t *testing.T) {
 				pods = tt.statefulSet.Pods()
 			}
 			client := k8s.NewFakeClient(append(pods, &tt.es)...)
-			err := adjustZenConfig(client, tt.es, resources)
+			err := adjustZenConfig(context.Background(), client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
 				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{esv1.DiscoveryZenMinimumMasterNodes})) > 0
@@ -528,6 +555,7 @@ func Test_adjustResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(&tt.args.es)
 			ctx := upscaleCtx{
+				parentCtx:    context.Background(),
 				es:           tt.args.es,
 				k8sClient:    k8sClient,
 				expectations: expectations.NewExpectations(k8sClient),

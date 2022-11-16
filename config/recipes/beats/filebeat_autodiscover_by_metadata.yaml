@@ -4,7 +4,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 7.15.2
+  version: 8.5.0
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -72,6 +72,7 @@ rules:
   resources:
   - namespaces
   - pods
+  - nodes
   verbs:
   - get
   - watch
@@ -101,7 +102,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.15.2
+  version: 8.5.0
   nodeSets:
   - name: default
     count: 3
@@ -113,7 +114,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.15.2
+  version: 8.5.0
   count: 1
   elasticsearchRef:
     name: elasticsearch

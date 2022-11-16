@@ -9,7 +9,7 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 // OperatorLicenseType is the type of operator level license a resource is describing.
@@ -31,7 +31,7 @@ type EnterpriseLicense struct {
 	License LicenseSpec `json:"license"`
 }
 
-type LicenseSpec struct {
+type LicenseSpec struct { //nolint:revive
 	Status             string                 `json:"status,omitempty"`
 	UID                string                 `json:"uid"`
 	Type               OperatorLicenseType    `json:"type"`
@@ -71,6 +71,13 @@ func (l EnterpriseLicense) ExpiryTime() time.Time {
 func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 	return (l.StartTime().Equal(instant) || l.StartTime().Before(instant)) &&
 		l.ExpiryTime().After(instant)
+}
+
+// IsValidType returns true if the license type is set to one of the allowed values: enterprise or enterprise_trial.
+// Other values are possible to occur if a user mistakenly uploads a cluster license instead of an orchestration license
+// as the schema is otherwise compatible.
+func (l EnterpriseLicense) IsValidType() bool {
+	return l.IsTrial() || l.License.Type == LicenseTypeEnterprise
 }
 
 // IsTrial returns true if this is a self-generated trial license.
@@ -118,7 +125,7 @@ func (l *EnterpriseLicense) GetOperatorLicenseType() OperatorLicenseType {
 }
 
 // LicenseStatus expresses the validity status of a license.
-type LicenseStatus string
+type LicenseStatus string //nolint:revive
 
 // Supported LicenseStatus values.
 const (

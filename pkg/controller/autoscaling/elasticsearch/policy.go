@@ -8,18 +8,18 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 // updatePolicies updates the autoscaling policies in the Elasticsearch cluster.
 func updatePolicies(
 	ctx context.Context,
 	log logr.Logger,
-	autoscalingSpec esv1.AutoscalingSpec,
+	autoscalingResource v1alpha1.AutoscalingResource,
 	esclient client.AutoscalingClient,
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_autoscaling_policies", tracing.SpanTypeApp)
@@ -29,8 +29,12 @@ func updatePolicies(
 		log.Error(err, "Error while deleting policies")
 		return err
 	}
+	autoscalingPolicySpecs, err := autoscalingResource.GetAutoscalingPolicySpecs()
+	if err != nil {
+		return err
+	}
 	// Create the expected autoscaling policies
-	for _, rp := range autoscalingSpec.AutoscalingPolicySpecs {
+	for _, rp := range autoscalingPolicySpecs {
 		if err := esclient.CreateAutoscalingPolicy(ctx, rp.Name, rp.AutoscalingPolicy); err != nil {
 			log.Error(err, "Error while updating an autoscaling policy", "policy", rp.Name)
 			return err

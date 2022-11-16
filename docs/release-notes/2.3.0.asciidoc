@@ -1,0 +1,82 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.3.0]]
+== {n} version 2.3.0
+
+
+
+[[feature-2.3.0]]
+[float]
+=== New features
+
+* Allow providing cleartext passwords for creating Elasticsearch users {pull}5613[#5613] (issue: {issue}3056[#3056])
+* Support a globally shared CA {pull}5539[#5539]
+
+[[enhancement-2.3.0]]
+[float]
+=== Enhancements
+
+* Set `status.ObservedGeneration` from `metadata.Generation`:
+** Elastic Maps {pull}5536[#5536] (issue: {issue}3392[#3392])
+** EnterpriseSearch {pull}5526[#5526] (issue: {issue}3392[#3392])
+** Elastic APM Server {pull}5470[#5470] (issue: {issue}3392[#3392])
+* Upgrade PodDisruptionBudget from v1beta1 to v1 {pull}5709[#5709]
+* Support disable-downgrade-validation for all relevant apps {pull}5680[#5680] (issue: {issue}5531[#5531])
+* Allow non-IPs in service spec to avoid noop updates {pull}5663[#5663] (issue: {issue}5657[#5657])
+* Add APM tracing for client-go requests to the Kubernetes API {pull}5651[#5651]
+* Add support for the desired nodes API {pull}5650[#5650]
+* Base ECK docker image on distroless instead of UBI by default  {pull}5580[#5580] (issue: {issue}4561[#4561])
+* Added priority class and leader election to operator Helm chart {pull}5538[#5538]
+* Log info for service not found error when reconciling associations {pull}5533[#5533]
+
+[[bug-2.3.0]]
+[float]
+=== Bug fixes
+
+* Do not use service accounts until Elasticsearch nodes have been upgraded {pull}5830[#5830] (issue: {issue}5684[#5684])
+* Ensure CA is always updated in HTTP Secret {pull}5622[#5622] (issue: {issue}5621[#5621])
+* Fix resources limits conversion in ToInt64() used for logging {pull}5596[#5596]
+* Fix non-closed http responses {pull}5755[#5755]
+
+[[docs-2.3.0]]
+[float]
+=== Documentation improvements
+
+* [a11y] Fix "below" occurrences {pull}5714[#5714] (issue: {issue}5306[#5306])
+* [a11y] Fix "above" occurrences {pull}5672[#5672] (issue: {issue}5306[#5306])
+* Change references to the master branch to main in the CONTRIBUTING guide. {pull}5741[#5741]
+* Fix Helm command examples in docs {pull}5737[#5737]
+* Update list of ECK versions that triggers a rolling restart {pull}5715[#5715] (issue: {issue}5648[#5648])
+* Update documentation pages that use the repository-gcs plugin {pull}5700[#5700] (issue: {issue}5457[#5457])
+* CronJob batch/v1beta1 no longer served in 1.25 {pull}5685[#5685]
+* Update documentation to customize pods {pull}5660[#5660]
+* Wrong indentation of the kibana config {pull}5595[#5595]
+* Update recommended reading Kubebuilder links {pull}5593[#5593] (issue: {issue}5584[#5584])
+* Add APM Server Deprecation Message {pull}5575[#5575] (issue: {issue}5419[#5419])
+* Update license usage data example {pull}5569[#5569]
+
+[[nogroup-2.3.0]]
+[float]
+=== Misc
+
+* Update dependency golang to v1.18.3 {pull}5722[#5722]
+* Update k8s to v0.24.1 {pull}5703[#5703]
+* Update module sigs.k8s.io/controller-runtime to v0.12.1 {pull}5697[#5697]
+* Update module sigs.k8s.io/controller-tools to v0.9.0 {pull}5688[#5688]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.13.7 {pull}5682[#5682]
+* Update module github.com/elastic/go-ucfg to v0.8.5 {pull}5661[#5661]
+* Update module github.com/google/go-cmp to v0.5.8 {pull}5619[#5619]
+* Update module github.com/google/go-containerregistry to v0.9.0 {pull}5675[#5675]
+* Update module github.com/hashicorp/vault/api to v1.6.0 {pull}5702[#5702]
+* Update module github.com/imdario/mergo to v0.3.13 {pull}5701[#5701]
+* Update module github.com/jonboulle/clockwork to v0.3.0 {pull}5606[#5606]
+* Update module github.com/prometheus/client_golang to v1.12.2 {pull}5667[#5667]
+* Update module github.com/prometheus/common to v0.34.0 {pull}5594[#5594]
+* Update module github.com/spf13/viper to v1.12.0 {pull}5704[#5704]
+* Update module go.elastic.co/apm/module/apmelasticsearch/v2 to v2.1.0 {pull}5693[#5693]
+* Update module go.uber.org/automaxprocs to v1.5.1 {pull}5560[#5560]
+* Update module gopkg.in/yaml.v3 to v3.0.1 {pull}5706[#5706]
+* Update module helm.sh/helm/v3 to v3.9.0 {pull}5678[#5678]
+* Update dependency registry.access.redhat.com/ubi8/ubi-minimal to v8.6 {pull}5654[#5654]
+

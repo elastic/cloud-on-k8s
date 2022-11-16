@@ -1,0 +1,167 @@
+suite: test elasticsearch
+templates:
+  - templates/elasticsearch.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      version: 8.2.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.version
+          value: 8.2.0
+  - it: name override should work properly
+    set:
+      nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: override
+  - it: should render labels, annotations, and additional custom values properly
+    set:
+      labels:
+        test: label
+      annotations:
+        test: annotation
+      monitoring:
+        metrics:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+        logs:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+      transport:
+        service:
+          metadata:
+            labels:
+              test: label
+          spec:
+            type: LoadBalancer
+      http:
+        service:
+          spec:
+            type: LoadBalancer
+      secureSettings:
+      - secretName: one-secure-settings-secret
+      - secretName: two-secure-settings-secret
+      updateStrategy:
+        changeBudget:
+          maxSurge: 3
+          maxUnavailable: 1
+      remoteClusters:
+      - name: cluster-one
+        elasticsearchRef:
+          name: cluster-one
+      - name: cluster-two
+        elasticsearchRef:
+          name: cluster-two
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-elasticsearch
+            helm.sh/chart: eck-elasticsearch-0.1.1
+            test: label
+      - equal:
+          path: metadata.annotations
+          value:
+            eck.k8s.elastic.co/license: enterprise
+            test: annotation
+      - equal:
+          path: spec.monitoring
+          value:
+            metrics:
+              elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+            logs:
+              elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+      - equal:
+          path: spec.transport
+          value:
+            service:
+              metadata:
+                labels:
+                  test: label
+              spec:
+                type: LoadBalancer
+      - equal:
+          path: spec.http
+          value:
+            service:
+              spec:
+                type: LoadBalancer
+      - equal:
+          path: spec.secureSettings
+          value:
+          - secretName: one-secure-settings-secret
+          - secretName: two-secure-settings-secret
+      - equal:
+          path: spec.updateStrategy
+          value:
+            changeBudget:
+              maxSurge: 3
+              maxUnavailable: 1
+      - equal:
+          path: spec.remoteClusters
+          value:
+          - name: cluster-one
+            elasticsearchRef:
+              name: cluster-one
+          - name: cluster-two
+            elasticsearchRef:
+              name: cluster-two
+  - it: should render node roles properly
+    values:
+      - ../../examples/hot-warm-cold.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.nodeSets[0].name
+          value: masters
+      - equal:
+          path: spec.nodeSets[1].name
+          value: hot
+      - equal:
+          path: spec.nodeSets[2].name
+          value: warm
+      - equal:
+          path: spec.nodeSets[3].name
+          value: cold

@@ -1,0 +1,33 @@
+[[release-highlights-2.0.0]]
+== 2.0.0 release highlights
+
+[float]
+[id="{p}-200-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.0.0 of {n}. See <<release-notes-2.0.0>> for the full list of changes.
+
+[float]
+[id="{p}-200-CRD"]
+==== Removal of legacy v1beta1 Custom Resource Definitions
+
+ECK `2.0.0` removes support for legacy versions of Kubernetes and no longer ships with a v1beta1 version of its custom resource definitions. ECK can therefore no longer be installed in versions of Kubernetes <1.16. Please note however that the lowest supported version according to the ECK support policy is `1.19`.
+
+[float]
+[id="{p}-200-topology-zone-awareness"]
+==== Improved support for topology aware Elasticsearch clusters
+Starting with ECK 2.0 the operator can make Kubernetes Node labels available as Pod annotations. This can be used to make information, such as logical failure domains, available in a running Pod. Combined with Elasticsearch shard allocation awareness and Kubernetes topology spread constraints, this makes it much easier than before to create availability zone-aware Elasticsearch clusters.
+
+[float]
+[id="{p}-200-node-shutdown"]
+==== Smoother cluster operations using node lifecycle APIs
+
+When orchestrating Elasticsearch version 7.15.2 or later ECK will use the new link:https://www.elastic.co/guide/en/elasticsearch/reference/current/node-lifecycle-api.html[node lifecycle APIs] to orchestrate rolling upgrades and scale downs to make Elasticsearch aware of impending temporary or permanent shutdown of nodes.
+
+[float]
+[id="{p}-200-known-issues"]
+=== Known issues
+
+- When using the Red Hat certified version of the operator, automatic upgrades from previous versions of ECK do not work. To upgrade uninstall the old ECK operator and install the new version manually. Because CRDs remain in place after uninstalling, this operation should not negatively affect existing Elastic Stack deployments managed by ECK.
+- When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 its Pods will enter a `CrashLoopBackoff`. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.

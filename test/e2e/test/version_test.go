@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 func TestIsValidUpgrade(t *testing.T) {
@@ -22,14 +20,16 @@ func TestIsValidUpgrade(t *testing.T) {
 		{from: "6.8.5", to: "6.8.6", isValid: true},
 		{from: "6.8.5", to: "7.1.1", isValid: true},
 		{from: "7.1.1", to: "7.6.0", isValid: true},
-		{from: "7.6.0", to: "8.0.0", isValid: true},
-		{from: "7.6.0", to: "8.0.0-SNAPSHOT", isValid: true},
+		{from: "7.17.0", to: "8.0.0", isValid: true},
 		// invalid upgrade paths
+		{from: "7.16.0", to: "8.0.0", isValid: false},
+		{from: "7.6.0", to: "8.0.0-SNAPSHOT", isValid: false},
 		{from: "7.6.0", to: "7.6.0", isValid: false},
 		{from: "7.6.0", to: "7.5.0", isValid: false},
 		{from: "7.6.1", to: "7.6.0", isValid: false},
 		{from: "7.6.0", to: "6.8.5", isValid: false},
 		{from: "7.6.0", to: "9.0.0", isValid: false},
+		{from: "7.6.0-SNAPSHOT", to: "7.7.0", isValid: false},
 	}
 
 	for _, tt := range tests {
@@ -42,35 +42,20 @@ func TestIsValidUpgrade(t *testing.T) {
 	}
 }
 
-func Test_isSnapshot(t *testing.T) {
-	type args struct {
-		ver version.Version
-	}
+func TestGetUpgradePathTo8x(t *testing.T) {
 	tests := []struct {
-		name string
-		args args
-		want bool
+		current string
+		src     string
+		dst     string
 	}{
-		{
-			name: "stable",
-			args: args{
-				ver: version.MustParse("7.13.0"),
-			},
-			want: false,
-		},
-		{
-			name: "pre-release",
-			args: args{
-				ver: version.MustParse("7.13.0-SNAPSHOT"),
-			},
-			want: true,
-		},
+		{current: "7.17.0", src: "7.17.0", dst: LatestReleasedVersion8x},
+		{current: "8.0.0", src: "8.0.0", dst: LatestReleasedVersion8x},
+		{current: "8.99.0-SNAPSHOT", src: LatestReleasedVersion8x, dst: "8.99.0-SNAPSHOT"},
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsSnapshotVersion(tt.args.ver); got != tt.want {
-				t.Errorf("isSnapshot() = %v, want %v", got, tt.want)
-			}
-		})
+		src, dst := GetUpgradePathTo8x(tt.current)
+		require.Equal(t, tt.src, src)
+		require.Equal(t, tt.dst, dst)
 	}
 }

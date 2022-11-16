@@ -10,15 +10,16 @@ import (
 	"github.com/blang/semver/v4"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 const (
-	unsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
-	invalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
+	UnsupportedVersionMsg       = "Unsupported version for Stack Monitoring. Required >= %s."
+	InvalidElasticsearchRefsMsg = "Only one Elasticsearch reference is supported for %s Stack Monitoring"
 
 	InvalidKibanaElasticsearchRefForStackMonitoringMsg = "Kibana must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
+	InvalidBeatsElasticsearchRefForStackMonitoringMsg  = "Beats must be associated to an Elasticsearch cluster through elasticsearchRef in order to enable monitoring metrics features"
 )
 
 var (
@@ -37,18 +38,18 @@ func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList
 		if err != nil {
 			finalMinStackVersion, _ := semver.FinalizeVersion(MinStackVersion.String()) // discards prerelease suffix
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,
-				fmt.Sprintf(unsupportedVersionMsg, finalMinStackVersion)))
+				fmt.Sprintf(UnsupportedVersionMsg, finalMinStackVersion)))
 		}
 	}
 	refs := resource.GetMonitoringMetricsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("metrics").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Metrics")))
+			refs, fmt.Sprintf(InvalidElasticsearchRefsMsg, "Metrics")))
 	}
 	refs = resource.GetMonitoringLogsRefs()
 	if monitoring.AreEsRefsDefined(refs) && len(refs) != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("monitoring").Child("logs").Child("elasticsearchRefs"),
-			refs, fmt.Sprintf(invalidElasticsearchRefsMsg, "Logs")))
+			refs, fmt.Sprintf(InvalidElasticsearchRefsMsg, "Logs")))
 	}
 	return errs
 }

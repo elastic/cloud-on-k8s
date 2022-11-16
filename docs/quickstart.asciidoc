@@ -29,26 +29,45 @@ include::supported-versions.asciidoc[]
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
-IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
+Things to consider before you start:
 
-[NOTE]
-====
+* For this quickstart guide, your Kubernetes cluster is assumed to be already up and running. Before you proceed with the ECK installation, make sure you check the link:k8s-quickstart.html[supported versions].
 
-* If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
+* If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, check link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
-* If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with the Kubernetes nodes on port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
+* If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with the Kubernetes nodes on port 443. This is required for communication with the Validating Webhook. For more information, check link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
 
 * Refer to <<{p}-installing-eck>> for more information on installation options.
 
-====
+IMPORTANT: Check the <<{p}-upgrading-eck,upgrade notes>> if you are attempting to upgrade an existing ECK deployment.
 
-. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions]:
 +
 [source,sh,subs="attributes"]
 ----
 kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+----
++
+The following Elastic resources have been created:
++
+[source,sh]
+----
+customresourcedefinition.apiextensions.k8s.io/agents.agent.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/apmservers.apm.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/beats.beat.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/elasticmapsservers.maps.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/elasticsearches.elasticsearch.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/enterprisesearches.enterprisesearch.k8s.elastic.co created
+customresourcedefinition.apiextensions.k8s.io/kibanas.kibana.k8s.elastic.co created
+----
+
+. Install the operator with its RBAC rules:
++
+[source,sh,subs="attributes"]
+----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
+NOTE: The ECK operator runs by default in the `elastic-system` namespace. It is recommended that you choose a dedicated namespace for your workloads, rather than using the `elastic-system` or the `default` namespace.
 
 . Monitor the operator logs:
 +
@@ -62,7 +81,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
 
-NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. Check <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -104,7 +123,7 @@ quickstart    green     1         {version}     Ready         1m
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`. The `HEALTH` status comes from link:{ref}/cluster-health.html[Elasticsearch's cluster health API].
 
-You can see that one Pod is in the process of being started:
+One Pod is in the process of being started:
 
 [source,sh]
 ----
@@ -172,7 +191,7 @@ Then request `localhost`:
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ----
 
-NOTE: Disabling certificate verification using the `-k` flag is not recommended and should be used for testing purposes only. See: <<{p}-setting-up-your-own-certificate>>
+NOTE: Disabling certificate verification using the `-k` flag is not recommended and should be used for testing purposes only. Check <<{p}-setting-up-your-own-certificate>>.
 
 [source,json]
 ----
@@ -251,7 +270,7 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 [id="{p}-upgrade-deployment"]
 == Upgrade your deployment
 
-You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., <<{p}-volume-claim-templates, existing volume claims cannot be downsized>>). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
+You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (for example <<{p}-volume-claim-templates, existing volume claims cannot be downsized>>). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods, and so on).
 
 For example, you can grow the cluster to three Elasticsearch nodes:
 

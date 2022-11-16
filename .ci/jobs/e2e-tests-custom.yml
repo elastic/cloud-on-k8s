@@ -1,0 +1,14 @@
+---
+- job:
+    description: Run custom ECK E2E tests
+    name: cloud-on-k8s-e2e-tests-custom
+    project-type: pipeline
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - main
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      script-path: .ci/pipelines/e2e-tests-custom.Jenkinsfile
+      lightweight-checkout: true

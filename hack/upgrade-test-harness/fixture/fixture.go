@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness/k8s"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +17,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/k8s"
 )
 
 const (

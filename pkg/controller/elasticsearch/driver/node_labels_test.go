@@ -13,8 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // expectedPodsAnnotations holds pod -> expectedAnnotation -> expectedValue
@@ -172,8 +172,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allObjects := append(tt.args.objects, tt.args.es)
-			k8sClient := k8s.NewFakeClient(allObjects...)
+			k8sClient := k8s.NewFakeClient(append(tt.args.objects, tt.args.es)...)
 			got := annotatePodsWithNodeLabels(tt.args.ctx, k8sClient, *tt.args.es)
 			_, err := got.Aggregate()
 			if tt.wantErrMsg != "" {

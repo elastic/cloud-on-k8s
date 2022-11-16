@@ -15,8 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 func TestWebhook(t *testing.T) {
@@ -96,6 +97,58 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
+			),
+		},
+		{
+			Name:      "named-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.12.0"
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "secret-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.12.0"
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-es-ref-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.12.0"
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-namespace",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.12.0"
+				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esname"}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

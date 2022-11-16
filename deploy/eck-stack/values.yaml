@@ -1,0 +1,31 @@
+---
+# Default values for eck-stack.
+# This is a YAML-formatted file.
+
+# If enabled, will use the eck-elasticsearch chart and deploy an Elasticsearch resource.
+#
+eck-elasticsearch:
+  enabled: true
+  # This is adjusting the full name of the elasticsearch resource so that both the eck-elasticsearch
+  # and the eck-kibana chart work together by default in the eck-stack chart.
+  fullnameOverride: elasticsearch
+
+# If enabled, will use the eck-kibana chart and deploy a Kibana resource.
+#
+eck-kibana:
+  enabled: true
+  spec:
+    # This is also adjusting the kibana reference to the elasticsearch resource named previously so that
+    # both the eck-elasticsearch and the eck-kibana chart work together by default in the eck-stack chart.
+    elasticsearchRef:
+      name: elasticsearch
+
+# If enabled, will use the eck-agent chart and deploy an Elastic Agent instance.
+#
+eck-agent:
+  enabled: false
+
+# If enabled, will use the eck-fleet-server chart and deploy a Fleet Server resource.
+#
+eck-fleet-server:
+  enabled: false

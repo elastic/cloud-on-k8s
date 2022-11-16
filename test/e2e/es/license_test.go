@@ -2,21 +2,22 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
@@ -25,7 +26,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		t.SkipNow()
 	}
 
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
+	licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 
 	k := test.NewK8sClientOrFatal()
@@ -89,7 +90,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 		t.SkipNow()
 	}
 
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
+	licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-license").
@@ -141,7 +142,7 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 		// skip this test if the dev private key is not configured e.g. because we are testing a production build
 		t.SkipNow()
 	}
-	privateKeyBytes, err := ioutil.ReadFile(test.Ctx().TestLicensePKeyPath)
+	privateKeyBytes, err := os.ReadFile(test.Ctx().TestLicensePKeyPath)
 	require.NoError(t, err)
 	privateKey, err := x509.ParsePKCS8PrivateKey(privateKeyBytes)
 	require.NoError(t, err)

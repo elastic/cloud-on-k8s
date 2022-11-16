@@ -8,8 +8,6 @@ endif::[]
 [id="{p}-{page_id}"]
 = Run standalone Elastic Agent on ECK
 
-experimental[]
-
 This section describes how to configure and deploy Elastic Agent in link:https://www.elastic.co/guide/en/fleet/current/install-standalone-elastic-agent.html[standalone mode] with ECK. Check the link:k8s-elastic-agent-fleet.html[Fleet section] if you want to manage your Elastic Agents with link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[Fleet].
 
 * <<{p}-elastic-agent-quickstart,Quickstart>>
@@ -23,7 +21,7 @@ NOTE: Running standalone Elastic Agent on ECK is compatible only with Stack vers
 
 . Apply the following specification to deploy Elastic Agent with the System metrics integration to harvest CPU metrics from the Agent Pods. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
 +
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
 apiVersion: agent.k8s.elastic.co/v1alpha1
@@ -34,7 +32,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0 <1>
   config:
     inputs:
       - name: system-1
@@ -61,7 +63,9 @@ spec:
 EOF
 ----
 +
-See <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
+<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> on how to disable this feature.
++
+Check <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
 
 . Monitor the status of Elastic Agent.
 +
@@ -115,8 +119,6 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200/metrics-system.cpu-*/_sea
 [id="{p}-elastic-agent-configuration"]
 == Configuration
 
-experimental[]
-
 
 [id="{p}-elastic-agent-upgrade-specification"]
 === Upgrade the Elastic Agent specification
@@ -128,7 +130,7 @@ You can upgrade the Elastic Agent version or change settings by editing the YAML
 
 The Elastic Agent configuration is defined in the `config` element:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -138,7 +140,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0 <1>
   config:
     inputs:
       - name: system-1
@@ -164,7 +170,9 @@ spec:
             period: 10s
 ----
 
-Alternatively, it can be provided via a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
+<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> on how to disable this feature.
+
+Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: agent.k8s.elastic.co/v1alpha1
@@ -175,7 +183,11 @@ spec:
   version: {version}
   elasticsearchRefs:
   - name: quickstart
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   configRef:
     secretName: system-cpu-config
 ---
@@ -227,7 +239,11 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   elasticsearchRefs:
   - name: quickstart
     outputName: default
@@ -259,7 +275,7 @@ The `elasticsearchRefs` element allows ECK to automatically configure Elastic Ag
 
 If the `elasticsearchRefs` element is specified, ECK populates the outputs section of the Elastic Agent configuration. ECK creates a user with appropriate roles and permissions and uses its credentials. If required, it also mounts the CA certificate in all Agent Pods, and recreates Pods when this certificate changes.
 
-The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly via the `configRef` mechanism.
+The outputs can also be set manually. To do that, remove the `elasticsearchRefs` element from the specification and include an appropriate output configuration in the `config`, or indirectly through the `configRef` mechanism.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -269,7 +285,11 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  daemonSet: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
   config:
     outputs:
       default:
@@ -297,6 +317,10 @@ metadata:
 spec:
   version: {version}
   daemonSet:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0
     strategy:
       type: RollingUpdate
       rollingUpdate:
@@ -326,6 +350,8 @@ spec:
       spec:
         automountServiceAccountToken: true
         serviceAccountName: elastic-agent
+        securityContext:
+          runAsUser: 0
 ...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -382,8 +408,6 @@ To deploy Elastic Agent in clusters with the Pod Security Policy admission contr
 [id="{p}-elastic-agent-configuration-examples"]
 == Configuration examples
 
-experimental[]
-
 This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance. Add the corresponding integration package to Kibana to install the dashboards, visualizations and other assets for each of these examples as described in link:https://www.elastic.co/guide/en/fleet/current/elastic-agent-installation.html[the Elastic Agent documentation].
 
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
@@ -415,3 +439,23 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 ----
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
+
+=== Storing local state in host path volume
+Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
+If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
+
+[source,yaml]
+----
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  deployment:
+    podTemplate:
+      spec:
+        volumes:
+        - name: agent-data
+          emptyDir: {}
+...
+----

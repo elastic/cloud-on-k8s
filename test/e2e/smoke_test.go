@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build mixed e2e
+//go:build mixed || e2e
 
 package e2e
 
@@ -11,13 +11,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 const sampleFile = "../../config/samples/apm/apm_es_kibana.yaml"
@@ -64,7 +65,8 @@ func TestSmoke(t *testing.T) {
 		}).
 		WithRestrictedSecurityContext().
 		WithLabel(run.TestNameLabel, testName).
-		WithPodLabel(run.TestNameLabel, testName)
+		WithPodLabel(run.TestNameLabel, testName).
+		WithoutIntegrationCheck()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)

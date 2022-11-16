@@ -11,10 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 type memory struct {
@@ -42,7 +40,7 @@ func (m *memory) NodeResourceQuantity() resource.Quantity {
 	)
 }
 
-func (m *memory) NodeCount(nodeCapacity resources.NodeResources) int32 {
+func (m *memory) NodeCount(nodeCapacity v1alpha1.NodeResources) int32 {
 	nodeMemory := nodeCapacity.GetRequest(corev1.ResourceMemory)
 	return getNodeCount(
 		m.log,
@@ -56,10 +54,10 @@ func (m *memory) NodeCount(nodeCapacity resources.NodeResources) int32 {
 
 func NewMemoryRecommender(
 	log logr.Logger,
-	statusBuilder *status.AutoscalingStatusBuilder,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
 	autoscalingPolicyResult client.AutoscalingPolicyResult,
-	currentAutoscalingStatus status.Status,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 ) (Recommender, error) {
 	// Check if user expects the resource to be managed by the autoscaling controller
 	hasResourceRange := autoscalingSpec.MemoryRange != nil
@@ -69,7 +67,7 @@ func NewMemoryRecommender(
 		!autoscalingPolicyResult.RequiredCapacity.Total.Memory.IsEmpty()
 
 	if hasRequirement && autoscalingSpec.MemoryRange == nil {
-		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(status.MemoryRequired, "Min and max memory must be specified")
+		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(v1alpha1.MemoryRequired, "Min and max memory must be specified")
 		return nil, fmt.Errorf("min and max memory must be specified")
 	}
 

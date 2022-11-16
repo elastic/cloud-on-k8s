@@ -91,7 +91,7 @@ func (bt boolTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Va
 	if typ == reflect.TypeOf(b) {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
-				dst.SetBool(src.Interface().(bool))
+				dst.SetBool(src.Interface().(bool)) //nolint:forcetypeassert
 			}
 			return nil
 		}

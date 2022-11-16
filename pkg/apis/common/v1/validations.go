@@ -15,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 // NoUnknownFields checks whether the last applied config annotation contains json with unknown fields.
@@ -92,6 +92,16 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 		return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("version"), "Version downgrades are not supported")}
 	}
 
+	return nil
+}
+
+// CheckAssociationRefs checks that the given association references are valid.
+func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
 	return nil
 }
 

@@ -5,23 +5,26 @@
 package daemonset
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 type Params struct {
-	PodTemplate corev1.PodTemplateSpec
-	Name        string
-	Owner       metav1.Object
-	Labels      map[string]string
-	Selectors   map[string]string
-	Strategy    appsv1.DaemonSetUpdateStrategy
+	PodTemplate          corev1.PodTemplateSpec
+	Name                 string
+	Owner                metav1.Object
+	Labels               map[string]string
+	Selectors            map[string]string
+	RevisionHistoryLimit *int32
+	Strategy             appsv1.DaemonSetUpdateStrategy
 }
 
 func New(params Params) appsv1.DaemonSet {
@@ -35,14 +38,16 @@ func New(params Params) appsv1.DaemonSet {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,
 			},
-			Template:       params.PodTemplate,
-			UpdateStrategy: params.Strategy,
+			Template:             params.PodTemplate,
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
+			UpdateStrategy:       params.Strategy,
 		},
 	}
 }
 
 // Reconcile creates or updates the given daemon set for the specified owner.
 func Reconcile(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	expected appsv1.DaemonSet,
 	owner client.Object,
@@ -52,6 +57,7 @@ func Reconcile(
 
 	reconciled := &appsv1.DaemonSet{}
 	err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     k8sClient,
 		Owner:      owner,
 		Expected:   &expected,

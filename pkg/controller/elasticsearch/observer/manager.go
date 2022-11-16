@@ -5,15 +5,18 @@
 package observer
 
 import (
+	"context"
 	"sync"
+	"time"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -23,27 +26,34 @@ const (
 
 // Manager for a set of observers
 type Manager struct {
-	observerLock sync.RWMutex
-	observers    map[types.NamespacedName]*Observer
-	listenerLock sync.RWMutex
-	listeners    []OnObservation // invoked on each observation event
-	tracer       *apm.Tracer
+	defaultInterval time.Duration
+	observerLock    sync.RWMutex
+	observers       map[types.NamespacedName]*Observer
+	listenerLock    sync.RWMutex
+	listeners       []OnObservation // invoked on each observation event
+	tracer          *apm.Tracer
 }
 
 // NewManager returns a new manager
-func NewManager(tracer *apm.Tracer) *Manager {
+func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 	return &Manager{
-		observers: make(map[types.NamespacedName]*Observer),
-		tracer:    tracer,
+		defaultInterval: defaultInterval,
+		observers:       make(map[types.NamespacedName]*Observer),
+		tracer:          tracer,
 	}
 }
 
 // ObservedStateResolver returns a function that returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster esv1.Elasticsearch, esClient client.Client) func() State {
-	observer := m.Observe(cluster, esClient)
-	return func() State {
-		return observer.LastState()
+func (m *Manager) ObservedStateResolver(
+	ctx context.Context,
+	cluster esv1.Elasticsearch,
+	esClient client.Client,
+	isServiceReady bool,
+) func() esv1.ElasticsearchHealth {
+	observer := m.Observe(ctx, cluster, esClient, isServiceReady)
+	return func() esv1.ElasticsearchHealth {
+		return observer.LastHealth()
 	}
 }
 
@@ -57,33 +67,50 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster esv1.Elasticsearch, esClient client.Client) *Observer {
+func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, isServiceReady bool) *Observer {
+	defer tracing.Span(&ctx)()
 	nsName := k8s.ExtractNamespacedName(&cluster)
-	settings := m.extractObserverSettings(cluster)
+	settings := m.extractObserverSettings(ctx, cluster)
 
 	observer, exists := m.getObserver(nsName)
 
 	switch {
 	case !exists:
-		return m.createOrReplaceObserver(nsName, settings, esClient)
+		// This Elasticsearch resource has not being observed yet, create the observer and maybe do a first observation.
+		observer = m.createOrReplaceObserver(ctx, nsName, settings, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || observer.settings != settings):
-		return m.createOrReplaceObserver(nsName, settings, esClient)
+		// This Elasticsearch resource is already being observed asynchronously, no need to do a first observation.
+		observer = m.createOrReplaceObserver(ctx, nsName, settings, esClient)
+	case exists && settings.ObservationInterval <= 0:
+		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
+		return m.getAndObserveSynchronously(ctx, nsName)
 	default:
+		// No change, close the provided Client and return the existing observer.
 		esClient.Close()
 		return observer
 	}
+
+	if !exists && isServiceReady {
+		// there was no existing observer and Service is ready: let's try an initial synchronous observation
+		observer.observe(ctx)
+	}
+	// start the new observer
+	observer.Start()
+	return observer
 }
 
 // extractObserverSettings extracts observer settings from the annotations on the Elasticsearch resource.
-func (m *Manager) extractObserverSettings(cluster esv1.Elasticsearch) Settings {
+func (m *Manager) extractObserverSettings(ctx context.Context, cluster esv1.Elasticsearch) Settings {
 	return Settings{
-		ObservationInterval: annotation.ExtractTimeout(cluster.ObjectMeta, ObserverIntervalAnnotation, defaultObservationInterval),
+		ObservationInterval: annotation.ExtractTimeout(ctx, cluster.ObjectMeta, ObserverIntervalAnnotation, m.defaultInterval),
 		Tracer:              m.tracer,
 	}
 }
 
 // createOrReplaceObserver creates a new observer and adds it to the observers map, replacing existing observers if necessary.
-func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+// The new observer is not started, it is up to the caller to invoke observer.Start(ctx)
+func (m *Manager) createOrReplaceObserver(ctx context.Context, cluster types.NamespacedName, settings Settings, esClient client.Client) *Observer {
+	defer tracing.Span(&ctx)()
 	m.observerLock.Lock()
 	defer m.observerLock.Unlock()
 
@@ -93,12 +120,21 @@ func (m *Manager) createOrReplaceObserver(cluster types.NamespacedName, settings
 		observer.Stop()
 		delete(m.observers, cluster)
 	}
-
 	observer = NewObserver(cluster, esClient, settings, m.notifyListeners)
-	observer.Start()
-
 	m.observers[cluster] = observer
+	return observer
+}
 
+// getAndObserveSynchronously retrieves the currently configured observer and trigger a synchronous observation.
+func (m *Manager) getAndObserveSynchronously(ctx context.Context, cluster types.NamespacedName) *Observer {
+	defer tracing.Span(&ctx)()
+	m.observerLock.RLock()
+	defer m.observerLock.RUnlock()
+
+	// invariant: this method must only be called when existence of observer is given
+	observer := m.observers[cluster]
+	// force a synchronous observation
+	observer.observe(ctx)
 	return observer
 }
 
@@ -111,7 +147,7 @@ func (m *Manager) List() []types.NamespacedName {
 	i := 0
 	for name := range m.observers {
 		names[i] = name
-		i++ //nolint:wastedassign
+		i++
 	}
 	return names
 }
@@ -125,7 +161,7 @@ func (m *Manager) AddObservationListener(listener OnObservation) {
 }
 
 // notifyListeners notifies all listeners that an observation occurred.
-func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState State, newState State) {
+func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState, newState esv1.ElasticsearchHealth) {
 	m.listenerLock.RLock()
 	switch len(m.listeners) {
 	case 0:

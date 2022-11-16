@@ -12,11 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // CASecret is a container to hold information about the Elasticsearch CA secret.
@@ -34,12 +34,12 @@ func CACertSecretName(association commonv1.Association, associationName string) 
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.
 // It is the responsibility of the association controller to set a watch on this CA.
-func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(ctx context.Context, association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName) (CASecret, error) {
 	associatedPublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, associatedResource)
 
 	// retrieve the HTTP certificates from the associatedResource namespace
 	var associatedPublicHTTPCertificatesSecret corev1.Secret
-	if err := r.Get(context.Background(), associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
+	if err := r.Get(ctx, associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
@@ -57,7 +57,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 		},
 		Data: associatedPublicHTTPCertificatesSecret.Data,
 	}
-	if _, err := reconciler.ReconcileSecret(r, expectedSecret, association.Associated()); err != nil {
+	if _, err := reconciler.ReconcileSecret(ctx, r, expectedSecret, association.Associated()); err != nil {
 		return CASecret{}, err
 	}
 

@@ -12,7 +12,7 @@ Elastic Cloud on Kubernetes (ECK) offers full control over Elasticsearch cluster
 
 * <<{p}-define-elasticsearch-nodes-roles,Define Elasticsearch nodes roles>>
 * <<{p}-affinity-options,Pod affinity and anti-affinity>>
-* <<{p}-availability-zone-awareness,Availability zone and rack awareness>>
+* <<{p}-availability-zone-awareness,Topology spread constraints and availability zone awareness>>
 * <<{p}-hot-warm-topologies,Hot-warm topologies>>
 
 You can combine these features to deploy a production-grade Elasticsearch cluster.
@@ -200,57 +200,65 @@ spec:
 This example restricts Elasticsearch nodes so they are only scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
 
 [id="{p}-availability-zone-awareness"]
-== Availability zone awareness
+== Topology spread constraints and availability zone awareness
 
-By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can create an availability zone-aware Elasticsearch cluster. Note that by default ECK creates a `k8s_node_name` attribute with the name of the Kubernetes node running the Pod, and configures Elasticsearch to use this attribute. This ensures that Elasticsearch allocates primary and replica shards to pods running on different Kubernetes nodes and never to pods that are scheduled onto a single Kubernetes node. To preserve this behavior while making Elasticsearch aware of the availability zone, include the `k8s_node_name` attribute in the comma-separated `cluster.routing.allocation.awareness.attributes` list:
+Starting with ECK 2.0 the operator can make Kubernetes Node labels available as Pod annotations. It can be used to make information, such as logical failure domains, available in a running Pod. Combined with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] and link:https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/[Kubernetes topology spread constraints], you can create an availability zone-aware Elasticsearch cluster.
+
+[id="{p}-availability-zone-awareness-downward-api"]
+=== Exposing Kubernetes node topology labels in Pods
+
+. First, ensure that the operator's flag `exposed-node-labels` contains the list of the Kubernetes node labels that should be exposed in the Elasticsearch Pods. If you are using the provided installation manifest, or the Helm chart, then this flag is already preset with two wildcard patterns for well-known node labels that describe Kubernetes cluster topology, like `topology.kubernetes.io/.*` and `failure-domain.beta.kubernetes.io/.*`.
+. On the Elasticsearch resources set the `eck.k8s.elastic.co/downward-node-labels` annotations with the list of the Kubernetes node labels that should be copied as Pod annotations.
+. Use the link:https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/[Kubernetes downward API] in the `podTemplate` to make those annotations available as environment variables in Elasticsearch Pods.
+
+Refer to the next section or to the link:{eck_github}/tree/{eck_release_branch}/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample resource in the ECK source repository] for a complete example.
+
+[id="{p}-availability-zone-awareness-example"]
+=== Using node topology labels, Kubernetes topology spread constraints, and Elasticsearch shard allocation awareness
+
+The following example demonstrates how to use the `topology.kubernetes.io/zone` node labels to spread a NodeSet across the availability zones of a Kubernetes cluster.
+
+Note that by default ECK creates a `k8s_node_name` attribute with the name of the Kubernetes node running the Pod, and configures Elasticsearch to use this attribute. This ensures that Elasticsearch allocates primary and replica shards to Pods running on different Kubernetes nodes and never to Pods that are scheduled onto the same Kubernetes node. To preserve this behavior while making Elasticsearch aware of the availability zone, include the `k8s_node_name` attribute in the comma-separated `cluster.routing.allocation.awareness.attributes` list.
 
 [source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
+  annotations:
+    eck.k8s.elastic.co/downward-node-labels: "topology.kubernetes.io/zone"
   name: quickstart
 spec:
   version: {version}
   nodeSets:
-  - name: zone-a
-    count: 1
+  - name: default
+    count: 3
     config:
-      node.attr.zone: europe-west3-a
+      node.attr.zone: ${ZONE}
       cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
     podTemplate:
       spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-a
-  - name: zone-b
-    count: 1
-    config:
-      node.attr.zone: europe-west3-b
-      cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
-    podTemplate:
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-b
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ZONE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['topology.kubernetes.io/zone']
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                elasticsearch.k8s.elastic.co/cluster-name: quickstart
+                elasticsearch.k8s.elastic.co/statefulset-name: quickstart-es-default
 ----
 
 This example relies on:
 
-- Kubernetes nodes in each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
-- Node affinity for each group of nodes set to match the zone of Kubernetes nodes.
+- Kubernetes nodes in each zone being labeled accordingly. `topology.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
+- link:https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/[Pod topology spread constraints] to spread the Pods across availability zones in the Kubernetes cluster.
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
 
 [id="{p}-hot-warm-topologies"]

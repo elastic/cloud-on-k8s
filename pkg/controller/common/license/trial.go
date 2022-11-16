@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -18,7 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -74,7 +76,7 @@ func (tk *TrialState) IsEmpty() bool {
 }
 
 // InitTrialLicense initialises and signs the given license based on the current state.
-func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
+func (tk *TrialState) InitTrialLicense(ctx context.Context, l *EnterpriseLicense) error {
 	if tk.privateKey == nil {
 		return errors.New("trial has already been activated")
 	}
@@ -85,7 +87,7 @@ func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
 		return pkgerrors.Wrap(err, "failed to populate trial license")
 	}
 
-	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
+	ulog.FromContext(ctx).Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
 	// sign trial license
 	signer := NewSigner(tk.privateKey)
 	sig, err := signer.Sign(*l)

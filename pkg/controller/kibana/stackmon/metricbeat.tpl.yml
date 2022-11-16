@@ -9,9 +9,13 @@ metricbeat.modules:
     hosts: ["{{ .URL }}"]
     username: {{ .Username }}
     password: {{ .Password }}
-    {{- if .IsSSL }}
-    ssl.certificate_authorities: ["{{ .SSLPath }}"]
-    ssl.verification_mode: "{{ .SSLMode }}"
+    ssl.enabled: {{ .IsSSL }}
+    # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
+    # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
+    # with a custom CA or custom certificates with or without a CA that most likely are not issued for `localhost`.
+    ssl.verification_mode: "certificate"
+    {{- if .HasCA }}
+    ssl.certificate_authorities: ["{{ .CAPath }}"]
     {{- end }}
 
 processors:

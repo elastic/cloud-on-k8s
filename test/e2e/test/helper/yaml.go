@@ -26,22 +26,22 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/agent"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 type BuilderTransform func(test.Builder) test.Builder
@@ -144,6 +144,7 @@ func (yd *YAMLDecoder) ToObjects(reader *bufio.Reader) ([]runtime.Object, error)
 // RunFile runs the builder workflow for all known resources in a yaml file, all other objects are created before and deleted
 // after. Resources will be created in a given namespace and with a given suffix. Additional objects to be created and deleted
 // can be passed as well as set of optional transformations to apply to all Builders.
+//
 //nolint:thelper
 func RunFile(
 	t *testing.T,
@@ -391,30 +392,31 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	data := config.Data
 
-	elasticsearchHostKey := "xpack.fleet.agents.elasticsearch.host"
-	if val1, ok := data[elasticsearchHostKey]; ok {
-		if val2, ok := val1.(string); ok {
-			val2 = strings.ReplaceAll(
-				val2,
-				"elasticsearch-es-http.default",
-				fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
-			)
-			data[elasticsearchHostKey] = val2
+	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
+	if untypedHosts, ok := data[elasticsearchHostsKey]; ok {
+		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+			for i, untypedHost := range untypedHostsSlice {
+				if host, ok := untypedHost.(string); ok {
+					untypedHostsSlice[i] = strings.ReplaceAll(
+						host,
+						"elasticsearch-es-http.default",
+						fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+					)
+				}
+			}
 		}
 	}
 
 	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
-	//nolint:nestif
-	if val1, ok := data[fleetServerHostsKey]; ok {
-		if val2, ok := val1.([]interface{}); ok {
-			if len(val2) > 0 {
-				if val3, ok := val2[0].(string); ok {
-					val3 = strings.ReplaceAll(
-						val3,
+	if untypedHosts, ok := data[fleetServerHostsKey]; ok {
+		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+			for i, untypedHost := range untypedHostsSlice {
+				if host, ok := untypedHost.(string); ok {
+					untypedHostsSlice[i] = strings.ReplaceAll(
+						host,
 						"fleet-server-agent-http.default",
 						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
 					)
-					data[fleetServerHostsKey] = []interface{}{val3}
 				}
 			}
 		}

@@ -7,8 +7,8 @@ package user
 import (
 	"fmt"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 
 	"gopkg.in/yaml.v2"
 )
@@ -39,6 +39,8 @@ const (
 	// StackMonitoringMetricsUserRole is the name of the role used by Metricbeat and Filebeat to send metrics and log
 	// data to the monitoring Elasticsearch cluster when Stack Monitoring is enabled
 	StackMonitoringUserRole = "eck_stack_mon_user_role"
+
+	FleetAdminUserRole = "eck_fleet_admin_user_role"
 
 	// V70 indicates version 7.0
 	V70 = "v70"
@@ -133,6 +135,15 @@ var (
 				{
 					Names:      []string{"filebeat-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
+				},
+			},
+		},
+		FleetAdminUserRole: esclient.Role{
+			Applications: []esclient.ApplicationRole{
+				{
+					Application: "kibana-.kibana",
+					Resources:   []string{"*"},
+					Privileges:  []string{"feature_fleet.all", "feature_fleetv2.all"},
 				},
 			},
 		},

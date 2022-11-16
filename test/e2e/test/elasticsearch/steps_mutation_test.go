@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,13 +23,13 @@ func Test_clusterUnavailability(t *testing.T) {
 	require.False(t, cu.hasExceededThreshold())
 
 	// mark the cluster as available, we're still below the threshold
-	cu.markUnavailable()
+	cu.markUnavailable(errors.New("connection refused"))
 	require.False(t, cu.start.IsZero())
 	require.False(t, cu.hasExceededThreshold())
 
 	// marking as unavailable again should not change the start time
 	initialStartTime := cu.start
-	cu.markUnavailable()
+	cu.markUnavailable(errors.New("context deadline exceeded"))
 	require.Equal(t, initialStartTime, cu.start)
 	require.False(t, cu.hasExceededThreshold())
 
@@ -38,7 +39,9 @@ func Test_clusterUnavailability(t *testing.T) {
 	require.False(t, cu.hasExceededThreshold())
 
 	// simulate a lower threshold we should have exceeded
-	cu.markUnavailable()
+	cu.markUnavailable(errors.New("something else"))
+	cu.markUnavailable(errors.New("this is bad too"))
 	cu.threshold = time.Duration(0)
 	require.True(t, cu.hasExceededThreshold())
+	require.Equal(t, "[something else, this is bad too]", cu.Errors().Error())
 }

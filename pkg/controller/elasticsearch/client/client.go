@@ -12,13 +12,14 @@ import (
 	"net/http"
 	"time"
 
+	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 const (
@@ -57,8 +58,10 @@ type Role struct {
 type Client interface {
 	AllocationSetter
 	AutoscalingClient
+	DesiredNodesClient
 	ShardLister
 	LicenseClient
+	SecurityClient
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.
@@ -73,7 +76,7 @@ type Client interface {
 	EnableShardAllocation(ctx context.Context) error
 	// RemoveTransientAllocationSettings removes allocation filters and enablement settings.
 	RemoveTransientAllocationSettings(ctx context.Context) error
-	//nolint:gocritic
+
 	// SyncedFlush requests a synced flush on the cluster. Deprecated in 7.6, removed in 8.0.
 	// This is "best-effort", see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush.html.
 	SyncedFlush(ctx context.Context) error
@@ -121,11 +124,13 @@ type Client interface {
 	// Version returns the Elasticsearch version this client is constructed for which should equal the minimal version
 	// in the cluster.
 	Version() version.Version
+	// URL returns the Elasticsearch URL configured for this client
+	URL() string
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
-func Timeout(es esv1.Elasticsearch) time.Duration {
-	return annotation.ExtractTimeout(es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
+func Timeout(ctx context.Context, es esv1.Elasticsearch) time.Duration {
+	return annotation.ExtractTimeout(ctx, es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
 func formatAsSeconds(d time.Duration) string {
@@ -143,13 +148,17 @@ func NewElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 	timeout time.Duration,
+	debug bool,
 ) Client {
+	client := commonhttp.Client(dialer, caCerts, timeout)
+	client.Transport = apmelasticsearch.WrapRoundTripper(client.Transport)
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP:     common.HTTPClient(dialer, caCerts, timeout),
+		HTTP:     client,
 		es:       es,
+		debug:    debug,
 	}
 	return versioned(base, v)
 }

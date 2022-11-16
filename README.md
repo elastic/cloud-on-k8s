@@ -1,5 +1,5 @@
 
-[![Build Status](https://devops-ci.elastic.co/buildStatus/icon?job=cloud-on-k8s-e2e-tests-master&subject=E2E%20tests)](https://devops-ci.elastic.co/job/cloud-on-k8s-e2e-tests-master/)
+[![Build Status](https://devops-ci.elastic.co/buildStatus/icon?job=cloud-on-k8s-e2e-tests-main&subject=E2E%20tests)](https://devops-ci.elastic.co/job/cloud-on-k8s-e2e-tests-main/)
 [![GitHub release](https://img.shields.io/github/v/release/elastic/cloud-on-k8s.svg)](https://github.com/elastic/cloud-on-k8s/releases/latest)
 
 # Elastic Cloud on Kubernetes (ECK)
@@ -17,13 +17,13 @@ Current features:
 
 Supported versions:
 
-*  Kubernetes 1.18-1.22
-*  OpenShift 4.5-4.9
-*  Elasticsearch, Kibana, APM Server: 6.8+, 7.1+
-*  Enterprise Search: 7.7+
-*  Beats: 7.0+
-*  Elastic Agent: 7.10+ (standalone), 7.14+ (Fleet)
-*  Elastic Maps Server: 7.11+
+*  Kubernetes 1.21-1.25
+*  OpenShift 4.7-4.11
+*  Elasticsearch, Kibana, APM Server: 6.8+, 7.1+, 8+
+*  Enterprise Search: 7.7+, 8+
+*  Beats: 7.0+, 8+
+*  Elastic Agent: 7.10+ (standalone), 7.14+, 8+ (Fleet)
+*  Elastic Maps Server: 7.11+, 8+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html) to deploy your first cluster with ECK.
 

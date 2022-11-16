@@ -11,14 +11,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	entctl "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	entctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -64,9 +64,21 @@ func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error)
 
 // referencedEntStatusVersion returns the currently running version of Enterprise Search
 // reported in its status.
-func referencedEntStatusVersion(c k8s.Client, entRef types.NamespacedName) (string, error) {
+func referencedEntStatusVersion(c k8s.Client, entRef commonv1.ObjectSelector) (string, error) {
+	if entRef.IsExternal() {
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, entRef)
+		if err != nil {
+			return "", err
+		}
+		ver, err := info.Request("/api/ent/v1/internal/version", "{ .number }")
+		if err != nil {
+			return "", err
+		}
+		return ver, nil
+	}
+
 	var ent entv1.EnterpriseSearch
-	err := c.Get(context.Background(), entRef, &ent)
+	err := c.Get(context.Background(), entRef.NamespacedName(), &ent)
 	if err != nil {
 		return "", err
 	}

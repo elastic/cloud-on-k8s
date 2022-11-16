@@ -10,10 +10,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"go.elastic.co/apm/module/apmhttp/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,15 +22,17 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 )
 
 const (
@@ -52,6 +55,7 @@ type VersionUpgrade struct {
 
 // Handle Enterprise Search version upgrades if necessary, by toggling read-only mode.
 func (r *VersionUpgrade) Handle(ctx context.Context) error {
+	log := ulog.FromContext(ctx)
 	expectedVersion, err := version.Parse(r.ent.Spec.Version)
 	if err != nil {
 		return err
@@ -62,7 +66,12 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return err
 	}
 
-	if upgradeRequested && !r.ent.AssociationConf().AuthIsConfigured() {
+	esAssocConf, err := r.ent.AssociationConf()
+	if err != nil {
+		return err
+	}
+
+	if upgradeRequested && !esAssocConf.AuthIsConfigured() {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
@@ -108,7 +117,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Enabling read-only mode for version upgrade",
+	ulog.FromContext(ctx).Info("Enabling read-only mode for version upgrade",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name, "target_version", r.ent.Spec.Version)
 
 	// call the Enterprise Search API
@@ -122,7 +131,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 		r.ent.Annotations = map[string]string{}
 	}
 	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(context.Background(), &r.ent)
+	return r.k8sClient.Update(ctx, &r.ent)
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
@@ -133,7 +142,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 		return nil
 	}
 
-	log.Info("Disabling read-only mode",
+	ulog.FromContext(ctx).Info("Disabling read-only mode",
 		"namespace", r.ent.Namespace, "ent_name", r.ent.Name)
 
 	// call the Enterprise Search API
@@ -144,7 +153,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
 	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(context.Background(), &r.ent)
+	return r.k8sClient.Update(ctx, &r.ent)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,
@@ -163,11 +172,15 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 		if err != nil {
 			return err
 		}
-		httpClient = common.HTTPClient(r.dialer, tlsCerts, 0)
+		httpClient = apmhttp.WrapClient(
+			commonhttp.Client(r.dialer, tlsCerts, 0),
+			apmhttp.WithClientRequestName(tracing.RequestName),
+			apmhttp.WithClientSpanType("external.enterprisesearch"),
+		)
 		defer httpClient.CloseIdleConnections()
 	}
 
-	request, err := r.readOnlyModeRequest(enabled)
+	request, err := r.readOnlyModeRequest(ctx, enabled)
 	if err != nil {
 		return err
 	}
@@ -183,7 +196,7 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -200,8 +213,8 @@ func (r *VersionUpgrade) serviceURL() string {
 }
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
-func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
-	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
+func (r *VersionUpgrade) readOnlyModeRequest(ctx context.Context, enabled bool) (*http.Request, error) {
+	credentials, err := association.ElasticsearchAuthSettings(ctx, r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +229,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(credentials.Username, credentials.Password)
 
 	return req, nil
 }

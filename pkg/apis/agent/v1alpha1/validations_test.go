@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 func Test_checkSupportedVersion(t *testing.T) {
@@ -501,6 +503,132 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkReferenceSetForMode(tt.a)
 			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkAssociations(t *testing.T) {
+	type args struct {
+		b *Agent
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Agent{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "mix secret named and named refs: OK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+							},
+						},
+						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
+						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "secret named ref with a name: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						ElasticsearchRefs: []Output{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with namespace: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						KibanaRef: commonv1.ObjectSelector{Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with serviceName: NOK",
+			args: args{
+				b: &Agent{
+					Spec: AgentSpec{
+						FleetServerRef: commonv1.ObjectSelector{ServiceName: "ble"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAssociations(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkNoDowngrade(t *testing.T) {
+	type args struct {
+		prev *Agent
+		curr *Agent
+	}
+	tests := []struct {
+		name string
+		args args
+		want field.ErrorList
+	}{
+		{
+			name: "No downgrade",
+			args: args{
+				prev: &Agent{Spec: AgentSpec{Version: "7.17.0"}},
+				curr: &Agent{Spec: AgentSpec{Version: "8.2.0"}},
+			},
+			want: nil,
+		},
+		{
+			name: "Downgrade NOK",
+			args: args{
+				prev: &Agent{Spec: AgentSpec{Version: "8.2.0"}},
+				curr: &Agent{Spec: AgentSpec{Version: "8.1.0"}},
+			},
+			want: field.ErrorList{&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.version", BadValue: "", Detail: "Version downgrades are not supported"}},
+		},
+		{
+			name: "Downgrade with override OK",
+			args: args{
+				prev: &Agent{Spec: AgentSpec{Version: "8.2.0"}},
+				curr: &Agent{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}}, Spec: AgentSpec{Version: "8.1.0"}},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, checkNoDowngrade(tt.args.prev, tt.args.curr), "checkNoDowngrade(%v, %v)", tt.args.prev, tt.args.curr)
 		})
 	}
 }

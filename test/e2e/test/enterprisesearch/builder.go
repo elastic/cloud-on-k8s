@@ -12,12 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 var (
@@ -31,6 +31,19 @@ var (
 type Builder struct {
 	EnterpriseSearch entv1.EnterpriseSearch
 	MutatedFrom      *Builder
+	GlobalCA         bool
+}
+
+func (b Builder) DeepCopy() *Builder {
+	ent := b.EnterpriseSearch.DeepCopy()
+	builderCopy := Builder{
+		EnterpriseSearch: *ent,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.GlobalCA = b.GlobalCA
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}
@@ -68,16 +81,17 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-
+	def := test.Ctx().ImageDefinitionFor(entv1.Kind)
 	b := Builder{
 		EnterpriseSearch: entv1.EnterpriseSearch{
 			ObjectMeta: meta,
 			Spec: entv1.EnterpriseSearchSpec{
 				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name).
@@ -97,6 +111,11 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 		Name:      b.EnterpriseSearch.Name,
 		Namespace: b.EnterpriseSearch.Namespace,
 	}
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.EnterpriseSearch.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -137,6 +156,11 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 		b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
 	}
 	b.EnterpriseSearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
 	return b
 }
 

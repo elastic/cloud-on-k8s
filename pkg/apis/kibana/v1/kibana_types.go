@@ -7,11 +7,12 @@ package v1
 import (
 	"fmt"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Kibana"
+	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
+	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
 )
 
 // +kubebuilder:object:root=true
@@ -43,7 +46,7 @@ type Kibana struct {
 	// entAssocConf holds the configuration for the Enterprise Search association
 	entAssocConf *commonv1.AssociationConf `json:"-"`
 	// monitoringAssocConf holds the configuration for the monitoring Elasticsearch clusters association
-	monitoringAssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
+	monitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true
@@ -89,10 +92,13 @@ type KibanaSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -102,44 +108,31 @@ type KibanaSpec struct {
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	Monitoring Monitoring `json:"monitoring,omitempty"`
-}
-
-type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which will receive monitoring data from this Kibana.
-	// +kubebuilder:validation:Optional
-	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which will receive log data from this Kibana.
-	// +kubebuilder:validation:Optional
-	Logs LogsMonitoring `json:"logs,omitempty"`
-}
-
-type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
-}
-
-type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// AssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	// This field is deprecated and will be removed in a future release. Use ElasticsearchAssociationStatus instead.
 	AssociationStatus commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
 	// EnterpriseSearchAssociationStatus is the status of any auto-linking to Enterprise Search.
 	EnterpriseSearchAssociationStatus commonv1.AssociationStatus `json:"enterpriseSearchAssociationStatus,omitempty"`
+
 	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+
+	// ObservedGeneration is the most recent generation observed for this Kibana instance.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Kibana
+	// controller has not yet processed the changes contained in the Kibana specification.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
@@ -154,6 +147,8 @@ func (k *Kibana) SecureSettings() []commonv1.SecretSource {
 func (k *Kibana) ServiceAccountName() string {
 	return k.Spec.ServiceAccountName
 }
+
+var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 // -- associations
 
@@ -180,7 +175,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+				ref:    ref.WithDefaultNamespace(k.Namespace),
 			})
 		}
 	}
@@ -188,7 +183,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
-				ref:    ref.WithDefaultNamespace(k.Namespace).NamespacedName(),
+				ref:    ref.WithDefaultNamespace(k.Namespace),
 			})
 		}
 	}
@@ -249,6 +244,11 @@ func (k *Kibana) SetAssociationStatusMap(typ commonv1.AssociationType, status co
 	}
 }
 
+// GetObservedGeneration will return the observed generation from the Kibana status.
+func (k *Kibana) GetObservedGeneration() int64 {
+	return k.Status.ObservedGeneration
+}
+
 // -- association with Elasticsearch
 
 func (k *Kibana) EsAssociation() *KibanaEsAssociation {
@@ -261,6 +261,17 @@ type KibanaEsAssociation struct {
 }
 
 var _ commonv1.Association = &KibanaEsAssociation{}
+
+func (kbes *KibanaEsAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	v, err := version.Parse(kbes.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+	if v.GTE(KibanaServiceAccountMinVersion) {
+		return KibanaServiceAccount, nil
+	}
+	return "", nil
+}
 
 func (kbes *KibanaEsAssociation) Associated() commonv1.Associated {
 	if kbes == nil {
@@ -284,8 +295,8 @@ func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
-func (kbes *KibanaEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbes.assocConf
+func (kbes *KibanaEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbes, kbes.assocConf)
 }
 
 func (kbes *KibanaEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -309,6 +320,10 @@ type KibanaEntAssociation struct {
 
 var _ commonv1.Association = &KibanaEntAssociation{}
 
+func (kbent *KibanaEntAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (kbent *KibanaEntAssociation) Associated() commonv1.Associated {
 	if kbent == nil {
 		return nil
@@ -331,8 +346,8 @@ func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
-func (kbent *KibanaEntAssociation) AssociationConf() *commonv1.AssociationConf {
-	return kbent.entAssocConf
+func (kbent *KibanaEntAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(kbent, kbent.entAssocConf)
 }
 
 func (kbent *KibanaEntAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -349,11 +364,15 @@ func (kbent *KibanaEntAssociation) AssociationID() string {
 type KbMonitoringAssociation struct {
 	// The associated Kibana
 	*Kibana
-	// ref is the namespaced name of the monitoring Elasticsearch referenced in the Association
-	ref types.NamespacedName
+	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
+	ref commonv1.ObjectSelector
 }
 
 var _ commonv1.Association = &KbMonitoringAssociation{}
+
+func (kbmon *KbMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
 
 func (kbmon *KbMonitoringAssociation) Associated() commonv1.Associated {
 	if kbmon == nil {
@@ -374,26 +393,16 @@ func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
-		Name:      kbmon.ref.Name,
-		Namespace: kbmon.ref.Namespace,
-	}
+	return kbmon.ref
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if kbmon.monitoringAssocConfs == nil {
-		return nil
-	}
-	assocConf, found := kbmon.monitoringAssocConfs[kbmon.ref]
-	if !found {
-		return nil
-	}
-	return &assocConf
+func (kbmon *KbMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(kbmon, kbmon.ref, kbmon.monitoringAssocConfs)
 }
 
 func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	if kbmon.monitoringAssocConfs == nil {
-		kbmon.monitoringAssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+		kbmon.monitoringAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if assocConf != nil {
 		kbmon.monitoringAssocConfs[kbmon.ref] = *assocConf
@@ -401,7 +410,7 @@ func (kbmon *KbMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Ass
 }
 
 func (kbmon *KbMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", kbmon.ref.Namespace, kbmon.ref.Name)
+	return kbmon.ref.ToID()
 }
 
 // -- HasMonitoring methods
@@ -417,6 +426,6 @@ func (k *Kibana) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
 func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
 	return &KbMonitoringAssociation{
 		Kibana: k,
-		ref:    esRef.WithDefaultNamespace(k.Namespace).NamespacedName(),
+		ref:    esRef.WithDefaultNamespace(k.Namespace),
 	}
 }

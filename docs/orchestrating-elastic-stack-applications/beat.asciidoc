@@ -66,7 +66,7 @@ spec:
 EOF
 ----
 +
-See <<{p}-beat-configuration-examples>> for more ready-to-use manifests.
+Check <<{p}-beat-configuration-examples>> for more ready-to-use manifests.
 
 . Monitor Beats.
 +
@@ -155,7 +155,7 @@ spec:
           runAsUser: 0
 ----
 
-Alternatively, it can be provided via a Secret specified in the `configRef` element:
+Alternatively, it can be provided through a Secret specified in the `configRef` element:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: beat.k8s.elastic.co/v1beta1
@@ -188,7 +188,7 @@ stringData:
       hosts: ["quickstart-es-http.default.svc:9200"]
 ----
 
-For more details, see the link:https://www.elastic.co/guide/en/beats/libbeat/current/config-file-format.html[Beats configuration] section.
+For more details, check the link:https://www.elastic.co/guide/en/beats/libbeat/current/config-file-format.html[Beats configuration] section.
 
 
 [id="{p}-beat-connect-es"]
@@ -221,7 +221,7 @@ ECK supports the deployment of any Community Beat.
 
 . Make sure the following roles exist in Elasticsearch:
 +
-- If `elasticsearchRef` is provided, create the role `eck_beat_es_$type_role`, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name is `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
+- If `elasticsearchRef` is provided, create the role `eck_beat_es_$type_role`, where `$type` is the Beat type. For example, when deploying `kafkabeat`, the role name is `eck_beat_es_kafkabeat_role`. This role must have the permissions required by the Beat. Check the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Elasticsearch documentation] for more details.
 - If `kibanaRef` is provided, create the role `eck_beat_kibana_$type_role` with the permissions required to setup Kibana dashboards.
 
 Alternatively, create a user in Elasticsearch and include the credentials in the Beats `config` for Elasticsearch output, Kibana setup or both. If `elasticsearchRef` and `kibanaRef` are also defined, ECK will use the provided user credentials when setting up the connections.
@@ -274,7 +274,7 @@ stringData:
   AGENT_NAME_VAR: id_007
 ----
 
-See link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[Beats documentation] for more details.
+Check link:https://www.elastic.co/guide/en/beats/filebeat/current/keystore.html[Beats documentation] for more details.
 
 
 [id="{p}-beat-set-beat-output"]
@@ -340,7 +340,7 @@ spec:
     filebeat:
       autodiscover:
         providers:
-        - host: ${HOSTNAME}
+        - node: ${NODE_NAME}
           type: kubernetes
           hints:
             enabled: true
@@ -353,6 +353,13 @@ spec:
       spec:
         serviceAccount: elastic-beat-filebeat-quickstart
         automountServiceAccountToken: true
+        containers:
+        - name: filebeat
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
 ...
 ---
 apiVersion: v1
@@ -400,7 +407,7 @@ To deploy Beats in clusters with the Pod Security Policy admission controller en
 [id="{p}-beat-configuration-examples"]
 == Configuration Examples
 
-Below you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
+In this section you can find manifests that address a number of common use cases and can be your starting point in exploring Beats deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain three-node Elasticsearch cluster and single Kibana instance. All Beat configurations set up Kibana dashboards if they are available for a given Beat and all required RBAC resources.
 
 CAUTION: The examples in this section are purely descriptive and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 

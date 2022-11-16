@@ -1,4 +1,4 @@
-FROM golang:1.17.5 as builder
+FROM docker.io/library/golang:1.19.3 as builder
 ADD . /manifest-gen
 WORKDIR /manifest-gen
 ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux 

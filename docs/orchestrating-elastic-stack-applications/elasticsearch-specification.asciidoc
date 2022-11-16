@@ -11,7 +11,6 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 
 **Basic settings**
 
-- <<{p}-jvm-heap-size>>
 - <<{p}-node-configuration>>
 - <<{p}-volume-claim-templates>>
 - <<{p}-storage-recommendations>>
@@ -36,7 +35,6 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-jvm-heap-dumps>>
 - <<{p}-security-context>>
 
-include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
 include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
 include::elasticsearch/volume-claim-templates.asciidoc[leveloffset=+1]
 include::elasticsearch/storage-recommendations.asciidoc[leveloffset=+1]

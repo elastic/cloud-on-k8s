@@ -12,15 +12,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
 	// AssociatedUserType is used to annotate an associated user secret, most likely created by an association controller.
 	AssociatedUserType = "user"
+	// ServiceAccountTokenType is used to annotate a secret that contains a service account token, most likely created by an association controller.
+	ServiceAccountTokenType = "service-account-token"
 
 	// UserNameField is the field in the secret that contains the username.
 	UserNameField = "name"
@@ -43,7 +45,7 @@ type AssociatedUser struct {
 func AssociatedUserLabels(es esv1.Elasticsearch) map[string]string {
 	return map[string]string{
 		label.ClusterNameLabelName: es.Name,
-		common.TypeLabelName:       AssociatedUserType,
+		labels.TypeLabelName:       AssociatedUserType,
 	}
 }
 

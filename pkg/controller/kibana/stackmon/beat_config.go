@@ -5,12 +5,13 @@
 package stackmon
 
 import (
+	"context"
 	_ "embed" // for the beats config files
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 var (
@@ -24,25 +25,33 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(client k8s.Client, kb kbv1.Kibana) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, kb kbv1.Kibana) error {
+	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
+	if err != nil {
+		return err
+	}
+	if !isMonitoringReconcilable {
+		return nil
+	}
+
 	if monitoring.IsMetricsDefined(&kb) {
-		b, err := Metricbeat(client, kb)
+		b, err := Metricbeat(ctx, client, kb)
 		if err != nil {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &kb); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &kb); err != nil {
 			return err
 		}
 	}
 
 	if monitoring.IsLogsDefined(&kb) {
-		b, err := Filebeat(client, kb)
+		b, err := Filebeat(ctx, client, kb)
 		if err != nil {
 			return err
 		}
 
-		if _, err := reconciler.ReconcileSecret(client, b.ConfigSecret, &kb); err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &kb); err != nil {
 			return err
 		}
 	}

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,18 +18,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 const (
@@ -83,13 +85,13 @@ type ReconcileRemoteCa struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "remoteca")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
 	// Fetch the local Elasticsearch spec
 	es := esv1.Elasticsearch{}
-	err := r.Get(context.Background(), request.NamespacedName, &es)
+	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
@@ -97,8 +99,8 @@ func (r *ReconcileRemoteCa) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, err
 	}
 
-	if common.IsUnmanaged(&es) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
+	if common.IsUnmanaged(ctx, &es) {
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -128,6 +130,8 @@ func doReconcile(
 	r *ReconcileRemoteCa,
 	localEs *esv1.Elasticsearch,
 ) (reconcile.Result, error) {
+	log := ulog.FromContext(ctx)
+
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
 
 	expectedRemoteClusters, err := getExpectedRemoteClusters(ctx, r.Client, localEs)
@@ -135,7 +139,7 @@ func doReconcile(
 		return reconcile.Result{}, err
 	}
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return defaultRequeue, err
 	}
@@ -160,7 +164,7 @@ func doReconcile(
 	for remoteEsKey := range expectedRemoteClusters {
 		// Get the remote Elasticsearch cluster associated with this remote CA
 		remoteEs := &esv1.Elasticsearch{}
-		if err := r.Client.Get(context.Background(), remoteEsKey, remoteEs); err != nil {
+		if err := r.Client.Get(ctx, remoteEsKey, remoteEs); err != nil {
 			if errors.IsNotFound(err) {
 				// Remote cluster does not exist, skip it
 				continue
@@ -220,7 +224,7 @@ func getExpectedRemoteClusters(
 	}
 
 	var list esv1.ElasticsearchList
-	if err := c.List(context.Background(), &list, &client.ListOptions{}); err != nil {
+	if err := c.List(ctx, &list, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +264,7 @@ func remoteClustersInvolvedWith(
 
 	// 1. Get clusters whose CA has been copied into the local namespace.
 	var remoteCAList corev1.SecretList
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
 		remoteca.Labels(es.Name),
@@ -277,10 +281,10 @@ func remoteClustersInvolvedWith(
 	}
 
 	// 2. Get clusters for which the CA of the local cluster has been copied.
-	if err := c.List(context.Background(),
+	if err := c.List(ctx,
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:            remoteca.TypeLabelValue,
+			labels.TypeLabelName:            remoteca.TypeLabelValue,
 			RemoteClusterNamespaceLabelName: es.Namespace,
 			RemoteClusterNameLabelName:      es.Name,
 		}),

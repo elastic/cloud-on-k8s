@@ -30,9 +30,9 @@ We need a way to make sure pod scheduling takes available disk space into consid
 
 One way to circumvent these problems is to consider that each kubernetes node is composed of:
 
-* X amount of RAM capacity (eg. 10GB)
-* Y amount of disk space (eg. 1TB)
-* A ration Y/X can be expressed as the ram-to-disk storage multiplier (eg. 100 in this scenario)
+* X amount of RAM capacity (for ex. 10GB)
+* Y amount of disk space (for ex. 1TB)
+* A ration Y/X can be expressed as the ram-to-disk storage multiplier (for ex. 100 in this scenario)
 
 If all nodes in the kubernetes cluster respect this approach and use the same ram-to-disk multiplier, we can consider the node will run out of RAM (hence be unschedulable for new pods) before it runs out of disk.
 
@@ -47,15 +47,15 @@ It requires:
 
 Instead of having a single cluster-wide provisioner, we have one provisioner per node, responsible for provisioning PersistentVolume corresponding to the node. Let's call it the "node volume provisioner" (name TBD). The global provisioner does not exist anymore.
 
-On startup, the node volume provisioner inspects the available disk space (eg. 10TB total). It creates a single PersistentVolume resource on the apiserver, with node affinity set to the node it's running on. This PersistentVolume covers the entire available disk space (10TB). This PersistentVolume is not bound to any PersistentVolumeClaim yet. So far, this is quite similar to what's done by the [static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner), except we probably want to consider a single PV with the entire LVM disk space (spanning over multiple disks) instead of creating one PV per disk.
+On startup, the node volume provisioner inspects the available disk space (for ex. 10TB total). It creates a single PersistentVolume resource on the apiserver, with node affinity set to the node it's running on. This PersistentVolume covers the entire available disk space (10TB). This PersistentVolume is not bound to any PersistentVolumeClaim yet. So far, this is quite similar to what's done by the [static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner), except we probably want to consider a single PV with the entire LVM disk space (spanning over multiple disks) instead of creating one PV per disk.
 
 #### PVC/PV binding
 
-When a PVC with storage class `elastic-local` is created, kubernetes PersistentVolume controller will automatically bind the PersistentVolume created above to this PVC (or the PVC created by another node). Storage capacity is taken into consideration here: if the PV spec specifies a 10TB capacity, it will not be bound to a PVC claiming 20TB. However, a 1GB PVC can still be bound to our 10TB PV. Effectively wasting our disk space here.
+When a PVC with storage class `elastic-local` is created, the Kubernetes PersistentVolume controller will automatically bind the PersistentVolume created by the node volume provisioner to this PVC (or the PVC created by another node). Storage capacity is taken into consideration here: if the PV spec specifies a 10TB capacity, it will not be bound to a PVC claiming 20TB. However, a 1GB PVC can still be bound to our 10TB PV. Effectively wasting our disk space here.
 
 So how do we avoid wasting disk space in this scenario? As soon as the PV is bound to a PVC, our node volume provisioner gets notified (it's watching PVs it created). By retrieving both PV and matching PVC, it notices the PVC requests only 1GB out of the 10TB available. As a result, it updates the PersistentVolume spec to match those 1GB. The PV stays bound to the same PVC, even though its capacity was changed. The actual volume corresponding to this PV can then be created by the driver running on the node, as done in the current implementation.
 
-We are left with 9.999TB available on the node: the node volume provisioner creates a new PersistentVolume with capacity 9.999TB, that can be bound to any PVC by the kubernetes PersistentVolume controller. If any PV gets deleted, the node volume provisioner reclaims the disk space freed by updating the PV capacity. For instance if the 1GB pod from the example above is deleted, the 9.999TB PV can be updated to 10TB.
+We are left with 9.999TB available on the node: the node volume provisioner creates a new PersistentVolume with capacity 9.999TB, that can be bound to any PVC by the kubernetes PersistentVolume controller. If any PV gets deleted, the node volume provisioner reclaims the disk space freed by updating the PV capacity. For example, if the 1GB pod is deleted, the 9.999TB PV can be updated to 10TB.
 
 To summarize:
 

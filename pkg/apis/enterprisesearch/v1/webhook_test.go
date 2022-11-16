@@ -15,8 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 func TestWebhook(t *testing.T) {
@@ -132,6 +133,87 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Forbidden: Version downgrades are not supported`,
+			),
+		},
+		{
+			Name:      "version-downgrade-with-override",
+			Operation: admissionv1beta1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.7.1"
+				return serialize(t, ent)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.Version = "7.7.0"
+				ent.Annotations = map[string]string{
+					commonv1.DisableDowngradeValidationAnnotation: "true",
+				}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "named-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "secret-named-es-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-name",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-namespace",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
+			),
+		},
+		{
+			Name:      "invalid-secret-es-ref-with-service",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "essvc"}
+				return serialize(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
 	}

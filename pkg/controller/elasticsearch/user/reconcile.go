@@ -8,26 +8,24 @@ import (
 	"context"
 	"reflect"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
-
-var log = ulog.Log.WithName("elasticsearch-user")
 
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
 // Kubernetes secret mounted in the Elasticsearch Pods.
@@ -45,22 +43,29 @@ func ReconcileUsersAndRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
+	passwordHasher cryptutil.PasswordHasher,
 ) (esclient.BasicAuth, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
-	roles, err := aggregateRoles(c, es, watched, recorder)
+	roles, err := aggregateRoles(ctx, c, es, watched, recorder)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched, recorder)
+	fileRealm, controllerUser, err := aggregateFileRealm(ctx, c, es, watched, recorder, passwordHasher)
+	if err != nil {
+		return esclient.BasicAuth{}, err
+	}
+
+	// reconcile the service accounts
+	saTokens, err := GetServiceAccountTokens(c, es)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm); err != nil {
+	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -78,10 +83,12 @@ func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm,
 
 // aggregateFileRealm builds a single file realm from multiple ones, and returns the controller user credentials.
 func aggregateFileRealm(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
+	passwordHasher cryptutil.PasswordHasher,
 ) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
 	existingFileRealm, err := getExistingFileRealm(c, es)
@@ -92,24 +99,24 @@ func aggregateFileRealm(
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
-	// reconcile predefined users
-	elasticUser, err := reconcileElasticUser(c, es, existingFileRealm)
+	// watch & fetch user-provided file realm & roles
+	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(ctx, c, es, existingFileRealm, watched, recorder, passwordHasher)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	internalUsers, err := reconcileInternalUsers(c, es, existingFileRealm)
+
+	// reconcile predefined users
+	elasticUser, err := reconcileElasticUser(ctx, c, es, existingFileRealm, userProvidedFileRealm, passwordHasher)
+	if err != nil {
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
+	}
+	internalUsers, err := reconcileInternalUsers(ctx, c, es, existingFileRealm, passwordHasher)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
 	// fetch associated users
 	associatedUsers, err := retrieveAssociatedUsers(c, es)
-	if err != nil {
-		return filerealm.Realm{}, esclient.BasicAuth{}, err
-	}
-
-	// watch & fetch user-provided file realm & roles
-	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, watched, recorder)
 	if err != nil {
 		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
@@ -131,12 +138,13 @@ func aggregateFileRealm(
 }
 
 func aggregateRoles(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
 ) (RolesFileContent, error) {
-	userProvided, err := reconcileUserProvidedRoles(c, es, watched, recorder)
+	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)
 	if err != nil {
 		return RolesFileContent{}, err
 	}
@@ -150,13 +158,21 @@ func RolesFileRealmSecretKey(es esv1.Elasticsearch) types.NamespacedName {
 }
 
 // reconcileRolesFileRealmSecret creates or updates the single secret holding the file realm and the file-based roles.
-func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles RolesFileContent, fileRealm filerealm.Realm) error {
+func reconcileRolesFileRealmSecret(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	roles RolesFileContent,
+	fileRealm filerealm.Realm,
+	saTokens ServiceAccountTokens,
+) error {
 	secretData := fileRealm.FileBytes()
 	rolesBytes, err := roles.FileBytes()
 	if err != nil {
 		return err
 	}
 	secretData[RolesFile] = rolesBytes
+	secretData[ServiceTokensFileName] = saTokens.ToBytes()
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -169,6 +185,7 @@ func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles Ro
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      &es,
 		Expected:   &expected,

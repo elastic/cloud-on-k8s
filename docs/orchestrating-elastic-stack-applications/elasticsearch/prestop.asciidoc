@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Pod PreStop hook
 
-When an Elasticsearch `Pod` is terminated, its `Endpoint` is removed from the `Service` and the Elasticsearch process is terminated. As these two operations happen in parallel, a race condition exists. If the Elasticsearch process is already shut down, but the `Endpoint` is still a part of the `Service`, any new connection might fail. For more information, see link:https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods[Termination of pods].
+When an Elasticsearch `Pod` is terminated, its `Endpoint` is removed from the `Service` and the Elasticsearch process is terminated. As these two operations happen in parallel, a race condition exists. If the Elasticsearch process is already shut down, but the `Endpoint` is still a part of the `Service`, any new connection might fail. For more information, check link:https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods[Termination of pods].
 
 Moreover, kube-proxy resynchronizes its rules link:https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/#options[every 30 seconds by default]. During that time window of 30 seconds, the terminating Pod IP may still be used when targeting the service. Please note the resync operation itself may take some time, especially if kube-proxy is configured to use iptables with a lot of services and rules to apply.
 

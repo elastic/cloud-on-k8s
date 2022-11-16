@@ -32,13 +32,13 @@ How do we manage nodes certificates with our operator?
 
 #### CA
 
-The operator on the cluster *is* the certificate authority (CA) for all the clusters it manages. It is able to issue certificates based on certificate signing requests (CSR) that pods provide. It manages one CA certificate (and associated private key) per cluster (eg. if the operator manages 3 clusters in 3 different namespaces, it uses 3 different CAs).
+The operator on the cluster *is* the certificate authority (CA) for all the clusters it manages. It is able to issue certificates based on certificate signing requests (CSR) that pods provide. It manages one CA certificate (and associated private key) per cluster (for ex. if the operator manages 3 clusters in 3 different namespaces, it uses 3 different CAs).
 
 #### Issuing certificates
 
 At each reconciliation loop, the operator can decide to issue a signed certificate for a given pod. It makes sense to issue a new certificate when:
 
-* there is no certificate (eg. pod was just created)
+* there is no certificate (for ex. the pod was just created)
 * existing certificate is expired
 * existing certificate is invalid or corrupted
 * existing certificate does not match the current CA
@@ -55,7 +55,7 @@ Some options:
 * *Option A*: the private key is generated when the operator starts on first cluster reconciliation, and kept in-memory for the lifecycle of the operator. If the operator restarts, it needs to generate a new private key, and issues new certificates for all clusters. While existing TCP connections between nodes will not be impacted, this might provoke a downtime on the cluster while new certificates are propagated.
 * *Option B*: the private key is stored as a secret in the apiserver. Created by the operator itself if it does not exist yet. Persisted and reuse through operator restarts.
 * *Option C*: similar to B, but with the private key [wrapped in another layer of encryption](https://tools.ietf.org/html/rfc3394) in the apiserver. Access to the KEK (key encryption-key) must be handled separately.
-* *Option D*: the private key is stored in an external service (eg. Vault) and requested or provided to the operator at startup.
+* *Option D*: the private key is stored in an external service (for ex. Vault) and requested or provided to the operator at startup.
 
 Options C and D are preferable, but need to setup an additional system. Option A is secure, but can lead to downtime and a herd effect: when the operator restarts, it needs to regenerate all certificates. Option B is not secure if we consider the apiserver storage as not secure enough.
 
@@ -79,7 +79,7 @@ Several options considered involving an init container in the ES pod:
 * *Option B*: the init container requests the operator through an API in the operator to send the CSR. Disadvantage: similar to Option A, we implicitly authorize the ES pod to reach the operator. Even though this can be restricted to a single endpoint, it's an additional possible flow that could lead to security issues.
 * *Option C*: the init container runs an HTTP server to serve the generated CSR. The operator requests the CSR through this API. Advantage: the pod does not need to reach any other service. Disadvantage: some additional complexity in the design and the implementation.
 
-Option C is the chosen one here. For more details on the actual workflow, see the [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/master/operators/cmd/cert-initializer/README.md).
+Option C is the chosen one here. For more details on the actual workflow, check the [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/main/operators/cmd/cert-initializer/README.md).
 
 #### Pods certificate rotation
 
@@ -101,11 +101,11 @@ Options to consider:
   * The sidecar could be notified by the operator either through an HTTP request, or a special file in a mounted secret volume.
   * If done on a regular basis, the sidecar itself could be responsible for the decision of rotating its private key on its own, and does not even need a notification from the operator. The operator still needs to know there is a new CSR to request.
 * *Option B*: don't rotate private keys in pods.
-  * If a pod private key is compromised, replace the pod by a new one, for which a new private key, csr and certificate will be created.
+  * If a pod private key is compromised, replace the pod by a new one, for which a new private key, CSR and certificate will be created.
   * It requires some extra mechanism in the operator to safely evacuate or replace a pod by a new one.
   * It could take some time (compared to option A) to safely migrate data.
 
-Chosen option: option B. Simpler to implement, and we do need a way to safely replace/evacuate pods for other reasons (eg. node going down, hdd failures, etc.).
+Chosen option: option B. Simpler to implement, and we do need a way to safely replace/evacuate pods for other reasons (For example, node going down, hdd failures, and so on).
 
 #### CA cert rotation
 
@@ -145,7 +145,7 @@ Biggest advantage of Option B compared to Option A is that it is safe for a new 
 
 ### Option 2 - rely on a service mesh TLS implementation
 
-Some service meshes handle TLS authentication automatically through sidecar containers mounted in pods (eg. Istio and Envoy, Linkerd). Currently, it's mandatory in Elasticsearch to enable TLS encryption. Hence we cannot easily delegate TLS entirely to additional services. Moreover, it sounds wrong to force users to use a particular service mesh, that includes its own security problems.
+Some service meshes handle TLS authentication automatically through sidecar containers mounted in pods (for ex. Istio and Envoy, Linkerd). Currently, it's mandatory in Elasticsearch to enable TLS encryption. Hence we cannot easily delegate TLS entirely to additional services. Moreover, it sounds wrong to force users to use a particular service mesh, that includes its own security problems.
 
 ### Option 3 - let users provide their own private keys and certificates
 
@@ -172,5 +172,5 @@ Even though choosing option 1 by default, option 3 could also be handled through
 
 ## Links
 
-* [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/master/operators/cmd/cert-initializer/README.md) describing interactions between the operator and the cert-initializer init container.
+* [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/main/operators/cmd/cert-initializer/README.md) describing interactions between the operator and the cert-initializer init container.
 * [coordination with Kibana](https://github.com/elastic/cloud-on-k8s/issues/118)

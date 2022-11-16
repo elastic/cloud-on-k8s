@@ -8,14 +8,15 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_listAffectedLicenses(t *testing.T) {
@@ -81,7 +82,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 				client = k8s.NewFailingClient(tt.injectedError)
 			}
 
-			got, err := reconcileRequestsForAllClusters(client)
+			got, err := reconcileRequestsForAllClusters(client, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileRequestsForAllClusters() error = %v, wantErr %v", err, tt.wantErr)
 				return

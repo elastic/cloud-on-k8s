@@ -6,7 +6,7 @@ package client
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	fixtures "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
 func TestClient_GetLicense(t *testing.T) {
@@ -39,7 +39,7 @@ func TestClient_GetLicense(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseGetSample)),
+				Body:       io.NopCloser(strings.NewReader(fixtures.LicenseGetSample)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -77,7 +77,7 @@ func TestClient_UpdateLicense(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseUpdateResponseSample)),
+				Body:       io.NopCloser(strings.NewReader(fixtures.LicenseUpdateResponseSample)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
@@ -123,7 +123,7 @@ func TestClient_StartBasic(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`{"acknowledged":true,"basic_was_started":true}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"acknowledged":true,"basic_was_started":true}`)),
 				Header:     make(http.Header),
 				Request:    req,
 			}

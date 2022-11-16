@@ -11,13 +11,28 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
+
+// Error is a custom error type that captures the resource that contained an erroneous license file for use in Kubernetes events.
+type Error struct {
+	Source runtime.Object
+	Err    error
+}
+
+func (e *Error) Error() string {
+	return e.Err.Error()
+}
+
+func NewError(src runtime.Object, err error) error {
+	return &Error{Source: src, Err: err}
+}
 
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
@@ -33,7 +48,7 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 		ls := license
 		parsed, err := ParseEnterpriseLicense(ls.Data)
 		if err != nil {
-			errors = append(errors, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls)))
+			errors = append(errors, NewError(&ls, pkgerrors.Wrapf(err, "while parsing license in %v", k8s.ExtractNamespacedName(&ls))))
 		} else {
 			licenses = append(licenses, parsed)
 		}
@@ -74,13 +89,13 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 }
 
 // CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
-func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
-	return c.Create(context.Background(), &corev1.Secret{
+func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedName) error {
+	return c.Create(ctx, &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
 			Labels: map[string]string{
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 				LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
 			},
 			Annotations: map[string]string{
@@ -91,7 +106,7 @@ func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
 }
 
 // UpdateEnterpriseLicense updates an Enterprise license wrapped in a secret.
-func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
+func UpdateEnterpriseLicense(ctx context.Context, c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal license")
@@ -100,5 +115,5 @@ func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLic
 		FileName: bytes,
 	}
 	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
-	return c.Update(context.Background(), &secret)
+	return c.Update(ctx, &secret)
 }

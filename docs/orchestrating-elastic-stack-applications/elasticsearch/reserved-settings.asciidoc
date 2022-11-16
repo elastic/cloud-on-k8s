@@ -11,6 +11,8 @@ endif::[]
 The following Elasticsearch settings are managed by ECK:
 
 * `cluster.name`
+* `discovery.seed_hosts`
+* `discovery.seed_providers`
 * `discovery.zen.minimum_master_nodes` deprecated[7.0]
 * `cluster.initial_master_nodes` added[7.0]
 * `network.host`
@@ -20,6 +22,7 @@ The following Elasticsearch settings are managed by ECK:
 * `xpack.security.authc.reserved_realm.enabled`
 * `xpack.security.enabled`
 * `xpack.security.http.ssl.certificate`
+* `xpack.security.http.ssl.client_authentication`
 * `xpack.security.http.ssl.enabled`
 * `xpack.security.http.ssl.key`
 * `xpack.security.transport.ssl.certificate`

@@ -1,0 +1,13 @@
+metricbeat.modules:
+- module: beat
+  metricsets:
+    - stats
+    - state
+  period: 10s
+  hosts: ["{{ .URL }}"]
+  xpack.enabled: true
+http.enabled: false
+monitoring.enabled: false
+monitoring.cluster_uuid: "{{ .ClusterUUID }}"
+
+# Elasticsearch output configuration is generated and added here

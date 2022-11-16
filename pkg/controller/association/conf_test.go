@@ -16,12 +16,13 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 func TestFetchWithAssociation(t *testing.T) {
@@ -84,7 +85,7 @@ func testFetchAPMServer(t *testing.T) {
 			client := k8s.NewFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
-			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
+			err := client.Get(context.Background(), tc.request.NamespacedName, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -96,11 +97,13 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
 			for _, assoc := range got.GetAssociations() {
+				assocConf, err := assoc.AssociationConf()
+				require.NoError(t, err)
 				switch assoc.AssociationType() {
 				case "elasticsearch":
-					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
+					require.Equal(t, tc.wantEsAssocConf, assocConf)
 				case "kibana":
-					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
+					require.Equal(t, tc.wantKibanaAssocConf, assocConf)
 				default:
 					t.Fatalf("unknown association type: %s", assoc.AssociationType())
 				}
@@ -146,7 +149,7 @@ func testFetchKibana(t *testing.T) {
 			client := k8s.NewFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
-			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
+			err := client.Get(context.Background(), tc.request.NamespacedName, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -157,7 +160,9 @@ func testFetchKibana(t *testing.T) {
 			require.Equal(t, "kb-ns", got.Namespace)
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
-			require.Equal(t, tc.wantAssocConf, got.EsAssociation().AssociationConf())
+			assocConf, err := got.EsAssociation().AssociationConf()
+			require.NoError(t, err)
+			require.Equal(t, tc.wantAssocConf, assocConf)
 		})
 	}
 }
@@ -220,7 +225,8 @@ func TestAreConfiguredIfSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := AreConfiguredIfSet(tt.associations, tt.recorder)
+			got, err := AreConfiguredIfSet(context.Background(), tt.associations, tt.recorder)
+			require.NoError(t, err)
 			if got != tt.want {
 				t.Errorf("AreConfiguredIfSet() got = %v, want %v", got, tt.want)
 			}
@@ -326,16 +332,16 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			apmEsAssociation.SetAssociationConf(&tt.assocConf)
-			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, &apmEsAssociation)
+			gotCredentials, err := ElasticsearchAuthSettings(context.Background(), tt.client, &apmEsAssociation)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotUsername != tt.wantUsername {
-				t.Errorf("getCredentials() gotUsername = %v, want %v", gotUsername, tt.wantUsername)
+			if gotCredentials.Username != tt.wantUsername {
+				t.Errorf("getCredentials() gotUsername = %v, want %v", gotCredentials.Username, tt.wantUsername)
 			}
-			if gotPassword != tt.wantPassword {
-				t.Errorf("getCredentials() gotPassword = %v, want %v", gotPassword, tt.wantPassword)
+			if gotCredentials.Password != tt.wantPassword {
+				t.Errorf("getCredentials() gotPassword = %v, want %v", gotCredentials.Password, tt.wantPassword)
 			}
 		})
 	}
@@ -346,7 +352,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.NewFakeClient(kb)
 
-	assocConf := &commonv1.AssociationConf{
+	expectedAssocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -355,13 +361,15 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociations(context.Background(), client, request, &got)
+	err := client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
+	assocConf, err := got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, expectedAssocConf, assocConf)
 
 	// update and check the new values
 	newAssocConf := &commonv1.AssociationConf{
@@ -371,16 +379,18 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, got.EsAssociation(), newAssocConf)
+	err = UpdateAssociationConf(context.Background(), client, got.EsAssociation(), newAssocConf)
 	require.NoError(t, err)
 
-	err = FetchWithAssociations(context.Background(), client, request, &got)
+	err = client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, newAssocConf, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, newAssocConf, assocConf)
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
@@ -388,7 +398,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.NewFakeClient(kb)
 
-	assocConf := &commonv1.AssociationConf{
+	expectedAssocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -397,25 +407,29 @@ func TestRemoveAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociations(context.Background(), client, request, &got)
+	err := client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Equal(t, assocConf, got.EsAssociation().AssociationConf())
+	assocConf, err := got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Equal(t, expectedAssocConf, assocConf)
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, got.EsAssociation())
+	err = RemoveAssociationConf(context.Background(), client, got.EsAssociation())
 	require.NoError(t, err)
 
-	err = FetchWithAssociations(context.Background(), client, request, &got)
+	err = client.Get(context.Background(), request.NamespacedName, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
 	require.EqualValues(t, 1, got.Spec.Count)
-	require.Nil(t, got.EsAssociation().AssociationConf())
+	assocConf, err = got.EsAssociation().AssociationConf()
+	require.NoError(t, err)
+	require.Nil(t, assocConf)
 }
 
 func TestAllowVersion(t *testing.T) {
@@ -498,10 +512,10 @@ func TestAllowVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		logger := log.WithValues("a", "b")
+		logger := ulog.Log.WithValues("a", "b")
 		recorder := record.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); got != tt.want {
+			if got, err := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); err != nil && got != tt.want {
 				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)
 			}
 		})
@@ -600,7 +614,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.associated)
 
-			require.NoError(t, RemoveObsoleteAssociationConfs(client, tt.associated, "association.k8s.elastic.co/es-conf"))
+			require.NoError(t, RemoveObsoleteAssociationConfs(context.Background(), client, tt.associated, "association.k8s.elastic.co/es-conf"))
 
 			var got agentv1alpha1.Agent
 			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.associated), &got))

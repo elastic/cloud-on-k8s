@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -20,16 +21,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
@@ -241,7 +242,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[1:]
 				params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts = params.PodTemplateSpec.Spec.InitContainers[0].VolumeMounts[1:]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[1:]
-				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = corev1.URISchemeHTTP
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
@@ -277,7 +278,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 								Namespace: "default",
 							},
 							Data: map[string][]byte{
-								certificates.CertFileName: nil,
+								certificates.CAFileName: nil,
 							},
 						},
 						&corev1.Secret{
@@ -312,7 +313,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/config-checksum"] = "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7"
+				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
 				return p
 			}(),
 			wantErr: false,
@@ -363,7 +364,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(kb)
+			got, err := d.deploymentParams(context.Background(), kb)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -428,13 +429,13 @@ func expectedDeploymentParams() deployment.Params {
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					"common.k8s.elastic.co/type":            "kibana",
-					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "c530a02188193a560326ce91e34fc62dcbd5722b45534a3f60957663",
-					"kibana.k8s.elastic.co/version":         "7.0.0",
+					"common.k8s.elastic.co/type":    "kibana",
+					"kibana.k8s.elastic.co/name":    "test",
+					"kibana.k8s.elastic.co/version": "7.0.0",
 				},
 				Annotations: map[string]string{
-					"co.elastic.logs/module": "kibana",
+					"co.elastic.logs/module":            "kibana",
+					"kibana.k8s.elastic.co/config-hash": "272660573",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -571,7 +572,7 @@ func expectedDeploymentParams() deployment.Params {
 						PeriodSeconds:       10,
 						SuccessThreshold:    1,
 						TimeoutSeconds:      5,
-						Handler: corev1.Handler{
+						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Port:   intstr.FromInt(5601),
 								Path:   "/login",
@@ -642,7 +643,7 @@ func defaultInitialObjects() []runtime.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				certificates.CertFileName: nil,
+				certificates.CAFileName: nil,
 			},
 		},
 		&corev1.Secret{
@@ -669,7 +670,7 @@ func defaultInitialObjects() []runtime.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				"tls.crt": nil,
+				"ca.crt": nil,
 			},
 		},
 	}
@@ -770,7 +771,7 @@ func mkService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				KibanaNameLabelName:  "kibana-test",
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -783,7 +784,7 @@ func mkService() corev1.Service {
 			},
 			Selector: map[string]string{
 				KibanaNameLabelName:  "kibana-test",
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 			},
 		},
 	}

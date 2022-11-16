@@ -16,9 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func TestClusterFromResourceLabels(t *testing.T) {
@@ -88,12 +88,11 @@ func TestExtractVersion(t *testing.T) {
 
 func TestNewPodLabels(t *testing.T) {
 	type args struct {
-		es         types.NamespacedName
-		ssetName   string
-		ver        version.Version
-		nodeRoles  *v1.Node
-		configHash string
-		scheme     string
+		es        types.NamespacedName
+		ssetName  string
+		ver       version.Version
+		nodeRoles *v1.Node
+		scheme    string
 	}
 	nameFixture := types.NamespacedName{
 		Namespace: "ns",
@@ -118,18 +117,16 @@ func TestNewPodLabels(t *testing.T) {
 					ML:        pointer.BoolPtr(false),
 					Transform: pointer.BoolPtr(false),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:             "name",
-				common.TypeLabelName:             "elasticsearch",
+				labels.TypeLabelName:             "elasticsearch",
 				VersionLabelName:                 "7.1.0",
 				string(NodeTypesMasterLabelName): "false",
 				string(NodeTypesDataLabelName):   "false",
 				string(NodeTypesIngestLabelName): "false",
 				string(NodeTypesMLLabelName):     "false",
-				ConfigHashLabelName:              "hash",
 				HTTPSchemeLabelName:              "https",
 				StatefulSetNameLabelName:         "sset",
 			},
@@ -149,19 +146,17 @@ func TestNewPodLabels(t *testing.T) {
 					Transform:  pointer.BoolPtr(true),
 					VotingOnly: pointer.BoolPtr(true),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                 "name",
-				common.TypeLabelName:                 "elasticsearch",
+				labels.TypeLabelName:                 "elasticsearch",
 				VersionLabelName:                     "7.3.0",
 				string(NodeTypesMasterLabelName):     "false",
 				string(NodeTypesDataLabelName):       "true",
 				string(NodeTypesIngestLabelName):     "false",
 				string(NodeTypesMLLabelName):         "false",
 				string(NodeTypesVotingOnlyLabelName): "true",
-				ConfigHashLabelName:                  "hash",
 				HTTPSchemeLabelName:                  "https",
 				StatefulSetNameLabelName:             "sset",
 			},
@@ -180,12 +175,11 @@ func TestNewPodLabels(t *testing.T) {
 					ML:        pointer.BoolPtr(false),
 					Transform: pointer.BoolPtr(true),
 				},
-				configHash: "hash",
-				scheme:     "https",
+				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				common.TypeLabelName:                          "elasticsearch",
+				labels.TypeLabelName:                          "elasticsearch",
 				VersionLabelName:                              "7.7.0",
 				string(NodeTypesMasterLabelName):              "false",
 				string(NodeTypesDataLabelName):                "true",
@@ -194,7 +188,69 @@ func TestNewPodLabels(t *testing.T) {
 				string(NodeTypesTransformLabelName):           "true",
 				string(NodeTypesRemoteClusterClientLabelName): "true",
 				string(NodeTypesVotingOnlyLabelName):          "false",
-				ConfigHashLabelName:                           "hash",
+				HTTPSchemeLabelName:                           "https",
+				StatefulSetNameLabelName:                      "sset",
+			},
+			wantErr: false,
+		},
+		{
+			name: "labels post-7.10",
+			args: args{
+				es:       nameFixture,
+				ssetName: "sset",
+				ver:      version.From(7, 10, 0),
+				nodeRoles: &v1.Node{
+					Roles: nil,
+				},
+				scheme: "https",
+			},
+			want: map[string]string{
+				ClusterNameLabelName:                          "name",
+				labels.TypeLabelName:                          "elasticsearch",
+				VersionLabelName:                              "7.10.0",
+				string(NodeTypesMasterLabelName):              "true",
+				string(NodeTypesDataLabelName):                "true",
+				string(NodeTypesDataHotLabelName):             "true",
+				string(NodeTypesDataWarmLabelName):            "true",
+				string(NodeTypesDataContentLabelName):         "true",
+				string(NodeTypesDataColdLabelName):            "true",
+				string(NodeTypesIngestLabelName):              "true",
+				string(NodeTypesMLLabelName):                  "true",
+				string(NodeTypesTransformLabelName):           "true",
+				string(NodeTypesRemoteClusterClientLabelName): "true",
+				string(NodeTypesVotingOnlyLabelName):          "false",
+				HTTPSchemeLabelName:                           "https",
+				StatefulSetNameLabelName:                      "sset",
+			},
+			wantErr: false,
+		},
+		{
+			name: "labels post-7.12",
+			args: args{
+				es:       nameFixture,
+				ssetName: "sset",
+				ver:      version.From(7, 12, 0),
+				nodeRoles: &v1.Node{
+					Roles: nil,
+				},
+				scheme: "https",
+			},
+			want: map[string]string{
+				ClusterNameLabelName:                          "name",
+				labels.TypeLabelName:                          "elasticsearch",
+				VersionLabelName:                              "7.12.0",
+				string(NodeTypesMasterLabelName):              "true",
+				string(NodeTypesDataLabelName):                "true",
+				string(NodeTypesDataHotLabelName):             "true",
+				string(NodeTypesDataWarmLabelName):            "true",
+				string(NodeTypesDataContentLabelName):         "true",
+				string(NodeTypesDataColdLabelName):            "true",
+				string(NodeTypesDataFrozenLabelName):          "true",
+				string(NodeTypesIngestLabelName):              "true",
+				string(NodeTypesMLLabelName):                  "true",
+				string(NodeTypesTransformLabelName):           "true",
+				string(NodeTypesRemoteClusterClientLabelName): "true",
+				string(NodeTypesVotingOnlyLabelName):          "false",
 				HTTPSchemeLabelName:                           "https",
 				StatefulSetNameLabelName:                      "sset",
 			},
@@ -203,7 +259,7 @@ func TestNewPodLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodLabels(tt.args.es, tt.args.ssetName, tt.args.ver, tt.args.nodeRoles, tt.args.configHash, tt.args.scheme)
+			got := NewPodLabels(tt.args.es, tt.args.ssetName, tt.args.ver, tt.args.nodeRoles, tt.args.scheme)
 			require.Nil(t, deep.Equal(got, tt.want))
 		})
 	}

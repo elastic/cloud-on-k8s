@@ -11,15 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-)
-
-var (
-	log = ulog.Log.WithName("association")
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 // AddAssociationController sets up and starts an association controller for the given associationInfo.
@@ -37,8 +32,6 @@ func AddAssociationController(
 		watches:         watches.NewDynamicWatches(),
 		recorder:        mgr.GetEventRecorderFor(controllerName),
 		Parameters:      params,
-		// override the default logger to be specialized with the association name
-		logger: log.WithName(controllerName),
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
@@ -66,7 +59,7 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 		return err
 	}
 
-	// Dynamically watch Secrets (CA Secret of the referenced resource and ES user secret)
+	// Dynamically watch Secrets (CA Secret of the referenced resource, ES user secret or custom referenced object secret)
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}

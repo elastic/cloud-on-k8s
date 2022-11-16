@@ -12,10 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
 
 func Test_GetResources(t *testing.T) {
@@ -24,25 +23,25 @@ func Test_GetResources(t *testing.T) {
 	}}
 	type args struct {
 		currentNodeSets  esv1.NodeSetList
-		nodeSetsStatus   status.Status
+		nodeSetsStatus   v1alpha1.ElasticsearchAutoscalerStatus
 		requiredCapacity client.AutoscalingPolicyResult
-		policy           esv1.AutoscalingPolicySpec
+		policy           v1alpha1.AutoscalingPolicySpec
 	}
 	tests := []struct {
 		name            string
 		args            args
-		want            resources.NodeSetsResources
-		wantPolicyState []status.PolicyState
+		want            v1alpha1.NodeSetsResources
+		wantPolicyState []v1alpha1.PolicyState
 		wantErr         bool
 	}{
 		{
 			name: "Warn user if observed storage capacity is unexpected", // see https://github.com/elastic/cloud-on-k8s/issues/4469
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
@@ -55,10 +54,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 5).WithMemory("2Gi", "8Gi").WithStorage("1Gi", "4Gi").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						/* storage is scaled vertically to its max capacity to match the total required storage capacity required from Elasticsearch at the policy level */
 						corev1.ResourceStorage: q("4Gi"),
@@ -68,10 +67,10 @@ func Test_GetResources(t *testing.T) {
 					Limits: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8Gi")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{
+			wantPolicyState: []v1alpha1.PolicyState{
 				{
 					// We expect a warning here because the user expects the operator to scale storage vertically, while the physical capacity diverges from the claimed one.
-					Type:     status.UnexpectedNodeStorageCapacity,
+					Type:     v1alpha1.UnexpectedNodeStorageCapacity,
 					Messages: []string{"Vertical Pod autoscaling is not supported: current node storage capacity 395136991232 is greater than the claimed capacity 1073741824"},
 				},
 			},
@@ -80,10 +79,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Do not warn user if observed storage capacity is unexpected but storage capacity is fixed",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
@@ -96,10 +95,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 5).WithMemory("2Gi", "2Gi").WithStorage("1Gi", "1Gi").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						/* storage is scaled vertically to its max capacity to match the total required storage capacity required from Elasticsearch at the policy level */
 						corev1.ResourceStorage: q("1Gi"),
@@ -115,10 +114,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale both vertically and horizontally to fulfil storage capacity request",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("6Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("6Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
@@ -130,10 +129,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("3Gi", "4Gi").WithStorage("5Gi", "10Gi").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi"), corev1.ResourceStorage: q("10Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3Gi")},
 				},
@@ -143,10 +142,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale storage vertically to handle total storage requirement",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					currentNodeStorage("1020M"). // 1Gi (1073MB) * 0.95
@@ -157,10 +156,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 3).WithMemory("2Gi", "4Gi").WithStorage("1Gi", "2Gi").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi"), corev1.ResourceStorage: q("2Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi")},
 				},
@@ -170,10 +169,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale storage vertically to handle large shard",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("2Gi"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					currentNodeStorage("1020M"). // 1Gi (1073MB) * 0.95
@@ -184,10 +183,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(2, 3).WithMemory("2Gi", "4Gi").WithStorage("1Gi", "2Gi").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 2}}, // Only scale vertically, do not scale out.
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi"), corev1.ResourceStorage: q("2Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4Gi")},
 				},
@@ -197,10 +196,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale memory vertically",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("3G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					requiredNodeMemory("6G").
@@ -208,10 +207,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "8G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 				},
@@ -221,10 +220,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Do not scale down storage capacity",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("10G")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("10G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
@@ -236,10 +235,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "8G").WithStorage("1G", "20G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi"), corev1.ResourceStorage: q("10G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 				},
@@ -249,10 +248,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale existing nodes vertically up to the tier limit",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					requiredNodeMemory("6G").
@@ -260,10 +259,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "8G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7Gi")},
 				},
@@ -273,10 +272,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Scale both vertically and horizontally",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					requiredNodeMemory("6G").
@@ -284,10 +283,10 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "8G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
 				},
@@ -297,10 +296,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Do not exceed node count specified by the user",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					requiredNodeMemory("6G").
@@ -308,15 +307,15 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 5).WithMemory("5G", "8G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 5}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{
+			wantPolicyState: []v1alpha1.PolicyState{
 				{
 					Type:     "HorizontalScalingLimitReached",
 					Messages: []string{"Can't provide total required memory 48000000000, max number of nodes is 5, requires 6 nodes"},
@@ -327,10 +326,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Do not exceed horizontal and vertical limits specified by the user",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("4G"), corev1.ResourceStorage: q("1Gi")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					requiredNodeMemory("8G").  // user set a limit to 5G / node
@@ -338,18 +337,18 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemory("5G", "7G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{
+			wantPolicyState: []v1alpha1.PolicyState{
 				{
 					Type:     "VerticalScalingLimitReached",
-					Messages: []string{"Node required memory 8000000000 is greater than max allowed: 7000000000"},
+					Messages: []string{"memory required per node, 8000000000, is greater than the maximum allowed: 7000000000"},
 				},
 				{
 					Type:     "HorizontalScalingLimitReached",
@@ -361,10 +360,10 @@ func Test_GetResources(t *testing.T) {
 			name: "Do not scale down if all nodes are not observed by Elasticsearch",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					// current capacities as observed by Elasticsearch
@@ -377,24 +376,24 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 9).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}}, // do not scale down to 5 nodes
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 6}}, // do not scale down to 5 nodes
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{},
+			wantPolicyState: []v1alpha1.PolicyState{},
 		},
 		{
 			name: "Scale down if requested by users even if all nodes are not observed by Elasticsearch",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "my-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 6}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder().
 					currentNodeStorage("6G").requiredNodeStorage("1G").   // biggest shard is 1G
@@ -403,24 +402,24 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 5).WithMemory("5G", "7G").WithStorage("5G", "6G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 5}}, // scale down to 5 nodes as requested by the user
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 5}}, // scale down to 5 nodes as requested by the user
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("6G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{},
+			wantPolicyState: []v1alpha1.PolicyState{},
 		},
 		{
 			name: "Scale down ML nodes to 0",
 			args: args{
 				currentNodeSets: defaultNodeSets,
-				nodeSetsStatus: status.Status{AutoscalingPolicyStatuses: []status.AutoscalingPolicyStatus{{
+				nodeSetsStatus: v1alpha1.ElasticsearchAutoscalerStatus{AutoscalingPolicyStatuses: []v1alpha1.AutoscalingPolicyStatus{{
 					Name:                   "ml-autoscaling-policy",
-					NodeSetNodeCount:       []resources.NodeSetNodeCount{{Name: "default", NodeCount: 1}},
-					ResourcesSpecification: resources.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G"), corev1.ResourceStorage: q("1G")}}}},
+					NodeSetNodeCount:       []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 1}},
+					ResourcesSpecification: v1alpha1.NodeResources{Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("8G"), corev1.ResourceStorage: q("1G")}}}},
 				},
 				requiredCapacity: newAutoscalingPolicyResultBuilder(). // ML decider sets all the resources to 0.
 											currentNodeStorage("1G").requiredNodeStorage("0").
@@ -429,15 +428,15 @@ func Test_GetResources(t *testing.T) {
 											build(),
 				policy: NewAutoscalingSpecBuilder("ml-autoscaling-policy").WithNodeCounts(0, 3).WithMemory("7G", "9G").WithStorage("1G", "1G").Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "ml-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 0}}, // Scale down to 0 node as no resource is needed.
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 0}}, // Scale down to 0 node as no resource is needed.
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G"), corev1.ResourceStorage: q("1G")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("7G")},
 				},
 			},
-			wantPolicyState: []status.PolicyState{},
+			wantPolicyState: []v1alpha1.PolicyState{},
 		},
 		{
 			name: "Adjust limits",
@@ -448,13 +447,13 @@ func Test_GetResources(t *testing.T) {
 					build(),
 				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").
 					WithNodeCounts(3, 6).
-					WithMemoryAndRatio("5G", "8G", 2.0).
+					WithMemoryAndRatio("5G", "8G", resource.MustParse("2.0")).
 					Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 					Limits:   map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("12Gi")},
 				},
@@ -468,12 +467,12 @@ func Test_GetResources(t *testing.T) {
 					requiredNodeMemory("6G").
 					requiredTierMemory("15G").
 					build(),
-				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemoryAndRatio("5G", "8G", 0.0).Build(),
+				policy: NewAutoscalingSpecBuilder("my-autoscaling-policy").WithNodeCounts(3, 6).WithMemoryAndRatio("5G", "8G", resource.MustParse("0.0")).Build(),
 			},
-			want: resources.NodeSetsResources{
+			want: v1alpha1.NodeSetsResources{
 				Name:             "my-autoscaling-policy",
-				NodeSetNodeCount: []resources.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
-				NodeResources: resources.NodeResources{
+				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "default", NodeCount: 3}},
+				NodeResources: v1alpha1.NodeResources{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: q("6Gi")},
 				},
 			},
@@ -487,7 +486,7 @@ func Test_GetResources(t *testing.T) {
 				tt.args.currentNodeSets,
 				tt.args.nodeSetsStatus,
 				tt.args.requiredCapacity,
-				status.NewAutoscalingStatusBuilder(),
+				v1alpha1.NewAutoscalingStatusBuilder(),
 			)
 			if err != nil {
 				if !tt.wantErr {
@@ -504,7 +503,7 @@ func Test_GetResources(t *testing.T) {
 	}
 }
 
-func getPolicyStates(status status.Status, policyName string) []status.PolicyState {
+func getPolicyStates(status v1alpha1.ElasticsearchAutoscalerStatus, policyName string) []v1alpha1.PolicyState {
 	for _, state := range status.AutoscalingPolicyStatuses {
 		if state.Name == policyName {
 			return state.PolicyStates
@@ -518,7 +517,7 @@ func getPolicyStates(status status.Status, policyName string) []status.PolicySta
 type AutoscalingSpecBuilder struct {
 	name                       string
 	nodeCountMin, nodeCountMax int32
-	cpu, memory, storage       *esv1.QuantityRange
+	cpu, memory, storage       *v1alpha1.QuantityRange
 }
 
 func NewAutoscalingSpecBuilder(name string) *AutoscalingSpecBuilder {
@@ -532,15 +531,15 @@ func (asb *AutoscalingSpecBuilder) WithNodeCounts(min, max int) *AutoscalingSpec
 }
 
 func (asb *AutoscalingSpecBuilder) WithMemory(min, max string) *AutoscalingSpecBuilder {
-	asb.memory = &esv1.QuantityRange{
+	asb.memory = &v1alpha1.QuantityRange{
 		Min: resource.MustParse(min),
 		Max: resource.MustParse(max),
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(min, max string, ratio float64) *AutoscalingSpecBuilder {
-	asb.memory = &esv1.QuantityRange{
+func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(min, max string, ratio resource.Quantity) *AutoscalingSpecBuilder {
+	asb.memory = &v1alpha1.QuantityRange{
 		Min:                   resource.MustParse(min),
 		Max:                   resource.MustParse(max),
 		RequestsToLimitsRatio: &ratio,
@@ -549,7 +548,7 @@ func (asb *AutoscalingSpecBuilder) WithMemoryAndRatio(min, max string, ratio flo
 }
 
 func (asb *AutoscalingSpecBuilder) WithStorage(min, max string) *AutoscalingSpecBuilder {
-	asb.storage = &esv1.QuantityRange{
+	asb.storage = &v1alpha1.QuantityRange{
 		Min: resource.MustParse(min),
 		Max: resource.MustParse(max),
 	}
@@ -557,15 +556,15 @@ func (asb *AutoscalingSpecBuilder) WithStorage(min, max string) *AutoscalingSpec
 }
 
 func (asb *AutoscalingSpecBuilder) WithCPU(min, max string) *AutoscalingSpecBuilder {
-	asb.cpu = &esv1.QuantityRange{
+	asb.cpu = &v1alpha1.QuantityRange{
 		Min: resource.MustParse(min),
 		Max: resource.MustParse(max),
 	}
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(min, max string, ratio float64) *AutoscalingSpecBuilder {
-	asb.cpu = &esv1.QuantityRange{
+func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(min, max string, ratio resource.Quantity) *AutoscalingSpecBuilder {
+	asb.cpu = &v1alpha1.QuantityRange{
 		Min:                   resource.MustParse(min),
 		Max:                   resource.MustParse(max),
 		RequestsToLimitsRatio: &ratio,
@@ -573,16 +572,16 @@ func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(min, max string, ratio float6
 	return asb
 }
 
-func (asb *AutoscalingSpecBuilder) Build() esv1.AutoscalingPolicySpec {
-	return esv1.AutoscalingPolicySpec{
-		NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{
+func (asb *AutoscalingSpecBuilder) Build() v1alpha1.AutoscalingPolicySpec {
+	return v1alpha1.AutoscalingPolicySpec{
+		NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
 			Name: asb.name,
 		},
-		AutoscalingResources: esv1.AutoscalingResources{
+		AutoscalingResources: v1alpha1.AutoscalingResources{
 			CPURange:     asb.cpu,
 			MemoryRange:  asb.memory,
 			StorageRange: asb.storage,
-			NodeCountRange: esv1.CountRange{
+			NodeCountRange: v1alpha1.CountRange{
 				Min: asb.nodeCountMin,
 				Max: asb.nodeCountMax,
 			},
@@ -643,7 +642,10 @@ func (rcb *autoscalingPolicyResultBuilder) observedNodes(nodes ...string) *autos
 }
 
 func ptr(q int64) *client.AutoscalingCapacity {
-	v := client.AutoscalingCapacity(q)
+	qPtr := resource.NewQuantity(q, resource.DecimalSI)
+	v := client.AutoscalingCapacity{
+		Quantity: *qPtr,
+	}
 	return &v
 }
 

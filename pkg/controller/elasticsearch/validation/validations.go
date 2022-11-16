@@ -5,23 +5,23 @@
 package validation
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	stackmon "github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/validations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	stackmon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	netutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
-
-var log = ulog.Log.WithName("es-validation")
 
 const (
 	autoscalingVersionMsg    = "autoscaling is not available in this version of Elasticsearch"
@@ -48,18 +48,18 @@ type validation func(esv1.Elasticsearch) field.ErrorList
 type updateValidation func(esv1.Elasticsearch, esv1.Elasticsearch) field.ErrorList
 
 // updateValidations are the validation funcs that only apply to updates
-func updateValidations(k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
+func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorageClass bool) []updateValidation {
 	return []updateValidation{
 		noDowngrades,
 		validUpgradePath,
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
-			return validPVCModification(current, proposed, k8sClient, validateStorageClass)
+			return validPVCModification(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
 	}
 }
 
 // validations are the validation funcs that apply to creates or updates
-func validations(exposedNodeLabels NodeLabels) []validation {
+func validations(ctx context.Context, checker license.Checker, exposedNodeLabels NodeLabels) []validation {
 	return []validation{
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
@@ -72,6 +72,10 @@ func validations(exposedNodeLabels NodeLabels) []validation {
 		validAutoscalingConfiguration,
 		validPVCNaming,
 		validMonitoring,
+		validAssociations,
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validLicenseLevel(ctx, proposed, checker)
+		},
 	}
 }
 
@@ -169,8 +173,8 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Forbidden(confField(i), fmt.Sprintf(mixedRoleConfigMsg, strings.Join(nodeRoleAttrs, ","))))
 		}
 
-		// Check if this nodeSet has the master role. If autoscaling is enabled the count value in the NodeSet might not be initially set.
-		seenMaster = seenMaster || (cfg.Node.HasRole(esv1.MasterRole) && !cfg.Node.HasRole(esv1.VotingOnlyRole) && ns.Count > 0) || es.IsAutoscalingDefined()
+		// Check if this nodeSet has the master role.
+		seenMaster = seenMaster || (cfg.Node.IsConfiguredWithRole(esv1.MasterRole) && !cfg.Node.IsConfiguredWithRole(esv1.VotingOnlyRole) && ns.Count > 0)
 	}
 
 	if !seenMaster {
@@ -252,6 +256,12 @@ func checkNodeSetNameUniqueness(es esv1.Elasticsearch) field.ErrorList {
 
 func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
+
+	// allow disabling version validation
+	if proposed.IsConfiguredToAllowDowngrades() {
+		return errs
+	}
+
 	currentVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
 		// this should not happen, since this is the already persisted version
@@ -272,11 +282,11 @@ func noDowngrades(current, proposed esv1.Elasticsearch) field.ErrorList {
 
 func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	currentVer, err := version.Parse(current.Spec.Version)
-	if err != nil {
-		// this should not happen, since this is the already persisted version
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
+	currentVer, ferr := currentVersion(current)
+	if ferr != nil {
+		errs = append(errs, ferr)
 	}
+
 	proposedVer, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
@@ -298,6 +308,46 @@ func validUpgradePath(current, proposed esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
+func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) {
+	// we do not have a version in the status let's use the version in the current spec instead which will not reflect
+	// actually running Pods but which is still better than no validation.
+	if current.Status.Version == "" {
+		currentVer, err := version.Parse(current.Spec.Version)
+		if err != nil {
+			// this should not happen, since this is the already persisted version
+			return version.Version{}, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg)
+		}
+		return currentVer, nil
+	}
+	// if available use the status version which reflects the lowest version currently running in the cluster
+	currentVer, err := version.Parse(current.Status.Version)
+	if err != nil {
+		// this should not happen, since this is the version from the spec copied to the status by the operator
+		return version.Version{}, field.Invalid(field.NewPath("status").Child("version"), current.Status.Version, parseStoredVersionErrMsg)
+	}
+	return currentVer, nil
+}
+
 func validMonitoring(es esv1.Elasticsearch) field.ErrorList {
 	return stackmon.Validate(&es, es.Spec.Version)
+}
+
+func validAssociations(es esv1.Elasticsearch) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
+	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), es.GetMonitoringMetricsRefs()...)
+	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), es.GetMonitoringLogsRefs()...)
+	return append(err1, err2...)
+}
+
+func validLicenseLevel(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+	var errs field.ErrorList
+	ok, err := license.HasRequestedLicenseLevel(ctx, es.Annotations, checker)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "while checking license level during validation")
+		return nil // ignore the error here
+	}
+	if !ok {
+		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("annotations").Child(license.Annotation), "enterprise", "Enterprise license required but ECK operator is running on a Basic license"))
+	}
+	return errs
 }

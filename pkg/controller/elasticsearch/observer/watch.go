@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 )
 
 // WatchClusterHealthChange returns a Source fed with generic events targeting clusters
@@ -32,9 +32,9 @@ func WatchClusterHealthChange(m *Manager) *source.Channel {
 // healthChangeListener returns an OnObservation listener that feeds a generic
 // event when a cluster's observed health has changed.
 func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation {
-	return func(cluster types.NamespacedName, previous State, current State) {
+	return func(cluster types.NamespacedName, previous, current esv1.ElasticsearchHealth) {
 		// no-op if health hasn't change
-		if !hasHealthChanged(previous, current) {
+		if previous == current {
 			return
 		}
 
@@ -46,21 +46,5 @@ func healthChangeListener(reconciliation chan event.GenericEvent) OnObservation 
 			}},
 		}
 		reconciliation <- evt
-	}
-}
-
-// hasHealthChanged returns true if previous and new contain different health.
-func hasHealthChanged(previous State, current State) bool {
-	switch {
-	// both nil
-	case previous.ClusterHealth == nil && current.ClusterHealth == nil:
-		return false
-	// both equal
-	case previous.ClusterHealth != nil && current.ClusterHealth != nil &&
-		previous.ClusterHealth.Status == current.ClusterHealth.Status:
-		return false
-	// else: different
-	default:
-		return true
 	}
 }

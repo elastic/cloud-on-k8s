@@ -7,7 +7,7 @@ package v1beta1
 import (
 	"testing"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	common "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1beta1"
 )
 
 func Test_noUnsupportedSettings(t *testing.T) {

@@ -11,14 +11,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 const (
@@ -71,9 +71,21 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 
 // referencedElasticsearchStatusVersion returns the currently running version of Elasticsearch
 // reported in its status.
-func referencedElasticsearchStatusVersion(c k8s.Client, esRef types.NamespacedName) (string, error) {
+func referencedElasticsearchStatusVersion(c k8s.Client, esRef commonv1.ObjectSelector) (string, error) {
+	if esRef.IsExternal() {
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, esRef)
+		if err != nil {
+			return "", err
+		}
+		ver, err := info.Request("/", "{ .version.number }")
+		if err != nil {
+			return "", err
+		}
+		return ver, nil
+	}
+
 	var es esv1.Elasticsearch
-	err := c.Get(context.Background(), esRef, &es)
+	err := c.Get(context.Background(), esRef.NamespacedName(), &es)
 	if err != nil {
 		return "", err
 	}

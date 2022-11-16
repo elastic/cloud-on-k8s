@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -15,13 +16,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (
@@ -54,6 +56,8 @@ type Builder struct {
 	// situations where the Elasticsearch resource is modified by an external mechanism, like the autoscaling controller.
 	// In such a situation the actual resources may diverge from what was originally specified in the builder.
 	expectedElasticsearch *esv1.Elasticsearch
+
+	GlobalCA bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -67,6 +71,7 @@ func (b Builder) DeepCopy() *Builder {
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
+	builderCopy.GlobalCA = b.GlobalCA
 	return &builderCopy
 }
 
@@ -97,17 +102,21 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-
+	def := test.Ctx().ImageDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
-			Spec: esv1.ElasticsearchSpec{
-				Version: test.Ctx().ElasticStackVersion,
-			},
 		},
 	}.
+		WithVersion(def.Version).
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.Elasticsearch.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {
@@ -123,6 +132,13 @@ func (b Builder) WithSuffix(suffix string) Builder {
 		b.Elasticsearch.ObjectMeta.Name = b.Elasticsearch.ObjectMeta.Name + "-" + suffix
 	}
 	return b
+}
+
+func (b Builder) LocalRef() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
+		Name:      b.Elasticsearch.Name,
+		Namespace: b.Elasticsearch.Namespace,
+	}
 }
 
 func (b Builder) Ref() commonv1.ObjectSelector {
@@ -146,7 +162,7 @@ func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
 		append(b.Elasticsearch.Spec.RemoteClusters,
 			esv1.RemoteCluster{
 				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.Ref(),
+				ElasticsearchRef: remoteEs.LocalRef(),
 			})
 	return b
 }
@@ -158,6 +174,9 @@ func (b Builder) WithNamespace(namespace string) Builder {
 
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
+	if strings.HasSuffix(version, "-SNAPSHOT") {
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	}
 	return b
 }
 
@@ -190,6 +209,11 @@ func (b Builder) WithCustomTransportCA(name string) Builder {
 
 func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	b.Elasticsearch.Spec.HTTP.TLS.Certificate.SecretName = name
+	return b
+}
+
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
 	return b
 }
 
@@ -303,12 +327,12 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		if b.Elasticsearch.Spec.NodeSets[i].Name == nodeSet.Name {
 			b.Elasticsearch.Spec.NodeSets[i] = nodeSet
-			return b.WithDefaultPersistentVolumes()
+			return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 		}
 	}
 
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
-	return b.WithDefaultPersistentVolumes()
+	return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
@@ -388,18 +412,16 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 }
 
 func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
-	var newNodeSets []esv1.NodeSet
-	for nodeSetName, cfg := range nodeSetCfg {
-		for _, n := range b.Elasticsearch.Spec.NodeSets {
-			if n.Name == nodeSetName {
-				newCfg := n.Config.DeepCopy()
-				for k, v := range cfg {
-					newCfg.Data[k] = v
-				}
-				n.Config = newCfg
+	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
+	for _, n := range b.Elasticsearch.Spec.NodeSets {
+		if cfg, exists := nodeSetCfg[n.Name]; exists {
+			newCfg := n.Config.DeepCopy()
+			for k, v := range cfg {
+				newCfg.Data[k] = v
 			}
-			newNodeSets = append(newNodeSets, n)
+			n.Config = newCfg
 		}
+		newNodeSets = append(newNodeSets, n)
 	}
 	b.Elasticsearch.Spec.NodeSets = newNodeSets
 	return b
@@ -421,11 +443,37 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 		for j, container := range nodeSet.PodTemplate.Spec.Containers {
-			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			var update bool
+			for k, e := range container.Env {
+				if e.Name == name {
+					container.Env[k].Value = value
+					update = true
+				}
+			}
+			if !update {
+				container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			}
 			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = container.Env
 		}
 	}
 	return b
+}
+
+// WithPreStopAdditionalWaitSeconds updates the PRE_STOP_ADDITIONAL_WAIT_SECONDS environment variable in the Elasticsearch container.
+// It can be used to speed up the test by shortening the pre-stop hook runtime.
+// Don't use if you want to test that Elasticsearch is not dropping connections.
+func (b Builder) WithPreStopAdditionalWaitSeconds(s int32) Builder {
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		containers := b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers
+		if len(containers) == 0 {
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers = []corev1.Container{
+				{
+					Name: "elasticsearch",
+				},
+			}
+		}
+	}
+	return b.WithEnvironmentVariable("PRE_STOP_ADDITIONAL_WAIT_SECONDS", fmt.Sprintf("%d", s))
 }
 
 func (b Builder) WithLabel(key, value string) Builder {

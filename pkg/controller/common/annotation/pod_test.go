@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestMarkPodAsUpdated(t *testing.T) {
@@ -44,7 +44,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			MarkPodAsUpdated(tt.args.c, tt.args.pod)
+			MarkPodAsUpdated(context.Background(), tt.args.c, tt.args.pod)
 			// Ensure the label is present
 			actualPod := &corev1.Pod{}
 			assert.NoError(t, tt.args.c.Get(context.Background(), key, actualPod))
@@ -52,7 +52,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 			previousValue, ok := actualPod.Annotations[UpdateAnnotation]
 			assert.True(t, ok)
 			// Trigger a new update
-			MarkPodAsUpdated(tt.args.c, *actualPod)
+			MarkPodAsUpdated(context.Background(), tt.args.c, *actualPod)
 			// Ensure the label is updated
 			actualPod = &corev1.Pod{}
 			assert.NoError(t, tt.args.c.Get(context.Background(), key, actualPod))

@@ -5,13 +5,13 @@
 [id="{p}-release-ssets"]
 === StatefulSets
 
-ECK now uses StatefulSets under the hood to orchestrate Elasticsearch clusters. Prior to 1.0.0-beta1, upgrading a cluster storing large volumes of data could take hours or even days because data had to be replicated to newly created Elasticsearch nodes. With StatefulSets, you can simply reuse persistent volumes and significantly reduce the time and resources used to upgrade an Elasticsearch cluster. See <<{p}-orchestration>> for more detail.
+ECK now uses StatefulSets under the hood to orchestrate Elasticsearch clusters. Prior to 1.0.0-beta1, upgrading a cluster storing large volumes of data could take hours or even days because data had to be replicated to newly created Elasticsearch nodes. With StatefulSets, you can simply reuse persistent volumes and significantly reduce the time and resources used to upgrade an Elasticsearch cluster. Check <<{p}-orchestration>> for more detail.
 
 [float]
 [id="{p}-release-v1beta1"]
 === Resource version promotion
 
-Custom resources have graduated to version `v1beta1`.  Old resources must be migrated to the new version to work with ECK 1.0.0-beta1. Resources created using an older version will continue to run but the operator will not manage them. To receive all the benefits of ECK 1.0.0-beta1, we recommend deleting old custom resources and recreating them. See <<{p}-upgrading-eck>> for more information.
+Custom resources have graduated to version `v1beta1`.  Old resources must be migrated to the new version to work with ECK 1.0.0-beta1. Resources created using an older version will continue to run but the operator will not manage them. To receive all the benefits of ECK 1.0.0-beta1, we recommend deleting old custom resources and recreating them. Check <<{p}-upgrading-eck>> for more information.
 
 [float]
 [id="{p}-release-validation"]
@@ -25,7 +25,7 @@ Webhook validation has also temporarily been removed from this release. It is cu
 [id="{p}-release-tls"]
 === More control over TLS settings
 
-Users have more control over TLS settings of the Elasticsearch HTTP layer, Kibana, and APM Server in this release. It is now possible to use external certificates from well-known CAs, utilities like cert-manager, or even completely disable automatic provisioning of TLS certificates. The latter can be useful when TLS is handled at a different layer, for instance, with Istio deployments. See: <<{p}-setting-up-your-own-certificate>> and <<{p}-disable-tls>>. 
+Users have more control over TLS settings of the Elasticsearch HTTP layer, Kibana, and APM Server in this release. It is now possible to use external certificates from well-known CAs, utilities like cert-manager, or even completely disable automatic provisioning of TLS certificates. The latter can be useful when TLS is handled at a different layer, for instance, with Istio deployments. Check <<{p}-setting-up-your-own-certificate>> and <<{p}-disable-tls>>. 
 
 [float]
 [id="{p}-release-secure-settings"]
@@ -37,14 +37,14 @@ Secure settings have received multiple ergonomics improvements. It is now possib
 [id="{p}-release-default-limits"]
 === Default limits
 
-Default limits are now set for the various resource types if none are explicitly specified. Previously, if left at the default, Pods would consume unbounded amounts of memory, which could lead them to be OOM killed. This allows for a better experience in demo scenarios. We recommend in production that both requests and limits be set appropriately. See <<{p}-managing-compute-resources>> for more information.
+Default limits are now set for the various resource types if none are explicitly specified. Previously, if left at the default, Pods would consume unbounded amounts of memory, which could lead them to be OOM killed. This allows for a better experience in demo scenarios. We recommend in production that both requests and limits be set appropriately. Check <<{p}-managing-compute-resources>> for more information.
 
 [float]
 [id="{p}-breaking-changes-1.0.0-beta1"]
 === Breaking Changes
 
 The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. 
-Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. Please see the <<{p}-upgrading-eck, upgrading documentation>> for more information.
+Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. Check the <<{p}-upgrading-eck, upgrading documentation>> for more information.
 
 [float]
 [id="{p}-known-issues-1.0.0-beta1"]

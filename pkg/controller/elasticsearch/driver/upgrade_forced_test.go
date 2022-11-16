@@ -12,9 +12,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
@@ -165,12 +168,13 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(runtimeObjs...)
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
-					Client:       k8sClient,
-					Expectations: expectations.NewExpectations(k8sClient),
+					Client:         k8sClient,
+					Expectations:   expectations.NewExpectations(k8sClient),
+					ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 				},
 			}
 
-			attempted, err := d.maybeForceUpgradePods(tt.actualPods, tt.podsToUpgrade)
+			attempted, err := d.maybeForceUpgradePods(context.Background(), tt.actualPods, tt.podsToUpgrade)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList

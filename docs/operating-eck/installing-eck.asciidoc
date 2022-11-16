@@ -31,7 +31,7 @@ This method is the quickest way to get started with ECK if you have full adminis
 [id="{p}-install-helm"]
 == Install ECK using the Helm chart
 
-Starting from ECK 1.3.0, an experimental Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
+Starting from ECK 1.3.0, a Helm chart is available to install ECK. It is available from the Elastic Helm repository and can be added to your Helm repository list by running the following command:
 
 [source, sh]
 ----
@@ -81,7 +81,7 @@ helm install elastic-operator elastic/eck-operator -n elastic-system --create-na
 [NOTE]
 ====
 
-The `eck-operator` chart contains several pre-defined profiles to help you install the operator in different configurations. These profiles can be found in the root of the chart directory, prefixed with `profile-`. For example, the restricted configuration shown above is defined in the `profile-restricted.yaml` file, and can be used as follows:
+The `eck-operator` chart contains several pre-defined profiles to help you install the operator in different configurations. These profiles can be found in the root of the chart directory, prefixed with `profile-`. For example, the restricted configuration illustrated in the previous code extract is defined in the `profile-restricted.yaml` file, and can be used as follows:
 
 [source,sh]
 ----
@@ -112,7 +112,7 @@ helm show values elastic/eck-operator
 [id="{p}-migrate-to-helm"]
 === Migrate an existing installation to Helm
 
-CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Read the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
+CAUTION: Migrating an existing installation to Helm is essentially an upgrade operation and any <<{p}-beta-to-ga-rolling-restart,caveats associated with normal operator upgrades>> are applicable. Check the <<{p}-ga-upgrade,upgrade documentation>> before proceeding.
 
 
 You can migrate an existing operator installation to Helm by adding the `meta.helm.sh/release-name`, `meta.helm.sh/release-namespace` annotations and the `app.kubernetes.io/managed-by` label to all the resources you want to be adopted by Helm. You _must_ do this for the Elastic Custom Resource Definitions (CRD) because deleting them would trigger the deletion of all deployed Elastic applications as well. All other resources are optional and can be deleted.

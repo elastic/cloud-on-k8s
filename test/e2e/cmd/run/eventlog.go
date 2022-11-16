@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 type eventLogEntry struct {
@@ -106,7 +106,7 @@ func (el *eventLogger) runEventProcessor() {
 			return
 		}
 
-		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string))
+		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string)) //nolint:forcetypeassert
 		if err != nil {
 			log.Error(err, "Failed to get event", "key", key)
 			return

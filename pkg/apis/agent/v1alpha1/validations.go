@@ -10,8 +10,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 var (
@@ -30,6 +30,7 @@ var (
 		checkFleetServerOrFleetServerRef,
 		checkReferenceSetForMode,
 		checkSingleESRefInFleetMode,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -92,7 +93,7 @@ func checkESRefsNamed(a *Agent) field.ErrorList {
 		}
 	}
 	if len(notNamed) > 0 {
-		msg := fmt.Sprintf("when declaring mulitiple refs all have to be named, missing outputName on %v", notNamed)
+		msg := fmt.Sprintf("when declaring multiple refs all have to be named, missing outputName on %v", notNamed)
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
 		}
@@ -101,6 +102,9 @@ func checkESRefsNamed(a *Agent) field.ErrorList {
 }
 
 func checkNoDowngrade(prev, curr *Agent) field.ErrorList {
+	if commonv1.IsConfiguredToAllowDowngrades(curr) {
+		return nil
+	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 
@@ -227,4 +231,11 @@ func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkAssociations(a *Agent) field.ErrorList {
+	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), a.ElasticsearchRefs()...)
+	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
+	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
+	return append(append(err1, err2...), err3...)
 }

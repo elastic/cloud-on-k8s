@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build beat e2e
+//go:build beat || e2e
 
 package beat
 
@@ -11,7 +11,7 @@ var (
   autodiscover:
     providers:
     - type: kubernetes
-      host: ${HOSTNAME}
+      node: ${NODE_NAME}
       hints:
         enabled: true
         default_config:
@@ -27,6 +27,14 @@ processors:
   automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
   containers:
   - name: filebeat
+    # increase memory by +50% compared to the default value
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        cpu: 100m
+        memory: 300Mi
     volumeMounts:
     - mountPath: /var/lib/docker/containers
       name: varlibdockercontainers
@@ -34,6 +42,11 @@ processors:
       name: varlogcontainers
     - mountPath: /var/log/pods
       name: varlogpods
+    env:
+    - name: NODE_NAME 
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
   dnsPolicy: ClusterFirstWithHostNet
   hostNetwork: true
   securityContext:
@@ -72,7 +85,7 @@ heartbeat.monitors:
     - hints:
         default_config: {}
         enabled: "true"
-      host: ${HOSTNAME}
+      node: ${NODE_NAME}
       type: kubernetes
   modules:
   - module: system
@@ -104,7 +117,7 @@ heartbeat.monitors:
                 mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib)($|/)
   - module: kubernetes
     period: 10s
-    host: ${HOSTNAME}
+    node: ${NODE_NAME}
     hosts:
     - https://${HOSTNAME}:10250
     bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -130,6 +143,11 @@ processors:
     - /etc/beat.yml
     - -system.hostfs=/hostfs
     name: metricbeat
+    env:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
     volumeMounts:
     - mountPath: /hostfs/sys/fs/cgroup
       name: cgroup
@@ -185,7 +203,7 @@ processors:
   - add_process_metadata:
       match_pids: ['process.pid']
   - add_kubernetes_metadata:
-      host: ${HOSTNAME}
+      node: ${NODE_NAME}
       default_indexers.enabled: false
       default_matchers.enabled: false
       indexers:
@@ -223,6 +241,11 @@ processors:
       type: DirectoryOrCreate
   containers:
   - name: auditbeat
+    env:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
     securityContext:
       capabilities:
         add:
@@ -268,7 +291,7 @@ packetbeat.flows:
 processors:
   - add_cloud_metadata:
   - add_kubernetes_metadata:
-      host: ${HOSTNAME}
+      node: ${NODE_NAME}
       indexers:
       - ip_port:
       matchers:
@@ -283,6 +306,11 @@ spec:
   dnsPolicy: ClusterFirstWithHostNet
   containers:
   - name: packetbeat
+    env:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
     securityContext:
       runAsUser: 0
       capabilities:
@@ -295,7 +323,7 @@ spec:
   cursor_seek_fallback: tail
 processors:
 - add_kubernetes_metadata:
-    host: "${HOSTNAME}"
+    node: "${NODE_NAME}"
     in_cluster: true
     default_indexers.enabled: false
     default_matchers.enabled: false
@@ -325,6 +353,11 @@ spec:
       name: run-journal
     - mountPath: /etc/machine-id
       name: machine-id
+    env:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
   hostNetwork: true
   securityContext:
     runAsUser: 0

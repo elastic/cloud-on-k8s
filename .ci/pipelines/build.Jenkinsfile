@@ -26,7 +26,8 @@ pipeline {
             stages {
                 stage('Run checks') {
                     steps {
-                        sh 'make -C .ci TARGET=ci-check ci'
+                        sh '.ci/setenvconfig build'
+                        sh 'make -C .ci license.key TARGET=ci-check ci'
                     }
                 }
                 stage('Run unit and integration tests') {
@@ -34,20 +35,30 @@ pipeline {
                         sh 'make -C .ci TARGET=ci ci'
                     }
                 }
-                stage('Build and push Docker image') {
-                    steps {
-                        sh '.ci/setenvconfig build'
-                        sh 'make -C .ci license.key TARGET=ci-release ci'
-                    }
-                }
-                stage('Upload YAML manifest to S3') {
-                    environment {
-                        VERSION="${sh(returnStdout: true, script: '. ./.env; echo $IMG_VERSION').trim()}"
-                    }
-
-                    steps {
-                        script {
-                            sh 'make -C .ci yaml-upload'
+                stage('build') {
+                    failFast true
+                    parallel {
+                        stage("build and push operator image and manifests") {
+                            agent {
+                                label 'linux'
+                            }
+                            steps {
+                                sh '.ci/setenvconfig build'
+                                sh 'make -C .ci license.key TARGET="generate-crds-v1 build-operator-multiarch-image" ci'
+                                sh 'make -C .ci yaml-upload'
+                            }
+                        }
+                        stage("build and push operator image in FIPS mode") {
+                            agent {
+                                label 'linux'
+                            }
+                            environment {
+                                ENABLE_FIPS="true"
+                            }
+                            steps {
+                                sh '.ci/setenvconfig build'
+                                sh 'make -C .ci license.key TARGET=build-operator-multiarch-image ci'
+                            }
                         }
                     }
                 }
@@ -76,7 +87,7 @@ pipeline {
     post {
         success {
             script {
-                def operatorImage = sh(returnStdout: true, script: 'make print-operator-image').trim()
+                def operatorImage = sh(returnStdout: true, script: '.ci/setenvconfig build && make print-operator-image').trim()
                 if (isWeekday()) {
                     build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                         parameters: [
@@ -110,7 +121,7 @@ pipeline {
                     build job: 'cloud-on-k8s-e2e-tests-ocp',
                         parameters: [
                             string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                            string(name: 'OCP_VERSION', value: "4.9.6"),
+                            string(name: 'OCP_VERSION', value: "4.11.5"),
                             string(name: 'branch_specifier', value: GIT_COMMIT)
                         ],
                         wait: false

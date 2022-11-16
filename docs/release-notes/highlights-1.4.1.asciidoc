@@ -34,7 +34,7 @@ spec:
           - name: agent-data
             mountPath: /usr/share/elastic-agent/data/elastic-agent-9b2fec/run
 ----
-The `mountPath` differs from version to version as it contains the hash of the version control system reference which was used to build Elastic Agent. You can find out which path to use by either inspecting the Docker image or by running a command against the container, as shown below:
+The `mountPath` differs from version to version as it contains the hash of the version control system reference which was used to build Elastic Agent. You can find out which path to use by either inspecting the Docker image, or by running a command against the container:
 [source,sh]
 ----
 docker run -ti --entrypoint bash docker.elastic.co/beats/elastic-agent:7.11.1 -c "ls /usr/share/elastic-agent/data"

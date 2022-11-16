@@ -9,12 +9,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+)
+
+const (
+	// webhookPath is the HTTP path for the Elastic Maps Server validating webhook.
+	webhookPath = "/validate-ems-k8s-elastic-co-v1alpha1-mapsservers"
 )
 
 var (
@@ -25,6 +29,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkAssociation,
 	}
 )
 
@@ -32,25 +37,30 @@ var (
 
 var _ webhook.Validator = &ElasticMapsServer{}
 
-func (m *ElasticMapsServer) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(m).
-		Complete()
-}
-
+// ValidateCreate is called by the validating webhook to validate the create operation.
+// Satisfies the webhook.Validator interface.
 func (m *ElasticMapsServer) ValidateCreate() error {
 	validationLog.V(1).Info("Validate create", "name", m.Name)
 	return m.validate()
 }
 
+// ValidateDelete is called by the validating webhook to validate the delete operation.
+// Satisfies the webhook.Validator interface.
 func (m *ElasticMapsServer) ValidateDelete() error {
 	validationLog.V(1).Info("Validate delete", "name", m.Name)
 	return nil
 }
 
+// ValidateUpdate is called by the validating webhook to validate the update operation.
+// Satisfies the webhook.Validator interface.
 func (m *ElasticMapsServer) ValidateUpdate(_ runtime.Object) error {
 	validationLog.V(1).Info("Validate update", "name", m.Name)
 	return m.validate()
+}
+
+// WebhookPath returns the HTTP path used by the validating webhook.
+func (m *ElasticMapsServer) WebhookPath() string {
+	return webhookPath
 }
 
 func (m *ElasticMapsServer) validate() error {
@@ -69,14 +79,18 @@ func (m *ElasticMapsServer) validate() error {
 	return nil
 }
 
-func checkNoUnknownFields(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.NoUnknownFields(k, k.ObjectMeta)
+func checkNoUnknownFields(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.NoUnknownFields(ems, ems.ObjectMeta)
 }
 
-func checkNameLength(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.CheckNameLength(k)
+func checkNameLength(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckNameLength(ems)
 }
 
-func checkSupportedVersion(k *ElasticMapsServer) field.ErrorList {
-	return commonv1.CheckSupportedStackVersion(k.Spec.Version, version.SupportedMapsVersions)
+func checkSupportedVersion(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckSupportedStackVersion(ems.Spec.Version, version.SupportedMapsVersions)
+}
+
+func checkAssociation(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), ems.Spec.ElasticsearchRef)
 }

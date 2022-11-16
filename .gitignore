@@ -52,6 +52,7 @@ hack/deployer/config/provider
 deployer-config.yml
 .env
 .registry.env
+stack-versions-def.json
 
 # ignore test output
 integration-tests.json
@@ -66,3 +67,9 @@ pkg/controller/common/license/zz_generated.pubkey.go
 
 # ignore validator for Jenkins pipelines
 hack/pipeline-validator/validator
+
+# ignore helm chart dependencies in eck-stack chart
+deploy/eck-stack/charts/*
+
+# Ignore eck-stack lockfile to allow upgrading of dependencies/child charts.
+deploy/eck-stack/Chart.lock

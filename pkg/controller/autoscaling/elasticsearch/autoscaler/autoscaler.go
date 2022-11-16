@@ -7,11 +7,11 @@ package autoscaler
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 // GetResources calculates the resources required by all the NodeSets managed by a same autoscaling policy.
-func (ctx *Context) GetResources() resources.NodeSetsResources {
+func (ctx *Context) GetResources() v1alpha1.NodeSetsResources {
 	// 1. Scale vertically, calculating the resources for each node managed by the autoscaling policy in the context.
 	desiredNodeResources := ctx.scaleVertically()
 	ctx.Log.Info(
@@ -31,8 +31,8 @@ func (ctx *Context) GetResources() resources.NodeSetsResources {
 // scaleVertically calculates the desired resources for all the nodes managed by the same autoscaling policy, given the requested
 // capacity returned by the Elasticsearch autoscaling API and the AutoscalingSpec specified by the user.
 // It attempts to scale all the resources vertically until the required resources are provided or the limits set by the user are reached.
-func (ctx *Context) scaleVertically() resources.NodeResources {
-	nodeResources := resources.NodeResources{}
+func (ctx *Context) scaleVertically() v1alpha1.NodeResources {
+	nodeResources := v1alpha1.NodeResources{}
 
 	// Apply recommenders to get recommended quantities for each resource.
 	for _, recommender := range ctx.Recommenders {
@@ -54,7 +54,8 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 
 	// Same as above, if CPU limits have been expressed by the user in the autoscaling specification then we adjust CPU request according to the memory request.
 	// See https://github.com/elastic/cloud-on-k8s/issues/4021
-	if ctx.AutoscalingSpec.IsCPUDefined() && ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
+	if !nodeResources.HasRequest(corev1.ResourceCPU) && ctx.AutoscalingSpec.IsCPUDefined() &&
+		ctx.AutoscalingSpec.IsMemoryDefined() && nodeResources.HasRequest(corev1.ResourceMemory) {
 		nodeResources.SetRequest(corev1.ResourceCPU, cpuFromMemory(nodeResources.GetRequest(corev1.ResourceMemory), *ctx.AutoscalingSpec.MemoryRange, *ctx.AutoscalingSpec.CPURange))
 	}
 
@@ -62,7 +63,7 @@ func (ctx *Context) scaleVertically() resources.NodeResources {
 }
 
 // stabilize filters scale down decisions for a policy if the number of nodes observed by Elasticsearch is less than the expected one.
-func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) resources.NodeSetsResources {
+func (ctx *Context) stabilize(calculatedResources v1alpha1.NodeSetsResources) v1alpha1.NodeSetsResources {
 	currentResources, hasCurrentResources := ctx.CurrentAutoscalingStatus.CurrentResourcesForPolicy(ctx.AutoscalingSpec.Name)
 	if !hasCurrentResources {
 		// Autoscaling policy does not have any resource yet, for example it might happen if it is a new tier.
@@ -88,15 +89,15 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 		)
 		// The number of nodes observed by Elasticsearch is less than the expected one, do not scale down, reuse previous resources.
 		// nextNodeSetNodeCountList is a copy of currentResources but resources are adjusted to respect limits set by the user in the spec.
-		nextNodeSetNodeCountList := make(resources.NodeSetNodeCountList, len(currentResources.NodeSetNodeCount))
+		nextNodeSetNodeCountList := make(v1alpha1.NodeSetNodeCountList, len(currentResources.NodeSetNodeCount))
 		for i := range currentResources.NodeSetNodeCount {
-			nextNodeSetNodeCountList[i] = resources.NodeSetNodeCount{Name: currentResources.NodeSetNodeCount[i].Name}
+			nextNodeSetNodeCountList[i] = v1alpha1.NodeSetNodeCount{Name: currentResources.NodeSetNodeCount[i].Name}
 		}
 		distributeFairly(nextNodeSetNodeCountList, ctx.AutoscalingSpec.NodeCountRange.Enforce(currentNodeCount))
-		nextResources := resources.NodeSetsResources{
+		nextResources := v1alpha1.NodeSetsResources{
 			Name:             currentResources.Name,
 			NodeSetNodeCount: nextNodeSetNodeCountList,
-			NodeResources: resources.NodeResources{
+			NodeResources: v1alpha1.NodeResources{
 				Requests: currentResources.Requests.DeepCopy(),
 			},
 		}
@@ -128,8 +129,8 @@ func (ctx *Context) stabilize(calculatedResources resources.NodeSetsResources) r
 
 // scaleHorizontally adds or removes nodes in a set of node sets to provide the required capacity in a tier.
 func (ctx *Context) scaleHorizontally(
-	nodeCapacity resources.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
-) resources.NodeSetsResources {
+	nodeCapacity v1alpha1.NodeResources, // resources for each node in the tier/policy, as computed by the vertical autoscaler.
+) v1alpha1.NodeSetsResources {
 	var nodeCount int32
 	for _, recommender := range ctx.Recommenders {
 		if recommender.HasResourceRecommendation() {
@@ -143,7 +144,7 @@ func (ctx *Context) scaleHorizontally(
 		"required_capacity", ctx.AutoscalingPolicyResult.RequiredCapacity.Total,
 	)
 
-	nodeSetsResources := resources.NewNodeSetsResources(ctx.AutoscalingSpec.Name, ctx.NodeSets.Names())
+	nodeSetsResources := v1alpha1.NewNodeSetsResources(ctx.AutoscalingSpec.Name, ctx.NodeSets.Names())
 	nodeSetsResources.NodeResources = nodeCapacity
 	distributeFairly(nodeSetsResources.NodeSetNodeCount, nodeCount)
 

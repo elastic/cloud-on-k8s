@@ -9,14 +9,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/shutdown"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/shutdown"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // downscaleContext holds the context of this downscale, including clients and states,
@@ -28,7 +27,6 @@ type downscaleContext struct {
 	nodeShutdown shutdown.Interface
 	// driver states
 	resourcesState reconcile.ResourcesState
-	observedState  observer.State
 	reconcileState *reconcile.State
 	expectations   *expectations.Expectations
 	// ES cluster
@@ -42,7 +40,6 @@ func newDownscaleContext(
 	k8sClient k8s.Client,
 	esClient esclient.Client,
 	resourcesState reconcile.ResourcesState,
-	observedState observer.State,
 	reconcileState *reconcile.State,
 	expectations *expectations.Expectations,
 	// ES cluster
@@ -54,7 +51,6 @@ func newDownscaleContext(
 		esClient:       esClient,
 		nodeShutdown:   nodeShutdown,
 		resourcesState: resourcesState,
-		observedState:  observedState,
 		reconcileState: reconcileState,
 		es:             es,
 		expectations:   expectations,

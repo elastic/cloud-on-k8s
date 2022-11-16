@@ -12,11 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 )
 
 type storage struct {
@@ -100,7 +98,7 @@ func (s *storage) shouldScaleUp() bool {
 		s.statusBuilder.
 			ForPolicy(s.autoscalingSpec.Name).
 			RecordEvent(
-				status.UnexpectedNodeStorageCapacity,
+				v1alpha1.UnexpectedNodeStorageCapacity,
 				fmt.Sprintf(
 					"Vertical Pod autoscaling is not supported: current node storage capacity %d is greater than the claimed capacity %d",
 					s.observedNodeStorageCapacity.Value(),
@@ -113,7 +111,7 @@ func (s *storage) shouldScaleUp() bool {
 		s.requiredTotalStorageCapacity.Value() > s.observedTotalStorageCapacity.Value()
 }
 
-func (s *storage) NodeCount(nodeCapacity resources.NodeResources) int32 {
+func (s *storage) NodeCount(nodeCapacity v1alpha1.NodeResources) int32 {
 	// A value of 0 explicitly means that storage decider should not prevent a scale down.
 	// For example this could be the case for ML nodes when there is no ML jobs to run.
 	if s.requiredTotalStorageCapacity.IsZero() {
@@ -139,10 +137,10 @@ func (s *storage) NodeCount(nodeCapacity resources.NodeResources) int32 {
 
 func NewStorageRecommender(
 	log logr.Logger,
-	statusBuilder *status.AutoscalingStatusBuilder,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
+	statusBuilder *v1alpha1.AutoscalingStatusBuilder,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
 	autoscalingPolicyResult client.AutoscalingPolicyResult,
-	currentAutoscalingStatus status.Status,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
 ) (Recommender, error) {
 	// Check if user expects the resource to be managed by the autoscaling controller
 	hasResourceRange := autoscalingSpec.StorageRange != nil
@@ -166,7 +164,7 @@ func NewStorageRecommender(
 	}
 
 	if autoscalingSpec.StorageRange == nil {
-		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(status.StorageRequired, "Min and max storage must be specified")
+		statusBuilder.ForPolicy(autoscalingSpec.Name).RecordEvent(v1alpha1.StorageRequired, "Min and max storage must be specified")
 		return nil, fmt.Errorf("min and max storage must be specified")
 	}
 
@@ -195,7 +193,7 @@ func NewStorageRecommender(
 // The value is the max. value of either:
 // * the current value in the status
 // * the min. value set by the user in the autoscaling spec.
-func getMinStorageQuantity(autoscalingSpec esv1.AutoscalingPolicySpec, currentAutoscalingStatus status.Status) resource.Quantity {
+func getMinStorageQuantity(autoscalingSpec v1alpha1.AutoscalingPolicySpec, currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus) resource.Quantity {
 	// If no storage spec is defined in the autoscaling status we return the default volume size.
 	storage := volume.DefaultPersistentVolumeSize.DeepCopy()
 	// Always adjust to the min value specified by the user in the limits.
@@ -217,6 +215,11 @@ var usableDiskPercent = 0.95
 // adjustRequiredStorage adjust the required capacity from Elasticsearch to account for the filesystem reserved space.
 // In the worst case we consider that Elasticsearch is only able to use 95% of the persistent volume capacity.
 func adjustRequiredStorage(v *client.AutoscalingCapacity) *client.AutoscalingCapacity {
-	adjustedStorage := client.AutoscalingCapacity(math.Ceil(float64(v.Value()) / usableDiskPercent))
-	return &adjustedStorage
+	adjustedStorage := resource.NewQuantity(
+		int64(math.Ceil(float64(v.Value())/usableDiskPercent)),
+		resource.DecimalSI,
+	)
+	return &client.AutoscalingCapacity{
+		Quantity: *adjustedStorage,
+	}
 }

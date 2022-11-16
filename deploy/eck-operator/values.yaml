@@ -25,6 +25,9 @@ image:
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
 
+# priorityClassName defines the PriorityClass to be used by the operator pods.
+priorityClassName: ""
+
 # imagePullSecrets defines the secrets to use when pulling the operator container image.
 imagePullSecrets: []
 
@@ -32,7 +35,7 @@ imagePullSecrets: []
 resources:
   limits:
     cpu: 1
-    memory: 512Mi
+    memory: 1Gi
   requests:
     cpu: 100m
     memory: 150Mi
@@ -48,7 +51,13 @@ podSecurityContext:
   runAsNonRoot: true
 
 # securityContext defines the security context of the operator container.
-securityContext: {}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
 
 # nodeSelector defines the node selector for the operator pod.
 nodeSelector: {}
@@ -140,6 +149,9 @@ config:
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
 
+  # containerSuffix suffix to be appended to container images by default. Cannot be combined with -ubiOnly flag
+  # containerSuffix: ""
+
   # maxConcurrentReconciles is the number of concurrent reconciliation operations to perform per controller.
   maxConcurrentReconciles: "3"
 
@@ -159,7 +171,12 @@ config:
   exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
 
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
-  setDefaultSecurityContext: true
+  # *note* that the default option now is "auto-detect" to attempt to set this properly automatically when both running
+  # in an openshift cluster, and a standard kubernetes cluster.  Valid values are as follows:
+  # "auto-detect" : auto detect
+  # "true"        : set pod security context when creating resources.
+  # "false"       : do not set pod security context when creating resources.
+  setDefaultSecurityContext: "auto-detect"
 
   # kubeClientTimeout sets the request timeout for Kubernetes API calls made by the operator.
   kubeClientTimeout: 60s
@@ -170,6 +187,12 @@ config:
   # validateStorageClass specifies whether storage classes volume expansion support should be verified.
   # Can be disabled if cluster-wide storage class RBAC access is not available.
   validateStorageClass: true
+
+  # enableLeaderElection specifies whether leader election should be enabled
+  enableLeaderElection: true
+
+  # Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation.
+  elasticsearchObservationInterval: 10s
 
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
@@ -186,7 +209,7 @@ podMonitor:
   annotations: {}
 
   # namespace determines in which namespace the podMonitor will be deployed.
-  # If not set the podMonitor will be created in the namespace to release is installed into
+  # If not set the podMonitor will be created in the namespace where the Helm release is installed into
   # namespace: monitoring
 
   # interval specifies the interval at which metrics should be scraped
@@ -211,5 +234,5 @@ global:
   # Usually we do want that to happen (e.g. all-in-one.yaml) but, sometimes we don't (e.g. E2E tests). 
   createOperatorNamespace: true
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
-  kubeVersion: 1.16.0
+  kubeVersion: 1.21.0
 

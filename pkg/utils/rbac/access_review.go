@@ -17,14 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
 
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
 	ServiceAccountUsernamePrefix = "system:serviceaccount:"
 )
-
-var log = ulog.Log.WithName("access-review")
 
 type AccessReviewer interface {
 	// AccessAllowed checks that the given ServiceAccount is allowed to get an other object.
@@ -76,7 +74,7 @@ func (s *SubjectAccessReviewer) AccessAllowed(ctx context.Context, serviceAccoun
 	if err != nil {
 		return false, err
 	}
-	log.V(1).Info(
+	ulog.FromContext(ctx).V(1).Info(
 		"Access review", "result", sar.Status,
 		"service_account", serviceAccount,
 		"source_namespace", sourceNamespace,

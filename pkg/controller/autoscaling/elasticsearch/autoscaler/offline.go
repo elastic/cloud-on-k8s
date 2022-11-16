@@ -8,9 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
 // GetOfflineNodeSetsResources attempts to create or restore resources.NodeSetsResources without an actual autoscaling
@@ -20,12 +18,12 @@ import (
 func GetOfflineNodeSetsResources(
 	log logr.Logger,
 	nodeSets []string,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
-	currentAutoscalingStatus status.Status,
-) resources.NodeSetsResources {
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
+	currentAutoscalingStatus v1alpha1.ElasticsearchAutoscalerStatus,
+) v1alpha1.NodeSetsResources {
 	currentNodeSetsResources, hasNodeSetsResources := currentAutoscalingStatus.CurrentResourcesForPolicy(autoscalingSpec.Name)
 
-	var nodeSetsResources resources.NodeSetsResources
+	var nodeSetsResources v1alpha1.NodeSetsResources
 	var expectedNodeCount int32
 	if !hasNodeSetsResources {
 		// There's no current status for this nodeSet, this happens when the Elasticsearch cluster does not exist.
@@ -65,11 +63,11 @@ func GetOfflineNodeSetsResources(
 // If a resource is expected but not present in the status then the min. value in the autoscaling specification is used.
 // If user removed the limits while offline we are assuming that they want to take back control of the resources.
 func nodeSetResourcesFromStatus(
-	currentNodeSetsResources resources.NodeSetsResources,
-	autoscalingSpec esv1.AutoscalingPolicySpec,
+	currentNodeSetsResources v1alpha1.NodeSetsResources,
+	autoscalingSpec v1alpha1.AutoscalingPolicySpec,
 	nodeSets []string,
-) resources.NodeSetsResources {
-	nodeSetsResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
+) v1alpha1.NodeSetsResources {
+	nodeSetsResources := v1alpha1.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
 	if autoscalingSpec.IsMemoryDefined() {
 		// Attempt to get memory value from the status.
 		if currentNodeSetsResources.HasRequest(corev1.ResourceMemory) {
@@ -113,8 +111,8 @@ func nodeSetResourcesFromStatus(
 }
 
 // newMinNodeSetResources returns a NodeSetResources with minimums values
-func newMinNodeSetResources(autoscalingSpec esv1.AutoscalingPolicySpec, nodeSets []string) resources.NodeSetsResources {
-	nodeSetsResources := resources.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
+func newMinNodeSetResources(autoscalingSpec v1alpha1.AutoscalingPolicySpec, nodeSets []string) v1alpha1.NodeSetsResources {
+	nodeSetsResources := v1alpha1.NewNodeSetsResources(autoscalingSpec.Name, nodeSets)
 	if autoscalingSpec.IsCPUDefined() {
 		nodeSetsResources.SetRequest(corev1.ResourceCPU, autoscalingSpec.CPURange.Min.DeepCopy())
 	}

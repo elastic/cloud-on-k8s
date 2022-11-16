@@ -1,7 +1,7 @@
 [[release-highlights-1.2.1]]
 == 1.2.1 release highlights
 
-This is a patch release to address some issues found after the 1.2.0 release. See <<release-highlights-1.2.0>> for the full highlights of the 1.2.x series.
+This is a patch release to address some issues found after the 1.2.0 release. Check <<release-highlights-1.2.0>> for the full highlights of the 1.2.x series.
 
 
 [float]

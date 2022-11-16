@@ -14,13 +14,14 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 type Unbinder interface {
-	Unbind(association commonv1.Association) error
+	Unbind(ctx context.Context, association commonv1.Association) error
 }
 
 // CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
@@ -41,7 +42,7 @@ func CheckAndUnbind(
 		if err != nil {
 			return false, nil //nolint:nilerr
 		}
-		log.Info("Association not allowed",
+		ulog.FromContext(ctx).Info("Association not allowed",
 			"associated_kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"associated_name", association.GetName(),
 			"associated_namespace", association.GetNamespace(),
@@ -57,7 +58,7 @@ func CheckAndUnbind(
 			"Association not allowed: %s/%s to %s/%s",
 			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
-		return false, unbinder.Unbind(association)
+		return false, unbinder.Unbind(ctx, association)
 	}
 	return true, nil
 }

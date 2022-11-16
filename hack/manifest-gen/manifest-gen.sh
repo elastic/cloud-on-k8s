@@ -73,9 +73,10 @@ while getopts "cug" OPT; do
             shift $((OPTIND-1))
             (
                 cd "$SCRIPT_DIR"
-                go build -o manifest-gen >/dev/null 2>&1
-                ./manifest-gen --source="$EFFECTIVE_SRC_CHART_DIR" generate "$@"
-                rm manifest-gen
+                tmpBinary=$(mktemp /tmp/manifest-gen.XXXXXX)
+                go build -o "$tmpBinary" >/dev/null 2>&1
+                "$tmpBinary" --source="$EFFECTIVE_SRC_CHART_DIR" generate "$@"
+                rm "$tmpBinary"
             )
             exit 0
             ;;

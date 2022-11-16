@@ -18,9 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -107,7 +107,7 @@ func TestReconcileSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReconcileSecret(tt.c, *tt.expected, owner)
+			got, err := ReconcileSecret(context.Background(), tt.c, *tt.expected, owner)
 			require.NoError(t, err)
 
 			var retrieved corev1.Secret
@@ -210,7 +210,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReconcileSecretNoOwnerRef(tt.c, *tt.expected, tt.softOwner)
+			got, err := ReconcileSecretNoOwnerRef(context.Background(), tt.c, *tt.expected, tt.softOwner)
 			require.NoError(t, err)
 
 			var retrieved corev1.Secret
@@ -336,14 +336,14 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			err := GarbageCollectSoftOwnedSecrets(c, tt.deletedOwner, kind)
+			err := GarbageCollectSoftOwnedSecrets(context.Background(), c, tt.deletedOwner, kind)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
 			err = c.List(context.Background(), &retrievedSecrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {
-				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
+				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name) //nolint:forcetypeassert
 			}
 		})
 	}
@@ -412,14 +412,14 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjs...)
-			err := GarbageCollectAllSoftOwnedOrphanSecrets(c, ownerKinds)
+			err := GarbageCollectAllSoftOwnedOrphanSecrets(context.Background(), c, ownerKinds)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
 			err = c.List(context.Background(), &retrievedSecrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantObjs), len(retrievedSecrets.Items))
 			for i := range tt.wantObjs {
-				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name)
+				require.Equal(t, tt.wantObjs[i].(*corev1.Secret).Name, retrievedSecrets.Items[i].Name) //nolint:forcetypeassert
 			}
 			if tt.assert != nil {
 				tt.assert(t, c)

@@ -6,6 +6,7 @@ package certificates
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	cryptorand "crypto/rand"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 var ErrEncryptedPrivateKey = errors.New("encrypted private key")
@@ -143,21 +146,22 @@ func GetPrimaryCertificate(pemBytes []byte) (*x509.Certificate, error) {
 }
 
 // PrivateMatchesPublicKey returns true if the public and private keys correspond to each other.
-func PrivateMatchesPublicKey(publicKey crypto.PublicKey, privateKey crypto.Signer) bool {
+func PrivateMatchesPublicKey(ctx context.Context, publicKey crypto.PublicKey, privateKey crypto.Signer) bool {
 	switch k := publicKey.(type) {
 	case *rsa.PublicKey:
 		return k.Equal(privateKey.Public())
 	case *ecdsa.PublicKey:
 		return k.Equal(privateKey.Public())
 	default:
-		log.Error(fmt.Errorf("unsupported public key type: %T", publicKey), "")
+		ulog.FromContext(ctx).Error(fmt.Errorf("unsupported public key type: %T", publicKey), "")
 		return false
 	}
 }
 
 // GetCompatiblePrivateKey returns a PEM encoded private key iff the CA and the key have the same underlying type.
-func GetCompatiblePrivateKey(caPrivateKey crypto.Signer, secret *corev1.Secret, fileName string) crypto.Signer {
+func GetCompatiblePrivateKey(ctx context.Context, caPrivateKey crypto.Signer, secret *corev1.Secret, fileName string) crypto.Signer {
 	if certPrivateKeyData, ok := secret.Data[fileName]; ok {
+		log := ulog.FromContext(ctx)
 		certPrivateKey, err := ParsePEMPrivateKey(certPrivateKeyData)
 		if err != nil {
 			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name, "cert_key_filename", fileName)

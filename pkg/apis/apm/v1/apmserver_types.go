@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 const (
@@ -51,10 +51,13 @@ type ApmServerSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -63,14 +66,25 @@ type ApmServerSpec struct {
 // ApmServerStatus defines the observed state of ApmServer
 type ApmServerStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// ExternalService is the name of the service the agents should connect to.
 	ExternalService string `json:"service,omitempty"`
+
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
+
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
 	// KibanaAssociationStatus is the status of any auto-linking to Kibana.
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
+
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the APM Server
+	// controller has not yet processed the changes contained in the APM Server specification.
+	// +kubebuilder:validation:Optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -132,6 +146,10 @@ func (as *ApmServer) EffectiveVersion() string {
 	return ver
 }
 
+func (as *ApmServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
 func (as *ApmServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
@@ -182,6 +200,11 @@ func (as *ApmServer) SetAssociationStatusMap(typ commonv1.AssociationType, statu
 	}
 }
 
+// GetObservedGeneration will return the observedGeneration from the Elastic APM Server's status.
+func (as *ApmServer) GetObservedGeneration() int64 {
+	return as.Status.ObservedGeneration
+}
+
 // ApmEsAssociation helps to manage the APMServer / Elasticsearch association
 type ApmEsAssociation struct {
 	*ApmServer
@@ -215,8 +238,8 @@ func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
 	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
-func (aes *ApmEsAssociation) AssociationConf() *commonv1.AssociationConf {
-	return aes.esAssocConf
+func (aes *ApmEsAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(aes, aes.esAssocConf)
 }
 
 func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -261,11 +284,11 @@ func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 }
 
 func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
-	return akb.Spec.KibanaRef.Name != ""
+	return akb.Spec.KibanaRef.IsDefined()
 }
 
-func (akb *ApmKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
-	return akb.kibanaAssocConf
+func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(akb, akb.kibanaAssocConf)
 }
 
 func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {

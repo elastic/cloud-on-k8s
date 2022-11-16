@@ -15,9 +15,10 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -88,15 +89,22 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 
 func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
-	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
-	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
+	userLabels := client.MatchingLabels(map[string]string{labels.TypeLabelName: esuser.AssociatedUserType})
+	if err := c.List(context.Background(), &userSecrets, client.InNamespace(namespace), userLabels); err != nil {
 		return nil, err
 	}
-	return userSecrets.Items, nil
+
+	serviceAccountSecrets := v1.SecretList{}
+	serviceAccountLabels := client.MatchingLabels(map[string]string{labels.TypeLabelName: esuser.ServiceAccountTokenType})
+	if err := c.List(context.Background(), &serviceAccountSecrets, client.InNamespace(namespace), serviceAccountLabels); err != nil {
+		return nil, err
+	}
+
+	return append(userSecrets.Items, serviceAccountSecrets.Items...), nil
 }
 
 // DoGarbageCollection runs the User garbage collector.
-func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
+func (ugc *UsersGarbageCollector) DoGarbageCollection(ctx context.Context) error {
 	// Shortcut execution if there's no resources to garbage collect
 	if len(ugc.registeredResources) == 0 {
 		return nil
@@ -127,8 +135,8 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 			}
 			_, found := parents[expectedParent]
 			if !found {
-				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-				err = ugc.client.Delete(context.Background(), &secret)
+				ulog.FromContext(ctx).Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
+				err = ugc.client.Delete(ctx, &secret)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}

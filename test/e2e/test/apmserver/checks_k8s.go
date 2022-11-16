@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -117,6 +117,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			// don't check association statuses that may vary across tests
 			as.Status.ElasticsearchAssociationStatus = ""
 			as.Status.KibanaAssociationStatus = ""
+			as.Status.ObservedGeneration = 0
 
 			// Selector is a string built from a map, it is validated with a dedicated function.
 			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels

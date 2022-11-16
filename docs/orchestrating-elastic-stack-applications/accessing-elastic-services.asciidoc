@@ -36,7 +36,7 @@ To access Elastic resources, the operator manages a default user named `elastic`
 42xyz42citsale42xyz42
 ----
 
-NOTE: Beware of copying this Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
+NOTE: Beware of copying this Secret as-is into a different namespace. Check <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
 
 [id="{p}-services"]
 == Services
@@ -64,7 +64,7 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601/TCP   1
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
-By default, the Elasticsearch service created by ECK is configured to route traffic to all Elasticsearch nodes in the cluster. Depending on your cluster configuration, you may want more control over the set of nodes that handle different types of traffic (query, ingest, and so on). See <<{p}-traffic-splitting>> for more information.
+By default, the Elasticsearch service created by ECK is configured to route traffic to all Elasticsearch nodes in the cluster. Depending on your cluster configuration, you may want more control over the set of nodes that handle different types of traffic (query, ingest, and so on). Check <<{p}-traffic-splitting>> for more information.
 
 CAUTION: When you change the `clusterIP` setting of the service, ECK will delete and re-create the service as `clusterIP` is an immutable field. Depending on your client implementation, this might result in a short disruption until the service DNS entries refresh to point to the new endpoints.
 

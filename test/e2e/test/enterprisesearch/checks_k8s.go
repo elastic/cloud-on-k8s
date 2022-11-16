@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -65,7 +65,8 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			)
 		}
-		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() {
+
+		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: entName + "-ent-http-ca-internal",
@@ -75,6 +76,11 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"common.k8s.elastic.co/type":           "enterprise-search",
 					},
 				},
+			)
+		}
+
+		if b.EnterpriseSearch.Spec.HTTP.TLS.Enabled() {
+			expected = append(expected,
 				test.ExpectedSecret{
 					Name: entName + "-ent-http-certs-internal",
 					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
@@ -117,7 +123,9 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				}); err != nil {
 				return err
 			}
+			// don't check status fields that may vary across tests
 			ent.Status.Selector = ""
+			ent.Status.ObservedGeneration = 0
 
 			expected := entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{

@@ -25,9 +25,9 @@ export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 
 Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. The script will prompt for any missing environment variables that are required for a given job. See examples below. 
 
-Test the `cloud-on-k8s-e2e-tests-master` job:
+Test the `cloud-on-k8s-e2e-tests-main` job:
 ```sh
-.ci/setenvconfig e2e/master
+.ci/setenvconfig e2e/main
 make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci
 ```
 

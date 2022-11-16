@@ -7,7 +7,7 @@ package enterprisesearch
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -18,11 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -56,7 +56,7 @@ func podWithVersion(name string, version string) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns", Name: name, Labels: map[string]string{
 				EnterpriseSearchNameLabelName: "ent",
-				common.TypeLabelName:          Type,
+				labels.TypeLabelName:          Type,
 				VersionLabelName:              version,
 			},
 		},
@@ -88,14 +88,14 @@ type roundTripChecks struct {
 func (f fakeRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	f.checks.called = true
 	f.checks.withURL = req.URL.String()
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
 	f.checks.withBody = string(body)
 	return &http.Response{
 		StatusCode: f.checks.returnStatusCode,
-		Body:       ioutil.NopCloser(bytes.NewReader(nil)),
+		Body:       io.NopCloser(bytes.NewReader(nil)),
 	}, nil
 }
 
@@ -322,14 +322,14 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(&ent, &esUserSecret)
 			u := &VersionUpgrade{k8sClient: c, ent: ent}
-			req, err := u.readOnlyModeRequest(tt.enabled)
+			req, err := u.readOnlyModeRequest(context.Background(), tt.enabled)
 			require.NoError(t, err)
 
 			// check URL
 			require.Equal(t, tt.wantURL, req.URL.String())
 
 			// check body
-			body, err := ioutil.ReadAll(req.Body)
+			body, err := io.ReadAll(req.Body)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantBody, string(body))
 

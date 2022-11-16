@@ -1,10 +1,10 @@
-# ECK Operator Helm Chart
+# ECK Operator, and ECK Resources Helm Charts
 
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
-This directory contains the Helm chart for deploying the ECK operator.
+This directory contains the Helm chart for deploying the ECK operator, and charts for deploying any resource in the Elastic Stack individually, or as a group.
 
-## Usage
+## ECK Operator Helm Chart Usage
 
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
@@ -32,4 +32,22 @@ View the available settings for customizing the installation.
 helm show values eck-operator
 ```
 
+## ECK Stack Helm Chart Usage
 
+Install a quickstart Elasticsearch and Kibana resource in a cluster controlled by the ECK Operator.
+
+```sh
+helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
+```
+
+To see all resources installed by the helm chart
+
+```sh
+kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack
+```
+
+## Licensing
+
+The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator, but require different subscription levels.
+
+The ECK Operator Helm Chart can be used with a Basic license for free, while the ECK Stack and Resources Helm Charts require an [Elastic Enterprise License](https://www.elastic.co/subscriptions) for use.

@@ -13,12 +13,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 // Builder to create Kibana instances
@@ -26,6 +26,20 @@ type Builder struct {
 	Kibana                   kbv1.Kibana
 	ExternalElasticsearchRef commonv1.ObjectSelector
 	MutatedFrom              *Builder
+	GlobalCA                 bool
+}
+
+func (b Builder) DeepCopy() *Builder {
+	kb := b.Kibana.DeepCopy()
+	builderCopy := Builder{
+		Kibana: *kb,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.ExternalElasticsearchRef = b.ExternalElasticsearchRef
+	builderCopy.GlobalCA = b.GlobalCA
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}
@@ -55,11 +69,12 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
+	def := test.Ctx().ImageDefinitionFor(kbv1.Kind)
 	return Builder{
 		Kibana: kbv1.Kibana{
 			ObjectMeta: meta,
 			Spec: kbv1.KibanaSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -68,9 +83,15 @@ func newBuilder(name, randSuffix string) Builder {
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.Kibana.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -176,22 +197,33 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	return b
 }
 
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
+	return b
+}
+
 // WithAPMIntegration adds configuration that makes Kibana install APM integration on start up. Starting with 8.0.0,
 // index templates for APM Server are not installed by APM Server, but during APM integration installation in Kibana.
 func (b Builder) WithAPMIntegration() Builder {
-	if version.MustParse(b.Kibana.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+	v := version.MustParse(b.Kibana.Spec.Version)
+	if v.LT(version.MinFor(8, 0, 0)) {
 		// configuring APM integration is not necessary below 8.0.0, no-op
 		return b
 	}
 
-	return b.WithConfig(map[string]interface{}{
+	config := map[string]interface{}{
 		"xpack.fleet.packages": []map[string]interface{}{
 			{
 				"name":    "apm",
 				"version": "latest",
 			},
 		},
-	})
+	}
+	// use the snapshot integration package registry on pre-release version tests
+	if len(v.Pre) > 0 {
+		config["xpack.fleet.registryUrl"] = "https://epr-snapshot.elastic.co"
+	}
+	return b.WithConfig(config)
 }
 
 func (b Builder) WithConfig(config map[string]interface{}) Builder {
@@ -210,6 +242,9 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 
 func (b Builder) GetMetricsIndexPattern() string {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.GTE(version.MinFor(8, 3, 0)) {
+		return ".monitoring-kibana-8-mb"
+	}
 	if v.GTE(version.MinFor(8, 0, 0)) {
 		return fmt.Sprintf("metricbeat-%d.%d.%d*", v.Major, v.Minor, v.Patch)
 	}

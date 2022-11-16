@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build beat e2e
+//go:build beat || e2e
 
 package beat
 
@@ -10,10 +10,11 @@ import (
 	"context"
 	"testing"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 func TestWebhook(t *testing.T) {
@@ -29,7 +30,7 @@ func TestWebhook(t *testing.T) {
 		},
 		Spec: beatv1beta1.BeatSpec{
 			Type:    "filebeat",
-			Version: test.LatestVersion7x,
+			Version: test.LatestReleasedVersion7x,
 			// neither DaemonSet nor Deployment provided - this should result in an error like below
 		},
 	}

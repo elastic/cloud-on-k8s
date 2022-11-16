@@ -1,0 +1,148 @@
+{
+  "policies": {
+    "di": {
+      "required_capacity": {
+        "node": {
+          "storage": 3722575856
+        },
+        "total": {
+          "storage": 37106614256
+        }
+      },
+      "current_capacity": {
+        "node": {
+          "storage": 4193976320,
+          "memory": 8589934592
+        },
+        "total": {
+          "storage": 33384038400,
+          "memory": 68719476736
+        }
+      },
+      "current_nodes": [
+        {
+          "name": "testes-es-di-0"
+        },
+        {
+          "name": "testes-es-di-1"
+        },
+        {
+          "name": "testes-es-di-2"
+        },
+        {
+          "name": "testes-es-di-3"
+        },
+        {
+          "name": "testes-es-di-4"
+        },
+        {
+          "name": "testes-es-di-5"
+        },
+        {
+          "name": "testes-es-di-6"
+        },
+        {
+          "name": "testes-es-di-7"
+        }
+      ],
+      "deciders": {
+        "proactive_storage": {
+          "required_capacity": {
+            "node": {
+              "storage": 3722575856
+            },
+            "total": {
+              "storage": 37106614256
+            }
+          },
+          "reason_summary": "not enough storage available, needs 3.4gb",
+          "reason_details": {
+            "reason": "not enough storage available, needs 3.4gb",
+            "unassigned": 0,
+            "assigned": 3722575856,
+            "forecasted": 0,
+            "forecast_window": "5m"
+          }
+        },
+        "reactive_storage": {
+          "required_capacity": {
+            "node": {
+              "storage": 3722575856
+            },
+            "total": {
+              "storage": 37106614256
+            }
+          },
+          "reason_summary": "not enough storage available, needs 3.4gb",
+          "reason_details": {
+            "reason": "not enough storage available, needs 3.4gb",
+            "unassigned": 0,
+            "assigned": 3722575856
+          }
+        }
+      }
+    },
+    "ml": {
+      "required_capacity": {
+        "node": {
+          "memory": 0
+        },
+        "total": {
+          "memory": 0
+        }
+      },
+      "current_capacity": {
+        "node": {
+          "storage": 0,
+          "memory": 2147483648
+        },
+        "total": {
+          "storage": 0,
+          "memory": 2147483648
+        }
+      },
+      "current_nodes": [
+        {
+          "name": "testes-es-ml-0"
+        }
+      ],
+      "deciders": {
+        "ml": {
+          "required_capacity": {
+            "node": {
+              "memory": 0
+            },
+            "total": {
+              "memory": 0
+            }
+          },
+          "reason_summary": "Requesting scale down as tier and/or node size could be smaller",
+          "reason_details": {
+            "waiting_analytics_jobs": [],
+            "waiting_anomaly_jobs": [],
+            "configuration": {
+              "down_scale_delay": "5m"
+            },
+            "perceived_current_capacity": {
+              "node": {
+                "memory": 2147483646
+              },
+              "total": {
+                "memory": 2147483647
+              }
+            },
+            "required_capacity": {
+              "node": {
+                "memory": 0
+              },
+              "total": {
+                "memory": 0
+              }
+            },
+            "reason": "Requesting scale down as tier and/or node size could be smaller"
+          }
+        }
+      }
+    }
+  }
+}

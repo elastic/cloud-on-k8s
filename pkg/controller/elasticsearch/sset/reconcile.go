@@ -5,21 +5,24 @@
 package sset
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
-func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
-	podTemplateValidator := newPodTemplateValidator(c, es, expected)
+func ReconcileStatefulSet(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
+	podTemplateValidator := newPodTemplateValidator(ctx, c, es, expected)
 	var reconciled appsv1.StatefulSet
 	err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     c,
 		Owner:      &es,
 		Expected:   &expected,
@@ -53,10 +56,10 @@ func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.S
 }
 
 // newPodTemplateValidator returns a function which can be used to validate the PodTemplateSpec in a StatefulSet
-func newPodTemplateValidator(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet) func() error {
+func newPodTemplateValidator(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet) func() error {
 	sset := expected.DeepCopy()
 	return func() error {
-		return validatePodTemplate(c, &es, *sset)
+		return validatePodTemplate(ctx, c, &es, *sset)
 	}
 }
 

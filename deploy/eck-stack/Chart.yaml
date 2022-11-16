@@ -1,0 +1,40 @@
+apiVersion: v2
+name: eck-stack
+description: |
+  A Parent Helm chart for all Elastic stack resources managed by the ECK Operator.
+  Currently supported:
+  * Elasticsearch
+  * Kibana
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: eck-elasticsearch
+    condition: eck-elasticsearch.enabled
+    version: "0.1.1"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-elasticsearch"
+    repository: "https://helm.elastic.co"
+  - name: eck-kibana
+    condition: eck-kibana.enabled
+    version: "0.1.1"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-kibana"
+    repository: "https://helm.elastic.co"
+  - name: eck-agent
+    condition: eck-agent.enabled
+    version: "0.1.0"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-agent"
+    repository: "https://helm.elastic.co"
+  - name: eck-fleet-server
+    condition: eck-fleet-server.enabled
+    version: "0.1.0"
+    # uncomment for local testing, and comment
+    # the helm.elastic.co repository.
+    # repository: "file://../eck-fleet-server"
+    repository: "https://helm.elastic.co"

@@ -5,6 +5,7 @@
 package keystore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/magiconair/properties/assert"
@@ -14,11 +15,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
+	watches2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 var (
@@ -72,7 +73,7 @@ func fakeFlagInitContainersParameters(skipInitializedFlag bool) InitContainerPar
 	}
 }
 
-func TestResources(t *testing.T) {
+func TestReconcileResources(t *testing.T) {
 	varFalse := false
 	tests := []struct {
 		name                    string
@@ -226,7 +227,7 @@ echo "Keystore initialization successful."
 				Watches:      watches2.NewDynamicWatches(),
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			resources, err := NewResources(testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
+			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, nil, tt.initContainerParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

@@ -1,0 +1,6 @@
+
+1. Check Kibana status
+  $ kubectl get kibana {{ include "kibana.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check Kibana pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l kibana.k8s.elastic.co/name={{ include "kibana.fullname" . }}

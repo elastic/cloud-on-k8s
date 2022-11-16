@@ -127,6 +127,22 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   verbs:
   - create
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - elastic-operator-leader
+  verbs:
+  - get
+  - watch
+  - update
+- apiGroups:
   - ""
   resources:
   - endpoints
@@ -183,6 +199,19 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - elasticsearches
   - elasticsearches/status
   - elasticsearches/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - autoscaling.k8s.elastic.co
+  resources:
+  - elasticsearchautoscalers
+  - elasticsearchautoscalers/status
+  - elasticsearchautoscalers/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
   verbs:
   - get
   - list

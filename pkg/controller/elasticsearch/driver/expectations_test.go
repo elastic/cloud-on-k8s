@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func Test_defaultDriver_expectationSatisfied(t *testing.T) {
@@ -31,11 +31,13 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 		Client:       client,
 		ES:           es,
 	}}
+	ctx := context.Background()
 
 	// no expectations set
-	satisfied, err := d.expectationsSatisfied()
+	satisfied, reason, err := d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 
 	// a sset generation is expected
 	statefulSet := sset.TestSset{Namespace: es.Namespace, Name: "sset", ClusterName: es.Name}.Build()
@@ -44,36 +46,41 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	// but not satisfied yet
 	statefulSet.Generation = 122
 	require.NoError(t, client.Create(context.Background(), &statefulSet))
-	satisfied, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 	// satisfied now, but not from the StatefulSet controller point of view (status.observedGeneration)
 	statefulSet.Generation = 123
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
-	satisfied, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 	// satisfied now, with matching status.observedGeneration
 	statefulSet.Status.ObservedGeneration = 123
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
-	satisfied, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 
 	// we expect some sset replicas to exist
 	// but corresponding pod does not exist yet
 	statefulSet.Spec.Replicas = pointer.Int32(1)
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
 	// expectations should not be satisfied: we miss a pod
-	satisfied, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.False(t, satisfied)
+	require.NotEqual(t, "", reason)
 
 	// add the missing pod
 	pod := sset.TestPod{Namespace: es.Namespace, Name: "sset-0", StatefulSetName: statefulSet.Name}.Build()
 	require.NoError(t, client.Create(context.Background(), &pod))
 	// expectations should be satisfied
-	satisfied, err = d.expectationsSatisfied()
+	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
+	require.Equal(t, "", reason)
 }

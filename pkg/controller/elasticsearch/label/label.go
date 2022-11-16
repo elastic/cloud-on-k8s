@@ -11,9 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 const (
@@ -27,40 +27,50 @@ const (
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
 	// StatefulSetNameLabelName used to store the name of the statefulset.
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
-
-	// ConfigHashLabelName is a label used to store a hash of the Elasticsearch configuration.
-	ConfigHashLabelName = "elasticsearch.k8s.elastic.co/config-hash"
-	// SecureSettingsHashLabelName is a label used to store a hash of the Elasticsearch secure settings secret.
-	SecureSettingsHashLabelName = "elasticsearch.k8s.elastic.co/secure-settings-hash"
-
 	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
-	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
+	NodeTypesMasterLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
 	// NodeTypesDataLabelName is a label set to true on nodes with the data role
-	NodeTypesDataLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
+	NodeTypesDataLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
 	// NodeTypesIngestLabelName is a label set to true on nodes with the ingest role
-	NodeTypesIngestLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
+	NodeTypesIngestLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
-	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
+	NodeTypesMLLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
 	// NodeTypesTransformLabelName is a label set to true on nodes with the transform role
-	NodeTypesTransformLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
+	NodeTypesTransformLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-transform"
 	// NodeTypesRemoteClusterClientLabelName is a label set to true on nodes with the remote_cluster_client role
-	NodeTypesRemoteClusterClientLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
+	NodeTypesRemoteClusterClientLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-remote_cluster_client"
 	// NodeTypesVotingOnlyLabelName is a label set to true on voting-only master-eligible nodes
-	NodeTypesVotingOnlyLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
+	NodeTypesVotingOnlyLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-voting_only"
 	// NodeTypesDataColdLabelName is a label set to true on nodes with the data_cold role.
-	NodeTypesDataColdLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
+	NodeTypesDataColdLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_cold"
 	// NodeTypesDataContentLabelName is a label set to true on nodes with the data_content role.
-	NodeTypesDataContentLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_content"
+	NodeTypesDataContentLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_content"
 	// NodeTypesDataHotLabelName is a label set to true on nodes with the data_hot role.
-	NodeTypesDataHotLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
+	NodeTypesDataHotLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_hot"
 	// NodeTypesDataWarmLabelName is a label set to true on nodes with the data_warm role.
-	NodeTypesDataWarmLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
+	NodeTypesDataWarmLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
+	// NodeTypesDataFrozenLabelName is a label set to true on nodes with the data_frozen role.
+	NodeTypesDataFrozenLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_frozen"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
 	// Type represents the Elasticsearch type
 	Type = "elasticsearch"
 )
+
+// NonMasterRoles are all Elasticsearch node roles except master or voting-only.
+var NonMasterRoles = []labels.TrueFalseLabel{
+	NodeTypesDataLabelName,
+	NodeTypesDataHotLabelName,
+	NodeTypesDataColdLabelName,
+	NodeTypesDataFrozenLabelName,
+	NodeTypesDataContentLabelName,
+	NodeTypesDataWarmLabelName,
+	NodeTypesIngestLabelName,
+	NodeTypesMLLabelName,
+	NodeTypesRemoteClusterClientLabelName,
+	NodeTypesTransformLabelName,
+}
 
 // IsMasterNode returns true if the pod has the master node label
 func IsMasterNode(pod corev1.Pod) bool {
@@ -106,7 +116,7 @@ func ExtractVersion(labels map[string]string) (version.Version, error) {
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{
 		ClusterNameLabelName: es.Name,
-		common.TypeLabelName: Type,
+		labels.TypeLabelName: Type,
 	}
 }
 
@@ -116,7 +126,6 @@ func NewPodLabels(
 	ssetName string,
 	ver version.Version,
 	nodeRoles *esv1.Node,
-	configHash string,
 	scheme string,
 ) map[string]string {
 	// cluster name based labels
@@ -125,29 +134,30 @@ func NewPodLabels(
 	labels[VersionLabelName] = ver.String()
 
 	// node types labels
-	NodeTypesMasterLabelName.Set(nodeRoles.HasRole(esv1.MasterRole), labels)
-	NodeTypesDataLabelName.Set(nodeRoles.HasRole(esv1.DataRole), labels)
-	NodeTypesIngestLabelName.Set(nodeRoles.HasRole(esv1.IngestRole), labels)
-	NodeTypesMLLabelName.Set(nodeRoles.HasRole(esv1.MLRole), labels)
+	NodeTypesMasterLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.MasterRole), labels)
+	NodeTypesDataLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataRole), labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.IngestRole), labels)
+	NodeTypesMLLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.MLRole), labels)
 	// transform and remote_cluster_client roles were only added in 7.7.0 so we should not annotate previous versions with them
 	if ver.GTE(version.From(7, 7, 0)) {
-		NodeTypesTransformLabelName.Set(nodeRoles.HasRole(esv1.TransformRole), labels)
-		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.HasRole(esv1.RemoteClusterClientRole), labels)
+		NodeTypesTransformLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.TransformRole), labels)
+		NodeTypesRemoteClusterClientLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.RemoteClusterClientRole), labels)
 	}
 	// voting_only master eligible nodes were added only in 7.3.0 so we don't want to label prior versions with it
 	if ver.GTE(version.From(7, 3, 0)) {
-		NodeTypesVotingOnlyLabelName.Set(nodeRoles.HasRole(esv1.VotingOnlyRole), labels)
+		NodeTypesVotingOnlyLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.VotingOnlyRole), labels)
 	}
 	// data tiers were added in 7.10.0
 	if ver.GTE(version.From(7, 10, 0)) {
-		NodeTypesDataContentLabelName.Set(nodeRoles.HasRole(esv1.DataContentRole), labels)
-		NodeTypesDataColdLabelName.Set(nodeRoles.HasRole(esv1.DataColdRole), labels)
-		NodeTypesDataHotLabelName.Set(nodeRoles.HasRole(esv1.DataHotRole), labels)
-		NodeTypesDataWarmLabelName.Set(nodeRoles.HasRole(esv1.DataWarmRole), labels)
+		NodeTypesDataContentLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataContentRole), labels)
+		NodeTypesDataColdLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataColdRole), labels)
+		NodeTypesDataHotLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataHotRole), labels)
+		NodeTypesDataWarmLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataWarmRole), labels)
 	}
-
-	// config hash label, to rotate pods on config changes
-	labels[ConfigHashLabelName] = configHash
+	// frozen tier has been introduced in 7.12.0
+	if ver.GTE(version.From(7, 12, 0)) {
+		NodeTypesDataFrozenLabelName.Set(nodeRoles.IsConfiguredWithRole(esv1.DataFrozenRole), labels)
+	}
 
 	labels[HTTPSchemeLabelName] = scheme
 

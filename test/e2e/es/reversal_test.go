@@ -2,17 +2,17 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
 import (
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 func TestReversalIllegalConfig(t *testing.T) {
@@ -36,6 +36,7 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 	// we create a non-ha cluster
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
 	// we then scale it down to 1 node, which for 6.x cluster in particular is a risky operation
 	// after reversing we expect a cluster to re-form. There is some potential for data loss
 	// in case the cluster indeed goes into split-brain.
@@ -56,7 +57,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 	RunESMutationReversal(t, b, renamed)
 }
 
-func TestRiskyMasterReconfiguration(t *testing.T) {
+func TestReversalRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
@@ -84,5 +85,27 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 }
 
 func RunESMutationReversal(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
-	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo.WithMutatedFrom(&toCreate)})
+	// skipIfIncompatibleBuilders(t, append(creationBuilders, mutationBuilders...)...)
+	ctx := mutateTo.MutationReversalTestContext()
+	k := test.NewK8sClientOrFatal()
+	steps := test.StepList{}.
+		WithSteps(toCreate.InitTestSteps(k)).
+		WithSteps(toCreate.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(toCreate, k)).
+		// set up the mutation test
+		WithSteps(ctx.PreMutationSteps(k)).
+		// trigger some mutations
+		WithSteps(mutateTo.UpgradeTestSteps(k)).
+		// ensure the desired progress has been made with the mutation
+		WithSteps(ctx.PostMutationSteps(k)).
+		// now revert the mutation
+		WithSteps(toCreate.UpgradeTestSteps(k)).
+		// run the standard checks once more
+		WithSteps(test.CheckTestSteps(toCreate, k)).
+		// verify the specifics of the upgrade reversal
+		WithSteps(ctx.VerificationSteps(k)).
+		// and delete the resources
+		WithSteps(mutateTo.DeletionTestSteps(k))
+
+	steps.RunSequential(t)
 }

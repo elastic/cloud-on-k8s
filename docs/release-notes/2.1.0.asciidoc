@@ -1,0 +1,56 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.1.0]]
+== {n} version 2.1.0
+
+[[feature-2.1.0]]
+[float]
+=== New features
+
+* Allow predicates to be disabled on a case-by-case basis through annotation. {pull}5284[#5284] (issue: {issue}2092[#2092])
+
+[[enhancement-2.1.0]]
+[float]
+=== Enhancements
+
+* Elasticsearch: Set status.ObservedGeneration from metadata.Generation {pull}5331[#5331] (issue: {issue}3392[#3392])
+* Kibana: Set status.ObservedGeneration from metadata.Generation {pull}5409[#5409] (issue: {issue}3392[#3392])
+* Extend full upgrade to any version upgrade of non-HA Elasticsearch {pull}5408[#5408]
+* Handle resource conflict while updating status in association reconciler {pull}5337[#5337]
+* Improve Elasticsearch status sub-resource {pull}5328[#5328]
+* Use new node.roles notation in all example manifests {pull}5289[#5289] (issue: {issue}4130[#4130])
+* Handle data tiers during rolling upgrades {pull}5248[#5248] (issue: {issue}5228[#5228])
+* Isolate operator from HTTP service misconfiguration - Use internal service {pull}5211[#5211] (issue: {issue}4394[#4394])
+* Improve handling of managed namespaces - resolving 'unknown namespace for the cache' errors {pull}5187[#5187]
+
+[[bug-2.1.0]]
+[float]
+=== Bug fixes
+
+* Avoid reporting outdated Elasticsearch health on reconciliation error that prevents getting the real one {pull}5349[#5349] (issue: {issue}5330[#5330])
+* Only configure Stack Monitoring if association reconciled {pull}5339[#5339]
+* Do not attempt rolling upgrades for non-HA Elasticsearch clusters {pull}5327[#5327] (issue: {issue}5321[#5321])
+* Use precondition when deleting secrets {pull}5273[#5273] (issue: {issue}5249[#5249])
+* Support new Agent base image as of 7.17 {pull}5268[#5268]
+* Fix webhook match policy for OLM based installations {pull}5437[#5437] (issue: {issue}5423[#5423])
+* Fix Agent trust CA commands for all image variants {pull}5438[#5438] (issue: {issue}5434[#5434])
+
+[[docs-2.1.0]]
+[float]
+=== Documentation improvements
+
+* Add a sentence explaining the upgrade strategy restriction for non-HA Elasticsearch clusters {pull}5400[#5400]
+* Add example code to the Quickstart {pull}5378[#5378] (issue: {issue}5322[#5322])
+* Fix links to Elasticsearch upgrade docs {pull}5347[#5347]
+* Adjust Fleet recipes for default policy change {pull}5281[#5281] (issue: {issue}5262[#5262])
+
+[[nogroup-2.1.0]]
+[float]
+=== Misc
+
+* Update golang version to v1.17.8 {pull}5440[#5440]
+* Update module sigs.k8s.io/controller-runtime to v0.11.1 {pull}5384[#5384]
+* Update module sigs.k8s.io/kustomize/kyaml to v0.13.3 {pull}5380[#5380]
+* Update module github.com/google/go-cmp to v0.5.7 {pull}5264[#5264]
+

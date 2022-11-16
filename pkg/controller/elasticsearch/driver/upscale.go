@@ -10,15 +10,16 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version/zen2"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 type upscaleCtx struct {
@@ -28,6 +29,7 @@ type upscaleCtx struct {
 	esState              ESState
 	expectations         *expectations.Expectations
 	validateStorageClass bool
+	upscaleReporter      *reconcile.UpscaleReporter
 }
 
 type UpscaleResults struct {
@@ -51,6 +53,11 @@ func HandleUpscaleAndSpecChanges(
 	expectedResources nodespec.ResourcesList,
 ) (UpscaleResults, error) {
 	results := UpscaleResults{}
+
+	// Set the list of expected new nodes in the status early. This is to ensure that the list of expected nodes to be
+	// created is surfaced in the status even if an error occurs later in the upscale process.
+	ctx.upscaleReporter.RecordNewNodes(podsToCreate(actualStatefulSets, expectedResources.StatefulSets()))
+
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -58,14 +65,14 @@ func HandleUpscaleAndSpecChanges(
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
-		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
+		if err := settings.ReconcileConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
 			return results, fmt.Errorf("reconcile config: %w", err)
 		}
 		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
+			recreateSset, err := handleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
@@ -75,7 +82,7 @@ func HandleUpscaleAndSpecChanges(
 				continue
 			}
 		}
-		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
+		reconciled, err := sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return results, fmt.Errorf("reconcile StatefulSet: %w", err)
 		}
@@ -84,6 +91,21 @@ func HandleUpscaleAndSpecChanges(
 	}
 	results.ActualStatefulSets = actualStatefulSets
 	return results, nil
+}
+
+func podsToCreate(
+	actualStatefulSets, expectedStatefulSets sset.StatefulSetList,
+) []string {
+	var pods []string
+	for _, expectedStatefulSet := range expectedStatefulSets {
+		actualSset, _ := actualStatefulSets.GetByName(expectedStatefulSet.Name)
+		expectedReplicas := sset.GetReplicas(expectedStatefulSet)
+		for expectedReplicas > sset.GetReplicas(actualSset) {
+			pods = append(pods, sset.PodName(expectedStatefulSet.Name, expectedReplicas-1))
+			expectedReplicas--
+		}
+	}
+	return pods
 }
 
 func adjustResources(
@@ -102,19 +124,19 @@ func adjustResources(
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
-	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
+	if err := adjustZenConfig(ctx.parentCtx, ctx.k8sClient, ctx.es, adjustedResources); err != nil {
 		return nil, fmt.Errorf("adjust discovery config: %w", err)
 	}
 	return adjustedResources, nil
 }
 
-func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
+func adjustZenConfig(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
+	if err := zen1.SetupMinimumMasterNodesConfig(ctx, k8sClient, es, resources); err != nil {
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes
-	return zen2.SetupInitialMasterNodes(es, k8sClient, resources)
+	return zen2.SetupInitialMasterNodes(ctx, es, k8sClient, resources)
 }
 
 // adjustStatefulSetReplicas updates the replicas count in expected according to
@@ -139,9 +161,4 @@ func adjustStatefulSetReplicas(
 	}
 
 	return expected, nil
-}
-
-// isReplicaIncrease returns true if expected replicas are higher than actual replicas.
-func isReplicaIncrease(actual appsv1.StatefulSet, expected appsv1.StatefulSet) bool {
-	return sset.GetReplicas(expected) > sset.GetReplicas(actual)
 }

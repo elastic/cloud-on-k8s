@@ -1,0 +1,61 @@
+[[release-highlights-2.2.0]]
+== 2.2.0 release highlights
+
+[float]
+[id="{p}-220-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.2.0 of {n}. Check <<release-notes-2.2.0>> for the full list of changes.
+
+
+[float]
+[id="{p}-220-custom-secret-"]
+==== Associations with external Elastic Stack components
+
+ECK offers a convenient way to associate Elastic Stack resources together, but it requires them to be all managed by ECK in the same Kubernetes cluster.
+ECK 2.2.0 makes it possible to associate with external Elastic resources not managed by ECK using a custom Secret containing the connection information to this external resource.
+
+For example, you can now use an Elastic Cloud Elasticsearch cluster to monitor Elasticsearch clusters and Kibana instances managed by ECK by combining Stack Monitoring and this new feature.
+
+[source,yaml]
+----
+spec:
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - secretName: external-cloud-es-monitoring-ref
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: external-cloud-es-monitoring-ref
+stringData:
+  url: https://monitoring.es.abc-0.xyz.com:1234
+  username: monitoring-user
+  password: REDACTED
+----
+
+[float]
+[id="{p}-220-erus-calculation-updated"]
+==== ERU report and calculation
+
+To avoid some confusion, the Enterprise Resource Units (ERU) are reported in raw bytes and in Gibibyte (GiB) instead of Gigabyte (GB).
+The ERU calculation has been aligned so that 1 ERU equals to 64 GiB.
+
+[float]
+[id="{p}-220-service-accounts-kibana-fleet"]
+==== Service Accounts for Kibana and Fleet Server
+
+ECK supports link:https://www.elastic.co/guide/en/elasticsearch/reference/current/service-accounts.html[Service Accounts] to secure the connection between Kibana or Fleet Server and Elasticsearch.
+
+[float]
+[id="{p}-220-es-self-monitoring"]
+==== Elasticsearch Self Stack Monitoring
+
+The <<{p}-stack-monitoring,Stack Monitoring>> feature is fully operational to be used for Elasticsearch self-monitoring.
+
+[float]
+[id="{p}-220-known-issues"]
+=== Known issues
+- The migration to service account tokens can lead to unavailability of Kibana and Fleet Server which is especially noticeable on larger Elasticsearch clusters with many nodes. ECK 2.3 enables a migration without downtime. It is recommended to upgrade to ECK 2.3 to avoid this issue or to quickly restore availability on already affected installations. More details can be found in the link:https://github.com/elastic/cloud-on-k8s/issues/5684#issuecomment-1164614176[linked GitHub issue].
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.

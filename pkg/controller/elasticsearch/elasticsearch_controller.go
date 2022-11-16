@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 
 	pkgerrors "github.com/pkg/errors"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,40 +18,38 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	commonversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/observer"
+	esreconcile "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	esversion "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const name = "elasticsearch-controller"
-
-var log = ulog.Log.WithName(name)
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
@@ -72,7 +70,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		Client:         client,
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
-		esObservers:    observer.NewManager(params.Tracer),
+		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
@@ -156,10 +154,11 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, "elasticsearch")
-	defer tracing.EndTransaction(tx)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
 
+	log := ulog.FromContext(ctx)
 	// Fetch the Elasticsearch instance
 	var es esv1.Elasticsearch
 	requeue, err := r.fetchElasticsearchWithAssociations(ctx, request, &es)
@@ -167,13 +166,13 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(&es) {
+	if common.IsUnmanaged(ctx, &es) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{}, nil
 	}
 
 	// Remove any previous Finalizers
-	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
+	if err := finalizer.RemoveAll(ctx, r.Client, &es); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -181,17 +180,32 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
+
+	// ReconciliationComplete is initially set to True until another condition with the same type is reported.
+	state.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionTrue, "")
+
 	results := r.internalReconcile(ctx, es, state)
 
+	// Update orchestration related annotations
 	if err := r.annotateResource(ctx, es, state); err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
-			return reconcile.Result{Requeue: true}, nil
+			results.WithReconciliationState(reconciler.Requeue.WithReason("Conflict while updating annotations"))
+		} else {
+			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
+			results.WithError(err)
+			k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 		}
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
-		return results.WithError(err).Aggregate()
 	}
 
+	if isReconciled, message := results.IsReconciled(); !isReconciled {
+		state.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+		state.ReportCondition(esv1.ReconciliationComplete, corev1.ConditionFalse, message)
+	} else {
+		state.UpdateWithPhase(esv1.ElasticsearchReadyPhase)
+	}
+
+	// Last step of the reconciliation loop is always to update the Elasticsearch resource status.
 	err = r.updateStatus(ctx, es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -204,18 +218,18 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 }
 
 func (r *ReconcileElasticsearch) fetchElasticsearchWithAssociations(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
-	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
-	err := association.FetchWithAssociations(ctx, r.Client, request, es)
-	if err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, es); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, cleanup in-memory state. Children resources are garbage-collected either by
 			// the operator (see `onDelete`), either by k8s through the ownerReference mechanism.
-			return true, r.onDelete(types.NamespacedName{
-				Namespace: request.Namespace,
-				Name:      request.Name,
-			})
+			return true, r.onDelete(ctx,
+				types.NamespacedName{
+					Namespace: request.Namespace,
+					Name:      request.Name,
+				})
 		}
 		// Error reading the object - requeue the request.
 		return true, err
@@ -229,15 +243,15 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	reconcileState *esreconcile.State,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-
+	log := log.FromContext(ctx)
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
-		return results.WithError(r.onDelete(k8s.ExtractNamespacedName(&es)))
+		return results.WithError(r.onDelete(ctx, k8s.ExtractNamespacedName(&es)))
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	err := validation.ValidateElasticsearch(es, r.ExposedNodeLabels)
+	err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
 
 	if err != nil {
@@ -247,7 +261,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 		)
-		reconcileState.UpdateElasticsearchInvalid(err)
+		reconcileState.UpdateElasticsearchInvalidWithEvent(err.Error())
 		return results
 	}
 
@@ -290,8 +304,8 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
-	defer span.End()
+	defer tracing.Span(&ctx)()
+	log := ulog.FromContext(ctx)
 
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
@@ -307,7 +321,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 		"es_name", es.Name,
 		"status", cluster.Status,
 	)
-	return common.UpdateStatus(r.Client, cluster)
+	return common.UpdateStatus(ctx, r.Client, cluster)
 }
 
 // annotateResource adds the orchestration hints annotation to the Elasticsearch resource. The purpose of this annotation
@@ -320,6 +334,8 @@ func (r *ReconcileElasticsearch) annotateResource(
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_hints_annotations", tracing.SpanTypeApp)
 	defer span.End()
+
+	log := ulog.FromContext(ctx)
 
 	// cluster-uuid is a special case of an annotation on the Elasticsearch resource that is not treated here but through
 	// an immediate update due to the risk of data loss. See bootstrap package.
@@ -338,7 +354,7 @@ func (r *ReconcileElasticsearch) annotateResource(
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
+func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
@@ -346,5 +362,5 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
-	return reconciler.GarbageCollectSoftOwnedSecrets(r.Client, es, esv1.Kind)
+	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

@@ -8,13 +8,22 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
+
+	"github.com/ghodss/yaml"
+	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
 )
 
 const (
-	GkeDriverID                     = "gke"
-	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
-	GkeServiceAccountVaultFieldName = "service-account"
-	DefaultGkeRunConfigTemplate     = `id: gke-dev
+	GKEDriverID                     = "gke"
+	GKEVaultPath                    = "ci-gcp-k8s-operator"
+	GKEServiceAccountVaultFieldName = "service-account"
+	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
   clusterName: %s-dev-cluster
   gke:
@@ -30,18 +39,18 @@ var (
 )
 
 func init() {
-	drivers[GkeDriverID] = &GkeDriverFactory{}
+	drivers[GKEDriverID] = &GKEDriverFactory{}
 }
 
-type GkeDriverFactory struct {
+type GKEDriverFactory struct {
 }
 
-type GkeDriver struct {
+type GKEDriver struct {
 	plan Plan
 	ctx  map[string]interface{}
 }
 
-func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
+func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	pvcPrefix := plan.ClusterName
 	if len(pvcPrefix) > pvcPrefixMaxLength {
 		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
@@ -57,12 +66,13 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
 	}
 
-	return &GkeDriver{
+	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
 			"PVCPrefix":         pvcPrefix,
+			"PlanId":            plan.Id,
 			"Region":            plan.Gke.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
@@ -75,9 +85,9 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-func (d *GkeDriver) Execute() error {
+func (d *GKEDriver) Execute() error {
 	if err := authToGCP(
-		d.plan.VaultInfo, GkeVaultPath, GkeServiceAccountVaultFieldName,
+		d.plan.VaultInfo, GKEVaultPath, GKEServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
 	); err != nil {
 		return err
@@ -128,11 +138,20 @@ func (d *GkeDriver) Execute() error {
 			return err
 		}
 
+		if err := d.setupLabelsForGCEProvider(); err != nil {
+			return err
+		}
+
 		if err := setupDisks(d.plan); err != nil {
 			return err
 		}
 		if err := createStorageClass(); err != nil {
 			return err
+		}
+		if d.plan.EnforceSecurityPolicies {
+			if err := kyverno.Install(); err != nil {
+				return err
+			}
 		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -141,11 +160,77 @@ func (d *GkeDriver) Execute() error {
 	return err
 }
 
-func (d *GkeDriver) clusterExists() (bool, error) {
+const (
+	GoogleComputeEngineStorageProvider = "pd.csi.storage.gke.io"
+)
+
+// setupLabelsForGCEProvider adds the "labels" parameter in the GCE storage classes.
+// These labels are automatically applied to GCE Persistent Disks provisioned using these storage classes.
+func (d *GKEDriver) setupLabelsForGCEProvider() error {
+	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
+	if err != nil {
+		return err
+	}
+	storageClasses := storagev1.StorageClassList{}
+	if err := yaml.Unmarshal([]byte(storageClassesYaml), &storageClasses); err != nil {
+		return err
+	}
+	labels, err := d.resourcesLabels()
+	if err != nil {
+		return err
+	}
+	for _, storageClass := range storageClasses.Items {
+		if storageClass.Provisioner != GoogleComputeEngineStorageProvider {
+			continue
+		}
+		// This is a GCE storage class patch it
+
+		// start by removing the label that makes the storage class managed by the addon manager to prevent it from being recreated before us
+		err := exec.NewCommand(fmt.Sprintf(`kubectl label sc %s "addonmanager.kubernetes.io/mode"-`, storageClass.Name)).WithoutStreaming().Run()
+		if err != nil {
+			return err
+		}
+
+		if storageClass.Parameters == nil {
+			storageClass.Parameters = make(map[string]string)
+		}
+		storageClass.Parameters["labels"] = labels
+		storageClassYaml, err := yaml.Marshal(storageClass)
+		if err != nil {
+			return err
+		}
+
+		if err := retry.OnError(
+			wait.Backoff{Duration: 10 * time.Millisecond, Steps: 5},
+			func(err error) bool { return true },
+			func() error {
+				return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl replace --force -f -
+%s
+EOF`, string(storageClassYaml))).Run()
+			},
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *GKEDriver) resourcesLabels() (string, error) {
+	username, err := d.username(true)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(
+		"username=%s,cluster_name=%s,plan_id=%s,region=%s",
+		username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
+	), nil
+}
+
+func (d *GKEDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
 	cmd := "gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
-	contains, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
+	contains, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
 	if contains {
 		return false, nil
 	}
@@ -153,13 +238,10 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) create() error {
+func (d *GKEDriver) create() error {
 	log.Println("Creating cluster...")
 
 	opts := []string{}
-	if d.plan.Psp {
-		opts = append(opts, "--enable-pod-security-policy")
-	}
 
 	if d.plan.Gke.NetworkPolicy {
 		opts = append(opts, "--enable-network-policy")
@@ -171,11 +253,15 @@ func (d *GkeDriver) create() error {
 		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
 	}
 
-	return NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
-		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
+	labels, err := d.resourcesLabels()
+	if err != nil {
+		return err
+	}
+	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
-		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
+		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
 		strings.Join(opts, " ")).
@@ -183,40 +269,81 @@ func (d *GkeDriver) create() error {
 		Run()
 }
 
-func (d *GkeDriver) bindRoles() error {
-	user, err := NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).Output()
+// username attempts to extract the username from the current account.
+// When used in labels the "unqualified" parameter should be set to true, it's because only lowercase letters ([a-z]),
+// numeric characters ([0-9]), underscores (_) and dashes (-) are allowed as label values.
+func (d *GKEDriver) username(unqualified bool) (string, error) {
+	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
+	if err != nil {
+		return "", err
+	}
+	if unqualified {
+		if idx := strings.Index(user, "@"); idx != -1 {
+			user = user[:idx]
+		}
+		user = strings.ReplaceAll(user, ".", "_")
+	}
+	return user, nil
+}
+
+func (d *GKEDriver) bindRoles() error {
+	user, err := d.username(false)
 	if err != nil {
 		return err
 	}
-	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
+	cmd := fmt.Sprintf("kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s", user)
 	if d.plan.Gke.Private {
 		log.Printf("this is a private cluster, please bind roles manually from an authorized VM with the following command:\n$ %s\n", cmd)
 		return nil
 	}
 	log.Println("Binding roles...")
-	return NewCommand(cmd).Run()
+	return exec.NewCommand(cmd).Run()
 }
 
-func (d *GkeDriver) GetCredentials() error {
+func (d *GKEDriver) GetCredentials() error {
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
-func (d *GkeDriver) delete() error {
+func (d *GKEDriver) delete() error {
 	log.Println("Deleting cluster...")
 	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	cmd = `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err := exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
+	if err := d.deleteDisks(disks); err != nil {
+		return err
+	}
+	deletedDisks := len(disks)
 
+	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err = exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	if err != nil {
+		return err
+	}
+	if err := d.deleteDisks(disks); err != nil {
+		return err
+	}
+	deletedDisks += len(disks)
+	if deletedDisks == 0 {
+		log.Println("No GCE persistent disks deleted")
+	} else {
+		log.Printf("%d GCE persistent disks deleted", deletedDisks)
+	}
+
+	return nil
+}
+
+func (d *GKEDriver) deleteDisks(disks []string) error {
 	for _, disk := range disks {
 		nameZone := strings.Split(disk, ",")
 		if len(nameZone) != 2 {
@@ -224,8 +351,8 @@ func (d *GkeDriver) delete() error {
 		}
 
 		name, zone := nameZone[0], nameZone[1]
-		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
-		err := NewCommand(cmd).
+		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
+		err := exec.NewCommand(cmd).
 			AsTemplate(map[string]interface{}{
 				"GCloudProject": d.plan.Gke.GCloudProject,
 				"Name":          name,
@@ -236,6 +363,5 @@ func (d *GkeDriver) delete() error {
 			return err
 		}
 	}
-
 	return nil
 }

@@ -5,7 +5,7 @@
 // Package v1alpha1 contains API Schema definitions for the agent v1alpha1 API group
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/elastic/cloud-on-k8s/pkg/apis/agent
+// +k8s:conversion-gen=github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=agent.k8s.elastic.co
 package v1alpha1

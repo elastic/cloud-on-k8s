@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,19 +19,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
 	ControllerName = "webhook-certificates-controller"
 )
-
-var log = ulog.Log.WithName(ControllerName)
 
 var _ reconcile.Reconciler = &ReconcileWebhookResources{}
 
@@ -45,17 +45,23 @@ type ReconcileWebhookResources struct {
 	webhookParams Params
 	// resources are updated with a native Kubernetes client
 	clientset kubernetes.Interface
+
+	// APM tracer
+	tracer *apm.Tracer
 }
 
 func (r *ReconcileWebhookResources) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.tracer, ControllerName, "validating_webhook_configuration", request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
+
 	res := r.reconcileInternal(ctx)
 	return res.Aggregate()
 }
 
 func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reconciler.Results {
 	res := &reconciler.Results{}
-	wh, err := r.webhookParams.NewAdmissionControllerInterface(context.Background(), r.clientset)
+	wh, err := r.webhookParams.NewAdmissionControllerInterface(ctx, r.clientset)
 	if err != nil {
 		return res.WithError(err)
 	}
@@ -68,7 +74,7 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 	if err != nil {
 		return res.WithError(err)
 	}
-	serverCA := certificates.BuildCAFromSecret(*webhookServerSecret)
+	serverCA := certificates.BuildCAFromSecret(ctx, *webhookServerSecret)
 	if serverCA == nil {
 		return res.WithError(
 			pkgerrors.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),
@@ -82,18 +88,19 @@ func (r *ReconcileWebhookResources) reconcileInternal(ctx context.Context) *reco
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface) *ReconcileWebhookResources {
+func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, tracer *apm.Tracer) *ReconcileWebhookResources {
 	c := mgr.GetClient()
 	return &ReconcileWebhookResources{
 		Client:        c,
 		webhookParams: webhookParams,
 		clientset:     clientset,
+		tracer:        tracer,
 	}
 }
 
 // Add adds a new Controller to mgr with r as the reconcile.Reconciler
-func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface) error {
-	r := newReconciler(mgr, webhookParams, clientset)
+func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, tracer *apm.Tracer) error {
+	r := newReconciler(mgr, webhookParams, clientset, tracer)
 	// Create a new controller
 	c, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {

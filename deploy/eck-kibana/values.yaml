@@ -1,0 +1,44 @@
+---
+# Default values for eck-kibana.
+# This is a YAML-formatted file.
+
+# Overridable names of the Kibana resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-kibana'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Kibana resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Kibana.
+#
+version: 8.5.0
+
+# Labels that will be applied to Kibana.
+#
+labels: {}
+
+# Annotations that will be applied to Kibana.
+#
+annotations: {}
+
+spec:
+  # Count of Kibana replicas to create.
+  #
+  count: 1
+
+  # Reference to ECK-managed Elasticsearch resource.
+  #
+  elasticsearchRef:
+    name: eck-elasticsearch
+    # Optional namespace reference to Elasticsearch resource.
+    # If not specified, then the namespace of the Kibana resource
+    # will be assumed.
+    #
+    # namespace: default

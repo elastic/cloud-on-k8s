@@ -18,6 +18,9 @@ KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
+# Allow FIPS compliance by means of BoringCrypto build tag.
+ENABLE_FIPS ?= false
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
@@ -45,17 +48,33 @@ TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG                 := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
-OPERATOR_IMAGE           ?= $(BASE_IMG):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
+BASE_IMG                     := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
+OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
+OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8:$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION)
+
+# From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
+#
+# Experiments are exposed to the build in the following ways:
+# - Build tag goexperiment.x is set if experiment x (lower case) is enabled.
+#
+# Also, if fips is enabled, push fips versions of all builds to container registrys.
+ifeq ($(ENABLE_FIPS),true)
+	GO_TAGS += goexperiment.boringcrypto
+	OPERATOR_IMAGE               := $(BASE_IMG)-fips:$(IMG_VERSION)
+	OPERATOR_IMAGE_UBI           := $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)	
+endif
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildHash=$(TAG) \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 # options for 'go test'. for instance, set to "-race" to enable the race checker
 TEST_OPTS ?=
@@ -69,12 +88,6 @@ OPERATOR_NAME ?= elastic-operator
 # comma separated list of namespaces in which the operator should watch resources
 MANAGED_NAMESPACES ?=
 
-## -- Security
-
-# should environments be configured with PSP ?
-# TODO: only relevant on GKE for e2e tests for the moment
-PSP ?= 0
-
 #####################################
 ##  --       Development       --  ##
 #####################################
@@ -83,8 +96,8 @@ all: dependencies lint check-license-header unit integration e2e-compile elastic
 
 ## -- build
 
-dependencies:
-	go mod tidy -v && go mod download
+dependencies: tidy
+	go mod download
 
 # Generate code, CRDs and documentation
 ALL_V1_CRDS=config/crds/v1/all-crds.yaml
@@ -100,8 +113,8 @@ go-generate:
 
 generate-crds-v1: go-generate controller-gen
 	# Generate webhook manifest
-	# Webhook definitions exist in both pkg/apis and pkg/controller/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/... paths=./pkg/controller/elasticsearch/validation/...
+	# Webhook definitions exist in pkg/apis, pkg/controller/elasticsearch/validation and pkg/controller/autoscaling/elasticsearch/validation
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
 	# apply patches to work around some CRD generation issues, and merge them into a single file
@@ -132,7 +145,7 @@ generate-image-dependencies:
 	@hack/licence-detector/generate-image-deps.sh
 
 elastic-operator: generate
-	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
+	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
@@ -154,6 +167,9 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+helm-test:
+	@hack/helm/test.sh
+
 integration: GO_TAGS += integration
 integration: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
@@ -163,11 +179,14 @@ integration-xml: clean generate-crds-v1
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
-	golangci-lint run
+	GOGC=50 golangci-lint run --verbose
+
+manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
+	# --external-sources because .buildkite/scripts/common/get-test-artifacts.sh source .env
+	shellcheck --external-sources $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 upgrade-test: docker-build docker-push
 	@hack/upgrade-test-harness/run.sh
@@ -196,6 +215,7 @@ go-run:
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
 				--manage-webhook-certs=false \
+				--exposed-node-labels=topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.* \
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
@@ -255,10 +275,6 @@ else
 		--set=fullnameOverride=$(OPERATOR_NAME) \
 		--set=managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
 endif
-
-apply-psp:
-	kubectl apply -f config/recipes/psp/elastic-psp.yaml
-	kubectl apply -f config/recipes/psp/beats-agent-psp.yaml
 
 logs-operator:
 	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
@@ -332,9 +348,6 @@ bootstrap-k8s: setup-deployer
 
 bootstrap-cloud: bootstrap-k8s
 	$(MAKE) cluster-bootstrap
-ifeq ($(PSP), 1)
-	$(MAKE) apply-psp
-endif
 
 delete-cloud: setup-deployer
 	@ $(DEPLOYER) execute --operation=delete
@@ -362,7 +375,17 @@ switch-tanzu:
 #################################
 ##  --    Docker images    --  ##
 #################################
+
+BUILD_PLATFORM ?= "linux/amd64,linux/arm64"
+
+buildah-login:
+	@ buildah login \
+		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry)" \
+		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry)" \
+		$(REGISTRY)
+
 docker-multiarch-build: go-generate generate-config-file 
+ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
 	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
@@ -370,10 +393,34 @@ docker-multiarch-build: go-generate generate-config-file
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
-		--platform linux/amd64,linux/arm64 \
+		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
 		--push
+	# The following UBI build should already have the binary cached, and should
+	# be a quick operation.
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform linux/amd64,linux/arm64 \
+		-f Dockerfile.ubi \
+		-t $(OPERATOR_IMAGE_UBI) \
+		-t $(OPERATOR_DOCKERHUB_IMAGE_UBI) \
+		--push
+else
+	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform $(BUILD_PLATFORM) \
+		-t $(OPERATOR_IMAGE) \
+		--push
+endif
+	
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
@@ -385,6 +432,18 @@ docker-build: go-generate generate-config-file
 
 docker-push:
 	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
+
+operator-buildah: go-generate generate-config-file buildah-login
+	buildah bud \
+		--isolation=chroot --storage-driver=vfs \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform $(BUILD_PLATFORM) \
+		-t $(OPERATOR_IMAGE) .
+	buildah push \
+		--storage-driver=vfs \
+		$(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -408,14 +467,9 @@ switch-registry-dev: # just use the default values of variables
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 
-E2E_IMG_TAG                := $(TAG)
-E2E_IMG_TAG_SUFFIX         ?= $(subst /,-,$(PIPELINE)) # Derive the tag suffix from the PIPELINE environment variable
-ifneq ($(strip $(E2E_IMG_TAG_SUFFIX)),) # If the suffix is not empty, append it to the tag
-	E2E_IMG_TAG := $(TAG)-$(E2E_IMG_TAG_SUFFIX)
-endif
-
+E2E_IMG_TAG                := $(IMG_VERSION)
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 7.15.2
+E2E_STACK_VERSION          ?= 8.5.0
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
@@ -443,9 +497,22 @@ e2e-docker-multiarch-build: go-generate
 		--file test/e2e/Dockerfile \
 		--build-arg E2E_JSON=$(E2E_JSON) \
 		--build-arg E2E_TAGS='$(E2E_TAGS)' \
-		--platform linux/amd64,linux/arm64 \
+		--platform $(BUILD_PLATFORM) \
 		--push \
 		-t $(E2E_IMG) .
+
+e2e-buildah: go-generate buildah-login
+	buildah bud \
+		--isolation=chroot --storage-driver=vfs \
+		--platform $(BUILD_PLATFORM) \
+		--build-arg E2E_JSON='$(E2E_JSON)' \
+		--build-arg E2E_TAGS='$(E2E_TAGS)' \
+		-f test/e2e/Dockerfile \
+		-t $(E2E_IMG) \
+		.
+	buildah push \
+		--storage-driver=vfs \
+		$(E2E_IMG)
 
 e2e-run: go-generate
 	@go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
@@ -455,6 +522,7 @@ e2e-run: go-generate
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
+		--elastic-stack-images=stack-versions-def.json \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \
@@ -496,11 +564,11 @@ e2e-local: go-generate
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci-check: check-license-header lint shellcheck generate check-local-changes
+ci-check: check-license-header lint shellcheck generate check-local-changes check-predicates
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer apply-psp e2e-docker-multiarch-build
+setup-e2e: e2e-compile run-deployer e2e-docker-multiarch-build
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
@@ -510,6 +578,9 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+
+set-kubeconfig:
+	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
@@ -528,6 +599,16 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+# Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
+# defined in the user documentation in orchestration.asciidoc.
+check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
+check-predicates: DOC = docs/orchestrating-elastic-stack-applications/elasticsearch/orchestration.asciidoc
+check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
+check-predicates:
+	@ diff \
+		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
+		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
 
 # Runs small Go tool to validate syntax correctness of Jenkins pipelines
 validate-jenkins-pipelines:

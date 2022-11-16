@@ -15,24 +15,26 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // ImportExistingResources attempts to infer the resources to allocate to node sets if an autoscaling policy is not in the Status.
 // It can be the case if:
-//  * The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
-//    we want to be able to set some good default resources even if the autoscaling API is not responding.
-// * The Elasticsearch resource has been replaced and the status annotation has been lost in the process.
-func (s *Status) ImportExistingResources(
+// - The cluster was manually managed and the user wants to manage resources with the autoscaling controller. In that case
+// we want to be able to set some good default resources even if the autoscaling API is not responding.
+// - The Elasticsearch resource has been replaced and the status annotation has been lost in the process.
+func ImportExistingResources(
 	log logr.Logger,
 	c k8s.Client,
-	as esv1.AutoscalingSpec,
+	autoscalingPolicies v1alpha1.AutoscalingPolicySpecs,
+	es esv1.Elasticsearch,
 	autoscaledNodeSets esv1.AutoscaledNodeSets,
+	status *v1alpha1.ElasticsearchAutoscalerStatus,
 ) error {
-	for _, autoscalingPolicy := range as.AutoscalingPolicySpecs {
-		if _, inStatus := s.CurrentResourcesForPolicy(autoscalingPolicy.Name); inStatus {
+	for _, autoscalingPolicy := range autoscalingPolicies {
+		if _, inStatus := status.CurrentResourcesForPolicy(autoscalingPolicy.Name); inStatus {
 			// This autoscaling policy is already managed and we have some resources in the Status.
 			continue
 		}
@@ -42,7 +44,7 @@ func (s *Status) ImportExistingResources(
 			// Not supposed to happen with a proper validation in place, but we still want to report this error
 			return fmt.Errorf("no nodeSet associated to autoscaling policy %s", autoscalingPolicy.Name)
 		}
-		resources, err := nodeSetsResourcesResourcesFromStatefulSets(c, as.Elasticsearch, autoscalingPolicy, nodeSetList.Names())
+		resources, err := nodeSetsResourcesResourcesFromStatefulSets(c, es, autoscalingPolicy, nodeSetList.Names())
 		if err != nil {
 			return err
 		}
@@ -57,8 +59,8 @@ func (s *Status) ImportExistingResources(
 			"resources", resources.ToInt64(),
 		)
 		// We only want to save the status the resources
-		s.AutoscalingPolicyStatuses = append(s.AutoscalingPolicyStatuses,
-			AutoscalingPolicyStatus{
+		status.AutoscalingPolicyStatuses = append(status.AutoscalingPolicyStatuses,
+			v1alpha1.AutoscalingPolicyStatus{
 				Name:                   autoscalingPolicy.Name,
 				NodeSetNodeCount:       resources.NodeSetNodeCount,
 				ResourcesSpecification: resources.NodeResources,
@@ -71,10 +73,10 @@ func (s *Status) ImportExistingResources(
 func nodeSetsResourcesResourcesFromStatefulSets(
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	autoscalingPolicySpec esv1.AutoscalingPolicySpec,
+	autoscalingPolicySpec v1alpha1.AutoscalingPolicySpec,
 	nodeSets []string,
-) (*resources.NodeSetsResources, error) {
-	nodeSetsResources := resources.NodeSetsResources{
+) (*v1alpha1.NodeSetsResources, error) {
+	nodeSetsResources := v1alpha1.NodeSetsResources{
 		Name: autoscalingPolicySpec.Name,
 	}
 	found := false
@@ -98,7 +100,7 @@ func nodeSetsResourcesResourcesFromStatefulSets(
 		}
 
 		found = true
-		nodeSetsResources.NodeSetNodeCount = append(nodeSetsResources.NodeSetNodeCount, resources.NodeSetNodeCount{
+		nodeSetsResources.NodeSetNodeCount = append(nodeSetsResources.NodeSetNodeCount, v1alpha1.NodeSetNodeCount{
 			Name:      nodeSetName,
 			NodeCount: getStatefulSetReplicas(statefulSet),
 		})

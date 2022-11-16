@@ -14,7 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -23,10 +24,10 @@ const (
 )
 
 type Checker interface {
-	CurrentEnterpriseLicense() (*EnterpriseLicense, error)
-	EnterpriseFeaturesEnabled() (bool, error)
-	Valid(l EnterpriseLicense) (bool, error)
-	ValidOperatorLicenseKeyType() (OperatorLicenseType, error)
+	CurrentEnterpriseLicense(context.Context) (*EnterpriseLicense, error)
+	EnterpriseFeaturesEnabled(ctx context.Context) (bool, error)
+	Valid(context.Context, EnterpriseLicense) (bool, error)
+	ValidOperatorLicenseKeyType(context.Context) (OperatorLicenseType, error)
 }
 
 // checker contains parameters for license checks.
@@ -60,7 +61,7 @@ func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
 }
 
 // CurrentEnterpriseLicense returns the currently valid Enterprise license if installed.
-func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+func (lc *checker) CurrentEnterpriseLicense(ctx context.Context) (*EnterpriseLicense, error) {
 	licenses, err := EnterpriseLicenses(lc.k8sClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list enterprise licenses")
@@ -77,7 +78,7 @@ func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 
 	// pick the first valid Enterprise license in the sorted slice
 	for _, l := range licenses {
-		valid, err := lc.Valid(l)
+		valid, err := lc.Valid(ctx, l)
 		if err != nil {
 			return nil, err
 		}
@@ -89,8 +90,8 @@ func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 }
 
 // EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
-func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
-	license, err := lc.CurrentEnterpriseLicense()
+func (lc *checker) EnterpriseFeaturesEnabled(ctx context.Context) (bool, error) {
+	license, err := lc.CurrentEnterpriseLicense(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -98,20 +99,20 @@ func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
 }
 
 // Valid returns true if the given Enterprise license is valid or an error if any.
-func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
+func (lc *checker) Valid(ctx context.Context, l EnterpriseLicense) (bool, error) {
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")
 	}
 	if len(pk) == 0 {
-		log.Info("This is an unlicensed development build of ECK. License management and Enterprise features are disabled")
+		ulog.FromContext(ctx).Info("This is an unlicensed development build of ECK. License management and Enterprise features are disabled")
 		return false, nil
 	}
 	verifier, err := NewVerifier(pk)
 	if err != nil {
 		return false, err
 	}
-	status := verifier.Valid(l, time.Now())
+	status := verifier.Valid(ctx, l, time.Now())
 	if status == LicenseStatusValid {
 		return true, nil
 	}
@@ -119,10 +120,10 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 }
 
 // ValidOperatorLicenseKeyType returns true if the current operator license key is valid
-func (lc checker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
-	lic, err := lc.CurrentEnterpriseLicense()
+func (lc checker) ValidOperatorLicenseKeyType(ctx context.Context) (OperatorLicenseType, error) {
+	lic, err := lc.CurrentEnterpriseLicense(ctx)
 	if err != nil {
-		log.V(-1).Info("Invalid Enterprise license, fallback to Basic: " + err.Error())
+		ulog.FromContext(ctx).V(-1).Info("Invalid Enterprise license, fallback to Basic: " + err.Error())
 	}
 
 	licType := lic.GetOperatorLicenseType()
@@ -136,19 +137,19 @@ type MockLicenseChecker struct {
 	EnterpriseEnabled bool
 }
 
-func (m MockLicenseChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+func (m MockLicenseChecker) CurrentEnterpriseLicense(context.Context) (*EnterpriseLicense, error) {
 	return &EnterpriseLicense{}, nil
 }
 
-func (m MockLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
+func (m MockLicenseChecker) EnterpriseFeaturesEnabled(context.Context) (bool, error) {
 	return m.EnterpriseEnabled, nil
 }
 
-func (m MockLicenseChecker) Valid(l EnterpriseLicense) (bool, error) {
+func (m MockLicenseChecker) Valid(_ context.Context, _ EnterpriseLicense) (bool, error) {
 	return m.EnterpriseEnabled, nil
 }
 
-func (m MockLicenseChecker) ValidOperatorLicenseKeyType() (OperatorLicenseType, error) {
+func (m MockLicenseChecker) ValidOperatorLicenseKeyType(_ context.Context) (OperatorLicenseType, error) {
 	return LicenseTypeEnterprise, nil
 }
 

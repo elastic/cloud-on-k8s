@@ -5,15 +5,14 @@
 package v1
 
 import (
-	"crypto/sha256"
-	"encoding/base32"
 	"fmt"
 	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 )
 
 const (
@@ -107,6 +106,10 @@ const (
 	FleetServerConfigAnnotationNameBase = "association.k8s.elastic.co/fs-conf"
 	FleetServerAssociationType          = "fleetserver"
 
+	BeatConfigAnnotationNameBase  = "association.k8s.elastic.co/beat-conf"
+	BeatAssociationType           = "beat"
+	BeatMonitoringAssociationType = "beat-monitoring"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
@@ -122,6 +125,8 @@ const (
 	// credentials are necessary for that association.
 	NoAuthRequiredValue = "-"
 )
+
+type ServiceAccountName string
 
 // Associated represents an Elastic stack resource that is associated with other stack resources.
 // Examples:
@@ -145,6 +150,9 @@ type Associated interface {
 type Association interface {
 	Associated
 
+	// ElasticServiceAccount returns the Elasticsearch service account name to be used for authentication.
+	ElasticServiceAccount() (ServiceAccountName, error)
+
 	// Associated can be used to retrieve the associated object
 	Associated() Associated
 
@@ -162,7 +170,7 @@ type Association interface {
 	AssociationConfAnnotationName() string
 
 	// AssociationConf is the configuration of the Association allowing to connect to the Association resource.
-	AssociationConf() *AssociationConf
+	AssociationConf() (*AssociationConf, error)
 	SetAssociationConf(*AssociationConf)
 
 	// AssociationID uniquely identifies this Association among all Associations of the same type belonging to Associated()
@@ -189,11 +197,12 @@ func FormatNameWithID(template string, id string) string {
 
 // AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
-	AuthSecretName string `json:"authSecretName"`
-	AuthSecretKey  string `json:"authSecretKey"`
-	CACertProvided bool   `json:"caCertProvided"`
-	CASecretName   string `json:"caSecretName"`
-	URL            string `json:"url"`
+	AuthSecretName   string `json:"authSecretName"`
+	AuthSecretKey    string `json:"authSecretKey"`
+	IsServiceAccount bool   `json:"isServiceAccount"`
+	CACertProvided   bool   `json:"caCertProvided"`
+	CASecretName     string `json:"caSecretName"`
+	URL              string `json:"url"`
 	// Version of the referenced resource. If a version upgrade is in progress,
 	// matches the lowest running version. May be empty if unknown.
 	Version string `json:"version"`
@@ -283,20 +292,8 @@ func (ac *AssociationConf) GetVersion() string {
 	return ac.Version
 }
 
-func ElasticsearchConfigAnnotationName(esNsn types.NamespacedName) string {
+func ElasticsearchConfigAnnotationName(o ObjectSelector) string {
 	// annotation key should be stable to allow the Elasticsearch Controller to only pick up the ones it expects,
-	// based on ElasticsearchRefs
-
-	nsNameHash := sha256.New224()
-	// concat with dot to avoid collisions, as namespace can't contain dots
-	_, _ = nsNameHash.Write([]byte(fmt.Sprintf("%s.%s", esNsn.Namespace, esNsn.Name)))
-	// base32 to encode and limit the length, as using Sprintf with "%x" encodes with base16 which happens to
-	// give too long output
-	// no padding to avoid illegal '=' character in the annotation name
-	hash := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(nsNameHash.Sum(nil))
-
-	return FormatNameWithID(
-		ElasticsearchConfigAnnotationNameBase+"%s",
-		hash,
-	)
+	// based on the ObjectSelector
+	return FormatNameWithID(ElasticsearchConfigAnnotationNameBase+"%s", hash.HashObject(o))
 }

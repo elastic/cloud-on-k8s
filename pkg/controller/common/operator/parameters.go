@@ -5,17 +5,22 @@
 package operator
 
 import (
-	"go.elastic.co/apm"
+	"time"
+
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	esvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	esvalidation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
+	// ElasticsearchObservationInterval is the interval between (asynchronous) observations of Elasticsearch health.
+	ElasticsearchObservationInterval time.Duration
 	// ExposedNodeLabels holds regular expressions of node labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
 	ExposedNodeLabels esvalidation.NodeLabels
 	// OperatorNamespace is the control plane namespace of the operator.
@@ -24,8 +29,12 @@ type Parameters struct {
 	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
+	// PasswordHasher is the password hash generator used by the operator.
+	PasswordHasher cryptutil.PasswordHasher
 	// IPFamily represents the IP family to use when creating configuration and services.
 	IPFamily corev1.IPFamily
+	// GlobalCA is an optionally configured, globally shared CA to be used for all managed resources.
+	GlobalCA *certificates.CA
 	// CACertRotation defines the rotation params for CA certificates.
 	CACertRotation certificates.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.

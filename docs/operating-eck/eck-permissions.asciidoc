@@ -8,8 +8,12 @@ endif::[]
 [id="{p}-{page_id}"]
 = Required RBAC permissions
 
-Installing and running ECK, as well as using ECK-managed resources requires certain Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]. These permissions are listed below, with a reason why they are needed.
+Installing and running ECK, as well as using ECK-managed resources requires the following Kubernetes link:https://kubernetes.io/docs/reference/access-authn-authz/rbac[permissions]:
 
+* <<{p}-{page_id}-installing-crds,Installing CRDs>> 
+* <<{p}-{page_id}-installing-operator,Installing the ECK operator>> 
+* <<{p}-{page_id}-running,Running ECK operator>> 
+* <<{p}-{page_id}-using,Using ECK-managed resources>> 
 
 [float]
 [id="{p}-{page_id}-installing-crds"]
@@ -58,7 +62,7 @@ These permissions are needed by the Service Account that ECK operator runs as.
 |Endpoint||no|Checking availability of service endpoints.
 |Event||no|Emitting events concerning reconciliation progress and issues.
 |PersistentVolumeClaim||no|Expanding existing volumes. Check link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html#k8s_updating_the_volume_claim_settings[docs] to learn more.
-|Secret||no|Reading/writing configuration, passwords, certificates, etc.
+|Secret||no|Reading/writing configuration, passwords, certificates, and so on.
 |Service||no|Creating Services fronting Elastic Stack applications.
 |ConfigMap||no|Reading/writing configuration.
 |StatefulSet|apps|no|Deploying Elasticsearch

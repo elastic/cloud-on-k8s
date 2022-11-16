@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 // CheckSecrets checks that expected secrets have been created.
@@ -107,6 +107,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			ems.Status.Selector = ""
+			ems.Status.ObservedGeneration = 0
 
 			// don't check the association status that may vary across tests
 			ems.Status.AssociationStatus = ""

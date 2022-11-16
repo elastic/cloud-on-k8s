@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 )
 
 const (
@@ -41,7 +41,6 @@ func Span(ctx *context.Context) func() {
 
 	span, newCtx := apm.StartSpan(*ctx, name, SpanTypeApp)
 	*ctx = newCtx
-
 	return func() {
 		span.End()
 	}

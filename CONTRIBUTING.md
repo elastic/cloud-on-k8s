@@ -64,7 +64,7 @@ There are 3 test suites:
 #### Pull Request validation
   After submitting a PR, a run of unit tests, integration tests and a single E2E test (`SamplesTest`) on a single provider (GKE) can be triggered by commenting the PR with `jenkins test this please`.
   
-  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run full pr build`. This will trigger the same set of pipelines that are triggered during nightly testing. Note that green checkmark next to this build result (`devops-ci/full`) in GitHub only means that scheduling runs was successful. Inspect all results by going to `Details` > `Open Blue Ocean`.
+  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run/e2e-tests`. This will trigger the same set of pipelines that are triggered during nightly testing. Note that green checkmark next to this build result (`devops-ci/e2e-tests`) in GitHub only means that scheduling runs was successful. Inspect all results by going to `Details` > `Open Blue Ocean`.
 
 ### Logging
 
@@ -110,7 +110,7 @@ Here are some good practices for a good pull request:
 
 ### Backports
 
-New PRs should target the `master` branch, then be backported as necessary. The original PR to master should contain labels of the versions it will be backported to. The actual backport PR should be labeled `backport`. You can use https://github.com/sqren/backport to generate backport PRs easily. An example `.backportrc.json` may be:
+New PRs should target the `main` branch, then be backported as necessary. The original PR to main should contain labels of the versions it will be backported to. The actual backport PR should be labeled `backport`. You can use https://github.com/sqren/backport to generate backport PRs easily. An example `.backportrc.json` may be:
 
 ```json
 {
@@ -131,9 +131,9 @@ Before you start, pull the latest files from these repos:
 * [elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
 * [elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
 
-To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs) repo and make your change.
+To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs) repo and make your change.
 
-To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/master/docs/index.asciidoc).
+To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/main/docs/index.asciidoc).
 
 NOTE: For searchability purposes, the file name should match the first top-level section ID of the document. For example:
  * File name: `apm-server.asciidoc`
@@ -151,6 +151,6 @@ Push a PR for review and add the label `>docs`.
 
 ## Design documents
 
-We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/cloud-on-k8s/tree/master/docs/design) to understand the technical choices that we make.
+We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/cloud-on-k8s/tree/main/docs/design) to understand the technical choices that we make.
 
 Thank you for taking the time to contribute.

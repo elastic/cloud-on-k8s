@@ -7,14 +7,15 @@ package license
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func reconcileRequestsForAllClusters(c k8s.Client) ([]reconcile.Request, error) {
+func reconcileRequestsForAllClusters(c k8s.Client, log logr.Logger) ([]reconcile.Request, error) {
 	var clusters esv1.ElasticsearchList
 	// list all clusters
 	err := c.List(context.Background(), &clusters)

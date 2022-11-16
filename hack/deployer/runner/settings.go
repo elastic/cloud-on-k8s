@@ -5,22 +5,12 @@
 package runner
 
 import (
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v3"
-)
 
-// SharedVolumeName name shared by CI container and Docker containers launched by deployer. This is the name of the volume
-// valid outside of the CI Docker container, necessary to create other containers referencing the same volume.
-// In local dev mode it is just the home dir as we are typically not running inside a container in the case.
-func SharedVolumeName() string {
-	if vol := os.Getenv("SHARED_VOLUME_NAME"); vol != "" {
-		return vol
-	}
-	// use HOME for local dev mode
-	return os.Getenv("HOME")
-}
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+)
 
 // Plans encapsulates list of plans, expected to map to a file
 type Plans struct {
@@ -29,37 +19,31 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string         `yaml:"id"` //nolint:revive
-	Operation         string         `yaml:"operation"`
-	ClusterName       string         `yaml:"clusterName"`
-	ClientVersion     string         `yaml:"clientVersion"`
-	ClientBuildDefDir string         `yaml:"clientBuildDefDir"`
-	Provider          string         `yaml:"provider"`
-	KubernetesVersion string         `yaml:"kubernetesVersion"`
-	MachineType       string         `yaml:"machineType"`
-	Gke               *GkeSettings   `yaml:"gke,omitempty"`
-	Aks               *AksSettings   `yaml:"aks,omitempty"`
-	Ocp               *OcpSettings   `yaml:"ocp,omitempty"`
-	Ocp3              *Ocp3Settings  `yaml:"ocp3,omitempty"`
-	EKS               *EKSSettings   `yaml:"eks,omitempty"`
-	Kind              *KindSettings  `yaml:"kind,omitempty"`
-	Tanzu             *TanzuSettings `yaml:"tanzu,omitempty"`
-	VaultInfo         *VaultInfo     `yaml:"vaultInfo,omitempty"`
-	ServiceAccount    bool           `yaml:"serviceAccount"`
-	Psp               bool           `yaml:"psp"`
-	DiskSetup         string         `yaml:"diskSetup"`
+	Id                string `yaml:"id"` //nolint:revive
+	Operation         string `yaml:"operation"`
+	ClusterName       string `yaml:"clusterName"`
+	ClientVersion     string `yaml:"clientVersion"`
+	ClientBuildDefDir string `yaml:"clientBuildDefDir"`
+	Provider          string `yaml:"provider"`
+	KubernetesVersion string `yaml:"kubernetesVersion"`
+	MachineType       string `yaml:"machineType"`
+	// Abbreviations not all-caps to allow merging with mergo in  `merge` as mergo does not understand struct tags and
+	// we use lowercase in the YAML
+	Gke                     *GKESettings   `yaml:"gke,omitempty"`
+	Aks                     *AKSSettings   `yaml:"aks,omitempty"`
+	Ocp                     *OCPSettings   `yaml:"ocp,omitempty"`
+	Ocp3                    *OCP3Settings  `yaml:"ocp3,omitempty"`
+	Eks                     *EKSSettings   `yaml:"eks,omitempty"`
+	Kind                    *KindSettings  `yaml:"kind,omitempty"`
+	Tanzu                   *TanzuSettings `yaml:"tanzu,omitempty"`
+	VaultInfo               vault.Info     `yaml:"vaultInfo,omitempty"`
+	ServiceAccount          bool           `yaml:"serviceAccount"`
+	EnforceSecurityPolicies bool           `yaml:"enforceSecurityPolicies"`
+	DiskSetup               string         `yaml:"diskSetup"`
 }
 
-type VaultInfo struct {
-	Address     string `yaml:"address"`
-	RoleId      string `yaml:"roleId"`   //nolint:revive
-	SecretId    string `yaml:"secretId"` //nolint:revive
-	Token       string `yaml:"token"`
-	ClientToken string `yaml:"clientToken"`
-}
-
-// GkeSettings encapsulates settings specific to GKE
-type GkeSettings struct {
+// GKESettings encapsulates settings specific to GKE
+type GKESettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
 	LocalSsdCount    int    `yaml:"localSsdCount"`
@@ -71,15 +55,16 @@ type GkeSettings struct {
 	NetworkPolicy    bool   `yaml:"networkPolicy"`
 }
 
-// AksSettings encapsulates settings specific to AKS
-type AksSettings struct {
+// AKSSettings encapsulates settings specific to AKS
+type AKSSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
+	Zones         string `yaml:"zones"`
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
-// OcpSettings encapsulates settings specific to OCP on GCloud
-type OcpSettings struct {
+// OCPSettings encapsulates settings specific to OCP on GCloud
+type OCPSettings struct {
 	BaseDomain    string `yaml:"baseDomain"`
 	GCloudProject string `yaml:"gCloudProject"`
 	Region        string `yaml:"region"`
@@ -91,8 +76,8 @@ type OcpSettings struct {
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
-// Ocp3Settings encapsulates settings specific to OCP3 on GCloud
-type Ocp3Settings struct {
+// OCP3Settings encapsulates settings specific to Ocp3 on GCloud
+type OCP3Settings struct {
 	GCloudProject string `yaml:"gCloudProject"`
 	WorkerCount   int    `yaml:"workerCount"`
 }
@@ -112,7 +97,7 @@ type KindSettings struct {
 }
 
 type TanzuSettings struct {
-	AksSettings    `yaml:",inline"`
+	AKSSettings    `yaml:",inline"`
 	InstallerImage string `yaml:"installerImage"`
 	WorkDir        string `yaml:"workDir"`
 	SSHPubKey      string `yaml:"sshPubKey"`
@@ -125,7 +110,7 @@ type RunConfig struct {
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
-	yml, err := ioutil.ReadFile(plansFile)
+	yml, err := os.ReadFile(plansFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}
@@ -136,7 +121,7 @@ func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
 		return Plans{}, RunConfig{}, err
 	}
 
-	yml, err = ioutil.ReadFile(runConfigFile)
+	yml, err = os.ReadFile(runConfigFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}

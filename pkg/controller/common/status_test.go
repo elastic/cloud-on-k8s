@@ -17,8 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_workaroundStatusUpdateError(t *testing.T) {
@@ -52,7 +52,7 @@ func Test_workaroundStatusUpdateError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(&initialPod)
-			err := workaroundStatusUpdateError(tt.err, client, &updatedPod)
+			err := workaroundStatusUpdateError(context.Background(), tt.err, client, &updatedPod)
 			require.Equal(t, tt.wantErr, err)
 			// get back the pod to check if it was updated
 			var pod corev1.Pod
@@ -121,7 +121,7 @@ func TestLowestVersionFromPods(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := LowestVersionFromPods(tt.args.currentVersion, tt.args.pods, tt.args.versionLabel); got != tt.want {
+			if got := LowestVersionFromPods(context.Background(), tt.args.currentVersion, tt.args.pods, tt.args.versionLabel); got != tt.want {
 				t.Errorf("LowestVersionFromPods() = %v, want %v", got, tt.want)
 			}
 		})
@@ -204,7 +204,7 @@ func TestDeploymentStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := DeploymentStatus(tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel)
+			got, err := DeploymentStatus(context.Background(), tt.args.current, tt.args.dep, tt.args.pods, tt.args.versionLabel)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DeploymentStatus() error = %v, wantErr %v", err, tt.wantErr)
 				return

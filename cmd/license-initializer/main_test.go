@@ -2,13 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build integration
+//go:build integration
 
 package main
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +17,7 @@ import (
 
 func Test_generateSrc(t *testing.T) {
 	path := filepath.Join("testdata", "expected.src")
-	expectedBytes, err := ioutil.ReadFile(path)
+	expectedBytes, err := os.ReadFile(path)
 	require.NoError(t, err)
 	input := filepath.Join("testdata", "test.key")
 	var out bytes.Buffer

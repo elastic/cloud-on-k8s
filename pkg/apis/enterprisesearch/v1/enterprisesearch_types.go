@@ -10,8 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 )
 
 const (
@@ -56,7 +56,10 @@ type EnterpriseSearchSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -65,10 +68,19 @@ type EnterpriseSearchSpec struct {
 // EnterpriseSearchStatus defines the observed state of EnterpriseSearch
 type EnterpriseSearchStatus struct {
 	commonv1.DeploymentStatus `json:",inline"`
+
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
 	ExternalService string `json:"service,omitempty"`
+
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+
+	// ObservedGeneration represents the .metadata.generation that the status is based upon.
+	// It corresponds to the metadata generation, which is updated on mutation by the API Server.
+	// If the generation observed in status diverges from the generation in metadata, the Enterprise Search
+	// controller has not yet processed the changes contained in the Enterprise Search specification.
+	// +kubebuilder:validation:Optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
@@ -99,8 +111,8 @@ func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 	return ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace)
 }
 
-func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
-	return ent.assocConf
+func (ent *EnterpriseSearch) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConf(ent, ent.assocConf)
 }
 
 func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
@@ -108,7 +120,11 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 }
 
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
-	return ent.Spec.ElasticsearchRef.Name != ""
+	return ent.Spec.ElasticsearchRef.IsDefined()
+}
+
+func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
 }
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
@@ -147,6 +163,11 @@ func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) 
 
 var _ commonv1.Associated = &EnterpriseSearch{}
 var _ commonv1.Association = &EnterpriseSearch{}
+
+// GetObservedGeneration will return the observedGeneration from the EnterpriseSearch's status.
+func (ent *EnterpriseSearch) GetObservedGeneration() int64 {
+	return ent.Status.ObservedGeneration
+}
 
 // +kubebuilder:object:root=true
 

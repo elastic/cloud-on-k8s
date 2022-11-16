@@ -7,20 +7,21 @@ package kibana
 import (
 	"context"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
+	isMutated := b.MutatedFrom != nil
+	var agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation int64
 	return test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k).
+		WithStep(generation.RetrieveGenerationsStep(&b.Kibana, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
-}
-
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("not implemented")
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.Kibana, k, isMutated, agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation))
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {

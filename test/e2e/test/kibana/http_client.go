@@ -8,25 +8,17 @@ import (
 	"bytes"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/pkg/errors"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/network"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
-
-type APIError struct {
-	StatusCode int
-	msg        string
-}
-
-func (e *APIError) Error() string {
-	return e.msg
-}
 
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
@@ -77,14 +69,10 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	if err != nil {
 		return nil, errors.Wrap(err, "while doing request")
 	}
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, &APIError{
-			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("fail to request %s, status is %d)", pathAndQuery, resp.StatusCode),
-		}
+	defer resp.Body.Close()
+	if err := commonhttp.MaybeAPIError(resp); err != nil {
+		return nil, err
 	}
 
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }

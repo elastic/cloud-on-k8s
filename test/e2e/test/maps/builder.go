@@ -10,12 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 type Builder struct {
@@ -36,19 +36,25 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-
+	def := test.Ctx().ImageDefinitionFor(v1alpha1.Kind)
 	return Builder{
 		EMS: v1alpha1.ElasticMapsServer{
 			ObjectMeta: meta,
 			Spec: v1alpha1.MapsSpec{
 				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.EMS.Spec.Image = image
+	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -144,24 +150,12 @@ func (b Builder) ListOptions() []client.ListOption {
 	return test.MapsPodListOptions(b.EMS.Namespace, b.EMS.Name)
 }
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
-	panic("implement me")
-}
-
 func (b Builder) SkipTest() bool {
 	// only execute EMS tests if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
 		return true
 	}
-
 	ver := version.MustParse(b.EMS.Spec.Version)
-
-	// remove or adjust as snapshot builds of EMS become available
-	// https://github.com/elastic/cloud-on-k8s/issues/4479
-	if test.IsSnapshotVersion(ver) {
-		return true
-	}
-
 	return version.SupportedMapsVersions.WithinRange(ver) != nil
 }
 

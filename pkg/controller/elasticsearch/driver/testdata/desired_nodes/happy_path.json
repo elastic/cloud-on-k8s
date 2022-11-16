@@ -1,0 +1,159 @@
+{
+  "nodes": [{
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-master-0.elasticsearch-desired-sample-es-master.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-master-0",
+        "roles": ["master"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 2.222,
+      "max": 3.141
+    },
+    "memory": "2446327808b",
+    "storage": "1073741824b",
+    "node_version": "8.3.0"
+  }, {
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-master-1.elasticsearch-desired-sample-es-master.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-master-1",
+        "roles": ["master"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 2.222,
+      "max": 3.141
+    },
+    "memory": "2446327808b",
+    "storage": "1073741824b",
+    "node_version": "8.3.0"
+  }, {
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-master-2.elasticsearch-desired-sample-es-master.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-master-2",
+        "roles": ["master"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 2.222,
+      "max": 3.141
+    },
+    "memory": "2446327808b",
+    "storage": "1073741824b",
+    "node_version": "8.3.0"
+  }, {
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-hot-0.elasticsearch-desired-sample-es-hot.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-hot-0",
+        "roles": ["data", "ingest"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 1,
+      "max": 1
+    },
+    "memory": "4294967296b",
+    "storage": "53687091200b",
+    "node_version": "8.3.0"
+  }, {
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-hot-1.elasticsearch-desired-sample-es-hot.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-hot-1",
+        "roles": ["data", "ingest"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 1,
+      "max": 1
+    },
+    "memory": "4294967296b",
+    "storage": "53687091200b",
+    "node_version": "8.3.0"
+  }, {
+    "settings": {
+      "http": {
+        "publish_host": "elasticsearch-desired-sample-es-hot-2.elasticsearch-desired-sample-es-hot.default.svc"
+      },
+      "network": {
+        "publish_host": "${POD_IP}"
+      },
+      "node": {
+        "attr": {
+          "k8s_node_name": "${NODE_NAME}"
+        },
+        "name": "elasticsearch-desired-sample-es-hot-2",
+        "roles": ["data", "ingest"]
+      },
+      "path": {
+        "data": "/usr/share/elasticsearch/data"
+      }
+    },
+    "processors_range": {
+      "min": 1,
+      "max": 1
+    },
+    "memory": "4294967296b",
+    "storage": "53687091200b",
+    "node_version": "8.3.0"
+  }]
+}

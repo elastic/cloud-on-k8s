@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func newPod(name string, uuid types.UID) corev1.Pod {
@@ -93,9 +93,9 @@ func TestExpectedPodDeletions_DeletionsSatisfied(t *testing.T) {
 				e.ExpectDeletion(tt.expectDeletions[i])
 				require.Contains(t, e.podDeletions, k8s.ExtractNamespacedName(&tt.expectDeletions[i]))
 			}
-			satisfied, err := e.DeletionsSatisfied()
+			pendingPodsDeletions, err := e.PendingPodDeletions()
 			require.NoError(t, err)
-			require.Equal(t, tt.wantSatisfied, satisfied)
+			require.Equal(t, tt.wantSatisfied, len(pendingPodsDeletions) == 0)
 			require.Equal(t, tt.wantExpectedDeletions, e.podDeletions)
 		})
 	}

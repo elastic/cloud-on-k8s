@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -12,16 +13,19 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/metrics"
 )
 
 const (
@@ -31,6 +35,8 @@ const (
 	LicensingCfgMapName = "elastic-licensing"
 	// Type represents the Elastic usage type used to mark the config map that stores licensing information
 	Type = "elastic-usage"
+	// GiB represents the number of bytes for 1 GiB
+	GiB = 1024 * 1024 * 1024
 )
 
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
@@ -39,7 +45,8 @@ type LicensingInfo struct {
 	Timestamp                  string
 	EckLicenseLevel            string
 	EckLicenseExpiryDate       *time.Time
-	TotalManagedMemory         float64
+	TotalManagedMemoryGiB      float64
+	TotalManagedMemoryBytes    int64
 	MaxEnterpriseResourceUnits int64
 	EnterpriseResourceUnits    int64
 }
@@ -47,10 +54,11 @@ type LicensingInfo struct {
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
 func (li LicensingInfo) toMap() map[string]string {
 	m := map[string]string{
-		"timestamp":                 li.Timestamp,
-		"eck_license_level":         li.EckLicenseLevel,
-		"total_managed_memory":      fmt.Sprintf("%0.2fGB", li.TotalManagedMemory),
-		"enterprise_resource_units": strconv.FormatInt(li.EnterpriseResourceUnits, 10),
+		"timestamp":                  li.Timestamp,
+		"eck_license_level":          li.EckLicenseLevel,
+		"total_managed_memory":       fmt.Sprintf("%0.2fGiB", li.TotalManagedMemoryGiB),
+		"total_managed_memory_bytes": fmt.Sprintf("%d", li.TotalManagedMemoryBytes),
+		"enterprise_resource_units":  strconv.FormatInt(li.EnterpriseResourceUnits, 10),
 	}
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -66,7 +74,7 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemory)
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemoryGiB)
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -81,8 +89,8 @@ type LicensingResolver struct {
 }
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
-func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
-	operatorLicense, err := r.getOperatorLicense()
+func (r LicensingResolver) ToInfo(ctx context.Context, totalMemory resource.Quantity) (LicensingInfo, error) {
+	operatorLicense, err := r.getOperatorLicense(ctx)
 	if err != nil {
 		return LicensingInfo{}, err
 	}
@@ -91,7 +99,8 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         r.getOperatorLicenseLevel(operatorLicense),
 		EckLicenseExpiryDate:    r.getOperatorLicenseExpiry(operatorLicense),
-		TotalManagedMemory:      inGB(totalMemory),
+		TotalManagedMemoryGiB:   inGiB(totalMemory),
+		TotalManagedMemoryBytes: totalMemory.Value(),
 		EnterpriseResourceUnits: inEnterpriseResourceUnits(totalMemory),
 	}
 
@@ -105,8 +114,10 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 
 // Save updates or creates licensing information in a config map
 // This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
-func (r LicensingResolver) Save(info LicensingInfo) error {
-	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
+func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
+	span, ctx := apm.StartSpan(ctx, "save_license_info", tracing.SpanTypeApp)
+	defer span.End()
+	ulog.FromContext(ctx).V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", LicensingCfgMapName, "license_info", info)
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNs,
 		Name:      LicensingCfgMapName,
@@ -116,7 +127,7 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 			Namespace: nsn.Namespace,
 			Name:      nsn.Name,
 			Labels: map[string]string{
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 			},
 		},
 		Data: info.toMap(),
@@ -124,6 +135,7 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     r.client,
 		Expected:   &expected,
 		Reconciled: reconciled,
@@ -147,9 +159,9 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 }
 
 // getOperatorLicense gets the operator license.
-func (r LicensingResolver) getOperatorLicense() (*license.EnterpriseLicense, error) {
+func (r LicensingResolver) getOperatorLicense(ctx context.Context) (*license.EnterpriseLicense, error) {
 	checker := license.NewLicenseChecker(r.client, r.operatorNs)
-	return checker.CurrentEnterpriseLicense()
+	return checker.CurrentEnterpriseLicense(ctx)
 }
 
 // getOperatorLicenseLevel gets the level of the operator license.
@@ -193,8 +205,8 @@ func inGB(q resource.Quantity) float64 {
 
 // inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
 func inEnterpriseResourceUnits(q resource.Quantity) int64 {
-	// divide by the value (in bytes) per 64 billion (64 GB)
-	eru := float64(q.Value()) / 64000000000
+	// divide by the value (in bytes) per 64 GiB
+	eru := float64(q.Value()) / (64 * GiB)
 	// round to the nearest superior integer
 	return int64(math.Ceil(eru))
 }

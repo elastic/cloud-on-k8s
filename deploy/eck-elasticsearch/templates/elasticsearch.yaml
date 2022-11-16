@@ -1,0 +1,43 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: enterprise
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- if .Values.secureSettings }}
+  secureSettings:
+    {{- toYaml .Values.secureSettings | nindent 2 }}
+  {{- end }}
+  {{- if .Values.transport }}
+  transport:
+    {{- toYaml .Values.transport | nindent 4 }}
+  {{- end }}
+  {{- if .Values.http }}
+  http:
+    {{- toYaml .Values.http | nindent 4 }}
+  {{- end }}
+  version: {{ required "An Elasticsearch version is required" .Values.version }}
+  {{- if .Values.monitoring }}
+  monitoring:
+    {{- toYaml .Values.monitoring | nindent 4 }}
+  {{- end }}
+  {{- if .Values.remoteClusters }}
+  remoteClusters:
+    {{- toYaml .Values.remoteClusters | nindent 2 }}
+  {{- end }}
+  {{- if eq (len .Values.nodeSets) 0 }}
+  {{ fail "At least one nodeSet is required" }}
+  {{- end }}
+  nodeSets:
+{{ toYaml .Values.nodeSets | nindent 4 }}

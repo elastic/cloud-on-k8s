@@ -6,6 +6,7 @@ package license
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,12 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	commonlicense "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const operatorNs = "test-system"
@@ -36,11 +37,12 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemory:      21.47,
+			TotalManagedMemoryGiB:   20.00,
+			TotalManagedMemoryBytes: 21474836480,
 			EnterpriseResourceUnits: 1,
 			EckLicenseLevel:         "basic",
 		}
@@ -52,7 +54,7 @@ func TestGet(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				NodeSets: []esv1.NodeSet{{
-					Count: 100,
+					Count: 40,
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -60,7 +62,7 @@ func TestGet(t *testing.T) {
 									Name: esv1.ElasticsearchContainerName,
 									Resources: corev1.ResourceRequirements{
 										Limits: map[corev1.ResourceName]resource.Quantity{
-											corev1.ResourceMemory: resource.MustParse("6Gi"),
+											corev1.ResourceMemory: resource.MustParse("8Gi"),
 										},
 									},
 								},
@@ -70,12 +72,13 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemory:      644.245,
-			EnterpriseResourceUnits: 11,
+			TotalManagedMemoryGiB:   320.00,
+			TotalManagedMemoryBytes: 343597383680,
+			EnterpriseResourceUnits: 5,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -86,7 +89,7 @@ func TestGet(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				NodeSets: []esv1.NodeSet{{
-					Count: 10,
+					Count: 13,
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -103,12 +106,13 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemory:      171.801,
-			EnterpriseResourceUnits: 3,
+			TotalManagedMemoryGiB:   208.00,
+			TotalManagedMemoryBytes: 223338299392,
+			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -122,11 +126,12 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
-			TotalManagedMemory:      107.374,
+			TotalManagedMemoryGiB:   100.00,
+			TotalManagedMemoryBytes: 107374182400,
 			EnterpriseResourceUnits: 2,
 			EckLicenseLevel:         "basic",
 		}
@@ -155,10 +160,11 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
-			TotalManagedMemory:      214.754,
+			TotalManagedMemoryGiB:   200.00,
+			TotalManagedMemoryBytes: 214748364800,
 			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
@@ -184,11 +190,12 @@ func TestGet(t *testing.T) {
 				},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs).Get()
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
-			TotalManagedMemory:      204.804,
-			EnterpriseResourceUnits: 4,
+			TotalManagedMemoryGiB:   190.73,
+			TotalManagedMemoryBytes: 204800000000,
+			EnterpriseResourceUnits: 3,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -222,7 +229,7 @@ func Test_Start(t *testing.T) {
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
-	go NewResourceReporter(k8sClient, operatorNs).Start(refreshPeriod)
+	go NewResourceReporter(k8sClient, operatorNs, nil).Start(context.Background(), refreshPeriod)
 
 	// check that the licensing config map exists
 	assert.Eventually(t, func() bool {
@@ -237,7 +244,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "2" &&
-			cm.Data["total_managed_memory"] == "89.12GB"
+			cm.Data["total_managed_memory"] == "83.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "89120571392"
 	}, waitFor, tick)
 
 	// increase the Elasticsearch nodes count
@@ -258,7 +266,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "175.02GB"
+			cm.Data["total_managed_memory"] == "163.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "175019917312"
 	}, waitFor, tick)
 
 	startTrial(t, k8sClient)
@@ -269,13 +278,15 @@ func Test_Start(t *testing.T) {
 			Namespace: operatorNs,
 			Name:      LicensingCfgMapName,
 		}, &cm)
+		fmt.Println(cm.Data)
 		if err != nil {
 			return false
 		}
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == string(commonlicense.LicenseTypeEnterpriseTrial) &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "175.02GB"
+			cm.Data["total_managed_memory"] == "163.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "175019917312"
 	}, waitFor, tick)
 }
 
@@ -290,16 +301,16 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 		Name:      "eck-trial",
 	}
 	// simulate user kicking off the trial activation
-	require.NoError(t, commonlicense.CreateTrialLicense(wrappedClient, licenseNSN))
+	require.NoError(t, commonlicense.CreateTrialLicense(context.Background(), wrappedClient, licenseNSN))
 	// fetch user created license
 	licenseSecret, license, err := commonlicense.TrialLicense(wrappedClient, licenseNSN)
 	require.NoError(t, err)
 	// fill in and sign
-	require.NoError(t, trialState.InitTrialLicense(&license))
+	require.NoError(t, trialState.InitTrialLicense(context.Background(), &license))
 	status, err := commonlicense.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
 	require.NoError(t, err)
 	// persist status
 	require.NoError(t, wrappedClient.Create(context.Background(), &status))
 	// persist updated license
-	require.NoError(t, commonlicense.UpdateEnterpriseLicense(wrappedClient, licenseSecret, license))
+	require.NoError(t, commonlicense.UpdateEnterpriseLicense(context.Background(), wrappedClient, licenseSecret, license))
 }

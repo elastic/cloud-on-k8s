@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
@@ -10,14 +10,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 const (
@@ -49,7 +50,7 @@ func TestRemoteCluster(t *testing.T) {
 		WithRestrictedSecurityContext().
 		WithRemoteCluster(es1Builder)
 	es2LicenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), es2Builder.Elasticsearch)
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
+	licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 	trialSecretName := "eck-license"
 

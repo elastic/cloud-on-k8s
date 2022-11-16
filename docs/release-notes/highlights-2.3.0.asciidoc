@@ -1,0 +1,61 @@
+[[release-highlights-2.3.0]]
+== 2.3.0 release highlights
+
+[float]
+[id="{p}-230-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.3.0 of {n}. Check <<release-notes-2.3.0>> for the full list of changes.
+
+
+[float]
+[id="{p}-230-cleartext-password-"]
+==== Creating Elasticsearch users with cleartext passwords
+
+While it is already possible to use Kubernetes secrets to manage custom users, it requires to compute the hashed representation of the passwords beforehand. Starting with ECK 2.3.0 it is now possible to provide the user password as a clear text value. The operator automatically maintains the hashed representation in the file realm.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-basic-auth
+stringData:
+  username: myuser
+  password: mypassword # clear text value of the password
+  roles: kibana_admin,ingest_admin  # optional
+----
+
+[float]
+[id="{p}-230-observedGeneration-"]
+==== Observed generation
+
+The most recent generation of a resource processed by the operator, also known as the "observed generation", is now set and maintained in the status subresource on all kinds of Elastic resources. While in version 2.2 this enhancement was only available on Elasticsearch and Kibana, it is now also enabled on Agent, Beats, APM Server and Enterprise Search resources.
+
+[source,yaml]
+----
+apiVersion: resource.k8s.elastic.co/v1
+metadata:
+  name: resource-name
+  namespace: default
+  generation: 2
+spec:
+  version: 8.2.0
+  [...]
+status:
+  [...]
+  observedGeneration: 2
+  phase: Ready
+  version: 8.2.0
+----
+
+[float]
+[id="{p}-230-base-image-"]
+==== Distroless base image
+
+The default ECK operator container image is now based on the link:https://github.com/GoogleContainerTools/distroless[Distroless image]. A container image based on the RedHat UBI base image is however still published and is selected by default when the operator is installed through the OpenShift OperatorHub.
+
+[float]
+[id="{p}-230-known-issues"]
+=== Known issues
+- Under certain circumstances the operator will keep terminating and restarting Elasticsearch Pods seemingly at random. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/5946[issue] is fixed in ECK 2.4.0 and an upgrade is highly recommended.

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build mixed e2e
+//go:build mixed || e2e
 
 package e2e
 
@@ -11,30 +11,31 @@ import (
 	"fmt"
 	"testing"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	beattests "github.com/elastic/cloud-on-k8s/test/e2e/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/types"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	beattests "github.com/elastic/cloud-on-k8s/v2/test/e2e/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 // TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
-	initialVersion := "7.13.4"
-	updatedVersion := "7.15.2"
+	initialVersion := test.LatestReleasedVersion7x
+	updatedVersion := test.LatestReleasedVersion8x
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
@@ -73,7 +74,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	entUpdated := ent.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
-		WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+		WithRoles(beat.AutodiscoverClusterRoleName).
 		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef)

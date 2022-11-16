@@ -1,7 +1,8 @@
 // Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
-// +build beat e2e
+
+//go:build beat || e2e
 
 package beat
 
@@ -12,21 +13,22 @@ import (
 	"strings"
 	"testing"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
 )
 
 const (
@@ -38,7 +40,6 @@ func TestFilebeatNoAutodiscoverRecipe(t *testing.T) {
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasMessageContaining(loggedString),
 			)
@@ -52,7 +53,6 @@ func TestFilebeatAutodiscoverRecipe(t *testing.T) {
 	pod, loggedString := loggingTestPod(name)
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
@@ -70,7 +70,7 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName, beat.AutodiscoverClusterRoleName).
+			WithRoles(beat.AutodiscoverClusterRoleName).
 			WithESValidations(
 				beat.HasEventFromPod(podLabel.Name),
 				beat.HasMessageContaining(goodLog),
@@ -84,7 +84,6 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 func TestMetricbeatHostsRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:system.cpu"),
 				beat.HasEvent("event.dataset:system.load"),
@@ -123,24 +122,37 @@ func TestMetricbeatStackMonitoringRecipe(t *testing.T) {
 			}
 		}
 
-		return builder.
-			WithRoles(beat.PSPClusterRoleName).
-			WithESValidations(
-				// metricbeat validations
-				// TODO: see if we can add validation for ccr, ml_job, and shard metricsets
+		metricbeatValidations := []beat.ValidationFunc{
+			beat.HasMonitoringEvent("metricset.name:cluster_stats"),
+			beat.HasMonitoringEvent("metricset.name:enrich"),
+			beat.HasMonitoringEvent("metricset.name:index"),
+			beat.HasMonitoringEvent("metricset.name:index_summary"),
+			beat.HasMonitoringEvent("metricset.name:node_stats"),
+			beat.HasMonitoringEvent("metricset.name:stats"),
+			beat.HasMonitoringEvent("metricset.name:shard"),
+			beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+		}
+
+		if version.MustParse(builder.Beat.Spec.Version).LT(version.MinFor(8, 0, 0)) {
+			// before 8.0.0, `metricset.name` was not indexed
+			metricbeatValidations = []beat.ValidationFunc{
 				beat.HasMonitoringEvent("type:cluster_stats"),
 				beat.HasMonitoringEvent("type:enrich_coordinator_stats"),
-				// from the elasticsearch.index metricset
 				beat.HasMonitoringEvent("type:index_stats"),
 				beat.HasMonitoringEvent("type:index_recovery"),
-				// elasticsearch.index.summary metricset
 				beat.HasMonitoringEvent("type:indices_stats"),
 				beat.HasMonitoringEvent("node_stats.node_master:true"),
 				beat.HasMonitoringEvent("kibana_stats.kibana.status:green"),
+			}
+		}
+
+		return builder.
+			WithESValidations(append(
+				metricbeatValidations,
 				// filebeat validations
 				beat.HasEventFromPod(pod.Name),
 				beat.HasMessageContaining(loggedString),
-			)
+			)...)
 	}
 
 	runBeatRecipe(t, "stack_monitoring.yaml", customize, pod)
@@ -165,7 +177,6 @@ func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 		require.NoError(t, err)
 
 		return builder.
-			WithRoles(beat.PSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("monitor.status:up"),
 			)
@@ -185,7 +196,6 @@ func TestAuditbeatHostsRecipe(t *testing.T) {
 
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
-			WithRoles(beat.AuditbeatPSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:file"),
 				beat.HasEvent("event.module:file_integrity"),
@@ -203,7 +213,6 @@ func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 		}
 
 		return builder.
-			WithRoles(beat.PacketbeatPSPClusterRoleName).
 			WithESValidations(
 				beat.HasEvent("event.dataset:flow"),
 				beat.HasEvent("event.dataset:dns"),
@@ -214,9 +223,14 @@ func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 }
 
 func TestJournalbeatHostsRecipe(t *testing.T) {
+	if test.Ctx().Provider == "kind" {
+		// Journalbeat does not generate events on latest Kind node images.
+		// Since Journalbeat is no longer maintained and developed we skip this test on Kind.
+		t.SkipNow()
+	}
+
 	customize := func(builder beat.Builder) beat.Builder {
-		return builder.
-			WithRoles(beat.JournalbeatPSPClusterRoleName)
+		return builder
 	}
 
 	runBeatRecipe(t, "journalbeat_hosts.yaml", customize)

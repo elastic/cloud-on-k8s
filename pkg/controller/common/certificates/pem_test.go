@@ -2,11 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build integration
+//go:build integration
 
 package certificates
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -59,7 +60,7 @@ func Test_PrivateMatchesPublicKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := PrivateMatchesPublicKey(tt.publicKey, tt.privateKey); got != tt.want {
+			if got := PrivateMatchesPublicKey(context.Background(), tt.publicKey, tt.privateKey); got != tt.want {
 				t.Errorf("privateMatchesPublicKey() = %v, want %v", got, tt.want)
 			}
 		})

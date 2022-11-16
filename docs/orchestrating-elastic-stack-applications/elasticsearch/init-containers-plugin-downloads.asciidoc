@@ -24,7 +24,7 @@ spec:
           - sh
           - -c
           - |
-            bin/elasticsearch-plugin install --batch repository-gcs
+            bin/elasticsearch-plugin install --batch analysis-icu
 ----
 
 You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in <<{p}-custom-images,custom images>>. For more information on both these options, you can check the <<{p}-snapshots,Create automated snapshots>> section and the Kubernetes documentation on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers].
@@ -32,5 +32,5 @@ You can also override the Elasticsearch container image to use your own image wi
 The init container inherits:
 
 * The image of the main container image, if one is not explicitly set.
-* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition 
+* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition
 * The Pod name and IP address environment variables.

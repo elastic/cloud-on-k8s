@@ -9,7 +9,9 @@ endif::[]
 = Secure settings
 
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
-The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
+The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch. The ECK operator continues to watch the secrets for changes and will update the Elasticsearch keystore when it detects a change.
+
+== Basic usage
 
 It is possible to reference several secrets:
 
@@ -34,6 +36,8 @@ data:
   gcs.client.default.credentials_file: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykK
 ----
 
+
+== Projection of secret keys to specific paths
 You can export a subset of secret keys and also project keys to specific paths using the `entries`, `key` and `path` fields:
 
 [source,yaml]
@@ -70,4 +74,7 @@ data:
   gcs_client_2: RWxhc3RpYyBDbG91ZCBvbiBLOHMgKEVDSykgLSBHQ1MgY2xpZW50IDIK
 ----
 
-See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
+
+== More examples
+
+Check <<{p}-snapshots,How to create automated snapshots>> for an example use case that illustrates how secure settings can be used to set up automated Elasticsearch snapshots to a GCS storage bucket.

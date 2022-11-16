@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build agent e2e
+//go:build agent || e2e
 
 package agent
 
@@ -10,15 +10,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ghodss/yaml"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/agent"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/agent"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
 func TestSystemIntegrationConfig(t *testing.T) {
@@ -30,7 +33,6 @@ func TestSystemIntegrationConfig(t *testing.T) {
 	testPodBuilder := beat.NewPodBuilder(name)
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
@@ -70,7 +72,6 @@ func TestAgentConfigRef(t *testing.T) {
 	}
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithConfigRef(secretName).
 		WithObjects(secret).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
@@ -104,7 +105,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	agentBuilder := agent.NewBuilder(name).
-		WithRoles(agent.PSPClusterRoleName).
 		WithElasticsearchRefs(
 			agent.ToOutput(esBuilder1.Ref(), "default"),
 			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
@@ -130,6 +130,12 @@ func TestMultipleOutputConfig(t *testing.T) {
 }
 
 func TestFleetMode(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	// installation of policies and integrations through Kibana file based configuration was broken between those versions:
+	if v.LT(version.MinFor(8, 1, 0)) && v.GTE(version.MinFor(8, 0, 0)) {
+		t.SkipNow()
+	}
+
 	name := "test-agent-fleet"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -139,8 +145,8 @@ func TestFleetMode(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	fleetServerBuilder := agent.NewBuilder(name+"-fs").
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+	fleetServerBuilder := agent.NewBuilder(name + "-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithDeployment().
 		WithFleetMode().
 		WithFleetServer().
@@ -153,10 +159,10 @@ func TestFleetMode(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(esBuilder.Ref(), fleetServerBuilder.Ref()))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
 
-	agentBuilder := agent.NewBuilder(name+"-ea").
-		WithRoles(agent.PSPClusterRoleName, agent.AgentFleetModeRoleName).
+	agentBuilder := agent.NewBuilder(name + "-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
 		WithFleetMode().
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
@@ -167,19 +173,41 @@ func TestFleetMode(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
 }
 
-func fleetConfigForKibana(esRef v1.ObjectSelector, fsRef v1.ObjectSelector) map[string]interface{} {
-	return map[string]interface{}{
-		"xpack.fleet.agents.elasticsearch.host": fmt.Sprintf(
-			"https://%s-es-http.%s.svc:9200",
+func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector, tlsEnabled bool) map[string]interface{} {
+	t.Helper()
+	kibanaConfig := map[string]interface{}{}
+	scheme := "https"
+	if !tlsEnabled {
+		scheme = "http"
+	}
+
+	v, err := version.Parse(agentVersion)
+	if err != nil {
+		t.Fatalf("Unable to parse Agent version: %v", err)
+	}
+	if v.GTE(version.MustParse("7.16.0")) {
+		// Starting with 7.16.0 we explicitly declare policies instead of relying on the default ones.
+		// This is mandatory starting with 8.0.0. See https://github.com/elastic/cloud-on-k8s/issues/5262.
+		if err := yaml.Unmarshal([]byte(E2EFleetPolicies), &kibanaConfig); err != nil {
+			t.Fatalf("Unable to parse Fleet policies: %v", err)
+		}
+	}
+	kibanaConfig["xpack.fleet.agents.elasticsearch.hosts"] = []string{
+		fmt.Sprintf(
+			"%s://%s-es-http.%s.svc:9200",
+			scheme,
 			esRef.Name,
 			esRef.Namespace,
 		),
-		"xpack.fleet.agents.fleet_server.hosts": []string{
-			fmt.Sprintf(
-				"https://%s-agent-http.%s.svc:8220",
-				fsRef.Name,
-				fsRef.Namespace,
-			),
-		},
 	}
+
+	kibanaConfig["xpack.fleet.agents.fleet_server.hosts"] = []string{
+		fmt.Sprintf(
+			"%s://%s-agent-http.%s.svc:8220",
+			scheme,
+			fsRef.Name,
+			fsRef.Namespace,
+		),
+	}
+	return kibanaConfig
 }

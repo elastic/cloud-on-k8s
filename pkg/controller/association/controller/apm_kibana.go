@@ -12,15 +12,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -73,9 +73,21 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 
 // referencedKibanaStatusVersion returns the currently running version of Kibana
 // reported in its status.
-func referencedKibanaStatusVersion(c k8s.Client, kbRef types.NamespacedName) (string, error) {
+func referencedKibanaStatusVersion(c k8s.Client, kbRef commonv1.ObjectSelector) (string, error) {
+	if kbRef.IsExternal() {
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(c, kbRef)
+		if err != nil {
+			return "", err
+		}
+		ver, err := info.Request("/api/status", "{ .version.number }")
+		if err != nil {
+			return "", err
+		}
+		return ver, nil
+	}
+
 	var kb kbv1.Kibana
-	err := c.Get(context.Background(), kbRef, &kb)
+	err := c.Get(context.Background(), kbRef.NamespacedName(), &kb)
 	if err != nil {
 		return "", err
 	}

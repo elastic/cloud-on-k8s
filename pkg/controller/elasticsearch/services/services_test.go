@@ -13,12 +13,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
 )
 
 func TestExternalServiceURL(t *testing.T) {
@@ -88,7 +88,7 @@ func TestElasticsearchURL(t *testing.T) {
 					},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 		{
 			name: "scheme change in progress: random pod address",
@@ -127,7 +127,7 @@ func TestElasticsearchURL(t *testing.T) {
 					{},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 		{
 			name: "unexpected: partially missing pod labels: fallback to service",
@@ -148,7 +148,7 @@ func TestElasticsearchURL(t *testing.T) {
 					},
 				},
 			},
-			want: "https://my-cluster-es-http.my-ns.svc:9200",
+			want: "https://my-cluster-es-internal-http.my-ns.svc:9200",
 		},
 	}
 	for _, tt := range tests {
@@ -222,6 +222,42 @@ func TestNewExternalService(t *testing.T) {
 	}
 }
 
+func TestNewInternalService(t *testing.T) {
+	testCases := []struct {
+		name     string
+		httpConf commonv1.HTTPConfig
+		wantSvc  func() corev1.Service
+	}{
+		{
+			name: "user supplied selector is not applied to internal service",
+			httpConf: commonv1.HTTPConfig{
+				Service: commonv1.ServiceTemplate{
+					Spec: corev1.ServiceSpec{
+						Selector: map[string]string{
+							"app": "coordinating-node",
+						},
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkHTTPService()
+				svc.Spec.Type = corev1.ServiceTypeClusterIP
+				svc.Spec.Ports[0].Name = "https"
+				svc.Name = "elasticsearch-test-es-internal-http"
+				return svc
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			es := mkElasticsearch(tc.httpConf)
+			haveSvc := NewInternalService(es)
+			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
+		})
+	}
+}
+
 func mkHTTPService() corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -229,7 +265,7 @@ func mkHTTPService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -242,7 +278,7 @@ func mkHTTPService() corev1.Service {
 			},
 			Selector: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 	}
@@ -255,7 +291,7 @@ func mkTransportService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -271,7 +307,7 @@ func mkTransportService() corev1.Service {
 			},
 			Selector: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
-				common.TypeLabelName:       label.Type,
+				labels.TypeLabelName:       label.Type,
 			},
 		},
 	}

@@ -7,17 +7,17 @@ package configmap
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // NewConfigMapWithData constructs a new config map with the given data
@@ -35,7 +35,7 @@ func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
 // init containers and readiness probe.
 func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
@@ -54,5 +54,5 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 		},
 	)
 
-	return ReconcileConfigMap(c, es, scriptsConfigMap)
+	return ReconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }

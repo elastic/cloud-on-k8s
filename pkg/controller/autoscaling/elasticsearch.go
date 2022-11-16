@@ -9,24 +9,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 )
 
-const (
-	controllerName = "elasticsearch-autoscaling"
-)
-
-// Add creates a new Elasticsearch autoscaling controller and adds it to the Manager with default RBAC.
-// The Manager will set fields on the Controller and Start it when the Manager is Started.
+// Add creates both legacy and new Elasticsearch autoscaling controllers, and adds them to the Manager with default RBAC.
+// The Manager will set fields on the Controllers and Start them when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	r := elasticsearch.NewReconciler(mgr, p)
-	c, err := common.NewController(mgr, controllerName, r, p)
+	legacyReconciler, reconciler := elasticsearch.NewReconcilers(mgr, p)
+	legacyController, err := common.NewController(mgr, elasticsearch.LegacyControllerName, legacyReconciler, p)
 	if err != nil {
 		return err
 	}
-	// Watch for changes on Elasticsearch clusters.
-	return c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{})
+
+	// The deprecated/legacy controller watches for changes on Elasticsearch clusters.
+	if err := legacyController.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
+		return err
+	}
+
+	// The CRD based controller watches for changes on both the ElasticsearchAutoscaler CRD, and on the Elasticsearch resources to make sure the
+	// NodeSets resources are reconciled with the required resources.
+	controller, err := common.NewController(mgr, elasticsearch.ControllerName, reconciler, p)
+	if err != nil {
+		return err
+	}
+	if err := controller.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchAutoscaler{}}, &handler.EnqueueRequestForObject{}); err != nil {
+		return err
+	}
+	return controller.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, reconciler.Watches.ReferencedResources)
 }

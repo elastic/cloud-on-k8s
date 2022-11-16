@@ -5,16 +5,20 @@
 package driver
 
 import (
+	"context"
+
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bool, error) {
+func (d *defaultDriver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -24,15 +28,16 @@ func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bo
 	if err != nil {
 		return false, err
 	}
-	return d.maybeForceUpgradePods(actualPods, podsToUpgrade)
+	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
-func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
-	actualBySset := podsByStatefulSetName(actualPods)
-	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade)
+func (d *defaultDriver) maybeForceUpgradePods(ctx context.Context, actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
+	log := ulog.FromContext(ctx)
+	actualBySset := podsByStatefulSetName(actualPods, log)
+	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade, log)
 
 	attempted = false
 
@@ -51,7 +56,7 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 			"pod_count", len(podsToUpgrade),
 		)
 		for _, pod := range toUpgrade {
-			if err := deletePod(d.Client, d.ES, pod, d.Expectations); err != nil {
+			if err := deletePod(ctx, d.Client, d.ES, pod, d.Expectations, d.ReconcileState, "Deleting Pod for forced rolling upgrade"); err != nil {
 				return attempted, err
 			}
 		}
@@ -60,7 +65,7 @@ func (d *defaultDriver) maybeForceUpgradePods(actualPods []corev1.Pod, podsToUpg
 	return attempted, nil
 }
 
-func podsByStatefulSetName(pods []corev1.Pod) map[string][]corev1.Pod {
+func podsByStatefulSetName(pods []corev1.Pod, log logr.Logger) map[string][]corev1.Pod {
 	byStatefulSet := map[string][]corev1.Pod{}
 	for _, p := range pods {
 		ssetName, exists := p.Labels[label.StatefulSetNameLabelName]

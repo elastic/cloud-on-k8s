@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 )
 
 var (
@@ -58,7 +58,7 @@ var emptyTrialLicenseFixture = EnterpriseLicense{
 }
 
 func externallySignedLicenseFixture() (EnterpriseLicense, error) {
-	exptectedBytes, err := ioutil.ReadFile("testdata/externally-generated-lic.json")
+	exptectedBytes, err := os.ReadFile("testdata/externally-generated-lic.json")
 	if err != nil {
 		return EnterpriseLicense{}, err
 	}
@@ -87,7 +87,7 @@ func asRuntimeObject(l EnterpriseLicense) runtime.Object {
 			Namespace: "test-system",
 			Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
 			Labels: map[string]string{
-				common.TypeLabelName: Type,
+				labels.TypeLabelName: Type,
 				LicenseLabelScope:    string(LicenseScopeOperator),
 				LicenseLabelType:     string(l.License.Type),
 			},

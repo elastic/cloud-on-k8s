@@ -7,12 +7,10 @@ package test
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 // DefaultSecurityContext returns a minimalist, restricted, security context.
-// Values should be inherited and checked against a PSP, but we provide some
-// default values if pods are started outside E2E tests, by a developer for example.
 func DefaultSecurityContext() *corev1.PodSecurityContext {
 	// OpenShift sets the security context automatically
 	if Ctx().OcpCluster {

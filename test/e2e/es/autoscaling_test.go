@@ -2,28 +2,28 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch/autoscaling"
 )
 
 // TestAutoscaling ensures that the operator is compatible with the autoscaling Elasticsearch API.
@@ -53,20 +53,6 @@ func TestAutoscaling(t *testing.T) {
 	// The test sequence involves 2 tiers:
 	// * A data tier with 2 initial nodes.
 	// * A ML tier with no node initially started.
-	autoscalingSpecBuilder := NewAutoscalingSpecBuilder(t).
-		withPolicy("data-ingest", []string{"data", "ingest"}, esv1.AutoscalingResources{
-			CPURange:       &esv1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-			MemoryRange:    &esv1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
-			StorageRange:   &esv1.QuantityRange{Min: resource.MustParse("10Gi"), Max: resource.MustParse("20Gi")},
-			NodeCountRange: esv1.CountRange{Min: 2, Max: 4},
-		}).
-		withPolicy("ml", []string{"ml"}, esv1.AutoscalingResources{
-			CPURange:       &esv1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-			MemoryRange:    &esv1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
-			StorageRange:   &esv1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
-			NodeCountRange: esv1.CountRange{Min: 0, Max: 2},
-		})
-
 	name := "test-autoscaling"
 	initialPVC := newPVC("1Gi", storageClass)
 	ns1 := test.Ctx().ManagedNamespace(0)
@@ -79,7 +65,6 @@ func TestAutoscaling(t *testing.T) {
 		// Add a ml tier, node count is initially set to 0, it will be updated by the autoscaling controller.
 		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC)).
 		WithRestrictedSecurityContext().
-		WithAnnotation(esv1.ElasticsearchAutoscalingSpecAnnotationName, autoscalingSpecBuilder.toJSON()).
 		WithExpectedNodeSets(
 			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 			// Autoscaling controller should eventually update the data node count to its min. value.
@@ -87,92 +72,92 @@ func TestAutoscaling(t *testing.T) {
 			// ML node count should still be 0.
 			newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 		)
+	autoscalingBuilder := autoscaling.NewAutoscalingBuilder(t, k8s.ExtractNamespacedName(&esBuilder.Elasticsearch)).
+		WithPolicy("data-ingest", []string{"data", "ingest"}, v1alpha1.AutoscalingResources{
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
+			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("10Gi"), Max: resource.MustParse("20Gi")},
+			NodeCountRange: v1alpha1.CountRange{Min: 2, Max: 4},
+		}).
+		WithPolicy("ml", []string{"ml"}, v1alpha1.AutoscalingResources{
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
+			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
+			NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 1},
+		})
 
-	// scaleUpStorage uses the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
+	// Use the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
+	esaScaleUpStorageBuilder := autoscalingBuilder.DeepCopy().WithFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"})
 	expectedDataPVC := newPVC("20Gi", storageClass)
-	scaleUpStorage := esBuilder.DeepCopy().WithAnnotation(
-		esv1.ElasticsearchAutoscalingSpecAnnotationName,
-		// Only request 19gb, the operator adds a capacity margin of 5% to account for reserved fs space, we don't want to exceed 3 nodes of 20Gi in this test.
-		autoscalingSpecBuilder.withFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"}).toJSON(),
-	).WithExpectedNodeSets(
+	esScaleUpStorageBuilder := esBuilder.DeepCopy().WithExpectedNodeSets(
 		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
 	// scaleUpML uses the fixed decider to trigger the creation of a ML node.
-	scaleUpML := esBuilder.DeepCopy().WithAnnotation(
-		esv1.ElasticsearchAutoscalingSpecAnnotationName,
-		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "1"}).toJSON(),
-	).WithExpectedNodeSets(
+	esaScaleUpML := autoscalingBuilder.DeepCopy().WithFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "1"})
+	esScaleUpML := esBuilder.DeepCopy().WithExpectedNodeSets(
 		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, initialPVC),
 	)
 
+	// esaScaleUpLimitedML uses the fixed decider to request the creation of more nodes than allowed.
+	esaScaleUpLimitedML := autoscalingBuilder.DeepCopy().WithFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "2"})
+
 	// scaleDownML use the fixed decider to trigger the scale down, and thus the deletion, of the ML node previously created.
-	scaleDownML := esBuilder.DeepCopy().WithAnnotation(
-		esv1.ElasticsearchAutoscalingSpecAnnotationName,
-		autoscalingSpecBuilder.withFixedDecider("ml", map[string]string{"memory": "0gb", "nodes": "0"}).toJSON(),
-	).WithExpectedNodeSets(
+	esaScaleDownML := autoscalingBuilder.DeepCopy().WithFixedDecider("ml", map[string]string{"memory": "0gb", "nodes": "0"})
+	esScaleDownML := esBuilder.DeepCopy().WithExpectedNodeSets(
 		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
-	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = esBuilder
+	autoscalerWithLicense := test.LicenseTestBuilder()
+	autoscalerWithLicense.BuildingThis = autoscalingBuilder
 
-	// autoscalingCapacityTest validates that the Elasticsearch autoscaling API response does contain a non empty
-	// current/observed storage capacity for a policy with a data role. The observed capacity is not only used to
-	// decide when to scale up, but also to alert the user if the volume capacity is greater than the claimed capacity.
-	// See https://github.com/elastic/cloud-on-k8s/issues/4469 and https://github.com/elastic/cloud-on-k8s/pull/4493#discussion_r635869407
-	autoscalingCapacityTest := test.Step{
-		Name: "Autoscaling API response must contain the observed capacity",
-		Test: test.Eventually(func() error {
-			esClient, err := elasticsearch.NewElasticsearchClient(esBuilder.Elasticsearch, k8sClient)
-			if err != nil {
-				return err
-			}
-			capacity, err := esClient.GetAutoscalingCapacity(context.Background())
-			if err != nil {
-				return err
-			}
-			dataIngestPolicy, hasPolicy := capacity.Policies["data-ingest"]
-			if !hasPolicy {
-				return errors.New("Autoscaling policy \"data-ingest\" is expected in the autoscaling API response")
-			}
-			if dataIngestPolicy.CurrentCapacity.Total.Storage.IsZero() {
-				return errors.New("Current total capacity for policy \"data-ingest\" should not be nil or 0")
-			}
-			if dataIngestPolicy.CurrentCapacity.Node.Storage.IsZero() {
-				return errors.New("Current node capacity for policy \"data-ingest\" should not be nil or 0")
-			}
-			return nil
-		}),
-	}
+	autoscalingCapacityTest := autoscaling.NewAutoscalingCapacityTest(esBuilder.Elasticsearch, k8sClient)
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{}.
 			WithStep(autoscalingCapacityTest).
+			// Autoscaler should be eventually online and healthy
+			WithStep(autoscalingBuilder.NewAutoscalingStatusTestBuilder(k8sClient).
+				ShouldBeActive().ShouldBeHealthy().ShouldBeOnline().ToStep(),
+			).
+
 			// Scale vertically and horizontally to add some storage capacity
-			WithSteps(scaleUpStorage.UpgradeTestSteps(k)).
-			WithSteps(scaleUpStorage.CheckK8sTestSteps(k)).
-			WithSteps(scaleUpStorage.CheckStackTestSteps(k)).
+			WithSteps(esaScaleUpStorageBuilder.UpgradeTestSteps(k)).
+			WithSteps(esScaleUpStorageBuilder.CheckK8sTestSteps(k)).
+			WithSteps(esScaleUpStorageBuilder.CheckStackTestSteps(k)).
 			WithStep(autoscalingCapacityTest).
+
 			// Scale vertically and horizontally to add some ml capacity
-			WithSteps(scaleUpML.UpgradeTestSteps(k)).
-			WithSteps(scaleUpML.CheckK8sTestSteps(k)).
-			WithSteps(scaleUpML.CheckStackTestSteps(k)).
+			WithSteps(esaScaleUpML.UpgradeTestSteps(k)).
+			WithSteps(esScaleUpML.CheckK8sTestSteps(k)).
+			WithSteps(esScaleUpML.CheckStackTestSteps(k)).
 			WithStep(autoscalingCapacityTest).
+
+			// Scale horizontally up to the limit capacity
+			WithSteps(esaScaleUpLimitedML.UpgradeTestSteps(k)).
+			// Autoscaler should be limited
+			WithStep(autoscalingBuilder.NewAutoscalingStatusTestBuilder(k8sClient).
+				ShouldBeActive().ShouldBeHealthy().ShouldBeOnline().ShouldBeLimited().ToStep(),
+			).
+
 			// Scale ML tier back to 0 node
-			WithSteps(scaleDownML.UpgradeTestSteps(k)).
-			WithSteps(scaleDownML.CheckK8sTestSteps(k)).
-			WithSteps(scaleDownML.CheckStackTestSteps(k)).
-			WithStep(autoscalingCapacityTest)
+			WithSteps(esaScaleDownML.UpgradeTestSteps(k)).
+			WithSteps(esScaleDownML.CheckK8sTestSteps(k)).
+			WithSteps(esScaleDownML.CheckStackTestSteps(k)).
+			WithStep(autoscalingCapacityTest).
+			// Autoscaler should no longer be limited
+			WithStep(autoscalingBuilder.NewAutoscalingStatusTestBuilder(k8sClient).
+				ShouldBeActive().ShouldBeHealthy().ShouldBeOnline().ToStep(),
+			)
 	}
 
-	test.Sequence(nil, stepsFn, esWithLicense).RunSequential(t)
+	test.Sequence(nil, stepsFn, autoscalerWithLicense, esBuilder).RunSequential(t)
 }
 
 // -- Test helpers
@@ -219,60 +204,4 @@ func newNodeSet(name string, roles []string, count int32, limits corev1.Resource
 			},
 		},
 	}
-}
-
-// AutoscalingSpecBuilder helps to build and update autoscaling policies.
-type AutoscalingSpecBuilder struct {
-	t        *testing.T
-	policies map[string]esv1.AutoscalingPolicySpec
-}
-
-func NewAutoscalingSpecBuilder(t *testing.T) *AutoscalingSpecBuilder {
-	return &AutoscalingSpecBuilder{
-		t:        t,
-		policies: make(map[string]esv1.AutoscalingPolicySpec),
-	}
-}
-
-// withPolicy adds or replaces an autoscaling policy.
-func (ab *AutoscalingSpecBuilder) withPolicy(policy string, roles []string, resources esv1.AutoscalingResources) *AutoscalingSpecBuilder {
-	ab.policies[policy] = esv1.AutoscalingPolicySpec{
-		NamedAutoscalingPolicy: esv1.NamedAutoscalingPolicy{
-			Name: policy,
-			AutoscalingPolicy: esv1.AutoscalingPolicy{
-				Roles:    roles,
-				Deciders: make(map[string]esv1.DeciderSettings),
-			},
-		},
-		AutoscalingResources: resources,
-	}
-	if stringsutil.StringInSlice("ml", roles) {
-		// Disable ML scale down delay
-		ab.policies[policy].Deciders["ml"] = map[string]string{"down_scale_delay": "0"}
-	}
-	return ab
-}
-
-// withFixedDecider set a setting for the fixed decider on an already existing policy.
-func (ab *AutoscalingSpecBuilder) withFixedDecider(policy string, fixedDeciderSettings map[string]string) *AutoscalingSpecBuilder {
-	policySpec, exists := ab.policies[policy]
-	if !exists {
-		ab.t.Fatalf("fixed decider must be set on an existing policy")
-	}
-	policySpec.Deciders["fixed"] = fixedDeciderSettings
-	ab.policies[policy] = policySpec
-	return ab
-}
-
-// toJSON converts the autoscaling policy into JSON.
-func (ab *AutoscalingSpecBuilder) toJSON() string {
-	spec := esv1.AutoscalingSpec{}
-	for _, policySpec := range ab.policies {
-		spec.AutoscalingPolicySpecs = append(spec.AutoscalingPolicySpecs, policySpec)
-	}
-	bytes, err := json.Marshal(spec)
-	if err != nil {
-		ab.t.Fatalf("can't serialize autoscaling spec, err: %s", err)
-	}
-	return string(bytes)
 }

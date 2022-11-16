@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 )
 
 func TestConfigVolumeName(t *testing.T) {
@@ -32,13 +32,13 @@ func TestCAVolumeName(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.14.0",
-			Monitoring: esv1.Monitoring{
-				Metrics: esv1.MetricsMonitoring{
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{{
 						Name:      "extremely-long-and-unwieldy-name-that-exceeds-the-limit",
 						Namespace: "extremely-long-and-unwieldy-namespace-that-exceeds-the-limit"}},
 				},
-				Logs: esv1.LogsMonitoring{
+				Logs: commonv1.LogsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{{
 						Name:      "extremely-long-and-unwieldy-name-that-exceeds-the-limit",
 						Namespace: "extremely-long-and-unwieldy-namespace-that-exceeds-the-limit"}},

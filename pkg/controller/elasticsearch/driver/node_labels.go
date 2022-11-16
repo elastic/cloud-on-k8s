@@ -10,17 +10,18 @@ import (
 	"fmt"
 	"strings"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // isPodScheduled returns if the Pod is scheduled. If true it also returns the node name.
@@ -48,18 +49,18 @@ func annotatePodsWithNodeLabels(ctx context.Context, c k8s.Client, es esv1.Elast
 		return results.WithError(err)
 	}
 	for _, pod := range actualPods {
-		results.WithError(annotatePodWithNodeLabels(c, pod, es))
+		results.WithError(annotatePodWithNodeLabels(ctx, c, pod, es))
 	}
 	return results
 }
 
-func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsearch) error {
+func annotatePodWithNodeLabels(ctx context.Context, c k8s.Client, pod corev1.Pod, es esv1.Elasticsearch) error {
 	scheduled, nodeName := isPodScheduled(&pod)
 	if !scheduled {
 		return nil
 	}
 	node := &corev1.Node{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: nodeName}, node); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
 		return err
 	}
 	// Get the missing annotations.
@@ -71,7 +72,7 @@ func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsear
 	if len(podAnnotations) == 0 {
 		return nil
 	}
-	log.Info("Setting Pod annotations from node labels", "err", err, "namespace", es.Namespace, "es_name", es.Name, "pod", pod.Name, "annotations", podAnnotations)
+	ulog.FromContext(ctx).Info("Setting Pod annotations from node labels", "err", err, "namespace", es.Namespace, "es_name", es.Name, "pod", pod.Name, "annotations", podAnnotations)
 	mergePatch, err := json.Marshal(map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"annotations": podAnnotations,
@@ -80,7 +81,7 @@ func annotatePodWithNodeLabels(c k8s.Client, pod corev1.Pod, es esv1.Elasticsear
 	if err != nil {
 		return err
 	}
-	if err := c.Patch(context.Background(), &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !errors.IsNotFound(err) {
+	if err := c.Patch(ctx, &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil

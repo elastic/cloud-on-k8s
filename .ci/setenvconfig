@@ -13,71 +13,196 @@ set -o pipefail
 
 ROOT=$(dirname $0)/..
 
-write_env()             { cat > $ROOT/.env; }
-write_deployer_config() { cat > $ROOT/deployer-config.yml; }
+write_env()               { cat > $ROOT/.env; }
+write_deployer_config()   { cat > $ROOT/deployer-config.yml; }
+write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
-# detect dev local execution
-if [[ ${BUILD_ID:-} == "" ]]; then
+PROJECT_PATH=/go/src/github.com/elastic/cloud-on-k8s
+if [[ "${BUILDKITE_AGENT_NAME:-}" =~ k8s ]]; then
+  PROJECT_PATH=$(pwd)
+fi
+
+# need to be declared but not required for local/buildkite execution
+VAULT_ROLE_ID="${VAULT_ROLE_ID:-dev}"
+VAULT_SECRET_ID="${VAULT_SECRET_ID:-dev}"
+
+environment=${1:-""}
+
+# Jenkins
+if [[ ${BUILD_ID:-} != "" ]]; then
+
+  CI_PLATFORM=jks
+  VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+
+  # BUILD_NUMBER is set by Jenkins
+  # GCLOUD_PROJECT, VAULT_ROLE_ID and VAULT_SECRET_ID are set in the Jenkins pipeline definitions
+
+# Buildkite
+elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
+
+  CI_PLATFORM=bk
+
+  VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s"
+
+  GCLOUD_PROJECT=$(vault read -field=gcloud_project ${VAULT_ROOT_PATH}/k8s)
+
+  BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
+
+  if [[ "$environment" =~ e2e/* ]]; then
+    JKS_PARAM_OPERATOR_IMAGE=$(make print-operator-image)
+  fi
+
+# Dev local execution
+else
+
+  CI_PLATFORM=dev
+
+  VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
+
   BUILD_NUMBER=0 # keeping all build_numbers as numbers
-  BUILD_TAG=local-dev-$(date +%s)t
-  # need to be declared but not required for local execution
-  VAULT_ROLE_ID="dev"
-  VAULT_SECRET_ID="dev"
+
 fi
 
 # main
 
-environment=${1:-""}
+# default empty stack version definition common to all environments to allow uniform invocation of the e2e test runner
+write_stack_version_def <<ENV
+[]
+ENV
+
 case $environment in
 
 ######################################
   e2e/aks)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/aks
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=aks
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: aks-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
+######################################
+  e2e/custom)
+######################################
+
+clusterName="eck-${CI_PLATFORM}-e2e-custom-${BUILD_NUMBER}"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
+IMG_SUFFIX=-ci
+REGISTRY_NAMESPACE=eck-snapshots
+E2E_REGISTRY_NAMESPACE=eck-ci
+
+GO_TAGS=release
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
+TESTS_MATCH=$TESTS_MATCH
+E2E_TAGS=$TEST_TAGS
+
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/custom
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=${${clusterName}}
+TEST_OPTS=-race
+ENV
+write_deployer_config <<CFG
+id: gke-ci
+overrides:
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+write_stack_version_def <<ENV
+[
+  {
+    "kind": "Elasticsearch",
+    "image": "${ELASTICSEARCH_IMAGE:-}",
+    "version": "${ELASTICSEARCH_VERSION:-}"
+  },
+  {
+    "kind": "Kibana",
+    "image": "${KIBANA_IMAGE:-}",
+    "version": "${KIBANA_VERSION:-}"
+  },
+  {
+    "kind": "Agent",
+    "image": "${ELASTIC_AGENT_IMAGE:-}",
+    "version": "${ELASTIC_AGENT_VERSION:-}"
+  },
+  {
+    "kind": "FleetServer",
+    "image": "${FLEET_SERVER_IMAGE:-}",
+    "version": "${FLEET_SERVER_VERSION:-}"
+  },
+  {
+    "kind": "EnterpriseSearch",
+    "image": "${ENTERPRISE_SEARCH_IMAGE:-}",
+    "version": "${ENTERPRISE_SEARCH_VERSION:-}"
+  },
+  {
+    "kind": "ElasticMapsServer",
+    "image": "${ELASTIC_MAPS_SERVER_IMAGE:-}",
+    "version": "${ELASTIC_MAPS_SERVER_VERSION:-}"
+  }
+]
+ENV
+;;
 
 ######################################
   e2e/gke-k8s-versions)
 ######################################
 
-clusterVersion=$2
-clusterName=$3
+gkeVersion=${2}
+generatedClusterName="eck-${CI_PLATFORM}-e2e-gke-$(sed "s|\.||g" <<< $gkeVersion)-${BUILD_NUMBER}"
+clusterName=${3:-$generatedClusterName}
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -91,12 +216,13 @@ write_deployer_config <<CFG
 id: gke-ci
 overrides:
   operation: create
-  kubernetesVersion: "${clusterVersion}"
+  kubernetesVersion: "${gkeVersion}"
   clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -109,34 +235,38 @@ CFG
 kindNodeImage=$2
 kindVersion=$3
 ipFamily=$4
+clusterName="eck-${CI_PLATFORM}-e2e-kind-$(sed "s|\.||g" <<< $kindVersion)-${BUILD_NUMBER}"
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
-CLUSTER_NAME=kind-$BUILD_NUMBER
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="kind,$ipFamily"
 ENV
 write_deployer_config <<CFG
 id: kind-ci
 overrides:
-  clusterName: eck-e2e-$BUILD_NUMBER
+  clusterName: ${clusterName}
   clientVersion: ${kindVersion}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   kind:
     nodeImage: ${kindNodeImage}
     ipFamily: ${ipFamily}
@@ -144,33 +274,43 @@ CFG
 ;;
 
 ######################################
-  e2e/master)
+  e2e/main)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-main-${BUILD_NUMBER}"
+
+TESTS_MATCH="${TESTS_MATCH:-^Test}"
+E2E_TAGS="${E2E_TAGS:-e2e}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
-PIPELINE=e2e/master
+PIPELINE=e2e/main
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
-CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
+CLUSTER_NAME=${clusterName}
+TESTS_MATCH=$TESTS_MATCH
 TEST_OPTS=-race
+E2E_TAGS=$E2E_TAGS
 ENV
 write_deployer_config <<CFG
 id: gke-ci
 overrides:
-  clusterName: eck-e2e-$BUILD_NUMBER
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -180,19 +320,21 @@ CFG
   e2e/resilience)
 ######################################
 
-clusterName=$2
+clusterName="eck-${CI_PLATFORM}-e2e-resilience-${BUILD_NUMBER}"
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 E2E_DEPLOY_CHAOS_JOB=true
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 export E2E_DEPLOY_CHAOS_JOB=true
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=e2e/resilience
 BUILD_NUMBER=$BUILD_NUMBER
@@ -209,6 +351,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -218,32 +361,38 @@ CFG
   e2e/ocp)
 ######################################
 
+ocpVersion=$2
+clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
-CLUSTER_NAME=ocp4-ci-$BUILD_NUMBER
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
 overrides:
-  clusterName: ocp4-ci-$BUILD_NUMBER
-  clientVersion: $2
+  clusterName: ${clusterName}
+  clientVersion: ${ocpVersion}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -254,13 +403,15 @@ CFG
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
@@ -278,6 +429,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp3:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -287,31 +439,36 @@ CFG
   e2e/eks)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-eks-${BUILD_NUMBER}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/eks
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=eks
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: eks-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -319,22 +476,26 @@ CFG
   e2e/eks-arm)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-eks-arm-${BUILD_NUMBER}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
 E2E_TAGS=es kb apm ent beat agent
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json disabled b/c https://github.com/elastic/elasticsearch/issues/68083
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json disabled b/c beats cannot run on ARM
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/eks-arm
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=eks
-CLUSTER_NAME=${BUILD_TAG}-arm
+CLUSTER_NAME=${clusterName}
 KUBERNETES_VERSION=default
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="arch:arm"
@@ -342,11 +503,12 @@ ENV
 write_deployer_config <<CFG
 id: eks-arm-ci
 overrides:
-  clusterName: ${BUILD_TAG}-arm
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -354,31 +516,36 @@ CFG
   e2e/tanzu)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/tanzu
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=tanzu
-CLUSTER_NAME=$BUILD_TAG
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: tanzu-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 
 ;;
@@ -386,20 +553,24 @@ CFG
   e2e/stack-versions)
 ######################################
 
-clusterName=$2
-stackVersion=$3
+stackVersion=$2
+generatedClusterName="eck-${CI_PLATFORM}-e2e-stack-$(sed "s|\.||g" <<< $stackVersion)-${BUILD_NUMBER}"
+clusterName=${3:-$generatedClusterName}
+
 isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
-testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "/go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key";; esac)
+testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=${isSnapshotVersion}
 
-TEST_LICENSE=/go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 TEST_LICENSE_PKEY_PATH=$testLicensePKeyPath
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE=${operatorImage}
 E2E_STACK_VERSION=${stackVersion}
@@ -419,6 +590,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -428,30 +600,39 @@ CFG
   pr)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-pr-${BUILD_NUMBER}"
+
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 
+GO_TAGS=release
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
+
 TESTS_MATCH=TestSmoke
-MONITORING_SECRETS=/go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=pr
 BUILD_NUMBER=$BUILD_NUMBER
-E2E_PROVIDER=gke
-CLUSTER_NAME=eck-pr-$BUILD_NUMBER
+E2E_JSON=true
+E2E_PROVIDER=kind
+CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+BUILD_PLATFORM=linux/amd64
+
 ENV
 write_deployer_config <<CFG
-id: gke-ci
+id: kind-ci
 overrides:
-  clusterName: eck-pr-$BUILD_NUMBER
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -477,11 +658,13 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 REGISTRY_NAMESPACE=eck-snapshots
 IMG_SUFFIX=
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=true
 IMG_VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
@@ -494,11 +677,13 @@ ENV
 ###############
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 REGISTRY_NAMESPACE=eck
 IMG_SUFFIX=
 
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=false
 IMG_VERSION=$TAG_NAME
@@ -512,12 +697,14 @@ ENV
 ######################################
 
 write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+
 IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
 IS_SNAPSHOT_BUILD=yes
 GO_TAGS=release
-export LICENSE_PUBKEY=/go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 ENV
 ;;
 
@@ -526,15 +713,20 @@ ENV
   cleanup/gke)
 ######################################
 
+gkeVersion=${2:-x}
+generatedClusterName="eck-${CI_PLATFORM}-e2e-gke-$(sed "s|\.||g" <<< $gkeVersion)-${BUILD_NUMBER}"
+clusterName=${JKS_PARAM_GKE_CLUSTER:-$generatedClusterName}
+
 write_deployer_config <<CFG
 id: gke-ci
 overrides:
   operation: delete
-  clusterName: $JKS_PARAM_GKE_CLUSTER
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   gke:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -544,15 +736,18 @@ CFG
   cleanup/aks)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
+
 write_deployer_config <<CFG
 id: aks-ci
 overrides:
   operation: delete
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -560,15 +755,18 @@ CFG
   cleanup/tanzu)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
+
 write_deployer_config <<CFG
 id: tanzu-ci
 overrides:
   operation: delete
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -576,15 +774,18 @@ CFG
   cleanup/eks)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-eks-${BUILD_NUMBER}"
+
 write_deployer_config <<CFG
 id: eks-ci
 overrides:
   operation: delete
-  clusterName: $BUILD_TAG
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -592,15 +793,18 @@ CFG
   cleanup/eks-arm)
 ######################################
 
+clusterName="eck-${CI_PLATFORM}-e2e-eks-arm-${BUILD_NUMBER}"
+
 write_deployer_config <<CFG
 id: eks-arm-ci
 overrides:
   operation: delete
-  clusterName: ${BUILD_TAG}-arm
+  clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
 CFG
 ;;
 
@@ -608,16 +812,20 @@ CFG
   cleanup/ocp)
 ######################################
 
+ocpVersion=$2
+clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
+
 write_deployer_config <<CFG
 id: ocp-ci
 overrides:
   operation: delete
-  clusterName: ocp4-ci-$BUILD_NUMBER
-  clientVersion: $2
+  clusterName: ${clusterName}
+  clientVersion: ${ocpVersion}
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp:
     gCloudProject: $GCLOUD_PROJECT
 CFG
@@ -636,6 +844,7 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
   ocp3:
     gCloudProject: $GCLOUD_PROJECT
 CFG

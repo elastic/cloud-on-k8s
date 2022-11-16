@@ -6,13 +6,12 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
 	"github.com/spf13/cobra"
 
-	"github.com/elastic/cloud-on-k8s/hack/deployer/runner"
+	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner"
 )
 
 func CreateCommand() *cobra.Command {
@@ -33,40 +32,31 @@ func CreateCommand() *cobra.Command {
 			}
 			var cfgData string
 			switch provider {
-			case runner.GkeDriverID:
+			case runner.GKEDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
 				}
 
-				cfgData = fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
-			case runner.AksDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultGKERunConfigTemplate, user, gCloudProject)
+			case runner.AKSDriverID:
 				resourceGroup, err := GetEnvVar("RESOURCE_GROUP")
 				if err != nil {
 					return err
 				}
 
-				cfgData = fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
-			case runner.OcpDriverID:
+				cfgData = fmt.Sprintf(runner.DefaultAKSRunConfigTemplate, user, resourceGroup)
+			case runner.OCPDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
 				}
 
-				pullSecret, err := GetEnvVar("OCP_PULL_SECRET")
-				if err != nil {
-					return err
-				}
-
-				cfgData = fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
+				cfgData = fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject)
 			case runner.EKSDriverID:
-				// optional variable for local dev use
+				// optional variables for local dev use: preferably login to vault external to deployer and export VAULT_ADDR
 				token, _ := os.LookupEnv("GITHUB_TOKEN")
-
-				vaultAddr, err := GetEnvVar("VAULT_ADDR")
-				if err != nil {
-					return err
-				}
+				vaultAddr, _ := GetEnvVar("VAULT_ADDR")
 
 				cfgData = fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 			case runner.KindDriverID:
@@ -78,7 +68,7 @@ func CreateCommand() *cobra.Command {
 			}
 
 			fullPath := path.Join(filePath, fmt.Sprintf("deployer-config-%s.yml", provider))
-			return ioutil.WriteFile(fullPath, []byte(cfgData), 0600)
+			return os.WriteFile(fullPath, []byte(cfgData), 0600)
 		},
 	}
 

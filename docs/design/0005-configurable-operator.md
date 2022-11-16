@@ -37,7 +37,7 @@ The second option (namespace operator) also has some major drawbacks:
 
 ### Option 1: global and namespace operators
 
-[In a previous design proposal](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0002-global-operator/0002-global-operator.md), we introduced the concepts of one global and several namespace operators. 
+[In a previous design proposal](https://github.com/elastic/cloud-on-k8s/blob/main/docs/design/0002-global-operator/0002-global-operator.md), we introduced the concepts of one global and several namespace operators.
 
 The global operator deployed cluster-wide responsible for high-level cross-cluster features (CCR, CCS, enterprise licenses).
 Namespace operators are responsible for managing clusters in a single namespace. There might be several namespace operators running on a single cluster.
@@ -65,7 +65,7 @@ Because of the increased complexity in mapping the exact RBAC permissions and de
 ```bash
 # cli sample usage (exact specification TBD)
 > ./elastic-operator generate --config=operators.yaml
-# generates one or multiple yaml files ready-to-deploy, including Deployment, ServiceAccount, (Cluster)Roles, (Cluster)RoleBindings, etc.
+# generates one or multiple yaml files ready-to-deploy, including Deployment, ServiceAccount, (Cluster)Roles, (Cluster)RoleBindings.
 ```
 
 ```yaml
@@ -113,7 +113,7 @@ Chosen option: option 2 (configurable operator), because it gives us more flexib
   * a single cluster-wide operator
   * one operator per namespace
   * one operator for all production namespaces, another one for all staging namespaces
-  * etc.
+  * and so on
 * We don't have to require cluster-level permissions to handle enterprise licensing
 * A single operator concept, no namespace/global/ecosystem vocabulary madness
 
@@ -134,8 +134,8 @@ Pros:
 
 Cons:
 
-* Need for a "hybrid" version to deploy everything in a single restricted namespace (eg. "default"), which is a bit confusing
-* The global-operator needs elevated permissions on the cluster (eg. read access to all secrets)
+* Need for a "hybrid" version to deploy everything in a single restricted namespace (for ex. default), which is a bit confusing
+* The global-operator needs elevated permissions on the cluster (for ex. read access to all secrets)
 * One might want to use several global-operators on a single cluster
 * One operator per namespace might lead to deploy too many operators
 
@@ -149,7 +149,7 @@ Pros:
   * a single cluster-wide operator
   * one operator per namespace
   * one operator for all production namespaces, another one for all staging namespaces
-  * etc.
+  * and so on
 * Restricted RBAC permissions according to one's exact needs
 * A "single" operator simplifies communication around the project
 * Actually a superset of option 1, the concept of global + namespaces operators can be easily implemented
@@ -165,4 +165,4 @@ Cons:
 ## Links
 
 * [Discussion issue](https://github.com/elastic/cloud-on-k8s/issues/374)
-* [Global operator ADR](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0002-global-operator/0002-global-operator.md)
+* [Global operator ADR](https://github.com/elastic/cloud-on-k8s/blob/main/docs/design/0002-global-operator/0002-global-operator.md)

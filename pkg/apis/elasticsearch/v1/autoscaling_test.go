@@ -8,15 +8,94 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver/v4"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
-func TestAutoscalingSpec_GetAutoscaledNodeSets(t *testing.T) {
+func TestGetMLNodesSettings(t *testing.T) {
 	type fields struct {
-		AutoscalingPolicySpecs AutoscalingPolicySpecs
+		AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		wantNodes     int32
+		wantMaxMemory string
+	}{
+		{
+			name: "happy path",
+			fields: fields{
+				AutoscalingPolicySpecs: v1alpha1.AutoscalingPolicySpecs{
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data"}}},
+						AutoscalingResources: v1alpha1.AutoscalingResources{
+							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+							NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
+						},
+					},
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
+						AutoscalingResources: v1alpha1.AutoscalingResources{
+							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
+							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
+						},
+					},
+				},
+			},
+			wantMaxMemory: "8589934592b",
+			wantNodes:     7,
+		},
+		{
+			name: "no dedicated ml tier", // not supported at the time this test is written, but we still want to ensure we return correct values
+			fields: fields{
+				AutoscalingPolicySpecs: v1alpha1.AutoscalingPolicySpecs{
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data"}}},
+						AutoscalingResources: v1alpha1.AutoscalingResources{
+							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+							NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
+						},
+					},
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data", "ml"}}},
+						AutoscalingResources: v1alpha1.AutoscalingResources{
+							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
+							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
+						},
+					},
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-policy2", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
+						AutoscalingResources: v1alpha1.AutoscalingResources{
+							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 4},
+						},
+					},
+				},
+			},
+			wantMaxMemory: "17179869184b",
+			wantNodes:     11,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNodes, gotMaxMemory := GetMLNodesSettings(tt.fields.AutoscalingPolicySpecs)
+			if gotNodes != tt.wantNodes {
+				t.Errorf("AutoscalingAnnotation.GetMLNodesSettings() gotNodes = %v, want %v", gotNodes, tt.wantNodes)
+			}
+			if gotMaxMemory != tt.wantMaxMemory {
+				t.Errorf("AutoscalingAnnotation.GetMLNodesSettings() gotMaxMemory = %v, want %v", gotMaxMemory, tt.wantMaxMemory)
+			}
+		})
+	}
+}
+
+func TestElasticsearch_GetAutoscaledNodeSets(t *testing.T) {
+	type fields struct {
+		AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs
 		Elasticsearch          Elasticsearch
 	}
 	tests := []struct {
@@ -30,15 +109,15 @@ func TestAutoscalingSpec_GetAutoscaledNodeSets(t *testing.T) {
 		{
 			name: "Overlapping roles",
 			fields: fields{
-				AutoscalingPolicySpecs: []AutoscalingPolicySpec{
+				AutoscalingPolicySpecs: []v1alpha1.AutoscalingPolicySpec{
 					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data_hot_content", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data_hot", "data_content"}}},
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data_hot_content", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data_hot", "data_content"}}},
 					},
 					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data_warm_content", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data_content", "data_warm"}}},
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data_warm_content", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data_content", "data_warm"}}},
 					},
 					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"ml"}}},
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
 					},
 				},
 				Elasticsearch: Elasticsearch{
@@ -88,11 +167,7 @@ func TestAutoscalingSpec_GetAutoscaledNodeSets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			as := AutoscalingSpec{
-				AutoscalingPolicySpecs: tt.fields.AutoscalingPolicySpecs,
-				Elasticsearch:          tt.fields.Elasticsearch,
-			}
-			got, err := as.GetAutoscaledNodeSets()
+			got, err := tt.fields.Elasticsearch.GetAutoscaledNodeSets(semver.MustParse(tt.fields.Elasticsearch.Spec.Version), tt.fields.AutoscalingPolicySpecs)
 			assert.Equal(t, len(tt.want), len(got))
 			for wantPolicy, wantNodeSets := range tt.want {
 				gotNodeSets, hasNodeSets := got[wantPolicy]
@@ -100,167 +175,7 @@ func TestAutoscalingSpec_GetAutoscaledNodeSets(t *testing.T) {
 				assert.ElementsMatch(t, wantNodeSets, gotNodeSets.Names())
 			}
 			if !reflect.DeepEqual(err, tt.err) {
-				t.Errorf("AutoscalingSpec.GetAutoscaledNodeSets() err = %v, want %v", err, tt.err)
-			}
-		})
-	}
-}
-
-func TestAutoscalingSpec_GetMLNodesSettings(t *testing.T) {
-	type fields struct {
-		AutoscalingPolicySpecs AutoscalingPolicySpecs
-	}
-	tests := []struct {
-		name          string
-		fields        fields
-		wantNodes     int32
-		wantMaxMemory string
-	}{
-		{
-			name: "happy path",
-			fields: fields{
-				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
-					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data"}}},
-						AutoscalingResources: AutoscalingResources{
-							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: CountRange{Min: 3, Max: 5},
-						},
-					},
-					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"ml"}}},
-						AutoscalingResources: AutoscalingResources{
-							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
-							NodeCountRange: CountRange{Min: 0, Max: 7},
-						},
-					},
-				},
-			},
-			wantMaxMemory: "8589934592b",
-			wantNodes:     7,
-		},
-		{
-			name: "no dedicated ml tier", // not supported at the time this test is written, but we still want to ensure we return correct values
-			fields: fields{
-				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
-					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data"}}},
-						AutoscalingResources: AutoscalingResources{
-							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: CountRange{Min: 3, Max: 5},
-						},
-					},
-					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-data-policy", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"data", "ml"}}},
-						AutoscalingResources: AutoscalingResources{
-							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
-							NodeCountRange: CountRange{Min: 0, Max: 7},
-						},
-					},
-					{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{Name: "ml-policy2", AutoscalingPolicy: AutoscalingPolicy{Roles: []string{"ml"}}},
-						AutoscalingResources: AutoscalingResources{
-							MemoryRange:    &QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: CountRange{Min: 0, Max: 4},
-						},
-					},
-				},
-			},
-			wantMaxMemory: "17179869184b",
-			wantNodes:     11,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			as := AutoscalingSpec{AutoscalingPolicySpecs: tt.fields.AutoscalingPolicySpecs}
-			gotNodes, gotMaxMemory := as.GetMLNodesSettings()
-			if gotNodes != tt.wantNodes {
-				t.Errorf("AutoscalingSpec.GetMLNodesSettings() gotNodes = %v, want %v", gotNodes, tt.wantNodes)
-			}
-			if gotMaxMemory != tt.wantMaxMemory {
-				t.Errorf("AutoscalingSpec.GetMLNodesSettings() gotMaxMemory = %v, want %v", gotMaxMemory, tt.wantMaxMemory)
-			}
-		})
-	}
-}
-
-func TestAutoscalingSpec_findByRoles(t *testing.T) {
-	type fields struct {
-		AutoscalingPolicySpecs AutoscalingPolicySpecs
-	}
-	type args struct {
-		roles []string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *AutoscalingPolicySpec
-	}{
-		{
-			name: "Managed by an autoscaling policy",
-			fields: fields{
-				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
-					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
-					}},
-			},
-			args: args{roles: []string{"ml"}},
-			want: &AutoscalingPolicySpec{
-				NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-					Name: "ml_only",
-					AutoscalingPolicy: AutoscalingPolicy{
-						Roles: []string{"ml"},
-					},
-				},
-			},
-		},
-		{
-			name: "Not managed by an autoscaling policy",
-			fields: fields{
-				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
-					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
-					}},
-			},
-			args: args{roles: []string{"master"}},
-			want: nil,
-		},
-		{
-			name: "Not managed by an autoscaling policy",
-			fields: fields{
-				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
-					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
-					}},
-			},
-			args: args{roles: []string{"ml", "data"}},
-			want: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			as := AutoscalingSpec{
-				AutoscalingPolicySpecs: tt.fields.AutoscalingPolicySpecs,
-			}
-			got := as.findByRoles(tt.args.roles)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("AutoscalingSpec.findByRoles() = %v, want %v", got, tt.want)
+				t.Errorf("AutoscalingAnnotation.GetAutoscaledNodeSets() err = %v, want %v", err, tt.err)
 			}
 		})
 	}

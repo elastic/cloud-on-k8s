@@ -8,7 +8,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Transport settings
 
-The transport module in Elasticsearch is used for internal communication between nodes within the cluster as well as communication between remote clusters. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html[Elasticsearch documentation] for details. For customization options of the HTTP layer see <<{p}-services>> and <<{p}-tls-certificates>>.
+The transport module in Elasticsearch is used for internal communication between nodes within the cluster as well as communication between remote clusters. Check the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html[Elasticsearch documentation] for details. For customization options of the HTTP layer, check <<{p}-services>> and <<{p}-tls-certificates>>.
 
 == Customize the Transport Service
 

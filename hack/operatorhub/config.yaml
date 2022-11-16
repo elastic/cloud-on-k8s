@@ -1,10 +1,13 @@
-newVersion: 1.9.0
-prevVersion: 1.8.0
-stackVersion: 7.16.0
+newVersion: 2.6.0-SNAPSHOT
+prevVersion: 2.5.0
+stackVersion: 8.6.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
     description: Instance of an Elasticsearch cluster
+  - name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
+    displayName: Elasticsearch Autoscaler
+    description: Instance of an Elasticsearch autoscaler
   - name: kibanas.kibana.k8s.elastic.co
     displayName: Kibana
     description: Kibana instance
@@ -39,3 +42,7 @@ packages:
     distributionChannel: certified-operators
     operatorRepo: registry.connect.redhat.com/elastic/eck-operator
     ubiOnly: true
+    ## digestPinning should only be set to true for certified operator.
+    ## The RedHat API key and project ID should be set through the REDHAT_API_TOKEN and REDHAT_PROJECT_ID environment variables.
+    ## It can be set to false for local testing.
+    digestPinning: true

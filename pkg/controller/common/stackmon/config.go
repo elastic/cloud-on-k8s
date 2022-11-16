@@ -6,9 +6,10 @@ package stackmon
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"context"
 	"fmt"
 	"hash"
+	"hash/fnv"
 	"path/filepath"
 	"text/template"
 
@@ -17,16 +18,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // beatConfig helps to create a beat configuration
@@ -37,7 +37,7 @@ type beatConfig struct {
 	volumes  []volume.VolumeLike
 }
 
-func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
+func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, resource monitoring.HasMonitoring, associations []commonv1.Association, baseConfig string) (beatConfig, error) {
 	if len(associations) != 1 {
 		// should never happen because of the pre-creation validation
 		return beatConfig{}, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
@@ -45,7 +45,7 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 	assoc := associations[0]
 
 	// build the output section of the beat configuration file
-	outputCfg, caVolume, err := buildOutputConfig(client, assoc)
+	outputCfg, caVolume, err := buildOutputConfig(ctx, client, assoc)
 	if err != nil {
 		return beatConfig{}, err
 	}
@@ -77,8 +77,12 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 		return beatConfig{}, err
 	}
 
-	configHash := sha256.New224()
-	configHash.Write(configBytes)
+	configHash := fnv.New32a()
+
+	_, err = configHash.Write(configBytes)
+	if err != nil {
+		return beatConfig{}, err
+	}
 
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,30 +103,38 @@ func newBeatConfig(client k8s.Client, beatName string, resource monitoring.HasMo
 	}, err
 }
 
-func buildOutputConfig(client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
-	username, password, err := association.ElasticsearchAuthSettings(client, assoc)
+func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association) (map[string]interface{}, volume.VolumeLike, error) {
+	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
 		return nil, volume.SecretVolume{}, err
 	}
 
-	outputConfig := map[string]interface{}{
-		"username": username,
-		"password": password,
-		"hosts":    []string{assoc.AssociationConf().GetURL()},
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return nil, nil, err
 	}
+	outputConfig := map[string]interface{}{
+		"username": credentials.Username,
+		"password": credentials.Password,
+		"hosts":    []string{assocConf.GetURL()},
+	}
+
+	// Elasticsearch certificate might have been generated for a "public" hostname,
+	// and therefore not being valid for the internal URL.
+	outputConfig["ssl.verification_mode"] = "certificate"
 
 	caDirPath := fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
-		assoc.AssociationType(), assoc.AssociationRef().Namespace, assoc.AssociationRef().Name,
+		assoc.AssociationType(), assoc.AssociationRef().Namespace, assoc.AssociationRef().NameOrSecretName(),
 	)
 
 	var caVolume volume.VolumeLike
-	if assoc.AssociationConf().GetCACertProvided() {
+	if assocConf.GetCACertProvided() {
 		sslCAPath := filepath.Join(caDirPath, certificates.CAFileName)
 		outputConfig["ssl.certificate_authorities"] = []string{sslCAPath}
 		volumeName := caVolumeName(assoc)
 		caVolume = volume.NewSecretVolumeWithMountPath(
-			assoc.AssociationConf().GetCASecretName(), volumeName, caDirPath,
+			assocConf.GetCASecretName(), volumeName, caDirPath,
 		)
 	}
 
@@ -160,8 +172,8 @@ type inputConfigData struct {
 	Username string
 	Password string
 	IsSSL    bool
-	SSLPath  string
-	SSLMode  string
+	HasCA    bool
+	CAPath   string
 }
 
 // buildMetricbeatBaseConfig builds the base configuration for Metricbeat with the Elasticsearch or Kibana modules used
@@ -170,39 +182,44 @@ func buildMetricbeatBaseConfig(
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 	nsn types.NamespacedName,
-	esNsn types.NamespacedName,
 	namer name.Namer,
 	url string,
+	username string,
+	password string,
 	isTLS bool,
 	configTemplate string,
 ) (string, volume.VolumeLike, error) {
-	password, err := user.GetMonitoringUserPassword(client, esNsn)
-	if err != nil {
-		return "", nil, err
+	hasCA := false
+	if isTLS {
+		var err error
+		hasCA, err = certificates.PublicCertsHasCACert(client, namer, nsn.Namespace, nsn.Name)
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	configData := inputConfigData{
-		URL:      url,
-		Username: user.MonitoringUserName,
+		Username: username,
 		Password: password,
-		IsSSL:    isTLS,
+		URL:      url,   // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		IsSSL:    isTLS, // enable SSL configuration based on whether the monitored resource has TLS enabled
+		HasCA:    hasCA, // the CA is optional to support custom certificate issued by a well-known CA, so without provided CA to configure
 	}
 
 	var caVolume volume.VolumeLike
-	if configData.IsSSL {
+	if configData.HasCA {
 		caVolume = volume.NewSecretVolumeWithMountPath(
 			certificates.PublicCertsSecretName(namer, nsn.Name),
 			fmt.Sprintf("%s-local-ca", string(associationType)),
 			fmt.Sprintf("/mnt/elastic-internal/%s/%s/%s/certs", string(associationType), nsn.Namespace, nsn.Name),
 		)
 
-		configData.SSLPath = filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
-		configData.SSLMode = "certificate"
+		configData.CAPath = filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
 	}
 
 	// render the config template with the config data
 	var metricbeatConfig bytes.Buffer
-	err = template.Must(template.New("").Parse(configTemplate)).Execute(&metricbeatConfig, configData)
+	err := template.Must(template.New("").Parse(configTemplate)).Execute(&metricbeatConfig, configData)
 	if err != nil {
 		return "", nil, err
 	}

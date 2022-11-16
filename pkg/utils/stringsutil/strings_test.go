@@ -5,6 +5,7 @@
 package stringsutil
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,144 @@ func Test_sortStringSlice(t *testing.T) {
 	slice := []string{"aab", "aac", "aaa", "aab"}
 	SortStringSlice(slice)
 	require.Equal(t, []string{"aaa", "aab", "aab", "aac"}, slice)
+}
+
+func TestDifference(t *testing.T) {
+	type args struct {
+		a []string
+		b []string
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantOnlyInA []string
+		wantOnlyInB []string
+	}{
+		{
+			name: "Happy path",
+			args: args{
+				a: []string{"a", "b", "d"},
+				b: []string{"a", "c", "d"},
+			},
+			wantOnlyInA: []string{"b"},
+			wantOnlyInB: []string{"c"},
+		},
+		{
+			name: "a is nil",
+			args: args{
+				a: nil,
+				b: []string{"a", "b"},
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: []string{"a", "b"},
+		},
+		{
+			name: "b is nil",
+			args: args{
+				a: []string{"a", "b"},
+				b: nil,
+			},
+			wantOnlyInA: []string{"a", "b"},
+			wantOnlyInB: nil,
+		},
+		{
+			name: "both nil",
+			args: args{
+				a: nil,
+				b: nil,
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: nil,
+		},
+		{
+			name: "equals",
+			args: args{
+				a: []string{"d", "b", "a"},
+				b: []string{"a", "b", "d"},
+			},
+			wantOnlyInA: nil,
+			wantOnlyInB: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := Difference(tt.args.a, tt.args.b)
+			if !reflect.DeepEqual(got, tt.wantOnlyInA) {
+				t.Errorf("Difference() got = %v, wantOnlyInA %v", got, tt.wantOnlyInA)
+			}
+			if !reflect.DeepEqual(got1, tt.wantOnlyInB) {
+				t.Errorf("Difference() got1 = %v, wantOnlyInB %v", got1, tt.wantOnlyInB)
+			}
+		})
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	type args struct {
+		s string
+		n int
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "String is smaller than n",
+			args: args{
+				s: "small",
+				n: 1024,
+			},
+			want: "small",
+		},
+		{
+			name: "n is 0",
+			args: args{
+				s: "foo",
+				n: 0,
+			},
+			want: "",
+		},
+		{
+			name: "n is negative",
+			args: args{
+				s: "foo",
+				n: -1,
+			},
+			want: "",
+		},
+		{
+			name: "Truncate with unicode",
+			args: args{
+				s: "你好，世界!",
+				n: 2,
+			},
+			want: "你好",
+		},
+		{
+			name: "Truncate a sample stacktrace",
+			args: args{
+				s: `github.com/test/project/a/package/test.Foo
+	/go/src/github.com/test/project/a/package/test/foo.go:42
+github.com/test/project/a/package/foo.Foo
+	/go/src/github.com/test/project/a/package/foo/bar.go:4242
+testing.tRunner
+	/usr/local/go/src/testing/testing.go:424242"`,
+				n: 256,
+			},
+			want: `github.com/test/project/a/package/test.Foo
+	/go/src/github.com/test/project/a/package/test/foo.go:42
+github.com/test/project/a/package/foo.Foo
+	/go/src/github.com/test/project/a/package/foo/bar.go:4242
+testing.tRunner
+	/usr/local/go/src/testing/testing.go:`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Truncate(tt.args.s, tt.args.n); got != tt.want {
+				t.Errorf("Truncate() = \n%v\nwant \n%v", got, tt.want)
+			}
+		})
+	}
 }

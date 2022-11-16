@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -14,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_validatePodTemplate(t *testing.T) {
@@ -125,7 +126,7 @@ func Test_validatePodTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePodTemplate(tt.args.c, tt.args.parent, tt.args.sset)
+			err := validatePodTemplate(context.Background(), tt.args.c, tt.args.parent, tt.args.sset)
 			if !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("validatePodTemplate() error = %v, wantErr %v", err, tt.wantErr)
 			}

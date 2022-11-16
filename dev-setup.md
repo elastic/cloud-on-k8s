@@ -11,6 +11,8 @@ Before you start, install the following tools and packages:
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
 * [docker](https://docs.docker.com/) (>= 19.0.0 with optional `buildx` extension for multi-arch builds)
+* [helm](https://helm.sh/docs/intro/install/) (>= 3.2.0, preferably 3.9.x)
+* [helm unittest](https://github.com/quintush/helm-unittest#install) (only needed if developing helm charts) `helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8`
 * Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
 
 ### Get sources
@@ -37,10 +39,10 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 * [Kind](https://kind.sigs.k8s.io/)
 
-  The Make target assumes that your local kind binaries are suffixed with their version. For example `kind-0.9.0` and `kind-0.8.1`. The purpose of this convention is to allow running both versions of kind next to each other. For older Kubernetes versions up to 1.13 use `kind-0.8.1` and for the newer versions of Kubernetes starting with 1.14 use `kind-0.9.0`.
+  Use [deployer](/hack/deployer/README.md) (see the  [deployer README](/hack/deployer/README.md#typical-usage) on how to customize which version of Kind will be used):
 
   ```bash
-  make bootstrap-kind
+  make switch-kind bootstrap-cloud
   ```
 
 * Cloud providers
@@ -102,6 +104,6 @@ Starting the operator with the `--development` flag enables the development mode
 
 ## Recommended reading
 
-* [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)
-* [Controllers](https://book.kubebuilder.io/basics/what_is_a_controller.html)
-* [Controller Managers](https://book.kubebuilder.io/basics/what_is_the_controller_manager.html)
+* [Resources](https://book-v1.book.kubebuilder.io/basics/what_is_a_resource.html)
+* [Controllers](https://book-v1.book.kubebuilder.io/basics/what_is_a_controller.html)
+* [Controller Managers](https://book-v1.book.kubebuilder.io/basics/what_is_the_controller_manager.html)

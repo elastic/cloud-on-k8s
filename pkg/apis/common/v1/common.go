@@ -5,13 +5,16 @@
 package v1
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeploymentHealth string
@@ -48,16 +51,68 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
-// ObjectSelector defines a reference to a Kubernetes object.
-type ObjectSelector struct {
-	// Name of the Kubernetes object.
-	Name string `json:"name"`
+// LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
+type LocalObjectSelector struct {
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 	Namespace string `json:"namespace,omitempty"`
+
+	// Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK.
+	Name string `json:"name,omitempty"`
+
 	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
 	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
 	// the referenced resource is used.
 	ServiceName string `json:"serviceName,omitempty"`
+}
+
+// WithDefaultNamespace adds a default namespace to a given LocalObjectSelector if none is set.
+func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) LocalObjectSelector {
+	if len(o.Namespace) > 0 {
+		return o
+	}
+	return LocalObjectSelector{
+		Namespace:   defaultNamespace,
+		Name:        o.Name,
+		ServiceName: o.ServiceName,
+	}
+}
+
+// NamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
+func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Name:      o.Name,
+		Namespace: o.Namespace,
+	}
+}
+
+// IsDefined checks if the local object selector is not nil and has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (o *LocalObjectSelector) IsDefined() bool {
+	return o != nil && o.Name != ""
+}
+
+// ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
+// or a Secret describing an external Elastic resource not managed by the operator.
+type ObjectSelector struct {
+	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK.
+	Name string `json:"name,omitempty"`
+
+	// ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
+	// object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of
+	// the referenced resource is used.
+	ServiceName string `json:"serviceName,omitempty"`
+
+	// SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
+	// Elastic resource not managed by the operator. The referenced secret must contain the following:
+	// - `url`: the URL to reach the Elastic resource
+	// - `username`: the username of the user to be authenticated to the Elastic resource
+	// - `password`: the password of the user to be authenticated to the Elastic resource
+	// - `ca.crt`: the CA certificate in PEM format (optional).
+	// This field cannot be used in combination with the other fields name, namespace or serviceName.
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
@@ -69,21 +124,61 @@ func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSele
 		Namespace:   defaultNamespace,
 		Name:        o.Name,
 		ServiceName: o.ServiceName,
+		SecretName:  o.SecretName,
 	}
+}
+
+// NameOrSecretName returns the name or the secret name of the ObjectSelector.
+// Name or secret name are mutually exclusive. Validation rules ensure that exactly one of the two is set.
+func (o ObjectSelector) NameOrSecretName() string {
+	if o.SecretName != "" {
+		return o.SecretName
+	}
+	return o.Name
 }
 
 // NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
 func (o ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
-		Name:      o.Name,
+		Name:      o.NameOrSecretName(),
 		Namespace: o.Namespace,
 	}
 }
 
-// IsDefined checks if the object selector is not nil and has a name.
+// IsDefined checks if the object selector is not nil and has a name or a secret name.
 // Namespace is not mandatory as it may be inherited by the parent object.
 func (o *ObjectSelector) IsDefined() bool {
-	return o != nil && o.Name != ""
+	return o != nil && o.NameOrSecretName() != ""
+}
+
+// IsExternal returns true when the object selector references a Kubernetes secret describing an external
+// referenced object not managed by the operator.
+func (o ObjectSelector) IsExternal() bool {
+	return o.IsDefined() && o.SecretName != ""
+}
+
+func (o ObjectSelector) IsValid() error {
+	if o.Name != "" && o.SecretName != "" {
+		return errors.New("specify name or secretName, not both")
+	}
+	if o.SecretName != "" && (o.ServiceName != "" || o.Namespace != "") {
+		return errors.New("serviceName or namespace can only be used in combination with name, not with secretName")
+	}
+	if o.Name == "" && (o.ServiceName != "") {
+		return errors.New("serviceName can only be used in combination with name")
+	}
+	if o.Name == "" && (o.Namespace != "") {
+		return errors.New("namespace can only be used in combination with name")
+	}
+	return nil
+}
+
+// ToID returns a string representing the object selector that can be used as a unique identifier.
+func (o ObjectSelector) ToID() string {
+	if o.Namespace != "" {
+		return fmt.Sprintf("%s-%s", o.Namespace, o.NameOrSecretName())
+	}
+	return o.NameOrSecretName()
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.
@@ -162,7 +257,7 @@ type PodDisruptionBudgetTemplate struct {
 
 	// Spec is the specification of the PDB.
 	// +kubebuilder:validation:Optional
-	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
+	Spec policyv1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }
 
 // IsDisabled returns true if the PodDisruptionBudget is explicitly disabled (not nil, but empty).
@@ -211,7 +306,7 @@ type ConfigSource struct {
 	//       - /var/log/containers/*.log
 	//       processors:
 	//       - add_kubernetes_metadata:
-	//           host: ${NODE_NAME}
+	//           node: ${NODE_NAME}
 	//           matchers:
 	//           - logs_path:
 	//               logs_path: "/var/log/containers/"
@@ -236,4 +331,20 @@ type ConfigSource struct {
 	//    email.account.email_defaults.from: my@email.com
 	// ---
 	SecretRef `json:",inline"`
+}
+
+// HasObservedGeneration allows a return of any object's observed generation.
+// +kubebuilder:object:generate=false
+type HasObservedGeneration interface {
+	client.Object
+	GetObservedGeneration() int64
+}
+
+// DisableDowngradeValidationAnnotation allows circumventing downgrade/upgrade checks.
+const DisableDowngradeValidationAnnotation = "eck.k8s.elastic.co/disable-downgrade-validation"
+
+// IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
+func IsConfiguredToAllowDowngrades(o metav1.Object) bool {
+	val, exists := o.GetAnnotations()[DisableDowngradeValidationAnnotation]
+	return exists && val == "true"
 }

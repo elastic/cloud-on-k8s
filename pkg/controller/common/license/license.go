@@ -4,10 +4,6 @@
 
 package license
 
-import ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-
-var log = ulog.Log.WithName("license")
-
 const (
 	// FileName is the name used in the license secret to point to the license data.
 	FileName = "license"

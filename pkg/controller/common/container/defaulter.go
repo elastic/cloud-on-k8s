@@ -155,7 +155,7 @@ func (d Defaulter) WithVolumeMounts(volumeMounts []corev1.VolumeMount) Defaulter
 	return d
 }
 
-func (d Defaulter) WithPreStopHook(handler *corev1.Handler) Defaulter {
+func (d Defaulter) WithPreStopHook(handler *corev1.LifecycleHandler) Defaulter {
 	if d.base.Lifecycle == nil {
 		d.base.Lifecycle = &corev1.Lifecycle{}
 	}

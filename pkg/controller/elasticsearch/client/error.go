@@ -6,11 +6,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // APIError is a non 2xx response from the Elasticsearch API
@@ -21,14 +24,15 @@ type APIError struct {
 }
 
 // newAPIError converts an HTTP response into an API error, attempting to parse the body to include the details about the error.
-func newAPIError(response *http.Response) error {
+func newAPIError(ctx context.Context, response *http.Response) error {
 	defer response.Body.Close()
+	log := ulog.FromContext(ctx)
 	apiError := &APIError{
 		Status:     response.Status,
 		StatusCode: response.StatusCode,
 	}
 	// We may need to read the body multiple times, read the full body and store it as an array of bytes.
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		// We were not able to read the body, log this I/O error and return the API error with the status.
 		log.Error(err, "Cannot read Elasticsearch error response body")
@@ -36,14 +40,14 @@ func newAPIError(response *http.Response) error {
 	}
 	// Reset the response body to the original unread state. It allows a caller to read again the body if necessary,
 	// for example in the case of a 408.
-	response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	response.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	// Parse the body to get the details about the API error, as they are stored by Elasticsearch.
 	var errorResponse ErrorResponse
 	if err := json.Unmarshal(body, &errorResponse); err != nil {
 		// Only log at the debug level since it is expected to not be able to parse all types of errors.
 		// Some errors, like 408 on /_cluster/health may return a different body structure.
-		log.V(1).Error(err, "Cannot parse Elasticsearch error response body")
+		log.V(1).Info("Unexpected Elasticsearch error response", "http.response.body.content", string(body))
 		return apiError
 	}
 	apiError.ErrorResponse = errorResponse

@@ -14,20 +14,31 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/cryptutil"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
+
+var testPasswordHasher cryptutil.PasswordHasher
+
+func init() {
+	passwordHasher, err := cryptutil.NewPasswordHasher(0)
+	if err != nil {
+		panic(err)
+	}
+	testPasswordHasher = passwordHasher
+}
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
 	err = c.Get(context.Background(), RolesFileRealmSecretKey(sampleEsWithAuth), &reconciledSecret)
 	require.NoError(t, err)
-	require.Len(t, reconciledSecret.Data, 3)
+	require.Len(t, reconciledSecret.Data, 4)
 	require.NotEmpty(t, reconciledSecret.Data[RolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersRolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersFile])
@@ -50,21 +61,31 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 		WithRole("role1", []string{"user1"}).
 		WithRole("role2", []string{"user2"})
 
-	err := reconcileRolesFileRealmSecret(c, es, roles, realm)
+	saTokens := ServiceAccountTokens{}.
+		Add(ServiceAccountToken{
+			FullyQualifiedServiceAccountName: "fqsa2",
+			HashedSecret:                     "hash2",
+		}).
+		Add(ServiceAccountToken{
+			FullyQualifiedServiceAccountName: "fqsa1",
+			HashedSecret:                     "hash1",
+		})
+	err := reconcileRolesFileRealmSecret(context.Background(), c, es, roles, realm, saTokens)
 	require.NoError(t, err)
 	// retrieve reconciled secret
 	var secret corev1.Secret
 	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.RolesAndFileRealmSecret(es.Name)}, &secret)
 	require.NoError(t, err)
-	require.Len(t, secret.Data, 3)
+	require.Len(t, secret.Data, 4)
 	require.Contains(t, string(secret.Data[RolesFile]), "click_admins")
 	require.Contains(t, string(secret.Data[filerealm.UsersRolesFile]), "role1:user1")
 	require.Contains(t, string(secret.Data[filerealm.UsersFile]), "user1:hash1")
+	require.Equal(t, string(secret.Data[ServiceTokensFileName]), "fqsa1:hash1\nfqsa2:hash2\n")
 }
 
 func Test_aggregateFileRealm(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedFileRealmSecrets...)
-	fileRealm, controllerUser, err := aggregateFileRealm(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	fileRealm, controllerUser, err := aggregateFileRealm(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10), testPasswordHasher)
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()
@@ -73,8 +94,8 @@ func Test_aggregateFileRealm(t *testing.T) {
 
 func Test_aggregateRoles(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedRolesSecret...)
-	roles, err := aggregateRoles(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
+	roles, err := aggregateRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
-	require.Len(t, roles, 51)
+	require.Len(t, roles, 52)
 	require.Contains(t, roles, ProbeUserRole, "role1", "role2")
 }

@@ -17,6 +17,7 @@ type AllocationSetter interface {
 
 // ShardLister captures Elasticsearch API calls around shards retrieval.
 type ShardLister interface {
+	HasShardActivity(ctx context.Context) (bool, error)
 	GetShards(ctx context.Context) (Shards, error)
 }
 
@@ -43,4 +44,12 @@ func (c *clientV6) GetShards(ctx context.Context) (Shards, error) {
 		return shards, err
 	}
 	return shards, nil
+}
+
+func (c *clientV6) HasShardActivity(ctx context.Context) (bool, error) {
+	health, err := c.GetClusterHealth(ctx)
+	if err != nil {
+		return false, err
+	}
+	return health.HasShardActivity(), nil
 }

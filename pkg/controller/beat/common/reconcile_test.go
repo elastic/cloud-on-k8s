@@ -14,9 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 func Test_reconcileDaemonSet(t *testing.T) {
@@ -35,6 +35,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates strategy",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
@@ -58,6 +59,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates pod template",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
@@ -77,6 +79,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		{
 			name: "propagates labels and owner",
 			args: ReconciliationParams{
+				ctx:    context.Background(),
 				client: k8s.NewFakeClient(),
 				beat: beatv1beta1.Beat{
 					ObjectMeta: metav1.ObjectMeta{Name: "my-beat", Namespace: "my-namespace"},

@@ -11,7 +11,7 @@ endif::[]
 == Ensure sufficient storage
 Elasticsearch is link:https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html#heap-dump-path[configured by default] to take heap dumps on out-of-memory exceptions to the default data directory. The default data directory is `/usr/share/elasticsearch/data` in the official Docker images that ECK uses. If you are running Elasticsearch with a large heap that is as large as the remaining space on the data volume, this can lead to a situation where Elasticsearch is no longer able to start. To avoid this scenario you have two options:
 
-.  Choose a different path by setting `-XX:HeapDumpPath=` via the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
+.  Choose a different path by setting `-XX:HeapDumpPath=` with the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
 .  <<{p}-volume-claim-templates,Resize the data volume>> to a sufficiently large size if your volume provisioner supports volume expansion
 
 == Taking add-hoc heap dumps

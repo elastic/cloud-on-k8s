@@ -15,21 +15,25 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/pointer"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (
-	PSPClusterRoleName = "elastic-agent-restricted"
-
 	AgentFleetModeRoleName = "elastic-agent-fleet"
+
+	// FleetServerPseudoKind is a lookup key for a version definition.
+	// FleetServer has the same CRD as Agent but for testing purposes we want to be able to configure a different image.
+	FleetServerPseudoKind = "FleetServer"
 )
 
 // Builder to create an Agent
@@ -38,6 +42,8 @@ type Builder struct {
 	Validations        []ValidationFunc
 	ValidationsOutputs []string
 	AdditionalObjects  []k8sclient.Object
+
+	MutatedFrom *Builder
 
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
@@ -80,15 +86,17 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
+	def := test.Ctx().ImageDefinitionFor(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 			},
 		},
 		Suffix: suffix,
 	}.
+		WithImage(def.Image).
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
@@ -98,6 +106,11 @@ type ValidationFunc func(client.Client) error
 
 func (b Builder) WithVersion(version string) Builder {
 	b.Agent.Spec.Version = version
+	return b
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
 	return b
 }
 
@@ -182,11 +195,29 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	for i := range b.PodTemplate.Spec.Containers {
-		b.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
+	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
+	if containerIdx < 0 {
+		b.PodTemplate.Spec.Containers = append(
+			b.PodTemplate.Spec.Containers,
+			corev1.Container{
+				Name:            agent.ContainerName,
+				SecurityContext: &securityContext,
+			},
+		)
+		return b
 	}
 
+	b.PodTemplate.Spec.Containers[containerIdx].SecurityContext = &securityContext
 	return b
+}
+
+func getContainerIndex(name string, containers []corev1.Container) int {
+	for i := range containers {
+		if containers[i].Name == name {
+			return i
+		}
+	}
+	return -1
 }
 
 func (b Builder) WithLabel(key, value string) Builder {
@@ -288,7 +319,16 @@ func (b Builder) WithFleetMode() Builder {
 
 func (b Builder) WithFleetServer() Builder {
 	b.Agent.Spec.FleetServerEnabled = true
+	return b.WithFleetImage()
+}
 
+func (b Builder) WithFleetImage() Builder {
+	// do not override image or version unless an explicit override exists as builder might already have been configured
+	// with a specific version which we do want to preserve.
+	if def := test.Ctx().ImageDefinitionOrNil(FleetServerPseudoKind); def != nil {
+		b.Agent.Spec.Image = def.Image
+		b.Agent.Spec.Version = def.Version
+	}
 	return b
 }
 
@@ -309,6 +349,16 @@ func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	return b
 }
 
+func (b Builder) WithTLSDisabled(disabled bool) Builder {
+	if b.Agent.Spec.HTTP.TLS.SelfSignedCertificate == nil {
+		b.Agent.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
+	} else {
+		b.Agent.Spec.HTTP.TLS.SelfSignedCertificate = b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
+	}
+	b.Agent.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
+	return b
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Agent.Name,
@@ -317,7 +367,31 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 }
 
 func (b Builder) RuntimeObjects() []k8sclient.Object {
+	// OpenShift does not only require running as root, the privileged field must also be
+	// set to true in order to write in a hostPath volume.
+	if test.Ctx().OcpCluster {
+		podSecurityContext := b.getPodSecurityContext()
+		if podSecurityContext != nil && podSecurityContext.RunAsUser != nil {
+			if *podSecurityContext.RunAsUser == 0 {
+				// Only update the container's SecurityContext if the Pod runs as root.
+				b = b.WithContainerSecurityContext(corev1.SecurityContext{
+					Privileged: pointer.Bool(true),
+					RunAsUser:  pointer.Int64(0),
+				})
+			}
+		}
+	}
 	return append(b.AdditionalObjects, &b.Agent)
+}
+
+func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
+	if b.Agent.Spec.Deployment != nil {
+		return b.Agent.Spec.Deployment.PodTemplate.Spec.SecurityContext
+	}
+	if b.Agent.Spec.DaemonSet != nil {
+		return b.Agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext
+	}
+	return nil
 }
 
 var _ test.Builder = Builder{}

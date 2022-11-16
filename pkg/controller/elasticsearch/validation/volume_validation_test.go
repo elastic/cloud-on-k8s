@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -16,9 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 var (
@@ -105,7 +106,7 @@ func Test_ensureClaimSupportsExpansion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := EnsureClaimSupportsExpansion(tt.k8sClient, tt.claim, tt.validateStoragClass); (err != nil) != tt.wantErr {
+			if err := EnsureClaimSupportsExpansion(context.Background(), tt.k8sClient, tt.claim, tt.validateStoragClass); (err != nil) != tt.wantErr {
 				t.Errorf("ensureClaimSupportsExpansion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -356,7 +357,7 @@ func TestValidateClaimsUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ValidateClaimsStorageUpdate(tt.args.k8sClient, tt.args.initial, tt.args.updated, tt.args.validateStorageClass); (err != nil) != tt.wantErr {
+			if err := ValidateClaimsStorageUpdate(context.Background(), tt.args.k8sClient, tt.args.initial, tt.args.updated, tt.args.validateStorageClass); (err != nil) != tt.wantErr {
 				t.Errorf("ValidateClaimsStorageUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -509,7 +510,7 @@ func Test_validPVCModification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validPVCModification(tt.args.current, tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass)
+			errs := validPVCModification(context.Background(), tt.args.current, tt.args.proposed, tt.args.k8sClient, tt.args.validateStorageClass)
 			if tt.wantErr {
 				require.NotEmpty(t, errs)
 			} else {

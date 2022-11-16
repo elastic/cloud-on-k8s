@@ -10,20 +10,21 @@ IMPORTANT: This recipe assumes that you have valid TLS certificates issued by a 
 
 == Recipe
 
-Create an Elasticsearch cluster and an Elastic Maps Server instance with customized service definition.
+Create an Elastic Maps Server instance.
 
 [source,yaml]
 ----
-include::01-ems-es.yaml[]
+include::01-ems.yaml[]
 ----
+
+
+Create an Elasticsearch cluster and a Kibana. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain.
+[source,yaml]
+----
+include::02-es-kb.yaml[]
+----
+
 CAUTION: The Elasticsearch configuration uses `node.store.allow_mmap: false` to avoid configuring memory mapping settings on the underlying host. This could impact the performance of your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
-
-
-Create a Kibana. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain.
-[source,yaml]
-----
-include::02-kb.yaml[]
-----
 
 Create the Ingress. Replace the placeholder `{{YOUR_DOMAIN}}` in the recipe with your actual domain. Create the TLS secrets with your certificates.
 

@@ -12,13 +12,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/generation"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -109,10 +110,16 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k).
+	var entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
+
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.EMS, k, &entSearchGenerationBeforeMutation, &entSearchObservedGenerationBeforeMutation),
+	}.WithSteps(test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.EMS, k, isMutated, entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation))
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

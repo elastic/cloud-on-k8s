@@ -17,7 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 )
 
 type fakeClientProvider func() kubernetes.Interface
@@ -61,7 +61,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 						"create",
 						"subjectaccessreviews",
 						func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject()
+							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject() //nolint:forcetypeassert
 							if t, ok := object.(*authorizationapi.SubjectAccessReview); ok {
 								t.Status.Allowed = true
 								t.Status.Denied = false
@@ -95,7 +95,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 						"create",
 						"subjectaccessreviews",
 						func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject()
+							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject() //nolint:forcetypeassert
 							if t, ok := object.(*authorizationapi.SubjectAccessReview); ok {
 								t.Status.Denied = true
 								t.Status.Allowed = true
@@ -121,7 +121,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 						"create",
 						"subjectaccessreviews",
 						func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject()
+							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject() //nolint:forcetypeassert
 							if t, ok := object.(*authorizationapi.SubjectAccessReview); ok {
 								t.Status.Allowed = false
 								t.Status.Denied = false
@@ -147,7 +147,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 						"create",
 						"subjectaccessreviews",
 						func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject()
+							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject() //nolint:forcetypeassert
 							if t, ok := object.(*authorizationapi.SubjectAccessReview); ok {
 								t.Status.Allowed = false
 								t.Status.Denied = false
@@ -174,7 +174,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 						"create",
 						"subjectaccessreviews",
 						func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject()
+							object := action.(k8stesting.CreateAction).GetObject().DeepCopyObject() //nolint:forcetypeassert
 							if t, ok := object.(*authorizationapi.SubjectAccessReview); ok {
 								t.Status.Denied = true
 								t.Status.Allowed = true

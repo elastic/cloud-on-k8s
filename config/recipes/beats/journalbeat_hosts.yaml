@@ -4,7 +4,7 @@ metadata:
   name: journalbeat
 spec:
   type: journalbeat
-  version: 7.15.2
+  version: 7.15.2 # last release of Journalbeat
   elasticsearchRef:
     name: elasticsearch
   config:

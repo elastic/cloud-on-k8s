@@ -7,16 +7,14 @@ package bootstrap
 import (
 	"context"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("elasticsearch-uuid")
 
 const (
 	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
@@ -52,7 +50,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// However we don't want to stop the reconciliation loop here because it could prevent the user to apply
 		// an update to the cluster spec to fix a problem.
 		// Therefore we just log the error and notify the driver that the reconciliation should be eventually re-queued.
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			"Recoverable error while retrieving Elasticsearch cluster UUID",
 			"namespace", cluster.Namespace,
 			"es_name", cluster.Name,
@@ -64,7 +62,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	return false, annotateWithUUID(k8sClient, cluster, clusterUUID)
+	return false, annotateWithUUID(ctx, k8sClient, cluster, clusterUUID)
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
@@ -82,8 +80,8 @@ func isUUIDValid(uuid string) bool {
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
-func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
-	log.Info(
+func annotateWithUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
+	ulog.FromContext(ctx).Info(
 		"Annotating bootstrapped cluster with its UUID",
 		"namespace", cluster.Namespace,
 		"es_name", cluster.Name,
@@ -93,5 +91,5 @@ func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid st
 		cluster.Annotations = make(map[string]string)
 	}
 	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(context.Background(), cluster)
+	return k8sClient.Update(ctx, cluster)
 }

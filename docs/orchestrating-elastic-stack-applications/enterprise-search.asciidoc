@@ -242,7 +242,7 @@ spec:
 
 By default ECK manages self-signed TLS certificates to secure the connection to Enterprise Search. It also restricts the Kubernetes service to `ClusterIP` type that cannot be accessed publicly.
 
-See link:k8s-accessing-elastic-services.html[how to access Elastic Stack services] to customize TLS settings and expose the service.
+Check link:k8s-accessing-elastic-services.html[how to access Elastic Stack services] to customize TLS settings and expose the service.
 
 NOTE: When exposed outside the scope of `localhost`, make sure to set both `ent_search.external_url`, and `kibana.host` accordingly in the Enterprise Search configuration.
 

@@ -10,15 +10,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 const (
@@ -26,7 +26,7 @@ const (
 	AppSearchPrivateKey = "private-key"
 )
 
-type EnterpriseSearchClient struct {
+type EnterpriseSearchClient struct { //nolint:revive
 	httpClient *http.Client
 	endpoint   string
 	username   string
@@ -76,12 +76,12 @@ func (e EnterpriseSearchClient) doRequest(request *http.Request) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, fmt.Errorf("http response status code is %d)", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 func (e EnterpriseSearchClient) HealthCheck() error {

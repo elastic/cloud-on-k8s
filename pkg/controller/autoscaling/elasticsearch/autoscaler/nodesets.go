@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/autoscaling/elasticsearch/resources"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 )
 
-func distributeFairly(nodeSets resources.NodeSetNodeCountList, expectedNodeCount int32) {
+func distributeFairly(nodeSets v1alpha1.NodeSetNodeCountList, expectedNodeCount int32) {
 	if len(nodeSets) == 0 {
 		return
 	}
@@ -28,7 +28,7 @@ func distributeFairly(nodeSets resources.NodeSetNodeCountList, expectedNodeCount
 
 // sort sorts node sets by the value of the Count field, giving priority to node sets with fewer nodes.
 // If several node sets have the same number of nodes they are sorted alphabetically.
-func sortNodeSets(nodeSetNodeCountList resources.NodeSetNodeCountList) {
+func sortNodeSets(nodeSetNodeCountList v1alpha1.NodeSetNodeCountList) {
 	sort.SliceStable(nodeSetNodeCountList, func(i, j int) bool {
 		if nodeSetNodeCountList[i].NodeCount == nodeSetNodeCountList[j].NodeCount {
 			return strings.Compare(nodeSetNodeCountList[i].Name, nodeSetNodeCountList[j].Name) < 0

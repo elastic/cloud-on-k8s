@@ -7,8 +7,11 @@ package shutdown
 import (
 	"context"
 
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
+
+var MinVersion = version.MinFor(7, 15, 2)
 
 // NodeShutdownStatus describes the current shutdown status of an Elasticsearch node/Pod.
 // Partially duplicates the Elasticsearch API to allow a version agnostic implementation in the controller.
@@ -27,3 +30,37 @@ type Interface interface {
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
 }
+
+type Observer interface {
+	OnReconcileShutdowns(leavingNodes []string)
+	OnShutdownStatus(podName string, status NodeShutdownStatus)
+}
+
+func WithObserver(implementation Interface, observer Observer) Interface {
+	return &observed{
+		Interface: implementation,
+		observer:  observer,
+	}
+}
+
+type observed struct {
+	Interface
+	observer Observer
+}
+
+func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
+	if o.observer != nil {
+		o.observer.OnReconcileShutdowns(leavingNodes)
+	}
+	return o.Interface.ReconcileShutdowns(ctx, leavingNodes)
+}
+
+func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {
+	nodeShutdownStatus, err := o.Interface.ShutdownStatus(ctx, podName)
+	if err == nil && o.observer != nil {
+		o.observer.OnShutdownStatus(podName, nodeShutdownStatus)
+	}
+	return nodeShutdownStatus, err
+}
+
+var _ Interface = &observed{}

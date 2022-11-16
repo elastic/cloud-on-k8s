@@ -11,17 +11,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmv1.ApmServer
+
+	MutatedFrom *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -44,13 +46,13 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-
+	def := test.Ctx().ImageDefinitionFor(apmv1.Kind)
 	return Builder{
 		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmv1.ApmServerSpec{
 				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Version: def.Version,
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"apm-server.ilm.enabled": false,
@@ -64,6 +66,7 @@ func newBuilder(name, randSuffix string) Builder {
 			},
 		},
 	}.
+		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
@@ -73,6 +76,11 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
 	}
+	return b
+}
+
+func (b Builder) WithImage(image string) Builder {
+	b.ApmServer.Spec.Image = image
 	return b
 }
 
@@ -106,6 +114,17 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) DeepCopy() *Builder {
+	apm := b.ApmServer.DeepCopy()
+	builderCopy := Builder{
+		ApmServer: *apm,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
 		b.ApmServer.Spec.Config = &commonv1.Config{
@@ -114,10 +133,12 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 		return b
 	}
 
+	newBuilder := b.DeepCopy()
+
 	for k, v := range cfg {
-		b.ApmServer.Spec.Config.Data[k] = v
+		newBuilder.ApmServer.Spec.Config.Data[k] = v
 	}
-	return b
+	return *newBuilder
 }
 
 func (b Builder) WithRUM(enabled bool) Builder {
@@ -163,6 +184,11 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	return b.WithConfig(map[string]interface{}{
 		"apm-server.data_streams.wait_for_integration": false,
 	})
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
+	return b
 }
 
 func (b Builder) NSN() types.NamespacedName {

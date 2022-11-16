@@ -8,21 +8,19 @@ import (
 	"context"
 	"sort"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("remotecluster")
 
 const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
@@ -50,12 +48,12 @@ func UpdateSettings(
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return true, err
 	}
 	if !enabled && isRemoteClustersSpec {
-		log.Info(
+		ulog.FromContext(ctx).Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
@@ -63,21 +61,22 @@ func UpdateSettings(
 		return false, nil
 	}
 
-	return updateSettingsInternal(remoteClustersInSpec, c, esClient, es)
+	return updateSettingsInternal(ctx, remoteClustersInSpec, c, esClient, es)
 }
 
 // updateSettingsInternal updates remote clusters in Elasticsearch. It also keeps track of any remote clusters which
 // have been declared in the Elasticsearch spec. The purpose is to delete remote clusters which were managed by
 // the operator but are not desired anymore, without removing the ones which have been added by the user.
 // The following algorithm is used:
-// 1. Get the list of the previously declared remote clusters from the annotation
-// 2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
-// 3. For each remote cluster in the annotation which is not in the Spec, either:
-//   3.1 Schedule its deletion from the Elasticsearch settings
-//   3.2 Otherwise remove it from the annotation
-// 4. Update the annotation on the Elasticsearch object
-// 5. Apply the settings through the Elasticsearch API
+//  1. Get the list of the previously declared remote clusters from the annotation
+//  2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
+//  3. For each remote cluster in the annotation which is not in the Spec, either:
+//     3.1 Schedule its deletion from the Elasticsearch settings
+//     3.2 Otherwise remove it from the annotation
+//  4. Update the annotation on the Elasticsearch object
+//  5. Apply the settings through the Elasticsearch API
 func updateSettingsInternal(
+	ctx context.Context,
 	remoteClustersInSpec map[string]esv1.RemoteCluster,
 	c k8s.Client,
 	esClient esclient.Client,
@@ -86,7 +85,7 @@ func updateSettingsInternal(
 	remoteClustersInAnnotation := getRemoteClustersInAnnotation(es)
 
 	// Retrieve the remote clusters currently declared in Elasticsearch
-	remoteClustersInEs, err := getRemoteClustersInElasticsearch(esClient)
+	remoteClustersInEs, err := getRemoteClustersInElasticsearch(ctx, esClient)
 	if err != nil {
 		return true, err
 	}
@@ -127,7 +126,7 @@ func updateSettingsInternal(
 	}
 
 	// Update the annotation
-	if err := annotateWithCreatedRemoteClusters(c, es, remoteClustersInAnnotation); err != nil {
+	if err := annotateWithCreatedRemoteClusters(ctx, c, es, remoteClustersInAnnotation); err != nil {
 		return true, err
 	}
 
@@ -138,21 +137,21 @@ func updateSettingsInternal(
 		// Apply the settings
 		sort.Strings(remoteClustersToUpdate)
 		sort.Strings(remoteClustersToDelete)
-		log.Info("Updating remote cluster settings",
+		ulog.FromContext(ctx).Info("Updating remote cluster settings",
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 			"updated_remote_clusters", remoteClustersToUpdate,
 			"deleted_remote_clusters", remoteClustersToDelete,
 		)
-		return requeue, updateSettings(esClient, remoteClustersToApply)
+		return requeue, updateSettings(ctx, esClient, remoteClustersToApply)
 	}
 	return requeue, nil
 }
 
 // getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
-func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
+func getRemoteClustersInElasticsearch(ctx context.Context, esClient esclient.Client) (map[string]struct{}, error) {
 	remoteClustersInEs := make(map[string]struct{})
-	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(context.Background())
+	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(ctx)
 	if err != nil {
 		return remoteClustersInEs, err
 	}
@@ -177,8 +176,8 @@ func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluste
 }
 
 // updateSettings makes a call to an Elasticsearch cluster to apply a persistent setting.
-func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
-	return esClient.UpdateRemoteClusterSettings(context.Background(), esclient.RemoteClustersSettings{
+func updateSettings(ctx context.Context, esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
+	return esClient.UpdateRemoteClusterSettings(ctx, esclient.RemoteClustersSettings{
 		PersistentSettings: &esclient.SettingsGroup{
 			Cluster: esclient.RemoteClusters{
 				RemoteClusters: remoteClusters,

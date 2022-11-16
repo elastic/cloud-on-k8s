@@ -6,7 +6,7 @@ package test
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,9 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 )
 
 func AnnotatePodsWithBuilderHash(subj, prev Subject, k *K8sClient) StepList {
@@ -50,7 +50,7 @@ func CreateEnterpriseLicenseSecret(t *testing.T, k *K8sClient, secretName string
 				Namespace: Ctx().ManagedNamespace(0),
 				Name:      secretName,
 				Labels: map[string]string{
-					common.TypeLabelName:      license.Type,
+					labels.TypeLabelName:      license.Type,
 					license.LicenseLabelScope: string(license.LicenseScopeOperator),
 				},
 			},
@@ -67,7 +67,7 @@ func DeleteAllEnterpriseLicenseSecrets(t *testing.T, k *K8sClient) {
 	Eventually(func() error {
 		// Delete operator license secret
 		var licenseSecrets corev1.SecretList
-		err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+		err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{labels.TypeLabelName: license.Type}))
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func LicenseTestBuilder() WrappedBuilder {
 				Step{
 					Name: "Create an Enterprise license secret",
 					Test: func(t *testing.T) {
-						licenseBytes, err := ioutil.ReadFile(Ctx().TestLicense)
+						licenseBytes, err := os.ReadFile(Ctx().TestLicense)
 						require.NoError(t, err)
 						DeleteAllEnterpriseLicenseSecrets(t, k)
 						CreateEnterpriseLicenseSecret(t, k, "eck-license", licenseBytes)

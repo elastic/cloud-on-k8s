@@ -1,6 +1,6 @@
 # 1. Stateful set or custom controller
 
-**Update (2019-07-30):** we decided to refactor the code towards using StatefulSets in order to manage Elasticsearch pods. Mostly in order to get closer to Kubernetes standards, simplify PersistentVolumes management, and stay open to future improvements in the ecosystem. For more details, see [the StatefulSets discussion issue](https://github.com/elastic/cloud-on-k8s/issues/1173).
+**Update (2019-07-30):** we decided to refactor the code towards using StatefulSets in order to manage Elasticsearch pods. Mostly in order to get closer to Kubernetes standards, simplify PersistentVolumes management, and stay open to future improvements in the ecosystem. For more details, check [the StatefulSets discussion issue](https://github.com/elastic/cloud-on-k8s/issues/1173).
 
 * Status: ~~accepted~~ rejected, superseded by https://github.com/elastic/cloud-on-k8s/issues/1173
 * Deciders: @nkvoll
@@ -17,7 +17,7 @@ We manage stateful workloads. StatefulSets were designed in order to manage stat
 
 > Manages the deployment and scaling of a set of Pods , and provides guarantees about the ordering and uniqueness of these Pods.
 
-Each pod ends up with a sticky network identifier and an ordinal index, reused on rescheduling, along with its persistent storage. There is a global order in pods of a StatefulSet (pod-1, pod-2, pod-3, etc.) which determines scaling and ordering in rolling operations.
+Each pod ends up with a sticky network identifier and an ordinal index, reused on rescheduling, along with its persistent storage. There is a global order in pods of a StatefulSet (pod-1, pod-2, pod-3, and so on) which determines scaling and ordering in rolling operations.
 
 
 ### Elasticsearch topologies
@@ -27,8 +27,8 @@ In a given StatefulSet, all pods have the exact same spec.
 From our perspective, instances can be configured with several options:
 
 - Elasticsearch version
-- node types: master-only, master-data, data-only, master-data-ingest, coordinating-only, ML, APM, etc.
-- availability zones: as-1, az-2, etc.
+- node types: master-only, master-data, data-only, master-data-ingest, coordinating-only, ML, APM, and so on
+- availability zones: as-1, az-2, and so on
 - instance configuration type: hot/warm architectures
 
 In complex production-ready scenarios, we might want to configure a cluster with:
@@ -72,7 +72,7 @@ Overall, we would lose a lot of flexibility in the way we'd like to run rolling 
 We decided to implement our own controller that manages pods directly.
 
 ### Positive Consequences
-* The immediate benefit in working with Pods directly is more control over the the cluster lifecycle. We can handle rolling upgrades, version migrations, cluster growth, volume reuse (or not), multi-AZ orchestration, etc. with much more flexibility.
+* The immediate benefit in working with Pods directly is more control over the the cluster lifecycle. We can handle rolling upgrades, version migrations, cluster growth, volume reuse (or not), and multi-AZ orchestration with much more flexibility.
 * Relying on StatefulSets forces us to depend on the StatefulSet controller releases, updates and bug fixes, since it has direct control over the pods themselves. 
 * Pods are a core concept of K8s, with well-known behaviours thoroughly tested in the field. Their spec and behaviour is less likely to evolve in a direction that does not suit us.
 * We could rely on StatefulSets: it would simplify a part of the code, and complexify another part of the code. Because of complex cluster topologies, we would still need to handle several StatefulSets for a single cluster, which is not much more simpler than handling several pods directly. 
@@ -89,7 +89,7 @@ We decided to implement our own controller that manages pods directly.
 
 - [StatefulSets documentation](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
 
-- [etcd-operator](https://github.com/coreos/etcd-operator): one of the first and most popular operator out there. Does not rely on StatefulSets. See [this comment](https://github.com/coreos/etcd-operator/issues/1323#issuecomment-317875165) from _xiang90_:
+- [etcd-operator](https://github.com/coreos/etcd-operator): one of the first and most popular operator out there. Does not rely on StatefulSets. Check [this comment](https://github.com/coreos/etcd-operator/issues/1323#issuecomment-317875165) from _xiang90_:
 > Statefulset is not flexible enough to achieve quite a few things easily, and the benefits it bring in right now are not significant.
 
 - [Best practices for building Kubernetes Operators and stateful apps (Google)](https://cloud.google.com/blog/products/containers-kubernetes/best-practices-for-building-kubernetes-operators-and-stateful-apps)

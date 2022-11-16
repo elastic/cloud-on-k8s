@@ -1,0 +1,66 @@
+suite: test kibana
+templates:
+  - charts/eck-kibana/templates/kibana.yaml
+tests:
+  - it: should render quickstart properly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-kibana
+      - equal:
+          path: spec.version
+          value: 8.2.3
+  - it: name override should work properly
+    set:
+      eck-kibana.nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      eck-kibana.fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: override
+  - it: should render custom kibana using values file properly
+    set:
+      eck-kibana.spec.elasticsearchRef.namespace: default
+    values:
+      - ../../examples/custom-elasticsearch-kibana.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: metadata.name
+          value: quickstart
+      - equal:
+          path: spec.version
+          value: 8.2.3
+      - equal:
+          path: spec.count
+          value: 1
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: quickstart
+      - equal:
+          path: spec.elasticsearchRef.namespace
+          value: default
+      - equal:
+          path: spec.http.service.spec.type
+          value: LoadBalancer

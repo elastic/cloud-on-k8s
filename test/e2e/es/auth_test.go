@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build es e2e
+//go:build es || e2e
 
 package es
 
@@ -14,18 +14,19 @@ import (
 	"net/http"
 	"testing"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
 
 const (
@@ -37,6 +38,7 @@ const (
 	samplePasswordHash        = "$2a$10$qrurU7ju08g0eCXgh5qZmOWfKLhWMs/ca3uXz1l6.eFf09UH6YXFy" // nolint
 	samplePasswordUpdated     = "mypasswordupdated"
 	samplePasswordUpdatedHash = "$2a$10$ckqhC0BB5OdXJhR1J7vbiu21e9BxJU1V6HHLOqbSo.TlZAocWWnie" // nolint
+	samplePasswordCleartext   = "my-cleartext-password"
 	sampleUsersFile           = sampleUser + ":" + samplePasswordHash
 	sampleUsersFileUpdated    = sampleUser + ":" + samplePasswordUpdatedHash
 	sampleUsersRolesFile      = "test_role:" + sampleUser
@@ -160,6 +162,30 @@ func TestESUserProvidedAuth(t *testing.T) {
 				Name: "ES API should eventually be accessible using the updated password and the updated role",
 				Test: test.Eventually(func() error {
 					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordUpdated}
+					expectedStatusCode := 201
+					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
+				}),
+			},
+			test.Step{
+				Name: "Update the secret to be a basic auth secret with a clear text password",
+				Test: test.Eventually(func() error {
+					var existingSecret corev1.Secret
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&fileRealmSecret), &existingSecret); err != nil {
+						return err
+					}
+					existingSecret.Data = nil
+					existingSecret.StringData = map[string]string{
+						corev1.BasicAuthUsernameKey:  sampleUser,
+						corev1.BasicAuthPasswordKey:  samplePasswordCleartext,
+						user.BasicAuthSecretRolesKey: "test_role",
+					}
+					return k.Client.Update(context.Background(), &existingSecret)
+				}),
+			},
+			test.Step{
+				Name: "ES API should eventually be accessible using the updated password and the updated role",
+				Test: test.Eventually(func() error {
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordCleartext}
 					expectedStatusCode := 201
 					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
 				}),

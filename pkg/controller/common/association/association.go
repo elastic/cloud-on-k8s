@@ -12,12 +12,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	commonhash "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-// WriteAssocsToConfigHash dereferences auth and CA secrets (if any) to include it in the configHash.
+// WriteAssocsToConfigHash dereferences auth, CA and custom secrets (if any) to include it in the configHash.
 func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Association, configHash hash.Hash) error {
 	for _, assoc := range associations {
 		if err := writeAuthSecretToConfigHash(client, assoc, configHash); err != nil {
@@ -26,12 +28,18 @@ func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Associat
 		if err := writeCASecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
+		if err := writeUnmanagedSecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
-	assocConf := assoc.AssociationConf()
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return err
+	}
 	if !assocConf.AuthIsConfigured() {
 		return nil
 	}
@@ -57,8 +65,11 @@ func writeAuthSecretToConfigHash(client k8s.Client, assoc commonv1.Association, 
 }
 
 func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
-	assocConf := assoc.AssociationConf()
-	if !assocConf.CAIsConfigured() {
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return err
+	}
+	if !assocConf.GetCACertProvided() {
 		return nil
 	}
 
@@ -69,12 +80,26 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 	if err := client.Get(context.Background(), publicCASecretNsName, &publicCASecret); err != nil {
 		return err
 	}
-	certPem, ok := publicCASecret.Data[certificates.CertFileName]
+	certPem, ok := publicCASecret.Data[certificates.CAFileName]
 	if !ok {
-		return errors.Errorf("public CA secret key %s doesn't exist", certificates.CertFileName)
+		return errors.Errorf("public CA secret key %s doesn't exist", certificates.CAFileName)
 	}
 
 	_, _ = configHash.Write(certPem)
 
+	return nil
+}
+
+func writeUnmanagedSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
+	if !assoc.AssociationRef().IsExternal() {
+		return nil
+	}
+
+	info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, assoc.AssociationRef())
+	if err != nil {
+		return err
+	}
+
+	commonhash.WriteHashObject(configHash, info)
 	return nil
 }

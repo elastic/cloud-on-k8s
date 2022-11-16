@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -16,14 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("cleanup")
 
 // DeleteAfter represents how long after creation an object can be safely garbage collected.
 const DeleteAfter = 10 * time.Minute
@@ -39,25 +37,25 @@ func IsTooYoungForGC(object metav1.Object) bool {
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
 func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
 	defer span.End()
 
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
-	if err := c.List(context.Background(), &secrets, ns, matchLabels); err != nil {
+	if err := c.List(ctx, &secrets, ns, matchLabels); err != nil {
 		return err
 	}
 	resources := make([]client.Object, len(secrets.Items))
 	for i := range secrets.Items {
 		resources[i] = &secrets.Items[i]
 	}
-	return cleanupFromPodReference(c, es.Namespace, resources)
+	return cleanupFromPodReference(ctx, c, es.Namespace, resources)
 }
 
 // cleanupFromPodReference deletes objects having a reference to
 // a pod which does not exist anymore.
-func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Object) error {
+func cleanupFromPodReference(ctx context.Context, c k8s.Client, namespace string, objects []client.Object) error {
 	for _, runtimeObj := range objects {
 		obj, err := meta.Accessor(runtimeObj)
 		if err != nil {
@@ -70,7 +68,7 @@ func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Ob
 		// this secret applies to a particular pod
 		// remove it if the pod does not exist anymore
 		var pod corev1.Pod
-		err = c.Get(context.Background(), types.NamespacedName{
+		err = c.Get(ctx, types.NamespacedName{
 			Namespace: namespace,
 			Name:      podName,
 		}, &pod)
@@ -81,8 +79,8 @@ func cleanupFromPodReference(c k8s.Client, namespace string, objects []client.Ob
 				continue
 			}
 			// pod does not exist anymore, delete the object
-			log.Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
-			if deleteErr := c.Delete(context.Background(), runtimeObj); deleteErr != nil {
+			ulog.FromContext(ctx).Info("Garbage-collecting resource", "namespace", namespace, "name", obj.GetName())
+			if deleteErr := c.Delete(ctx, runtimeObj); deleteErr != nil {
 				return deleteErr
 			}
 		} else if err != nil {

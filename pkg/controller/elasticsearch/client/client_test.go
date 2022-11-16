@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"sort"
@@ -24,11 +24,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	fixtures "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 )
 
 func TestParseShards(t *testing.T) {
@@ -143,7 +143,7 @@ func requestAssertion(test func(req *http.Request)) RoundTripFunc {
 		test(req)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(`{}`)),
+			Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -268,23 +268,33 @@ func TestAPIError_Error(t *testing.T) {
 	}{
 		{
 			name: "Elasticsearch JSON error response",
-			fields: fields{newAPIError(&http.Response{
+			fields: fields{newAPIError(context.Background(), &http.Response{
 				StatusCode: 400,
 				Status:     "400 Bad Request",
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
 			})},
 			want: `400 Bad Request: {Status:400 Error:{CausedBy:{Reason:cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1] ` +
 				`Type:illegal_argument_exception} Reason:illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6] Type:illegal_argument_exception ` +
-				`RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
+				`StackTrace: RootCause:[{Reason:[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update] Type:remote_transport_exception}]}}`,
 		},
 		{
+			name: "JSON non-error response",
+			fields: fields{newAPIError(context.Background(), &http.Response{
+				StatusCode: 408,
+				Status:     "408 Request Timeout",
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.TimeoutSample)),
+			})},
+			want: "408 Request Timeout: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
+		},
+
+		{
 			name: "non-JSON error response",
-			fields: fields{newAPIError(&http.Response{
+			fields: fields{newAPIError(context.Background(), &http.Response{
 				StatusCode: 500,
 				Status:     "500 Internal Server Error",
-				Body:       ioutil.NopCloser(bytes.NewBufferString("")),
+				Body:       io.NopCloser(bytes.NewBufferString("")),
 			})},
-			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: RootCause:[]}}",
+			want: "500 Internal Server Error: {Status:0 Error:{CausedBy:{Reason: Type:} Reason: Type: StackTrace: RootCause:[]}}",
 		},
 	}
 	for _, tt := range tests {
@@ -302,7 +312,7 @@ func TestClientGetNodes(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.NodesSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -320,7 +330,7 @@ func TestClientGetNodesStats(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesStatsSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.NodesStatsSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -338,7 +348,7 @@ func TestGetInfo(t *testing.T) {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.InfoSample)),
+			Body:       io.NopCloser(strings.NewReader(fixtures.InfoSample)),
 			Header:     make(http.Header),
 			Request:    req,
 		}
@@ -365,6 +375,7 @@ func TestClient_Equal(t *testing.T) {
 	dummyCACerts := []*x509.Certificate{createCert()}
 	v6 := version.MustParse("6.8.0")
 	v7 := version.MustParse("7.0.0")
+	timeout := Timeout(context.Background(), esv1.Elasticsearch{})
 	x509.NewCertPool()
 	tests := []struct {
 		name string
@@ -374,62 +385,62 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, "another-endpoint", dummyUser, v6, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}, timeout, false),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v6, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, Timeout(esv1.Elasticsearch{})),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, Timeout(esv1.Elasticsearch{})),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, timeout, false),
 			want: false,
 		},
 	}
@@ -477,7 +488,7 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.expectedQuery, req.URL.RawQuery, tt.version)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.AddVotingConfigExclusions(context.Background(), []string{"a", "b"})
@@ -510,7 +521,7 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.DeleteVotingConfigExclusions(context.Background(), false)
@@ -546,7 +557,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 			require.Equal(t, tt.expectedPath, req.URL.Path)
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader("")),
+				Body:       io.NopCloser(strings.NewReader("")),
 			}
 		})
 		err := client.SetMinimumMasterNodes(context.Background(), 1)
@@ -557,6 +568,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 }
 
 func TestAPIError_Types(t *testing.T) {
+	ctx := context.Background()
 	type args struct {
 		err error
 	}
@@ -570,27 +582,27 @@ func TestAPIError_Types(t *testing.T) {
 		{
 			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: newAPIError(NewMockResponse(500, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(500, nil, "")), //nolint:bodyclose
 			},
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: newAPIError(NewMockResponse(409, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(409, nil, "")), //nolint:bodyclose
 			},
 			wantConflict: true,
 		},
 		{
 			name: "403 is a forbidden",
 			args: args{
-				err: newAPIError(NewMockResponse(403, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(403, nil, "")), //nolint:bodyclose
 			},
 			wantForbidden: true,
 		},
 		{
 			name: "404 is not found",
 			args: args{
-				err: newAPIError(NewMockResponse(404, nil, "")), //nolint:bodyclose
+				err: newAPIError(ctx, NewMockResponse(404, nil, "")), //nolint:bodyclose
 			},
 			wantNotFound: true,
 		},
@@ -655,7 +667,7 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 				require.Equal(t, tt.expectedPath, req.URL.Path)
 				return &http.Response{
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(strings.NewReader(tt.apiResponse)),
+					Body:       io.NopCloser(strings.NewReader(tt.apiResponse)),
 				}
 			})
 			bootstrappedForZen2, err := client.ClusterBootstrappedForZen2(context.Background())
@@ -669,7 +681,7 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 
 func TestTimeout(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}}
-	have := Timeout(es)
+	have := Timeout(context.Background(), es)
 	require.Equal(t, 1*time.Minute, have)
 }
 
@@ -711,7 +723,7 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 					require.Equal(t, expectedRawQuery, req.URL.RawQuery)
 					return &http.Response{
 						StatusCode: 408,
-						Body: ioutil.NopCloser(strings.NewReader(
+						Body: io.NopCloser(strings.NewReader(
 							`
 {
 	"cluster_name": "elasticsearch-sample",
@@ -762,7 +774,7 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 					require.Equal(t, expectedRawQuery, req.URL.RawQuery)
 					return &http.Response{
 						StatusCode: 200,
-						Body: ioutil.NopCloser(strings.NewReader(
+						Body: io.NopCloser(strings.NewReader(
 							`
 {
 	"cluster_name": "elasticsearch-sample",

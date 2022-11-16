@@ -2,7 +2,6 @@
   "extends": [
     "config:base"
   ],
-  "ignoreDeps": ["github.com/prometheus/client_golang", "github.com/prometheus/common"],
   "labels": [">renovate"],
   "packageRules": [
     {

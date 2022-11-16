@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,10 +13,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func TestNewConfigFromSpec(t *testing.T) {
@@ -157,7 +158,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 			apmv1.NewApmEsAssociation(apmServer).SetAssociationConf(tc.esAssocConf)
 			apmv1.NewApmKibanaAssociation(apmServer).SetAssociationConf(tc.kbAssocConf)
 
-			gotConf, err := newConfigFromSpec(client, apmServer)
+			gotConf, err := newConfigFromSpec(context.Background(), client, apmServer)
 			if tc.wantErr {
 				require.Error(t, err)
 				return

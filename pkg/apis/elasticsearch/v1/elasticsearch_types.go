@@ -5,30 +5,60 @@
 package v1
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	v1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 const (
 	ElasticsearchContainerName = "elasticsearch"
+	// DisableUpgradePredicatesAnnotation is the annotation that can be applied to an
+	// Elasticsearch cluster to disable certain predicates during rolling upgrades.  Multiple
+	// predicates names can be separated by ",".
+	//
+	// Example:
+	//
+	//   To disable "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas" predicate
+	//
+	//   metadata:
+	//     annotations:
+	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
+	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
 	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
 	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
+	// ElasticsearchAutoscalingSpecAnnotationName is the name of the annotation used to store the autoscaling specification.
+	// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+	ElasticsearchAutoscalingSpecAnnotationName = "elasticsearch.alpha.elastic.co/autoscaling-spec"
+
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
+
+// ServiceAccountMinVersion is the first version of Elasticsearch for which ECK supports service accounts.
+// It is however up to each association controller to ensure that a specific service account is available
+// in the current Elasticsearch version.
+var ServiceAccountMinVersion = semver.MustParse("7.17.0")
+
+func AreServiceAccountsSupported(version string) (bool, error) {
+	esVersion, err := semver.Parse(version)
+	if err != nil {
+		return false, err
+	}
+	return esVersion.GTE(ServiceAccountMinVersion), nil
+}
 
 // +kubebuilder:object:root=true
 
@@ -81,7 +111,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+	// ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -101,30 +131,10 @@ type ElasticsearchSpec struct {
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	Monitoring Monitoring `json:"monitoring,omitempty"`
-}
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
-type Monitoring struct {
-	// Metrics holds references to Elasticsearch clusters which receive monitoring data from this Elasticsearch cluster.
-	// +kubebuilder:validation:Optional
-	Metrics MetricsMonitoring `json:"metrics,omitempty"`
-	// Logs holds references to Elasticsearch clusters which receive log data from this Elasticsearch cluster.
-	// +kubebuilder:validation:Optional
-	Logs LogsMonitoring `json:"logs,omitempty"`
-}
-
-type MetricsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
-}
-
-type LogsMonitoring struct {
-	// ElasticsearchRefs is a reference to a list of monitoring Elasticsearch clusters running in the same Kubernetes cluster.
-	// Due to existing limitations, only a single Elasticsearch cluster is currently supported.
-	// +kubebuilder:validation:Required
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
@@ -148,6 +158,11 @@ type TransportConfig struct {
 }
 
 type TransportTLSOptions struct {
+	// OtherNameSuffix when defined will be prefixed with the Pod name and used as the common name,
+	// and the first DNSName, as well as an OtherName required by Elasticsearch in the Subject Alternative Name
+	// extension of each Elasticsearch node's transport TLS certificate.
+	// Example: if set to "node.cluster.local", the generated certificate will have its otherName set to "<pod_name>.node.cluster.local".
+	OtherNameSuffix string `json:"otherNameSuffix,omitempty"`
 	// SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
 	SubjectAlternativeNames []commonv1.SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 	// Certificate is a reference to a Kubernetes secret that contains the CA certificate
@@ -172,7 +187,7 @@ type RemoteCluster struct {
 	Name string `json:"name"`
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
 
@@ -373,69 +388,6 @@ func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
 	return maxUnavailable
 }
 
-// ElasticsearchHealth is the health of the cluster as returned by the health API.
-type ElasticsearchHealth string
-
-// Possible traffic light states Elasticsearch health can have.
-const (
-	ElasticsearchRedHealth     ElasticsearchHealth = "red"
-	ElasticsearchYellowHealth  ElasticsearchHealth = "yellow"
-	ElasticsearchGreenHealth   ElasticsearchHealth = "green"
-	ElasticsearchUnknownHealth ElasticsearchHealth = "unknown"
-)
-
-var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
-	ElasticsearchRedHealth:    1,
-	ElasticsearchYellowHealth: 2,
-	ElasticsearchGreenHealth:  3,
-}
-
-// Less for ElasticsearchHealth means green > yellow > red
-func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
-	l := elasticsearchHealthOrder[h]
-	r := elasticsearchHealthOrder[other]
-	// 0 is not found/unknown and less is not defined for that
-	return l != 0 && r != 0 && l < r
-}
-
-// ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
-type ElasticsearchOrchestrationPhase string
-
-const (
-	// ElasticsearchReadyPhase is operating at the desired spec.
-	ElasticsearchReadyPhase ElasticsearchOrchestrationPhase = "Ready"
-	// ElasticsearchApplyingChangesPhase controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
-	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
-	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
-	// ElasticsearchNodeShutdownStalledPhase Elasticsearch cannot make progress with a node shutdown during downscale or rolling upgrade.
-	ElasticsearchNodeShutdownStalledPhase ElasticsearchOrchestrationPhase = "Stalled"
-	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
-	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
-)
-
-// ElasticsearchStatus defines the observed state of Elasticsearch
-type ElasticsearchStatus struct {
-	// AvailableNodes is the number of available instances.
-	AvailableNodes int32 `json:"availableNodes,omitempty"`
-	// Version of the stack resource currently running. During version upgrades, multiple versions may run
-	// in parallel: this value specifies the lowest version currently running.
-	Version string                          `json:"version,omitempty"`
-	Health  ElasticsearchHealth             `json:"health,omitempty"`
-	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
-
-	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
-}
-
-type ZenDiscoveryStatus struct {
-	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
-}
-
-// IsDegraded returns true if the current status is worse than the previous.
-func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
-	return es.Health.Less(prev.Health)
-}
-
 // +kubebuilder:object:root=true
 
 // Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
@@ -451,9 +403,9 @@ type Elasticsearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec       ElasticsearchSpec                                 `json:"spec,omitempty"`
-	Status     ElasticsearchStatus                               `json:"status,omitempty"`
-	AssocConfs map[types.NamespacedName]commonv1.AssociationConf `json:"-"`
+	Spec       ElasticsearchSpec                                    `json:"spec,omitempty"`
+	Status     ElasticsearchStatus                                  `json:"status,omitempty"`
+	AssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 // DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
@@ -476,19 +428,81 @@ func (es Elasticsearch) IsMarkedForDeletion() bool {
 	return !es.DeletionTimestamp.IsZero()
 }
 
+// IsConfiguredToAllowDowngrades returns true if the DisableDowngradeValidation annotation is set to the value of true.
+func (es Elasticsearch) IsConfiguredToAllowDowngrades() bool {
+	return commonv1.IsConfiguredToAllowDowngrades(&es)
+}
+
 func (es *Elasticsearch) ServiceAccountName() string {
 	return es.Spec.ServiceAccountName
 }
 
-// IsAutoscalingDefined returns true if there is an autoscaling configuration in the annotations.
-func (es Elasticsearch) IsAutoscalingDefined() bool {
+func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
+// IsAutoscalingAnnotationSet returns true if there is an autoscaling configuration in the annotations.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) IsAutoscalingAnnotationSet() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
 	return ok
 }
 
-// AutoscalingSpec returns the autoscaling spec in the Elasticsearch manifest.
-func (es Elasticsearch) AutoscalingSpec() string {
+// AutoscalingAnnotation returns the autoscaling spec in the Elasticsearch manifest.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) AutoscalingAnnotation() string {
 	return es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
+}
+
+var _ v1alpha1.AutoscalingResource = &Elasticsearch{}
+
+// AutoscalingSpec is the root object of the autoscaling specification in the Elasticsearch resource definition.
+// +kubebuilder:object:generate=false
+type AutoscalingSpec struct {
+	AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs `json:"policies"`
+
+	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
+	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
+
+	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
+	// fully part of the Elasticsearch specification.
+	Elasticsearch Elasticsearch `json:"-"`
+}
+
+func (es Elasticsearch) GetAutoscalingPolicySpecs() (v1alpha1.AutoscalingPolicySpecs, error) {
+	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
+	if err != nil {
+		return nil, err
+	}
+	return autoscalingSpecification.AutoscalingPolicySpecs, nil
+}
+
+func (es Elasticsearch) GetPollingPeriod() (*metav1.Duration, error) {
+	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
+	if err != nil {
+		return nil, err
+	}
+	return autoscalingSpecification.PollingPeriod, nil
+}
+
+func (es Elasticsearch) GetElasticsearchAutoscalerStatus() (v1alpha1.ElasticsearchAutoscalerStatus, error) {
+	autoscalingStatus, err := ElasticsearchAutoscalerStatusFrom(es)
+	if err != nil {
+		return v1alpha1.ElasticsearchAutoscalerStatus{}, err
+	}
+	return autoscalingStatus, nil
+}
+
+// GetAutoscalingSpecificationFromAnnotation unmarshal autoscaling specifications from an Elasticsearch resource.
+// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
+func (es Elasticsearch) GetAutoscalingSpecificationFromAnnotation() (AutoscalingSpec, error) {
+	autoscalingSpec := AutoscalingSpec{}
+	if len(es.AutoscalingAnnotation()) == 0 {
+		return autoscalingSpec, nil
+	}
+	err := json.Unmarshal([]byte(es.AutoscalingAnnotation()), &autoscalingSpec)
+	autoscalingSpec.Elasticsearch = es
+	return autoscalingSpec, err
 }
 
 func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
@@ -496,17 +510,26 @@ func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
 }
 
 func (es Elasticsearch) SuspendedPodNames() set.StringSet {
-	suspended, exists := es.Annotations[SuspendAnnotation]
+	return setFromAnnotations(SuspendAnnotation, es.Annotations)
+}
+
+// GetObservedGeneration will return the observed generation from the Elasticsearch status.
+func (es Elasticsearch) GetObservedGeneration() int64 {
+	return es.Status.ObservedGeneration
+}
+
+func setFromAnnotations(annotationKey string, annotations map[string]string) set.StringSet {
+	allValues, exists := annotations[annotationKey]
 	if !exists {
 		return nil
 	}
 
-	podNames := strings.Split(suspended, ",")
-	suspendedPods := set.Make()
-	for _, p := range podNames {
-		suspendedPods.Add(strings.TrimSpace(p))
+	splitValues := strings.Split(allValues, ",")
+	valueSet := set.Make()
+	for _, p := range splitValues {
+		valueSet.Add(strings.TrimSpace(p))
 	}
-	return suspendedPods
+	return valueSet
 }
 
 // -- associations
@@ -519,7 +542,7 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
-				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+				ref:           ref.WithDefaultNamespace(es.Namespace),
 			})
 		}
 	}
@@ -527,28 +550,11 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		if ref.IsDefined() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
-				ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+				ref:           ref.WithDefaultNamespace(es.Namespace),
 			})
 		}
 	}
 	return associations
-}
-
-func (es *Elasticsearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return commonv1.AssociationStatusMap{}
-	}
-
-	return es.Status.MonitoringAssociationsStatus
-}
-
-func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
-	if typ != commonv1.EsMonitoringAssociationType {
-		return fmt.Errorf("association type %s not known", typ)
-	}
-
-	es.Status.MonitoringAssociationsStatus = status
-	return nil
 }
 
 // -- association with monitoring Elasticsearch clusters
@@ -557,8 +563,8 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 type EsMonitoringAssociation struct {
 	// The monitored Elasticsearch cluster from where are collected logs and monitoring metrics
 	*Elasticsearch
-	// ref is the namespaced name of the Elasticsearch referenced in the Association used to send and store monitoring data
-	ref types.NamespacedName
+	// ref is the object selector of the Elasticsearch referenced in the Association used to send and store monitoring data
+	ref commonv1.ObjectSelector
 }
 
 var _ commonv1.Association = &EsMonitoringAssociation{}
@@ -582,27 +588,16 @@ func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
-		Name:      ema.ref.Name,
-		Namespace: ema.ref.Namespace,
-	}
+	return ema.ref
 }
 
-func (ema *EsMonitoringAssociation) AssociationConf() *commonv1.AssociationConf {
-	if ema.AssocConfs == nil {
-		return nil
-	}
-	assocConf, found := ema.AssocConfs[ema.ref]
-	if !found {
-		return nil
-	}
-
-	return &assocConf
+func (ema *EsMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(ema, ema.ref, ema.AssocConfs)
 }
 
 func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	if ema.AssocConfs == nil {
-		ema.AssocConfs = make(map[types.NamespacedName]commonv1.AssociationConf)
+		ema.AssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if assocConf != nil {
 		ema.AssocConfs[ema.ref] = *assocConf
@@ -610,7 +605,7 @@ func (ema *EsMonitoringAssociation) SetAssociationConf(assocConf *commonv1.Assoc
 }
 
 func (ema *EsMonitoringAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", ema.ref.Namespace, ema.ref.Name)
+	return ema.ref.ToID()
 }
 
 // HasMonitoring methods
@@ -626,6 +621,12 @@ func (es *Elasticsearch) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
 func (es *Elasticsearch) MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association {
 	return &EsMonitoringAssociation{
 		Elasticsearch: es,
-		ref:           ref.WithDefaultNamespace(es.Namespace).NamespacedName(),
+		ref:           ref.WithDefaultNamespace(es.Namespace),
 	}
+}
+
+// DisabledPredicates returns the set of predicates that are currently disabled by the
+// DisableUpgradePredicatesAnnotation annotation.
+func (es Elasticsearch) DisabledPredicates() set.StringSet {
+	return setFromAnnotations(DisableUpgradePredicatesAnnotation, es.Annotations)
 }

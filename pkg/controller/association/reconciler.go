@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/go-logr/logr"
-	"go.elastic.co/apm"
+	"github.com/pkg/errors"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,21 +20,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
 var (
@@ -42,7 +45,7 @@ var (
 )
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
-type AssociationInfo struct {
+type AssociationInfo struct { //nolint:revive
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
 	// elasticsearch for Beat to Elasticsearch association)
 	AssociationType commonv1.AssociationType
@@ -70,7 +73,7 @@ type AssociationInfo struct {
 	AssociationConfAnnotationNameBase string
 	// ReferencedResourceVersion returns the currently running version of the referenced resource.
 	// It may return an empty string if the version is unknown.
-	ReferencedResourceVersion func(c k8s.Client, referencedRes types.NamespacedName) (string, error)
+	ReferencedResourceVersion func(c k8s.Client, referencedResource commonv1.ObjectSelector) (string, error)
 	// AssociationResourceNameLabelName is a label used on resources needed for an association. It identifies the name
 	// of the associated resource (eg. user secret allowing to connect Beat to Kibana will have this label pointing to the
 	// Beat resource).
@@ -116,7 +119,7 @@ func (a AssociationInfo) userLabelSelector(
 	association types.NamespacedName,
 ) client.MatchingLabels {
 	return maps.Merge(
-		map[string]string{common.TypeLabelName: user.AssociatedUserType},
+		map[string]string{labels.TypeLabelName: user.AssociatedUserType},
 		a.AssociationResourceLabels(associated, association),
 	)
 }
@@ -132,25 +135,17 @@ type Reconciler struct {
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
-
-	logger logr.Logger
-}
-
-// log with namespace and name fields set for the given association resource.
-func (r *Reconciler) log(associatedNsName types.NamespacedName) logr.Logger {
-	return r.logger.WithValues(
-		"namespace", associatedNsName.Namespace,
-		fmt.Sprintf("%s_name", r.AssociatedShortName), associatedNsName.Name,
-	)
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(r.logger, request, fmt.Sprintf("%s_name", r.AssociatedShortName), &r.iteration)()
-	tx, ctx := tracing.NewTransaction(ctx, r.Tracer, request.NamespacedName, r.AssociationName)
-	defer tracing.EndTransaction(tx)
+	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
+	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
+	defer tracing.EndContextTransaction(ctx)
+	log := ulog.FromContext(ctx)
 
 	associated := r.AssociatedObjTemplate()
-	if err := FetchWithAssociations(ctx, r.Client, request, associated); err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
 			r.onDelete(ctx, types.NamespacedName{
@@ -164,8 +159,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	associatedKey := k8s.ExtractNamespacedName(associated)
 
-	if common.IsUnmanaged(associated) {
-		r.log(associatedKey).Info("Object is currently not managed by this controller. Skipping reconciliation")
+	if common.IsUnmanaged(ctx, associated) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -174,7 +169,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	if err := RemoveObsoleteAssociationConfs(r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
+	if err := RemoveObsoleteAssociationConfs(ctx, r.Client, associated, r.AssociationConfAnnotationNameBase); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -189,7 +184,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
-		r.log(associatedKey).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
 	// reconcile watches for all associations of this type
@@ -209,8 +204,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	// we want to attempt a status update even in the presence of errors
-	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil {
-		return defaultRequeue, tracing.CaptureError(ctx, err)
+	if err := r.updateStatus(ctx, associated, newStatusMap); err != nil && apierrors.IsConflict(err) {
+		log.V(1).Info(
+			"Conflict while updating status",
+			"namespace", associatedKey.Namespace,
+			"name", associatedKey.Name)
+		return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+	} else if err != nil {
+		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
@@ -219,22 +220,41 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 func (r *Reconciler) reconcileAssociation(ctx context.Context, association commonv1.Association) (commonv1.AssociationStatus, error) {
-	exists, err := k8s.ObjectExists(r.Client, association.AssociationRef().NamespacedName(), r.ReferencedObjTemplate())
+	assocRef := association.AssociationRef()
+	log := ulog.FromContext(ctx)
+
+	// the referenced object can be an Elastic resource or a custom Secret
+	referencedObj := r.ReferencedObjTemplate()
+	if assocRef.IsExternal() {
+		referencedObj = &corev1.Secret{}
+	}
+
+	// check if the referenced object exists
+	exists, err := k8s.ObjectExists(r.Client, assocRef.NamespacedName(), referencedObj)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
 	if !exists {
 		// the associated resource does not exist (yet), set status to Pending and remove the existing association conf
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+		return commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
 	}
 
-	associationRef := association.AssociationRef()
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), association.AssociationRef().NamespacedName())
+	if assocRef.IsExternal() {
+		log.V(1).Info("Association with an unmanaged resource", "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+		// external reference, update association conf to associate the unmanaged resource
+		expectedAssocConf, err := r.ExpectedConfigFromUnmanagedAssociation(association)
+		if err != nil {
+			r.recorder.Eventf(association.Associated(), corev1.EventTypeWarning, events.EventAssociationError, "Failed to reconcile external resource %q: %v", assocRef.NameOrSecretName(), err.Error())
+			return commonv1.AssociationFailed, err
+		}
+		return r.updateAssocConf(ctx, &expectedAssocConf, association)
+	}
 
 	caSecret, err := r.ReconcileCASecret(
+		ctx,
 		association,
 		r.AssociationInfo.ReferencedResourceNamer,
-		associationRef.NamespacedName(),
+		assocRef.NamespacedName(),
 	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
@@ -242,12 +262,17 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
 	if err != nil {
-		return commonv1.AssociationPending, err // maybe not created yet
+		// the Service may not have been created by the resource controller yet
+		if apierrors.IsNotFound(err) {
+			log.Info("Associated resource Service is not available yet", "error", err, "name", association.Associated().GetName(), "ref_name", assocRef.Name)
+			return commonv1.AssociationPending, nil
+		}
+		return commonv1.AssociationPending, err
 	}
 
-	// Propagate the currently running version of the referenced resource (example: Elasticsearch version).
+	// propagate the currently running version of the referenced resource (example: Elasticsearch version).
 	// The Kibana controller (for example) can then delay a Kibana version upgrade if Elasticsearch is not upgraded yet.
-	ver, err := r.ReferencedResourceVersion(r.Client, associationRef.NamespacedName())
+	ver, err := r.ReferencedResourceVersion(r.Client, assocRef)
 	if err != nil {
 		return commonv1.AssociationPending, err
 	}
@@ -266,18 +291,27 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
 
-	// retrieve the Elasticsearch resource
-	// since it can be a transitive reference we need to use the provided ElasticsearchRef function
-	found, esRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
+	// since Elasticsearch can be a transitive reference we need to use the provided ElasticsearchRef function
+	found, esAssocRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
 	if err != nil {
 		return commonv1.AssociationFailed, err
 	}
-	// the Elasticsearch resource does not exist yet, set status to Pending
+	// the Elasticsearch ref does not exist yet, set status to Pending
 	if !found {
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association)
+		return commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
 	}
 
-	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
+	if esAssocRef.IsExternal() {
+		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
+			"name", association.Associated().GetName(), "ref_name", assocRef.Name, "es_ref_name", esAssocRef.Name)
+		// this a transitive unmanaged Elasticsearch, no user creation, update the association conf as such
+		expectedAssocConf.AuthSecretName = esAssocRef.SecretName
+		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
+	}
+
+	// retrieve the Elasticsearch resource
+	es, associationStatus, err := r.getElasticsearch(ctx, association, esAssocRef)
 	if associationStatus != "" || err != nil {
 		return associationStatus, err
 	}
@@ -285,6 +319,50 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	// check if reference to Elasticsearch is allowed to be established
 	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
 		return commonv1.AssociationPending, err
+	}
+
+	serviceAccount, err := association.ElasticServiceAccount()
+	if err != nil {
+		return commonv1.AssociationPending, err
+	}
+	// Detect if we should use a service account.
+	var esHints hints.OrchestrationsHints
+	if len(serviceAccount) > 0 {
+		// We must first ensure that the relevant orchestration hint is set on the Elasticsearch cluster.
+		esHints, err = hints.NewFrom(es)
+		if err != nil {
+			return commonv1.AssociationPending, err
+		}
+		if !esHints.ServiceAccounts.IsSet() {
+			log.Info("Waiting for Elasticsearch to report if service accounts are fully rolled out")
+			return commonv1.AssociationPending, nil
+		}
+	}
+
+	// If it is the case create the related Secrets and update the association configuration on the associated resource.
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
+		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+		log.V(1).Info("Ensure service account exists", "sa", serviceAccount)
+		err := ReconcileServiceAccounts(
+			ctx,
+			r.Client,
+			es,
+			assocLabels,
+			applicationSecretName,
+			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
+			serviceAccount,
+			association.GetName(),
+			association.GetUID(),
+		)
+		if err != nil {
+			return commonv1.AssociationFailed, err
+		}
+		expectedAssocConf.AuthSecretName = applicationSecretName.Name
+		expectedAssocConf.AuthSecretKey = "token"
+		expectedAssocConf.IsServiceAccount = true
+		// update the association configuration if necessary
+		return r.updateAssocConf(ctx, expectedAssocConf, association)
 	}
 
 	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
@@ -319,18 +397,18 @@ func (r *Reconciler) getElasticsearch(
 	association commonv1.Association,
 	elasticsearchRef commonv1.ObjectSelector,
 ) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
 	var es esv1.Elasticsearch
-	err := r.Get(context.Background(), elasticsearchRef.NamespacedName(), &es)
+	err := r.Get(ctx, elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, association, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(r.Client, association); err != nil && !apierrors.IsConflict(err) {
-				r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to remove Elasticsearch association configuration")
+			if err := RemoveAssociationConf(ctx, r.Client, association); err != nil && !apierrors.IsConflict(err) {
+				ulog.FromContext(ctx).Error(err, "Failed to remove Elasticsearch association configuration")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
 			return esv1.Elasticsearch{}, commonv1.AssociationPending, nil
@@ -341,9 +419,10 @@ func (r *Reconciler) getElasticsearch(
 }
 
 // Unbind removes the association resources.
-func (r *Reconciler) Unbind(association commonv1.Association) error {
+func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
 	if err := k8s.DeleteSecretMatching(
+		ctx,
 		r.Client,
 		r.userLabelSelector(
 			k8s.ExtractNamespacedName(association),
@@ -352,7 +431,7 @@ func (r *Reconciler) Unbind(association commonv1.Association) error {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(r.Client, association)
+	return RemoveAssociationConf(ctx, r.Client, association)
 }
 
 // updateAssocConf updates associated with the expected association conf.
@@ -361,16 +440,21 @@ func (r *Reconciler) updateAssocConf(
 	expectedAssocConf *commonv1.AssociationConf,
 	association commonv1.Association,
 ) (commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
 	defer span.End()
+	log := ulog.FromContext(ctx)
 
-	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
-		r.log(k8s.ExtractNamespacedName(association)).Info("Updating association configuration")
-		if err := UpdateAssociationConf(r.Client, association, expectedAssocConf); err != nil {
+	assocConf, err := association.AssociationConf()
+	if err != nil {
+		return "", err
+	}
+	if !reflect.DeepEqual(expectedAssocConf, assocConf) {
+		log.Info("Updating association configuration")
+		if err := UpdateAssociationConf(ctx, r.Client, association, expectedAssocConf); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
-			r.log(k8s.ExtractNamespacedName(association)).Error(err, "Failed to update association configuration")
+			log.Error(err, "Failed to update association configuration")
 			return commonv1.AssociationPending, err
 		}
 		association.SetAssociationConf(expectedAssocConf)
@@ -431,7 +515,7 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
-		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+		ulog.FromContext(ctx).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 }
 
@@ -450,6 +534,5 @@ func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...runt
 				},
 			},
 		},
-		logger: log.WithName("test"),
 	}
 }

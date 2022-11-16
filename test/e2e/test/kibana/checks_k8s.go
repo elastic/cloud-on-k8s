@@ -8,11 +8,12 @@ import (
 	"context"
 	"fmt"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/checks"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -53,28 +54,41 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
 					},
 				},
-				test.ExpectedSecret{
-					Name: kbName + "-kibana-user",
-					Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
-					Labels: map[string]string{
-						"eck.k8s.elastic.co/credentials":             "true",
-						"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
-						"kibanaassociation.k8s.elastic.co/name":      kbName,
-						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
-					},
-				},
 			)
+			v, err := version.Parse(b.Kibana.Spec.Version)
+			if err != nil {
+				panic(err) // should not happen in an e2e test
+			}
+			if v.GTE(kbv1.KibanaServiceAccountMinVersion) {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: kbName + "-kibana-user",
+						Keys: []string{"hash", "name", "serviceAccount", "token"},
+						Labels: map[string]string{
+							"eck.k8s.elastic.co/credentials":             "true",
+							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+							"kibanaassociation.k8s.elastic.co/name":      kbName,
+							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+						},
+					},
+				)
+			} else {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: kbName + "-kibana-user",
+						Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
+						Labels: map[string]string{
+							"eck.k8s.elastic.co/credentials":             "true",
+							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+							"kibanaassociation.k8s.elastic.co/name":      kbName,
+							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+						},
+					},
+				)
+			}
 		}
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
-				test.ExpectedSecret{
-					Name: kbName + "-kb-http-ca-internal",
-					Keys: []string{"tls.crt", "tls.key"},
-					Labels: map[string]string{
-						"kibana.k8s.elastic.co/name": kbName,
-						"common.k8s.elastic.co/type": "kibana",
-					},
-				},
 				test.ExpectedSecret{
 					Name: kbName + "-kb-http-certs-internal",
 					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
@@ -93,6 +107,19 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			)
 		}
+		if b.Kibana.Spec.HTTP.TLS.Enabled() && !b.GlobalCA {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: kbName + "-kb-http-ca-internal",
+					Keys: []string{"tls.crt", "tls.key"},
+					Labels: map[string]string{
+						"kibana.k8s.elastic.co/name": kbName,
+						"common.k8s.elastic.co/type": "kibana",
+					},
+				},
+			)
+		}
+
 		return expected
 	})
 }

@@ -5,27 +5,40 @@
 package nodespec
 
 import (
+	"context"
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Resources contain per-NodeSet resources to be created.
 type Resources struct {
+	NodeSet         string
 	StatefulSet     appsv1.StatefulSet
 	HeadlessService corev1.Service
 	Config          settings.CanonicalConfig
 }
 
 type ResourcesList []Resources
+
+func (l ResourcesList) ForStatefulSet(name string) (Resources, error) {
+	for _, resource := range l {
+		if resource.StatefulSet.Name == name {
+			return resource, nil
+		}
+	}
+	return Resources{}, fmt.Errorf("no expected resources for StatefulSet %s", name)
+}
 
 func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	ssetList := make(sset.StatefulSetList, 0, len(l))
@@ -35,7 +48,12 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
+func (l ResourcesList) ExpectedNodeCount() int32 {
+	return l.StatefulSets().ExpectedNodeCount()
+}
+
 func BuildExpectedResources(
+	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
@@ -62,13 +80,14 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
 		if err != nil {
 			return nil, err
 		}
 		headlessSvc := HeadlessService(&es, statefulSet.Name)
 
 		nodesResources = append(nodesResources, Resources{
+			NodeSet:         nodeSpec.Name,
 			StatefulSet:     statefulSet,
 			HeadlessService: headlessSvc,
 			Config:          cfg,

@@ -1,30 +1,51 @@
-# pinning the stack version to 7.15.1 because 7.15.2 breaks this recipe, see https://github.com/elastic/cloud-on-k8s/issues/5105 for more details.
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 7.15.1
+  version: 8.5.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
   config:
-    xpack.fleet.agents.elasticsearch.host: "https://elasticsearch-es-http.default.svc:9200"
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.packages:
-    - name: log
+    - name: system
       version: latest
+    - name: elastic_agent
+      version: latest
+    - name: fleet_server
+      version: latest
+    - name: log
+      version: latest  
     xpack.fleet.agentPolicies:
-    - name: Default Fleet Server on ECK policy
+    - name: Fleet Server on ECK policy
+      id: eck-fleet-server
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
       is_default_fleet_server: true
       package_policies:
-      - package:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
           name: fleet_server
-        name: fleet_server-1
-    - name: Default Elastic Agent on ECK policy
+    - name: Elastic Agent on ECK policy
+      id: eck-agent
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900  
       is_default: true
-      unenroll_timeout: 900
       package_policies:
+      - name: system-1
+        id: system-1
+        package:
+          name: system
       - package:
           name: log
         name: log-1
@@ -49,7 +70,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 7.15.1
+  version: 8.5.0
   nodeSets:
   - name: default
     count: 3
@@ -61,7 +82,7 @@ kind: Agent
 metadata:
   name: fleet-server
 spec:
-  version: 7.15.1
+  version: 8.5.0
   kibanaRef:
     name: kibana
   elasticsearchRefs:
@@ -82,7 +103,7 @@ kind: Agent
 metadata: 
   name: elastic-agent
 spec:
-  version: 7.15.1
+  version: 8.5.0
   kibanaRef:
     name: kibana
   fleetServerRef: 
@@ -123,6 +144,7 @@ rules:
 - apiGroups: [""]
   resources:
   - pods
+  - namespaces
   - nodes
   verbs:
   - get

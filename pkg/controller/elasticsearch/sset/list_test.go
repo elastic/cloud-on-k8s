@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -15,9 +16,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 var ssetv7 = appsv1.StatefulSet{
@@ -75,12 +76,12 @@ func TestRetrieveActualStatefulSets(t *testing.T) {
 
 func TestESVersionMatch(t *testing.T) {
 	require.Equal(t, true,
-		ESVersionMatch(ssetv7, func(v version.Version) bool {
+		ESVersionMatch(context.Background(), ssetv7, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		ESVersionMatch(ssetv7, func(v version.Version) bool {
+		ESVersionMatch(context.Background(), ssetv7, func(v version.Version) bool {
 			return v.Major == 6
 		}),
 	)
@@ -91,12 +92,12 @@ func TestAtLeastOneESVersionMatch(t *testing.T) {
 	ssetv6.Spec.Template.Labels[label.VersionLabelName] = "6.8.0"
 
 	require.Equal(t, true,
-		AtLeastOneESVersionMatch(StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
+		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv7}, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
 	require.Equal(t, false,
-		AtLeastOneESVersionMatch(StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
+		AtLeastOneESVersionMatch(context.Background(), StatefulSetList{ssetv6, ssetv6}, func(v version.Version) bool {
 			return v.Major == 7
 		}),
 	)
@@ -137,7 +138,7 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 }
 
 func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
-	// more detailed cases covered in PodReconciliationDoneForSset(), called by the function we test here
+	// more detailed cases covered in pendingPodsForStatefulSet(), called by the function we test here
 	tests := []struct {
 		name string
 		l    StatefulSetList
@@ -183,7 +184,19 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
 			c: k8s.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+			),
+			want: false,
+		},
+		{
+			name: "sset has too many Pods",
+			l: StatefulSetList{
+				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+			},
+			c: k8s.NewFakeClient(
+				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-2", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 			),
 			want: false,
 		},
@@ -191,7 +204,10 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.l.PodReconciliationDone(tt.c)
+			got, reason, err := tt.l.PodReconciliationDone(context.Background(), tt.c)
+			if !got {
+				require.True(t, len(reason) > 0)
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
@@ -387,8 +403,8 @@ func TestStatefulSetList_StatusReconciliationDone(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.l.StatusReconciliationDone(); got != tt.want {
-				t.Errorf("StatusReconciliationDone() = %v, want %v", got, tt.want)
+			if got := len(tt.l.PendingReconciliation()) == 0; got != tt.want {
+				t.Errorf("PendingReconciliation() = %v, want %v", got, tt.want)
 			}
 		})
 	}

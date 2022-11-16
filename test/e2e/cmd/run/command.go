@@ -17,38 +17,39 @@ import (
 	"github.com/spf13/viper"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	logutil "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 type runFlags struct {
-	managedNamespaces     []string
-	e2eImage              string
-	elasticStackVersion   string
-	kubeConfig            string
-	operatorImage         string
-	testLicensePKeyPath   string
-	testContextOutPath    string
-	testLicense           string
-	scratchDirRoot        string
-	testRegex             string
-	testRunName           string
-	monitoringSecrets     string
-	pipeline              string
-	buildNumber           string
-	provider              string
-	clusterName           string
-	operatorReplicas      int
-	commandTimeout        time.Duration
-	logVerbosity          int
-	testTimeout           time.Duration
-	autoPortForwarding    bool
-	skipCleanup           bool
-	local                 bool
-	logToFile             bool
-	ignoreWebhookFailures bool
-	deployChaosJob        bool
-	testEnvTags           []string
+	managedNamespaces      []string
+	e2eImage               string
+	elasticStackVersion    string
+	elasticStackImagesPath string
+	kubeConfig             string
+	operatorImage          string
+	testLicensePKeyPath    string
+	testContextOutPath     string
+	testLicense            string
+	scratchDirRoot         string
+	testRegex              string
+	testRunName            string
+	monitoringSecrets      string
+	pipeline               string
+	buildNumber            string
+	provider               string
+	clusterName            string
+	operatorReplicas       int
+	commandTimeout         time.Duration
+	logVerbosity           int
+	testTimeout            time.Duration
+	autoPortForwarding     bool
+	skipCleanup            bool
+	local                  bool
+	logToFile              bool
+	ignoreWebhookFailures  bool
+	deployChaosJob         bool
+	testEnvTags            []string
 }
 
 var log logr.Logger
@@ -81,7 +82,8 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.autoPortForwarding, "auto-port-forwarding", false, "Enable port forwarding to pods")
 	cmd.Flags().DurationVar(&flags.commandTimeout, "command-timeout", 90*time.Second, "Timeout for commands executed")
 	cmd.Flags().StringVar(&flags.e2eImage, "e2e-image", "", "E2E test image")
-	cmd.Flags().StringVar(&flags.elasticStackVersion, "elastic-stack-version", test.LatestVersion7x, "Elastic Stack version")
+	cmd.Flags().StringVar(&flags.elasticStackVersion, "elastic-stack-version", test.LatestReleasedVersion7x, "Elastic Stack version")
+	cmd.Flags().StringVar(&flags.elasticStackImagesPath, "elastic-stack-images", "", "Path to config file declaring images for individual Elastic Stack applications")
 	cmd.Flags().StringVar(&flags.kubeConfig, "kubeconfig", "", "Path to kubeconfig")
 	cmd.Flags().BoolVar(&flags.local, "local", false, "Create the environment for running tests locally")
 	cmd.Flags().StringSliceVar(&flags.managedNamespaces, "managed-namespaces", []string{"mercury", "venus"}, "List of managed namespaces")

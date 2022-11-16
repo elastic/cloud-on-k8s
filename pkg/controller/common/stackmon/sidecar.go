@@ -5,38 +5,41 @@
 package stackmon
 
 import (
+	"context"
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func NewMetricBeatSidecar(
+	ctx context.Context,
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 	resource monitoring.HasMonitoring,
 	version string,
-	esNsn types.NamespacedName,
 	baseConfigTemplate string,
 	namer name.Namer,
 	url string,
+	username string,
+	password string,
 	isTLS bool,
 ) (BeatSidecar, error) {
 	baseConfig, sourceCaVolume, err := buildMetricbeatBaseConfig(
 		client,
 		associationType,
 		k8s.ExtractNamespacedName(resource),
-		esNsn,
 		namer,
 		url,
+		username,
+		password,
 		isTLS,
 		baseConfigTemplate,
 	)
@@ -44,12 +47,12 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
+	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
 }
 
-func NewFileBeatSidecar(client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
+	return NewBeatSidecar(ctx, client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
@@ -61,11 +64,11 @@ type BeatSidecar struct {
 	Volumes      []corev1.Volume
 }
 
-func NewBeatSidecar(client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
+func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
 	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
 ) (BeatSidecar, error) {
 	// build the beat config
-	config, err := newBeatConfig(client, beatName, resource, associations, baseConfig)
+	config, err := newBeatConfig(ctx, client, beatName, resource, associations, baseConfig)
 	if err != nil {
 		return BeatSidecar{}, err
 	}

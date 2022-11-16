@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func TestSupportedVersions(t *testing.T) {
@@ -58,7 +58,7 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("8.0.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("7.4.0"),
+				version.MustParse("7.17.0"),
 				version.MustParse("8.9.0"),
 			},
 			unsupported: []version.Version{

@@ -1,0 +1,110 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  annotations:
+    common.k8s.elastic.co/controller-version: 1.6.0-SNAPSHOT
+    elasticsearch.k8s.elastic.co/cluster-uuid: 7GtNZyD1QbezolOIL9vSNQ
+  name: testes
+  namespace: testns
+spec:
+  nodeSets:
+  - config:
+      node:
+        roles:
+        - master
+    count: 1
+    name: master
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources: {}
+  - config:
+      node:
+        roles:
+        - data_hot
+        - data_content
+        - ingest
+        - transform
+    count: 2
+    name: di-hot
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 4Gi
+      status: {}
+  - config:
+      node:
+        roles:
+        - data_frozen
+    count: 1
+    name: di-frozen
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: "2"
+              memory: 1Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+      status: {}
+  - config:
+      node:
+        roles:
+        - ml
+    count: 0
+    name: ml
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 2Gi
+            requests:
+              cpu: "2"
+              memory: 2Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+      status: {}
+  secureSettings:
+  - secretName: gcs-credentials
+  version: 7.13.0
+status:
+  availableNodes: 8
+  health: green
+  phase: Ready
+  version: 7.13.0

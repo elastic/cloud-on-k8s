@@ -5,30 +5,28 @@
 package deployment
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-)
-
-var (
-	defaultRevisionHistoryLimit int32
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // Params to specify a Deployment specification.
 type Params struct {
-	Name            string
-	Namespace       string
-	Selector        map[string]string
-	Labels          map[string]string
-	PodTemplateSpec corev1.PodTemplateSpec
-	Replicas        int32
-	Strategy        appsv1.DeploymentStrategy
+	Name                 string
+	Namespace            string
+	Selector             map[string]string
+	Labels               map[string]string
+	PodTemplateSpec      corev1.PodTemplateSpec
+	Replicas             int32
+	RevisionHistoryLimit *int32
+	Strategy             appsv1.DeploymentStrategy
 }
 
 // New creates a Deployment from the given params.
@@ -40,7 +38,7 @@ func New(params Params) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			RevisionHistoryLimit: pointer.Int32(defaultRevisionHistoryLimit),
+			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},
@@ -51,8 +49,9 @@ func New(params Params) appsv1.Deployment {
 	}
 }
 
-// ReconcileDeployment creates or updates the given deployment for the specified owner.
+// Reconcile creates or updates the given deployment for the specified owner.
 func Reconcile(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	expected appsv1.Deployment,
 	owner client.Object,
@@ -62,6 +61,7 @@ func Reconcile(
 
 	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
+		Context:    ctx,
 		Client:     k8sClient,
 		Owner:      owner,
 		Expected:   &expected,

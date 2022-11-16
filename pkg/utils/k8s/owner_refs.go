@@ -37,8 +37,8 @@ func RemoveOwner(resource, owner metav1.Object) {
 	}
 	owners := resource.GetOwnerReferences()
 	// remove the owner at index i from the slice
-	newOwners := append(owners[:index], owners[index+1:]...)
-	resource.SetOwnerReferences(newOwners)
+	owners = append(owners[:index], owners[index+1:]...)
+	resource.SetOwnerReferences(owners)
 }
 
 func FindOwner(resource, owner metav1.Object) (found bool, index int) {

@@ -6,6 +6,7 @@ package license
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -19,6 +20,8 @@ import (
 	"time"
 
 	errors2 "github.com/pkg/errors"
+
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // Verifier verifies Enterprise licenses.
@@ -27,12 +30,12 @@ type Verifier struct {
 }
 
 // Valid checks the validity of the given Enterprise license.
-func (v *Verifier) Valid(l EnterpriseLicense, now time.Time) LicenseStatus {
+func (v *Verifier) Valid(ctx context.Context, l EnterpriseLicense, now time.Time) LicenseStatus {
 	if !l.IsValid(now) {
 		return LicenseStatusExpired
 	}
 	if err := v.ValidSignature(l); err != nil {
-		log.Error(err, "Failed signature check")
+		ulog.FromContext(ctx).Error(err, "Failed signature check")
 		return LicenseStatusInvalid
 	}
 	return LicenseStatusValid
@@ -267,8 +270,7 @@ func writeInt(buffer *bytes.Buffer, i int) error {
 
 func readInt(r io.Reader, i *uint32) error {
 	out := make([]byte, 4)
-	_, err := io.ReadFull(r, out)
-	if err != nil {
+	if _, err := io.ReadFull(r, out); err != nil {
 		return err
 	}
 	*i = binary.BigEndian.Uint32(out)

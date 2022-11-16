@@ -6,14 +6,14 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/hack/upgrade-test-harness/fixture"
 	"github.com/ghodss/yaml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/fixture"
 )
 
 // File represents the structure of the configuration file.
@@ -34,7 +34,7 @@ func (f *File) ReleasePos(name string) (int, error) {
 
 // Load the configuration from a YAML file.
 func Load(path string) (*File, error) {
-	confBytes, err := ioutil.ReadFile(path)
+	confBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

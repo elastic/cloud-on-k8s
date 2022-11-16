@@ -48,18 +48,18 @@ Examples of the "placeholder" controllers (additional controllers) that would be
 - Licensing controller: applies an installation-wide enterprise license to each cluster.
 - Placeholder controllers (not fully specified, but present in order to show that there would be more than one non-namespaced controller):
     - Telemetry controller: provides telemetry that can be reported upstream.
-    - Update controller: pings upstream to periodically check for new versions / security patches etc.
+    - Update controller: pings upstream to periodically check for new versions, security patches, and so on.
     - Centralized user management controller: ensures relevant clusters have a centrally defined set of realms configured.
 
 
 ### Hybrid approach
 
-Allow for a hybrid approach where it is possible to enable the components of both operators (global and namespaced) in a single operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern above with the drawback that it might not be identical to a production-style deployment.
+Allow for a hybrid approach where it is possible to enable the components of both operators (global and namespaced) in a single operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern with the drawback that it might not be identical to a production-style deployment.
 
 
 ## Decision Outcome
 
-Superseded by [005](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0005-configurable-operator.md).
+Superseded by [005](https://github.com/elastic/cloud-on-k8s/blob/main/docs/design/0005-configurable-operator.md).
 
 ### Positive Consequences <!-- optional -->
 
@@ -70,5 +70,5 @@ Superseded by [005](https://github.com/elastic/cloud-on-k8s/blob/master/docs/des
 
 ### Negative Consequences <!-- optional -->
 
-- Introduces more than one operator, complicating deployment and debugging. (See section for future improvements)
+- Introduces more than one operator, complicating deployment and debugging. 
 - Controllers in the global operator, such as the CCR controller still need to be scaled on a number-of-clusters / associations basis (but it does not need to connect to individual ES clusters).

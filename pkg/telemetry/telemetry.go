@@ -7,38 +7,41 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/agent/v1alpha1"
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/license"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	ulog "github.com/elastic/cloud-on-k8s/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
 const (
-	resourceCount = "resource_count"
-	podCount      = "pod_count"
+	resourceCount            = "resource_count"
+	podCount                 = "pod_count"
+	helmManagedResourceCount = "helm_resource_count"
 
 	timestampFieldName = "timestamp"
 )
-
-var log = ulog.Log.WithName("usage")
 
 type ECKTelemetry struct {
 	ECK ECK `json:"eck"`
@@ -58,6 +61,7 @@ func NewReporter(
 	operatorNamespace string,
 	managedNamespaces []string,
 	telemetryInterval time.Duration,
+	tracer *apm.Tracer,
 ) Reporter {
 	if len(managedNamespaces) == 0 {
 		// treat no managed namespaces as managing all namespaces, ie. set empty string for namespace filtering
@@ -70,6 +74,7 @@ func NewReporter(
 		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
 		telemetryInterval: telemetryInterval,
+		tracer:            tracer,
 	}
 }
 
@@ -79,16 +84,21 @@ type Reporter struct {
 	operatorNamespace string
 	managedNamespaces []string
 	telemetryInterval time.Duration
+	tracer            *apm.Tracer
 }
 
-func (r *Reporter) Start() {
+func (r *Reporter) Start(ctx context.Context) {
+	ctx = ulog.InitInContext(ctx, "telemetry")
 	ticker := time.NewTicker(r.telemetryInterval)
 	for range ticker.C {
-		r.report()
+		r.report(ctx)
 	}
 }
 
-func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+	span, _ := apm.StartSpan(ctx, "marshal_telemetry", tracing.SpanTypeApp)
+	defer span.End()
+
 	return yaml.Marshal(ECKTelemetry{
 		ECK: ECK{
 			OperatorInfo: info,
@@ -98,7 +108,10 @@ func marshalTelemetry(info about.OperatorInfo, stats map[string]interface{}, lic
 	})
 }
 
-func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
+func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}, error) {
+	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
+	defer span.End()
+
 	stats := map[string]interface{}{}
 	for _, f := range []getStatsFn{
 		esStats,
@@ -119,20 +132,25 @@ func (r *Reporter) getResourceStats() (map[string]interface{}, error) {
 	return stats, nil
 }
 
-func (r *Reporter) report() {
-	stats, err := r.getResourceStats()
+func (r *Reporter) report(ctx context.Context) {
+	ctx = tracing.NewContextTransaction(ctx, r.tracer, tracing.PeriodicTxType, "telemetry-reporter", nil)
+	defer tracing.EndContextTransaction(ctx)
+
+	log := ulog.FromContext(ctx)
+
+	stats, err := r.getResourceStats(ctx)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
 		return
 	}
 
-	licenseInfo, err := r.getLicenseInfo()
+	licenseInfo, err := r.getLicenseInfo(ctx)
 	if err != nil {
 		log.Error(err, "failed to get operator license secret")
 		// it's ok to go on
 	}
 
-	telemetryBytes, err := marshalTelemetry(r.operatorInfo, stats, licenseInfo)
+	telemetryBytes, err := marshalTelemetry(ctx, r.operatorInfo, stats, licenseInfo)
 	if err != nil {
 		log.Error(err, "failed to marshal telemetry data")
 		return
@@ -140,41 +158,53 @@ func (r *Reporter) report() {
 
 	for _, ns := range r.managedNamespaces {
 		var kibanaList kbv1.KibanaList
-		if err := r.client.List(context.Background(), &kibanaList, client.InNamespace(ns)); err != nil {
+		if err := r.client.List(ctx, &kibanaList, client.InNamespace(ns)); err != nil {
 			log.Error(err, "failed to list Kibanas")
 			continue
 		}
 		for _, kb := range kibanaList.Items {
-			var secret corev1.Secret
-			nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
-			if err := r.client.Get(context.Background(), nsName, &secret); err != nil {
-				log.Error(err, "failed to get Kibana secret")
-				continue
-			}
-
-			if secret.Data == nil {
-				// should not happen, but just to be safe
-				secret.Data = make(map[string][]byte)
-			}
-
-			secret.Data[kibana.TelemetryFilename] = telemetryBytes
-
-			if _, err := reconciler.ReconcileSecret(r.client, secret, nil); err != nil {
-				log.Error(err, "failed to reconcile Kibana secret")
-				continue
-			}
+			r.reconcileKibanaSecret(ctx, kb, telemetryBytes)
 		}
 	}
 }
 
-func (r *Reporter) getLicenseInfo() (map[string]string, error) {
+func (r *Reporter) reconcileKibanaSecret(ctx context.Context, kb kbv1.Kibana, telemetryBytes []byte) {
+	span, ctx := apm.StartSpan(ctx, "reconcile_kibana_secret", tracing.SpanTypeApp)
+	defer span.End()
+
+	log := ulog.FromContext(ctx)
+
+	var secret corev1.Secret
+	nsName := types.NamespacedName{Namespace: kb.Namespace, Name: kibana.SecretName(kb)}
+	if err := r.client.Get(ctx, nsName, &secret); err != nil {
+		log.Error(err, "failed to get Kibana secret")
+		return
+	}
+
+	if secret.Data == nil {
+		// should not happen, but just to be safe
+		secret.Data = make(map[string][]byte)
+	}
+
+	secret.Data[kibana.TelemetryFilename] = telemetryBytes
+
+	if _, err := reconciler.ReconcileSecret(ctx, r.client, secret, nil); err != nil {
+		log.Error(err, "failed to reconcile Kibana secret")
+		return
+	}
+}
+
+func (r *Reporter) getLicenseInfo(ctx context.Context) (map[string]string, error) {
+	span, _ := apm.StartSpan(ctx, "get_license_info", tracing.SpanTypeApp)
+	defer span.End()
+
 	nsn := types.NamespacedName{
 		Namespace: r.operatorNamespace,
 		Name:      license.LicensingCfgMapName,
 	}
 
 	var licenseConfigMap corev1.ConfigMap
-	if err := r.client.Get(context.Background(), nsn, &licenseConfigMap); err != nil {
+	if err := r.client.Get(ctx, nsn, &licenseConfigMap); err != nil {
 		return nil, err
 	}
 
@@ -194,6 +224,7 @@ type downwardNodeLabelsStats struct {
 func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
 	stats := struct {
 		ResourceCount               int32                    `json:"resource_count"`
+		HelmManagedResourceCount    int32                    `json:"helm_resource_count"`
 		PodCount                    int32                    `json:"pod_count"`
 		AutoscaledResourceCount     int32                    `json:"autoscaled_resource_count"`
 		StackMonitoringLogsCount    int32                    `json:"stack_monitoring_logs_count"`
@@ -212,7 +243,11 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			es := es
 			stats.ResourceCount++
 			stats.PodCount += es.Status.AvailableNodes
-			if es.IsAutoscalingDefined() {
+
+			if isManagedByHelm(es.Labels) {
+				stats.HelmManagedResourceCount++
+			}
+			if es.IsAutoscalingAnnotationSet() {
 				stats.AutoscaledResourceCount++
 			}
 			if es.HasDownwardNodeLabels() {
@@ -233,11 +268,28 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
 		}
 	}
+
+	var esaList esav1alpha1.ElasticsearchAutoscalerList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &esaList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+		stats.AutoscaledResourceCount += int32(len(esaList.Items))
+	}
+
 	return "elasticsearches", stats, nil
 }
 
+func isManagedByHelm(labels map[string]string) bool {
+	if val, ok := labels["helm.sh/chart"]; ok {
+		return strings.HasPrefix(val, "eck-elasticsearch-") || strings.HasPrefix(val, "eck-kibana-")
+	}
+
+	return false
+}
+
 func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := map[string]int32{resourceCount: 0, podCount: 0, helmManagedResourceCount: 0}
 
 	var kbList kbv1.KibanaList
 	for _, ns := range managedNamespaces {
@@ -248,6 +300,10 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		for _, kb := range kbList.Items {
 			stats[resourceCount]++
 			stats[podCount] += kb.Status.AvailableNodes
+
+			if isManagedByHelm(kb.Labels) {
+				stats[helmManagedResourceCount]++
+			}
 		}
 	}
 	return "kibanas", stats, nil

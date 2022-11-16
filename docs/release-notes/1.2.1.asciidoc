@@ -17,7 +17,7 @@
 [float]
 === Bug fixes
 
-* Avoid pollution of map constants via defensive copy {pull}3599[#3599]
+* Avoid pollution of map constants through defensive copy {pull}3599[#3599]
 * Fix filebeat securityContext in recipes {pull}3596[#3596]
 * Check if CA Secret is expected before validating its name {pull}3527[#3527] (issue: {issue}3523[#3523])
 * Fix memory corruption from pod template validation {pull}3524[#3524] (issue: {issue}3421[#3421])

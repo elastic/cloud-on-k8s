@@ -15,16 +15,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	entv1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/nodespec"
+	essettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 // Aggregator aggregates the total of resources of all Elastic managed components
@@ -32,10 +33,10 @@ type Aggregator struct {
 	client k8s.Client
 }
 
-type aggregate func() (resource.Quantity, error)
+type aggregate func(ctx context.Context) (resource.Quantity, error)
 
 // AggregateMemory aggregates the total memory of all Elastic managed components
-func (a Aggregator) AggregateMemory() (resource.Quantity, error) {
+func (a Aggregator) AggregateMemory(ctx context.Context) (resource.Quantity, error) {
 	var totalMemory resource.Quantity
 
 	for _, f := range []aggregate{
@@ -44,7 +45,7 @@ func (a Aggregator) AggregateMemory() (resource.Quantity, error) {
 		a.aggregateApmServerMemory,
 		a.aggregateEnterpriseSearchMemory,
 	} {
-		memory, err := f()
+		memory, err := f(ctx)
 		if err != nil {
 			return resource.Quantity{}, err
 		}
@@ -54,7 +55,7 @@ func (a Aggregator) AggregateMemory() (resource.Quantity, error) {
 	return totalMemory, nil
 }
 
-func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
+func (a Aggregator) aggregateElasticsearchMemory(ctx context.Context) (resource.Quantity, error) {
 	var esList esv1.ElasticsearchList
 	err := a.client.List(context.Background(), &esList)
 	if err != nil {
@@ -75,7 +76,7 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 			}
 
 			total.Add(multiply(mem, nodeSet.Count))
-			log.V(1).Info("Collecting", "namespace", es.Namespace, "es_name", es.Name,
+			ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", es.Namespace, "es_name", es.Name,
 				"memory", mem.String(), "count", nodeSet.Count)
 		}
 	}
@@ -83,7 +84,7 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 	return total, nil
 }
 
-func (a Aggregator) aggregateEnterpriseSearchMemory() (resource.Quantity, error) {
+func (a Aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (resource.Quantity, error) {
 	var entList entv1.EnterpriseSearchList
 	err := a.client.List(context.Background(), &entList)
 	if err != nil {
@@ -103,14 +104,14 @@ func (a Aggregator) aggregateEnterpriseSearchMemory() (resource.Quantity, error)
 		}
 
 		total.Add(multiply(mem, ent.Spec.Count))
-		log.V(1).Info("Collecting", "namespace", ent.Namespace, "ent_name", ent.Name,
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", ent.Namespace, "ent_name", ent.Name,
 			"memory", mem.String(), "count", ent.Spec.Count)
 	}
 
 	return total, nil
 }
 
-func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
+func (a Aggregator) aggregateKibanaMemory(ctx context.Context) (resource.Quantity, error) {
 	var kbList kbv1.KibanaList
 	err := a.client.List(context.Background(), &kbList)
 	if err != nil {
@@ -130,14 +131,14 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 		}
 
 		total.Add(multiply(mem, kb.Spec.Count))
-		log.V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
 			"memory", mem.String(), "count", kb.Spec.Count)
 	}
 
 	return total, nil
 }
 
-func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
+func (a Aggregator) aggregateApmServerMemory(ctx context.Context) (resource.Quantity, error) {
 	var asList apmv1.ApmServerList
 	err := a.client.List(context.Background(), &asList)
 	if err != nil {
@@ -157,7 +158,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 		}
 
 		total.Add(multiply(mem, as.Spec.Count))
-		log.V(1).Info("Collecting", "namespace", as.Namespace, "as_name", as.Name,
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", as.Namespace, "as_name", as.Name,
 			"memory", mem.String(), "count", as.Spec.Count)
 	}
 

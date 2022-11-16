@@ -1,0 +1,75 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: 8.0.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+          - name: elasticsearch
+            env:
+              - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
+                value: "0"
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kb
+spec:
+  version: 8.0.0
+  count: 1
+  elasticsearchRef:
+    name: es
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm
+spec:
+  version: 8.0.0
+  count: 1
+  elasticsearchRef:
+    name: es
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1
+kind: EnterpriseSearch
+metadata:
+  name: ent
+spec:
+  version: 8.0.0
+  count: 1
+  elasticsearchRef:
+    name: es
+  config:
+    ent_search.external_url: https://localhost:3002
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: heartbeat
+spec:
+  type: heartbeat
+  version: 8.0.0
+  elasticsearchRef:
+    name: es
+  config:
+    heartbeat.monitors:
+      - type: tcp
+        schedule: '@every 5s'
+        hosts: ["elasticsearch-es-http.default.svc:9200"]
+      - type: tcp
+        schedule: '@every 5s'
+        hosts: ["kibana-kb-http.default.svc:5601"]
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0

@@ -35,4 +35,4 @@ spec:
       node.remote_cluster_client: false
 ----
 
-For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
+For more information on Elasticsearch settings, check https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].

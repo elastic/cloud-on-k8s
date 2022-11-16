@@ -8,9 +8,9 @@ endif::[]
 [id="{p}-{page_id}"]
 = Custom HTTP certificate
 
-You can provide your own CA and certificates instead of the self-signed certificate to connect to Elastic stack applications via HTTPS using a Kubernetes secret.
+You can provide your own CA and certificates instead of the self-signed certificate to connect to Elastic stack applications through HTTPS using a Kubernetes secret.
 
-See <<{p}-setting-up-your-own-certificate>> to learn how to do that.
+Check <<{p}-setting-up-your-own-certificate>> to learn how to do that.
 
 
 == Custom self-signed certificate using OpenSSL
@@ -112,7 +112,4 @@ spec:
     kind: Issuer
     name: ca-issuer
   secretName: quickstart-es-cert
-  subject:
-    organizations:
-      - quickstart
 ----

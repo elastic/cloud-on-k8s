@@ -9,17 +9,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/maps/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
 
 const (
-	HTTPPort           = 8080
-	configHashLabel    = "maps.k8s.elastic.co/config-hash"
-	logVolumeMountPath = "/var/log/elastic-maps-server"
+	HTTPPort                 = 8080
+	configHashAnnotationName = "maps.k8s.elastic.co/config-hash"
+	logVolumeMountPath       = "/var/log/elastic-maps-server"
 )
 
 var (
@@ -46,7 +46,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		Handler: corev1.Handler{
+		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(HTTPPort),
 				Path:   "/status",
@@ -56,9 +56,9 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.PodTemplateSpec {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
-	labels := map[string]string{configHashLabel: configHash}
+	annotations := map[string]string{configHashAnnotationName: configHash}
 
 	defaultContainerPorts := []corev1.ContainerPort{
 		{Name: ems.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -68,7 +68,7 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 	logsVolume := volume.NewEmptyDirVolume("logs", logVolumeMountPath)
 
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
-		WithLabels(labels).
+		WithAnnotations(annotations).
 		WithResources(DefaultResources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, ems.Spec.Version)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
@@ -77,24 +77,40 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) corev1.Pod
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
 
-	builder = withESCertsVolume(builder, ems)
+	builder, err := withESCertsVolume(builder, ems)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 	builder = withHTTPCertsVolume(builder, ems)
 
-	return builder.PodTemplate
+	esAssocConf, err := ems.AssociationConf()
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	if !esAssocConf.IsConfigured() {
+		// supported as of 7.14, harmless on prior versions, but both Elasticsearch connection and this must not be specified
+		builder = builder.WithEnv(corev1.EnvVar{Name: "ELASTICSEARCH_PREVALIDATED", Value: "true"})
+	}
+
+	return builder.PodTemplate, nil
 }
 
-func withESCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.ElasticMapsServer) *defaults.PodTemplateBuilder {
-	if !ems.AssociationConf().CAIsConfigured() {
-		return builder
+func withESCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.ElasticMapsServer) (*defaults.PodTemplateBuilder, error) {
+	esAssocConf, err := ems.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if !esAssocConf.CAIsConfigured() {
+		return builder, nil
 	}
 	vol := volume.NewSecretVolumeWithMountPath(
-		ems.AssociationConf().GetCASecretName(),
+		esAssocConf.GetCASecretName(),
 		"es-certs",
 		ESCertsPath,
 	)
 	return builder.
 		WithVolumes(vol.Volume()).
-		WithVolumeMounts(vol.VolumeMount())
+		WithVolumeMounts(vol.VolumeMount()), nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.ElasticMapsServer) *defaults.PodTemplateBuilder {

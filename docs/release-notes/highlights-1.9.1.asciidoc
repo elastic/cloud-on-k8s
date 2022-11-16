@@ -1,0 +1,23 @@
+[[release-highlights-1.9.1]]
+== 1.9.1 release highlights
+
+[float]
+[id="{p}-191-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 1.9.1 of {n}. Check <<release-notes-1.9.1>> for the full list of changes.
+
+
+[float]
+[id="{p}-191-mitigate"]
+==== Mitigate CVE-2021-44228 in vulnerable Elasticsearch clusters
+
+This release introduces a preemptive measure to mitigate link:https://github.com/advisories/GHSA-jfh8-c2jp-5v3q[Log4Shell] vulnerability in Elasticsearch versions below `7.2`.
+
+[float]
+[id="{p}-191-known-issues"]
+=== Known issues
+
+- When using the Red Hat certified version of the operator, automatic upgrades from previous versions of ECK do not work. To upgrade uninstall the old ECK operator and install the new version manually. Because CRDs remain in place after uninstalling, this operation should not negatively affect existing Elastic Stack deployments managed by ECK.
+- On Openshift versions 4.6 and below, when installing or upgrading to 1.9.[0,1], the operator will be stuck in a state of `Installing` within the Openshift UI, and seen in a `CrashLoopBackoff` within Kubernetes because of Webhook certificate location mismatches. More information and workaround can be found in link:https://github.com/elastic/cloud-on-k8s/issues/5191[this issue].
+- When using the `elasticsearchRef` mechanism with Elastic Agent in version 7.17 and later its Pods will enter a `CrashLoopBackoff`. The issue will be fixed in ECK 2.0 for Elasticsearch versions 8.0 and later. A workaround is described in link:https://github.com/elastic/cloud-on-k8s/issues/5323#issuecomment-1028954034[this issue].

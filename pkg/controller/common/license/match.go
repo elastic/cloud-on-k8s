@@ -5,11 +5,13 @@
 package license
 
 import (
+	"context"
 	"sort"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 type licenseWithTimeLeft struct {
@@ -23,14 +25,16 @@ type licenseWithTimeLeft struct {
 // period of the license.
 // Returns the license, parent license UID, a bool indicating a match was found and an optional error.
 func BestMatch(
+	ctx context.Context,
 	minVersion *version.Version,
 	licenses []EnterpriseLicense,
 	filter func(EnterpriseLicense) (bool, error),
 ) (client.License, string, bool) {
-	return bestMatchAt(time.Now(), minVersion, licenses, filter)
+	return bestMatchAt(ctx, time.Now(), minVersion, licenses, filter)
 }
 
 func bestMatchAt(
+	ctx context.Context,
 	now time.Time,
 	minVersion *version.Version,
 	licenses []EnterpriseLicense,
@@ -42,9 +46,9 @@ func bestMatchAt(
 		// no license at all
 		return license, parentMeta, false
 	}
-	valid := filterValid(now, minVersion, licenses, filter)
+	valid := filterValid(ctx, now, minVersion, licenses, filter)
 	if len(valid) == 0 {
-		log.Info("No matching license found", "num_licenses", len(licenses))
+		ulog.FromContext(ctx).Info("No matching license found", "num_licenses", len(licenses))
 		return license, parentMeta, false
 	}
 	sort.Slice(valid, func(i, j int) bool {
@@ -60,7 +64,8 @@ func bestMatchAt(
 	return best.license, best.parentUID, true
 }
 
-func filterValid(now time.Time, minVersion *version.Version, licenses []EnterpriseLicense, filter func(EnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
+func filterValid(ctx context.Context, now time.Time, minVersion *version.Version, licenses []EnterpriseLicense, filter func(EnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
+	log := ulog.FromContext(ctx)
 	filtered := make([]licenseWithTimeLeft, 0)
 	for _, el := range licenses {
 		if !el.IsValid(now) {

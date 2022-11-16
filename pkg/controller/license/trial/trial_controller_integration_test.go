@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// +build integration
+//go:build integration
 
 package trial
 
@@ -13,15 +13,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 const operatorNs = "elastic-system"
@@ -44,7 +45,7 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, test.EnsureNamespace(c, operatorNs))
 
 	// Create trial initialisation is controlled via config
-	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
+	require.NoError(t, license.CreateTrialLicense(context.Background(), c, testLicenseNSN))
 	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
 	validateTrialStatus(t, checker, true)
@@ -79,7 +80,7 @@ func TestReconcile(t *testing.T) {
 	// Delete the trial license
 	require.NoError(t, deleteTrial(c))
 	// recreate it with modified validity + 1 year
-	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
+	require.NoError(t, license.CreateTrialLicense(context.Background(), c, testLicenseNSN))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here
@@ -88,7 +89,7 @@ func TestReconcile(t *testing.T) {
 func validateTrialStatus(t *testing.T, checker license.Checker, expected bool) {
 	// test trial initialisation on create
 	test.RetryUntilSuccess(t, func() error {
-		trialEnabled, err := checker.EnterpriseFeaturesEnabled()
+		trialEnabled, err := checker.EnterpriseFeaturesEnabled(context.Background())
 		if err != nil {
 			return err
 		}
