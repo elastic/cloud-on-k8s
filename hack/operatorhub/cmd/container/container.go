@@ -5,6 +5,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -31,7 +32,7 @@ func Command() *cobra.Command {
 		Short:        "run preflight tests against container",
 		Long:         "Run preflight tests against container",
 		SilenceUsage: true,
-		PreRunE:      defaultPreRunE,
+		PreRunE:      preflightPreRunE,
 		RunE:         DoPreflight,
 	}
 
@@ -112,6 +113,13 @@ func Command() *cobra.Command {
 		"Vault token to use when enable-vault is set",
 	)
 
+	preflightCmd.Flags().StringP(
+		"docker-config",
+		"C",
+		"",
+		"The path to a docker configuration file to use for authentication. (DOCKER_CONFIG)",
+	)
+
 	publishCmd.Flags().DurationP(
 		"scan-timeout",
 		"S",
@@ -126,10 +134,8 @@ func Command() *cobra.Command {
 
 // PreRunE are the pre-run operations for the container command
 func PreRunE(cmd *cobra.Command, args []string) error {
-	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
-		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
-			return err
-		}
+	if err := defaultPreRunE(cmd, args); err != nil {
+		return err
 	}
 
 	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
@@ -172,6 +178,25 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// preflightPreRunE is the pre-run operations for the preflight command
+func preflightPreRunE(cmd *cobra.Command, args []string) error {
+	if err := defaultPreRunE(cmd, args); err != nil {
+		return err
+	}
+
+	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
+		return fmt.Errorf("failed to bind persistent flags: %w", err)
+	}
+
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		return fmt.Errorf("failed to bind flags: %w", err)
+	}
+
+	viper.AutomaticEnv()
+
+	return nil
+}
+
 func defaultPreRunE(cmd *cobra.Command, args []string) error {
 	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
 		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
@@ -199,8 +224,14 @@ func DoPreflight(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", viper.GetString("project-id"), viper.GetString("tag"))
-	results, err := pkg_preflight.Run(containerImage)
+	results, err := pkg_preflight.Run(
+		ctx,
+		containerImage,
+		viper.GetString("docker-config"),
+		viper.GetString("api-key"))
 	if err != nil {
 		return err
 	}
