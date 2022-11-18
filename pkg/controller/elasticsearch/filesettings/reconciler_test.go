@@ -164,7 +164,6 @@ func TestReconcileSecret(t *testing.T) {
 			require.Equal(t, tt.want.Data, secret.Data)
 			require.Equal(t, tt.want.Annotations, secret.Annotations)
 			require.Equal(t, tt.want.Labels, secret.Labels)
-
 		})
 	}
 }
