@@ -104,7 +104,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Name:      "test-es",
 		Labels:    map[string]string{"label": "test"},
 	},
-		Spec: esv1.ElasticsearchSpec{Version: "8.5.0"},
+		Spec: esv1.ElasticsearchSpec{Version: "8.6.0"},
 	}
 	secretFixture := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -276,7 +276,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				events := fetchEvents(&recorder)
-				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.5.0"}, events)
+				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.0"}, events)
 
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
