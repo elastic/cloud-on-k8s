@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -257,7 +258,6 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 }
 
 func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
-	kind := "Secret"
 	tests := []struct {
 		name            string
 		existingSecrets []runtime.Object
@@ -332,11 +332,23 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 				ownedSecret("ns", "secret-5", sampleOwner().Namespace, sampleOwner().Name, "another-kind"),
 			},
 		},
+		{
+			name: "gc secrets pointing to a stackconfigpolicy soft owner with a different namespace",
+			existingSecrets: []runtime.Object{
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+				ownedSecret("ns", "secret-2", "another-namespace", sampleOwner().Name, "StackConfigPolicy"),
+				ownedSecret("ns-2", "secret-1", "another-namespace", sampleOwner().Name, "StackConfigPolicy"),
+			},
+			deletedOwner: types.NamespacedName{Name: sampleOwner().Name, Namespace: "another-namespace"},
+			ownerKind:    "StackConfigPolicy",
+			wantObjs: []runtime.Object{
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingSecrets...)
-			err := GarbageCollectSoftOwnedSecrets(context.Background(), c, tt.deletedOwner, kind)
+			err := GarbageCollectSoftOwnedSecrets(context.Background(), c, tt.deletedOwner, tt.ownerKind)
 			require.NoError(t, err)
 			var retrievedSecrets corev1.SecretList
 			err = c.List(context.Background(), &retrievedSecrets)
@@ -351,7 +363,8 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 
 func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 	ownerKinds := map[string]client.Object{
-		"Secret": &corev1.Secret{},
+		"Secret":            &corev1.Secret{},
+		"StackConfigPolicy": &policyv1alpha1.StackConfigPolicy{},
 	}
 	tests := []struct {
 		name        string
@@ -386,10 +399,10 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 			name: "don't gc secret targeting an owner in a different namespace",
 			runtimeObjs: []runtime.Object{
 				// secret likely copied manually into another namespace
-				ownedSecret("another-namespace", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind),
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
 			},
 			wantObjs: []runtime.Object{
-				ownedSecret("another-namespace", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind),
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
 			},
 		},
 		{
@@ -406,6 +419,18 @@ func TestGarbageCollectAllSoftOwnedOrphanSecrets(t *testing.T) {
 				t.Helper()
 				// configmap should still be there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "configmap-name"}, &corev1.ConfigMap{}))
+			},
+		},
+		{
+			name: "gc secrets pointing to a stackconfigpolicy soft owner with a different namespace",
+			runtimeObjs: []runtime.Object{
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+				ownedSecret("ns", "secret-2", "another-namespace", sampleOwner().Name, "StackConfigPolicy"),
+				ownedSecret("ns-2", "secret-2", "another-namespace", sampleOwner().Name, "StackConfigPolicy"),
+				ownedSecret("ns", "secret-3", "another-another-namespace", sampleOwner().Name, "StackConfigPolicy"),
+			},
+			wantObjs: []runtime.Object{
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
 			},
 		},
 	}

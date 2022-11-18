@@ -192,6 +192,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	results := reconciler.NewResult(ctx)
 	status := policyv1alpha1.NewStatus(policy)
 	defer status.Update()
+
 	// Enterprise license check
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
@@ -251,7 +252,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, fileBasedSettingsMinimumVersion)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
+			if err != nil {
+				return results.WithError(err), status
+			}
 			continue
 		}
 
@@ -277,7 +281,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			err = fmt.Errorf("conflict: resource Elasticsearch %s/%s already configured by StackConfigpolicy %s/%s", es.Namespace, es.Name, currentOwner.Namespace, currentOwner.Name)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error())
+			if err != nil {
+				return results.WithError(err), status
+			}
 			continue
 		}
 
@@ -303,7 +310,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		// get /_cluster/state to get the Settings currently configured in ES
 		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
 		if err != nil {
-			status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
+			if err != nil {
+				return results.WithError(err), status
+			}
 			// requeue if ES not reachable
 			results.WithResult(defaultRequeue)
 		}

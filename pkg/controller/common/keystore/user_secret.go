@@ -52,7 +52,7 @@ func secureSettingsVolume(
 	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
 	policySecretSources, err := filesettings.GetSecureSettingsSecretSources(ctx, r.K8sClient(), hasKeystore)
 	if err != nil {
-		return nil, "", err
+		return nil, "", pkgerrors.Wrap(err, "fail to get secure settings secret sources")
 	}
 	secretSources = append(secretSources, policySecretSources...)
 

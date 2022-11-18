@@ -5,6 +5,7 @@
 package filesettings
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 )
 
+// Test_updateState tests updateState and consequently mutateSnapshotRepositorySettings.
 func Test_updateState(t *testing.T) {
 	esSample := types.NamespacedName{
 		Namespace: "esNs",
@@ -180,6 +182,54 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM: &commonv1.Config{Data: map[string]interface{}{}},
 			},
+		},
+		{
+			name: "invalid type for snapshot repositories definition",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					"repo": "invalid-type",
+				}},
+			}}}},
+			wantErr: errors.New(`invalid type (string) for definition of snapshot repository "repo" of Elasticsearch "esNs/esName"`),
+		},
+		{
+			name: "invalid type for snapshot repositories settings",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					"repo": map[string]interface{}{
+						"settings": "invalid-type",
+					},
+				}},
+			}}}},
+			wantErr: errors.New("invalid type (string) for snapshot repository settings"),
+		},
+		{
+			name: "invalid type for fs snapshot repository location",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					"repo": map[string]interface{}{
+						"type": "fs",
+						"settings": map[string]interface{}{
+							"location": 42,
+						},
+					},
+				}},
+			}}}},
+			wantErr: errors.New("invalid type (float64) for snapshot repository location"),
+		},
+		{
+			name: "invalid type for hdfs snapshot repository path",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					"repo": map[string]interface{}{
+						"type": "hdfs",
+						"settings": map[string]interface{}{
+							"path": 42,
+						},
+					},
+				}},
+			}}}},
+			wantErr: errors.New("invalid type (float64) for snapshot repository path"),
 		},
 	}
 

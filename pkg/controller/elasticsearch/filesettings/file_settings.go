@@ -5,7 +5,6 @@
 package filesettings
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -80,7 +79,7 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {
 			definition, ok := untypedDefinition.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("invalid type for snapshot repositories settings of Elasticsearch %s/%s", es.Namespace, es.Name)
+				return fmt.Errorf(`invalid type (%T) for definition of snapshot repository %q of Elasticsearch "%s/%s"`, untypedDefinition, name, es.Namespace, es.Name)
 			}
 			repoSettings, err := mutateSnapshotRepositorySettings(definition, es.Namespace, es.Name)
 			if err != nil {
@@ -140,7 +139,7 @@ func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{},
 	suffix := fmt.Sprintf("%s-%s", esNs, esName)
 	settings, ok := untypedSettings.(map[string]interface{})
 	if !ok {
-		return nil, errors.New("invalid type for snapshot repository settings")
+		return nil, fmt.Errorf("invalid type (%T) for snapshot repository settings", untypedSettings)
 	}
 	switch snapshotRepository["type"] {
 	case "azure", "gcs", "s3":
@@ -148,13 +147,13 @@ func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{},
 	case "fs":
 		location, ok := settings["location"].(string)
 		if !ok {
-			return nil, errors.New("invalid type for snapshot repository location")
+			return nil, fmt.Errorf("invalid type (%T) for snapshot repository location", settings["location"])
 		}
 		settings["location"] = filepath.Join(location, suffix)
 	case "hdfs":
 		path, ok := settings["path"].(string)
 		if !ok {
-			return nil, errors.New("invalid type for snapshot repository path")
+			return nil, fmt.Errorf("invalid type (%T) for snapshot repository path", settings["path"])
 		}
 		settings["path"] = filepath.Join(path, suffix)
 	}

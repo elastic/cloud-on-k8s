@@ -100,8 +100,8 @@ type StackConfigPolicyStatus struct {
 	// Ready is the number of resources successfully configured.
 	Ready int `json:"ready,omitempty"`
 	// Errors is the number of resources which have an incorrect configuration
-	Error int `json:"errors,omitempty"`
-	// ReadyCount is a Human representation of the number of resources successfully configured.
+	Errors int `json:"errors,omitempty"`
+	// ReadyCount is a human representation of the number of resources successfully configured.
 	ReadyCount string `json:"readyCount,omitempty"`
 	// Phase is the phase of the StackConfigPolicy.
 	Phase PolicyPhase `json:"phase,omitempty"`
@@ -120,7 +120,8 @@ const (
 	ConflictPhase        PolicyPhase = "Conflict"
 )
 
-// phaseOrder
+// phaseOrder maps policy phases to integers in ascending order of severity to help set the root phase of a StackConfigPolicy
+// to the worst phase of all its managed resources.
 var phaseOrder = map[PolicyPhase]int{
 	UnknownPhase:         -1,
 	ReadyPhase:           0,
@@ -157,12 +158,16 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
-func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string) {
+func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string) error {
+	if _, ok := s.ResourcesStatuses[resource.String()]; ok {
+		return fmt.Errorf("policy error already exists for resource %q", resource)
+	}
 	s.ResourcesStatuses[resource.String()] = ResourcePolicyStatus{
 		Phase: phase,
 		Error: PolicyStatusError{Errors: []string{msg}},
 	}
 	s.Update()
+	return nil
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
@@ -183,13 +188,13 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 func (s *StackConfigPolicyStatus) Update() {
 	s.Resources = len(s.ResourcesStatuses)
 	s.Ready = 0
-	s.Error = 0
+	s.Errors = 0
 	for _, status := range s.ResourcesStatuses {
 		resourcePhase := status.Phase
 		if resourcePhase == ReadyPhase {
 			s.Ready++
 		} else if resourcePhase == ErrorPhase {
-			s.Error++
+			s.Errors++
 		}
 		// update phase if that of the resource status is worse
 		if phaseOrder[resourcePhase] > phaseOrder[s.Phase] {
