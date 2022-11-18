@@ -38,7 +38,7 @@ func TestStackConfigPolicy(t *testing.T) {
 
 	// StackConfigPolicy is supported since 8.6.0
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(version.MustParse("8.6.0-SNAPSHOT")) {
+	if !stackVersion.GTE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 

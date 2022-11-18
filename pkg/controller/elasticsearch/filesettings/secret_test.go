@@ -36,7 +36,7 @@ func Test_newSettingsSecret(t *testing.T) {
 
 	// no policy
 
-	version := time.Now().UnixNano()
+	version := int64(1)
 	ss, err := NewSettingsSecret(version, nil, es, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", ss.Namespace)
@@ -45,7 +45,7 @@ func Test_newSettingsSecret(t *testing.T) {
 	assert.Equal(t, version, ss.Version)
 
 	// policy
-	version2 := time.Now().UnixNano()
+	version2 := int64(2)
 	ss, err = NewSettingsSecret(version2, nil, es, &policy)
 	assert.NoError(t, err)
 	assert.Equal(t, "esNs", ss.Namespace)
@@ -74,7 +74,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 			},
 		}}
 
-	version := time.Now().UnixNano()
+	version := int64(1)
 	expectedEmptySettings := NewEmptySettings(version)
 
 	// no policy -> emptySettings
@@ -91,7 +91,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	assert.Equal(t, strconv.FormatInt(version, 10), sameSettings.Metadata.Version)
 
 	// new policy -> settings changed
-	newVersion := time.Now().UnixNano()
+	newVersion := int64(2)
 	newSettings := NewEmptySettings(newVersion)
 
 	err = newSettings.updateState(es, otherPolicy)
@@ -169,7 +169,7 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
 
-	ss, err := NewSettingsSecret(time.Now().UnixNano(), nil, es, nil)
+	ss, err := NewSettingsSecret(int64(42), nil, es, nil)
 	assert.NoError(t, err)
 
 	secureSettings, err := ss.getSecureSettings()
