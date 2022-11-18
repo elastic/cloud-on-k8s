@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	pkg_container "github.com/elastic/cloud-on-k8s/hack/operatorhub/pkg/container"
-	pkg_preflight "github.com/elastic/cloud-on-k8s/hack/operatorhub/pkg/preflight"
+	pkg_container "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/container"
+	pkg_preflight "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/preflight"
 )
 
 // Command will return the container command
@@ -229,9 +229,12 @@ func DoPreflight(_ *cobra.Command, _ []string) error {
 	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", viper.GetString("project-id"), viper.GetString("tag"))
 	results, err := pkg_preflight.Run(
 		ctx,
-		containerImage,
-		viper.GetString("docker-config"),
-		viper.GetString("api-key"))
+		pkg_preflight.RunInput{
+			Image:                  containerImage,
+			DockerConfigPath:       viper.GetString("docker-config"),
+			PyxisAPIToken:          viper.GetString("api-key"),
+			CertificationProjectID: viper.GetString("project-id"),
+		})
 	if err != nil {
 		return err
 	}

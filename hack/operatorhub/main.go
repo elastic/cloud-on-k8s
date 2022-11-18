@@ -5,10 +5,28 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"text/template"
+	"time"
 
-	redhat_cmd "github.com/elastic/cloud-on-k8s/hack/operatorhub/cmd"
+	"github.com/Masterminds/sprig"
+	redhat_cmd "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/kubectl/pkg/scheme"
 )
 
 func main() {

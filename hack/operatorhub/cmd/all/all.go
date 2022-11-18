@@ -5,9 +5,9 @@
 package all
 
 import (
-	"github.com/elastic/cloud-on-k8s/hack/operatorhub/cmd/bundle"
-	"github.com/elastic/cloud-on-k8s/hack/operatorhub/cmd/container"
-	"github.com/elastic/cloud-on-k8s/hack/operatorhub/cmd/operatorhub"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/operatorhub"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
