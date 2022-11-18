@@ -9133,7 +9133,7 @@ spec:
                 description: Ready is the number of resources successfully configured.
                 type: integer
               readyCount:
-                description: ReadyCount is a Human representation of the number of
+                description: ReadyCount is a human representation of the number of
                   resources successfully configured.
                 type: string
               resources:
@@ -9149,10 +9149,8 @@ spec:
                       type: integer
                     error:
                       properties:
-                        errors:
-                          items:
-                            type: string
-                          type: array
+                        message:
+                          type: string
                         version:
                           format: int64
                           type: integer
