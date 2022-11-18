@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	SecureSettingsSecretsAnnotationName = "policy.k8s.elastic.co/secure-settings-secrets" //nolint:gosec
+	secureSettingsSecretsAnnotationName = "policy.k8s.elastic.co/secure-settings-secrets" //nolint:gosec
 	settingsHashAnnotationName          = "policy.k8s.elastic.co/settings-hash"
 	settingsSecretKey                   = "settings.json"
 )
@@ -151,13 +151,13 @@ func (s *SettingsSecret) setSecureSettings(policy policyv1alpha1.StackConfigPoli
 	if err != nil {
 		return err
 	}
-	s.Annotations[SecureSettingsSecretsAnnotationName] = string(bytes)
+	s.Annotations[secureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
 }
 
 // getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the Secret.
 func (s *SettingsSecret) getSecureSettings() ([]commonv1.NamespacedSecretSource, error) {
-	rawString, ok := s.Annotations[SecureSettingsSecretsAnnotationName]
+	rawString, ok := s.Annotations[secureSettingsSecretsAnnotationName]
 	if !ok {
 		return []commonv1.NamespacedSecretSource{}, nil
 	}

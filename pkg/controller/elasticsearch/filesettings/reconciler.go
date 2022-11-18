@@ -16,6 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
@@ -46,14 +47,14 @@ func ReconcileEmptyFileSettingsSecret(
 }
 
 // ReconcileSecret reconciles the given file settings Secret for the given Elasticsearch.
-// reconciler.ReconcileSecret is not used because its usage is for custom-provided Secret where we want to preserve
-// existing annotations. Here we need to be able to reset annotations to reset a file settings Secret.
+// This implementation is slightly different from reconciler.ReconcileSecret to allow resetting managed annotations.
 func ReconcileSecret(
 	ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
 	es esv1.Elasticsearch,
 ) error {
+	managedAnnotations := []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
@@ -62,10 +63,20 @@ func ReconcileSecret(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(expected.Data, reconciled.Data)
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+				!reflect.DeepEqual(expected.Data, reconciled.Data)
 		},
 		UpdateReconciled: func() {
-			expected.DeepCopyInto(reconciled)
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			// remove managed annotations if they are no longer defined
+			for _, annotation := range managedAnnotations {
+				if _, ok := expected.Annotations[annotation]; !ok {
+					delete(reconciled.Annotations, annotation)
+				}
+			}
+			reconciled.Data = expected.Data
 		},
 	})
 }
