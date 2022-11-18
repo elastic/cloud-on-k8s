@@ -1,0 +1,24 @@
+
+agents:
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
+  cpu: "2"
+  memory: "2G"
+
+env:
+  # This credential file is created by .buildkite/scripts/common/get-helm-credentials.sh
+  GCP_CREDS_FILE: ".ci/credentials.json"
+  VAULT_ROOT_PATH: "secret/release/gcp"
+
+steps:
+
+  - group: release helm charts to production
+    steps:
+      - label: ":helm: run helm-charts-publisher"
+        commands:
+          - .buildkite/scripts/common/get-helm-credentials.sh
+          # defaulting to dev bucket/chart-repo-url until bucket/chart-repo-url can properly be passed via environment variables.
+          - /entrypoint.sh charts_dir=./deploy --upload-index
+          # - /entrypoint.sh charts_dir=./deploy --upload-index --gcs-bucket=$GCS_BUCKET --chart-repo-url=$HELM_CHART_REPO_URL
+        plugins:
+        - docker#v5.3.0:
+            image: "docker.elastic.co/eck-dev/helm-charts-publisher:2022111800"
