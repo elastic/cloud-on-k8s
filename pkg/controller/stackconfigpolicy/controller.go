@@ -333,7 +333,7 @@ func newResourceStatus(currentSettings esclient.FileSettings, expectedVersion in
 	if currentSettings.Errors != nil {
 		status.Error = policyv1alpha1.PolicyStatusError{
 			Version: currentSettings.Errors.Version,
-			Errors:  cleanStackTrace(currentSettings.Errors.Errors),
+			Message: cleanStackTrace(currentSettings.Errors.Errors),
 		}
 	}
 	return status
@@ -344,7 +344,7 @@ var (
 	matchTripleDotsNumberMore = regexp.MustCompile("... [0-9]+ more")
 )
 
-func cleanStackTrace(errors []string) []string {
+func cleanStackTrace(errors []string) string {
 	for i, e := range errors {
 		var msg []string
 		for _, line := range strings.Split(e, "\n") {
@@ -355,7 +355,7 @@ func cleanStackTrace(errors []string) []string {
 		}
 		errors[i] = strings.Trim(strings.Join(msg, "\n"), "\n")
 	}
-	return errors
+	return strings.Join(errors, ". ")
 }
 
 func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *policyv1alpha1.StackConfigPolicy) error {

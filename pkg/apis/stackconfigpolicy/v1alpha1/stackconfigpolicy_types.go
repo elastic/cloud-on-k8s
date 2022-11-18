@@ -140,8 +140,8 @@ type ResourcePolicyStatus struct {
 }
 
 type PolicyStatusError struct {
-	Version int64    `json:"version,omitempty"`
-	Errors  []string `json:"errors,omitempty"`
+	Version int64  `json:"version,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
@@ -164,7 +164,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	}
 	s.ResourcesStatuses[resource.String()] = ResourcePolicyStatus{
 		Phase: phase,
-		Error: PolicyStatusError{Errors: []string{msg}},
+		Error: PolicyStatusError{Message: msg},
 	}
 	s.Update()
 	return nil
@@ -173,8 +173,11 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
 	if status.CurrentVersion == unknownVersion { //nolint:gocritic
 		status.Phase = UnknownPhase
-	} else if status.Error.Errors != nil {
+	} else if status.Error.Message != "" {
 		status.Phase = ErrorPhase
+		if status.ExpectedVersion > status.Error.Version {
+			status.Phase = ApplyingChangesPhase
+		}
 	} else if status.CurrentVersion == status.ExpectedVersion {
 		status.Phase = ReadyPhase
 	} else {

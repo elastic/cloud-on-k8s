@@ -350,8 +350,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
-				assert.Equal(t, "invalid cluster settings", policy.Status.ResourcesStatuses["ns/test-es"].Error.Errors[0])
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
+				assert.Equal(t, "invalid cluster settings", policy.Status.ResourcesStatuses["ns/test-es"].Error.Message)
 			},
 			wantErr:          false,
 			wantRequeue:      true,
@@ -437,5 +437,5 @@ func Test_cleanStackTrace(t *testing.T) {
 	stacktrace := "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tat org.elasticsearch.ilm@8.6.0-SNAPSHOT/org.elasticsearch.xpack.slm.action.ReservedSnapshotAction.prepare(ReservedSnapshotAction.java:66)\n\tat org.elasticsearch.ilm@8.6.0-SNAPSHOT/org.elasticsearch.xpack.slm.action.ReservedSnapshotAction.transform(ReservedSnapshotAction.java:77)\n\tat org.elasticsearch.server@8.6.0-SNAPSHOT/org.elasticsearch.reservedstate.service.ReservedClusterStateService.trialRun(ReservedClusterStateService.java:328)\n\tat org.elasticsearch.server@8.6.0-SNAPSHOT/org.elasticsearch.reservedstate.service.ReservedClusterStateService.process(ReservedClusterStateService.java:169)\n\tat org.elasticsearch.server@8.6.0-SNAPSHOT/org.elasticsearch.reservedstate.service.ReservedClusterStateService.process(ReservedClusterStateService.java:122)\n\tat org.elasticsearch.server@8.6.0-SNAPSHOT/org.elasticsearch.reservedstate.service.FileSettingsService.processFileSettings(FileSettingsService.java:389)\n\tat org.elasticsearch.server@8.6.0-SNAPSHOT/org.elasticsearch.reservedstate.service.FileSettingsService.lambda$startWatcher$3(FileSettingsService.java:312)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [badrepo]\n\t\tat org.elasticsearch.ilm@8.6.0-SNAPSHOT/org.elasticsearch.xpack.slm.SnapshotLifecycleService.validateRepositoryExists(SnapshotLifecycleService.java:244)\n\t\tat org.elasticsearch.ilm@8.6.0-SNAPSHOT/org.elasticsearch.xpack.slm.action.ReservedSnapshotAction.prepare(ReservedSnapshotAction.java:57)\n\t\t... 7 more\n"
 	err := cleanStackTrace([]string{stacktrace})
 	expected := "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [badrepo]"
-	assert.Equal(t, expected, err[0])
+	assert.Equal(t, expected, err)
 }
