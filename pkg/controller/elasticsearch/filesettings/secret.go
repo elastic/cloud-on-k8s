@@ -30,9 +30,9 @@ const (
 
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
 func NewSettingsSecret(version int64, current *SettingsSecret, es types.NamespacedName, policy *policyv1alpha1.StackConfigPolicy) (SettingsSecret, error) {
-	version, settings := NewSettings(version)
+	settings := NewEmptySettings(version)
 
-	// update the settings according the config policy
+	// update the settings according to the config policy
 	if policy != nil {
 		err := settings.updateState(es, *policy)
 		if err != nil {
@@ -67,6 +67,16 @@ func NewSettingsSecret(version int64, current *SettingsSecret, es types.Namespac
 		},
 		Settings: settings,
 		Version:  version,
+	}
+
+	if policy != nil {
+		// set this policy as soft owner of this Secret
+		settingsSecret.setSoftOwner(*policy)
+
+		// add the Secure Settings Secret sources to the Settings Secret
+		if err := settingsSecret.setSecureSettings(*policy); err != nil {
+			return SettingsSecret{}, err
+		}
 	}
 
 	return settingsSecret, nil
@@ -116,8 +126,8 @@ func (s SettingsSecret) CanBeOwnedBy(policy policyv1alpha1.StackConfigPolicy) (r
 	return currentOwner, canBeOwned
 }
 
-// SetSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
-func (s *SettingsSecret) SetSoftOwner(policy policyv1alpha1.StackConfigPolicy) {
+// setSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
+func (s *SettingsSecret) setSoftOwner(policy policyv1alpha1.StackConfigPolicy) {
 	if s.Labels == nil {
 		s.Labels = map[string]string{}
 	}
@@ -126,8 +136,8 @@ func (s *SettingsSecret) SetSoftOwner(policy policyv1alpha1.StackConfigPolicy) {
 	s.Labels[reconciler.SoftOwnerKindLabel] = policy.GetObjectKind().GroupVersionKind().Kind
 }
 
-// SetSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
-func (s *SettingsSecret) SetSecureSettings(policy policyv1alpha1.StackConfigPolicy) error {
+// setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
+func (s *SettingsSecret) setSecureSettings(policy policyv1alpha1.StackConfigPolicy) error {
 	if len(policy.Spec.SecureSettings) == 0 {
 		return nil
 	}

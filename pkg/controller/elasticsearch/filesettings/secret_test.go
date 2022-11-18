@@ -75,7 +75,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 		}}
 
 	version := time.Now().UnixNano()
-	_, expectedEmptySettings := NewSettings(version)
+	expectedEmptySettings := NewEmptySettings(version)
 
 	// no policy -> emptySettings
 	ss, err := NewSettingsSecret(version, nil, es, nil)
@@ -84,7 +84,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 	assert.Equal(t, version, ss.Version)
 
 	// policy without settings -> emptySettings
-	_, sameSettings := NewSettings(version)
+	sameSettings := NewEmptySettings(version)
 	err = sameSettings.updateState(es, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, false, ss.hasChanged(sameSettings))
@@ -92,7 +92,8 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 
 	// new policy -> settings changed
 	newVersion := time.Now().UnixNano()
-	_, newSettings := NewSettings(newVersion)
+	newSettings := NewEmptySettings(newVersion)
+
 	err = newSettings.updateState(es, otherPolicy)
 	assert.NoError(t, err)
 	assert.Equal(t, true, ss.hasChanged(newSettings))
@@ -132,14 +133,14 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	assert.Equal(t, true, canBeOwned)
 
 	// set a policy soft owner
-	ss.SetSoftOwner(policy)
+	ss.setSoftOwner(policy)
 	_, canBeOwned = ss.CanBeOwnedBy(policy)
 	assert.Equal(t, true, canBeOwned)
 	_, canBeOwned = ss.CanBeOwnedBy(otherPolicy)
 	assert.Equal(t, false, canBeOwned)
 
 	// update the policy soft owner
-	ss.SetSoftOwner(otherPolicy)
+	ss.setSoftOwner(otherPolicy)
 	_, canBeOwned = ss.CanBeOwnedBy(policy)
 	assert.Equal(t, false, canBeOwned)
 	_, canBeOwned = ss.CanBeOwnedBy(otherPolicy)
@@ -175,13 +176,13 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.SetSecureSettings(policy)
+	err = ss.setSecureSettings(policy)
 	assert.NoError(t, err)
 	secureSettings, err = ss.getSecureSettings()
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.SetSecureSettings(otherPolicy)
+	err = ss.setSecureSettings(otherPolicy)
 	assert.NoError(t, err)
 	secureSettings, err = ss.getSecureSettings()
 	assert.NoError(t, err)

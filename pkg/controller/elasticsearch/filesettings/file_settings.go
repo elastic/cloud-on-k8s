@@ -53,9 +53,9 @@ func (s *Settings) hash() string {
 	return hash.HashObject(s.State)
 }
 
-// NewSettings returns empty new Settings with their version created from the epoch time.
-func NewSettings(version int64) (int64, Settings) {
-	return version, Settings{
+// NewEmptySettings returns empty new Settings.
+func NewEmptySettings(version int64) Settings {
+	return Settings{
 		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: defaultCompatibilityVersion},
 		State:    newSettingsState(),
 	}

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -235,7 +234,7 @@ func Test_updateState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, settings := NewSettings(time.Now().UnixNano())
+			settings := NewEmptySettings(int64(1))
 			err := settings.updateState(esSample, tt.args.policy)
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)

@@ -295,14 +295,6 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		// set this policy as soft owner of this Secret
-		expected.SetSoftOwner(policy)
-
-		// add the Secure Settings Secret sources to the Settings Secret
-		if err := expected.SetSecureSettings(policy); err != nil {
-			return results.WithError(err), status
-		}
-
 		if err := filesettings.ReconcileSecret(ctx, r.Client, expected.Secret, es); err != nil {
 			return results.WithError(err), status
 		}
@@ -323,10 +315,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	}
 
 	// reset Settings secrets for resources no longer selected by this policy
-	err = resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources)
-	if err != nil {
-		results.WithError(err)
-	}
+	results.WithError(resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
 
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
