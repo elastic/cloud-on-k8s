@@ -96,3 +96,13 @@ steps:
         if: build.branch == "main" && build.source == "schedule"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+
+  - group: helm-release
+    steps:
+
+      # Run dev helm release when the build message matches - testing
+
+      - label: ":helm: helm release"
+        if: build.message == "run helm release dev"
+        commands:
+            - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-dev.yml
