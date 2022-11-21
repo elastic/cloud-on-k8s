@@ -4,6 +4,11 @@ agents:
   cpu: "4"
   memory: "2G"
 
+env:
+  # This credential file is created by .buildkite/scripts/common/get-helm-credentials.sh
+  GCP_CREDS_FILE: "/usr/src/app/.ci/credentials.json"
+  VAULT_ROOT_PATH: "secret/release/gcp"
+
 steps:
 
   - group: build
@@ -98,15 +103,29 @@ steps:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
 
   - group: helm-release
+    
     steps:
+      
+      - label: "get required vault credentials"
+        key: "get-vault-credentials"
+        if: build.message == "run helm release dev"
+        commands:
+          - .buildkite/scripts/common/get-helm-credentials.sh
 
       # Run dev helm release when the build message matches - testing
 
-      - label: ":helm: helm release"
+      - label: ":helm: release helm charts to dev bucket, and helm chart repository"
         if: build.message == "run helm release dev"
+        depends_on:
+          - "get-vault-credentials"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
-        commands:
-            - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-dev.yml
+        plugins:
+        - docker#v5.3.0:
+            image: "docker.elastic.co/eck-dev/helm-charts-publisher:2022111800"
+            entrypoint: ""
+            command: ["/entrypoint.sh", "charts_dir=./deploy", "--upload-index"]
+            volumes:
+            - ".ci/credentials.json:/usr/src/app/.ci/credentials.json"
