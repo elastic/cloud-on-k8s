@@ -13,10 +13,8 @@ steps:
   - group: release helm charts to dev bucket, and helm chart repository
     steps:
       - label: ":helm: run helm-charts-publisher"
-        commands:
-          - .buildkite/scripts/common/get-helm-credentials.sh
-          # This defaults to dev bucket/chart-repo-url
-          - /entrypoint.sh charts_dir=./deploy --upload-index
         plugins:
         - docker#v5.3.0:
             image: "docker.elastic.co/eck-dev/helm-charts-publisher:2022111800"
+            entrypoint: ""
+            command: [".buildkite/scripts/common/get-helm-credentials.sh", "/entrypoint.sh", "charts_dir=./deploy", "--upload-index"]
