@@ -9,7 +9,6 @@ package es
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -253,47 +252,6 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 		WithChangeBudget(1, 2)
 
 	RunESMutation(t, b, mutated)
-}
-
-func TestMutationWhileLoadTesting(t *testing.T) {
-	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
-	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(7, 0, 0)) {
-		// 6.x can have in excess of 60 seconds of unavailability during rolling upgrades when the current master node
-		// is rolled and is not well suited for this kind of test. If we want to keep testing with 6.x we could
-		// introduce a version specific unavailability budget similar to the existing ContinuousHealthCheck.
-		t.Skip("Skipping test for versions below 7.x")
-	}
-
-	var loadTest *elasticsearch.LoadTest
-	var err error
-	mutated := test.WrappedBuilder{
-		// force a rolling upgrade through label change
-		BuildingThis: b.DeepCopy().WithPodLabel("some_label_name", "some_new_value").WithMutatedFrom(&b),
-
-		PreMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{}.WithStep(test.Step{
-				Name: "Starting to load test",
-				Test: func(t *testing.T) {
-					loadTest, err = elasticsearch.NewLoadTest(k, b.Elasticsearch, 10)
-					require.NoError(t, err)
-					loadTest.Start()
-				},
-			})
-		},
-		PostMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{}.WithStep(test.Step{
-				Name: "Stopping load test",
-				Test: func(t *testing.T) {
-					result := loadTest.Stop()
-					require.True(t, result.Success, "failed load test %+v", result)
-					println(result.String())
-				},
-			})
-		},
-	}
-
-	test.RunMutation(t, b, mutated)
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
