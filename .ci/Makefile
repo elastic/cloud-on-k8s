@@ -14,6 +14,7 @@ vault := ../hack/retry.sh 5 vault
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
+VAULT_ROOT_PATH ?= secret/devops-ci/cloud-on-k8s
 
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifndef VAULT_TOKEN
@@ -45,12 +46,13 @@ ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
 ci-internal: ci-build-image
+	# --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
-	  docker run --rm -t $(DOCKER_OPTS) \
+	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) \
+		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS=$(ENABLE_FIPS) \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
 		$(CI_IMAGE) \
@@ -58,7 +60,7 @@ ci-internal: ci-build-image
 	  docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
 
 # build and push the CI image only if it does not yet exist
-ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value $(VAULT_ROOT_PATH)/eckadmin)
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
@@ -89,22 +91,21 @@ endif
 
 # read a dev private key used to generate dev licenses against non-production builds
 dev-private.key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  secret/devops-ci/cloud-on-k8s/license | base64 --decode > dev-private.key
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  ${VAULT_ROOT_PATH}/license | base64 --decode > dev-private.key
 
 # read some test licenses from Vault for E2E license tests
 test-license.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  ${VAULT_ROOT_PATH}/test-licenses > test-license.json
 
 # read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
 monitoring-secrets.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=data -format=json ${VAULT_ROOT_PATH}/monitoring-cluster > monitoring-secrets.json
 
 ##  Build
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
 license.key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
-
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey ${VAULT_ROOT_PATH}/license | base64 --decode > license.key
 
 ##  Release
 
@@ -113,10 +114,10 @@ yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
 yaml-upload: AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
 yaml-upload: AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
 yaml-upload:
-ifndef VERSION
-	$(error VERSION not set to upload YAML to S3)
+ifndef IMG_VERSION
+	$(error IMG_VERSION not set to upload YAML to S3)
 endif
 	@ $(MAKE) \
-		DOCKER_OPTS="-e VERSION=$(VERSION) -e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
+		DOCKER_OPTS="-e VERSION=$(IMG_VERSION) -e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
 		DOCKER_CMD="hack/manifest-upload.sh" \
 		ci-internal

@@ -7,20 +7,13 @@
 package es
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
-	vegeta "github.com/tsenart/vegeta/v12/lib"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
@@ -264,77 +257,43 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(90)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(7, 0, 0)) {
+		// 6.x can have in excess of 60 seconds of unavailability during rolling upgrades when the current master node
+		// is rolled and is not well suited for this kind of test. If we want to keep testing with 6.x we could
+		// introduce a version specific unavailability budget similar to the existing ContinuousHealthCheck.
+		t.Skip("Skipping test for versions below 7.x")
+	}
 
-	// force a rolling upgrade through label change
-	mutated := b.DeepCopy().
-		WithPodLabel("some_label_name", "some_new_value")
+	var loadTest *elasticsearch.LoadTest
+	var err error
+	mutated := test.WrappedBuilder{
+		// force a rolling upgrade through label change
+		BuildingThis: b.DeepCopy().WithPodLabel("some_label_name", "some_new_value").WithMutatedFrom(&b),
 
-	var metrics vegeta.Metrics
-	var attacker vegeta.Attacker
-	// keep hitting ES endpoints at high rate during pod cycling to catch any downtime
-	w := test.NewOnceWatcher(
-		"load test",
-		func(k *test.K8sClient, t *testing.T) {
-			url := fmt.Sprintf("https://%s.%s.svc.cluster.local:9200/", esv1.HTTPService(b.Elasticsearch.Name), b.Elasticsearch.Namespace)
-			rate := vegeta.Rate{Freq: 10, Per: time.Second}
-			targeter := vegeta.NewStaticTargeter(vegeta.Target{
-				Method: "GET",
-				URL:    url,
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{}.WithStep(test.Step{
+				Name: "Starting to load test",
+				Test: func(t *testing.T) {
+					loadTest, err = elasticsearch.NewLoadTest(k, b.Elasticsearch, 10)
+					require.NoError(t, err)
+					loadTest.Start()
+				},
 			})
-
-			var attackerOption func(*vegeta.Attacker)
-			if test.Ctx().AutoPortForwarding {
-				// we need to forward, use our dialer
-				c := &http.Client{
-					Timeout: vegeta.DefaultTimeout,
-					Transport: &http.Transport{
-						Proxy:               http.ProxyFromEnvironment,
-						DialContext:         portforward.NewForwardingDialer().DialContext,
-						TLSClientConfig:     vegeta.DefaultTLSConfig,
-						MaxIdleConnsPerHost: vegeta.DefaultConnections,
-						DisableKeepAlives:   true,
-					},
-				}
-				attackerOption = vegeta.Client(c)
-			} else {
-				// no forwarding needed, just turn off keep alives
-				attackerOption = vegeta.KeepAlive(false)
-			}
-
-			attacker = *vegeta.NewAttacker(attackerOption)
-			for res := range attacker.Attack(targeter, rate, 0, "ES load test while recycling pods") {
-				metrics.Add(res)
-			}
 		},
-		func(k *test.K8sClient, t *testing.T) {
-			attacker.Stop()
-			metrics.Close()
-			bytes, _ := json.Marshal(metrics)
-			msgAndArgs := []interface{}{"metrics: ", string(bytes)}
-			switch len(metrics.StatusCodes) {
-			case 1:
-				if _, ok := metrics.StatusCodes["401"]; !ok {
-					assert.Fail(t, "all status codes should be 401", msgAndArgs)
-				}
-			case 2:
-				// allow 5 or less network errors during load testing, as we randomly see these during testing.
-				if metrics.StatusCodes["0"] > 5 {
-					assert.Fail(t, "large number of network errors while mutating and load testing", msgAndArgs)
-				}
-				for k := range metrics.StatusCodes {
-					if k == "0" || k == "401" {
-						continue
-					}
-					assert.Fail(t, "only '401', and '0' error codes are allowed while mutating during load testing", msgAndArgs)
-				}
-			default:
-				assert.Fail(t, "large number of errors while mutating and load testing", msgAndArgs)
-			}
-		})
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{}.WithStep(test.Step{
+				Name: "Stopping load test",
+				Test: func(t *testing.T) {
+					result := loadTest.Stop()
+					require.True(t, result.Success, "failed load test %+v", result)
+					println(result.String())
+				},
+			})
+		},
+	}
 
-	test.RunMutationsWhileWatching(t, []test.Builder{b}, []test.Builder{mutated.WithMutatedFrom(&b)}, []test.Watcher{w})
+	test.RunMutation(t, b, mutated)
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {

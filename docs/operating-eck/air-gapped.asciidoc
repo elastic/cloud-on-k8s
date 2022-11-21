@@ -1,0 +1,56 @@
+:page_id: air-gapped
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+
+[id="{p}-{page_id}"]
+= Running in air-gapped environments
+
+The ECK operator can be run in an air-gapped environment without access to the open internet when it is configured not to pull container images from `docker.elastic.co`.
+
+By default ECK does not require you to specify the container image for each Elastic Stack application you deploy.
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  # image: docker.elastic.co/elasticsearch/elasticsearch:{version} <1>
+  nodeSets:
+  - name: default
+    count: 1
+----
+
+<1> The ECK operator will set this value by default. You can explicitly set it to your mirrored container image when running in an air-gapped environment
+
+ECK will automatically set the correct container image for each application. When running in an air-gapped or offline environment you will have to mirror the official Elastic container images in a private container image registry.
+To make use of your mirrored images you can either set the image for each application explicitly as shown in the preceding example or more conveniently override the default container registry as explained in the next section.
+
+
+
+[float]
+[id="{p}-container-registry-override"]
+== Override the default container registry
+
+When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you can configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. Check <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
+
+The operator expects container images to be located at specific paths in the default container registry. Make sure that your container images are stored at the right path and are tagged correctly with the stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from stack version {version}, the following image paths should exist:
+
+
+* +my.registry/elasticsearch/elasticsearch:{version}+
+* +my.registry/kibana/kibana:{version}+
+* +my.registry/apm/apm-server:{version}+
+
+
+[float]
+[id="{p}-eck-diag-air-gapped"]
+== ECK Diagnostics in air-gapped environments
+
+The <<{p}-take-eck-dump,eck-diagnostics tool>> optionally runs diagnostics for Elastic Stack applications in a separate container that is deployed into the Kubernetes cluster.
+
+In air-gapped environments with no access to the `docker.elastic.co` registry, you should copy the latest support-diagnostics container image to your internal image registry and then run the tool with the additional flag `--diagnostic-image <custom-support-diagnostics-image-name>`. To find out which support diagnostics container image matches your version of eck-diagnostics run the tool once without arguments and it will print the default image in use.

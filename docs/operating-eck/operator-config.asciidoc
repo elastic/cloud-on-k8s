@@ -30,6 +30,7 @@ ECK can be configured using either command line flags or environment variables.
 |enforce-rbac-on-refs| false | Enables restrictions on cross-namespace resource association through RBAC.
 |exposed-node-labels|""| List of Kubernetes node labels which are allowed to be copied as annotations on the Elasticsearch Pods. Check <<{p}-availability-zone-awareness>> for more details.
 |ip-family|""| Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect)
+|kube-client-qps|0| Set the maximum number of queries per second to the Kubernetes API. Default value is inherited from the link:https://github.com/kubernetes/client-go/blob/e6538dd42b4fe55b6c754e41c66b43133ba41a59/rest/config.go#L44[Go client].
 |kube-client-timeout|60s| Set the request timeout for Kubernetes API calls made by the operator.
 |log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug.
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
