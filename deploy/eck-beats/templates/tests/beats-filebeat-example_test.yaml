@@ -12,10 +12,10 @@ tests:
           of: Beat
       - equal:
           path: spec.elasticsearchRef.name
-          value: elasticsearch
+          value: eck-elasticsearch
       - equal:
           path: spec.kibanaRef.name
-          value: kibana
+          value: eck-kibana
       - equal:
           path: spec.config.[filebeat.inputs][0].type
           value: container

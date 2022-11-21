@@ -12,7 +12,7 @@ tests:
           of: Beat
       - equal:
           path: spec.elasticsearchRef.name
-          value: elasticsearch
+          value: eck-elasticsearch
       - equal:
           path: spec.config.[heartbeat.monitors][0].type
           value: tcp
