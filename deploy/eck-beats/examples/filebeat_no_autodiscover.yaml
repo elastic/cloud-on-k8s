@@ -1,14 +1,11 @@
-apiVersion: beat.k8s.elastic.co/v1beta1
-kind: Beat
-metadata:
-  name: filebeat
+name: filebeat
+version: 8.5.0
 spec:
   type: filebeat
-  version: 8.3.3
   elasticsearchRef:
-    name: elasticsearch
+    name: quickstart-eck-elasticsearch
   kibanaRef:
-    name: kibana
+    name: quickstart-eck-kibana
   config:
     filebeat.inputs:
     - type: container

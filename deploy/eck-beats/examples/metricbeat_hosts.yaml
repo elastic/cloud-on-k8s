@@ -1,7 +1,7 @@
 name: metricbeat
 spec:
   type: metricbeat
-  version: 8.3.3
+  version: 8.5.0
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -153,7 +153,6 @@ clusterRoleBinding:
   subjects:
   - kind: ServiceAccount
     name: metricbeat
-    namespace: default
   roleRef:
     kind: ClusterRole
     name: metricbeat
