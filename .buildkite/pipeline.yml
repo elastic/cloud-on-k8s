@@ -104,5 +104,9 @@ steps:
 
       - label: ":helm: helm release"
         if: build.message == "run helm release dev"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-dev.yml
