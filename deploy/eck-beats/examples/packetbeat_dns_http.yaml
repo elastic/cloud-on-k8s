@@ -3,9 +3,9 @@ spec:
   type: packetbeat
   version: 8.5.0
   elasticsearchRef:
-    name: elasticsearch
+    name: eck-elasticsearch
   kibanaRef:
-    name: kibana
+    name: eck-kibana
   config:
     packetbeat.interfaces.device: any
     packetbeat.protocols:

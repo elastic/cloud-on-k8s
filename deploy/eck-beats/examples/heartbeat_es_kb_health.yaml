@@ -3,7 +3,7 @@ version: 8.5.0
 spec:
   type: heartbeat
   elasticsearchRef:
-    name: elasticsearch
+    name: eck-elasticsearch
   config:
     heartbeat.monitors:
     - type: tcp

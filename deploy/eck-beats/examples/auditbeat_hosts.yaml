@@ -3,9 +3,9 @@ version: 8.5.0
 spec:
   type: auditbeat
   elasticsearchRef:
-    name: elasticsearch
+    name: eck-elasticsearch
   kibanaRef:
-    name: kibana
+    name: eck-kibana
   config:
     auditbeat.modules:
     - module: file_integrity

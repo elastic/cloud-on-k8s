@@ -3,9 +3,9 @@ version: 8.5.0
 spec:
   type: filebeat
   elasticsearchRef:
-    name: quickstart-eck-elasticsearch
+    name: eck-elasticsearch
   kibanaRef:
-    name: quickstart-eck-kibana
+    name: eck-kibana
   config:
     filebeat.inputs:
     - type: container
