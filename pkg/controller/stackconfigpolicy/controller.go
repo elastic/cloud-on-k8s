@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	fileBasedSettingsMinimumVersion = version.MinFor(8, 6, 0)
+	fileBasedSettingsMinVersion = version.MinFor(8, 6, 0)
 
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}
 )
@@ -248,8 +248,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		if err != nil {
 			return results.WithError(err), status
 		}
-		if v.LT(fileBasedSettingsMinimumVersion) {
-			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, fileBasedSettingsMinimumVersion)
+		if v.LT(fileBasedSettingsMinVersion) {
+			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, version.WithoutPre(fileBasedSettingsMinVersion))
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
 			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
