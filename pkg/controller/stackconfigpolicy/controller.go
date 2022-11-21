@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	fileBasedSettingsMinimumVersion = version.From(8, 6, 0)
+	fileBasedSettingsMinimumVersion = version.MinFor(8, 6, 0)
 
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}
 )

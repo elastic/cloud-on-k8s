@@ -101,6 +101,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
+	var noEntries []string
 	expectedRepo := SnapshotRepository{
 		Type: "gcs",
 		Settings: SnapshotRepositorySettings{
@@ -216,6 +217,8 @@ func TestStackConfigPolicy(t *testing.T) {
 					return nil
 				}),
 			},
+			// keystore entries should be removed
+			elasticsearch.CheckESKeystoreEntries(k, es, noEntries),
 		}
 	}
 
