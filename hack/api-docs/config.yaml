@@ -1,8 +1,8 @@
 processor:
   ignoreTypes:
-    - "(Elasticsearch|ElasticsearchAutoscaler|Kibana|ApmServer|EnterpriseSearch|Beat|Agent)List$"
-    - "(Kibana|ApmServer|EnterpriseSearch|Beat|Agent)Health$"
-    - "(ElasticsearchAutoscaler|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps)Status$"
+    - "(Elasticsearch|ElasticsearchAutoscaler|Kibana|ApmServer|EnterpriseSearch|Beat|Agent|StackConfigPolicy)List$"
+    - "(Kibana|ApmServer|EnterpriseSearch|Beat|Agent|StackConfigPolicy)Health$"
+    - "(ElasticsearchAutoscaler|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps|Policy)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tion|tionStatus|tionConf)$"
     - "AssociationStatusMap"
@@ -10,6 +10,7 @@ processor:
     - "NodeSet(List|ConfigError)$"
     - "Autoscaling*"
     - "(NodeSets|NodeSet|Cluster)Resources"
+    - NamespacedSecretSource
   ignoreFields:
     - "TypeMeta$"
 

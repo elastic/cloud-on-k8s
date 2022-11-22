@@ -18,6 +18,7 @@ import (
 const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
+	fileSettingsSecretSuffix                     = "file-settings"
 	httpServiceSuffix                            = "http"
 	internalHTTPServiceSuffix                    = "internal-http"
 	transportServiceSuffix                       = "transport"
@@ -168,4 +169,8 @@ func DefaultPodDisruptionBudget(esName string) string {
 
 func RemoteCaSecretName(esName string) string {
 	return ESNamer.Suffix(esName, remoteCaNameSuffix)
+}
+
+func FileSettingsSecretName(esName string) string {
+	return ESNamer.Suffix(esName, fileSettingsSecretSuffix)
 }

@@ -26,6 +26,9 @@ crds:
   - name: elasticmapsservers.maps.k8s.elastic.co
     displayName: Elastic Maps Server
     description: Elastic Maps Server instance
+  - name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
+    displayName: Elastic Stack Config Policy
+    description: Elastic Stack Config Policy
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck

@@ -297,6 +297,19 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - create
   - update
   - patch
+- apiGroups:
+  - stackconfigpolicy.k8s.elastic.co
+  resources:
+  - stackconfigpolicies
+  - stackconfigpolicies/status
+  - stackconfigpolicies/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
 {{- end -}}
 
 {{/*

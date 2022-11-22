@@ -265,6 +265,19 @@ func (p *PodDisruptionBudgetTemplate) IsDisabled() bool {
 	return reflect.DeepEqual(p, &PodDisruptionBudgetTemplate{})
 }
 
+// NamespacedSecretSource defines a data source based on a Kubernetes Secret in a given namespace.
+type NamespacedSecretSource struct {
+	// Namespace is the namespace of the secret.
+	Namespace string `json:"namespace"`
+	// SecretName is the name of the secret.
+	SecretName string `json:"secretName"`
+	// Entries define how to project each key-value pair in the secret to filesystem paths.
+	// If not defined, all keys will be projected to similarly named paths in the filesystem.
+	// If defined, only the specified keys will be projected to the corresponding paths.
+	// +kubebuilder:validation:Optional
+	Entries []KeyToPath `json:"entries,omitempty"`
+}
+
 // SecretSource defines a data source based on a Kubernetes Secret.
 type SecretSource struct {
 	// SecretName is the name of the secret.

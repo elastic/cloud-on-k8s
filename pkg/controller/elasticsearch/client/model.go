@@ -497,3 +497,27 @@ type ShutdownRequest struct {
 type ShutdownResponse struct {
 	Nodes []NodeShutdown `json:"nodes"`
 }
+
+// ClusterState models the internal representation of the cluster state
+type ClusterState struct {
+	Metadata Metadata `json:"metadata"`
+}
+
+type Metadata struct {
+	ReservedState ReservedState `json:"reserved_state"`
+}
+
+type ReservedState struct {
+	FileSettings FileSettings `json:"file_settings"`
+}
+
+type FileSettings struct {
+	Version int64               `json:"version"`
+	Errors  *FileSettingsErrors `json:"errors,omitempty"`
+}
+
+type FileSettingsErrors struct {
+	Version   int64    `json:"version"`
+	ErrorKind string   `json:"error_kind"`
+	Errors    []string `json:"errors"`
+}

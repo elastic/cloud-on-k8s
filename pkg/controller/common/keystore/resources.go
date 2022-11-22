@@ -35,12 +35,16 @@ type HasKeystore interface {
 }
 
 // WatchedSecretNames returns the name of all secure settings secrets to watch.
-func WatchedSecretNames(hasKeystore HasKeystore) []string {
-	names := make([]string, 0, len(hasKeystore.SecureSettings()))
+func WatchedSecretNames(hasKeystore HasKeystore) []commonv1.NamespacedSecretSource {
+	nsns := make([]commonv1.NamespacedSecretSource, 0, len(hasKeystore.SecureSettings()))
 	for _, s := range hasKeystore.SecureSettings() {
-		names = append(names, s.SecretName)
+		nsns = append(nsns, commonv1.NamespacedSecretSource{
+			Namespace:  hasKeystore.GetNamespace(),
+			SecretName: s.SecretName,
+			Entries:    s.Entries,
+		})
 	}
-	return names
+	return nsns
 }
 
 // ReconcileResources optionally returns a volume and init container to include in Pods,

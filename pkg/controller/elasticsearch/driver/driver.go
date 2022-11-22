@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -305,6 +306,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 
 	// Compute seed hosts based on current masters with a podIP
 	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
+		return results.WithError(err)
+	}
+
+	// reconcile an empty File based settings Secret if it doesn't exist
+	err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
+	if err != nil {
 		return results.WithError(err)
 	}
 

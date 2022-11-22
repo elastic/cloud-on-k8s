@@ -25,6 +25,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -121,6 +122,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}
 		entStats,
 		agentStats,
 		mapsStats,
+		scpStats,
 	} {
 		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
@@ -411,4 +413,40 @@ func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 		}
 	}
 	return "maps", stats, nil
+}
+
+// stackConfigPolicyStats models StackConfigPolicy resources usage statistics.
+type stackConfigPolicyStats struct {
+	ResourceCount            int `json:"resource_count"`
+	ConfiguredResourcesCount int `json:"configured_resources_count"`
+	Settings                 struct {
+		ClusterSettingsCount           int `json:"cluster_settings_count"`
+		SnapshotRepositoriesCount      int `json:"snapshot_repositories_count"`
+		SnapshotLifecyclePoliciesCount int `json:"snapshot_lifecycle_policies_count"`
+	} `json:"settings"`
+}
+
+func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := stackConfigPolicyStats{}
+	for _, ns := range managedNamespaces {
+		var scpList policyv1alpha1.StackConfigPolicyList
+		if err := k8sClient.List(context.Background(), &scpList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, scp := range scpList.Items {
+			stats.ResourceCount++
+			stats.ConfiguredResourcesCount += scp.Status.Resources
+			if scp.Spec.Elasticsearch.ClusterSettings != nil {
+				stats.Settings.ClusterSettingsCount += len(scp.Spec.Elasticsearch.ClusterSettings.Data)
+			}
+			if scp.Spec.Elasticsearch.SnapshotRepositories != nil {
+				stats.Settings.SnapshotRepositoriesCount += len(scp.Spec.Elasticsearch.SnapshotRepositories.Data)
+			}
+			if scp.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
+				stats.Settings.SnapshotLifecyclePoliciesCount += len(scp.Spec.Elasticsearch.SnapshotLifecyclePolicies.Data)
+			}
+		}
+	}
+	return "stackconfigpolicies", stats, nil
 }

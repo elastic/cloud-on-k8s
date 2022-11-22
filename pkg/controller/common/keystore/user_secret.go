@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -45,19 +46,30 @@ func secureSettingsVolume(
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
 	watcher := k8s.ExtractNamespacedName(hasKeystore)
-	if err := watches.WatchUserProvidedSecrets(
+
+	// user-provided Secrets referenced in the resource
+	secretSources := WatchedSecretNames(hasKeystore)
+	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
+	policySecretSources, err := filesettings.GetSecureSettingsSecretSources(ctx, r.K8sClient(), hasKeystore)
+	if err != nil {
+		return nil, "", pkgerrors.Wrap(err, "fail to get secure settings secret sources")
+	}
+	secretSources = append(secretSources, policySecretSources...)
+
+	if err := watches.WatchUserProvidedNamespacedSecrets(
 		watcher,
 		r.DynamicWatches(),
 		SecureSettingsWatchName(watcher),
-		WatchedSecretNames(hasKeystore),
+		secretSources,
 	); err != nil {
 		return nil, "", err
 	}
 
-	secrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore)
+	secrets, err := retrieveUserSecrets(ctx, r.K8sClient(), r.Recorder(), hasKeystore, secretSources)
 	if err != nil {
 		return nil, "", err
 	}
+
 	secret, err := reconcileSecureSettings(ctx, r.K8sClient(), hasKeystore, secrets, namer, labels)
 	if err != nil {
 		return nil, "", err
@@ -117,9 +129,9 @@ func reconcileSecureSettings(
 	return &secret, nil
 }
 
-func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {
-	userSecrets := make([]corev1.Secret, 0, len(hasKeystore.SecureSettings()))
-	for _, userSecretsRef := range hasKeystore.SecureSettings() {
+func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, userSecretSources []commonv1.NamespacedSecretSource) ([]corev1.Secret, error) {
+	userSecrets := make([]corev1.Secret, 0, len(userSecretSources))
+	for _, userSecretsRef := range userSecretSources {
 		// retrieve the secret referenced by the user in the same namespace
 		userSecret, exists, err := retrieveUserSecret(ctx, c, recorder, hasKeystore, userSecretsRef)
 		if err != nil {
@@ -134,16 +146,15 @@ func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.Even
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.SecretSource) (*corev1.Secret, bool, error) {
-	namespace := hasKeystore.GetNamespace()
+func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.NamespacedSecretSource) (*corev1.Secret, bool, error) {
+	secretNamespace := secretSrc.Namespace
 	secretName := secretSrc.SecretName
-
 	var userSecret corev1.Secret
-	err := c.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
+	err := c.Get(context.Background(), types.NamespacedName{Namespace: secretNamespace, Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		ulog.FromContext(ctx).Info(msg, "namespace", namespace, "secret_name", secretName)
-		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
+		ulog.FromContext(ctx).Info(msg, "namespace", secretNamespace, "secret_name", secretName)
+		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s/%s", msg, secretNamespace, secretName))
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err
