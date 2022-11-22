@@ -19,7 +19,7 @@ var Root = cobra.Command{
 	Version: "0.4.0",
 	Short:   "Manage redhat release operations",
 	Long: `Manage redhat release operations, such as pushing operator container to redhat catalog, operator hub release generation, building operator metadata,
-and potentially creating pull request to github.com/redhat-openshift-ecosystem/certified-operators repository.`,
+and potentially creating pull requests to community/certified operator repositories.`,
 	PreRunE: rootPreRunE,
 }
 
@@ -31,6 +31,13 @@ func init() {
 		"t",
 		"",
 		"tag/new version of operator (TAG)",
+	)
+
+	Root.PersistentFlags().BoolP(
+		"dry-run",
+		"Y",
+		true,
+		"Run dry run of all operations. Default: true. To un-set --dry-run=false (DRY_RUN)",
 	)
 
 	Root.AddCommand(all.Command(&Root))

@@ -3,7 +3,6 @@ module github.com/elastic/cloud-on-k8s/v2/hack/operatorhub
 go 1.19
 
 require (
-	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/docker/cli v20.10.21+incompatible
 	github.com/docker/docker v20.10.20+incompatible
@@ -27,7 +26,6 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/Microsoft/hcsshim v0.8.9 // indirect

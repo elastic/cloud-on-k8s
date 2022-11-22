@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -45,34 +46,55 @@ const (
 	packageFileSuffix = "package.yaml"
 
 	yamlSeparator = "---\n"
+
+	imagesEndpoint = "https://catalog.redhat.com/api/containers/v1/projects/certification/id/%s/images"
 )
 
 // GenerateConfig is the configuration for the generate operation
 type GenerateConfig struct {
-	NewVersion    string
-	PrevVersion   string
-	StackVersion  string
-	ConfigPath    string
-	ManifestPaths []string
-	TemplatesPath string
+	NewVersion      string
+	PrevVersion     string
+	StackVersion    string
+	ConfigPath      string
+	ManifestPaths   []string
+	TemplatesPath   string
+	RedhatAPIKey    string
+	RedhatProjectID string
 }
 
 // Generate will generate the Operator Lifecycle Manager format files
 func Generate(config GenerateConfig) error {
 	pterm.Printf("Loading configuration file (%s) ", config.ConfigPath)
-	conf, err := loadConfigFile(config)
+	configFile, err := loadConfigFile(config)
 	if err != nil {
 		pterm.Println(pterm.Red("ⅹ"))
 		return err
 	}
 	pterm.Println(pterm.Green("✓"))
 
+	imageDigest := ""
+	if configFile.HasDigestPinning() {
+		if len(config.RedhatAPIKey) == 0 {
+			return errors.New("RedHat API key is required to get image digest")
+		}
+		if len(config.RedhatProjectID) == 0 {
+			return errors.New("RedHat project ID is required to get image digest")
+		}
+		pterm.Printf("Gathering and extracting data from yaml manifests ")
+		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, configFile.NewVersion)
+		if err != nil {
+			pterm.Println(pterm.Red("ⅹ"))
+			return err
+		}
+	}
+
 	pterm.Printf("Gathering and extracting data from yaml manifests ")
-	manifestStream, close, err := getInstallManifestStream(conf, config.ManifestPaths)
+	manifestStream, close, err := getInstallManifestStream(configFile, config.ManifestPaths)
 	if err != nil {
 		pterm.Println(pterm.Red("ⅹ"))
 		return err
 	}
+	pterm.Println(pterm.Green("✓"))
 
 	defer close()
 
@@ -84,14 +106,14 @@ func Generate(config GenerateConfig) error {
 	pterm.Println(pterm.Green("✓"))
 
 	pterm.Printf("Rendering final operatorhub data ")
-	for i := range conf.Packages {
-		params, err := buildRenderParams(conf, i, extracts)
+	for i := range configFile.Packages {
+		params, err := buildRenderParams(configFile, i, extracts, imageDigest)
 		if err != nil {
 			pterm.Println(pterm.Red("ⅹ"))
 			return err
 		}
 
-		outDir := conf.Packages[i].OutputPath
+		outDir := configFile.Packages[i].OutputPath
 		if err := render(params, config.TemplatesPath, outDir); err != nil {
 			pterm.Println(pterm.Red("ⅹ"))
 			return err
@@ -100,6 +122,65 @@ func Generate(config GenerateConfig) error {
 
 	pterm.Println(pterm.Green("✓"))
 	return nil
+}
+
+type Images struct {
+	Data []struct {
+		DockerImageDigest string `json:"docker_image_digest"`
+		Id                string `json:"_id"`
+		CreationDate      string `json:"creation_date"`
+	} `json:"data"`
+}
+
+// getImageDigest connects to the RedHat catalog API to get the certified operator image digest as it is exposed
+// by the RedHat registry.
+func getImageDigest(apiKey, projectId, version string) (string, error) {
+	requestURL := fmt.Sprintf(imagesEndpoint, projectId)
+
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-API-KEY", apiKey)
+
+	q := req.URL.Query()
+	q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
+	req.URL.RawQuery = q.Encode()
+
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("request error %s: %s", requestURL, res.Status)
+	}
+
+	var images Images
+	if err := json.NewDecoder(res.Body).Decode(&images); err != nil {
+		return "", err
+	}
+	if len(images.Data) > 1 {
+		fmt.Fprintf(os.Stderr, "\nid                       creation_date                    docker_image_digest\n")
+		for _, image := range images.Data {
+			fmt.Fprintf(os.Stderr, "%s %s %s\n", image.Id, image.CreationDate, image.DockerImageDigest)
+		}
+		return "", fmt.Errorf("found %d images with tag %s in RedHat catalog while only one is expected", len(images.Data), version)
+	}
+	if len(images.Data) == 0 {
+		return "", fmt.Errorf("no image with tag %s in RedHat catalog", version)
+	}
+	imageDigest := images.Data[0].DockerImageDigest
+	if imageDigest == "" {
+		return "", fmt.Errorf("image digest for %s is empty", version)
+	}
+	return imageDigest, nil
 }
 
 // config is the configuration that matches the config.yaml
@@ -118,7 +199,20 @@ type config struct {
 		DistributionChannel string `json:"distributionChannel"`
 		OperatorRepo        string `json:"operatorRepo"`
 		UbiOnly             bool   `json:"ubiOnly"`
+		DigestPinning       bool   `json:"digestPinning"`
 	} `json:"packages"`
+}
+
+func (c *config) HasDigestPinning() bool {
+	if c == nil {
+		return false
+	}
+	for _, pkg := range c.Packages {
+		if pkg.DigestPinning {
+			return true
+		}
+	}
+	return false
 }
 
 func loadConfigFile(c GenerateConfig) (*config, error) {
@@ -238,6 +332,7 @@ type WebhookDefinition struct {
 	ContainerPort           int                              `json:"containerPort"`
 	DeploymentName          string                           `json:"deploymentName"`
 	FailurePolicy           *admissionv1.FailurePolicyType   `json:"failurePolicy"`
+	MatchPolicy             admissionv1.MatchPolicyType      `json:"matchPolicy"`
 	GenerateName            string                           `json:"generateName"`
 	Rules                   []admissionv1.RuleWithOperations `json:"rules"`
 	SideEffects             *admissionv1.SideEffectClass     `json:"sideEffects"`
@@ -282,6 +377,8 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 			return nil, fmt.Errorf("failed to read CRD YAML: %w", err)
 		}
 
+		yamlBytes = normalizeTrailingNewlines(yamlBytes)
+
 		runtimeObj, _, err := decoder.Decode(yamlBytes, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode CRD YAML: %w", err)
@@ -314,6 +411,12 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 	}
 }
 
+// normalizeTrailingNewlines removed duplicate newlines at the end of the documents to satisfy YAML linter rules.
+func normalizeTrailingNewlines(yamlBytes []byte) []byte {
+	trimmed := bytes.TrimRight(yamlBytes, "\n")
+	return append(trimmed, "\n"...)
+}
+
 // RenderParams are the parameters sent to the render operation
 type RenderParams struct {
 	NewVersion       string
@@ -326,10 +429,11 @@ type RenderParams struct {
 	CRDList          []*CRD
 	OperatorWebhooks string
 	PackageName      string
+	Tag              string
 	UbiOnly          bool
 }
 
-func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (*RenderParams, error) {
+func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
 	for _, c := range conf.CRDs {
 		if crd, ok := extracts.crds[c.Name]; ok {
 			crd.DisplayName = c.DisplayName
@@ -385,6 +489,11 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 
 	additionalArgs = append(additionalArgs, "--distribution-channel="+conf.Packages[packageIndex].DistributionChannel)
 
+	tag := ":" + conf.NewVersion
+	if conf.Packages[packageIndex].DigestPinning {
+		tag = "@" + imageDigest
+	}
+
 	return &RenderParams{
 		NewVersion:       conf.NewVersion,
 		ShortVersion:     strings.Join(versionParts[:2], "."),
@@ -396,6 +505,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts) (
 		OperatorWebhooks: string(webhooks),
 		OperatorRBAC:     string(rbac),
 		PackageName:      conf.Packages[packageIndex].PackageName,
+		Tag:              tag,
 		UbiOnly:          conf.Packages[packageIndex].UbiOnly,
 	}, nil
 }
@@ -412,6 +522,7 @@ func validatingWebhookConfigurationToWebhookDefinition(webhookConfiguration admi
 			ContainerPort:           443,
 			DeploymentName:          "elastic-operator",
 			FailurePolicy:           webhook.FailurePolicy,
+			MatchPolicy:             admissionv1.Exact,
 			GenerateName:            webhook.Name,
 			Rules:                   webhook.Rules,
 			SideEffects:             webhook.SideEffects,
@@ -431,7 +542,10 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 			return fmt.Errorf("failed to stat %s: %w", versionDir, err)
 		}
 	} else {
-		return fmt.Errorf("directory already exists: %s", versionDir)
+		err := os.RemoveAll(versionDir)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing directory: %w", err)
+		}
 	}
 
 	if err := os.MkdirAll(versionDir, 0o766); err != nil {

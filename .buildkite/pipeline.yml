@@ -96,3 +96,22 @@ steps:
         if: build.branch == "main" && build.source == "schedule"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+
+  - group: redhat-release
+
+    steps:
+
+      - label: "get required redhat credentials"
+        key: "get-redhat-credentials"
+        if: build.message == "run redhat release dev"
+        commands:
+          - .buildkite/scripts/common/get-redhat-credentials.sh
+
+      - label: "run redhat release process in dry-run mode"
+        if: build.message == "run redhat release dev"
+        depends_on:
+          - "get-redhat-credentials"
+        commands:
+           - cd hack/operatorhub
+           - make build
+           - ./redhat all 

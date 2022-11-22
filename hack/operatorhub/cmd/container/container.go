@@ -209,12 +209,13 @@ func defaultPreRunE(cmd *cobra.Command, args []string) error {
 // DoPublish will publish an existing image within the redhat catalog.
 func DoPublish(_ *cobra.Command, _ []string) error {
 	return pkg_container.PublishImage(pkg_container.PublishConfig{
-		ProjectID:           viper.GetString("project-id"),
-		Tag:                 viper.GetString("tag"),
-		RegistryPassword:    viper.GetString("registry-password"),
-		RedhatCatalogAPIKey: viper.GetString("api-key"),
-		RepositoryID:        viper.GetString("repository-id"),
+		DryRun:              viper.GetBool("dry-run"),
 		Force:               viper.GetBool("force"),
+		ProjectID:           viper.GetString("project-id"),
+		RedhatCatalogAPIKey: viper.GetString("api-key"),
+		RegistryPassword:    viper.GetString("registry-password"),
+		RepositoryID:        viper.GetString("repository-id"),
+		Tag:                 viper.GetString("tag"),
 		ImageScanTimeout:    viper.GetDuration("scan-timeout"),
 	})
 }
@@ -247,11 +248,12 @@ func DoPreflight(_ *cobra.Command, _ []string) error {
 // DoPush will push an image to the redhat registry for scanning.
 func DoPush(_ *cobra.Command, _ []string) error {
 	return pkg_container.PushImage(pkg_container.PushConfig{
-		ProjectID:           viper.GetString("project-id"),
-		Tag:                 viper.GetString("tag"),
-		RegistryPassword:    viper.GetString("registry-password"),
-		RedhatCatalogAPIKey: viper.GetString("api-key"),
-		RepositoryID:        viper.GetString("repository-id"),
+		DryRun:              viper.GetBool("dry-run"),
 		Force:               viper.GetBool("force"),
+		ProjectID:           viper.GetString("project-id"),
+		RedhatCatalogAPIKey: viper.GetString("api-key"),
+		RegistryPassword:    viper.GetString("registry-password"),
+		RepositoryID:        viper.GetString("repository-id"),
+		Tag:                 viper.GetString("tag"),
 	})
 }

@@ -35,24 +35,26 @@ var (
 )
 
 type PushConfig struct {
+	DryRun              bool
+	Force               bool
 	HTTPClient          *http.Client
 	ProjectID           string
-	Tag                 string
-	RegistryPassword    string
 	RedhatCatalogAPIKey string
+	RegistryPassword    string
 	RepositoryID        string
-	Force               bool
+	Tag                 string
 }
 
 // PublishConfig is the configuration for the publish command
 type PublishConfig struct {
+	DryRun              bool
+	Force               bool
 	HTTPClient          *http.Client
 	ProjectID           string
-	Tag                 string
-	RegistryPassword    string
 	RedhatCatalogAPIKey string
+	RegistryPassword    string
 	RepositoryID        string
-	Force               bool
+	Tag                 string
 	ImageScanTimeout    time.Duration
 }
 
@@ -206,6 +208,11 @@ func pushImageToProject(c PushConfig) error {
 	}
 	pterm.Println(pterm.Green("✓"))
 
+	if c.DryRun {
+		pterm.Printf("not pushing image as dry-run is set.")
+		return nil
+	}
+
 	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.RepositoryID, c.Tag)
 	pterm.Printf("pushing image (%s) to redhat connect docker registry: ", formattedEckOperatorRedhatReference)
 	err = crane.Copy(fmt.Sprintf(eckOperatorFormat, c.Tag), formattedEckOperatorRedhatReference, crane.WithPlatform(&v1.Platform{
@@ -220,7 +227,7 @@ func pushImageToProject(c PushConfig) error {
 	return nil
 }
 
-func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Duration, apiKey, projectID, tag string) error {
+func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Duration, apiKey, projectID, tag string, dryRun bool) error {
 	ticker := time.NewTicker(5 * time.Minute)
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
 	defer cancel()
@@ -234,6 +241,7 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 		return doPublish(image, httpClient, apiKey, projectID, tag)
 	}
 
+	// #### This needs to change as image isn't "scanned" any longer, it's published.  #######
 	for {
 		select {
 		case <-ticker.C:
@@ -243,6 +251,10 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 			}
 			if !done {
 				continue
+			}
+			if dryRun {
+				pterm.Printf("not publishing image as dry-run is set")
+				return nil
 			}
 			return doPublish(image, httpClient, apiKey, projectID, tag)
 

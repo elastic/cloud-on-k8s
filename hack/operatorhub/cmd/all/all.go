@@ -56,6 +56,10 @@ func allRunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	err = container.DoPreflight(cmd, args)
+	if err != nil {
+		return err
+	}
 	err = container.DoPublish(cmd, args)
 	if err != nil {
 		return err
