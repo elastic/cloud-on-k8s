@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,119 +26,106 @@ import (
 const (
 	secureSettingsSecretsAnnotationName = "policy.k8s.elastic.co/secure-settings-secrets" //nolint:gosec
 	settingsHashAnnotationName          = "policy.k8s.elastic.co/settings-hash"
-	settingsSecretKey                   = "settings.json"
+	SettingsSecretKey                   = "settings.json"
 )
 
+// NewSettingsSecretWithVersion returns a new SettingsSecret for a given Elasticsearch and optionally a current settings
+// Secret and a StackConfigPolicy.
+// The Settings version is updated using the current timestamp only when the Settings have changed.
+// If the new settings from the policy changed compared to the actual from the secret, the settings version is
+// updated
+func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy) (corev1.Secret, int64, error) {
+	newVersion := time.Now().UnixNano()
+	return NewSettingsSecret(newVersion, es, currentSecret, policy)
+}
+
 // NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
-func NewSettingsSecret(version int64, current *SettingsSecret, es types.NamespacedName, policy *policyv1alpha1.StackConfigPolicy) (SettingsSecret, error) {
+func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, policy *policyv1alpha1.StackConfigPolicy) (corev1.Secret, int64, error) {
 	settings := NewEmptySettings(version)
 
 	// update the settings according to the config policy
 	if policy != nil {
 		err := settings.updateState(es, *policy)
 		if err != nil {
-			return SettingsSecret{}, err
+			return corev1.Secret{}, 0, err
 		}
 	}
 
-	// do not increment version if hash hasn't changed
-	if current != nil && !current.hasChanged(settings) {
-		version = current.Version
-		settings.Metadata.Version = current.Settings.Metadata.Version
+	// do not update version if hash hasn't changed
+	if currentSecret != nil && !hasChanged(*currentSecret, settings) {
+		currentVersion, err := extractVersion(*currentSecret)
+		if err != nil {
+			return corev1.Secret{}, 0, err
+		}
+
+		version = currentVersion
+		settings.Metadata.Version = strconv.FormatInt(currentVersion, 10)
 	}
 
 	// prepare the SettingsSecret
 	settingsBytes, err := json.Marshal(settings)
 	if err != nil {
-		return SettingsSecret{}, err
+		return corev1.Secret{}, 0, err
 	}
-	settingsSecret := SettingsSecret{
-		Secret: corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      esv1.FileSettingsSecretName(es.Name),
-				Labels:    eslabel.NewLabels(es),
-				Annotations: map[string]string{
-					settingsHashAnnotationName: settings.hash(),
-				},
-			},
-			Data: map[string][]byte{
-				settingsSecretKey: settingsBytes,
+	settingsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      esv1.FileSettingsSecretName(es.Name),
+			Labels:    eslabel.NewLabels(es),
+			Annotations: map[string]string{
+				settingsHashAnnotationName: settings.hash(),
 			},
 		},
-		Settings: settings,
-		Version:  version,
+		Data: map[string][]byte{
+			SettingsSecretKey: settingsBytes,
+		},
 	}
 
 	if policy != nil {
 		// set this policy as soft owner of this Secret
-		settingsSecret.setSoftOwner(*policy)
+		setSoftOwner(settingsSecret, *policy)
 
 		// add the Secure Settings Secret sources to the Settings Secret
-		if err := settingsSecret.setSecureSettings(*policy); err != nil {
-			return SettingsSecret{}, err
+		if err := setSecureSettings(settingsSecret, *policy); err != nil {
+			return corev1.Secret{}, 0, err
 		}
 	}
 
-	return settingsSecret, nil
+	return *settingsSecret, version, nil
 }
 
-// NewSettingsSecretFromSecret returns a new Settings Secret from a given Secret.
-func NewSettingsSecretFromSecret(secret corev1.Secret) (SettingsSecret, error) {
+// extractVersion extracts the Settings version from the given settings Secret.
+func extractVersion(settingsSecret corev1.Secret) (int64, error) {
 	var settings Settings
-	err := json.Unmarshal(secret.Data[settingsSecretKey], &settings)
+	err := json.Unmarshal(settingsSecret.Data[SettingsSecretKey], &settings)
 	if err != nil {
-		return SettingsSecret{}, err
+		return 0, err
 	}
 	version, err := strconv.ParseInt(settings.Metadata.Version, 10, 64)
 	if err != nil {
-		return SettingsSecret{}, err
+		return 0, err
 	}
 
-	return SettingsSecret{
-		Secret:   secret,
-		Settings: settings,
-		Version:  version,
-	}, nil
+	return version, nil
 }
 
-// SettingsSecret wraps a Secret used to store File based Settings and the corresponding Settings and their version stored in it.
-type SettingsSecret struct {
-	corev1.Secret
-	Settings Settings
-	Version  int64
-}
-
-// hasChanged compares the hash of the given settings with the hash stored in the annotation of the Settings Secret.
-func (s SettingsSecret) hasChanged(newSettings Settings) bool {
-	return s.Annotations[settingsHashAnnotationName] != newSettings.hash()
-}
-
-// CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
-// belongs to no one or because it already belongs to the given policy.
-func (s SettingsSecret) CanBeOwnedBy(policy policyv1alpha1.StackConfigPolicy) (reconciler.SoftOwnerRef, bool) {
-	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(s.Labels)
-	// either there is no soft owner
-	if !referenced {
-		return reconciler.SoftOwnerRef{}, true
-	}
-	// or the owner is already the given policy
-	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
-	return currentOwner, canBeOwned
+// hasChanged compares the hash of the given new Settings Secret with the hash stored in the annotation of the given Settings Secret.
+func hasChanged(settingsSecret corev1.Secret, newSettings Settings) bool {
+	return settingsSecret.Annotations[settingsHashAnnotationName] != newSettings.hash()
 }
 
 // setSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
-func (s *SettingsSecret) setSoftOwner(policy policyv1alpha1.StackConfigPolicy) {
-	if s.Labels == nil {
-		s.Labels = map[string]string{}
+func setSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
+	if settingsSecret.Labels == nil {
+		settingsSecret.Labels = map[string]string{}
 	}
-	s.Labels[reconciler.SoftOwnerNamespaceLabel] = policy.GetNamespace()
-	s.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
-	s.Labels[reconciler.SoftOwnerKindLabel] = policy.GetObjectKind().GroupVersionKind().Kind
+	settingsSecret.Labels[reconciler.SoftOwnerNamespaceLabel] = policy.GetNamespace()
+	settingsSecret.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
+	settingsSecret.Labels[reconciler.SoftOwnerKindLabel] = policy.GetObjectKind().GroupVersionKind().Kind
 }
 
 // setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
-func (s *SettingsSecret) setSecureSettings(policy policyv1alpha1.StackConfigPolicy) error {
+func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
 	if len(policy.Spec.SecureSettings) == 0 {
 		return nil
 	}
@@ -151,13 +139,26 @@ func (s *SettingsSecret) setSecureSettings(policy policyv1alpha1.StackConfigPoli
 	if err != nil {
 		return err
 	}
-	s.Annotations[secureSettingsSecretsAnnotationName] = string(bytes)
+	settingsSecret.Annotations[secureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
 }
 
-// getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the Secret.
-func (s *SettingsSecret) getSecureSettings() ([]commonv1.NamespacedSecretSource, error) {
-	rawString, ok := s.Annotations[secureSettingsSecretsAnnotationName]
+// CanBeOwnedBy return true if the Settings Secret can be owned by the given StackConfigPolicy, either because the Secret
+// belongs to no one or because it already belongs to the given policy.
+func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfigPolicy) (reconciler.SoftOwnerRef, bool) {
+	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(settingsSecret.Labels)
+	// either there is no soft owner
+	if !referenced {
+		return reconciler.SoftOwnerRef{}, true
+	}
+	// or the owner is already the given policy
+	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
+	return currentOwner, canBeOwned
+}
+
+// getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the given file settings Secret.
+func getSecureSettings(settingsSecret corev1.Secret) ([]commonv1.NamespacedSecretSource, error) {
+	rawString, ok := settingsSecret.Annotations[secureSettingsSecretsAnnotationName]
 	if !ok {
 		return []commonv1.NamespacedSecretSource{}, nil
 	}
@@ -179,11 +180,7 @@ func GetSecureSettingsSecretSources(ctx context.Context, c k8s.Client, resource 
 	if err != nil {
 		return nil, err
 	}
-	settingsSecret, err := NewSettingsSecretFromSecret(secret)
-	if err != nil {
-		return nil, err
-	}
-	secretSources, err := settingsSecret.getSecureSettings()
+	secretSources, err := getSecureSettings(secret)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ package stackconfigpolicy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -53,14 +54,15 @@ func (c fakeEsClient) GetClusterState(ctx context.Context) (esclient.ClusterStat
 	return clusterState, nil
 }
 
-func (r ReconcileStackConfigPolicy) getSecret(t *testing.T, nsn types.NamespacedName) filesettings.SettingsSecret {
+func (r ReconcileStackConfigPolicy) getSettings(t *testing.T, nsn types.NamespacedName) filesettings.Settings {
 	t.Helper()
 	var secret corev1.Secret
 	err := r.Client.Get(context.Background(), nsn, &secret)
 	assert.NoError(t, err)
-	settingsSecret, err := filesettings.NewSettingsSecretFromSecret(secret)
+	var settings filesettings.Settings
+	err = json.Unmarshal(secret.Data[filesettings.SettingsSecretKey], &settings)
 	assert.NoError(t, err)
-	return settingsSecret
+	return settings
 }
 
 func (r ReconcileStackConfigPolicy) getPolicy(t *testing.T, nsn types.NamespacedName) policyv1alpha1.StackConfigPolicy {
@@ -202,13 +204,13 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
 				// after the reconciliation, settings are empty
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.NotEmpty(t, secret.Settings.State.ClusterSettings.Data)
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
+				assert.NotEmpty(t, settings.State.ClusterSettings.Data)
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(&secretFixture))
-				assert.Empty(t, secret.Settings.State.ClusterSettings.Data)
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
+				assert.Empty(t, settings.State.ClusterSettings.Data)
 			},
 			wantErr: false,
 		},
@@ -221,13 +223,13 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
 				// before the reconciliation, settings are not empty
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.NotEmpty(t, secret.Settings.State.ClusterSettings)
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
+				assert.NotEmpty(t, settings.State.ClusterSettings)
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
 				// after the reconciliation, settings are empty
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(orphanSecretFixture))
-				assert.Empty(t, secret.Settings.State.ClusterSettings.Data)
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
+				assert.Empty(t, settings.State.ClusterSettings.Data)
 			},
 			wantErr: false,
 		},
@@ -313,12 +315,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(40, nil), nil),
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "40mb", secret.Settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(otherSecretFixture))
+				assert.Equal(t, "40mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
-				secret := r.getSecret(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "42mb", secret.Settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(otherSecretFixture))
+				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{

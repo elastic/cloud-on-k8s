@@ -6,6 +6,7 @@ package filesettings
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -182,12 +183,13 @@ func Test_ReconcileEmptyFileSettingsSecret(t *testing.T) {
 	var secret corev1.Secret
 	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret)
 	assert.NoError(t, err)
-	ss, err := NewSettingsSecretFromSecret(secret)
+	var settings Settings
+	err = json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
 	assert.NoError(t, err)
 	// check that the Secret is empty
-	assert.Empty(t, ss.Settings.State.ClusterSettings.Data)
-	assert.Empty(t, ss.Settings.State.SnapshotRepositories.Data)
-	assert.Empty(t, ss.Settings.State.SLM.Data)
+	assert.Empty(t, settings.State.ClusterSettings.Data)
+	assert.Empty(t, settings.State.SnapshotRepositories.Data)
+	assert.Empty(t, settings.State.SLM.Data)
 
 	// reconcile again with create only: secret is not reconciled
 	err = ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, true)

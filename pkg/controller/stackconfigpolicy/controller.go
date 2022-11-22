@@ -260,8 +260,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// the file Settings Secret must exist, if not it will be created empty by the ES controller
-		var secret corev1.Secret
-		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &secret)
+		var actualSettingsSecret corev1.Secret
+		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
 		if err != nil && apierrors.IsNotFound(err) {
 			// requeue if the Secret has not been created yet
 			return results.WithResult(defaultRequeue), status
@@ -270,13 +270,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		current, err := filesettings.NewSettingsSecretFromSecret(secret)
-		if err != nil {
-			return results.WithError(err), status
-		}
-
 		// check that there is no other policy that already owns the Settings Secret
-		currentOwner, ok := current.CanBeOwnedBy(policy)
+		currentOwner, ok := filesettings.CanBeOwnedBy(actualSettingsSecret, policy)
 		if !ok {
 			err = fmt.Errorf("conflict: resource Elasticsearch %s/%s already configured by StackConfigpolicy %s/%s", es.Namespace, es.Name, currentOwner.Namespace, currentOwner.Name)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
@@ -289,13 +284,12 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// create the expected Settings Secret
-		newVersion := time.Now().UnixNano()
-		expected, err := filesettings.NewSettingsSecret(newVersion, &current, esNsn, &policy)
+		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &policy)
 		if err != nil {
 			return results.WithError(err), status
 		}
 
-		if err := filesettings.ReconcileSecret(ctx, r.Client, expected.Secret, es); err != nil {
+		if err := filesettings.ReconcileSecret(ctx, r.Client, expectedSecret, es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -311,7 +305,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expected.Version))
+		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion))
 	}
 
 	// reset Settings secrets for resources no longer selected by this policy

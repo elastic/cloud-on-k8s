@@ -7,7 +7,6 @@ package filesettings
 import (
 	"context"
 	"reflect"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,12 +37,12 @@ func ReconcileEmptyFileSettingsSecret(
 	}
 
 	// no secret, reconcile a new empty file settings
-	expected, err := NewSettingsSecret(time.Now().UnixNano(), nil, k8s.ExtractNamespacedName(&es), nil)
+	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil)
 	if err != nil {
 		return err
 	}
 
-	return ReconcileSecret(ctx, c, expected.Secret, es)
+	return ReconcileSecret(ctx, c, expectedSecret, es)
 }
 
 // ReconcileSecret reconciles the given file settings Secret for the given Elasticsearch.

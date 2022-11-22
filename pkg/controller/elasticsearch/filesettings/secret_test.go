@@ -5,11 +5,12 @@
 package filesettings
 
 import (
+	"encoding/json"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -17,7 +18,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 )
 
-func Test_newSettingsSecret(t *testing.T) {
+func Test_NewSettingsSecret(t *testing.T) {
 	es := types.NamespacedName{
 		Namespace: "esNs",
 		Name:      "esName",
@@ -35,23 +36,22 @@ func Test_newSettingsSecret(t *testing.T) {
 	}
 
 	// no policy
-
-	version := int64(1)
-	ss, err := NewSettingsSecret(version, nil, es, nil)
+	expectedVersion := int64(1)
+	secret, reconciledVersion, err := NewSettingsSecret(expectedVersion, es, nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "esNs", ss.Namespace)
-	assert.Equal(t, "esName-es-file-settings", ss.Name)
-	assert.Equal(t, 0, len(ss.Settings.State.ClusterSettings.Data))
-	assert.Equal(t, version, ss.Version)
+	assert.Equal(t, "esNs", secret.Namespace)
+	assert.Equal(t, "esName-es-file-settings", secret.Name)
+	assert.Equal(t, 0, len(parseSettings(t, secret).State.ClusterSettings.Data))
+	assert.Equal(t, expectedVersion, reconciledVersion)
 
 	// policy
-	version2 := int64(2)
-	ss, err = NewSettingsSecret(version2, nil, es, &policy)
+	expectedVersion = int64(2)
+	secret, reconciledVersion, err = NewSettingsSecret(expectedVersion, es, &secret, &policy)
 	assert.NoError(t, err)
-	assert.Equal(t, "esNs", ss.Namespace)
-	assert.Equal(t, "esName-es-file-settings", ss.Name)
-	assert.Equal(t, 1, len(ss.Settings.State.ClusterSettings.Data))
-	assert.Equal(t, version2, ss.Version)
+	assert.Equal(t, "esNs", secret.Namespace)
+	assert.Equal(t, "esName-es-file-settings", secret.Name)
+	assert.Equal(t, 1, len(parseSettings(t, secret).State.ClusterSettings.Data))
+	assert.Equal(t, expectedVersion, reconciledVersion)
 }
 
 func Test_SettingsSecret_hasChanged(t *testing.T) {
@@ -74,21 +74,21 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 			},
 		}}
 
-	version := int64(1)
-	expectedEmptySettings := NewEmptySettings(version)
+	expectedVersion := int64(1)
+	expectedEmptySettings := NewEmptySettings(expectedVersion)
 
 	// no policy -> emptySettings
-	ss, err := NewSettingsSecret(version, nil, es, nil)
+	secret, reconciledVersion, err := NewSettingsSecret(expectedVersion, es, nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, false, ss.hasChanged(expectedEmptySettings))
-	assert.Equal(t, version, ss.Version)
+	assert.Equal(t, false, hasChanged(secret, expectedEmptySettings))
+	assert.Equal(t, expectedVersion, reconciledVersion)
 
 	// policy without settings -> emptySettings
-	sameSettings := NewEmptySettings(version)
+	sameSettings := NewEmptySettings(expectedVersion)
 	err = sameSettings.updateState(es, policy)
 	assert.NoError(t, err)
-	assert.Equal(t, false, ss.hasChanged(sameSettings))
-	assert.Equal(t, strconv.FormatInt(version, 10), sameSettings.Metadata.Version)
+	assert.Equal(t, false, hasChanged(secret, sameSettings))
+	assert.Equal(t, strconv.FormatInt(expectedVersion, 10), sameSettings.Metadata.Version)
 
 	// new policy -> settings changed
 	newVersion := int64(2)
@@ -96,7 +96,7 @@ func Test_SettingsSecret_hasChanged(t *testing.T) {
 
 	err = newSettings.updateState(es, otherPolicy)
 	assert.NoError(t, err)
-	assert.Equal(t, true, ss.hasChanged(newSettings))
+	assert.Equal(t, true, hasChanged(secret, newSettings))
 	assert.Equal(t, strconv.FormatInt(newVersion, 10), newSettings.Metadata.Version)
 }
 
@@ -125,25 +125,25 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	}
 
 	// empty settings can be owned by any policy
-	ss, err := NewSettingsSecret(time.Now().UnixNano(), nil, es, nil)
+	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil)
 	assert.NoError(t, err)
-	_, canBeOwned := ss.CanBeOwnedBy(policy)
+	_, canBeOwned := CanBeOwnedBy(secret, policy)
 	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = ss.CanBeOwnedBy(otherPolicy)
+	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
 	assert.Equal(t, true, canBeOwned)
 
 	// set a policy soft owner
-	ss.setSoftOwner(policy)
-	_, canBeOwned = ss.CanBeOwnedBy(policy)
+	setSoftOwner(&secret, policy)
+	_, canBeOwned = CanBeOwnedBy(secret, policy)
 	assert.Equal(t, true, canBeOwned)
-	_, canBeOwned = ss.CanBeOwnedBy(otherPolicy)
+	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
 	assert.Equal(t, false, canBeOwned)
 
 	// update the policy soft owner
-	ss.setSoftOwner(otherPolicy)
-	_, canBeOwned = ss.CanBeOwnedBy(policy)
+	setSoftOwner(&secret, otherPolicy)
+	_, canBeOwned = CanBeOwnedBy(secret, policy)
 	assert.Equal(t, false, canBeOwned)
-	_, canBeOwned = ss.CanBeOwnedBy(otherPolicy)
+	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
 	assert.Equal(t, true, canBeOwned)
 }
 
@@ -169,22 +169,30 @@ func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
 		}}
 
-	ss, err := NewSettingsSecret(int64(42), nil, es, nil)
+	secret, _, err := NewSettingsSecretWithVersion(es, nil, nil)
 	assert.NoError(t, err)
 
-	secureSettings, err := ss.getSecureSettings()
+	secureSettings, err := getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.setSecureSettings(policy)
+	err = setSecureSettings(&secret, policy)
 	assert.NoError(t, err)
-	secureSettings, err = ss.getSecureSettings()
+	secureSettings, err = getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = ss.setSecureSettings(otherPolicy)
+	err = setSecureSettings(&secret, otherPolicy)
 	assert.NoError(t, err)
-	secureSettings, err = ss.getSecureSettings()
+	secureSettings, err = getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{{Namespace: otherPolicy.Namespace, SecretName: "secure-settings-secret"}}, secureSettings)
+}
+
+func parseSettings(t *testing.T, secret corev1.Secret) Settings {
+	t.Helper()
+	var settings Settings
+	err := json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
+	assert.NoError(t, err)
+	return settings
 }
