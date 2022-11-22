@@ -14,7 +14,7 @@ Elasticsearch is link:https://www.elastic.co/guide/en/elasticsearch/reference/cu
 .  Choose a different path by setting `-XX:HeapDumpPath=` with the  `ES_JAVA_OPTS` variable to a path where a volume with sufficient storage space is mounted
 .  <<{p}-volume-claim-templates,Resize the data volume>> to a sufficiently large size if your volume provisioner supports volume expansion
 
-== Taking add-hoc heap dumps
+== Capturing JVM heap dumps
 To take a heap dump before the JVM process runs out of memory you can execute the heap dump command directly in the Elasticsearch container:
 
 [source,sh,subs="attributes,+macros"]
