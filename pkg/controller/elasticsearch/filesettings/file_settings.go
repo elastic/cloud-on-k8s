@@ -13,9 +13,13 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
-const defaultCompatibilityVersion = "8.5.0"
+var (
+	FileBasedSettingsMinPreVersion = version.MinFor(8, 6, 0)
+	FileBasedSettingsMinVersion    = version.WithoutPre(FileBasedSettingsMinPreVersion)
+)
 
 // Settings represents the "File-based Settings" to write to the JSON file watched by Elasticsearch.
 type Settings struct {
@@ -56,7 +60,7 @@ func (s *Settings) hash() string {
 // NewEmptySettings returns empty new Settings.
 func NewEmptySettings(version int64) Settings {
 	return Settings{
-		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: defaultCompatibilityVersion},
+		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: FileBasedSettingsMinVersion.String()},
 		State:    newSettingsState(),
 	}
 }
