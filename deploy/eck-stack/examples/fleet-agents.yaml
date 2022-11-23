@@ -8,7 +8,7 @@ eck-elasticsearch:
 
   # Version of Elasticsearch.
   #
-  version: 8.2.3
+  version: 8.5.0
 
   nodeSets:
   - name: default
@@ -30,7 +30,7 @@ eck-kibana:
   
   # Version of Kibana.
   #
-  version: 8.2.3
+  version: 8.5.0
   
   spec:
     # Count of Kibana instances to create.
@@ -91,7 +91,7 @@ eck-agent:
 
   # Version of Elastic Agent.
   #
-  version: 8.2.3
+  version: 8.5.0
   
   spec:
     # Reference to ECK-managed Kibana instance.

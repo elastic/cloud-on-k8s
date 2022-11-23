@@ -29,3 +29,8 @@ eck-agent:
 #
 eck-fleet-server:
   enabled: false
+
+# If enabled, will use the eck-beats chart and deploy a Beats resource.
+#
+eck-beats:
+  enabled: false

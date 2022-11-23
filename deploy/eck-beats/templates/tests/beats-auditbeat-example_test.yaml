@@ -1,0 +1,59 @@
+suite: test auditbeat
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render audibeat configuration properly.
+    values:
+      - ../../examples/auditbeat_hosts.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: eck-elasticsearch
+      - equal:
+          path: spec.kibanaRef.name
+          value: eck-kibana
+      - equal:
+          path: spec.config.[auditbeat.modules][0].module
+          value: file_integrity
+      - equal:
+          path: spec.config.[auditbeat.modules][0].paths
+          value:
+          - /hostfs/bin
+          - /hostfs/usr/bin
+          - /hostfs/sbin
+          - /hostfs/usr/sbin
+          - /hostfs/etc
+      - equal:
+          path: spec.config.[auditbeat.modules][0].scan_at_start
+          value: true
+      - equal:
+          path: spec.config.[auditbeat.modules][0].recursive
+          value: true
+      - equal:
+          path: spec.config.[auditbeat.modules][1].module
+          value: auditd
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostPID
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.securityContext.runAsUser
+          value: 0
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].name
+          value: auditbeat
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].securityContext.capabilities.add
+          value:
+            - 'AUDIT_READ'
+            - 'AUDIT_WRITE'
+            - 'AUDIT_CONTROL'

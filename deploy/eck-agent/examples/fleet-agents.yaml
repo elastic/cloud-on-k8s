@@ -1,12 +1,12 @@
 # The following example should only be used in conjunction with the 'eck-fleet-server' Helm Chart,
 # and shows how the Agents can be deployed as a daemonset, and controlled by Fleet Server.
 #
-version: 8.2.3
+version: 8.5.0
 
 spec:
   # This must match the name of the fleet server installed from eck-fleet-server chart.
   fleetServerRef:
-    name: fleet-server
+    name: eck-fleet-server
   kibanaRef:
     name: eck-kibana
   mode: fleet
