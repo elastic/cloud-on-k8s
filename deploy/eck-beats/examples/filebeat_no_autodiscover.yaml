@@ -1,0 +1,46 @@
+name: filebeat
+version: 8.5.0
+spec:
+  type: filebeat
+  elasticsearchRef:
+    name: eck-elasticsearch
+  kibanaRef:
+    name: eck-kibana
+  config:
+    filebeat.inputs:
+    - type: container
+      paths:
+      - /var/log/containers/*.log
+    processors:
+    - add_host_metadata: {}
+    - add_cloud_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        containers:
+        - name: filebeat
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            #privileged: true
+          volumeMounts:
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+        volumes:
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers

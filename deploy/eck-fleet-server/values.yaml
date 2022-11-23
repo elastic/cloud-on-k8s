@@ -18,7 +18,7 @@
 
 # Version of Elastic Fleet Server.
 #
-version: 8.2.3
+version: 8.5.0
 
 # Labels that will be applied to Elastic Fleet Server.
 #
@@ -35,7 +35,7 @@ spec:
   # Reference to ECK-managed Kibana resource.
   #
   kibanaRef:
-    name: quickstart
+    name: eck-kibana
     # Optional namespace reference to Kibana resource.
     # If not specified, then the namespace of the Fleet Server resource
     # will be assumed.
@@ -46,7 +46,7 @@ spec:
   # This is required for fleet server.
   #
   elasticsearchRefs:
-  - name: quickstart
+  - name: eck-elasticsearch
     # Optional namespace reference to Elasticsearch resource.
     # If not specified, then the namespace of the Fleet Server resource
     # will be assumed.

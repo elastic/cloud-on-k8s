@@ -1,0 +1,40 @@
+suite: test filebeat
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render filebeat configuration properly.
+    values:
+      - ../../examples/filebeat_no_autodiscover.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: eck-elasticsearch
+      - equal:
+          path: spec.kibanaRef.name
+          value: eck-kibana
+      - equal:
+          path: spec.config.[filebeat.inputs][0].type
+          value: container
+      - equal:
+          path: spec.config.[filebeat.inputs][0].paths
+          value:
+          - /var/log/containers/*.log
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].name
+          value: filebeat
+      - equal:
+          path: spec.daemonSet.podTemplate.spec.containers[0].securityContext.runAsUser
+          value: 0
