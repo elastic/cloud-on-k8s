@@ -37,7 +37,7 @@ func Test_updateState(t *testing.T) {
 		{
 			name: "empty settings",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{}},
-			want: newSettingsState(),
+			want: newEmptySettingsState(),
 		},
 		{
 			name: "cluster settings: no update",

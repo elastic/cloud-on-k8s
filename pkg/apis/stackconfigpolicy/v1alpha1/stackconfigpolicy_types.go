@@ -69,28 +69,29 @@ type ElasticsearchConfigPolicySpec struct {
 	SnapshotLifecyclePolicies *commonv1.Config `json:"snapshotLifecyclePolicies,omitempty"`
 	// SecurityRoleMappings holds the Role Mappings settings (/_security/role_mapping)
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// SecurityRoleMappings *commonv1.Config `json:"securityRoleMapping,omitempty"`
+	SecurityRoleMappings *commonv1.Config `json:"securityRoleMappings,omitempty"`
 	// AutoscalingPolicies holds the Autoscaling Policies settings (/_autoscaling/policy)
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// AutoscalingPolicies *commonv1.Config `json:"autoscalingPolicies,omitempty"`
+	AutoscalingPolicies *commonv1.Config `json:"autoscalingPolicies,omitempty"`
 	// IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// IndexLifecyclePolicies *commonv1.Config `json:"indexLifecyclePolicies,omitempty"`
+	IndexLifecyclePolicies *commonv1.Config `json:"indexLifecyclePolicies,omitempty"`
 	// IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline)
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// IngestPipelines *commonv1.Config `json:"ingestPipelines,omitempty"`
+	IngestPipelines *commonv1.Config `json:"ingestPipelines,omitempty"`
 	// IndexTemplates holds the Index and Component Templates settings
-	// IndexTemplates *IndexTemplates `json:"indexTemplates,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	IndexTemplates IndexTemplates `json:"indexTemplates,omitempty"`
 }
 
-/*type IndexTemplates struct {
+type IndexTemplates struct {
 	// ComponentTemplates holds the Component Templates settings (/_component_template)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	ComponentTemplates *commonv1.Config `json:"componentTemplates,omitempty"`
 	// ComposableIndexTemplates holds the Index Templates settings (/_index_template)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	ComposableIndexTemplates *commonv1.Config `json:"composableIndexTemplates,omitempty"`
-}*/
+}
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.

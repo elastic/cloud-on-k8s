@@ -37,20 +37,20 @@ type SettingsMetadata struct {
 // SettingsState represents the state of the "File-based Settings".
 // This is where the configuration of Elasticsearch objects resides.
 type SettingsState struct {
-	ClusterSettings      *commonv1.Config `json:"cluster_settings,omitempty"`
-	SnapshotRepositories *commonv1.Config `json:"snapshot_repositories,omitempty"`
-	SLM                  *commonv1.Config `json:"slm,omitempty"`
-	// RoleMappings           *commonv1.Config `json:"role_mappings,omitempty"`
-	// Autoscaling            *commonv1.Config `json:"autoscaling,omitempty"`
-	// IndexLifecyclePolicies *commonv1.Config `json:"ilm,omitempty"`
-	// IngestPipelines        *commonv1.Config `json:"ingest_pipelines,omitempty"`
-	// IndexTemplates         *IndexTemplates  `json:"index_templates,omitempty"`
+	ClusterSettings        *commonv1.Config `json:"cluster_settings,omitempty"`
+	SnapshotRepositories   *commonv1.Config `json:"snapshot_repositories,omitempty"`
+	SLM                    *commonv1.Config `json:"slm,omitempty"`
+	RoleMappings           *commonv1.Config `json:"role_mappings,omitempty"`
+	Autoscaling            *commonv1.Config `json:"autoscaling,omitempty"`
+	IndexLifecyclePolicies *commonv1.Config `json:"ilm,omitempty"`
+	IngestPipelines        *commonv1.Config `json:"ingest_pipelines,omitempty"`
+	IndexTemplates         *IndexTemplates  `json:"index_templates,omitempty"`
 }
 
-// type IndexTemplates struct {
-//	ComponentTemplates       *commonv1.Config `json:"component_templates,omitempty"`
-//	ComposableIndexTemplates *commonv1.Config `json:"composable_index_templates,omitempty"`
-//}
+type IndexTemplates struct {
+	ComponentTemplates       *commonv1.Config `json:"component_templates,omitempty"`
+	ComposableIndexTemplates *commonv1.Config `json:"composable_index_templates,omitempty"`
+}
 
 // hash returns the hash of the Settings, considering only the State without the Metadata.
 func (s *Settings) hash() string {
@@ -61,23 +61,31 @@ func (s *Settings) hash() string {
 func NewEmptySettings(version int64) Settings {
 	return Settings{
 		Metadata: SettingsMetadata{Version: fmt.Sprintf("%d", version), Compatibility: FileBasedSettingsMinVersion.String()},
-		State:    newSettingsState(),
+		State:    newEmptySettingsState(),
 	}
 }
 
-// newSettingsState returns an empty new Settings state.
-func newSettingsState() SettingsState {
+// newEmptySettingsState returns an empty new Settings state.
+func newEmptySettingsState() SettingsState {
 	return SettingsState{
-		ClusterSettings:      &commonv1.Config{Data: map[string]interface{}{}},
-		SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{}},
-		SLM:                  &commonv1.Config{Data: map[string]interface{}{}},
+		ClusterSettings:        &commonv1.Config{Data: map[string]interface{}{}},
+		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
+		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
+		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
+		Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
+		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
+		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+		IndexTemplates: &IndexTemplates{
+			ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
+			ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+		},
 	}
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
 func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.StackConfigPolicy) error {
 	p := policy.DeepCopy() // be sure to not mutate the original policy
-	state := newSettingsState()
+	state := newEmptySettingsState()
 	// mutate Snapshot Repositories
 	if p.Spec.Elasticsearch.SnapshotRepositories != nil {
 		for name, untypedDefinition := range p.Spec.Elasticsearch.SnapshotRepositories.Data {
@@ -100,7 +108,7 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 	if p.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
 		state.SLM = p.Spec.Elasticsearch.SnapshotLifecyclePolicies
 	}
-	/*if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
+	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
 		state.RoleMappings = p.Spec.Elasticsearch.SecurityRoleMappings
 	}
 	if p.Spec.Elasticsearch.AutoscalingPolicies != nil {
@@ -112,17 +120,12 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 	if p.Spec.Elasticsearch.IngestPipelines != nil {
 		state.IngestPipelines = p.Spec.Elasticsearch.IngestPipelines
 	}
-	if p.Spec.Elasticsearch.IndexTemplates != nil {
-		if state.IndexTemplates == nil {
-			state.IndexTemplates = &IndexTemplates{}
-		}
-		if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
-			state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
-		}
-		if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
-			state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
-		}
-	}*/
+	if p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
+		state.IndexTemplates.ComposableIndexTemplates = p.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates
+	}
+	if p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
+		state.IndexTemplates.ComponentTemplates = p.Spec.Elasticsearch.IndexTemplates.ComponentTemplates
+	}
 	s.State = state
 	return nil
 }
