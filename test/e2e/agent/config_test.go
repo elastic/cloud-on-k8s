@@ -37,8 +37,6 @@ func TestSystemIntegrationConfig(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
@@ -78,8 +76,6 @@ func TestAgentConfigRef(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
@@ -112,8 +108,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
-		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default"), "monitoring").
-		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default"), "default").
