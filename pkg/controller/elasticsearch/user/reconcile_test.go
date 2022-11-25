@@ -89,13 +89,13 @@ func Test_aggregateFileRealm(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()
-	require.ElementsMatch(t, []string{"elastic", "elastic-internal", "elastic-internal-probe", "elastic-internal-monitoring", "user1", "user2", "user3"}, actualUsers)
+	require.ElementsMatch(t, []string{"elastic", "elastic-internal", "elastic-internal-lifecycle-hook", "elastic-internal-probe", "elastic-internal-monitoring", "user1", "user2", "user3"}, actualUsers)
 }
 
 func Test_aggregateRoles(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedRolesSecret...)
 	roles, err := aggregateRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
-	require.Len(t, roles, 52)
-	require.Contains(t, roles, ProbeUserRole, "role1", "role2")
+	require.Len(t, roles, 53)
+	require.Contains(t, roles, LifecycleHookUserRole, ProbeUserRole, "role1", "role2")
 }

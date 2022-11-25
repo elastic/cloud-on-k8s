@@ -24,6 +24,10 @@ func buildVolumes(
 	downwardAPIVolume volume.DownwardAPI,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
+	lifecycleHookSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		esv1.InternalUsersSecret(esName), esvolume.LifecycleHookUserVolumeName,
+		esvolume.LifecycleHookUserSecretMountPath, []string{user.LifecycleHookUserName},
+	)
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
 		esvolume.ProbeUserSecretMountPath, []string{user.ProbeUserName},
@@ -79,6 +83,7 @@ func buildVolumes(
 			esvolume.DefaultLogsVolume,
 			usersSecretVolume.Volume(),
 			unicastHostsVolume.Volume(),
+			lifecycleHookSecret.Volume(),
 			probeSecret.Volume(),
 			transportCertificatesVolume.Volume(),
 			remoteCertificateAuthoritiesVolume.Volume(),
@@ -97,6 +102,7 @@ func buildVolumes(
 		esvolume.DefaultLogsVolumeMount,
 		usersSecretVolume.VolumeMount(),
 		unicastHostsVolume.VolumeMount(),
+		lifecycleHookSecret.VolumeMount(),
 		probeSecret.VolumeMount(),
 		transportCertificatesVolume.VolumeMount(),
 		remoteCertificateAuthoritiesVolume.VolumeMount(),

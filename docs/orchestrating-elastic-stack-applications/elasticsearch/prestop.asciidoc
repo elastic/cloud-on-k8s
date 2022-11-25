@@ -36,3 +36,6 @@ spec:
             - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
               value: "5"
 ----
+
+It is possible to specify additional actions to be carried out before the `Pod` is stopped via the environment variable `PRE_STOP_ACTIONS` (different actions separated by a comma).
+The only supported action at the moment is `flush` which performs a flush as suggested in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/restart-cluster.html#restart-cluster-rolling[Rolling restart].

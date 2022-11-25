@@ -6,8 +6,10 @@ package volume
 
 // Default values for the volume name and paths
 const (
-	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user" //nolint:gosec
-	ProbeUserVolumeName      = "elastic-internal-probe-user"
+	LifecycleHookUserSecretMountPath = "/mnt/elastic-internal/lifecycle-hook-user" //nolint:gosec
+	LifecycleHookUserVolumeName      = "elastic-internal-lifecycle-hook-user"
+	ProbeUserSecretMountPath         = "/mnt/elastic-internal/probe-user" //nolint:gosec
+	ProbeUserVolumeName              = "elastic-internal-probe-user"
 
 	ConfigVolumeMountPath               = "/usr/share/elasticsearch/config"
 	NodeTransportCertificatePathSegment = "node-transport-cert"

@@ -29,6 +29,8 @@ const (
 
 	// ControllerUserName is the controller user to interact with ES.
 	ControllerUserName = "elastic-internal"
+	// LifecycleHookUserName is used for the Elasticsearch lifecycle hooks.
+	LifecycleHookUserName = "elastic-internal-lifecycle-hook"
 	// ProbeUserName is used for the Elasticsearch readiness probe.
 	ProbeUserName = "elastic-internal-probe"
 	// MonitoringUserName is used for the Elasticsearch monitoring.
@@ -84,6 +86,7 @@ func reconcileInternalUsers(
 		existingFileRealm,
 		users{
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
+			{Name: LifecycleHookUserName, Roles: []string{LifecycleHookUserRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
 		},

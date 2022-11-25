@@ -8,10 +8,13 @@ package settings
 const (
 	EnvEsJavaOpts = "ES_JAVA_OPTS"
 
-	EnvProbePasswordPath      = "PROBE_PASSWORD_PATH"
-	EnvProbeUsername          = "PROBE_USERNAME"
-	EnvReadinessProbeProtocol = "READINESS_PROBE_PROTOCOL"
-	HeadlessServiceName       = "HEADLESS_SERVICE_NAME"
+	EnvLifecycleHookPasswordPath = "LIFECYCLE_HOOK_PASSWORD_PATH" // #nosec G101
+	EnvLifecycleHookUsername     = "LIFECYCLE_HOOK_USERNAME"
+	EnvLifecycleHookProtocol     = "LIFECYCLE_HOOK_PROTOCOL"
+	EnvProbePasswordPath         = "PROBE_PASSWORD_PATH"
+	EnvProbeUsername             = "PROBE_USERNAME"
+	EnvReadinessProbeProtocol    = "READINESS_PROBE_PROTOCOL"
+	HeadlessServiceName          = "HEADLESS_SERVICE_NAME"
 
 	// These are injected as env var into the ES pod at runtime,
 	// to be referenced in ES configuration file

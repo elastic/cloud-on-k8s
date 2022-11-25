@@ -9,6 +9,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 )
 
@@ -23,6 +24,36 @@ const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 const PreStopHookScript = `#!/usr/bin/env bash
 
 set -euo pipefail
+
+function flush {
+  FLUSH_TIMEOUT=30
+  
+  # setup basic auth if credentials are available
+  if [ -n "${LIFECYCLE_HOOK_USERNAME}" ] && [ -f "${LIFECYCLE_HOOK_PASSWORD_PATH}" ]; then
+    LIFECYCLE_HOOK_PASSWORD=$(<${LIFECYCLE_HOOK_PASSWORD_PATH})
+    BASIC_AUTH="-u ${LIFECYCLE_HOOK_USERNAME}:${LIFECYCLE_HOOK_PASSWORD}"
+  else
+    BASIC_AUTH=''
+  fi
+  
+  # Check if we are using IPv6
+  if [[ $POD_IP =~ .*:.* ]]; then
+    LOOPBACK="[::1]"
+  else 
+    LOOPBACK=127.0.0.1
+  fi
+  
+  ENDPOINT="${LIFECYCLE_HOOK_PROTOCOL:-https}://${LOOPBACK}:9200/_flush"
+  ORIGIN_HEADER="` + http.InternalProductRequestHeaderString + `"
+  echo "Performing a flush..."
+  curl -o /dev/null --max-time ${FLUSH_TIMEOUT} -H "${ORIGIN_HEADER}" -XPOST -g -s -k ${BASIC_AUTH} $ENDPOINT || true
+}
+
+PRE_STOP_ACTIONS=,${PRE_STOP_ACTIONS:=},
+
+if echo $PRE_STOP_ACTIONS | grep -q ",flush,"; then
+  flush
+fi
 
 # This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod 
 # This slows down the process shutdown and allows to make changes to the pool gracefully, without blackholing traffic when DNS

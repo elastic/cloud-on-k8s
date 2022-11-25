@@ -19,6 +19,8 @@ const (
 
 	// SuperUserBuiltinRole is the name of the built-in superuser role.
 	SuperUserBuiltinRole = "superuser"
+	// LifecycleHookUserRole is the name of the role used by the internal lifecycle hook user.
+	LifecycleHookUserRole = "elastic_internal_lifecycle_hook_user"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
 	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
@@ -58,6 +60,14 @@ const (
 var (
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
+		LifecycleHookUserRole: esclient.Role{
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"*"},
+					Privileges: []string{"maintenance"},
+				},
+			},
+		},
 		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
 		ApmUserRoleV6: esclient.Role{
 			Cluster: []string{"monitor", "manage_index_templates"},

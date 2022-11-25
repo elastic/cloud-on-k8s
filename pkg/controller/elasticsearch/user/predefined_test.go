@@ -125,6 +125,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, user.Password, secret.Data[ElasticUserName])
+			tt.assertions(t, got)
 		})
 	}
 }
@@ -183,6 +184,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				// random passwords should be generated
 				require.NotEmpty(t, u[0].Password)
 				require.NotEmpty(t, u[1].Password)
+				require.NotEmpty(t, u[2].Password)
 			},
 		},
 		{
@@ -191,21 +193,25 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{
-						ControllerUserName: []byte("controllerUserPassword"),
-						ProbeUserName:      []byte("probeUserPassword"),
+						ControllerUserName:    []byte("controllerUserPassword"),
+						LifecycleHookUserName: []byte("lifecycleHookUserPassword"),
+						ProbeUserName:         []byte("probeUserPassword"),
 					},
 				},
 			},
 			existingFileRealm: filerealm.New().
 				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")).
+				WithUser(LifecycleHookUserName, []byte("$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO")).
 				WithUser(ProbeUserName, []byte("$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS")),
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
 				// passwords and hashes should be reused
-				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
-				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
-				require.Equal(t, []byte("$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS"), u[1].PasswordHash)
+				require.Equal(t, "controllerUserPassword", string(u[0].Password))
+				require.Equal(t, "$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG", string(u[0].PasswordHash))
+				require.Equal(t, "lifecycleHookUserPassword", string(u[1].Password))
+				require.Equal(t, "$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO", string(u[1].PasswordHash))
+				require.Equal(t, "probeUserPassword", string(u[2].Password))
+				require.Equal(t, "$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS", string(u[2].PasswordHash))
 			},
 		},
 		{
@@ -214,23 +220,27 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{
-						ControllerUserName: []byte("controllerUserPassword"),
-						ProbeUserName:      []byte("probeUserPassword"),
+						ControllerUserName:    []byte("controllerUserPassword"),
+						LifecycleHookUserName: []byte("lifecycleHookUserPassword"),
+						ProbeUserName:         []byte("probeUserPassword"),
 					},
 				},
 			},
 			existingFileRealm: filerealm.New().
 				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")).
+				WithUser(LifecycleHookUserName, []byte("$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO")).
 				WithUser(ProbeUserName, []byte("does-not-match-password")),
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
-				// password & hash of controller user should be reused
-				require.Equal(t, []byte("existingPassword"), u[0].Password)
-				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
+				// password & hash of controller user and lifecycle hook user should be reused
+				require.Equal(t, "controllerUserPassword", string(u[0].Password))
+				require.Equal(t, "$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG", string(u[0].PasswordHash))
+				require.Equal(t, "lifecycleHookUserPassword", string(u[1].Password))
+				require.Equal(t, "$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO", string(u[1].PasswordHash))
 				// password of probe user should be reused, but hash should be re-computed
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
-				require.NotEmpty(t, u[1].PasswordHash)
-				require.NotEqual(t, "does-not-match-password", u[1].PasswordHash)
+				require.Equal(t, "probeUserPassword", string(u[2].Password))
+				require.NotEmpty(t, u[2].PasswordHash)
+				require.NotEqual(t, "does-not-match-password", string(u[2].PasswordHash))
 			},
 		},
 		{
@@ -239,22 +249,26 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{
-						ControllerUserName: []byte("controllerUserPassword"),
-						ProbeUserName:      []byte("probeUserPassword"),
+						ControllerUserName:    []byte("controllerUserPassword"),
+						LifecycleHookUserName: []byte("lifecycleHookUserPassword"),
+						ProbeUserName:         []byte("probeUserPassword"),
 					},
 				},
 			},
 			existingFileRealm: filerealm.New().
 				// missing probe user hash
-				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")),
+				WithUser(ControllerUserName, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG")).
+				WithUser(LifecycleHookUserName, []byte("$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO")),
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
-				// password & hash of controller user should be reused
-				require.Equal(t, []byte("existingPassword"), u[0].Password)
-				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
+				// password & hash of controller user and lifecycle hook user should be reused
+				require.Equal(t, "controllerUserPassword", string(u[0].Password))
+				require.Equal(t, "$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG", string(u[0].PasswordHash))
+				require.Equal(t, "lifecycleHookUserPassword", string(u[1].Password))
+				require.Equal(t, "$2a$10$xd2hlLK6XUdwXyjDIcvqAOib8xYN4armv2BzgyCSSNhqFqmBFz0WO", string(u[1].PasswordHash))
 				// password of probe user should be reused, and hash should be re-computed
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
-				require.NotEmpty(t, u[1].PasswordHash)
+				require.Equal(t, "probeUserPassword", string(u[2].Password))
+				require.NotEmpty(t, u[2].PasswordHash)
 			},
 		},
 	}
@@ -264,23 +278,29 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher)
 			require.NoError(t, err)
 			// check returned users
-			require.Len(t, got, 3)
+			require.Len(t, got, 4)
 			controllerUser := got[0]
-			probeUser := got[1]
+			lifecycleHookUser := got[1]
+			probeUser := got[2]
 			// names and roles are always the same
 			require.Equal(t, ControllerUserName, controllerUser.Name)
 			require.Equal(t, []string{SuperUserBuiltinRole}, controllerUser.Roles)
 			require.Equal(t, ProbeUserName, probeUser.Name)
 			require.Equal(t, []string{ProbeUserRole}, probeUser.Roles)
+			require.Equal(t, LifecycleHookUserName, lifecycleHookUser.Name)
+			require.Equal(t, []string{ProbeUserRole}, probeUser.Roles)
 			// passwords and hash should always match
 			require.NoError(t, bcrypt.CompareHashAndPassword(controllerUser.PasswordHash, controllerUser.Password))
+			require.NoError(t, bcrypt.CompareHashAndPassword(lifecycleHookUser.PasswordHash, lifecycleHookUser.Password))
 			require.NoError(t, bcrypt.CompareHashAndPassword(probeUser.PasswordHash, probeUser.Password))
 			// reconciled secret should have the updated passwords
 			var secret corev1.Secret
 			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, controllerUser.Password, secret.Data[ControllerUserName])
+			require.Equal(t, lifecycleHookUser.Password, secret.Data[LifecycleHookUserName])
 			require.Equal(t, probeUser.Password, secret.Data[ProbeUserName])
+			tt.assertions(t, got)
 		})
 	}
 }

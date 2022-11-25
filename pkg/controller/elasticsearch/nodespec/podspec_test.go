@@ -248,6 +248,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	initContainerEnv := defaults.ExtendPodDownwardEnvVars(
 		[]corev1.EnvVar{
 			{Name: "my-env", Value: "my-value"},
+			{Name: settings.EnvLifecycleHookPasswordPath, Value: path.Join(esvolume.LifecycleHookUserSecretMountPath, user.LifecycleHookUserName)},
+			{Name: settings.EnvLifecycleHookUsername, Value: user.LifecycleHookUserName},
+			{Name: settings.EnvLifecycleHookProtocol, Value: sampleES.Spec.HTTP.Protocol()},
 			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.ProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: sampleES.Spec.HTTP.Protocol()},
