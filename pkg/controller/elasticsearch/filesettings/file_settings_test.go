@@ -50,8 +50,16 @@ func Test_updateState(t *testing.T) {
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
 					"indices.recovery.max_bytes_per_sec": "100mb",
 				}},
-				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{}},
-				SLM:                  &commonv1.Config{Data: map[string]interface{}{}},
+				SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
+				SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
+				RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
+				Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+				},
 			},
 		},
 		{
@@ -103,7 +111,15 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM: &commonv1.Config{Data: map[string]interface{}{}},
+				SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
+				RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
+				Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+				},
 			},
 		},
 		{
@@ -140,7 +156,15 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM: &commonv1.Config{Data: map[string]interface{}{}},
+				SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
+				RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
+				Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+				},
 			},
 		},
 		{
@@ -179,7 +203,15 @@ func Test_updateState(t *testing.T) {
 						},
 					},
 				}},
-				SLM: &commonv1.Config{Data: map[string]interface{}{}},
+				SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
+				RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
+				Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]interface{}{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]interface{}{}},
+				},
 			},
 		},
 		{
@@ -234,7 +266,7 @@ func Test_updateState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			settings := NewEmptySettings(int64(1))
+			settings := Settings{}
 			err := settings.updateState(esSample, tt.args.policy)
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)
