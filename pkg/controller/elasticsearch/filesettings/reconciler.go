@@ -53,6 +53,7 @@ func ReconcileSecret(
 	expected corev1.Secret,
 	es esv1.Elasticsearch,
 ) error {
+	managedLabels := []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
 	managedAnnotations := []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
@@ -68,6 +69,12 @@ func ReconcileSecret(
 		},
 		UpdateReconciled: func() {
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			// remove managed labels if they are no longer defined
+			for _, label := range managedLabels {
+				if _, ok := expected.Labels[label]; !ok {
+					delete(reconciled.Labels, label)
+				}
+			}
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			// remove managed annotations if they are no longer defined
 			for _, annotation := range managedAnnotations {
