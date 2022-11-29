@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	gyaml "github.com/ghodss/yaml"
-	"github.com/pterm/pterm"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -64,13 +64,13 @@ type GenerateConfig struct {
 
 // Generate will generate the Operator Lifecycle Manager format files
 func Generate(config GenerateConfig) error {
-	pterm.Printf("Loading configuration file (%s) ", config.ConfigPath)
+	log.Printf("Loading configuration file (%s) ", config.ConfigPath)
 	configFile, err := loadConfigFile(config)
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return err
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
 	imageDigest := ""
 	if configFile.HasDigestPinning() {
@@ -80,47 +80,47 @@ func Generate(config GenerateConfig) error {
 		if len(config.RedhatProjectID) == 0 {
 			return errors.New("RedHat project ID is required to get image digest")
 		}
-		pterm.Printf("Gathering and extracting data from yaml manifests ")
+		log.Printf("Gathering and extracting data from yaml manifests ")
 		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, configFile.NewVersion)
 		if err != nil {
-			pterm.Println(pterm.Red("ⅹ"))
+			log.Println("ⅹ")
 			return err
 		}
 	}
 
-	pterm.Printf("Gathering and extracting data from yaml manifests ")
+	log.Printf("Gathering and extracting data from yaml manifests ")
 	manifestStream, close, err := getInstallManifestStream(configFile, config.ManifestPaths)
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return err
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
 	defer close()
 
 	extracts, err := extractYAMLParts(manifestStream)
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return err
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Rendering final operatorhub data ")
+	log.Printf("Rendering final operatorhub data ")
 	for i := range configFile.Packages {
 		params, err := buildRenderParams(configFile, i, extracts, imageDigest)
 		if err != nil {
-			pterm.Println(pterm.Red("ⅹ"))
+			log.Println("ⅹ")
 			return err
 		}
 
 		outDir := configFile.Packages[i].OutputPath
 		if err := render(params, config.TemplatesPath, outDir); err != nil {
-			pterm.Println(pterm.Red("ⅹ"))
+			log.Println("ⅹ")
 			return err
 		}
 	}
 
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 	return nil
 }
 

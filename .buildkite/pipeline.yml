@@ -107,11 +107,35 @@ steps:
         commands:
           - .buildkite/scripts/common/get-redhat-credentials.sh
 
-      - label: "run redhat release process in dry-run mode"
+      - label: "run container push"
+        key: "redhat-container-push"
         if: build.message == "run redhat release dev"
         depends_on:
           - "get-redhat-credentials"
         commands:
            - cd hack/operatorhub
            - make build
-           - ./redhat all 
+           # how is --tag set?
+           - ./redhat container push --tag=$TAG
+
+      - label: "run container preflight"
+        key: "redhat-preflight"
+        if: build.message == "run redhat release dev"
+        agents:
+          image: "quay.io/opdev/preflight:1.2.1-linux-amd64@sha256:6f63033a934d9a9821cea2247858b0557f471b1f0fc9c4f691ae1c934d44d90b"
+        depends_on:
+          - "redhat-container-push"
+        commands:
+           - /usr/local/bin/preflight check container quay.io/redhat-isv-containers/${REDHAT_PROJECT_ID}:${TAG} --pyxis-api-token=${REDHAT_API_TOKEN} --submit
+
+      - label: "run remaining release"
+        key: "redhat-release"
+        if: build.message == "run redhat release dev"
+        depends_on:
+          - "redhat-preflight"
+        commands:
+           # how is --tag set?
+           - ./redhat container publish --tag=${TAG} --dry-run=true
+           - ./redhat operatorhub --prev-version=${PREV_VERSION} --stack-version=${STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - ./redhat bundle generate --tag=${TAG}
+           - ./redhat bundle create-pr --tag=${TAG} --github-username=blah --github-email=blah --github-fullname=blah --github-token=blah --dry-run=true

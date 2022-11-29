@@ -31,30 +31,21 @@ func getImagesResponse(tag string, status string) []byte {
 				{
 					"_links": {
 						"repository": {
-							"href": "/v1/repositories/registry/registry.rhc4tp.engineering.redhat.com/repository/ospid-664938b1-f0c8-4989-99de-be0992395aa0/eck-operator"
+							"href": "/v1/repositories/registry/quay.io/repository/redhat-isv-containers/5fa1f9fc4bbec60adbc8cc94"
 						}
 					},
 					"push_date": "2021-12-07T22:39:22.039000+00:00",
-					"registry": "registry.rhc4tp.engineering.redhat.com",
-					"repository": "ospid-664938b1-f0c8-4989-99de-be0992395aa0/eck-operator",
+					"registry": "quay.io",
+					"repository": "redhat-isv-containers/5fa1f9fc4bbec60adbc8cc94",
 					"tags": [
 						{
 							"_links": {
 								"tag_history": {
-									"href": "/v1/tag-history/registry/registry.rhc4tp.engineering.redhat.com/repository/ospid-664938b1-f0c8-4989-99de-be0992395aa0/eck-operator/tag/%[1]s"
+									"href": "/v1/tag-history/registry/quay.io/repository/redhat-isv-containers/5fa1f9fc4bbec60adbc8cc94/tag/2.5.0"
 								}
 							},
-							"added_date": "2021-12-07T22:39:22.039000+00:00",
-							"name": "%[1]s"
-						},
-						{
-							"_links": {
-								"tag_history": {
-									"href": "/v1/tag-history/registry/registry.rhc4tp.engineering.redhat.com/repository/ospid-664938b1-f0c8-4989-99de-be0992395aa0/eck-operator/tag/%[1]s"
-								}
-							},
-							"added_date": "2021-12-07T22:39:23.189000+00:00",
-							"name": "%[1]s"
+							"added_date": "2022-11-02T16:23:57+00:00",
+							"name": "2.5.0"
 						}
 					]
 				},
@@ -64,27 +55,19 @@ func getImagesResponse(tag string, status string) []byte {
 							"href": "/v1/repositories/registry/registry.connect.redhat.com/repository/elastic/eck-operator"
 						}
 					},
-					"push_date": "2021-12-08T02:47:04+00:00",
+					"published": true,
+					"published_date": "2022-11-04T14:49:29.246000+00:00",
 					"registry": "registry.connect.redhat.com",
 					"repository": "elastic/eck-operator",
 					"tags": [
 						{
 							"_links": {
 								"tag_history": {
-									"href": "/v1/tag-history/registry/registry.connect.redhat.com/repository/elastic/eck-operator/tag/latest"
+									"href": "/v1/tag-history/registry/registry.connect.redhat.com/repository/elastic/eck-operator/tag/2.5.0"
 								}
 							},
-							"added_date": "2021-12-07T22:47:05.481000+00:00",
-							"name": "latest"
-						},
-						{
-							"_links": {
-								"tag_history": {
-									"href": "/v1/tag-history/registry/registry.connect.redhat.com/repository/elastic/eck-operator/tag/%s"
-								}
-							},
-							"added_date": "2021-12-07T22:47:07.192000+00:00",
-							"name": "%[1]s"
+							"added_date": "2022-11-04T14:49:29.246000+00:00",
+							"name": "2.5.0"
 						}
 					]
 				}

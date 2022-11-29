@@ -55,7 +55,6 @@ Flags:
   -h, --help                                 help for container
   -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
   -r, --registry-password string   registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)
-  -R, --repository-id string                 repository project id (ospid) within the redhat technology portal (REPOSITORY_ID) (default "ospid-664938b1-f0c8-4989-99de-be0992395aa0")
       --vault-addr string                    Vault address to use when enable-vault is set
       --vault-secret string                  When --enable-vault is set, attempts to read 'registry-password', and 'api-key' data from given vault secret location
       --vault-token string                   Vault token to use when enable-vault is set
@@ -222,7 +221,6 @@ Flags:
   -V, --prev-version string                  Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)
   -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
   -r, --registry-password string   registry key used to communicate with redhat docker registry (REGISTRY_PASSWORD)
-  -R, --repository-id string                 repository project id (ospid) within the redhat technology portal (REPOSITORY_ID) (default "ospid-664938b1-f0c8-4989-99de-be0992395aa0")
   -s, --stack-version string                 Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)
   -P, --submit-pull-request                  attempt to submit PR to https://github.com/redhat-openshift-ecosystem/certified-operators repo? (SUBMIT_PULL_REQUEST)
   -t, --tag string                           tag/new version of operator (TAG)

@@ -6,11 +6,11 @@ package container
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/hashicorp/vault/api"
-	"github.com/pterm/pterm"
 	"github.com/spf13/viper"
 )
 
@@ -43,12 +43,12 @@ func attemptVault() error {
 		return fmt.Errorf("failed to convert secrets data to map: %T %#v", secret.Data["data"], secret.Data["data"])
 	}
 
-	for _, k := range []string{"api-key", "registry-password"} {
+	for _, k := range []string{"api-key", "registry-password", "project-id"} {
 		value, ok := data[k]
 		if ok {
 			viper.Set(k, value)
 		} else {
-			pterm.Println(pterm.Yellow(fmt.Sprintf("key (%s) not found in vault (%s) in secret (%s)", k, viper.GetString("vault-addr"), vaultSecret)))
+			log.Println(fmt.Sprintf("key (%s) not found in vault (%s) in secret (%s)", k, viper.GetString("vault-addr"), vaultSecret))
 		}
 	}
 

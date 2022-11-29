@@ -29,6 +29,8 @@ type Image struct {
 	Repositories []Repository `json:"repositories"`
 	// ScanStatus is the status indicating whether the image has been scanned.
 	ScanStatus scanStatus `json:"scan_status"`
+	// DockerImageDigest is the SHA id of the image
+	DockerImageDigest string `json:"docker_image_digest"`
 }
 
 // Repository represents an image repository, and any tags applied to a container image.

@@ -7,12 +7,12 @@ package opm
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/operator-framework/operator-registry/pkg/lib/bundle"
-	"github.com/pterm/pterm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,7 +28,7 @@ func GenerateBundle(conf GenerateConfig) error {
 	if _, err := os.Stat(conf.LocalDirectory); err != nil && os.IsNotExist(err) {
 		os.MkdirAll(conf.LocalDirectory, 0700)
 	}
-	pterm.Printf("Generating operator bundle image for publishing ")
+	log.Printf("Generating operator bundle image for publishing ")
 	// Disable logging of unnecessary information during bundle creation
 	logrus.SetLevel(logrus.WarnLevel)
 	err := bundle.GenerateFunc(
@@ -40,7 +40,7 @@ func GenerateBundle(conf GenerateConfig) error {
 		true,
 	)
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("during opm generate: %w", err)
 	}
 
@@ -58,7 +58,7 @@ func GenerateBundle(conf GenerateConfig) error {
 		}
 	}
 
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 	return nil
 }
 

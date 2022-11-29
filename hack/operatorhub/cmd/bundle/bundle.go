@@ -186,14 +186,16 @@ func DoGenerate(_ *cobra.Command, _ []string) error {
 // 10. Potentially create a draft pull request in the remote repository
 func DoCreatePR(_ *cobra.Command, _ []string) error {
 	dir := path.Join(viper.GetString("dir"), viper.GetString("tag"))
+	deleteTemp := shared.PBool(viper.GetBool("delete-temp-directory"))
 	client := github.New(github.Config{
 		CreatePullRequest: viper.GetBool("submit-pull-request"),
+		DryRun:            viper.GetBool("dry-run"),
 		GitHubEmail:       viper.GetString("github-email"),
 		GitHubFullName:    viper.GetString("github-fullname"),
 		GitHubUsername:    viper.GetString("github-username"),
 		GitHubToken:       viper.GetString("github-token"),
 		GitTag:            viper.GetString("tag"),
-		RemoveTempFiles:   shared.PBool(viper.GetBool("delete-temp-directory")),
+		KeepTempFiles:     !*deleteTemp,
 		PathToNewVersion:  dir,
 	})
 	return client.CloneRepositoryAndCreatePullRequest()

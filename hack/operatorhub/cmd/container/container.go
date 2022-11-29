@@ -7,9 +7,12 @@ package container
 import (
 	"context"
 	"fmt"
-	"strings"
+	"log"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/redhat-openshift-ecosystem/openshift-preflight/certification/formatters"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -32,7 +35,7 @@ func Command() *cobra.Command {
 		Short:        "run preflight tests against container",
 		Long:         "Run preflight tests against container",
 		SilenceUsage: true,
-		PreRunE:      preflightPreRunE,
+		PreRunE:      defaultPreRunE,
 		RunE:         DoPreflight,
 	}
 
@@ -75,13 +78,6 @@ func Command() *cobra.Command {
 		"short project id within the redhat technology portal (PROJECT_ID)",
 	)
 
-	cmd.PersistentFlags().StringP(
-		"repository-id",
-		"R",
-		"",
-		"repository project id (ospid) within the redhat technology portal (REPOSITORY_ID)",
-	)
-
 	cmd.PersistentFlags().BoolP(
 		"force",
 		"F",
@@ -92,7 +88,7 @@ func Command() *cobra.Command {
 	cmd.PersistentFlags().Bool(
 		"enable-vault",
 		false,
-		"Enable vault functionality to try and automatically read 'registry-password', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)",
+		"Enable vault functionality to try and automatically read 'registry-password', 'api-key' and 'project-id' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)",
 	)
 
 	cmd.PersistentFlags().String(
@@ -111,13 +107,6 @@ func Command() *cobra.Command {
 		"vault-token",
 		"",
 		"Vault token to use when enable-vault is set",
-	)
-
-	preflightCmd.Flags().StringP(
-		"docker-config",
-		"C",
-		"",
-		"The path to a docker configuration file to use for authentication. (DOCKER_CONFIG)",
 	)
 
 	publishCmd.Flags().DurationP(
@@ -167,21 +156,14 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("project-id must be set")
 	}
 
-	if viper.GetString("repository-id") == "" {
-		return fmt.Errorf("repository-id must be set")
-	}
-
-	if !strings.HasPrefix(viper.GetString("repository-id"), "ospid-") {
-		return fmt.Errorf("repository-id doesn't appear to be valid (must begin with 'ospid-')")
-	}
-
 	return nil
 }
 
-// preflightPreRunE is the pre-run operations for the preflight command
-func preflightPreRunE(cmd *cobra.Command, args []string) error {
-	if err := defaultPreRunE(cmd, args); err != nil {
-		return err
+func defaultPreRunE(cmd *cobra.Command, args []string) error {
+	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
+		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
+			return err
+		}
 	}
 
 	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
@@ -193,16 +175,6 @@ func preflightPreRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	viper.AutomaticEnv()
-
-	return nil
-}
-
-func defaultPreRunE(cmd *cobra.Command, args []string) error {
-	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
-		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -214,14 +186,19 @@ func DoPublish(_ *cobra.Command, _ []string) error {
 		ProjectID:           viper.GetString("project-id"),
 		RedhatCatalogAPIKey: viper.GetString("api-key"),
 		RegistryPassword:    viper.GetString("registry-password"),
-		RepositoryID:        viper.GetString("repository-id"),
 		Tag:                 viper.GetString("tag"),
 		ImageScanTimeout:    viper.GetDuration("scan-timeout"),
 	})
 }
 
-func DoPreflight(_ *cobra.Command, _ []string) error {
-	err := pkg_container.LoginToRegistry(viper.GetString("project-id"), viper.GetString("registry-password"))
+func DoPreflight(cmd *cobra.Command, _ []string) error {
+	cmd.SilenceUsage = true
+	dir, err := os.MkdirTemp(os.TempDir(), "docker_credentials")
+	if err != nil {
+		return fmt.Errorf("while creating temporary directory for docker credentials: %w", err)
+	}
+	defer os.RemoveAll(dir)
+	err = pkg_container.LoginToRegistry(dir, viper.GetString("project-id"), viper.GetString("registry-password"))
 	if err != nil {
 		return err
 	}
@@ -232,16 +209,25 @@ func DoPreflight(_ *cobra.Command, _ []string) error {
 		ctx,
 		pkg_preflight.RunInput{
 			Image:                  containerImage,
-			DockerConfigPath:       viper.GetString("docker-config"),
+			DockerConfigPath:       filepath.Join(dir, "config.json"),
 			PyxisAPIToken:          viper.GetString("api-key"),
 			CertificationProjectID: viper.GetString("project-id"),
 		})
 	if err != nil {
 		return err
 	}
-	if len(results.Errors) > 0 {
-		return fmt.Errorf("container contains errors: %v", results.Errors)
+	formatter, err := formatters.NewByName(formatters.DefaultFormat)
+	if err != nil {
+		return fmt.Errorf("while creating new formatater for preflight output: %w", err)
 	}
+	output, err := formatter.Format(ctx, results)
+	if err != nil {
+		return fmt.Errorf("while formatting preflight output: %w", err)
+	}
+	if !results.PassedOverall {
+		return fmt.Errorf("preflight certification failed: %s", string(output))
+	}
+	log.Printf("preflight succeeded: %s", string(output))
 	return nil
 }
 
@@ -253,7 +239,6 @@ func DoPush(_ *cobra.Command, _ []string) error {
 		ProjectID:           viper.GetString("project-id"),
 		RedhatCatalogAPIKey: viper.GetString("api-key"),
 		RegistryPassword:    viper.GetString("registry-password"),
-		RepositoryID:        viper.GetString("repository-id"),
 		Tag:                 viper.GetString("tag"),
 	})
 }

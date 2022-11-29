@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,22 +22,37 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	git_http "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/otiai10/copy"
-	"github.com/pterm/pterm"
+)
+
+const (
+	certifiedOperatorOrganization = "redhat-openshift-ecosystem"
+	certifiedOperatorRepository   = "certified-operators"
+	communityOperatorOrganization = "k8s-operatorhub"
+	communityOperatorRepository   = "community-operators"
+
+	// certifiedOperatorsRepositoryMainBranchName is the name of the default branch of the certified operators git repository.
+	certifiedOperatorsRepositoryMainBranchName = "main"
+	// communityOperatorsRepositoryMainBranchName is the name of the default branch of the community operators git repository.
+	communityOperatorsRepositoryMainBranchName = "main"
+
+	certifiedOperatorDirectoryName = "elasticsearch-eck-operator-certified"
+	communityOperatorDirectoryName = "elastic-cloud-eck"
 )
 
 var (
-	// OpenshiftOperatorsRepository is the repository to use for cloning, and submitting PRs against.
-	OpenshiftOperatorsRepository = "https://github.com/redhat-openshift-ecosystem/certified-operators"
-	// OpenshiftOperatorsRepositoryMainBranchName is the name of the default branch of the git repository
-	OpenshiftOperatorsRepositoryMainBranchName = "main"
+	// certifiedOperatorsFQDN is the FQDN to use for cloning, and submitting PRs against certified operators repository.
+	certifiedOperatorsFQDN = fmt.Sprintf("https://github.com/%s/%s", certifiedOperatorOrganization, certifiedOperatorRepository)
+	// communityOperatorsFQDN is the FQDN to use for cloning, and submitting PRs against community operators repository.
+	communityOperatorsFQDN = fmt.Sprintf("https://github.com/%s/%s", communityOperatorOrganization, communityOperatorRepository)
 )
 
 // Config is the configuration for the github package
 type Config struct {
+	DryRun                                                   bool
 	GitHubFullName, GitHubEmail, GitHubUsername, GitHubToken string
 	HTTPClient                                               *http.Client
 	GitTag                                                   string
-	RemoveTempFiles                                          *bool
+	KeepTempFiles                                            bool
 	PathToNewVersion                                         string
 	CreatePullRequest                                        bool
 }
@@ -59,15 +75,21 @@ func New(config Config) *Client {
 	c := &Client{
 		config,
 	}
-	if c.RemoveTempFiles == nil {
-		c.RemoveTempFiles = config.RemoveTempFiles
-	}
 	if c.HTTPClient == nil {
 		c.HTTPClient = &http.Client{
 			Timeout: 10 * time.Second,
 		}
 	}
 	return c
+}
+
+type githubRepository struct {
+	organization   string
+	repository     string
+	mainBranchName string
+	directoryName  string
+	url            string
+	tempDir        string
 }
 
 // CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations:
@@ -82,103 +104,132 @@ func New(config Config) *Client {
 // 9. Push the remote to the fork
 // 10. Create a draft pull request in the remote repository
 func (c *Client) CloneRepositoryAndCreatePullRequest() error {
-	pterm.Printf("Creating temporarily directory for git operations ")
+	log.Printf("Creating temporarily directory for git operations ")
 	tempDir, err := os.MkdirTemp(os.TempDir(), "eck-redhat-operations")
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
 		return fmt.Errorf("failed to create temporary directory for operations: %w", err)
 	}
-	pterm.Println(pterm.Green(fmt.Sprintf("(%s): ✓", tempDir)))
+	log.Println(fmt.Sprintf("(%s): ✓", tempDir))
 
-	pterm.Printf("Cloning Openshift Operator repository to temporary directory ")
-	r, err := git.PlainClone(tempDir, false, &git.CloneOptions{
-		URL: OpenshiftOperatorsRepository,
+	defer func() {
+		if !c.KeepTempFiles {
+			os.RemoveAll(tempDir)
+		}
+	}()
+
+	for _, repository := range []githubRepository{
+		{
+			organization:   communityOperatorOrganization,
+			repository:     communityOperatorRepository,
+			url:            communityOperatorsFQDN,
+			directoryName:  communityOperatorDirectoryName,
+			mainBranchName: communityOperatorsRepositoryMainBranchName,
+			tempDir:        tempDir,
+		},
+		{
+			organization:   certifiedOperatorOrganization,
+			repository:     certifiedOperatorRepository,
+			url:            certifiedOperatorsFQDN,
+			directoryName:  certifiedOperatorDirectoryName,
+			mainBranchName: certifiedOperatorsRepositoryMainBranchName,
+			tempDir:        tempDir,
+		},
+	} {
+		if err := c.cloneAndCreate(repository); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) cloneAndCreate(repo githubRepository) error {
+	orgRepo := fmt.Sprintf("%s/%s", repo.organization, repo.repository)
+	localTempDir := filepath.Join(repo.tempDir, repo.repository)
+
+	log.Printf("Cloning (%s) repository to temporary directory ", orgRepo)
+	r, err := git.PlainClone(localTempDir, false, &git.CloneOptions{
+		URL: repo.url,
 		Auth: &git_http.BasicAuth{
 			Username: c.GitHubUsername,
 			Password: c.GitHubToken,
 		},
 	})
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("cloning git repository: %w", err)
+		return fmt.Errorf("cloning (%s): %w", orgRepo, err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	defer func() {
-		if c.RemoveTempFiles == nil || (c.RemoveTempFiles != nil && *c.RemoveTempFiles) {
-			os.RemoveAll(tempDir)
-		}
-	}()
-
-	pterm.Printf("Ensuring that Openshift Operator repository has been forked ")
+	log.Printf("Ensuring that (%s) repository has been forked ", orgRepo)
 	err = c.ensureFork()
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to ensure fork exists: %w", err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Creating git remote ")
+	log.Printf("Creating git remote for (%s) ", orgRepo)
 	remote, err := r.CreateRemote(&config.RemoteConfig{
 		Name: "fork",
 		URLs: []string{
-			fmt.Sprintf("https://github.com/%s/certified-oprators", c.GitHubUsername),
+			fmt.Sprintf("https://github.com/%s/%s", c.GitHubUsername, repo.repository),
 		},
 	})
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to create git remote: %w", err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Creating git branch ")
+	branchName := fmt.Sprintf("eck-%s-%s", repo.repository, c.GitTag)
+	log.Printf("Creating git branch (%s) for (%s) ", branchName, orgRepo)
 	err = r.CreateBranch(&config.Branch{
-		Name:   fmt.Sprintf("eck-operator-certified-%s", c.GitTag),
+		Name:   branchName,
 		Remote: "fork",
-		Merge:  plumbing.NewBranchReferenceName(fmt.Sprintf("eck-operator-certified-%s", c.GitTag)),
+		Merge:  plumbing.NewBranchReferenceName(branchName),
 	})
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to create git branch: %w", err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Checking out new branch (%s) ", fmt.Sprintf("eck-operator-certified-%s", c.GitTag))
+	log.Printf("Checking out new branch (%s) ", branchName)
 	var w *git.Worktree
 	w, err = r.Worktree()
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to retrieve a working tree from the git filesystem: %w", err)
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName(fmt.Sprintf("eck-operator-certified-%s", c.GitTag)),
+		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,
 	})
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("Unable to checkout branch: %w", err)
+		log.Println("ⅹ")
+		return fmt.Errorf("Unable to checkout branch (%s): %w", branchName, err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Adding new data to git working tree ")
+	log.Printf("Adding new data to git working tree ")
 	newVersion := strings.Split(c.PathToNewVersion, string(os.PathSeparator))[len(strings.Split(c.PathToNewVersion, string(os.PathSeparator)))-1]
-	destDir := filepath.Join(tempDir, "operators", "elasticsearch-eck-operator-certified", newVersion)
+	destDir := filepath.Join(localTempDir, "operators", repo.directoryName, newVersion)
 	err = copy.Copy(c.PathToNewVersion, destDir)
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to copy source dir (%s) to new git cloned dir (%s): %w", c.PathToNewVersion, destDir, err)
 	}
 
-	_, err = w.Add(filepath.Join("operators", "elasticsearch-eck-operator-certified", newVersion))
+	_, err = w.Add(filepath.Join("operators", repo.directoryName, newVersion))
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to add destination directory (%s) to git working tree: %w", destDir, err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
-	pterm.Printf("Creating git commit ")
-	_, err = w.Commit(fmt.Sprintf("version %s of eck operator", newVersion), &git.CommitOptions{
+	log.Printf("Creating git commit ")
+	_, err = w.Commit(fmt.Sprintf(`version %s of eck operator\n\nSigned-off-by: %s <%s>`, newVersion, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  c.GitHubFullName,
 			Email: c.GitHubEmail,
@@ -186,10 +237,10 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 		},
 	})
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
+		log.Println("ⅹ")
 		return fmt.Errorf("failed to commit changes to git working tree: %w", err)
 	}
-	pterm.Println(pterm.Green("✓"))
+	log.Println("✓")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -199,43 +250,47 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			Token: c.GitHubToken,
 		},
 		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("eck-operator-certified-%s", c.GitTag)),
+			config.RefSpec(branchName),
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to push branch (%s) to remote: %w", fmt.Sprintf("eck-operator-certified-%s", c.GitTag), err)
+		return fmt.Errorf("failed to push branch (%s) to remote: %w", branchName, err)
 	}
 
 	if c.CreatePullRequest {
-		return c.createPullRequest()
+		return c.createPullRequest(repo, branchName)
 	}
-	pterm.Println(pterm.Yellow("Not creating pull request"))
+	log.Printf("Not creating pull request for (%s)\n", orgRepo)
 	return nil
 }
 
-func (c *Client) createPullRequest() error {
-	pterm.Printf("Creating pull request ")
+func (c *Client) createPullRequest(repo githubRepository, branchName string) error {
+	log.Printf("Creating pull request for (%s) ", repo.repository)
 	var body = []byte(
-		fmt.Sprintf(`{"title": "operator elasticsearch-eck-operator-certified (%s)", "head": "%s:%s", "base": "%s", "draft": true}`,
-			c.GitTag, c.GitHubUsername, fmt.Sprintf("eck-operator-certified-%s", c.GitTag), OpenshiftOperatorsRepositoryMainBranchName))
-	req, cancel, err := c.createRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/pulls", GithubAPIURL, RedhatOpenshiftEcosystemOperatorsRepo), bytes.NewBuffer(body))
+		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true}`,
+			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName))
+	req, cancel, err := c.createRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", GithubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))
 	defer cancel()
 	if err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("failed to create request to creating pr: %w", err)
+		log.Println("ⅹ")
+		return fmt.Errorf("while creating request to create pr for (%s): %w", repo.repository, err)
 	}
-	var res *http.Response
-	if res, err = c.HTTPClient.Do(req); err != nil {
-		pterm.Println(pterm.Red("ⅹ"))
-		return fmt.Errorf("failed request to create pr: %w", err)
-	}
-	if res.StatusCode > 299 {
-		pterm.Println(pterm.Red("ⅹ"))
-		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
-			return fmt.Errorf("failed request to create pr, body: %s, code: %d", string(bodyBytes), res.StatusCode)
+	if !c.DryRun {
+		var res *http.Response
+		if res, err = c.HTTPClient.Do(req); err != nil {
+			log.Println("ⅹ")
+			return fmt.Errorf("while creating pr for (%s): %w", repo.repository, err)
 		}
-		return fmt.Errorf("failed request to create pr, code: %d", res.StatusCode)
+		if res.StatusCode > 299 {
+			log.Println("ⅹ")
+			if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+				return fmt.Errorf("while creating pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
+			}
+			return fmt.Errorf("while creating pr for (%s), code: %d", repo.repository, res.StatusCode)
+		}
+		log.Println("✓")
+	} else {
+		log.Println("Not creating pull request as dry-run is set")
 	}
-	pterm.Println(pterm.Green("✓"))
 	return nil
 }
