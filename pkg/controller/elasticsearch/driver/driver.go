@@ -175,12 +175,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// start the ES observer
-	min, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
+	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}
-	if min == nil {
-		min = &d.Version
+	if minVersion == nil {
+		minVersion = &d.Version
 	}
 
 	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
@@ -195,7 +195,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			ctx,
 			resourcesState,
 			controllerUser,
-			*min,
+			*minVersion,
 			trustedHTTPCertificates,
 		),
 		isServiceReady,
@@ -236,7 +236,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		ctx,
 		resourcesState,
 		controllerUser,
-		*min,
+		*minVersion,
 		trustedHTTPCertificates,
 	)
 	defer esClient.Close()
@@ -310,9 +310,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile an empty File based settings Secret if it doesn't exist
-	err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
-	if err != nil {
-		return results.WithError(err)
+	if minVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
+		if err != nil {
+			return results.WithError(err)
+		}
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user
