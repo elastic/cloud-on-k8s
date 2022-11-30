@@ -83,7 +83,7 @@ There are no special instructions to follow if you upgrade from any 2.x version 
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
 ----
-.If your are using Helm
+.If you are using Helm
 [source,shell,subs="attributes,callouts"]
 ----
 helm upgrade elastic-operator elastic/eck-operator -n elastic-system
