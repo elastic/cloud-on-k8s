@@ -423,6 +423,11 @@ type stackConfigPolicyStats struct {
 		ClusterSettingsCount           int `json:"cluster_settings_count"`
 		SnapshotRepositoriesCount      int `json:"snapshot_repositories_count"`
 		SnapshotLifecyclePoliciesCount int `json:"snapshot_lifecycle_policies_count"`
+		RoleMappingsCount              int `json:"role_mappings_count"`
+		IndexLifecyclePoliciesCount    int `json:"index_lifecycle_policies_count"`
+		IngestPipelinesCount           int `json:"ingest_pipelines_count"`
+		ComponentTemplatesCount        int `json:"component_templates_count"`
+		ComposableIndexTemplatesCount  int `json:"composable_index_templates_count"`
 	} `json:"settings"`
 }
 
@@ -445,6 +450,21 @@ func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 			}
 			if scp.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
 				stats.Settings.SnapshotLifecyclePoliciesCount += len(scp.Spec.Elasticsearch.SnapshotLifecyclePolicies.Data)
+			}
+			if scp.Spec.Elasticsearch.SecurityRoleMappings != nil {
+				stats.Settings.RoleMappingsCount += len(scp.Spec.Elasticsearch.SecurityRoleMappings.Data)
+			}
+			if scp.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
+				stats.Settings.IndexLifecyclePoliciesCount += len(scp.Spec.Elasticsearch.IndexLifecyclePolicies.Data)
+			}
+			if scp.Spec.Elasticsearch.IngestPipelines != nil {
+				stats.Settings.IngestPipelinesCount += len(scp.Spec.Elasticsearch.IngestPipelines.Data)
+			}
+			if scp.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
+				stats.Settings.ComponentTemplatesCount += len(scp.Spec.Elasticsearch.IndexTemplates.ComponentTemplates.Data)
+			}
+			if scp.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
+				stats.Settings.ComposableIndexTemplatesCount += len(scp.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates.Data)
 			}
 		}
 	}

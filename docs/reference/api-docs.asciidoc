@@ -446,6 +446,7 @@ Config represents untyped YAML configuration.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$]
@@ -1924,6 +1925,28 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`clusterSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | ClusterSettings holds the Elasticsearch cluster settings (/_cluster/settings)
 | *`snapshotRepositories`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SnapshotRepositories holds the Snapshot Repositories settings (/_snapshot)
 | *`snapshotLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SnapshotLifecyclePolicies holds the Snapshot Lifecycle Policies settings (/_slm/policy)
+| *`securityRoleMappings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SecurityRoleMappings holds the Role Mappings settings (/_security/role_mapping)
+| *`indexLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
+| *`ingestPipelines`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline)
+| *`indexTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]__ | IndexTemplates holds the Index and Component Templates settings
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates"]
+=== IndexTemplates 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`componentTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | ComponentTemplates holds the Component Templates settings (/_component_template)
+| *`composableIndexTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | ComposableIndexTemplates holds the Index Templates settings (/_index_template)
 |===
 
 

@@ -57,6 +57,37 @@ spec:
                       (/_cluster/settings)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  indexLifecyclePolicies:
+                    description: IndexLifecyclePolicies holds the Index Lifecycle
+                      policies settings (/_ilm/policy)
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  indexTemplates:
+                    description: IndexTemplates holds the Index and Component Templates
+                      settings
+                    properties:
+                      componentTemplates:
+                        description: ComponentTemplates holds the Component Templates
+                          settings (/_component_template)
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      composableIndexTemplates:
+                        description: ComposableIndexTemplates holds the Index Templates
+                          settings (/_index_template)
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  ingestPipelines:
+                    description: IngestPipelines holds the Ingest Pipelines settings
+                      (/_ingest/pipeline)
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  securityRoleMappings:
+                    description: SecurityRoleMappings holds the Role Mappings settings
+                      (/_security/role_mapping)
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   snapshotLifecyclePolicies:
                     description: SnapshotLifecyclePolicies holds the Snapshot Lifecycle
                       Policies settings (/_slm/policy)

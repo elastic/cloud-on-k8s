@@ -97,6 +97,11 @@ const expectedTelemetryTemplate = `eck:
       resource_count: 0
       settings:
         cluster_settings_count: 0
+        component_templates_count: 0
+        composable_index_templates_count: 0
+        index_lifecycle_policies_count: 0
+        ingest_pipelines_count: 0
+        role_mappings_count: 0
         snapshot_lifecycle_policies_count: 0
         snapshot_repositories_count: 0
 `
