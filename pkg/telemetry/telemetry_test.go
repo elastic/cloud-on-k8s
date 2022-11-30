@@ -424,7 +424,6 @@ func TestNewReporter(t *testing.T) {
       configured_resources_count: 15
       resource_count: 2
       settings:
-        autoscaling_policies_count: 0
         cluster_settings_count: 1
         component_templates_count: 0
         composable_index_templates_count: 0

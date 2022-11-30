@@ -99,9 +99,6 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if policy.Spec.Elasticsearch.SecurityRoleMappings != nil {
 		settingsCount += len(policy.Spec.Elasticsearch.SecurityRoleMappings.Data)
 	}
-	if policy.Spec.Elasticsearch.AutoscalingPolicies != nil {
-		settingsCount += len(policy.Spec.Elasticsearch.AutoscalingPolicies.Data)
-	}
 	if policy.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
 		settingsCount += len(policy.Spec.Elasticsearch.IndexLifecyclePolicies.Data)
 	}

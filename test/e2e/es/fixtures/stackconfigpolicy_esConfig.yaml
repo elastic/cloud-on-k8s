@@ -29,11 +29,6 @@ securityRoleMappings:
     rules:
       field:
         username: '*'
-autoscalingPolicies:
-  autoscaling_policy_test:
-   roles: [ "data_hot" ]
-   deciders:
-     fixed: {}
 ingestPipelines:
   pipeline_test:
     description: "optional description"

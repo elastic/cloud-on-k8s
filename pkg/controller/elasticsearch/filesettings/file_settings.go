@@ -41,7 +41,6 @@ type SettingsState struct {
 	SnapshotRepositories   *commonv1.Config `json:"snapshot_repositories,omitempty"`
 	SLM                    *commonv1.Config `json:"slm,omitempty"`
 	RoleMappings           *commonv1.Config `json:"role_mappings,omitempty"`
-	Autoscaling            *commonv1.Config `json:"autoscaling,omitempty"`
 	IndexLifecyclePolicies *commonv1.Config `json:"ilm,omitempty"`
 	IngestPipelines        *commonv1.Config `json:"ingest_pipelines,omitempty"`
 	IndexTemplates         *IndexTemplates  `json:"index_templates,omitempty"`
@@ -72,7 +71,6 @@ func newEmptySettingsState() SettingsState {
 		SnapshotRepositories:   &commonv1.Config{Data: map[string]interface{}{}},
 		SLM:                    &commonv1.Config{Data: map[string]interface{}{}},
 		RoleMappings:           &commonv1.Config{Data: map[string]interface{}{}},
-		Autoscaling:            &commonv1.Config{Data: map[string]interface{}{}},
 		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{}},
 		IngestPipelines:        &commonv1.Config{Data: map[string]interface{}{}},
 		IndexTemplates: &IndexTemplates{
@@ -110,9 +108,6 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 	}
 	if p.Spec.Elasticsearch.SecurityRoleMappings != nil {
 		state.RoleMappings = p.Spec.Elasticsearch.SecurityRoleMappings
-	}
-	if p.Spec.Elasticsearch.AutoscalingPolicies != nil {
-		state.Autoscaling = p.Spec.Elasticsearch.AutoscalingPolicies
 	}
 	if p.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
 		state.IndexLifecyclePolicies = p.Spec.Elasticsearch.IndexLifecyclePolicies

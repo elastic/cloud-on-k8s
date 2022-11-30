@@ -60,14 +60,6 @@ func Test_updateState(t *testing.T) {
 			},
 		},
 	}}
-	autoscalingPolicies := &commonv1.Config{Data: map[string]any{
-		"test-autoscaling-policy": map[string]any{
-			"roles": []any{"data_hot"},
-			"deciders": map[string]any{
-				"fixed": map[string]any{},
-			},
-		},
-	}}
 	indexLifecyclePolicies := &commonv1.Config{Data: map[string]any{
 		"test-policy": map[string]any{
 			"phases": map[string]any{
@@ -204,7 +196,6 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				Autoscaling:            &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -249,7 +240,6 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				Autoscaling:            &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -296,7 +286,6 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
-				Autoscaling:            &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -360,7 +349,6 @@ func Test_updateState(t *testing.T) {
 				SnapshotRepositories:      &commonv1.Config{Data: map[string]any{}},
 				SnapshotLifecyclePolicies: snapshotLifecyclePolicies,
 				SecurityRoleMappings:      roleMappings,
-				AutoscalingPolicies:       autoscalingPolicies,
 				IndexLifecyclePolicies:    indexLifecyclePolicies,
 				IngestPipelines:           ingestPipelines,
 				IndexTemplates: policyv1alpha1.IndexTemplates{
@@ -373,7 +361,6 @@ func Test_updateState(t *testing.T) {
 				SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
 				SLM:                    snapshotLifecyclePolicies,
 				RoleMappings:           roleMappings,
-				Autoscaling:            autoscalingPolicies,
 				IndexLifecyclePolicies: indexLifecyclePolicies,
 				IngestPipelines:        ingestPipelines,
 				IndexTemplates: &IndexTemplates{

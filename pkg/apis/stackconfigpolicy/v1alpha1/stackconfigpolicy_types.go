@@ -70,9 +70,6 @@ type ElasticsearchConfigPolicySpec struct {
 	// SecurityRoleMappings holds the Role Mappings settings (/_security/role_mapping)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecurityRoleMappings *commonv1.Config `json:"securityRoleMappings,omitempty"`
-	// AutoscalingPolicies holds the Autoscaling Policies settings (/_autoscaling/policy)
-	// +kubebuilder:pruning:PreserveUnknownFields
-	AutoscalingPolicies *commonv1.Config `json:"autoscalingPolicies,omitempty"`
 	// IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	IndexLifecyclePolicies *commonv1.Config `json:"indexLifecyclePolicies,omitempty"`

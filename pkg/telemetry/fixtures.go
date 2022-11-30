@@ -96,7 +96,6 @@ const expectedTelemetryTemplate = `eck:
       configured_resources_count: 0
       resource_count: 0
       settings:
-        autoscaling_policies_count: 0
         cluster_settings_count: 0
         component_templates_count: 0
         composable_index_templates_count: 0
