@@ -33,7 +33,7 @@ require (
 	go.elastic.co/apm/module/apmzap/v2 v2.2.0
 	go.elastic.co/apm/v2 v2.2.0
 	go.uber.org/automaxprocs v1.5.1
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.3.0
 	golang.org/x/text v0.4.0
 	gopkg.in/yaml.v2 v2.4.0
