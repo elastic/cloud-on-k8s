@@ -1926,7 +1926,6 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`snapshotRepositories`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SnapshotRepositories holds the Snapshot Repositories settings (/_snapshot)
 | *`snapshotLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SnapshotLifecyclePolicies holds the Snapshot Lifecycle Policies settings (/_slm/policy)
 | *`securityRoleMappings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | SecurityRoleMappings holds the Role Mappings settings (/_security/role_mapping)
-| *`autoscalingPolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | AutoscalingPolicies holds the Autoscaling Policies settings (/_autoscaling/policy)
 | *`indexLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
 | *`ingestPipelines`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline)
 | *`indexTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]__ | IndexTemplates holds the Index and Component Templates settings

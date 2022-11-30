@@ -33,10 +33,6 @@ func (in *ElasticsearchConfigPolicySpec) DeepCopyInto(out *ElasticsearchConfigPo
 		in, out := &in.SecurityRoleMappings, &out.SecurityRoleMappings
 		*out = (*in).DeepCopy()
 	}
-	if in.AutoscalingPolicies != nil {
-		in, out := &in.AutoscalingPolicies, &out.AutoscalingPolicies
-		*out = (*in).DeepCopy()
-	}
 	if in.IndexLifecyclePolicies != nil {
 		in, out := &in.IndexLifecyclePolicies, &out.IndexLifecyclePolicies
 		*out = (*in).DeepCopy()

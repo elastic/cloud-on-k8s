@@ -9016,11 +9016,6 @@ spec:
             properties:
               elasticsearch:
                 properties:
-                  autoscalingPolicies:
-                    description: AutoscalingPolicies holds the Autoscaling Policies
-                      settings (/_autoscaling/policy)
-                    type: object
-                    x-kubernetes-preserve-unknown-fields: true
                   clusterSettings:
                     description: ClusterSettings holds the Elasticsearch cluster settings
                       (/_cluster/settings)
