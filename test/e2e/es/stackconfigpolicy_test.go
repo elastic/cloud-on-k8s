@@ -8,6 +8,7 @@ package es
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,16 +18,23 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/ghodss/yaml"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
+)
+
+var (
+	//go:embed fixtures/stackconfigpolicy_esConfig.yaml
+	esConfig string
 )
 
 // TestStackConfigPolicy tests the StackConfigPolicy feature.
@@ -48,8 +56,23 @@ func TestStackConfigPolicy(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 	secureSettingsSecretName := fmt.Sprintf("test-scp-secure-settings-%s", rand.String(4))
-	repoName := "repo-test"
-	expectedMaxBytesPerSec := "42mb"
+
+	// set the policy Elasticsearch settings the policy using the external YAML file
+	var esConfigSpec policyv1alpha1.ElasticsearchConfigPolicySpec
+	err := yaml.Unmarshal([]byte(esConfig), &esConfigSpec)
+	assert.NoError(t, err)
+
+	// list of endpoints to check the existence or not of the settings defined in the esConfigSpec
+	configuredObjectsEndpoints := []string{
+		"/_snapshot/repo_test",
+		"/_slm/policy/slm_test",
+		//"/_security/role_mapping/role_test", uncomment once https://github.com/elastic/elasticsearch/issues/91939 is resolved
+		"/_ingest/pipeline/pipeline_test",
+		"/_ilm/policy/ilm_test",
+		"/_index_template/template_test",
+		"/_component_template/runtime_component_template_test",
+		"/_component_template/component_template_test",
+	}
 
 	policy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -63,19 +86,7 @@ func TestStackConfigPolicy(t *testing.T) {
 			SecureSettings: []commonv1.SecretSource{
 				{SecretName: secureSettingsSecretName},
 			},
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
-					"indices.recovery.max_bytes_per_sec": expectedMaxBytesPerSec,
-				}},
-				SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
-					repoName: map[string]interface{}{
-						"type": "gcs",
-						"settings": map[string]interface{}{
-							"bucket": "bucket-test",
-						},
-					}},
-				},
-			},
+			Elasticsearch: esConfigSpec,
 		},
 	}
 
@@ -102,12 +113,6 @@ func TestStackConfigPolicy(t *testing.T) {
 	}
 
 	var noEntries []string
-	expectedRepo := SnapshotRepository{
-		Type: "gcs",
-		Settings: SnapshotRepositorySettings{
-			Bucket:   "bucket-test",
-			BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name())},
-	}
 	steps := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			test.Step{
@@ -131,12 +136,12 @@ func TestStackConfigPolicy(t *testing.T) {
 					assert.NoError(t, err)
 
 					var settings ClusterSettings
-					err = Request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
+					_, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
 					if err != nil {
 						return err
 					}
 
-					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != expectedMaxBytesPerSec {
+					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != "100mb" {
 						return errors.New("cluster settings not configured")
 					}
 					return nil
@@ -148,8 +153,9 @@ func TestStackConfigPolicy(t *testing.T) {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
+					repoName := "repo_test"
 					var repos SnapshotRepositories
-					err = Request(esClient, http.MethodGet, filepath.Join("/_snapshot", repoName), nil, &repos)
+					_, err = request(esClient, http.MethodGet, filepath.Join("/_snapshot", repoName), nil, &repos)
 					if err != nil {
 						return err
 					}
@@ -157,6 +163,12 @@ func TestStackConfigPolicy(t *testing.T) {
 					actualRepo, ok := repos[repoName]
 					if !ok {
 						return fmt.Errorf("snapshot repository '%s' not found", repoName)
+					}
+					expectedRepo := SnapshotRepository{
+						Type: "gcs",
+						Settings: SnapshotRepositorySettings{
+							Bucket:   "my-bucket",
+							BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name())},
 					}
 					if !reflect.DeepEqual(actualRepo, expectedRepo) {
 						act, err := json.Marshal(actualRepo)
@@ -172,6 +184,21 @@ func TestStackConfigPolicy(t *testing.T) {
 					return nil
 				}),
 			},
+			test.Step{
+				Name: "Other settings should be set",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					assert.NoError(t, err)
+
+					for _, ep := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, 200); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				}),
+			},
 			elasticsearch.CheckESKeystoreEntries(k, es, []string{
 				secureServiceAccountSettingKey,
 			}),
@@ -182,37 +209,15 @@ func TestStackConfigPolicy(t *testing.T) {
 				}),
 			},
 			test.Step{
-				Name: "Cluster settings should be reset",
+				Name: "Settings should be reset",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					var settings ClusterSettings
-					err = Request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
-					if err != nil {
-						return err
-					}
-
-					if !reflect.DeepEqual(settings, ClusterSettings{}) {
-						return errors.New("cluster settings not reset")
-					}
-					return nil
-				}),
-			},
-			test.Step{
-				Name: "Snapshot repository should be reset",
-				Test: test.Eventually(func() error {
-					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
-
-					var repos SnapshotRepositories
-					err = Request(esClient, http.MethodGet, "/_snapshot", nil, &repos)
-					if err != nil {
-						return err
-					}
-
-					if len(repos) != 0 {
-						return errors.New("snapshot repository settings not reset")
+					for _, ep := range configuredObjectsEndpoints {
+						if err := checkAPIStatusCode(esClient, ep, 404); err != nil {
+							return err
+						}
 					}
 					return nil
 				}),
@@ -223,6 +228,16 @@ func TestStackConfigPolicy(t *testing.T) {
 	}
 
 	test.Sequence(nil, steps, es).RunSequential(t)
+}
+
+func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
+	var items map[string]interface{}
+	actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
+	fmt.Println("request", url, "->", actualStatusCode)
+	if expectedStatusCode != actualStatusCode {
+		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
+	}
+	return nil
 }
 
 type ClusterSettings struct {
@@ -247,24 +262,28 @@ type SnapshotRepositorySettings struct {
 	BasePath string `json:"base_path"`
 }
 
-// Request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
-func Request(esClient client.Client, method string, url string, body io.Reader, response interface{}) error {
+// request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
+func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) (int, error) {
 	req, err := http.NewRequest(method, url, body) //nolint:noctx
+	statusCode := 0
 	if err != nil {
-		return err
+		return statusCode, err
 	}
 	resp, err := esClient.Request(context.Background(), req)
+	if resp != nil {
+		statusCode = resp.StatusCode
+	}
 	if err != nil {
-		return err
+		return statusCode, err
 	}
 	defer resp.Body.Close()
 	resultBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return statusCode, err
 	}
 	err = json.Unmarshal(resultBytes, &response)
 	if err != nil {
-		return err
+		return statusCode, err
 	}
-	return nil
+	return statusCode, nil
 }

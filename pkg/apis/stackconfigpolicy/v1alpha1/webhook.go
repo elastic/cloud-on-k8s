@@ -96,6 +96,21 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if policy.Spec.Elasticsearch.SnapshotLifecyclePolicies != nil {
 		settingsCount += len(policy.Spec.Elasticsearch.SnapshotLifecyclePolicies.Data)
 	}
+	if policy.Spec.Elasticsearch.SecurityRoleMappings != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.SecurityRoleMappings.Data)
+	}
+	if policy.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.IndexLifecyclePolicies.Data)
+	}
+	if policy.Spec.Elasticsearch.IngestPipelines != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.IngestPipelines.Data)
+	}
+	if policy.Spec.Elasticsearch.IndexTemplates.ComponentTemplates != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.IndexTemplates.ComponentTemplates.Data)
+	}
+	if policy.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates.Data)
+	}
 	if settingsCount == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
 	}
