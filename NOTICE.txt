@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig/v3
-Version : v3.2.2
-Time    : 2021-02-04T20:32:52Z
+Version : v3.2.3
+Time    : 2022-11-29T18:52:29Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.3/LICENSE.txt:
 
 Copyright (C) 2013-2020 Masterminds
 
@@ -6273,11 +6273,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/semver/v3
-Version : v3.1.1
-Time    : 2020-11-23T17:02:18Z
+Version : v3.2.0
+Time    : 2022-11-28T21:00:30Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.1.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.2.0/LICENSE.txt:
 
 Copyright (C) 2014-2019, Matt Butcher and Matt Farina
 
@@ -15520,11 +15520,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/huandu/xstrings
-Version : v1.3.1
-Time    : 2020-04-11T12:02:05Z
+Version : v1.3.3
+Time    : 2022-10-23T03:22:03Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.3/LICENSE:
 
 The MIT License (MIT)
 
