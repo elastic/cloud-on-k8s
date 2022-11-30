@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -29,13 +30,28 @@ func releaseCmd() *cobra.Command {
 		// this fmt.Sprintf is in place to keep spacing consistent with cobras two spaces that's used in: Usage, Flags, etc
 		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --bucket=mybucket --upload-index --chart-repo-url=https://helm-dev.elastic.co/helm"),
 		PreRunE: func(_ *cobra.Command, _ []string) error { return nil },
-		RunE:    func(_ *cobra.Command, _ []string) error { return helm.Release() },
+		RunE: func(_ *cobra.Command, _ []string) error {
+			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString("charts-dir"), viper.GetString("bucket"), viper.GetString("charts-repo-url"))
+			return helm.Release(
+				helm.ReleaseConfig{
+					ChartsDir:           viper.GetString("charts-dir"),
+					Bucket:              viper.GetString("bucket"),
+					ChartsRepoURL:       viper.GetString("charts-repo-url"),
+					CredentialsFilePath: viper.GetString("credentials-file"),
+					GCSURL:              viper.GetString("google-gcs-url"),
+					UploadIndex:         viper.GetBool("upload-index"),
+					UpdateDependencies:  viper.GetBool("update-dependencies"),
+				})
+		},
 	}
 
 	flags := releaseCommand.Flags()
 
-	flags.BoolP("upload-index", "u", false, "update and upload new helm index")
+	flags.BoolP("upload-index", "u", false, "update and upload new helm index (env: HELM_UPLOAD_INDEX)")
 	_ = viper.BindPFlag("upload-index", flags.Lookup("upload-index"))
+
+	flags.BoolP("update-dependencies", "U", false, "update chart dependencies prior to packaging (env: HELM_UPDATE_DEPENDENCIES)")
+	_ = viper.BindPFlag("update-dependencies", flags.Lookup("update-dependencies"))
 
 	flags.String("charts-dir", "./deploy", "charts directory which contain helm charts (env: HELM_CHARTS_DIR)")
 	_ = viper.BindPFlag("charts-dir", flags.Lookup("charts-dir"))
@@ -45,6 +61,12 @@ func releaseCmd() *cobra.Command {
 
 	flags.String("charts-repo-url", "https://helm-dev.elastic.co/helm", "URL of Helm Charts Repository (env: HELM_CHARTS_REPO_URL)")
 	_ = viper.BindPFlag("charts-repo-url", flags.Lookup("charts-repo-url"))
+
+	flags.String("credentials-file", "", "path to google credentials json file (env: HELM_CREDENTIALS_FILE)")
+	_ = viper.BindPFlag("credentials-file", flags.Lookup("credentials-file"))
+
+	flags.String("google-gcs-url", "https://storage.googleapis.com", "Google GCS URL, if wanting to use storage emulation.  Also disable TLS validation. (env: HELM_GOOGLE_GCS_URL)")
+	_ = viper.BindPFlag("google-gcs-url", flags.Lookup("google-gcs-url"))
 
 	return releaseCommand
 }
