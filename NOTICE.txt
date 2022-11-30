@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.2.0
-Time    : 2022-11-08T20:34:43Z
+Version : v0.3.0
+Time    : 2022-11-16T16:25:40Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.3.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
