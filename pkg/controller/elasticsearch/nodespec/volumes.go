@@ -10,7 +10,9 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -19,6 +21,7 @@ import (
 
 func buildVolumes(
 	esName string,
+	version version.Version,
 	nodeSpec esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
@@ -86,7 +89,6 @@ func buildVolumes(
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
 			downwardAPIVolume.Volume(),
-			fileSettingsVolume.Volume(),
 		)...)
 	if keystoreResources != nil {
 		volumes = append(volumes, keystoreResources.Volume)
@@ -104,8 +106,13 @@ func buildVolumes(
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),
 		downwardAPIVolume.VolumeMount(),
-		fileSettingsVolume.VolumeMount(),
 	)
+
+	// version gate for the file-based settings volume and volumeMounts
+	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		volumes = append(volumes, fileSettingsVolume.Volume())
+		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
+	}
 
 	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
 
