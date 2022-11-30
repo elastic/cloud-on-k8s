@@ -10,12 +10,14 @@ steps:
     steps:
 
       - label: ":docker: operator container image"
+        key: "operator-image-build"
         commands:
           - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
           - make operator-buildah
 
       - label: ":docker: e2e-tests container image"
+        key: "e2e-tests-image-build"
         commands:
           - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
@@ -75,6 +77,9 @@ steps:
             - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
 
       # Run all e2e tests on GKE on every commit in main
 
@@ -89,6 +94,9 @@ steps:
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
 
       # Run all e2e tests on all k8s distributions at midnight from the main branch
 
@@ -96,3 +104,6 @@ steps:
         if: build.branch == "main" && build.source == "schedule"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
