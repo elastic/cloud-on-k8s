@@ -44,6 +44,17 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 	runAgentRecipe(t, "system-integration.yaml", customize)
 }
 
+func TestQuickstartRecipe(t *testing.T) {
+
+	customize := func(builder agent.Builder) agent.Builder {
+		return builder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"))
+	}
+
+	runAgentRecipe(t, "quickstart.yaml", customize)
+}
+
 func TestKubernetesIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
@@ -218,7 +229,7 @@ func runAgentRecipe(
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
 }
 
-// isStackIncompatible returns true iff Agent version is higher than tested Stack version
+// isStackIncompatible returns true if Agent version is higher than tested Stack version
 func isStackIncompatible(agent agentv1alpha1.Agent) bool {
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
 	agentVersion := version.MustParse(agent.Spec.Version)
