@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ import (
 const (
 	googleCredentialsEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
 	defaultGCSURL           = "https://storage.googleapis.com"
+	defaultElasticHelmRepo  = "https://helm.elastic.co"
 )
 
 type ReleaseConfig struct {
@@ -50,22 +52,25 @@ func Release(conf ReleaseConfig) error {
 	}
 	noDeps, withDeps := process(charts)
 	// upload charts with no dependencies
-	if err := uploadCharts(noDeps, conf.ChartsDir, conf.Bucket, conf.GCSURL); err != nil {
+	if err := uploadCharts(noDeps, conf); err != nil {
 		return err
 	}
 	if conf.UploadIndex {
 		if err := updateIndex(); err != nil {
 			return err
 		}
+	} else {
+		// If the helm index isn't being updated, then we can't process charts
+		// with direct dependencies.
+		log.Printf("Not processing charts with dependencies (%v) as the Helm index isn't being updated", withDeps)
+		return nil
 	}
 	// upload charts with dependencies
-	if err := uploadCharts(withDeps, conf.ChartsDir, conf.Bucket, conf.GCSURL); err != nil {
+	if err := uploadCharts(withDeps, conf); err != nil {
 		return err
 	}
-	if conf.UploadIndex {
-		if err := updateIndex(); err != nil {
-			return err
-		}
+	if err := updateIndex(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -120,6 +125,7 @@ func process(charts []chart) (noDeps []chart, withDeps []chart) {
 		if len(ch.dependencies) == 0 {
 			noDeps = append(noDeps, ch)
 			// remove this element in slice
+			log.Printf("removing chart %s from list of charts", ch.name)
 			charts[i] = charts[len(charts)-1]
 			charts = charts[:len(charts)-1]
 		}
@@ -155,7 +161,7 @@ func in(name string, charts []chart) bool {
 	return false
 }
 
-func uploadCharts(charts []chart, chartsDir, bucket, gcsURL string) error {
+func uploadCharts(charts []chart, conf ReleaseConfig) error {
 	settings := cli.New()
 	log.Println("Adding https://charts.helm.sh/stable repository.")
 	// helm repo add stable https://charts.helm.sh/stable
@@ -169,8 +175,11 @@ func uploadCharts(charts []chart, chartsDir, bucket, gcsURL string) error {
 	// charts, _ := filepath.Glob(filepath.Join(chartsDir, "*/Chart.yaml"))
 	for _, chart := range charts {
 		// chartName := strings.Split(chart, "/")[len(strings.Split(chart, "/"))-2]
-		chartPath := filepath.Join(chartsDir, chart.name)
+		chartPath := filepath.Join(conf.ChartsDir, chart.name)
 		log.Printf("Attempting to add chart (%s)\n", chart.name)
+		if err := updateDependencyChartURLs(conf.ChartsDir, chart, conf.ChartsRepoURL); err != nil {
+			return err
+		}
 		// helm dependency update charts_dir/chart
 		client := action.NewDependency()
 		cfg := action.Configuration{}
@@ -199,14 +208,14 @@ func uploadCharts(charts []chart, chartsDir, bucket, gcsURL string) error {
 			return fmt.Errorf("while running 'helm package %s: %w", chartPath, err)
 		}
 		source := fmt.Sprintf("%s-*.tgz", chart.name)
-		destination := fmt.Sprintf("%s/helm/%s/", bucket, chart.name)
+		destination := fmt.Sprintf("%s/helm/%s/", conf.Bucket, chart.name)
 
 		// gsutil cp -n source destination
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
 		log.Printf("Writing chart (%s) to bucket\n", chart.name)
-		storageClient, err := getGCSClient(ctx, gcsURL)
+		storageClient, err := getGCSClient(ctx, conf.GCSURL)
 		if err != nil {
 			return fmt.Errorf("while creating gcs storage client: %w", err)
 		}
@@ -226,7 +235,7 @@ func uploadCharts(charts []chart, chartsDir, bucket, gcsURL string) error {
 		}
 		defer f.Close()
 
-		bkt := storageClient.Bucket(bucket)
+		bkt := storageClient.Bucket(conf.Bucket)
 
 		_, err = bkt.Attrs(ctx)
 		if err != nil && !strings.Contains(err.Error(), "bucket doesn't exist") {
@@ -263,6 +272,25 @@ func uploadCharts(charts []chart, chartsDir, bucket, gcsURL string) error {
 		}
 	}
 
+	return nil
+}
+
+func updateDependencyChartURLs(chartsDir string, chart chart, repoURL string) error {
+	chartYamlFilePath := filepath.Join(chartsDir, chart.name, "Chart.yaml")
+	data, err := ioutil.ReadFile(chartYamlFilePath)
+	if err != nil {
+		return fmt.Errorf("while reading file (%s): %w", chartYamlFilePath, err)
+	}
+	newContents := strings.ReplaceAll(
+		string(data),
+		fmt.Sprintf(`repository: "%s"`, defaultElasticHelmRepo),
+		fmt.Sprintf(`repository: "%s"`, repoURL),
+	)
+
+	err = ioutil.WriteFile(chartYamlFilePath, []byte(newContents), 0)
+	if err != nil {
+		return fmt.Errorf("while writing (%s): %w", chartYamlFilePath, err)
+	}
 	return nil
 }
 
