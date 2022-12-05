@@ -121,32 +121,25 @@ func readCharts(chartsDir string) ([]chart, error) {
 }
 
 func process(charts []chart) (noDeps []chart, withDeps []chart) {
-	for i, ch := range charts {
+	var temp []chart
+	for _, ch := range charts {
 		if len(ch.dependencies) == 0 {
 			noDeps = append(noDeps, ch)
-			// remove this element in slice
-			log.Printf("removing chart %s from list of charts", ch.name)
-			charts[i] = charts[len(charts)-1]
-			charts = charts[:len(charts)-1]
+			continue
 		}
+		temp = append(temp, ch)
 	}
-	for i, ch := range charts {
+	for _, ch := range temp {
 		foundInDeps := false
 		for _, dep := range ch.dependencies {
 			if in(dep.name, noDeps) {
 				withDeps = append(withDeps, ch)
-				// remove this element in slice
-				charts[i] = charts[len(charts)-1]
-				charts = charts[:len(charts)-1]
 				foundInDeps = true
 				break
 			}
 		}
 		if !foundInDeps {
 			noDeps = append(noDeps, ch)
-			// remove this element in slice
-			charts[i] = charts[len(charts)-1]
-			charts = charts[:len(charts)-1]
 		}
 	}
 	return
