@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -33,7 +34,6 @@ type ReleaseConfig struct {
 	ChartsDir, Bucket, ChartsRepoURL string
 	CredentialsFilePath              string
 	UploadIndex                      bool
-	UpdateDependencies               bool
 	GCSURL                           string
 }
 
@@ -101,13 +101,8 @@ func readCharts(chartsDir string) ([]chart, error) {
 		return nil, err
 	}
 	charts := make([]chart, len(cs))
-	for _, fullChartPath := range cs {
-		f, err := os.Open(fullChartPath)
-		if err != nil {
-			return nil, fmt.Errorf("while opening %s: %w", fullChartPath, err)
-		}
-		var fileBytes []byte
-		_, err = f.Read(fileBytes)
+	for i, fullChartPath := range cs {
+		fileBytes, err := os.ReadFile(fullChartPath)
 		if err != nil {
 			return nil, fmt.Errorf("while reading %s: %w", fullChartPath, err)
 		}
@@ -115,7 +110,7 @@ func readCharts(chartsDir string) ([]chart, error) {
 		if err = yaml.Unmarshal(fileBytes, &ch); err != nil {
 			return nil, fmt.Errorf("while unmarshing %s to chart: %w", fullChartPath, err)
 		}
-		charts = append(charts, ch)
+		charts[i] = ch
 	}
 	return charts, nil
 }
@@ -123,7 +118,7 @@ func readCharts(chartsDir string) ([]chart, error) {
 func process(charts []chart) (noDeps []chart, withDeps []chart) {
 	var temp []chart
 	for _, ch := range charts {
-		if len(ch.dependencies) == 0 {
+		if len(ch.Dependencies) == 0 {
 			noDeps = append(noDeps, ch)
 			continue
 		}
@@ -131,8 +126,8 @@ func process(charts []chart) (noDeps []chart, withDeps []chart) {
 	}
 	for _, ch := range temp {
 		foundInDeps := false
-		for _, dep := range ch.dependencies {
-			if in(dep.name, noDeps) {
+		for _, dep := range ch.Dependencies {
+			if in(dep.Name, noDeps) {
 				withDeps = append(withDeps, ch)
 				foundInDeps = true
 				break
@@ -147,7 +142,7 @@ func process(charts []chart) (noDeps []chart, withDeps []chart) {
 
 func in(name string, charts []chart) bool {
 	for _, ch := range charts {
-		if ch.name == name {
+		if ch.Name == name {
 			return true
 		}
 	}
@@ -168,8 +163,8 @@ func uploadCharts(charts []chart, conf ReleaseConfig) error {
 	// charts, _ := filepath.Glob(filepath.Join(chartsDir, "*/Chart.yaml"))
 	for _, chart := range charts {
 		// chartName := strings.Split(chart, "/")[len(strings.Split(chart, "/"))-2]
-		chartPath := filepath.Join(conf.ChartsDir, chart.name)
-		log.Printf("Attempting to add chart (%s)\n", chart.name)
+		chartPath := filepath.Join(conf.ChartsDir, chart.Name)
+		log.Printf("Attempting to add chart (%s)\n", chart.Name)
 		if err := updateDependencyChartURLs(conf.ChartsDir, chart, conf.ChartsRepoURL); err != nil {
 			return err
 		}
@@ -186,28 +181,29 @@ func uploadCharts(charts []chart, conf ReleaseConfig) error {
 			RepositoryConfig: settings.RepositoryConfig,
 			RepositoryCache:  settings.RepositoryCache,
 			Debug:            settings.Debug,
+			Verify:           downloader.VerifyNever,
 		}
 		if client.Verify {
 			man.Verify = downloader.VerifyAlways
 		}
-		log.Printf("Updating dependencies for chart (%s)\n", chart.name)
+		log.Printf("Updating dependencies for chart (%s)\n", chart.Name)
 		if err := man.Update(); err != nil {
 			return fmt.Errorf("while running 'helm dependency update %s': %w", chart, err)
 		}
 		// helm package "charts_dir/chart" --destination "chart"
 		packageClient := action.NewPackage()
-		log.Printf("Packaging chart (%s)\n", chart.name)
+		log.Printf("Packaging chart (%s)\n", chart.Name)
 		if _, err := packageClient.Run(chartPath, map[string]interface{}{}); err != nil {
 			return fmt.Errorf("while running 'helm package %s: %w", chartPath, err)
 		}
-		source := fmt.Sprintf("%s-*.tgz", chart.name)
-		destination := fmt.Sprintf("%s/helm/%s/", conf.Bucket, chart.name)
+		source := fmt.Sprintf("%s-*.tgz", chart.Name)
+		destination := fmt.Sprintf("%s/helm/%s/", conf.Bucket, chart.Name)
 
 		// gsutil cp -n source destination
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		log.Printf("Writing chart (%s) to bucket\n", chart.name)
+		log.Printf("Writing chart (%s) to bucket\n", chart.Name)
 		storageClient, err := getGCSClient(ctx, conf.GCSURL)
 		if err != nil {
 			return fmt.Errorf("while creating gcs storage client: %w", err)
@@ -230,15 +226,15 @@ func uploadCharts(charts []chart, conf ReleaseConfig) error {
 
 		bkt := storageClient.Bucket(conf.Bucket)
 
-		_, err = bkt.Attrs(ctx)
-		if err != nil && !strings.Contains(err.Error(), "bucket doesn't exist") {
-			return fmt.Errorf("while checking if bucket exists: %w", err)
-		} else if err != nil && strings.Contains(err.Error(), "bucket doesn't exist") {
-			// TODO get project id from json file
-			if err := bkt.Create(ctx, "", nil); err != nil {
-				return fmt.Errorf("while creating bucket: %w", err)
-			}
-		}
+		// _, err = bkt.Attrs(ctx)
+		// if err != nil && !strings.Contains(err.Error(), "bucket doesn't exist") {
+		// 	return fmt.Errorf("while checking if bucket exists: %w", err)
+		// } else if err != nil && strings.Contains(err.Error(), "bucket doesn't exist") {
+		// 	// TODO get project id from json file
+		// 	if err := bkt.Create(ctx, "", nil); err != nil {
+		// 		return fmt.Errorf("while creating bucket: %w", err)
+		// 	}
+		// }
 
 		o := bkt.Object(destination)
 
@@ -260,8 +256,18 @@ func uploadCharts(charts []chart, conf ReleaseConfig) error {
 		if _, err = io.Copy(wc, f); err != nil {
 			return fmt.Errorf("while copying data to bucket: %w", err)
 		}
+
 		if err := wc.Close(); err != nil {
-			return fmt.Errorf("while closing bucket writer: %w", err)
+			switch ee := err.(type) {
+			case *googleapi.Error:
+				if ee.Code == http.StatusPreconditionFailed {
+					// The object already exists; this error is expected
+					break
+				}
+				return fmt.Errorf("while writing data to bucket: %w", err)
+			default:
+				return fmt.Errorf("while writing data to bucket: %w", err)
+			}
 		}
 	}
 
@@ -269,7 +275,7 @@ func uploadCharts(charts []chart, conf ReleaseConfig) error {
 }
 
 func updateDependencyChartURLs(chartsDir string, chart chart, repoURL string) error {
-	chartYamlFilePath := filepath.Join(chartsDir, chart.name, "Chart.yaml")
+	chartYamlFilePath := filepath.Join(chartsDir, chart.Name, "Chart.yaml")
 	data, err := ioutil.ReadFile(chartYamlFilePath)
 	if err != nil {
 		return fmt.Errorf("while reading file (%s): %w", chartYamlFilePath, err)
