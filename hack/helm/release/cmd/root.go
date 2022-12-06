@@ -40,6 +40,7 @@ func releaseCmd() *cobra.Command {
 					CredentialsFilePath: viper.GetString("credentials-file"),
 					GCSURL:              viper.GetString("google-gcs-url"),
 					UploadIndex:         viper.GetBool("upload-index"),
+					DryRun:              viper.GetBool("dry-run"),
 				})
 		},
 	}
@@ -49,8 +50,8 @@ func releaseCmd() *cobra.Command {
 	flags.BoolP("upload-index", "u", false, "update and upload new helm index (env: HELM_UPLOAD_INDEX)")
 	_ = viper.BindPFlag("upload-index", flags.Lookup("upload-index"))
 
-	// flags.BoolP("update-dependencies", "U", false, "update chart dependencies prior to packaging (env: HELM_UPDATE_DEPENDENCIES)")
-	// _ = viper.BindPFlag("update-dependencies", flags.Lookup("update-dependencies"))
+	flags.BoolP("dry-run", "d", true, "Do not update upload new files to bucket, or update helm index (env: HELM_DRY_RUN)")
+	_ = viper.BindPFlag("dry-run", flags.Lookup("dry-run"))
 
 	flags.String("charts-dir", "./deploy", "charts directory which contain helm charts (env: HELM_CHARTS_DIR)")
 	_ = viper.BindPFlag("charts-dir", flags.Lookup("charts-dir"))
