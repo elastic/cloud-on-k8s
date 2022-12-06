@@ -45,7 +45,6 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 }
 
 func TestQuickstartRecipe(t *testing.T) {
-
 	customize := func(builder agent.Builder) agent.Builder {
 		return builder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
