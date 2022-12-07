@@ -65,6 +65,11 @@ const (
 	FleetURL                = "FLEET_URL"
 	FleetInsecure           = "FLEET_INSECURE"
 	FleetServerInsecureHTTP = "FLEET_SERVER_INSECURE_HTTP"
+	// FleetServerHost is the environment variable defining the binding host for Fleet Server HTTP.
+	FleetServerHost = "FLEET_SERVER_HOST"
+	// FleetServerPortEnv is the environment variable defining the binding port for Fleet Server HTTP.
+	// *note* that the trailing 'Env' is required as 'FleetServerPort' is previously declared as int32.
+	FleetServerPortEnv = "FLEET_SERVER_PORT"
 
 	// Below are the names of environment variables used to configure Fleet Server and its connection to Elasticsearch
 	// in Fleet mode.
@@ -543,6 +548,8 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, agent agentv1alpha1.Ag
 		fleetServerCfg[FleetServerCertKey] = path.Join(FleetCertsMountPath, certificates.KeyFileName)
 	} else {
 		fleetServerCfg[FleetServerInsecureHTTP] = "true"
+		fleetServerCfg[FleetServerHost] = "0.0.0.0"
+		fleetServerCfg[FleetServerPortEnv] = fmt.Sprintf("%d", FleetServerPort)
 	}
 
 	esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsDefined()
