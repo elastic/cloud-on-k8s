@@ -2075,11 +2075,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.8.6
-Time    : 2022-02-23T08:50:35Z
+Version : v1.8.7
+Time    : 2022-12-08T14:25:49Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.6/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.7/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
