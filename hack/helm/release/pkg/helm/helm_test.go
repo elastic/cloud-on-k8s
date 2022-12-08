@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_process(t *testing.T) {
+func Test_separateChartsWithDependencies(t *testing.T) {
 	tests := []struct {
 		name         string
 		charts       []chart
@@ -44,12 +44,12 @@ func Test_process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotNoDeps, gotWithDeps := process(tt.charts)
+			gotNoDeps, gotWithDeps := separateChartsWithDependencies(tt.charts)
 			if !reflect.DeepEqual(gotNoDeps, tt.wantNoDeps) {
-				t.Errorf("process() gotNoDeps = %v, want %v", gotNoDeps, tt.wantNoDeps)
+				t.Errorf("separateChartsWithDependencies() gotNoDeps = %v, want %v", gotNoDeps, tt.wantNoDeps)
 			}
 			if !reflect.DeepEqual(gotWithDeps, tt.wantWithDeps) {
-				t.Errorf("process() gotWithDeps = %v, want %v", gotWithDeps, tt.wantWithDeps)
+				t.Errorf("separateChartsWithDependencies() gotWithDeps = %v, want %v", gotWithDeps, tt.wantWithDeps)
 			}
 		})
 	}

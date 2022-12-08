@@ -2,6 +2,8 @@
 
 - [x] Handle updating index
 - [ ] Add dry run?
+- [ ] Excludes
+- [ ] Release single chart?
 - [ ] New logger with info/debug capabilities?
 - [ ] Tests
 - [ ] Manual Testing

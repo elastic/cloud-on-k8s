@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,6 +42,7 @@ func releaseCmd() *cobra.Command {
 					GCSURL:              viper.GetString("google-gcs-url"),
 					UploadIndex:         viper.GetBool("upload-index"),
 					DryRun:              viper.GetBool("dry-run"),
+					Excludes:            viper.GetStringSlice("excludes"),
 				})
 		},
 	}
@@ -68,11 +70,13 @@ func releaseCmd() *cobra.Command {
 	flags.String("google-gcs-url", "https://storage.googleapis.com", "Google GCS URL, if wanting to use storage emulation.  Also disable TLS validation. (env: HELM_GOOGLE_GCS_URL)")
 	_ = viper.BindPFlag("google-gcs-url", flags.Lookup("google-gcs-url"))
 
+	flags.StringSlice("excludes", []string{}, "Names of helm charts to exclude from release. (env: HELM_EXCLUDES)")
+	_ = viper.BindPFlag("excludes", flags.Lookup("excludes"))
+
 	return releaseCommand
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// Execute release flow.
 func Execute() {
 	err := releaseCmd().Execute()
 	if err != nil {
@@ -83,6 +87,7 @@ func Execute() {
 func initConfig() {
 	// set up ENV var support
 	viper.SetEnvPrefix("helm")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
 	// set up optional config file support
