@@ -19,9 +19,8 @@ RUN CGO_ENABLED=0 GOOS=linux \
     -mod readonly \
     -o helm-releaser main.go
 
-# Copy the operator binary into a lighter image
-# FROM gcr.io/distroless/static:nonroot
-FROM alpine
+# Copy the releaser binary into a lighter image
+FROM gcr.io/distroless/static:nonroot
 
 COPY --from=builder /usr/local/src/helm-releaser/helm-releaser /usr/local/bin/helm-releaser
 

@@ -1,6 +1,7 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package cmd
 
 import (
@@ -12,24 +13,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/elastic/cloud-on-k8s/hack/helm/release/pkg/helm"
+	"github.com/elastic/cloud-on-k8s/hack/helm/release/internal/helm"
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
 }
 
-var (
-	configFileUsed bool
-)
-
 func releaseCmd() *cobra.Command {
 	releaseCommand := &cobra.Command{
-		Use:   "release",
-		Short: "Release Helm Charts",
-		Long:  `This command will Release ECK Helm Charts to a given GCS Bucket.`,
-		// this fmt.Sprintf is in place to keep spacing consistent with cobras two spaces that's used in: Usage, Flags, etc
-		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --bucket=mybucket --upload-index --chart-repo-url=https://helm-dev.elastic.co/helm"),
+		Use:     "release",
+		Short:   "Release ECK Helm Charts",
+		Long:    `This command will Release ECK Helm Charts to a given GCS Bucket.`,
+		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --upload-index --dry-run=false"),
 		PreRunE: func(_ *cobra.Command, _ []string) error { return nil },
 		RunE: func(_ *cobra.Command, _ []string) error {
 			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString("charts-dir"), viper.GetString("bucket"), viper.GetString("charts-repo-url"))
@@ -39,7 +35,6 @@ func releaseCmd() *cobra.Command {
 					Bucket:              viper.GetString("bucket"),
 					ChartsRepoURL:       viper.GetString("charts-repo-url"),
 					CredentialsFilePath: viper.GetString("credentials-file"),
-					GCSURL:              viper.GetString("google-gcs-url"),
 					UploadIndex:         viper.GetBool("upload-index"),
 					DryRun:              viper.GetBool("dry-run"),
 					Excludes:            viper.GetStringSlice("excludes"),
@@ -67,9 +62,6 @@ func releaseCmd() *cobra.Command {
 	flags.String("credentials-file", "", "path to google credentials json file (env: HELM_CREDENTIALS_FILE)")
 	_ = viper.BindPFlag("credentials-file", flags.Lookup("credentials-file"))
 
-	flags.String("google-gcs-url", "https://storage.googleapis.com", "Google GCS URL, if wanting to use storage emulation.  Also disable TLS validation. (env: HELM_GOOGLE_GCS_URL)")
-	_ = viper.BindPFlag("google-gcs-url", flags.Lookup("google-gcs-url"))
-
 	flags.StringSlice("excludes", []string{}, "Names of helm charts to exclude from release. (env: HELM_EXCLUDES)")
 	_ = viper.BindPFlag("excludes", flags.Lookup("excludes"))
 
@@ -89,20 +81,4 @@ func initConfig() {
 	viper.SetEnvPrefix("helm")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
-
-	// set up optional config file support
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-
-	configFileUsed = true
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			configFileUsed = false
-		}
-	}
-
-	// Set up cluster defaults
-	viper.SetDefault("upload-index", false)
-	viper.SetDefault("chart-repo-url", "https://helm-dev.elastic.co/helm")
 }
