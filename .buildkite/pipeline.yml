@@ -120,6 +120,11 @@ steps:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
 
       - label: ":helm: release eck-resources helm charts"
+        # gcp agent with docker is required for the plugin.
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
         plugins:
           - Zegocover/git-diff-conditional#v1.1.1:
               dynamic_pipeline: ".buildkite/pipeline-helm-release-eck-resources.yml"
