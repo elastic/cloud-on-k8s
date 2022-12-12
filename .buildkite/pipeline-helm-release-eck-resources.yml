@@ -16,12 +16,13 @@ steps:
           - make build > /dev/null
           - ./bin/releaser --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
 
-      # Intentionally disabled during testing.
-      #
-      # - label: "release eck resources helm charts prod"
-      #   depends_on:
-      #     - "helm-release-eck-resources-dev"
-      #   commands:
-      #     - .ci/setenvconfig helm/eck-resources-prod
-      #     - cd hack/helm/release
-      #     - go run hack/helm/release/main.go --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
+      - label: "release eck resources helm charts prod"
+        depends_on:
+          - "helm-release-eck-resources-dev"
+        commands:
+          - .ci/setenvconfig helm/eck-resources-prod
+          - cd hack/helm/release
+          # ignoring stdout to avoid "go: downloading ..." output.
+          - make build > /dev/null
+          # Intentionally disabled during testing.
+          # - ./bin/releaser --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
