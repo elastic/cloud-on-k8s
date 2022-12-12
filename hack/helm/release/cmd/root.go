@@ -16,6 +16,26 @@ import (
 	"github.com/elastic/cloud-on-k8s/hack/helm/release/internal/helm"
 )
 
+const (
+	// flags
+	bucketFlag          = "bucket"
+	chartsDirFlag       = "charts-dir"
+	chartsRepoURLFlag   = "charts-repo-url"
+	credentialsFileFlag = "credentials-file"
+	dryRunFlag          = "dry-run"
+	excludesFlag        = "excludes"
+	enableVaultFlag     = "enable-vault"
+	vaultSecretFlag     = "vault-secret"
+
+	// GCS Helm Buckets
+	elasticHelmChartsDevBucket  = "elastic-helm-charts-dev"
+	elasticHelmChartsProdBucket = "elastic-helm-charts"
+
+	// Helm Repositories
+	elasticHelmChartsDevRepoURL  = "https://helm-dev.elastic.co/helm"
+	elasticHelmChartsProdRepoURL = "https://helm.elastic.co/helm"
+)
+
 func init() {
 	cobra.OnInitialize(initConfig)
 }
@@ -44,49 +64,95 @@ func releaseCmd() *cobra.Command {
 
 	flags := releaseCommand.Flags()
 
-	flags.BoolP("upload-index", "u", false, "update and upload new helm index (env: HELM_UPLOAD_INDEX)")
-	_ = viper.BindPFlag("upload-index", flags.Lookup("upload-index"))
+	flags.BoolP(
+		dryRunFlag,
+		"d",
+		true,
+		"Do not update upload new files to bucket, or update helm index (env: HELM_DRY_RUN)",
+	)
+	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 
-	flags.BoolP("dry-run", "d", true, "Do not update upload new files to bucket, or update helm index (env: HELM_DRY_RUN)")
-	_ = viper.BindPFlag("dry-run", flags.Lookup("dry-run"))
+	flags.String(
+		chartsDirFlag,
+		"./deploy",
+		"charts directory which contain helm charts (env: HELM_CHARTS_DIR)",
+	)
+	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
-	flags.String("charts-dir", "./deploy", "charts directory which contain helm charts (env: HELM_CHARTS_DIR)")
-	_ = viper.BindPFlag("charts-dir", flags.Lookup("charts-dir"))
+	flags.String(
+		bucketFlag,
+		elasticHelmChartsDevBucket,
+		"GCS bucket in which to release helm charts (env: HELM_BUCKET)",
+	)
+	_ = viper.BindPFlag(bucketFlag, flags.Lookup(bucketFlag))
 
-	flags.String("bucket", "elastic-helm-charts-dev", "GCS bucket in which to release helm charts (env: HELM_BUCKET)")
-	_ = viper.BindPFlag("bucket", flags.Lookup("bucket"))
+	flags.String(
+		chartsRepoURLFlag,
+		elasticHelmChartsDevRepoURL,
+		"URL of Helm Charts Repository (env: HELM_CHARTS_REPO_URL)",
+	)
+	_ = viper.BindPFlag(chartsRepoURLFlag, flags.Lookup(chartsRepoURLFlag))
 
-	flags.String("charts-repo-url", "https://helm-dev.elastic.co/helm", "URL of Helm Charts Repository (env: HELM_CHARTS_REPO_URL)")
-	_ = viper.BindPFlag("charts-repo-url", flags.Lookup("charts-repo-url"))
+	flags.String(
+		credentialsFileFlag,
+		"",
+		"path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
+	)
+	_ = viper.BindPFlag(credentialsFileFlag, flags.Lookup(credentialsFileFlag))
 
-	flags.String("credentials-file", "", "path to google credentials json file (env: HELM_CREDENTIALS_FILE)")
-	_ = viper.BindPFlag("credentials-file", flags.Lookup("credentials-file"))
-
-	flags.StringSlice("excludes", []string{}, "Names of helm charts to exclude from release. (env: HELM_EXCLUDES)")
-	_ = viper.BindPFlag("excludes", flags.Lookup("excludes"))
+	flags.StringSlice(
+		excludesFlag,
+		[]string{},
+		"Names of helm charts to exclude from release. (env: HELM_EXCLUDES)",
+	)
+	_ = viper.BindPFlag(excludesFlag, flags.Lookup(excludesFlag))
 
 	flags.Bool(
-		"enable-vault",
+		enableVaultFlag,
 		false,
 		"Enable vault functionality to try and automatically read 'credentials-file' from given vault key (uses HELM_VAULT_* environment variables) (HELM_ENABLE_VAULT)",
 	)
-	_ = viper.BindPFlag("enable-vault", flags.Lookup("enable-vault"))
+	_ = viper.BindPFlag(enableVaultFlag, flags.Lookup(enableVaultFlag))
 
 	flags.String(
-		"vault-secret",
+		vaultSecretFlag,
 		"",
 		"When --enable-vault is set, attempts to read 'credentials-file' data from given vault secret location (HELM_VAULT_SECRET)",
 	)
+	_ = viper.BindPFlag(vaultSecretFlag, flags.Lookup(vaultSecretFlag))
 
 	return releaseCommand
 }
 
 func validate(_ *cobra.Command, _ []string) error {
-	if viper.GetBool("enable-vault") {
-		if viper.GetString("vault-secret") == "" {
-			return fmt.Errorf("vault-secret is required when enable-vault is set")
+	if viper.GetBool(enableVaultFlag) {
+		if viper.GetString(vaultSecretFlag) == "" {
+			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
 		}
 		return attemptVault()
+	}
+	if viper.GetString(credentialsFileFlag) == "" {
+		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
+	}
+	gcsBucket := viper.GetString(bucketFlag)
+	if gcsBucket == "" {
+		return fmt.Errorf("%s is a required flag", bucketFlag)
+	}
+	chartsRepoURL := viper.GetString(chartsRepoURLFlag)
+	if chartsRepoURL == "" {
+		return fmt.Errorf("%s is a required flag", chartsRepoURLFlag)
+	}
+	switch chartsRepoURL {
+	case elasticHelmChartsDevRepoURL:
+		if gcsBucket != elasticHelmChartsDevBucket {
+			return fmt.Errorf("%s must be set to %s when %s is set to %s", bucketFlag, elasticHelmChartsDevBucket, chartsRepoURLFlag, elasticHelmChartsDevRepoURL)
+		}
+	case elasticHelmChartsProdRepoURL:
+		if gcsBucket != elasticHelmChartsProdBucket {
+			return fmt.Errorf("%s must be set to %s when %s is set to %s", bucketFlag, elasticHelmChartsProdBucket, chartsRepoURLFlag, elasticHelmChartsProdRepoURL)
+		}
+	default:
+		return fmt.Errorf("%s can only be one of (%s, %s)", chartsRepoURLFlag, elasticHelmChartsDevRepoURL, elasticHelmChartsProdRepoURL)
 	}
 	return nil
 }
