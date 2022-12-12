@@ -36,7 +36,7 @@ eck-elasticsearch:
         #           values:
         #           - highio
     # Volume Claim settings.
-    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/2.2/k8s-volume-claim-templates.html
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
     #
     volumeClaimTemplates:
     - metadata:
