@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// flags
+	// viper flags
 	bucketFlag          = "bucket"
 	chartsDirFlag       = "charts-dir"
 	chartsRepoURLFlag   = "charts-repo-url"
@@ -129,7 +129,7 @@ func validate(_ *cobra.Command, _ []string) error {
 		if viper.GetString(vaultSecretFlag) == "" {
 			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
 		}
-		return attemptVault()
+		return readCredentialsFromVault()
 	}
 	if viper.GetString(credentialsFileFlag) == "" {
 		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
@@ -157,7 +157,7 @@ func validate(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// Execute release flow.
+// Execute will execute the Helm release flow.
 func Execute() {
 	err := releaseCmd().Execute()
 	if err != nil {
@@ -166,7 +166,7 @@ func Execute() {
 }
 
 func initConfig() {
-	// set up ENV var support
+	// set up environment variable support
 	viper.SetEnvPrefix("helm")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
