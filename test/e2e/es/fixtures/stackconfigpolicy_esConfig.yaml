@@ -1,0 +1,88 @@
+clusterSettings:
+  indices.recovery.max_bytes_per_sec: "100mb"
+snapshotRepositories:
+  repo_test:
+    type: gcs
+    settings:
+      bucket: my-bucket
+snapshotLifecyclePolicies:
+  slm_test:
+    schedule: "0 1 2 3 4 ?"
+    name: "<production-snap-{now/d}>"
+    repository: repo_test
+    config:
+      indices: ["*"]
+      ignore_unavailable: true
+      include_global_state: false
+    retention:
+      expire_after: "7d"
+      min_count: 1
+      max_count: 20
+securityRoleMappings:
+  role_test:
+    enabled: true
+    metadata:
+      _foo: something
+      uuid: b9a59ba9-6b92-4be2-bb8d-02bb270cb3a7
+    roles:
+    - kibana_user
+    rules:
+      field:
+        username: '*'
+ingestPipelines:
+  pipeline_test:
+    description: "optional description"
+    processors:
+    - set:
+        field: my-keyword-field
+        value: foo
+indexLifecyclePolicies:
+  ilm_test:
+    phases:
+      delete:
+        actions:
+          delete: {}
+        min_age: 30d
+      warm:
+        actions:
+          forcemerge:
+            max_num_segments: 1
+        min_age: 10d
+indexTemplates:
+  componentTemplates:
+    component_template_test:
+      template:
+        mappings:
+          properties:
+            '@timestamp':
+              type: date
+    runtime_component_template_test:
+      template:
+        mappings:
+          runtime:
+            day_of_week:
+              type: keyword
+  composableIndexTemplates:
+    template_test:
+      composed_of:
+      - component_template_test
+      - runtime_component_template_test
+      index_patterns:
+      - te*
+      - bar*
+      priority: 500
+      template:
+        aliases:
+          mydata: {}
+        mappings:
+          _source:
+            enabled: true
+          properties:
+            created_at:
+              format: EEE MMM dd HH:mm:ss Z yyyy
+              type: date
+            host_name:
+              type: keyword
+        settings:
+          number_of_shards: 1
+      version: 1

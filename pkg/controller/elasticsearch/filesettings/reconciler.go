@@ -18,6 +18,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
+var (
+	// managedLabels are the labels managed by the operator for the file settings Secret, which means that the operator
+	// will always take precedence to update or remove these labels.
+	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
+	// managedAnnotations are the annotations managed by the operator for the file settings Secret, which means that the operator
+	// will always take precedence to update or remove these annotations.
+	managedAnnotations = []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
+)
+
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
 // Used by the Elasticsearch controller.
 func ReconcileEmptyFileSettingsSecret(
@@ -53,7 +62,6 @@ func ReconcileSecret(
 	expected corev1.Secret,
 	es esv1.Elasticsearch,
 ) error {
-	managedAnnotations := []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
@@ -68,6 +76,12 @@ func ReconcileSecret(
 		},
 		UpdateReconciled: func() {
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			// remove managed labels if they are no longer defined
+			for _, label := range managedLabels {
+				if _, ok := expected.Labels[label]; !ok {
+					delete(reconciled.Labels, label)
+				}
+			}
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			// remove managed annotations if they are no longer defined
 			for _, annotation := range managedAnnotations {
