@@ -4,14 +4,14 @@ agents:
 
 steps:
 
-  - group: "release eck-operator helm chart dev"
+  - group: "release eck-operator helm chart"
     steps:
 
       - label: "release eck-operator helm chart dev"
         key: helm-release-eck-operator-dev
         commands:
           - .ci/setenvconfig helm/eck-operator-dev
-          - go run hack/helm/release/main.go --charts-dir=./deploy/eck-operator
+          - go run hack/helm/release/main.go --charts-dir=./deploy/eck-operator --enable-vault
 
       # Intentionally disabled during testing.
       #

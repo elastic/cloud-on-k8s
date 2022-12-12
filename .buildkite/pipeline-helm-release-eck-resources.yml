@@ -4,7 +4,7 @@ agents:
 
 steps:
 
-  - group: "release eck resources helm charts dev"
+  - group: "release eck resources helm charts"
     steps:
 
       - label: "release eck-resources helm charts dev"
