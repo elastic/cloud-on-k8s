@@ -18,6 +18,8 @@ import (
 
 // TestFleetAgentWithoutTLS tests a Fleet Server, and Elastic Agent with TLS disabled for the HTTP layer.
 func TestFleetAgentWithoutTLS(t *testing.T) {
+	// Current issues with Elastic Package Registry is causing Fleet tests to fail.  Temporarily disabling until resolved.
+	t.SkipNow()
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	// Disabling TLS for Fleet isn't supported before 7.16, as Elasticsearch doesn't allow
