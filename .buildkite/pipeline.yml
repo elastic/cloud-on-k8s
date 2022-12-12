@@ -130,9 +130,11 @@ steps:
               dynamic_pipeline: ".buildkite/pipeline-helm-release-eck-resources.yml"
               steps:
                 - label: "release eck-resources helm charts dev"
+                  diff: git diff --name-only origin/main...HEAD
                   include:
                     - "deploy/*/Chart.yaml"
                 - label: "release eck-resources helm charts prod"
+                  diff: git diff --name-only origin/main...HEAD
                   include:
                     - "deploy/*/Chart.yaml"
 
