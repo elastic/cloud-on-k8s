@@ -1,0 +1,23 @@
+agents:
+  image: docker.io/library/golang:1.19.3
+  memory: "4G"
+
+steps:
+
+  - group: "release eck resources helm charts dev"
+    steps:
+
+      - label: "release eck-resources helm charts dev"
+        key: helm-release-eck-resources-dev
+        commands:
+          - .ci/setenvconfig helm/eck-resources-dev
+          - go run hack/helm/release/main.go --charts-dir=./deploy --excludes=eck-operator
+
+      # Intentionally disabled during testing.
+      #
+      # - label: "release eck resources helm charts prod"
+      #   depends_on:
+      #     - "helm-release-eck-resources-dev"
+      #   commands:
+      #     - .ci/setenvconfig helm/eck-resources-prod
+      #     - go run hack/helm/release/main.go --charts-dir=./deploy --excludes=eck-operator

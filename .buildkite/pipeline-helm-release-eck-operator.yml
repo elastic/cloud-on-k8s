@@ -1,0 +1,21 @@
+agents:
+  image: docker.io/library/golang:1.19.3
+  memory: "4G"
+
+steps:
+
+  - group: "release eck-operator helm chart dev"
+    steps:
+
+      - label: "release eck-operator helm chart dev"
+        key: helm-release-eck-operator-dev
+        commands:
+          - .ci/setenvconfig helm/eck-operator-dev
+          - go run hack/helm/release/main.go --charts-dir=./deploy/eck-operator
+
+      - label: "release eck-operator helm chart prod"
+        depends_on:
+          - "helm-release-eck-operator-dev"
+        commands:
+          - .ci/setenvconfig helm/eck-operator-prod
+          - go run hack/helm/release/main.go --charts-dir=./deploy/eck-operator
