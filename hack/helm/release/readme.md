@@ -47,20 +47,3 @@ releaser --charts-dir=path/to/deploy --credentials-file=path/to/gcs-bucket-crede
 | `--credentials-file`| Full path to credentials file to use for GCS bucket.                                                           | `HELM_CREDENTIALS_FILE` | `""`                               |
 | `--dry-run`         | Will package all Helm charts and process the Helm index, but not upload Helm packages, or update remote index. | `HELM_DRY_RUN`          | `true`                             |
 | `--excludes`        | Comma separated list of Helm chart names to exclude.                                                           | `HELM_EXCLUDES`         | `[]`                               |
-
-# TODO
-
-- [x] Handle updating index
-- [x] Add dry run?
-- [x] Excludes
-- [x] Release single chart?
-- [ ] New logger with info/debug capabilities?
-- [x] Tests
-- [x] Manual Testing
-- [x] Better organization, and naming of funcs
-- [x] Remove writing to fake gcs bucket
-- [ ] Validation of chart repo url + bucket combinations
-- [ ] Documentation
-- [ ] Personal review
-- [ ] BK integration (how to expose env vars)
-- [ ] BK testing
