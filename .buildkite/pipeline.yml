@@ -118,3 +118,8 @@ steps:
                 - label: "release eck-resources helm charts prod"
                   include:
                     - "deploy/*/Chart.yaml"
+
+      - label: ":helm: release eck-resources helm charts manually"
+        if: build.message == "release eck-resources helm charts"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
