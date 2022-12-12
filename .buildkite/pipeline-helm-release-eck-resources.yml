@@ -11,7 +11,8 @@ steps:
         key: helm-release-eck-resources-dev
         commands:
           - .ci/setenvconfig helm/eck-resources-dev
-          - go run hack/helm/release/main.go --charts-dir=./deploy --excludes=eck-operator --enable-vault
+          - cd hack/helm/release
+          - go run main.go --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
 
       # Intentionally disabled during testing.
       #
@@ -20,4 +21,5 @@ steps:
       #     - "helm-release-eck-resources-dev"
       #   commands:
       #     - .ci/setenvconfig helm/eck-resources-prod
-      #     - go run hack/helm/release/main.go --charts-dir=./deploy --excludes=eck-operator
+      #     - cd hack/helm/release
+      #     - go run hack/helm/release/main.go --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
