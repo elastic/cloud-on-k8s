@@ -128,13 +128,12 @@ steps:
         plugins:
           - Zegocover/git-diff-conditional#v1.1.1:
               dynamic_pipeline: ".buildkite/pipeline-helm-release-eck-resources.yml"
+              diff: git diff --name-only origin/main...HEAD
               steps:
                 - label: "release eck-resources helm charts dev"
-                  diff: git diff --name-only origin/main...HEAD
                   include:
                     - "deploy/*/Chart.yaml"
                 - label: "release eck-resources helm charts prod"
-                  diff: git diff --name-only origin/main...HEAD
                   include:
                     - "deploy/*/Chart.yaml"
 

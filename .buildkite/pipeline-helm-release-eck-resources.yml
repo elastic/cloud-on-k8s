@@ -12,7 +12,9 @@ steps:
         commands:
           - .ci/setenvconfig helm/eck-resources-dev
           - cd hack/helm/release
-          - go run main.go --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
+          # ignoring stdout to avoid "go: downloading ..." output.
+          - make build > /dev/null
+          - ./bin/releaser --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
 
       # Intentionally disabled during testing.
       #
