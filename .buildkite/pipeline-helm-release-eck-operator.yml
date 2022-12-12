@@ -13,7 +13,7 @@ steps:
           - .ci/setenvconfig helm/eck-operator-dev
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
-          - make build > /dev/null
+          - make build 2> /dev/null
           - ./bin/releaser --charts-dir=../../../deploy/eck-operator --enable-vault
 
       - label: "release eck-operator helm chart prod"
@@ -23,6 +23,6 @@ steps:
           - .ci/setenvconfig helm/eck-operator-prod
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
-          - make build > /dev/null
+          - make build 2> /dev/null
           # Intentionally disabled during testing.
           # - ./bin/releaser --charts-dir=../../../deploy/eck-operator --enable-vault

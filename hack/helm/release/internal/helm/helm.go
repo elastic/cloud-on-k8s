@@ -45,8 +45,6 @@ type ReleaseConfig struct {
 	ChartsRepoURL string
 	// CredentialsFilePath is the path to the Google credentials JSON file.
 	CredentialsFilePath string
-	// UploadIndex determines whether to upload the new Helm index, merging with the previous index file.
-	UploadIndex bool
 	// DryRun determines whether to run as many operations as possible, without making any changes to
 	// the GCS bucket, or the Helm repository index files.
 	DryRun bool
@@ -223,12 +221,10 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
 		return err
 	}
-	if conf.releaseConf.UploadIndex {
-		if err := updateIndex(ctx, tempDir, conf); err != nil {
-			return err
-		}
+	if err := updateIndex(ctx, tempDir, conf); err != nil {
+		return err
 	}
-	if !conf.releaseConf.UploadIndex || conf.releaseConf.DryRun {
+	if conf.releaseConf.DryRun {
 		log.Printf("Not processing charts with dependencies (%v) as the Helm index isn't being updated, or dry-run is set", conf.withDeps)
 		return nil
 	}
@@ -236,7 +232,6 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
 		return err
 	}
-	// update index without checking flag, as we've previously checked it.
 	if err := updateIndex(ctx, tempDir, conf); err != nil {
 		return err
 	}

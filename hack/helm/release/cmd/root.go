@@ -55,7 +55,6 @@ func releaseCmd() *cobra.Command {
 					Bucket:              viper.GetString("bucket"),
 					ChartsRepoURL:       viper.GetString("charts-repo-url"),
 					CredentialsFilePath: viper.GetString("credentials-file"),
-					UploadIndex:         viper.GetBool("upload-index"),
 					DryRun:              viper.GetBool("dry-run"),
 					Excludes:            viper.GetStringSlice("excludes"),
 				})
