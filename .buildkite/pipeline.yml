@@ -96,3 +96,25 @@ steps:
         if: build.branch == "main" && build.source == "schedule"
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+
+  - group: helm-release
+
+    steps:
+
+      - label: ":helm: release eck-operator helm chart"
+        # From https://semver.org, prefixed with 'v'
+        if: build.tag =~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
+
+      - label: ":helm: release eck-resources helm charts"
+        plugins:
+          - Zegocover/git-diff-conditional#v1.1.1:
+              dynamic_pipeline: ".buildkite/pipeline-helm-release-eck-resources.yml"
+              steps:
+                - label: "release eck-resources helm charts dev"
+                  include:
+                    - "deploy/*/Chart.yaml"
+                - label: "release eck-resources helm charts prod"
+                  include:
+                    - "deploy/*/Chart.yaml"

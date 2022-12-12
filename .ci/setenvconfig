@@ -708,6 +708,53 @@ export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 ENV
 ;;
 
+######################################
+  helm/eck-operator-dev)
+######################################
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+HELM_BUCKET=elastic-helm-charts-dev
+HELM_CHARTS_REPO_URL=https://helm-dev.elastic.co/helm
+HELM_CREDENTIALS_FILE=/tmp/credentials.json
+ENV
+;;
+
+######################################
+  helm/eck-operator-prod)
+######################################
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+HELM_BUCKET=elastic-helm-charts
+HELM_CHARTS_REPO_URL=https://helm.elastic.co/helm
+HELM_CREDENTIALS_FILE=/tmp/credentials.json
+ENV
+;;
+
+######################################
+  helm/eck-resources-dev)
+######################################
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+HELM_BUCKET=elastic-helm-charts-dev
+HELM_CHARTS_REPO_URL=https://helm-dev.elastic.co/helm
+HELM_CREDENTIALS_FILE=/tmp/credentials.json
+ENV
+;;
+
+######################################
+  helm/eck-resources-prod)
+######################################
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+HELM_BUCKET=elastic-helm-charts
+HELM_CHARTS_REPO_URL=https://helm.elastic.co/helm
+HELM_CREDENTIALS_FILE=/tmp/credentials.json
+ENV
+;;
 
 ######################################
   cleanup/gke)
