@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig/v3
-Version : v3.2.2
-Time    : 2021-02-04T20:32:52Z
+Version : v3.2.3
+Time    : 2022-11-29T18:52:29Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.2.3/LICENSE.txt:
 
 Copyright (C) 2013-2020 Masterminds
 
@@ -2075,11 +2075,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.8.6
-Time    : 2022-02-23T08:50:35Z
+Version : v1.8.7
+Time    : 2022-12-08T14:25:49Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.6/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.8.7/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
@@ -3786,11 +3786,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.23.0
-Time    : 2022-08-24T15:40:16Z
+Version : v1.24.0
+Time    : 2022-11-30T18:27:43Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.23.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.24.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.2.0
-Time    : 2022-11-08T20:34:43Z
+Version : v0.4.0
+Time    : 2022-12-06T15:29:57Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.4.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3852,11 +3852,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.4.0
-Time    : 2022-10-14T17:33:59Z
+Version : v0.5.0
+Time    : 2022-11-10T18:46:32Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.5.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -6273,11 +6273,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/semver/v3
-Version : v3.1.1
-Time    : 2020-11-23T17:02:18Z
+Version : v3.2.0
+Time    : 2022-11-28T21:00:30Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.1.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.2.0/LICENSE.txt:
 
 Copyright (C) 2014-2019, Matt Butcher and Matt Farina
 
@@ -15520,11 +15520,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/huandu/xstrings
-Version : v1.3.1
-Time    : 2020-04-11T12:02:05Z
+Version : v1.3.3
+Time    : 2022-10-23T03:22:03Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.3/LICENSE:
 
 The MIT License (MIT)
 
@@ -19982,11 +19982,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.2.0
-Time    : 2022-11-07T21:06:05Z
+Version : v0.3.0
+Time    : 2022-12-06T04:02:58Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.3.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20093,11 +20093,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.2.0
-Time    : 2022-11-02T19:48:38Z
+Version : v0.3.0
+Time    : 2022-12-03T00:43:30Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.3.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20130,11 +20130,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.2.0
-Time    : 2022-11-07T19:53:28Z
+Version : v0.3.0
+Time    : 2022-12-05T21:31:52Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.3.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 

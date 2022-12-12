@@ -19,7 +19,7 @@ This page lists the third-party dependencies used to build {n}.
 |===
 | Name | Version | Licence
 
-| link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.2 | MIT
+| link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig/v3$$] | v3.2.3 | MIT
 | link:https://github.com/blang/semver[$$github.com/blang/semver/v4$$] | v4.0.0 | MIT
 | link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.1 | ISC
 | link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.8.6 | Apache-2.0
@@ -34,7 +34,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/hashicorp/golang-lru[$$github.com/hashicorp/golang-lru$$] | v0.6.0 | MPL-2.0
 | link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.8.2 | MPL-2.0
 | link:https://github.com/imdario/mergo[$$github.com/imdario/mergo$$] | v0.3.13 | BSD-3-Clause
-| link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.6 | BSD-2-Clause
+| link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.7 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
 | link:https://github.com/pmezard/go-difflib[$$github.com/pmezard/go-difflib$$] | v1.0.0 | BSD-3-Clause
 | link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.14.0 | Apache-2.0
@@ -49,9 +49,9 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/apm/module/apmzap/v2[$$go.elastic.co/apm/module/apmzap/v2$$] | v2.2.0 | Apache-2.0
 | link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.2.0 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.1 | MIT
-| link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.23.0 | MIT
-| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.2.0 | BSD-3-Clause
-| link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.4.0 | BSD-3-Clause
+| link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.24.0 | MIT
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.4.0 | BSD-3-Clause
+| link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.5.0 | BSD-3-Clause
 | link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.4.0 | Apache-2.0
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.1 | MIT
 | link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.25.4 | Apache-2.0
@@ -75,7 +75,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://cloud.google.com/go/compute[$$cloud.google.com/go/compute$$] | v1.12.1 | Apache-2.0
 | link:https://cloud.google.com/go/compute/metadata[$$cloud.google.com/go/compute/metadata$$] | v0.2.1 | Apache-2.0
 | link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.1 | Apache-2.0
-| link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.1.1 | MIT
+| link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.2.0 | MIT
 | link:https://github.com/PuerkitoBio/purell[$$github.com/PuerkitoBio/purell$$] | v1.1.1 | BSD-3-Clause
 | link:https://github.com/PuerkitoBio/urlesc[$$github.com/PuerkitoBio/urlesc$$] | v0.0.0-20170810143723-de5bf2ad4578 | BSD-3-Clause
 | link:https://github.com/armon/go-metrics[$$github.com/armon/go-metrics$$] | v0.4.0 | MIT
@@ -127,7 +127,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/hashicorp/hcl[$$github.com/hashicorp/hcl$$] | v1.0.0 | MPL-2.0
 | link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/sdk$$] | v0.6.0 | MPL-2.0
 | link:https://github.com/hashicorp/yamux[$$github.com/hashicorp/yamux$$] | v0.0.0-20180604194846-3520598351bb | MPL-2.0
-| link:https://github.com/huandu/xstrings[$$github.com/huandu/xstrings$$] | v1.3.1 | MIT
+| link:https://github.com/huandu/xstrings[$$github.com/huandu/xstrings$$] | v1.3.3 | MIT
 | link:https://github.com/inconshreveable/mousetrap[$$github.com/inconshreveable/mousetrap$$] | v1.0.1 | Apache-2.0
 | link:https://github.com/jcchavezs/porto[$$github.com/jcchavezs/porto$$] | v0.1.0 | Apache-2.0
 | link:https://github.com/jhump/protoreflect[$$github.com/jhump/protoreflect$$] | v1.6.0 | Apache-2.0
@@ -180,11 +180,11 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.1.12 | MIT
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.8.0 | MIT
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.6.0 | BSD-3-Clause
-| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.2.0 | BSD-3-Clause
+| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.3.0 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.1.0 | BSD-3-Clause
 | link:https://golang.org/x/sync[$$golang.org/x/sync$$] | v0.1.0 | BSD-3-Clause
-| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.2.0 | BSD-3-Clause
-| link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.2.0 | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.3.0 | BSD-3-Clause
+| link:https://golang.org/x/term[$$golang.org/x/term$$] | v0.3.0 | BSD-3-Clause
 | link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20220609170525-579cf78fd858 | BSD-3-Clause
 | link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.1.12 | BSD-3-Clause
 | link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.2.0 | Apache-2.0

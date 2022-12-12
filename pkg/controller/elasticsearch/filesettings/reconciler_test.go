@@ -104,7 +104,9 @@ func TestReconcileSecret(t *testing.T) {
 		{
 			name: "reset secure settings and hash config annotations",
 			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
-				map[string]string{"existing": "existing"},
+				map[string]string{
+					"existing": "existing",
+				},
 				map[string]string{
 					"policy.k8s.elastic.co/secure-settings-secrets": "[{..}]",
 					"policy.k8s.elastic.co/settings-hash":           "hash-1",
@@ -121,6 +123,25 @@ func TestReconcileSecret(t *testing.T) {
 					"annotation1": "value1", "annotation2": "value2", // add expected
 				}),
 			),
+		},
+		{
+			name: "reset soft owner labels",
+			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{
+					"existing":                           "existing",
+					"eck.k8s.elastic.co/owner-namespace": "test",
+					"eck.k8s.elastic.co/owner-name":      "test",
+					"eck.k8s.elastic.co/owner-kind":      "StackConfigPolicy",
+				},
+				sampleAnnotations,
+			))),
+			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
+			want: withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{
+					"existing": "existing",                   // keep existing
+					"label1":   "value1", "label2": "value2", // add expected
+				}, sampleAnnotations,
+			)),
 		},
 		{
 			name: "override secure settings and hash config annotations",
@@ -146,6 +167,31 @@ func TestReconcileSecret(t *testing.T) {
 					"existing":                                      "existing",
 				}),
 			),
+		},
+		{
+			name: "override soft owner labels",
+			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{
+					"existing":                           "existing",
+					"eck.k8s.elastic.co/owner-namespace": "x",
+					"eck.k8s.elastic.co/owner-name":      "x",
+					"eck.k8s.elastic.co/owner-kind":      "x",
+				},
+				sampleAnnotations,
+			))),
+			expected: createSecret("s", sampleData, map[string]string{
+				"eck.k8s.elastic.co/owner-namespace": "test",
+				"eck.k8s.elastic.co/owner-name":      "test",
+				"eck.k8s.elastic.co/owner-kind":      "StackConfigPolicy",
+			}, sampleAnnotations),
+			want: withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{
+					"existing":                           "existing", // keep existing
+					"eck.k8s.elastic.co/owner-namespace": "test",
+					"eck.k8s.elastic.co/owner-name":      "test",
+					"eck.k8s.elastic.co/owner-kind":      "StackConfigPolicy",
+				}, sampleAnnotations,
+			)),
 		},
 	}
 

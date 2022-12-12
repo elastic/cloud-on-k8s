@@ -125,6 +125,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)}, &secret)
 			require.NoError(t, err)
 			require.Equal(t, user.Password, secret.Data[ElasticUserName])
+			tt.assertions(t, got)
 		})
 	}
 }
@@ -225,7 +226,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
 				// password & hash of controller user should be reused
-				require.Equal(t, []byte("existingPassword"), u[0].Password)
+				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
 				// password of probe user should be reused, but hash should be re-computed
 				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
@@ -250,7 +251,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			assertions: func(t *testing.T, u users) {
 				t.Helper()
 				// password & hash of controller user should be reused
-				require.Equal(t, []byte("existingPassword"), u[0].Password)
+				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
 				// password of probe user should be reused, and hash should be re-computed
 				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
@@ -281,6 +282,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, controllerUser.Password, secret.Data[ControllerUserName])
 			require.Equal(t, probeUser.Password, secret.Data[ProbeUserName])
+			tt.assertions(t, got)
 		})
 	}
 }

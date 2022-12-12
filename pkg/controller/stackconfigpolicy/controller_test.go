@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
@@ -119,12 +120,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				"eck.k8s.elastic.co/owner-namespace":        "ns",
 				"eck.k8s.elastic.co/owner-name":             "test-policy",
 			},
-			Annotations: map[string]string{
-				"policy.k8s.elastic.co/settings-hash": "402947642",
-			},
 		},
-		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{}}}`)},
+		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
+	secretHash, err := getSettingsHash(secretFixture)
+	assert.NoError(t, err)
+	secretFixture.Annotations = map[string]string{"policy.k8s.elastic.co/settings-hash": secretHash}
 
 	conflictingSecretFixture := secretFixture.DeepCopy()
 	conflictingSecretFixture.Labels["eck.k8s.elastic.co/owner-name"] = "another-policy"
@@ -133,9 +134,10 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanSecretFixture.Name = "another-es-es-file-settings"
 	orphanSecretFixture.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "another-es"
 
-	otherSecretFixture := secretFixture.DeepCopy()
-	otherSecretFixture.Annotations["policy.k8s.elastic.co/settings-hash"] = "1554257108"
-	otherSecretFixture.Data = map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"40","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"40mb"},"snapshot_repositories":{},"slm":{}}}`)}
+	updatedPolicyFixture := policyFixture.DeepCopy()
+	updatedPolicyFixture.Spec.Elasticsearch.ClusterSettings = &commonv1.Config{Data: map[string]interface{}{
+		"indices.recovery.max_bytes_per_sec": "43mb",
+	}}
 
 	orphanEsFixture := esFixture.DeepCopy()
 	orphanEsFixture.Name = "another-es"
@@ -310,17 +312,17 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		{
 			name: "Settings secret must be updated to reflect the policy settings",
 			args: args{
-				client:           k8s.NewFakeClient(&policyFixture, &esFixture, otherSecretFixture),
+				client:           k8s.NewFakeClient(updatedPolicyFixture, &esFixture, &secretFixture),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
-				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(40, nil), nil),
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(43, nil), nil),
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
-				settings := r.getSettings(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "40mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
+				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
-				settings := r.getSettings(t, k8s.ExtractNamespacedName(otherSecretFixture))
-				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
+				assert.Equal(t, "43mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -440,4 +442,13 @@ func Test_cleanStackTrace(t *testing.T) {
 	err := cleanStackTrace([]string{stacktrace})
 	expected := "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [badrepo]"
 	assert.Equal(t, expected, err)
+}
+
+func getSettingsHash(secret corev1.Secret) (string, error) {
+	var settings filesettings.Settings
+	err := json.Unmarshal(secret.Data["settings.json"], &settings)
+	if err != nil {
+		return "", err
+	}
+	return hash.HashObject(settings.State), nil
 }
