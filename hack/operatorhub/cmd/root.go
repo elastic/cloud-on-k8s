@@ -40,6 +40,12 @@ func init() {
 		"Run dry run of all operations. Default: true. To un-set --dry-run=false (DRY_RUN)",
 	)
 
+	Root.PersistentFlags().Bool(
+		"enable-vault",
+		true,
+		"Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (ENABLE_VAULT)",
+	)
+
 	Root.AddCommand(all.Command(&Root))
 	Root.AddCommand(bundle.Command())
 	Root.AddCommand(container.Command())

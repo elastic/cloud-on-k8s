@@ -85,16 +85,10 @@ func Command() *cobra.Command {
 		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (FORCE)",
 	)
 
-	cmd.PersistentFlags().Bool(
-		"enable-vault",
-		false,
-		"Enable vault functionality to try and automatically read 'registry-password', 'api-key' and 'project-id' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)",
-	)
-
 	cmd.PersistentFlags().String(
-		"vault-secret",
+		"vault-container-secret",
 		"",
-		"When --enable-vault is set, attempts to read 'registry-password', and 'api-key' data from given vault secret location",
+		"When --enable-vault is set, attempts to read 'registry-password', 'project-id' and 'api-key' data from given vault secret location",
 	)
 
 	cmd.PersistentFlags().String(

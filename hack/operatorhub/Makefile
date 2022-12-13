@@ -1,2 +1,2 @@
 build:
-	go build -o redhat main.go
+	go build -o bin/redhat main.go
