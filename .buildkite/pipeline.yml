@@ -127,8 +127,7 @@ steps:
         # 1) there is no pull request related to this run
         # 2) the branch is main. (merge to main)
         # 3) the validation check detecting if any 'deploy/*/Chart.yaml' files changed passes
-        if: build.pull_request.id == null
-        branches: "main"
+        if: build.pull_request.id == null && build.branch == main
         depends_on: "validation-check"
         command: |
           if [ $$(buildkite-agent step get "outcome" --step "validation-check") == "passed" ]; then
