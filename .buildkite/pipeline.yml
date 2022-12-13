@@ -112,32 +112,30 @@ steps:
 
     steps:
 
-      - label: ":helm: release eck-operator helm chart"
+      - label: ":helm: release eck-operator helm chart - pipeline upload"
         # From https://semver.org, prefixed with 'v'.
         # The '$$' is required when formatting regular expressions: https://buildkite.com/docs/pipelines/conditionals#formatting-regular-expressions
         if: build.tag =~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$$/
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
 
-      - label: ":helm: release eck-resources helm charts"
-        # gcp agent with docker is required for the plugin.
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-          machineType: "n1-standard-16"
-        plugins:
-          - Zegocover/git-diff-conditional#v1.1.1:
-              dynamic_pipeline: ".buildkite/pipeline-helm-release-eck-resources.yml"
-              diff: git diff --name-only origin/main...HEAD
-              steps:
-                - label: "release eck-resources helm charts dev"
-                  include:
-                    - "deploy/*/Chart.yaml"
-                - label: "release eck-resources helm charts prod"
-                  include:
-                    - "deploy/*/Chart.yaml"
+      - label: ":helm: helm eck-resources - Chart.yaml validation check"
+        command: ./scripts/helm/has-any-chartyml-changed.sh
+        key: "validation-check"
+      - label: ":helm: release eck-resources helm charts - potentially upload release pipeline"
+        # only attempt release when
+        # 1) there is no pull request related to this run
+        # 2) the branch is main. (merge to main)
+        # 3) the validation check detecting if any 'deploy/*/Chart.yaml' files changed passes
+        if: build.pull_request.id == null
+        branches: "main"
+        depends_on: "validation-check"
+        command: |
+          if [ $$(buildkite-agent step get "outcome" --step "validation-check") == "passed" ]; then
+            buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
+          fi
 
-      - label: ":helm: release eck-resources helm charts manually"
+      - label: ":helm: release eck-resources helm charts manually - pipeline upload"
         if: build.message == "release eck-resources helm charts"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
