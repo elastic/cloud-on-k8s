@@ -46,6 +46,41 @@ func init() {
 		"Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (ENABLE_VAULT)",
 	)
 
+	Root.PersistentFlags().String(
+		"vault-addr",
+		"",
+		"Vault address to use when enable-vault is set",
+	)
+
+	Root.PersistentFlags().String(
+		"vault-token",
+		"",
+		"Vault token to use when enable-vault is set",
+	)
+
+	Root.PersistentFlags().String(
+		"redhat-vault-secret",
+		"",
+		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
+		* container sub-command flags concerning redhat interactions:
+		** registry-password
+		** project-id
+		** api-key
+		`,
+	)
+
+	Root.PersistentFlags().String(
+		"github-vault-secret",
+		"",
+		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
+		* bundle sub-command flags concerning generating operator bundle and creating PRs:
+		** github-token
+		** github-username
+		** github-fullname
+		** github-email
+		`,
+	)
+
 	Root.AddCommand(all.Command(&Root))
 	Root.AddCommand(bundle.Command())
 	Root.AddCommand(container.Command())
@@ -53,6 +88,7 @@ func init() {
 }
 
 func rootPreRunE(cmd *cobra.Command, args []string) error {
+	viper.SetEnvPrefix("OHUB")
 	// automatically translate dashes in flags to underscores in environment vars
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
@@ -60,10 +96,23 @@ func rootPreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to bind flags: %w", err)
 	}
 
+	// Vault environment variables need to also support not having OHUB prefix.
+	viper.BindEnv("vault-addr", "VAULT_ADDR")
+	viper.BindEnv("vault-token", "VAULT_TOKEN")
+
 	viper.AutomaticEnv()
 
 	if viper.GetString("tag") == "" {
 		return fmt.Errorf("tag is required")
+	}
+
+	if viper.GetBool("enable-vault") {
+		for _, key := range []string{"vault-addr", "vault-token", "redhat-vault-secret", "github-vault-secret"} {
+			if viper.GetString(key) == "" {
+				return fmt.Errorf("%s is required when enable-vault is set", key)
+			}
+		}
+		return readSecretsFromVault()
 	}
 
 	return nil

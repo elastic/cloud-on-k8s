@@ -242,3 +242,8 @@ The `all` command will run all above operations in a single command, including
   -t '1.9.2' -s '7.16.0' -V '1.9.1' -y ../../config/crds.yaml -y ./../config/operator.yaml
 ```
 
+# TODO
+
+- [ ] Test
+- [ ] use consts
+- [ ] Update readme since operations changed

@@ -85,24 +85,6 @@ func Command() *cobra.Command {
 		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (FORCE)",
 	)
 
-	cmd.PersistentFlags().String(
-		"vault-container-secret",
-		"",
-		"When --enable-vault is set, attempts to read 'registry-password', 'project-id' and 'api-key' data from given vault secret location",
-	)
-
-	cmd.PersistentFlags().String(
-		"vault-addr",
-		"",
-		"Vault address to use when enable-vault is set",
-	)
-
-	cmd.PersistentFlags().String(
-		"vault-token",
-		"",
-		"Vault token to use when enable-vault is set",
-	)
-
 	publishCmd.Flags().DurationP(
 		"scan-timeout",
 		"S",
@@ -130,13 +112,6 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	viper.AutomaticEnv()
-
-	if viper.GetBool("enable-vault") {
-		if viper.GetString("vault-secret") == "" {
-			return fmt.Errorf("vault-secret is required when enable-vault is set")
-		}
-		return attemptVault()
-	}
 
 	if viper.GetString("api-key") == "" {
 		return fmt.Errorf("api-key must be set")
