@@ -33,7 +33,7 @@ It is currently not allowed to configure an Elasticsearch cluster with more than
 Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following fields:
 
 * `name` is a unique name used to identify the policy.
-* `spec.elasticsearch` describes the settings to configure, at least one setting must be defined. Each following field is a named entity map:
+* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields is a named entity map:
   ** `clusterSettings` are the settings commonly found in elasticsearch.yaml settings.
   ** `snapshotRepositories` are snapshot repositories, to define off-cluster storage location for your snapshots.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
