@@ -176,7 +176,6 @@ spec:
           version: 1
 ----
 
-
 [float]
 [id="{p}-{page_id}-monitoring"]
 == Monitor Elastic Stack configuration policies
@@ -199,7 +198,7 @@ When not all resources are ready, you can get more information about the reason 
 
 [source,sh]
 ----
-kubectl get -n b scp test-2-stack-config-policy -o jsonpath="{.status}" | jq .
+kubectl get -n b scp test-err-stack-config-policy -o jsonpath="{.status}" | jq .
 ----
 
 [source,json]
