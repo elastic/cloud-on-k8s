@@ -45,7 +45,7 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 
 The following fields are optional:
 
-* `namespace` is the namespace of the `StackConfigPolicy` resource, it is used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, all namespaces managed by the operator are used, otherwise only the policy namespace is used.
+* `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, all namespaces managed by the operator are used, otherwise only the policy namespace is used.
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
 * `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore of the Elasticsearch to which this policy applies, similar to the<<{p}-custom-images,Elasticsearch Secure Settings>>.
 
