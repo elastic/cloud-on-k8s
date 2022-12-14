@@ -22,7 +22,7 @@ Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration
 
 A policy can be applied to one or more Elasticsearch clusters in any namespace managed by the ECK operator.
 
-Settings described in a policy applied by the ECK operator are immutable through the Elasticsearch REST API.
+Configuration policy settings applied by the ECK operator are immutable through the Elasticsearch REST API.
 
 It is not allowed to configure an Elasticsearch cluster with more than one policy currently.
 
