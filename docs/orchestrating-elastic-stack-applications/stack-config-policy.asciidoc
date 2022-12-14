@@ -34,7 +34,7 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 
 * `name` is a unique name used to identify the policy.
 * `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields is a named entity map:
-  ** `clusterSettings` are the settings commonly found in elasticsearch.yaml settings.
+  ** `clusterSettings` are the settings commonly found in the elasticsearch.yaml file.
   ** `snapshotRepositories` are snapshot repositories, to define off-cluster storage location for your snapshots.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
   ** `securityRoleMappings` are role mappings, to define which roles are assigned to each user by identifying them through rules.
