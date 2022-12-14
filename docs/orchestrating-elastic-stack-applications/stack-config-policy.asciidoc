@@ -20,7 +20,7 @@ Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html[Components templates]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
 
-A policy can be applied to all or a subset of Elasticsearch clusters in a given namespace or all namespaces managed by the operator.
+A policy can be applied to one or more Elasticsearch clusters in any namespace managed by the ECK operator.
 
 Settings described in a policy applied by the ECK operator are immutable through the Elasticsearch REST API.
 
