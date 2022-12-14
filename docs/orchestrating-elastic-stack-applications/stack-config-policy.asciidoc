@@ -24,7 +24,7 @@ A policy can be applied to one or more Elasticsearch clusters in any namespace m
 
 Configuration policy settings applied by the ECK operator are immutable through the Elasticsearch REST API.
 
-It is not allowed to configure an Elasticsearch cluster with more than one policy currently.
+It is currently not allowed to configure an Elasticsearch cluster with more than one policy.
 
 [float]
 [id="{p}-{page_id}-definition"]
