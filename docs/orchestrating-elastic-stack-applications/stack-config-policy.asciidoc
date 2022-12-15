@@ -9,7 +9,7 @@ endif::[]
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration policies let you configure in a declarative way, for multiple clusters, the following settings:
+Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration policies allow you to configure the following settings:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
