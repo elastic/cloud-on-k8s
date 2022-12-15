@@ -90,7 +90,7 @@ spec:
           max_count: 20
 ----
 
-Another example of configuring role mapping, ingest pipeline, ILM and index templates:
+Another example of configuring role mappings, ingest pipelines, ILM and index templates:
 
 [source,yaml,subs="attributes,+macros"]
 ----
