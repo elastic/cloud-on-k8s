@@ -45,7 +45,7 @@ The following fields are optional:
 
 * `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, the policy applies to all namespaces managed by the operator, otherwise the policy only applies to the namespace of the policy.
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
-* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the<<{p}-custom-images,Elasticsearch Secure Settings>>.
+* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-custom-images,Elasticsearch Secure Settings>>.
 
 Secure settings may be required to configure Cloud snapshot repositories (azure, gcs, s3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
 (<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
