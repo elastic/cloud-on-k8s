@@ -64,7 +64,7 @@ func PushImage(c PushConfig) error {
 		c.HTTPClient = defaultHTTPClient()
 	}
 
-	log.Printf("Determining if image already exists in project ")
+	log.Printf("Determining if image already exists in project with api key: %s, project id: %s, and tag: %s", c.RedhatCatalogAPIKey, c.ProjectID, c.Tag)
 	exists, err := ImageExistsInProject(c.HTTPClient, c.RedhatCatalogAPIKey, c.ProjectID, c.Tag)
 	if err != nil {
 		log.Println("ⅹ")
@@ -162,7 +162,9 @@ func GetImageSHA(httpClient *http.Client, apiKey, projectID, tag string) (string
 
 func defaultHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: 10 * time.Second,
+		// This timeout is set high, as the redhat certification api
+		// sometimes is very slow to respond.
+		Timeout: 60 * time.Second,
 	}
 }
 
@@ -219,14 +221,6 @@ func pruneDeletedImages(images []Image) *Image {
 }
 
 func pushImageToProject(c PushConfig) error {
-	// log.Printf("logging in to docker, and saving configuration: ")
-	// err := LoginToRegistry(c.ProjectID, c.RegistryPassword)
-	// if err != nil {
-	// 	log.Println("ⅹ")
-	// 	return err
-	// }
-	// log.Println("✓")
-
 	if c.DryRun {
 		log.Printf("not pushing image as dry-run is set.")
 		return nil
@@ -242,6 +236,7 @@ func pushImageToProject(c PushConfig) error {
 		log.Println("ⅹ")
 		return fmt.Errorf("while pulling (%s): %w", imageToPull, err)
 	}
+	log.Printf("pushing image (%s) to quay.io registry: ", formattedEckOperatorRedhatReference)
 	err = crane.Push(
 		image,
 		formattedEckOperatorRedhatReference,
@@ -265,7 +260,7 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
 	defer cancel()
 
-	log.Printf("\nwaiting for image to complete scan process... ")
+	log.Printf("waiting for image to complete scan process... ")
 	image, done, err := isImageScanned(httpClient, imageScanTimeout, apiKey, projectID, tag)
 	if err != nil {
 		return err
@@ -324,9 +319,8 @@ func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, api
 
 func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag string) error {
 	log.Printf("publishing image (%s), tag %s: ", image.ID, tag)
-	// ensureHTTPClient(&c)
-	url := fmt.Sprintf("%s/projects/certification/id/%s/requests/tags", catalogAPIURL, projectID)
-	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "tag": "%s"}`, image.ID, tag))
+	url := fmt.Sprintf("%s/projects/certification/id/%s/requests/images", catalogAPIURL, projectID)
+	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "operation": "publish"}`, image.ID))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		log.Println("ⅹ")
@@ -336,7 +330,6 @@ func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag str
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("X-API-KEY", apiKey)
-	// req.SetBasicAuth("Bearer", c.RedhatCatalogAPIKey)
 
 	var res *http.Response
 	if res, err = httpClient.Do(req); err != nil {

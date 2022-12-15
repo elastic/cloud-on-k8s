@@ -11,6 +11,8 @@ import (
 
 	"github.com/hashicorp/vault/api"
 	"github.com/spf13/viper"
+
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 )
 
 const (
@@ -31,7 +33,7 @@ var (
 
 func readSecretsFromVault() error {
 	client, err := api.NewClient(&api.Config{
-		Address: viper.GetString("vault-addr"),
+		Address: flags.VaultAddress,
 		HttpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -41,13 +43,13 @@ func readSecretsFromVault() error {
 		return fmt.Errorf("failed to create vault client: %w", err)
 	}
 
-	client.SetToken(viper.GetString("vault-token"))
+	client.SetToken(flags.VaultToken)
 
-	if err := readVaultSecrets(client, viper.GetString("redhat-vault-secret"), redhatVaultSecretDataKeys); err != nil {
+	if err := readVaultSecrets(client, flags.RedhatVaultSecret, redhatVaultSecretDataKeys); err != nil {
 		return err
 	}
 
-	if err := readVaultSecrets(client, viper.GetString("github-vault-secret"), githubVaultSecretDataKeys); err != nil {
+	if err := readVaultSecrets(client, flags.GithubVaultSecret, githubVaultSecretDataKeys); err != nil {
 		return err
 	}
 

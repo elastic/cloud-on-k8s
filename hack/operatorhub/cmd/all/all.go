@@ -5,21 +5,23 @@
 package all
 
 import (
+	"fmt"
+
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/operatorhub"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // Command will return the 'all' command to run all redhat operatorhub operations
 func Command(root *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "all",
-		Short:   "run all redhat operations",
-		Long:    "Run all redhat operations: push operator container; create operatorhub manifests; create operator bundle images and create PR to redhat certified operators repository",
-		PreRunE: preRunAllE,
-		RunE:    allRunE,
+		Use:   "all",
+		Short: "run all operatorhub operations",
+		Long:  "Run all operatorhub operations: push+publish operator container; run preflight check; create operatorhub manifests; create operator bundle images and create PR to redhat certified operators repository",
+		// PreRunE: preRunAllE,
+		RunE: allRunE,
 	}
 	cmd.Flags().AddFlagSet(root.Flags())
 	cmd.Flags().AddFlagSet(bundle.Command().Flags())
@@ -30,48 +32,43 @@ func Command(root *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func preRunAllE(cmd *cobra.Command, args []string) error {
-	if cmd.Parent().PreRunE != nil {
-		if err := cmd.Parent().PreRunE(cmd, args); err != nil {
-			return err
-		}
-	}
-	if err := container.PreRunE(cmd, args); err != nil {
-		return err
-	}
-
-	if err := operatorhub.PreRunE(cmd, args); err != nil {
-		return err
-	}
-
-	if err := bundle.PreRunE(cmd, args); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func allRunE(cmd *cobra.Command, args []string) error {
-	err := container.DoPush(cmd, args)
+	rootCmd := cmd.Parent()
+	if rootCmd == nil {
+		return fmt.Errorf("root command while running 'all' command was nil")
+	}
+	rootCmd.SetArgs(append([]string{"container", "push"}, args...))
+	err := rootCmd.Execute()
+	// err := container.DoPush(cmd, args)
 	if err != nil {
 		return err
 	}
-	err = container.DoPreflight(cmd, args)
+	rootCmd.SetArgs(append([]string{"container", "preflight"}, args...))
+	err = rootCmd.Execute()
+	// err = container.DoPreflight(cmd, args)
 	if err != nil {
 		return err
 	}
-	err = container.DoPublish(cmd, args)
+	rootCmd.SetArgs(append([]string{"container", "publish"}, args...))
+	err = rootCmd.Execute()
+	// err = container.DoPublish(cmd, args)
 	if err != nil {
 		return err
 	}
-	err = operatorhub.Run(cmd, args)
+	rootCmd.SetArgs(append([]string{"generate-manifests"}, args...))
+	err = rootCmd.Execute()
+	// err = operatorhub.Run(cmd, args)
 	if err != nil {
 		return err
 	}
-	viper.Set("dir", "./certified-operators")
-	err = bundle.DoGenerate(cmd, args)
+	flags.Dir = "./certified-operators"
+	rootCmd.SetArgs(append([]string{"bundle", "generate"}, args...))
+	err = rootCmd.Execute()
+	// err = bundle.DoGenerate(cmd, args)
 	if err != nil {
 		return err
 	}
-	return bundle.DoCreatePR(cmd, args)
+	rootCmd.SetArgs(append([]string{"bundle", "create-pr"}, args...))
+	return rootCmd.Execute()
+	// return bundle.DoCreatePR(cmd, args)
 }

@@ -14,8 +14,8 @@ import (
 
 	"github.com/redhat-openshift-ecosystem/openshift-preflight/certification/formatters"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	pkg_container "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/container"
 	pkg_preflight "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/preflight"
 )
@@ -35,7 +35,6 @@ func Command() *cobra.Command {
 		Short:        "run preflight tests against container",
 		Long:         "Run preflight tests against container",
 		SilenceUsage: true,
-		PreRunE:      defaultPreRunE,
 		RunE:         DoPreflight,
 	}
 
@@ -44,7 +43,6 @@ func Command() *cobra.Command {
 		Short:        "publish existing eck operator container image within quay.io",
 		Long:         "Publish existing eck operator container image within quay.io",
 		SilenceUsage: true,
-		PreRunE:      defaultPreRunE,
 		RunE:         DoPublish,
 	}
 
@@ -53,43 +51,47 @@ func Command() *cobra.Command {
 		Short:        "push eck operator container image to quay.io",
 		Long:         "Push eck operator container image to quay.io",
 		SilenceUsage: true,
-		PreRunE:      defaultPreRunE,
 		RunE:         DoPush,
 	}
 
-	cmd.PersistentFlags().StringP(
-		"api-key",
+	cmd.PersistentFlags().StringVarP(
+		&flags.ApiKey,
+		flags.ApiKeyFlags,
 		"a",
 		"",
-		"api key to use when communicating with redhat catalog api (API_KEY)",
+		"api key to use when communicating with redhat catalog api (OHUB_API_KEY)",
 	)
 
-	cmd.PersistentFlags().StringP(
-		"registry-password",
+	cmd.PersistentFlags().StringVarP(
+		&flags.RegistryPassword,
+		flags.RegistryPasswordFlag,
 		"r",
 		"",
-		"registry password used to communicate with Quay.io (REGISTRY_PASSWORD)",
+		"registry password used to communicate with Quay.io (OHUB_REGISTRY_PASSWORD)",
 	)
 
-	cmd.PersistentFlags().StringP(
-		"project-id",
+	cmd.PersistentFlags().StringVarP(
+		&flags.ProjectID,
+		flags.ProjectIDFlag,
 		"p",
 		"",
-		"short project id within the redhat technology portal (PROJECT_ID)",
+		"short project id within the redhat technology portal (OHUB_PROJECT_ID)",
 	)
 
-	cmd.PersistentFlags().BoolP(
-		"force",
+	cmd.PersistentFlags().BoolVarP(
+		&flags.Force,
+		flags.ForceFlag,
 		"F",
 		false,
-		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (FORCE)",
+		"force will force the attempted pushing of remote images, even when the exact version is found remotely. (OHUB_FORCE)",
 	)
 
-	publishCmd.Flags().DurationP(
-		"scan-timeout",
+	publishCmd.Flags().DurationVarP(
+		&flags.ScanTimeout,
+		flags.ScanTimeoutFlag,
 		"S",
 		1*time.Hour,
-		"The duration the publish operation will wait on image being scanned before failing the process completely. (SCAN_TIMEOUT)",
+		"The duration the publish operation will wait on image being scanned before failing the process completely. (OHUB_SCAN_TIMEOUT)",
 	)
 
 	cmd.AddCommand(pushCmd, preflightCmd, publishCmd)
@@ -99,64 +101,31 @@ func Command() *cobra.Command {
 
 // PreRunE are the pre-run operations for the container command
 func PreRunE(cmd *cobra.Command, args []string) error {
-	if err := defaultPreRunE(cmd, args); err != nil {
-		return err
+	if flags.ApiKey == "" {
+		return fmt.Errorf("%s must be set", flags.ApiKeyFlags)
 	}
 
-	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
-		return fmt.Errorf("failed to bind persistent flags: %w", err)
+	if flags.RegistryPassword == "" {
+		return fmt.Errorf("%s must be set", flags.RegistryPasswordFlag)
 	}
 
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return fmt.Errorf("failed to bind flags: %w", err)
+	if flags.ProjectID == "" {
+		return fmt.Errorf("%s must be set", flags.ProjectIDFlag)
 	}
 
-	viper.AutomaticEnv()
-
-	if viper.GetString("api-key") == "" {
-		return fmt.Errorf("api-key must be set")
-	}
-
-	if viper.GetString("registry-password") == "" {
-		return fmt.Errorf("registry-password must be set")
-	}
-
-	if viper.GetString("project-id") == "" {
-		return fmt.Errorf("project-id must be set")
-	}
-
-	return nil
-}
-
-func defaultPreRunE(cmd *cobra.Command, args []string) error {
-	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
-		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
-			return err
-		}
-	}
-
-	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
-		return fmt.Errorf("failed to bind persistent flags: %w", err)
-	}
-
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return fmt.Errorf("failed to bind flags: %w", err)
-	}
-
-	viper.AutomaticEnv()
 	return nil
 }
 
 // DoPublish will publish an existing image within the redhat catalog.
 func DoPublish(_ *cobra.Command, _ []string) error {
 	return pkg_container.PublishImage(pkg_container.PublishConfig{
-		DryRun:              viper.GetBool("dry-run"),
-		Force:               viper.GetBool("force"),
-		ProjectID:           viper.GetString("project-id"),
-		RedhatCatalogAPIKey: viper.GetString("api-key"),
-		RegistryPassword:    viper.GetString("registry-password"),
-		Tag:                 viper.GetString("tag"),
-		ImageScanTimeout:    viper.GetDuration("scan-timeout"),
+		DryRun:              flags.DryRun,
+		Force:               flags.Force,
+		ProjectID:           flags.ProjectID,
+		RedhatCatalogAPIKey: flags.ApiKey,
+		RegistryPassword:    flags.RegistryPassword,
+		Tag:                 flags.Tag,
+		ImageScanTimeout:    flags.ScanTimeout,
 	})
 }
 
@@ -167,20 +136,22 @@ func DoPreflight(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("while creating temporary directory for docker credentials: %w", err)
 	}
 	defer os.RemoveAll(dir)
-	err = pkg_container.LoginToRegistry(dir, viper.GetString("project-id"), viper.GetString("registry-password"))
+
+	err = pkg_container.LoginToRegistry(dir, flags.ProjectID, flags.RegistryPassword)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", viper.GetString("project-id"), viper.GetString("tag"))
+	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", flags.ProjectID, flags.Tag)
+	log.Printf("running preflight for container image: %s", containerImage)
 	results, err := pkg_preflight.Run(
 		ctx,
 		pkg_preflight.RunInput{
 			Image:                  containerImage,
 			DockerConfigPath:       filepath.Join(dir, "config.json"),
-			PyxisAPIToken:          viper.GetString("api-key"),
-			CertificationProjectID: viper.GetString("project-id"),
+			PyxisAPIToken:          flags.ApiKey,
+			CertificationProjectID: flags.ProjectID,
 		})
 	if err != nil {
 		return err
@@ -203,11 +174,11 @@ func DoPreflight(cmd *cobra.Command, _ []string) error {
 // DoPush will push an image to the redhat registry for scanning.
 func DoPush(_ *cobra.Command, _ []string) error {
 	return pkg_container.PushImage(pkg_container.PushConfig{
-		DryRun:              viper.GetBool("dry-run"),
-		Force:               viper.GetBool("force"),
-		ProjectID:           viper.GetString("project-id"),
-		RedhatCatalogAPIKey: viper.GetString("api-key"),
-		RegistryPassword:    viper.GetString("registry-password"),
-		Tag:                 viper.GetString("tag"),
+		DryRun:              flags.DryRun,
+		Force:               flags.Force,
+		ProjectID:           flags.ProjectID,
+		RedhatCatalogAPIKey: flags.ApiKey,
+		RegistryPassword:    flags.RegistryPassword,
+		Tag:                 flags.Tag,
 	})
 }

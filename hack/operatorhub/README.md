@@ -247,3 +247,5 @@ The `all` command will run all above operations in a single command, including
 - [ ] Test
 - [ ] use consts
 - [ ] Update readme since operations changed
+- [ ] Comment all funcs
+- [ ] What about the 'v' prefix we're going to add?

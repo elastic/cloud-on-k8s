@@ -92,8 +92,9 @@ type githubRepository struct {
 	tempDir        string
 }
 
-// CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations:
-// 1. Clone redhat operatory repository to a temporary directory
+// CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations
+// for each of the certified operators, and community operators github repositories:
+// 1. Clone the repository to a temporary directory
 // 2. Ensure that the configured github user has forked the repository
 // 3. Create a git remote
 // 4. Create a new git branch named from the configured git tag

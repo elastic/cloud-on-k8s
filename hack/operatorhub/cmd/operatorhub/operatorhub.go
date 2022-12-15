@@ -10,51 +10,57 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	hub "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/operatorhub"
 )
 
 // Command will return the operatorhub command
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "operatorhub",
+		Use:           "generate-manifests",
 		Short:         "Generate Operator Lifecycle Manager format files",
-		Example:       "redhat operatorhub -c ./config.yaml -n 1.9.1 -p 1.8.0 -s 7.16.0",
+		Example:       "operatorhub generate-manifests -c ./config.yaml -n 2.6.0 -p 2.5.0 -s 8.6.0",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PreRunE:       PreRunE,
 		RunE:          Run,
 	}
 
-	cmd.Flags().StringP(
-		"prev-version",
+	cmd.Flags().StringVarP(
+		&flags.PreviousVersion,
+		flags.PrevVersionFlag,
 		"V",
 		"",
 		"Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)",
 	)
 
-	cmd.Flags().StringP(
-		"stack-version",
+	cmd.Flags().StringVarP(
+		&flags.StackVersion,
+		flags.StackVersionFlag,
 		"s",
 		"",
 		"Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)",
 	)
 
-	cmd.Flags().StringP(
-		"conf",
+	cmd.Flags().StringVarP(
+		&flags.Conf,
+		flags.ConfFlag,
 		"c",
 		"./config.yaml",
 		"Path to config file to read CRDs, and packages (CONF)",
 	)
 
-	cmd.Flags().StringSliceP(
-		"yaml-manifest",
+	cmd.Flags().StringSliceVarP(
+		&flags.YamlManifest,
+		flags.YamlManifestFlag,
 		"y",
 		nil,
 		"Path to installation manifests (YAML_MANIFEST)",
 	)
 
-	cmd.Flags().StringP(
-		"templates",
+	cmd.Flags().StringVarP(
+		&flags.Templates,
+		flags.TemplatesFlag,
 		"T",
 		"./templates",
 		"Path to the templates directory (TEMPLATES)",
@@ -63,36 +69,22 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-// PreRunE are the pre-run operations for the operatorhub command
+// PreRunE are the pre-run operations for the generate-manifests command
 func PreRunE(cmd *cobra.Command, args []string) error {
-	if cmd.Parent() != nil && cmd.Parent().PreRunE != nil {
-		if err := cmd.Parent().PreRunE(cmd.Parent(), args); err != nil {
-			return err
-		}
+	if flags.Conf == "" {
+		return fmt.Errorf("%s is required", flags.ConfFlag)
 	}
 
-	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
-		return fmt.Errorf("failed to bind persistent flags: %w", err)
+	if flags.Tag == "" {
+		return fmt.Errorf("%s is required", flags.TagFlag)
 	}
 
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return fmt.Errorf("failed to bind flags: %w", err)
+	if flags.PreviousVersion == "" {
+		return fmt.Errorf("%s is required", flags.PrevVersionFlag)
 	}
 
-	if viper.GetString("conf") == "" {
-		return fmt.Errorf("conf is required")
-	}
-
-	if viper.GetString("tag") == "" {
-		return fmt.Errorf("tag is required")
-	}
-
-	if viper.GetString("prev-version") == "" {
-		return fmt.Errorf("prev-version is required")
-	}
-
-	if viper.GetString("stack-version") == "" {
-		return fmt.Errorf("stack-version is required")
+	if flags.StackVersion == "" {
+		return fmt.Errorf("%s is required", flags.StackVersionFlag)
 	}
 
 	viper.AutomaticEnv()
@@ -102,12 +94,14 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 
 // Run will run the operatorhub command
 func Run(_ *cobra.Command, _ []string) error {
+	// TODO `make generate-crds-v1` is required PRIOR to running this.
+	// How do we do that?????
 	return hub.Generate(hub.GenerateConfig{
-		NewVersion:    viper.GetString("tag"),
-		PrevVersion:   viper.GetString("prev-version"),
-		StackVersion:  viper.GetString("stack-version"),
-		ConfigPath:    viper.GetString("conf"),
-		ManifestPaths: viper.GetStringSlice("yaml-manifest"),
-		TemplatesPath: viper.GetString("templates"),
+		NewVersion:    flags.Tag,
+		PrevVersion:   flags.PreviousVersion,
+		StackVersion:  flags.StackVersion,
+		ConfigPath:    flags.Conf,
+		ManifestPaths: flags.YamlManifest,
+		TemplatesPath: flags.Templates,
 	})
 }
