@@ -21,9 +21,7 @@ Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
 
 A policy can be applied to one or more Elasticsearch clusters in any namespace managed by the ECK operator.
-
 Configuration policy settings applied by the ECK operator are immutable through the Elasticsearch REST API.
-
 It is currently not allowed to configure an Elasticsearch cluster with more than one policy.
 
 [float]
