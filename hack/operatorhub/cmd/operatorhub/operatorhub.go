@@ -69,28 +69,6 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-// Command will return the operatorhub command
-func ControllerGenCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:           "controller-gen",
-		Short:         "Run operator controller-gen",
-		Example:       "Run operator controller-gen to generate yaml manifests for the operatorhub tool to consume.",
-		SilenceErrors: true,
-		SilenceUsage:  true,
-		PreRunE:       genPreRunE,
-		RunE:          ControllerGenRun,
-	}
-
-	cmd.Flags().StringVar(
-		&flags.RootPath,
-		flags.RootPathFlag,
-		"../../",
-		"Path to root of cloud-on-k8s repository (ROOT_PATH)",
-	)
-
-	return cmd
-}
-
 // PreRunE are the pre-run operations for the generate-manifests command
 func PreRunE(cmd *cobra.Command, args []string) error {
 	if flags.Conf == "" {
@@ -133,8 +111,4 @@ func Run(_ *cobra.Command, _ []string) error {
 		ManifestPaths: flags.YamlManifest,
 		TemplatesPath: flags.Templates,
 	})
-}
-
-func ControllerGenRun(_ *cobra.Command, _ []string) error {
-	return hub.Run(flags.RootPath)
 }

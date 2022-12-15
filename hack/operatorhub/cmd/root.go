@@ -97,7 +97,6 @@ func init() {
 		bundle.Command(),
 		container.Command(),
 		operatorhub.Command(),
-		operatorhub.ControllerGenCommand(),
 	)
 }
 
