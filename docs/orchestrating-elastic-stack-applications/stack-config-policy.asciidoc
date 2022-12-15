@@ -33,7 +33,7 @@ It is currently not allowed to configure an Elasticsearch cluster with more than
 Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following fields:
 
 * `name` is a unique name used to identify the policy.
-* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields is a named entity map:
+* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitraty names and values are definitions:
   ** `clusterSettings` are the settings that go into the elasticsearch.yml file.
   ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
@@ -49,7 +49,8 @@ The following fields are optional:
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
 * `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the<<{p}-custom-images,Elasticsearch Secure Settings>>.
 
-Secure settings are required to configure Cloud snapshot repositories (azure, gcs, s3) if you are not using Workload Identity (e.g.: https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity).
+Secure settings may be required to configure Cloud snapshot repositories (azure, gcs, s3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
+(<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
 
 [source,yaml,subs="attributes,+macros"]
 ----
