@@ -249,3 +249,4 @@ The `all` command will run all above operations in a single command, including
 - [ ] Update readme since operations changed
 - [ ] Comment all funcs
 - [ ] What about the 'v' prefix we're going to add?
+- [ ] Do all the things in 'cmd/*' package have to be exported now?

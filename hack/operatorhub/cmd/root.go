@@ -92,10 +92,13 @@ func init() {
 (OHUB_GITHUB_VAULT_SECRET)`,
 	)
 
-	Root.AddCommand(all.Command(&Root))
-	Root.AddCommand(bundle.Command())
-	Root.AddCommand(container.Command())
-	Root.AddCommand(operatorhub.Command())
+	Root.AddCommand(
+		all.Command(&Root),
+		bundle.Command(),
+		container.Command(),
+		operatorhub.Command(),
+		operatorhub.ControllerGenCommand(),
+	)
 }
 
 func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
