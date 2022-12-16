@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/config"
 	"github.com/elastic/cloud-on-k8s/v2/hack/upgrade-test-harness/fixture"
