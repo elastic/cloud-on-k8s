@@ -97,15 +97,3 @@ func (fc failingClient) Scheme() *runtime.Scheme {
 func (fc failingClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
-
-type failingStatusWriter struct {
-	err error
-}
-
-func (fsw failingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return fsw.err
-}
-
-func (fsw failingStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return fsw.err
-}
