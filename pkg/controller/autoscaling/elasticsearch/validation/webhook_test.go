@@ -110,6 +110,56 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 			},
 		},
 		{
+			name: "autoscaling is only supported for data tiers and ML nodes",
+			args: args{
+				es: es(map[string]string{}, map[string][]string{"nodeset-data-ml": {"ingest", "transform"}}, nil, "8.0.0"),
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name:              "ingest-transform_policy",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"ingest", "transform"}},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+			wantValidationError: ptr.String("autoscaling is only supported for data tiers and ML nodes"),
+		},
+		{
+			name: "invalid node role",
+			args: args{
+				es: es(map[string]string{}, map[string][]string{"nodeset-data-ml": {"data", "ingest", "transform"}}, nil, "8.0.0"),
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name:              "data_policy",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data", "ingest", "tranfsorm"}},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+			wantValidationError: ptr.String("node role tranfsorm is invalid"),
+		},
+		{
 			name: "Autoscaling policy with no NodeSet",
 			args: args{
 				es: es(map[string]string{}, map[string][]string{"nodeset-data-1": {"data"}, "nodeset-data-2": {"data"}}, nil, "8.0.0"),

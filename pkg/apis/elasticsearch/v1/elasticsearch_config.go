@@ -192,3 +192,34 @@ func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 
 	cfg.Node.Transform = pointer.BoolPtr(false)
 }
+
+func IsValidRole(role string) bool {
+	switch NodeRole(role) {
+	case DataColdRole:
+		return true
+	case DataContentRole:
+		return true
+	case DataFrozenRole:
+		return true
+	case DataHotRole:
+		return true
+	case DataRole:
+		return true
+	case DataWarmRole:
+		return true
+	case IngestRole:
+		return true
+	case MLRole:
+		return true
+	case MasterRole:
+		return true
+	case RemoteClusterClientRole:
+		return true
+	case TransformRole:
+		return true
+	case VotingOnlyRole:
+		return true
+	default:
+		return false
+	}
+}
