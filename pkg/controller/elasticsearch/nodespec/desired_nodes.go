@@ -303,7 +303,7 @@ func getElasticsearchContainer(containers []corev1.Container) *corev1.Container 
 
 func getClaimedStorage(claim corev1.PersistentVolumeClaim) *int64 {
 	if storage, exists := claim.Spec.Resources.Requests[corev1.ResourceStorage]; exists {
-		return pointer.Int64Ptr(storage.Value())
+		return pointer.Int64(storage.Value())
 	}
 	return nil
 }

@@ -258,7 +258,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.Int64Ptr(esa.Generation)
+	newStatus.ObservedGeneration = ptr.Int64(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
 		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
@@ -300,7 +300,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.Int64Ptr(esa.Generation)
+	newStatus.ObservedGeneration = ptr.Int64(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
 		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
