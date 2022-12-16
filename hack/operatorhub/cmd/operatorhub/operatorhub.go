@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	hub "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/operatorhub"
@@ -87,15 +86,14 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s is required", flags.StackVersionFlag)
 	}
 
-	viper.AutomaticEnv()
-
-	return nil
-}
-
-func genPreRunE(cmd *cobra.Command, args []string) error {
-	if flags.RootPath == "" {
-		return fmt.Errorf("%s is required", flags.RootPathFlag)
+	if flags.ApiKey == "" {
+		return fmt.Errorf("%s is required", flags.ApiKeyFlags)
 	}
+
+	if flags.ProjectID == "" {
+		return fmt.Errorf("%s is required", flags.ProjectIDFlag)
+	}
+
 	return nil
 }
 
@@ -104,11 +102,13 @@ func Run(_ *cobra.Command, _ []string) error {
 	// TODO `make generate-crds-v1` is required PRIOR to running this.
 	// How do we do that?????
 	return hub.Generate(hub.GenerateConfig{
-		NewVersion:    flags.Tag,
-		PrevVersion:   flags.PreviousVersion,
-		StackVersion:  flags.StackVersion,
-		ConfigPath:    flags.Conf,
-		ManifestPaths: flags.YamlManifest,
-		TemplatesPath: flags.Templates,
+		NewVersion:      flags.Tag,
+		PrevVersion:     flags.PreviousVersion,
+		StackVersion:    flags.StackVersion,
+		ConfigPath:      flags.Conf,
+		ManifestPaths:   flags.YamlManifest,
+		TemplatesPath:   flags.Templates,
+		RedhatAPIKey:    flags.ApiKey,
+		RedhatProjectID: flags.ProjectID,
 	})
 }

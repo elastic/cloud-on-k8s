@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -214,23 +213,25 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	log.Println("✓")
 
 	log.Printf("Adding new data to git working tree ")
-	newVersion := strings.Split(c.PathToNewVersion, string(os.PathSeparator))[len(strings.Split(c.PathToNewVersion, string(os.PathSeparator)))-1]
-	destDir := filepath.Join(localTempDir, "operators", repo.directoryName, newVersion)
-	err = copy.Copy(c.PathToNewVersion, destDir)
+	// newVersion := strings.Split(c.PathToNewVersion, string(os.PathSeparator))[len(strings.Split(c.PathToNewVersion, string(os.PathSeparator)))-1]
+	destDir := filepath.Join(localTempDir, "operators", repo.directoryName, c.GitTag)
+	srcDir := filepath.Join(c.PathToNewVersion, repo.repository, c.GitTag)
+	err = copy.Copy(srcDir, destDir)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to copy source dir (%s) to new git cloned dir (%s): %w", c.PathToNewVersion, destDir, err)
+		return fmt.Errorf("failed to copy source dir (%s) to new git cloned dir (%s): %w", srcDir, destDir, err)
 	}
 
-	_, err = w.Add(filepath.Join("operators", repo.directoryName, newVersion))
+	pathToAdd := filepath.Join("operators", repo.directoryName, c.GitTag)
+	_, err = w.Add(pathToAdd)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to add destination directory (%s) to git working tree: %w", destDir, err)
+		return fmt.Errorf("failed to add destination directory (%s) to git working tree: %w", pathToAdd, err)
 	}
 	log.Println("✓")
 
 	log.Printf("Creating git commit ")
-	_, err = w.Commit(fmt.Sprintf(`version %s of eck operator\n\nSigned-off-by: %s <%s>`, newVersion, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
+	_, err = w.Commit(fmt.Sprintf(`version %s of eck operator\n\nSigned-off-by: %s <%s>`, c.GitTag, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  c.GitHubFullName,
 			Email: c.GitHubEmail,

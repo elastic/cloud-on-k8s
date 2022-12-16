@@ -38,6 +38,22 @@ func init() {
 		"tag/new version of operator (OHUB_TAG)",
 	)
 
+	Root.PersistentFlags().StringVarP(
+		&flags.ApiKey,
+		flags.ApiKeyFlags,
+		"a",
+		"",
+		"API key to use when communicating with Red Hat catalog API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)",
+	)
+
+	Root.PersistentFlags().StringVarP(
+		&flags.ProjectID,
+		flags.ProjectIDFlag,
+		"p",
+		"",
+		"Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)",
+	)
+
 	Root.PersistentFlags().BoolVarP(
 		&flags.DryRun,
 		flags.DryRunFlag,

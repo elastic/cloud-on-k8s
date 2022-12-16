@@ -72,9 +72,9 @@ func EnsureAnnotations(file string, supportedVersions string) error {
 		return fmt.Errorf("failed to read file (%s): %w", file, err)
 	}
 	contents := string(b)
-	for _, label := range requiredAnnotations {
-		if !strings.Contains(contents, label) {
-			if err = appendAnnotation(file, label); err != nil {
+	for _, annotation := range requiredAnnotations {
+		if !strings.Contains(contents, annotation) {
+			if err = appendToFile(file, annotation); err != nil {
 				return err
 			}
 		}
@@ -82,13 +82,35 @@ func EnsureAnnotations(file string, supportedVersions string) error {
 	return nil
 }
 
-func appendAnnotation(file, annotation string) error {
+// EnsureLabels will ensure that the required labels exist within the given file.
+func EnsureLabels(file string, supportedVersions string) error {
+	requiredLabels := []string{
+		fmt.Sprintf(`LABEL com.redhat.openshift.versions=%s`, supportedVersions),
+		`LABEL com.redhat.delivery.backport=false`,
+		`LABEL com.redhat.delivery.operator.bundle=true`,
+	}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return fmt.Errorf("failed to read file (%s): %w", file, err)
+	}
+	contents := string(b)
+	for _, label := range requiredLabels {
+		if !strings.Contains(contents, label) {
+			if err = appendToFile(file, label); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func appendToFile(file, data string) error {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open file (%s) for writing: %w", file, err)
 	}
 	defer f.Close()
-	if _, err := f.WriteString(annotation + "\n"); err != nil {
+	if _, err := f.WriteString(data + "\n"); err != nil {
 		return fmt.Errorf("failed to append to file (%s): %w", file, err)
 	}
 	return nil

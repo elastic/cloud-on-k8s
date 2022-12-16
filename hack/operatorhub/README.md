@@ -250,3 +250,5 @@ The `all` command will run all above operations in a single command, including
 - [ ] Comment all funcs
 - [ ] What about the 'v' prefix we're going to add?
 - [ ] Do all the things in 'cmd/*' package have to be exported now?
+- [ ] "%s is required" is redundant.
+- [ ] name: elastic-cloud-eck.v2.6.0-bc2 in community-operators/tag/*.csv.yaml is already prefixed with 'v'

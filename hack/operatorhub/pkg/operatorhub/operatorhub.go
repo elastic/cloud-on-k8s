@@ -80,7 +80,6 @@ func Generate(config GenerateConfig) error {
 		if len(config.RedhatProjectID) == 0 {
 			return errors.New("RedHat project ID is required to get image digest")
 		}
-		log.Printf("Gathering and extracting data from yaml manifests ")
 		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, configFile.NewVersion)
 		if err != nil {
 			log.Println("ⅹ")
@@ -88,7 +87,7 @@ func Generate(config GenerateConfig) error {
 		}
 	}
 
-	log.Printf("Gathering and extracting data from yaml manifests ")
+	log.Printf("Gathering and extracting data from yaml manifest path %v ", config.ManifestPaths)
 	manifestStream, close, err := getInstallManifestStream(configFile, config.ManifestPaths)
 	if err != nil {
 		log.Println("ⅹ")
@@ -103,6 +102,7 @@ func Generate(config GenerateConfig) error {
 		log.Println("ⅹ")
 		return err
 	}
+	log.Printf("Got extracts from manifest stream: %+v", *extracts)
 	log.Println("✓")
 
 	log.Printf("Rendering final operatorhub data ")

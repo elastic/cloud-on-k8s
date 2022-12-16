@@ -6,6 +6,7 @@ package bundle
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path"
 	"path/filepath"
 	"strings"
@@ -46,11 +47,12 @@ github.com/redhat-openshift-ecosystem/certified-operators repository`,
 		RunE:         DoCreatePR,
 	}
 
-	generateCmd.Flags().StringP(
+	bundleCmd.PersistentFlags().StringVarP(
+		&flags.Dir,
 		flags.DirFlag,
 		"d",
 		"",
-		"directory containing output from 'operatorhub command' (hack/operatorhub/certified-operators) (OHUB_DIR)",
+		"directory containing output from 'operatorhub command' which contains 'certified-operators' subdirectory. (OHUB_DIR)",
 	)
 
 	generateCmd.Flags().StringVarP(
@@ -153,8 +155,27 @@ func CreatePRPreRunE(cmd *cobra.Command, args []string) error {
 
 // DoGenerate will generate the operator bundle metadata
 func DoGenerate(_ *cobra.Command, _ []string) error {
-	dir := path.Join(flags.Dir, flags.Tag)
-	err := opm.GenerateBundle(opm.GenerateConfig{
+	dir := filepath.Join(flags.Dir, "certified-operators", flags.Tag)
+	// copy files from ./certified-operators/${tag}/manifests/*.yaml to ./certified-operators/${tag}
+	// as the opm tool requires this format for some reason.
+	// TODO: I think this only needs to happen when you don't have a clean directory...
+	// TODO: TEST
+	matches, err := filepath.Glob(filepath.Join(dir, "manifests", "*.yaml"))
+	if err != nil {
+		return fmt.Errorf("while listing *.yaml files in %s: %w", dir, err)
+	}
+	for _, file := range matches {
+		b, err := ioutil.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("while reading file (%s): %w", file, err)
+		}
+		filename := filepath.Base(file)
+		err = ioutil.WriteFile(filepath.Join(dir, filename), b, 0600)
+		if err != nil {
+			return fmt.Errorf("while writing file (%s): %w", filepath.Join(dir, filename), err)
+		}
+	}
+	err = opm.GenerateBundle(opm.GenerateConfig{
 		LocalDirectory:  dir,
 		OutputDirectory: dir,
 	})
@@ -162,6 +183,10 @@ func DoGenerate(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	err = opm.EnsureAnnotations(path.Join(dir, "metadata", "annotations.yaml"), flags.SupportedOpenshiftVersions)
+	if err != nil {
+		return err
+	}
+	err = opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.SupportedOpenshiftVersions)
 	if err != nil {
 		return err
 	}
@@ -181,7 +206,7 @@ func DoGenerate(_ *cobra.Command, _ []string) error {
 // 9. Push the remote to the fork
 // 10. Potentially create a draft pull request in the remote repository
 func DoCreatePR(_ *cobra.Command, _ []string) error {
-	dir := filepath.Join(flags.Dir, flags.Tag)
+	// dir := filepath.Join(flags.Dir, flags.Tag)
 	client := github.New(github.Config{
 		CreatePullRequest: flags.SubmitPullRequest,
 		DryRun:            flags.DryRun,
@@ -191,7 +216,7 @@ func DoCreatePR(_ *cobra.Command, _ []string) error {
 		GitHubToken:       flags.GithubToken,
 		GitTag:            flags.Tag,
 		KeepTempFiles:     !flags.DeleteTempDirectory,
-		PathToNewVersion:  dir,
+		PathToNewVersion:  flags.Dir,
 	})
 	return client.CloneRepositoryAndCreatePullRequest()
 }

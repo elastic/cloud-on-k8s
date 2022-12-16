@@ -101,17 +101,17 @@ steps:
 
     steps:
 
-      - label: "get required redhat credentials"
-        key: "get-redhat-credentials"
+      - label: "Generate CRDs"
+        key: "generate-crds"
         if: build.message == "run redhat release dev"
         commands:
-          - .buildkite/scripts/common/get-redhat-credentials.sh
+           - make generate-crds-v1
 
       - label: "run container push"
         key: "redhat-container-push"
         if: build.message == "run redhat release dev"
         depends_on:
-          - "get-redhat-credentials"
+          - "generate-crds"
         commands:
            - cd hack/operatorhub
            - make build
@@ -136,6 +136,7 @@ steps:
         commands:
            # how is --tag set?
            - ./redhat container publish --tag=${TAG} --dry-run=true
+           # yaml manifests can NOT be env vars
            - ./redhat operatorhub --prev-version=${PREV_VERSION} --stack-version=${STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - ./redhat bundle generate --tag=${TAG}
+           - ./redhat bundle generate --tag=${TAG} --dir="??"
            - ./redhat bundle create-pr --tag=${TAG} --github-username=blah --github-email=blah --github-fullname=blah --github-token=blah --dry-run=true

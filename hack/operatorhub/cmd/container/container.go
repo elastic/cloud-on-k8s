@@ -70,14 +70,6 @@ func Command() *cobra.Command {
 		"registry password used to communicate with Quay.io (OHUB_REGISTRY_PASSWORD)",
 	)
 
-	cmd.PersistentFlags().StringVarP(
-		&flags.ProjectID,
-		flags.ProjectIDFlag,
-		"p",
-		"",
-		"short project id within the redhat technology portal (OHUB_PROJECT_ID)",
-	)
-
 	cmd.PersistentFlags().BoolVarP(
 		&flags.Force,
 		flags.ForceFlag,
