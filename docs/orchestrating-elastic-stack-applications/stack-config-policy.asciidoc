@@ -50,11 +50,10 @@ The following fields are optional:
 Secure settings may be required to configure Cloud snapshot repositories (azure, gcs, s3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
 (<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
 
-[source,yaml,subs="attributes,+macros"]
-----
-
 Example of applying a policy that configures snapshot repository, SLM Policies, and cluster settings:
 
+[source,yaml,subs="attributes,+macros"]
+----
 apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
 kind: StackConfigPolicy
 metadata:
