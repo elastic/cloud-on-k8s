@@ -161,16 +161,6 @@ func ValidateAutoscalingPolicies(
 			}
 		}
 
-		// at least ml or a data role is present
-		if !CanBeAutoscaled(autoscalingSpec.Roles) {
-			errs = append(
-				errs,
-				field.Invalid(
-					autoscalingSpecPath(i, "name"), strings.Join(autoscalingSpec.Roles, ","),
-					"autoscaling is only supported for data tiers and ML nodes"),
-			)
-		}
-
 		if !(autoscalingSpec.NodeCountRange.Min >= 0) {
 			errs = append(
 				errs,
@@ -282,27 +272,4 @@ func HasAtMostOnePersistentVolumeClaim(nodeSet esv1.NodeSet) (bool, *corev1.Pers
 		return true, nodeSet.VolumeClaimTemplates[0].DeepCopy()
 	}
 	return false, nil
-}
-
-// canBeAutoscaled return true if there is at least a ml role or a data role in a set of roles.
-func canBeAutoscaled(roles []string) bool {
-	for _, role := range roles {
-		switch esv1.NodeRole(role) { //nolint:exhaustive
-		case esv1.DataColdRole:
-			return true
-		case esv1.DataContentRole:
-			return true
-		case esv1.DataFrozenRole:
-			return true
-		case esv1.DataHotRole:
-			return true
-		case esv1.DataRole:
-			return true
-		case esv1.DataWarmRole:
-			return true
-		case esv1.MLRole:
-			return true
-		}
-	}
-	return false
 }
