@@ -18,7 +18,7 @@
 
 # Version of Elastic Agent.
 #
-version: 8.2.3
+version: 8.5.0
 
 # Labels that will be applied to Elastic Agent.
 #
@@ -45,7 +45,7 @@ spec:
   # Reference to ECK-managed Elasticsearch instance.
   #
   elasticsearchRefs:
-  - name: elasticsearch
+  - name: eck-elasticsearch
     # Optional namespace reference to Elasticsearch instance.
     # If not specified, then the namespace of the Agent instance
     # will be assumed.
@@ -55,7 +55,7 @@ spec:
   # Reference to ECK-managed Fleet Server instance.
   #
   # fleetServerRef:
-  #   name: fleet-server
+  #   name: eck-fleet-server
     # Optional namespace reference to Fleet Server instance.
     # If not specified, then the namespace of the Agent instance
     # will be assumed.

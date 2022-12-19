@@ -1,0 +1,38 @@
+name: packetbeat
+spec:
+  type: packetbeat
+  version: 8.5.0
+  elasticsearchRef:
+    name: eck-elasticsearch
+  kibanaRef:
+    name: eck-kibana
+  config:
+    packetbeat.interfaces.device: any
+    packetbeat.protocols:
+    - type: dns
+      ports: [53]
+      include_authorities: true
+      include_additionals: true
+    - type: http
+      ports: [80, 8000, 8080, 9200]
+    packetbeat.flows:
+      timeout: 30s
+      period: 10s
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        terminationGracePeriodSeconds: 30
+        hostNetwork: true
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        dnsPolicy: ClusterFirstWithHostNet
+        containers:
+        - name: packetbeat
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+              - NET_ADMIN
+        volumes: []

@@ -211,6 +211,10 @@ func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 	return false, errors.New("no master found in ClusterBootstrappedForZen2")
 }
 
+func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
+	return ClusterState{}, errors.New("cluster state is not supported in Elasticsearch 6.x")
+}
+
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
 	newURL, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
 	if err != nil {

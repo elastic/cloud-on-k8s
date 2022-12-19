@@ -14,9 +14,7 @@ const (
     - name: fleet_server
       version: latest
     - name: kubernetes
-      # pinning this version as the next one introduced a kube-proxy host setting default that breaks this recipe,
-      # see https://github.com/elastic/integrations/pull/1565 for more details
-      version: 0.14.0
+      version: latest
     xpack.fleet.agentPolicies:
     - name: Fleet Server on ECK policy
       id: eck-fleet-server
@@ -56,7 +54,7 @@ agent:
     logs: true
     metrics: true
 inputs:
-  - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+  - id: logfile-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
     name: system-1
     revision: 1
     type: logfile
@@ -64,7 +62,7 @@ inputs:
     meta:
       package:
         name: system
-        version: 0.9.1
+        version: 1.20.4
     data_stream:
       namespace: default
     streams:
@@ -86,7 +84,7 @@ inputs:
               target: ''
               fields:
                 ecs.version: 1.5.0
-      - id: logfile-system.syslog
+      - id: logfile-system.syslog-835850a7-3f6b-4ae9-8d02-a9a15767cf39
         data_stream:
           dataset: system.syslog
           type: logs
@@ -100,11 +98,7 @@ inputs:
           match: after
         processors:
           - add_locale: {}
-          - add_fields:
-              target: ''
-              fields:
-                ecs.version: 1.5.0
-  - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+  - id: system/metrics-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
     name: system-1
     revision: 1
     type: system/metrics
@@ -238,7 +232,7 @@ agent:
     logs: true
     metrics: true
 inputs:
-  - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+  - id: logfile-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
     name: system-1
     revision: 1
     type: logfile
@@ -246,7 +240,7 @@ inputs:
     meta:
       package:
         name: system
-        version: 0.9.1
+        version: 1.20.4
     data_stream:
       namespace: default
     streams:
@@ -286,7 +280,7 @@ inputs:
               target: ''
               fields:
                 ecs.version: 1.5.0
-  - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+  - id: system/metrics-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
     name: system-1
     revision: 1
     type: system/metrics
@@ -294,7 +288,7 @@ inputs:
     meta:
       package:
         name: system
-        version: 0.9.1
+        version: 1.20.4
     data_stream:
       namespace: default
     streams:

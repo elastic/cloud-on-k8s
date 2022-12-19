@@ -7,20 +7,12 @@
 package es
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
-	vegeta "github.com/tsenart/vegeta/v12/lib"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
@@ -260,81 +252,6 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 		WithChangeBudget(1, 2)
 
 	RunESMutation(t, b, mutated)
-}
-
-func TestMutationWhileLoadTesting(t *testing.T) {
-	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPreStopAdditionalWaitSeconds(90)
-
-	// force a rolling upgrade through label change
-	mutated := b.DeepCopy().
-		WithPodLabel("some_label_name", "some_new_value")
-
-	var metrics vegeta.Metrics
-	var attacker vegeta.Attacker
-	// keep hitting ES endpoints at high rate during pod cycling to catch any downtime
-	w := test.NewOnceWatcher(
-		"load test",
-		func(k *test.K8sClient, t *testing.T) {
-			url := fmt.Sprintf("https://%s.%s.svc.cluster.local:9200/", esv1.HTTPService(b.Elasticsearch.Name), b.Elasticsearch.Namespace)
-			rate := vegeta.Rate{Freq: 10, Per: time.Second}
-			targeter := vegeta.NewStaticTargeter(vegeta.Target{
-				Method: "GET",
-				URL:    url,
-			})
-
-			var attackerOption func(*vegeta.Attacker)
-			if test.Ctx().AutoPortForwarding {
-				// we need to forward, use our dialer
-				c := &http.Client{
-					Timeout: vegeta.DefaultTimeout,
-					Transport: &http.Transport{
-						Proxy:               http.ProxyFromEnvironment,
-						DialContext:         portforward.NewForwardingDialer().DialContext,
-						TLSClientConfig:     vegeta.DefaultTLSConfig,
-						MaxIdleConnsPerHost: vegeta.DefaultConnections,
-						DisableKeepAlives:   true,
-					},
-				}
-				attackerOption = vegeta.Client(c)
-			} else {
-				// no forwarding needed, just turn off keep alives
-				attackerOption = vegeta.KeepAlive(false)
-			}
-
-			attacker = *vegeta.NewAttacker(attackerOption)
-			for res := range attacker.Attack(targeter, rate, 0, "ES load test while recycling pods") {
-				metrics.Add(res)
-			}
-		},
-		func(k *test.K8sClient, t *testing.T) {
-			attacker.Stop()
-			metrics.Close()
-			bytes, _ := json.Marshal(metrics)
-			msgAndArgs := []interface{}{"metrics: ", string(bytes)}
-			switch len(metrics.StatusCodes) {
-			case 1:
-				if _, ok := metrics.StatusCodes["401"]; !ok {
-					assert.Fail(t, "all status codes should be 401", msgAndArgs)
-				}
-			case 2:
-				// allow 5 or less network errors during load testing, as we randomly see these during testing.
-				if metrics.StatusCodes["0"] > 5 {
-					assert.Fail(t, "large number of network errors while mutating and load testing", msgAndArgs)
-				}
-				for k := range metrics.StatusCodes {
-					if k == "0" || k == "401" {
-						continue
-					}
-					assert.Fail(t, "only '401', and '0' error codes are allowed while mutating during load testing", msgAndArgs)
-				}
-			default:
-				assert.Fail(t, "large number of errors while mutating and load testing", msgAndArgs)
-			}
-		})
-
-	test.RunMutationsWhileWatching(t, []test.Builder{b}, []test.Builder{mutated.WithMutatedFrom(&b)}, []test.Watcher{w})
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {

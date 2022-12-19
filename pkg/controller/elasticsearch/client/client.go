@@ -86,6 +86,8 @@ type Client interface {
 	GetClusterHealth(ctx context.Context) (Health, error)
 	// GetClusterHealthWaitForAllEvents calls _cluster/health?wait_for_events=languid&timeout=0s
 	GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error)
+	// GetClusterState calls the _cluster/state api.
+	GetClusterState(ctx context.Context) (ClusterState, error)
 	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,

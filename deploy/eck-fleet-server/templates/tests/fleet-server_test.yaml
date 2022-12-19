@@ -13,10 +13,10 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 8.2.3
+          value: 8.5.0
       - equal:
           path: spec.kibanaRef.name
-          value: quickstart
+          value: eck-kibana
       - equal:
           path: spec.deployment.replicas
           value: 1

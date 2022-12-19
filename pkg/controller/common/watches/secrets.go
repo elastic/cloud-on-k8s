@@ -13,28 +13,46 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 )
 
-// WatchUserProvidedSecrets registers a watch for user-provided secrets.
+// WatchUserProvidedSecrets registers a watch for user-provided secrets that are in the same namespace as the watcher.
 // Only one watch per watcher is registered:
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
 // - if there is no secret provided by the user, remove the watch.
 func WatchUserProvidedSecrets(
-	watcher types.NamespacedName, // resource to which the watches are attached (eg. an Elasticsearch object)
+	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
 	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []string, // user-provided secrets to watch
+) error {
+	secretSources := make([]commonv1.NamespacedSecretSource, 0, len(secrets))
+	for _, secretName := range secrets {
+		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: watcher.Namespace, SecretName: secretName})
+	}
+	return WatchUserProvidedNamespacedSecrets(watcher, watched, watchName, secretSources)
+}
+
+// WatchUserProvidedNamespacedSecrets registers a watch for user-provided secrets that are in any namespace.
+// Only one watch per watcher is registered:
+// - if it already exists with different secrets, it is replaced to watch the new secrets.
+// - if there is no secret provided by the user, remove the watch.
+func WatchUserProvidedNamespacedSecrets(
+	watcher types.NamespacedName, // resource to which the watches are attached (e.g. an Elasticsearch object)
+	watched DynamicWatches, // existing dynamic watches
+	watchName string, // dynamic watch to register
+	secrets []commonv1.NamespacedSecretSource, // secrets to watch
 ) error {
 	if len(secrets) == 0 {
 		watched.Secrets.RemoveHandlerForKey(watchName)
 		return nil
 	}
 	userSecretNsns := make([]types.NamespacedName, 0, len(secrets))
-	for _, secretName := range secrets {
+	for _, s := range secrets {
 		userSecretNsns = append(userSecretNsns, types.NamespacedName{
-			Namespace: watcher.Namespace,
-			Name:      secretName,
+			Namespace: s.Namespace,
+			Name:      s.SecretName,
 		})
 	}
 	return watched.Secrets.AddHandler(NamedWatch{

@@ -1,0 +1,6 @@
+
+1. Check Beat status
+  $ kubectl get beat {{ include "beat.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check Beat pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l beat.k8s.elastic.co/name={{ include "beat.fullname" . }}

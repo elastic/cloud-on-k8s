@@ -206,7 +206,7 @@ func (k *K8sClient) GetElasticPassword(nsn types.NamespacedName) (string, error)
 	return string(password), nil
 }
 
-func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
+func (k *K8sClient) GetHTTPCertsBytes(namer name.Namer, ownerNamespace, ownerName string) ([]byte, error) {
 	var secret corev1.Secret
 	secretNSN := certificates.PublicCertsSecretRef(
 		namer,
@@ -226,6 +226,14 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 	certData, exists := secret.Data[certificates.CertFileName]
 	if !exists {
 		return nil, fmt.Errorf("no certificates found in secret %s", secretNSN)
+	}
+	return certData, nil
+}
+
+func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
+	certData, err := k.GetHTTPCertsBytes(namer, ownerNamespace, ownerName)
+	if err != nil {
+		return nil, err
 	}
 	return certificates.ParsePEMCerts(certData)
 }

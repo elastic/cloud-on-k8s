@@ -24,6 +24,7 @@ endif::[]
 - <<{p}-customize-pods>>
 - <<{p}-managing-compute-resources>>
 - <<{p}-stateless-autoscaling>>
+- <<{p}-stack-config-policy>>
 - <<{p}-upgrading-stack>>
 
 --
@@ -43,5 +44,6 @@ include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]
 include::managing-compute-resources.asciidoc[leveloffset=+1]
 include::autoscaling.asciidoc[leveloffset=+1]
+include::stack-config-policy.asciidoc[leveloffset=+1]
 include::upgrading-stack.asciidoc[leveloffset=+1]
 

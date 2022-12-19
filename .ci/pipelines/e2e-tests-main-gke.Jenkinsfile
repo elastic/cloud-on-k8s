@@ -47,7 +47,8 @@ pipeline {
                 }
             }
             steps {
-                sh 'make -C .ci TARGET=ci-check ci'
+                sh '.ci/setenvconfig e2e/main'
+                sh 'make -C .ci license.key TARGET=ci-check ci'
             }
         }
         stage("E2E tests") {
@@ -61,7 +62,6 @@ pipeline {
                 E2E_TAGS = lib.extractValueByKey(env.ghprbCommentBody, "tags", params.E2E_TAGS)
             }
             steps {
-                sh '.ci/setenvconfig e2e/main'
                 script {
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
@@ -104,7 +104,7 @@ pipeline {
             script {
                 if (notOnlyDocs()) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-e2e-${BUILD_NUMBER}")],
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-jks-e2e-main-${BUILD_NUMBER}")],
                         wait: false
                 }
             }

@@ -45,4 +45,7 @@ const (
 	AnnotationsFile       = "annotations"
 
 	ServiceAccountsFile = "service_tokens"
+
+	FileSettingsVolumeName      = "file-settings"
+	FileSettingsVolumeMountPath = "/usr/share/elasticsearch/config/operator"
 )

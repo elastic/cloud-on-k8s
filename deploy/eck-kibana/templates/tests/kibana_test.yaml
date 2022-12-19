@@ -13,7 +13,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 8.2.3
+          value: 8.5.0
   - it: name override should work properly
     set:
       nameOverride: override
@@ -75,13 +75,13 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 8.2.3
+          value: 8.5.0
       - equal:
           path: spec.count
           value: 1
       - equal:
           path: spec.elasticsearchRef.name
-          value: quickstart-eck-elasticsearch
+          value: eck-elasticsearch
       - equal:
           path: spec.elasticsearchRef.namespace
           value: default

@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 8.4.2
+  version: 8.5.0
   elasticsearchRefs:
   - outputName: default
     name: elasticsearch
@@ -27,7 +27,6 @@ spec:
             path: /var/log
           name: varlog
   config:
-    id: 2d70a6f0-33a5-11eb-bb2f-418d0388a8cf
     revision: 2
     agent:
       monitoring:
@@ -36,7 +35,7 @@ spec:
         logs: true
         metrics: true
     inputs:
-    - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+    - id: logfile-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
       name: system-1
       revision: 1
       type: logfile
@@ -44,7 +43,7 @@ spec:
       meta:
         package:
           name: system
-          version: 0.9.1
+          version: 1.20.4
       data_stream:
         namespace: default
       streams:
@@ -84,7 +83,7 @@ spec:
             target: ''
             fields:
               ecs.version: 1.5.0
-    - id: 2e187fb0-33a5-11eb-bb2f-418d0388a8cf
+    - id: system/metrics-system-835850a7-3f6b-4ae9-8d02-a9a15767cf39
       name: system-1
       revision: 1
       type: system/metrics
@@ -92,7 +91,7 @@ spec:
       meta:
         package:
           name: system
-          version: 0.9.1
+          version: 1.20.4
       data_stream:
         namespace: default
       streams:
@@ -197,7 +196,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.4.2
+  version: 8.5.0
   nodeSets:
   - name: default
     count: 3
@@ -209,7 +208,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.4.2
+  version: 8.5.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -219,7 +218,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-mon
 spec:
-  version: 8.4.2
+  version: 8.5.0
   nodeSets:
   - name: default
     count: 3
@@ -231,7 +230,7 @@ kind: Kibana
 metadata:
   name: kibana-mon
 spec:
-  version: 8.4.2
+  version: 8.5.0
   count: 1
   elasticsearchRef:
     name: elasticsearch-mon

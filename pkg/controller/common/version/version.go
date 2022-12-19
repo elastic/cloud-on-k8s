@@ -91,6 +91,12 @@ func MinFor(major, minor, patch uint64) Version {
 	return Version{Major: major, Minor: minor, Patch: patch, Pre: []semver.PRVersion{minPreReleaseVersion}}
 }
 
+// WithoutPre removes the PreRelease version for the given version.
+func WithoutPre(v Version) Version {
+	v.Pre = nil
+	return v
+}
+
 // MinInPods returns the lowest version parsed from labels in the given Pods.
 func MinInPods(pods []corev1.Pod, labelName string) (*Version, error) {
 	var min *Version

@@ -1,5 +1,109 @@
+
 agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
+  cpu: "4"
+  memory: "2G"
 
 steps:
-  - command: 'echo "pipeline is coming"'
+
+  - group: build
+    steps:
+
+      - label: ":docker: operator container image"
+        key: "operator-image-build"
+        commands:
+          - .ci/setenvconfig pr
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make operator-buildah
+
+      - label: ":docker: e2e-tests container image"
+        key: "e2e-tests-image-build"
+        commands:
+          - .ci/setenvconfig pr
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make e2e-buildah
+
+  - group: checks
+    steps:
+
+      - label: ":go: lint"
+        command: "make lint check-local-changes"
+        agents:
+          cpu: "6"
+          memory: "6G"
+
+      - label: ":go: generate"
+        command: "make generate check-local-changes"
+
+      - label: ":go: checks"
+        commands:
+          - .ci/setenvconfig pr
+          - make check-license-header check-predicates shellcheck reattach-pv
+
+  - group: tests
+    steps:
+
+      - label: ":go: unit-tests"
+        command: "make unit-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: integration-tests"
+        command: "make integration-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: manifest-gen-tests"
+        command: "make manifest-gen-test"
+
+      - label: ":go: helm-tests"
+        command: "make helm-test"
+
+  # Different e2e tests are run depending on the branch and the build source
+
+  - group: e2e-tests
+    steps:
+
+      # Run TestSmoke on Kind on every commit in PR branch
+
+      - label: ":k8s: pr e2e-tests"
+        branches: "!main"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
+        commands:
+            - .ci/setenvconfig pr
+            - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
+        artifact_paths:
+          - "eck-diagnostic-*.zip"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+
+      # Run all e2e tests on GKE on every commit in main
+
+      - label: ":k8s: main e2e-tests"
+        if: build.branch == "main" && build.source != "schedule"
+        agents:
+          memory: "4G"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make run-deployer
+          - make e2e-run
+        artifact_paths:
+          - "eck-diagnostic-*.zip"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+
+      # Run all e2e tests on all k8s distributions at midnight from the main branch
+
+      - label: ":k8s: nightly e2e-tests"
+        if: build.branch == "main" && build.source == "schedule"
+        commands:
+            - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"

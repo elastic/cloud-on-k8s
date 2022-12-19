@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -144,18 +145,18 @@ func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev
 func GarbageCollectSoftOwnedSecrets(ctx context.Context, c k8s.Client, deletedOwner types.NamespacedName, ownerKind string) error {
 	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
-	if err := c.List(ctx,
-		&secrets,
-		// restrict to secrets in the parent namespace, we don't want to delete
-		// secrets users may have manually copied into other namespaces
-		client.InNamespace(deletedOwner.Namespace),
-		// restrict to secrets on which we set the soft owner labels
-		client.MatchingLabels{
-			SoftOwnerNamespaceLabel: deletedOwner.Namespace,
-			SoftOwnerNameLabel:      deletedOwner.Name,
-			SoftOwnerKindLabel:      ownerKind,
-		},
-	); err != nil {
+	// restrict to secrets on which we set the soft owner labels
+	listOpts := []client.ListOption{client.MatchingLabels{
+		SoftOwnerNamespaceLabel: deletedOwner.Namespace,
+		SoftOwnerNameLabel:      deletedOwner.Name,
+		SoftOwnerKindLabel:      ownerKind,
+	}}
+	// restrict to secrets in the parent namespace, we don't want to delete secrets users may have manually copied into
+	// other namespaces (except for kind where we control these secrets)
+	if restrictedToOwnerNamespace(ownerKind) {
+		listOpts = append(listOpts, client.InNamespace(deletedOwner.Namespace))
+	}
+	if err := c.List(ctx, &secrets, listOpts...); err != nil {
 		return err
 	}
 	for i := range secrets.Items {
@@ -189,14 +190,14 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(ctx context.Context, c k8s.Client, 
 	); err != nil {
 		return err
 	}
-	// remove any secret whose owner in the same namespace doesn't exist
+	// remove any secret whose owner doesn't exist
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
 		softOwner, referenced := SoftOwnerRefFromLabels(secret.Labels)
 		if !referenced {
 			continue
 		}
-		if softOwner.Namespace != secret.Namespace {
+		if restrictedToOwnerNamespace(softOwner.Kind) && softOwner.Namespace != secret.Namespace {
 			// Secret references an owner in a different namespace: this likely results
 			// from a "manual" copy of the secret in another namespace, not handled by the operator.
 			// We don't want to touch that secret.
@@ -226,4 +227,9 @@ func GarbageCollectAllSoftOwnedOrphanSecrets(ctx context.Context, c k8s.Client, 
 		// owner still exists, keep the secret
 	}
 	return nil
+}
+
+// restrictedToOwnerNamespace returns true if a resource should have its owner in the same namespace, based on the kind of owner.
+func restrictedToOwnerNamespace(kind string) bool {
+	return kind != policyv1alpha1.Kind
 }

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: eck-beats
+description: A Helm chart to deploy Elastic Beats managed by the ECK Operator.
+# Requirement comes from minimum version supported for eck-operator (https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s_supported_versions.html)
+kubeVersion: ">= 1.20.0-0"
+type: application
+version: 0.1.0
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+  - https://github.com/elastic/beats
+icon: https://helm.elastic.co/icons/beats.png
