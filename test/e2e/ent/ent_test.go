@@ -33,21 +33,6 @@ func TestEnterpriseSearchCrossNSAssociation(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
 }
 
-func TestEnterpriseSearchTLSDisabled(t *testing.T) {
-	name := "test-ent-tls-disabled"
-
-	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithRestrictedSecurityContext()
-	entBuilder := enterprisesearch.NewBuilder(name).
-		WithElasticsearchRef(esBuilder.Ref()).
-		WithNodeCount(1).
-		WithTLSDisabled(true).
-		WithRestrictedSecurityContext()
-
-	test.Sequence(nil, test.EmptySteps, esBuilder, entBuilder).RunSequential(t)
-}
-
 func TestEnterpriseSearchVersionUpgradeToLatest7x(t *testing.T) {
 	srcVersion := test.Ctx().ElasticStackVersion
 	dstVersion := test.LatestReleasedVersion7x
@@ -87,6 +72,32 @@ func TestEnterpriseSearchVersionUpgradeToLatest8x(t *testing.T) {
 		WithElasticsearchRef(es.Ref()).
 		WithNodeCount(2).
 		WithVersion(srcVersion).
+		WithRestrictedSecurityContext()
+
+	esUpgraded := es.WithVersion(dstVersion).WithMutatedFrom(&es)
+	entUpgraded := ent.WithVersion(dstVersion).WithMutatedFrom(&ent)
+
+	// During the version upgrade, the operator will toggle Enterprise Search read-only mode.
+	// We don't verify this behaviour here. Instead, we just check Enterprise Search eventually
+	// runs fine in the new version: it would fail to run if read-only mode wasn't toggled.
+	test.RunMutations(t, []test.Builder{es, ent}, []test.Builder{esUpgraded, entUpgraded})
+}
+
+func TestEnterpriseSearchTLSDisabledVersionUpgradeToLatest8x(t *testing.T) {
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	name := "test-ent-notls-version-upgrade-8x"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithVersion(srcVersion)
+
+	ent := enterprisesearch.NewBuilder(name).
+		WithElasticsearchRef(es.Ref()).
+		WithNodeCount(2).
+		WithVersion(srcVersion).
+		WithTLSDisabled(true).
 		WithRestrictedSecurityContext()
 
 	esUpgraded := es.WithVersion(dstVersion).WithMutatedFrom(&es)
