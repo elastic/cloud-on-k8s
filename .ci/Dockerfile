@@ -17,12 +17,15 @@ ENV HELM_VERSION=3.9.1
 RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
-# kubebuilder to get required tools (etcd, apiserver, etc.)
-ENV PATH=${PATH}:/usr/local/kubebuilder/bin
-RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    tar -zxf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/kubebuilder && \
-    rm kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz
+# etcd and apiserver for integration tests
+ENV KUBEAPISERVER_VERSION=1.21.0
+RUN curl -fsSL https://dl.k8s.io/v${KUBEAPISERVER_VERSION}/bin/linux/amd64/kube-apiserver -o /usr/local/bin/kube-apiserver && \
+    chmod +x /usr/local/bin/kube-apiserver
+ENV ETCD_VERSION=3.4.23
+RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz && \
+    tar xzf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz -C /usr/local/bin && \
+    rm -f etcd-v${ETCD_VERSION}-linux-amd64.tar.gz && \
+    mv /usr/local/bin/etcd-v${ETCD_VERSION}-linux-amd64 /usr/local/bin/etcd
 
 # gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
