@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -53,6 +54,7 @@ type Config struct {
 	GitTag                                                   string
 	KeepTempFiles                                            bool
 	PathToNewVersion                                         string
+	ContainerImageSHA                                        string
 	CreatePullRequest                                        bool
 }
 
@@ -89,6 +91,7 @@ type githubRepository struct {
 	directoryName  string
 	url            string
 	tempDir        string
+	extraSteps     func() error
 }
 
 // CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations
@@ -125,6 +128,18 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  communityOperatorDirectoryName,
 			mainBranchName: communityOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
+			// Describe what this is doing.
+			extraSteps: func() error {
+				fileName := "elastic-cloud-eck.package.yaml"
+				fileSrc := filepath.Join(c.PathToNewVersion, communityOperatorRepository, fileName)
+				fileDst := filepath.Join(tempDir, communityOperatorRepository, "operators", communityOperatorDirectoryName, fileName)
+				log.Printf("copying (%s) to (%s)", fileSrc, fileDst)
+				err := copy.Copy(fileSrc, fileDst)
+				if err != nil {
+					return fmt.Errorf("while copying (%s) to (%s)", fileSrc, fileDst)
+				}
+				return nil
+			},
 		},
 		{
 			organization:   certifiedOperatorOrganization,
@@ -133,6 +148,48 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  certifiedOperatorDirectoryName,
 			mainBranchName: certifiedOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
+			// Describe what this is doing.
+			extraSteps: func() error {
+				// mv /tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.v${IMAGE_TAG}.clusterserviceversion.yaml \
+				// /tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.clusterserviceversion.yaml
+				fileSrc := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", fmt.Sprintf("elasticsearch-eck-operator-certified.v%s.clusterserviceversion.yaml", c.GitTag))
+				fileDst := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", "elasticsearch-eck-operator-certified.clusterserviceversion.yaml")
+				log.Printf("copying (%s) to (%s)", fileSrc, fileDst)
+				if err := copy.Copy(fileSrc, fileDst); err != nil {
+					return fmt.Errorf("while copying (%s) to (%s)", fileSrc, fileDst)
+				}
+				log.Printf("removing file (%s)", fileSrc)
+				if err := os.Remove(fileSrc); err != nil {
+					return fmt.Errorf("while removing file (%s)", fileSrc)
+				}
+
+				// sed -i "s/registry.connect.redhat.com\/elastic\/eck-operator:${IMAGE_TAG}/registry.connect.redhat.com\/elastic\/eck-operator@${IMAGE_SHA}/g" \
+				// 	/tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.clusterserviceversion.yaml
+				log.Printf("reading (%s) to replace git tag with container image SHA", fileDst)
+				input, err := ioutil.ReadFile(fileDst)
+				if err != nil {
+					return fmt.Errorf("while reading file (%s)", fileDst)
+				}
+
+				lines := strings.Split(string(input), "\n")
+
+				// Unsure if this step is necessary, as the generate-bundle step does this for us.
+				// TODO: possibly remove me.
+				find := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator:%s`, c.GitTag)
+				replace := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator@%s`, c.ContainerImageSHA)
+				for _, line := range lines {
+					if strings.Contains(line, find) {
+						line = strings.ReplaceAll(line, find, replace)
+					}
+				}
+				output := strings.Join(lines, "\n")
+				log.Printf("rewriting (%s) with container image SHA", fileDst)
+				err = ioutil.WriteFile(fileDst, []byte(output), 0644)
+				if err != nil {
+					return fmt.Errorf("while writing updated file (%s)", fileDst)
+				}
+				return nil
+			},
 		},
 	} {
 		if err := c.cloneAndCreate(repository); err != nil {
@@ -212,16 +269,21 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	}
 	log.Println("✓")
 
-	log.Printf("Adding new data to git working tree ")
 	// newVersion := strings.Split(c.PathToNewVersion, string(os.PathSeparator))[len(strings.Split(c.PathToNewVersion, string(os.PathSeparator)))-1]
 	destDir := filepath.Join(localTempDir, "operators", repo.directoryName, c.GitTag)
 	srcDir := filepath.Join(c.PathToNewVersion, repo.repository, c.GitTag)
+	log.Printf("copying (%s) to (%s)", srcDir, destDir)
 	err = copy.Copy(srcDir, destDir)
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed to copy source dir (%s) to new git cloned dir (%s): %w", srcDir, destDir, err)
 	}
 
+	if err := repo.extraSteps(); err != nil {
+		return err
+	}
+
+	log.Printf("Adding new data to git working tree ")
 	pathToAdd := filepath.Join("operators", repo.directoryName, c.GitTag)
 	_, err = w.Add(pathToAdd)
 	if err != nil {
@@ -246,17 +308,27 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	refSpec := fmt.Sprintf("+refs/heads/%[1]s:refs/heads/%[1]s", branchName)
+	// r.PushContext(ctx, &git.PushOptions{
+	// 	RemoteName: "fork",
+	// 	Auth: &git_http.BasicAuth{
+	// 		Username: c.GitHubToken,
+	// 	},
+	// 	RefSpecs: []config.RefSpec{
+	// 		config.RefSpec(refSpec),
+	// 	},
+	// })
 	err = remote.PushContext(ctx, &git.PushOptions{
 		RemoteName: "fork",
-		Auth: &git_http.TokenAuth{
-			Token: c.GitHubToken,
+		Auth: &git_http.BasicAuth{
+			Username: c.GitHubToken,
 		},
 		RefSpecs: []config.RefSpec{
-			config.RefSpec(branchName),
+			config.RefSpec(refSpec),
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to push branch (%s) to remote: %w", branchName, err)
+		return fmt.Errorf("failed to push git refspec (%s) to remote: %w", refSpec, err)
 	}
 
 	if c.CreatePullRequest {

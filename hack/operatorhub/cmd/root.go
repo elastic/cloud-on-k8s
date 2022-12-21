@@ -15,22 +15,23 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/operatorhub"
 )
 
-// Root represents the root commmand for redhat operations
-var Root = cobra.Command{
+// Cmd represents the root commmand for Red Hat/operatorhub release operations
+var Cmd = cobra.Command{
 	Use:     "operatorhub",
 	Version: "0.4.0",
 	Short:   "Manage operatorhub release operations",
-	Long: `Manage oepratorhub release operations, such as pushing operator container to quay.io, operator hub release generation, building operator metadata,
+	Long: `Manage operatorhub release operations, such as pushing operator container to quay.io, operator hub release generation, building operator metadata,
 and potentially creating pull requests to community/certified operator repositories.`,
-	// use persistent PreRunE here to ensure that all sub-commands
-	// also get this function to execute prior to
+	// PersistentPreRunE is used here to ensure that all sub-commands
+	// run these initialization steps, and can properly use both the vault
+	// integration and the flag variables defined in the cmd/flags package.
 	PersistentPreRunE: rootPersistentPreRunE,
 }
 
 func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-	Root.PersistentFlags().StringVarP(
+	Cmd.PersistentFlags().StringVarP(
 		&flags.Tag,
 		flags.TagFlag,
 		"t",
@@ -38,7 +39,7 @@ func init() {
 		"tag/new version of operator (OHUB_TAG)",
 	)
 
-	Root.PersistentFlags().StringVarP(
+	Cmd.PersistentFlags().StringVarP(
 		&flags.ApiKey,
 		flags.ApiKeyFlags,
 		"a",
@@ -46,7 +47,7 @@ func init() {
 		"API key to use when communicating with Red Hat catalog API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)",
 	)
 
-	Root.PersistentFlags().StringVarP(
+	Cmd.PersistentFlags().StringVarP(
 		&flags.ProjectID,
 		flags.ProjectIDFlag,
 		"p",
@@ -54,7 +55,7 @@ func init() {
 		"Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)",
 	)
 
-	Root.PersistentFlags().BoolVarP(
+	Cmd.PersistentFlags().BoolVarP(
 		&flags.DryRun,
 		flags.DryRunFlag,
 		"Y",
@@ -62,28 +63,28 @@ func init() {
 		"Run dry run of all operations. Default: true. To un-set --dry-run=false (OHUB_DRY_RUN)",
 	)
 
-	Root.PersistentFlags().BoolVar(
+	Cmd.PersistentFlags().BoolVar(
 		&flags.EnableVault,
 		flags.EnableVaultFlag,
 		true,
 		"Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT)",
 	)
 
-	Root.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(
 		&flags.VaultAddress,
 		flags.VaultAddressFlag,
 		"",
 		"Vault address to use when enable-vault is set (VAULT_ADDR)",
 	)
 
-	Root.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(
 		&flags.VaultToken,
 		flags.VaultTokenFlag,
 		"",
 		"Vault token to use when enable-vault is set (VAULT_TOKEN)",
 	)
 
-	Root.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(
 		&flags.RedhatVaultSecret,
 		flags.RedhatVaultSecretFlag,
 		"",
@@ -95,7 +96,7 @@ func init() {
 (OHUB_REDHAT_VAULT_SECRET)`,
 	)
 
-	Root.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(
 		&flags.GithubVaultSecret,
 		flags.GithubVaultSecretFlag,
 		"",
@@ -108,8 +109,8 @@ func init() {
 (OHUB_GITHUB_VAULT_SECRET)`,
 	)
 
-	Root.AddCommand(
-		all.Command(&Root),
+	Cmd.AddCommand(
+		all.Command(&Cmd),
 		bundle.Command(),
 		container.Command(),
 		operatorhub.Command(),
@@ -159,16 +160,19 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// set all flag variables with what's set within viper prior to running
-	// to allow commands to use the variables directly without calling viper.
+	// set all flag variables with what's set within viper prior to running to allow
+	// (sub)commands to use the variables in cmd/flags directly without calling viper.
 	bindFlags(cmd, viper.GetViper())
 
 	return nil
 }
 
+// bindFlags will be called last prior to running all (sub)commands to set all cobra flags
+// to what is set within viper so that all subsequent operations can use cmd/flags variables
+// directly without calling viper.
 func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		// Apply the viper config value to the flag when the flag is not set and viper has a value
+		// Apply the viper config value to the flag when the flag has not been set by the user and viper has a value
 		if !f.Changed && v.IsSet(f.Name) {
 			val := v.Get(f.Name)
 			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))

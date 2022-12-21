@@ -252,3 +252,4 @@ The `all` command will run all above operations in a single command, including
 - [ ] Do all the things in 'cmd/*' package have to be exported now?
 - [ ] "%s is required" is redundant.
 - [ ] name: elastic-cloud-eck.v2.6.0-bc2 in community-operators/tag/*.csv.yaml is already prefixed with 'v'
+- [ ] document that `make generate-crds-v1` needs to be run prior to this.

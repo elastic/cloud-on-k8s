@@ -137,6 +137,6 @@ steps:
            # how is --tag set?
            - ./redhat container publish --tag=${TAG} --dry-run=true
            # yaml manifests can NOT be env vars
-           - ./redhat operatorhub --prev-version=${PREV_VERSION} --stack-version=${STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - ./redhat generate-manifests --prev-version=${PREV_VERSION} --stack-version=${STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
            - ./redhat bundle generate --tag=${TAG} --dir="??"
            - ./redhat bundle create-pr --tag=${TAG} --github-username=blah --github-email=blah --github-fullname=blah --github-token=blah --dry-run=true

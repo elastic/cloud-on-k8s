@@ -74,7 +74,6 @@ func (c *Client) createFork() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("executing request: %v", req)
 	var res *http.Response
 	res, err = c.HTTPClient.Do(req)
 	if err != nil {

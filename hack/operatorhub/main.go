@@ -8,11 +8,11 @@ import (
 	"log"
 	"os"
 
-	redhat_cmd "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd"
+	root "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd"
 )
 
 func main() {
-	if err := redhat_cmd.Root.Execute(); err != nil {
+	if err := root.Cmd.Execute(); err != nil {
 		log.Printf("failed to run redhat command: %s", err)
 		os.Exit(1)
 	}
