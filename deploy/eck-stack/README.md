@@ -48,8 +48,8 @@ The following will install the ECK-Stack chart using the default values, which w
 helm repo add elastic https://helm.elastic.co && helm repo update
 
 # Install the ECK-Stack helm chart
-# This will setup a 'quickstart' Elasticsearch and Kibana resource
-$ helm install my-release -n my-namespace elastic/eck-stack --create-namespace
+# This will setup a 'quickstart' Elasticsearch and Kibana resource in the 'elastic-stack' namespace
+$ helm install my-release -n elastic-stack elastic/eck-stack --create-namespace
 ```
 
 More information on the different ways to use the ECK Stack chart to deploy Elastic Stack resources
@@ -57,10 +57,10 @@ can be found in [our documentation](https://www.elastic.co/guide/en/cloud-on-k8s
 
 ## Uninstalling the Chart
 
-To uninstall/delete the `my-release` deployment from the 'my-namespace' namespace:
+To uninstall/delete the `my-release` deployment from the 'elastic-stack' namespace:
 
 ```console
-$ helm delete my-release -n my-namespace
+$ helm delete my-release -n elastic-stack
 ```
 
 The command removes all the Elastic Stack resources associated with the chart and deletes the release.

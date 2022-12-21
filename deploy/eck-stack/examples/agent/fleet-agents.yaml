@@ -32,8 +32,11 @@ eck-kibana:
 
     config:
       # Note that these are specific to the namespace into which this example is installed, and are
-      # using `elastic-stack` as configured here.  If installed outside of the `elastic-stack` namespace,
-      # these 2 lines need modification.
+      # using `elastic-stack` as configured here and detailed in the README when installing:
+      #
+      # `helm install es-kb-quickstart elastic/eck-stack -n elastic-stack`
+      #
+      # If installed outside of the `elastic-stack` namespace, the following 2 lines need modification.
       xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.elastic-stack.svc:9200"]
       xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.elastic-stack.svc:8220"]
       xpack.fleet.packages:
