@@ -172,7 +172,8 @@ helm-test:
 
 integration: GO_TAGS += integration
 integration: clean generate-crds-v1
-	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+		go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean generate-crds-v1
