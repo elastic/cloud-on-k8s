@@ -5,7 +5,7 @@ ENV GOLANGCILINT_VERSION=1.48.0
 ENV SHELLCHECK_VERSION=0.8.0
 ENV KUBEBUILDER_VERSION=2.3.1
 ENV GCLOUD_VERSION=381.0.0
-ENV KUBECTL_VERSION=1.19.16
+ENV KUBECTL_VERSION=1.21.14
 ENV DOCKER_VERSION=19.03.14
 ENV DOCKER_BUILDX_VERSION=0.8.2
 ENV GOTESTSUM_VERSION=1.8.0
@@ -18,7 +18,7 @@ RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/in
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
 # etcd and apiserver for integration tests
-ENV KUBEAPISERVER_VERSION=1.21.0
+ENV KUBEAPISERVER_VERSION=1.21.14
 RUN curl -fsSL https://dl.k8s.io/v${KUBEAPISERVER_VERSION}/bin/linux/amd64/kube-apiserver -o /usr/local/bin/kube-apiserver && \
     chmod +x /usr/local/bin/kube-apiserver
 ENV ETCD_VERSION=3.4.23
@@ -39,7 +39,7 @@ RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/googl
     rm google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz
 
 # kubectl for deploying the operator and running e2e tests
-RUN curl -fsSLO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
+RUN curl -fsSLO https://dl.k8s.io/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
     mv kubectl /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
 
 # Docker client to build and push images
