@@ -79,10 +79,6 @@ eck-kibana:
 
 eck-agent:
   enabled: true
-
-  # Version of Elastic Agent.
-  #
-  version: 8.5.0
   
   spec:
     # Reference to ECK-managed Kibana instance.
