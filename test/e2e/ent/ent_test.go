@@ -88,7 +88,7 @@ func TestEnterpriseSearchTLSDisabledVersionUpgradeToLatest8x(t *testing.T) {
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
-	name := "test-ent-notls-version-upgrade-8x"
+	name := "test-ent-notls-v-up-8x"
 	es := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(srcVersion)
