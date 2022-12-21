@@ -23,9 +23,8 @@ RUN curl -fsSL https://dl.k8s.io/v${KUBEAPISERVER_VERSION}/bin/linux/amd64/kube-
     chmod +x /usr/local/bin/kube-apiserver
 ENV ETCD_VERSION=3.4.23
 RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz && \
-    tar xzf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz -C /usr/local/bin && \
-    rm -f etcd-v${ETCD_VERSION}-linux-amd64.tar.gz && \
-    mv /usr/local/bin/etcd-v${ETCD_VERSION}-linux-amd64 /usr/local/bin/etcd
+    tar zxf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 && \
+    rm -f etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
 
 # gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
