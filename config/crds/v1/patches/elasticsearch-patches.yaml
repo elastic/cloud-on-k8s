@@ -7,9 +7,3 @@
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/properties
 - op: remove
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/properties
-
-# Remove 'claims.items' field which makes the CRD invalid because 'x-kubernetes-map-type: atomic' is missing
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/spec/properties/resources/properties/claims
-- op: remove
-  path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/spec/properties/resources/properties/claims
