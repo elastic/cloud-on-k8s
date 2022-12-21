@@ -20,10 +20,10 @@ RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/in
 ENV KUBEAPISERVER_VERSION=1.21.14
 RUN curl -fsSL https://dl.k8s.io/v${KUBEAPISERVER_VERSION}/bin/linux/amd64/kube-apiserver -o /usr/local/bin/kube-apiserver && \
     chmod +x /usr/local/bin/kube-apiserver
-ENV ETCD_VERSION=3.4.23
-RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz && \
-    tar zxf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 && \
-    rm -f etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
+ENV ETCD_VER=3.4.23
+RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VER}/etcd-v${ETCD_VER}-linux-amd64.tar.gz && \
+    tar zxf etcd-v${ETCD_VER}-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 && \
+    rm -f etcd-v${ETCD_VER}-linux-amd64.tar.gz
 
 # gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
