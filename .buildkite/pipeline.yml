@@ -1,8 +1,8 @@
 
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-  cpu: "4"
-  memory: "2G"
+  provider: "gcp"
+  image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+  machineType: "n1-standard-16"
 
 steps:
 
@@ -68,10 +68,6 @@ steps:
 
       - label: ":k8s: pr e2e-tests"
         branches: "!main"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-          machineType: "n1-standard-16"
         commands:
             - .ci/setenvconfig pr
             - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
