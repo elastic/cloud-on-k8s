@@ -16,10 +16,17 @@ import (
 )
 
 const (
+	// the following 3 constants are keys expected
+	// within the vault secret map for the redhat
+	// certification workflow.
 	registryPasswordVaultSecretDataKey = "registry-password"
 	projectIDVaultSecretDataKey        = "project-id"
 	apiKeyVaultSecretDataKey           = "api-key"
 
+	// the following 4 constants are keys expected
+	// within the vault secret map for the the
+	// creation of pull requests against community/certified
+	// github repositories.
 	githubTokenVaultSecretDataKey    = "github-token"
 	githubUsernameVaultSecretDataKey = "github-username"
 	githubFullnameVaultSecretDataKey = "github-fullname"
@@ -31,7 +38,11 @@ var (
 	githubVaultSecretDataKeys = []string{githubTokenVaultSecretDataKey, githubUsernameVaultSecretDataKey, githubFullnameVaultSecretDataKey, githubEmailVaultSecretDataKey}
 )
 
-func readSecretsFromVault() error {
+// readAllSecretsFromVault will generate a new vault client using the address, and token
+// set previously using viper, and attempt to read both the "redhat-vault-secret"
+// and "github-vault-secret" flags from vault, extracting the given map's keys, and
+// setting the appropriate viper key.
+func readAllSecretsFromVault() error {
 	client, err := api.NewClient(&api.Config{
 		Address: flags.VaultAddress,
 		HttpClient: &http.Client{
@@ -45,18 +56,21 @@ func readSecretsFromVault() error {
 
 	client.SetToken(flags.VaultToken)
 
-	if err := readVaultSecrets(client, flags.RedhatVaultSecret, redhatVaultSecretDataKeys); err != nil {
+	if err := readVaultSecretAndSetViperKeys(client, flags.RedhatVaultSecret, redhatVaultSecretDataKeys); err != nil {
 		return err
 	}
 
-	if err := readVaultSecrets(client, flags.GithubVaultSecret, githubVaultSecretDataKeys); err != nil {
+	if err := readVaultSecretAndSetViperKeys(client, flags.GithubVaultSecret, githubVaultSecretDataKeys); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func readVaultSecrets(client *api.Client, vaultSecretPath string, keys []string) error {
+// readVaultSecretAndSetViperKeys will read a vault secret at "vaultSecretPath" using the given vault
+// client, and for every key in the slice of keys, the value at the secret map's key will be read, and
+// used to set the viper key of the same name.
+func readVaultSecretAndSetViperKeys(client *api.Client, vaultSecretPath string, keys []string) error {
 	secret, err := client.Logical().Read(vaultSecretPath)
 	if err != nil {
 		return fmt.Errorf("failed to read vault secret (%s): %w", vaultSecretPath, err)

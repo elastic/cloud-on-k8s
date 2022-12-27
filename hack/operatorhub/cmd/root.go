@@ -155,7 +155,7 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 			}
 			cmd.Flags().Set(flag, viper.GetString(flag))
 		}
-		if err := readSecretsFromVault(); err != nil {
+		if err := readAllSecretsFromVault(); err != nil {
 			return err
 		}
 	}

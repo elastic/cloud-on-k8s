@@ -39,9 +39,11 @@ github.com/redhat-openshift-ecosystem/certified-operators repository.`,
 
 	createPRCmd := &cobra.Command{
 		Use:   "create-pr",
-		Short: "create pull request against github.com/redhat-openshift-ecosystem/certified-operators repository",
+		Short: "create pull request against community and certified repositories",
 		Long: `Create pull request using output of 'bundle' command against
-github.com/redhat-openshift-ecosystem/certified-operators repository`,
+github.com/redhat-openshift-ecosystem/certified-operators and
+github.com/k8s-operatorhub/community-operators repositories.
+`,
 		SilenceUsage: true,
 		PreRunE:      CreatePRPreRunE,
 		RunE:         DoCreatePR,
