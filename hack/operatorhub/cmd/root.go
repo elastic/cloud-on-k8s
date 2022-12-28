@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package root
 
 import (
@@ -12,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/operatorhub"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/manifests"
 )
 
 // Cmd represents the root commmand for Red Hat/operatorhub release operations
@@ -113,7 +117,7 @@ func init() {
 		all.Command(&Cmd),
 		bundle.Command(),
 		container.Command(),
-		operatorhub.Command(),
+		manifests.Command(),
 	)
 }
 

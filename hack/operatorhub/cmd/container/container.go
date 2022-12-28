@@ -25,33 +25,33 @@ func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "container",
 		Short:        "push and publish eck operator container to quay.io",
-		Long:         "Push and/or Publish eck operator container image to quay.io",
-		PreRunE:      PreRunE,
+		Long:         "Push and Publish eck operator container image to quay.io.",
+		PreRunE:      preRunE,
 		SilenceUsage: true,
 	}
 
 	preflightCmd := &cobra.Command{
-		Use:          "preflight",
-		Short:        "run preflight tests against container",
-		Long:         "Run preflight tests against container",
+		Use:   "preflight",
+		Short: "run preflight tests against container",
+		Long: `Run preflight tests against container.
+Note: This does not publish the test results upstream.`,
+		RunE:         doPreflight,
 		SilenceUsage: true,
-		RunE:         DoPreflight,
 	}
 
 	publishCmd := &cobra.Command{
 		Use:          "publish",
 		Short:        "publish existing eck operator container image within quay.io",
-		Long:         "Publish existing eck operator container image within quay.io",
+		Long:         "Publish existing eck operator container image within quay.io using the Redhat certification API.",
+		RunE:         doPublish,
 		SilenceUsage: true,
-		RunE:         DoPublish,
 	}
 
 	pushCmd := &cobra.Command{
 		Use:          "push",
 		Short:        "push eck operator container image to quay.io",
-		Long:         "Push eck operator container image to quay.io",
+		RunE:         doPush,
 		SilenceUsage: true,
-		RunE:         DoPush,
 	}
 
 	cmd.PersistentFlags().StringVarP(
@@ -59,7 +59,7 @@ func Command() *cobra.Command {
 		flags.ApiKeyFlags,
 		"a",
 		"",
-		"api key to use when communicating with redhat catalog api (OHUB_API_KEY)",
+		"API key to use when communicating with redhat certification API (OHUB_API_KEY)",
 	)
 
 	cmd.PersistentFlags().StringVarP(
@@ -91,8 +91,8 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-// PreRunE are the pre-run operations for the container command
-func PreRunE(cmd *cobra.Command, args []string) error {
+// preRunE are the pre-run operations for the container command
+func preRunE(cmd *cobra.Command, args []string) error {
 	if flags.ApiKey == "" {
 		return fmt.Errorf("%s must be set", flags.ApiKeyFlags)
 	}
@@ -108,21 +108,27 @@ func PreRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// DoPublish will publish an existing image within the redhat catalog.
-func DoPublish(_ *cobra.Command, _ []string) error {
+// doPublish will publish an existing image within the redhat catalog.
+func doPublish(_ *cobra.Command, _ []string) error {
 	return pkg_container.PublishImage(pkg_container.PublishConfig{
 		DryRun:              flags.DryRun,
-		Force:               flags.Force,
+		ImageScanTimeout:    flags.ScanTimeout,
 		ProjectID:           flags.ProjectID,
 		RedhatCatalogAPIKey: flags.ApiKey,
 		RegistryPassword:    flags.RegistryPassword,
 		Tag:                 flags.Tag,
-		ImageScanTimeout:    flags.ScanTimeout,
 	})
 }
 
-func DoPreflight(cmd *cobra.Command, _ []string) error {
-	cmd.SilenceUsage = true
+// doPreflight will execute the preflight operations against a container image
+// running the verification steps to ensure that the image meets certain criteria
+// prior to being able to publish an image.
+//
+// *Note* this operation does not currently submit preflight results upstream to Red Hat.
+// The team working on the 'openshift-preflight' tool, aren't wanting to support submitting
+// results when the tool is used as a library.
+// https://github.com/redhat-openshift-ecosystem/openshift-preflight/issues/845#issuecomment-1332797435
+func doPreflight(cmd *cobra.Command, _ []string) error {
 	dir, err := os.MkdirTemp(os.TempDir(), "docker_credentials")
 	if err != nil {
 		return fmt.Errorf("while creating temporary directory for docker credentials: %w", err)
@@ -163,8 +169,8 @@ func DoPreflight(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// DoPush will push an image to the redhat registry for scanning.
-func DoPush(_ *cobra.Command, _ []string) error {
+// doPush will push an image to the redhat registry for scanning.
+func doPush(_ *cobra.Command, _ []string) error {
 	return pkg_container.PushImage(pkg_container.PushConfig{
 		DryRun:              flags.DryRun,
 		Force:               flags.Force,

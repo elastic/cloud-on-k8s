@@ -34,6 +34,7 @@ var (
 	registryUsername             = "redhat-isv-containers+%s-robot"
 )
 
+// PushConfig is the configuration required for the push image command.
 type PushConfig struct {
 	DryRun              bool
 	Force               bool
@@ -44,10 +45,9 @@ type PushConfig struct {
 	Tag                 string
 }
 
-// PublishConfig is the configuration for the publish command
+// PublishConfig is the configuration required for the publish command.
 type PublishConfig struct {
 	DryRun              bool
-	Force               bool
 	HTTPClient          *http.Client
 	ProjectID           string
 	RedhatCatalogAPIKey string
@@ -56,9 +56,9 @@ type PublishConfig struct {
 	ImageScanTimeout    time.Duration
 }
 
-// PushImage will push an image to the redhat catalog if it is determined
+// PushImage will push an image to the Quay.io registry if it is determined
 // that the image doesn't already exist.  If 'Force' option is used, the
-// image will be pushed regardless if it is already exists.
+// image will be pushed regardless if it already exists.
 func PushImage(c PushConfig) error {
 	if c.HTTPClient == nil {
 		c.HTTPClient = defaultHTTPClient()
@@ -80,7 +80,7 @@ func PushImage(c PushConfig) error {
 	} else {
 		log.Println("✓")
 	}
-	if err = pushImageToProject(c); err != nil {
+	if err = pushImageToRegistry(c); err != nil {
 		return fmt.Errorf("failed to push image: %w", err)
 	}
 	return nil
@@ -97,7 +97,7 @@ func PublishImage(c PublishConfig) error {
 	return publishImageInProject(c.HTTPClient, c.ImageScanTimeout, c.RedhatCatalogAPIKey, c.ProjectID, c.Tag, c.DryRun)
 }
 
-// ImageExistsInProject will determine whether the image exists in the catalog api
+// ImageExistsInProject will determine whether an image with the given tag exists in the catalog api.
 func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string) (bool, error) {
 	images, err := getImages(httpClient, apiKey, projectID, tag)
 	if err != nil && errors.Is(err, errImageNotFound) {
@@ -116,6 +116,9 @@ func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string
 	return true, nil
 }
 
+// LoginToRegistry will configure docker credentials given a redhat project ID
+// and a password, saving the credentials in the default location, which is
+// typically used by the 'preflight' command.
 func LoginToRegistry(dockerConfigDir, projectID, password string) error {
 	cf, err := config.Load(dockerConfigDir)
 	if err != nil {
@@ -141,7 +144,12 @@ func LoginToRegistry(dockerConfigDir, projectID, password string) error {
 	return nil
 }
 
+// GetImageSHA will query the Red Hat certification API, returning a list of images for a given
+// tag, and return the SHA of the image to be used in the manifests.
 func GetImageSHA(httpClient *http.Client, apiKey, projectID, tag string) (string, error) {
+	if httpClient == nil {
+		httpClient = defaultHTTPClient()
+	}
 	var imageSHA string
 	images, err := getImages(httpClient, apiKey, projectID, tag)
 	if err != nil && errors.Is(err, errImageNotFound) {
@@ -160,6 +168,8 @@ func GetImageSHA(httpClient *http.Client, apiKey, projectID, tag string) (string
 	return image.DockerImageDigest, nil
 }
 
+// defaultHTTPClient will return an http client with a 60 second timeout
+// if the calling package does not provide an http client to this package.
 func defaultHTTPClient() *http.Client {
 	return &http.Client{
 		// This timeout is set high, as the redhat certification api
@@ -220,7 +230,7 @@ func pruneDeletedImages(images []Image) *Image {
 	return nil
 }
 
-func pushImageToProject(c PushConfig) error {
+func pushImageToRegistry(c PushConfig) error {
 	if c.DryRun {
 		log.Printf("not pushing image as dry-run is set.")
 		return nil
@@ -231,6 +241,7 @@ func pushImageToProject(c PushConfig) error {
 	imageToPull := fmt.Sprintf(eckOperatorFormat, c.Tag)
 
 	log.Printf("pulling image (%s) in preparation to push (%s) to quay.io registry: ", imageToPull, formattedEckOperatorRedhatReference)
+	// default credentials are used here, as the operator image which we use as a source is public.
 	image, err := crane.Pull(imageToPull, crane.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err != nil {
 		log.Println("ⅹ")
@@ -249,7 +260,7 @@ func pushImageToProject(c PushConfig) error {
 	)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("while pushing %s: %s", formattedEckOperatorRedhatReference, err)
+		return fmt.Errorf("while pushing (%s): %w", formattedEckOperatorRedhatReference, err)
 	}
 	log.Println("✓")
 	return nil

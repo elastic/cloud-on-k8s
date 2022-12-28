@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/operatorhub"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/manifests"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,7 @@ func Command(root *cobra.Command) *cobra.Command {
 	cmd.Flags().AddFlagSet(root.Flags())
 	cmd.Flags().AddFlagSet(bundle.Command().Flags())
 	cmd.Flags().AddFlagSet(container.Command().Flags())
-	cmd.Flags().AddFlagSet(operatorhub.Command().Flags())
+	cmd.Flags().AddFlagSet(manifests.Command().Flags())
 	// The all command will automatically provide this flag, so hide it from user.
 	cmd.Flags().MarkHidden("dir")
 	return cmd
@@ -39,36 +39,30 @@ func allRunE(cmd *cobra.Command, args []string) error {
 	}
 	rootCmd.SetArgs(append([]string{"container", "push"}, args...))
 	err := rootCmd.Execute()
-	// err := container.DoPush(cmd, args)
 	if err != nil {
 		return err
 	}
 	rootCmd.SetArgs(append([]string{"container", "preflight"}, args...))
 	err = rootCmd.Execute()
-	// err = container.DoPreflight(cmd, args)
 	if err != nil {
 		return err
 	}
 	rootCmd.SetArgs(append([]string{"container", "publish"}, args...))
 	err = rootCmd.Execute()
-	// err = container.DoPublish(cmd, args)
 	if err != nil {
 		return err
 	}
 	rootCmd.SetArgs(append([]string{"generate-manifests"}, args...))
 	err = rootCmd.Execute()
-	// err = operatorhub.Run(cmd, args)
 	if err != nil {
 		return err
 	}
 	flags.Dir = "./certified-operators"
 	rootCmd.SetArgs(append([]string{"bundle", "generate"}, args...))
 	err = rootCmd.Execute()
-	// err = bundle.DoGenerate(cmd, args)
 	if err != nil {
 		return err
 	}
 	rootCmd.SetArgs(append([]string{"bundle", "create-pr"}, args...))
 	return rootCmd.Execute()
-	// return bundle.DoCreatePR(cmd, args)
 }

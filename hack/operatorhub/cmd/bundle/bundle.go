@@ -6,7 +6,6 @@ package bundle
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path"
 	"path/filepath"
 	"strings"
@@ -22,9 +21,9 @@ import (
 func Command() *cobra.Command {
 	bundleCmd := &cobra.Command{
 		Use:   "bundle",
-		Short: "generate operator bundle metadata, and potentially create pull request for new operator version",
-		Long: `Bundle and build operator metadata for publishing on openshift operator hub, and potentially create pull request to
-github.com/redhat-openshift-ecosystem/certified-operators repository.`,
+		Short: "generate operator bundle metadata/create pull requests for new operator versions",
+		Long: `Bundle and build operator metadata for publishing on openshift operator hub, and create pull requests to
+certified-operators, and community-operators repositories.`,
 		SilenceUsage: true,
 	}
 
@@ -34,19 +33,17 @@ github.com/redhat-openshift-ecosystem/certified-operators repository.`,
 		Long:         "Bundle and build operator metadata for publishing on openshift operator hub",
 		SilenceUsage: true,
 		PreRunE:      generateCmdPreRunE,
-		RunE:         DoGenerate,
+		RunE:         doGenerate,
 	}
 
 	createPRCmd := &cobra.Command{
 		Use:   "create-pr",
-		Short: "create pull request against community and certified repositories",
-		Long: `Create pull request using output of 'bundle' command against
-github.com/redhat-openshift-ecosystem/certified-operators and
-github.com/k8s-operatorhub/community-operators repositories.
-`,
+		Short: "create pull requests against community and certified repositories",
+		Long: `Create pull requests using output of 'bundle' command against
+certified-operators and community-operators repositories.`,
 		SilenceUsage: true,
-		PreRunE:      CreatePRPreRunE,
-		RunE:         DoCreatePR,
+		PreRunE:      createPRPreRunE,
+		RunE:         doCreatePR,
 	}
 
 	bundleCmd.PersistentFlags().StringVarP(
@@ -54,7 +51,7 @@ github.com/k8s-operatorhub/community-operators repositories.
 		flags.DirFlag,
 		"d",
 		"",
-		"directory containing output from 'operatorhub command' which contains 'certified-operators' subdirectory. (OHUB_DIR)",
+		"directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)",
 	)
 
 	generateCmd.Flags().StringVarP(
@@ -70,7 +67,7 @@ github.com/k8s-operatorhub/community-operators repositories.
 		flags.SubmitPullRequestFlag,
 		"P",
 		false,
-		"attempt to submit PR to https://github.com/redhat-openshift-ecosystem/certified-operators repo? (OHUB_SUBMIT_PULL_REQUEST)",
+		"attempt to submit PRs to certified-operators, and community-operators repositories. (OHUB_SUBMIT_PULL_REQUEST)",
 	)
 
 	createPRCmd.Flags().StringVarP(
@@ -86,7 +83,7 @@ github.com/k8s-operatorhub/community-operators repositories.
 		flags.GithubUsernameFlag,
 		"u",
 		"",
-		"if 'submit-pull-request' is enabled, github username to use to fork repo, and submit PR (OHUB_GITHUB_USERNAME)",
+		"if 'submit-pull-request' is enabled, github username to use to fork repositories, and submit PRs (OHUB_GITHUB_USERNAME)",
 	)
 
 	createPRCmd.Flags().StringVarP(
@@ -109,7 +106,7 @@ github.com/k8s-operatorhub/community-operators repositories.
 		&flags.DeleteTempDirectory,
 		flags.DeleteTempDirectoryFlag,
 		"D",
-		false,
+		true,
 		"delete git temporary directory after script completes (OHUB_DELETE_TEMP_DIRECTORY)",
 	)
 
@@ -118,6 +115,7 @@ github.com/k8s-operatorhub/community-operators repositories.
 	return bundleCmd
 }
 
+// generateCmdPreRunE are pre-run operations for the generate command
 func generateCmdPreRunE(cmd *cobra.Command, args []string) error {
 	if flags.Dir == "" {
 		return fmt.Errorf("directory containing output from operator hub release generator is required (%s)", flags.DirFlag)
@@ -130,10 +128,9 @@ func generateCmdPreRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// CreatePRPreRunE are pre-run operations for the create pull request command
-func CreatePRPreRunE(cmd *cobra.Command, args []string) error {
-	// TODO is this really needed?
-	if cmd.Name() != "all" && flags.Dir == "" {
+// createPRPreRunE are pre-run operations for the create pull request command
+func createPRPreRunE(cmd *cobra.Command, args []string) error {
+	if flags.Dir == "" {
 		return fmt.Errorf("directory containing output from operator hub release generator is required (%s)", flags.DirFlag)
 	}
 
@@ -155,29 +152,29 @@ func CreatePRPreRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// DoGenerate will generate the operator bundle metadata
-func DoGenerate(_ *cobra.Command, _ []string) error {
+// doGenerate will generate the operator bundle metadata
+func doGenerate(_ *cobra.Command, _ []string) error {
 	dir := filepath.Join(flags.Dir, "certified-operators", flags.Tag)
 	// copy files from ./certified-operators/${tag}/manifests/*.yaml to ./certified-operators/${tag}
 	// as the opm tool requires this format for some reason.
 	// TODO: I think this only needs to happen when you don't have a clean directory...
 	// TODO: TEST
-	matches, err := filepath.Glob(filepath.Join(dir, "manifests", "*.yaml"))
-	if err != nil {
-		return fmt.Errorf("while listing *.yaml files in %s: %w", dir, err)
-	}
-	for _, file := range matches {
-		b, err := ioutil.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("while reading file (%s): %w", file, err)
-		}
-		filename := filepath.Base(file)
-		err = ioutil.WriteFile(filepath.Join(dir, filename), b, 0600)
-		if err != nil {
-			return fmt.Errorf("while writing file (%s): %w", filepath.Join(dir, filename), err)
-		}
-	}
-	err = opm.GenerateBundle(opm.GenerateConfig{
+	// matches, err := filepath.Glob(filepath.Join(dir, "manifests", "*.yaml"))
+	// if err != nil {
+	// 	return fmt.Errorf("while listing *.yaml files in %s: %w", dir, err)
+	// }
+	// for _, file := range matches {
+	// 	b, err := ioutil.ReadFile(file)
+	// 	if err != nil {
+	// 		return fmt.Errorf("while reading file (%s): %w", file, err)
+	// 	}
+	// 	filename := filepath.Base(file)
+	// 	err = ioutil.WriteFile(filepath.Join(dir, filename), b, 0600)
+	// 	if err != nil {
+	// 		return fmt.Errorf("while writing file (%s): %w", filepath.Join(dir, filename), err)
+	// 	}
+	// }
+	err := opm.GenerateBundle(opm.GenerateConfig{
 		LocalDirectory:  dir,
 		OutputDirectory: dir,
 	})
@@ -188,14 +185,10 @@ func DoGenerate(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	err = opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.SupportedOpenshiftVersions)
-	if err != nil {
-		return err
-	}
-	return nil
+	return opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.SupportedOpenshiftVersions)
 }
 
-// DoCreatePR will execute a number of local, and potentially remote github operations
+// doCreatePR will execute a number of local, and potentially remote github operations
 // for each of the certified, and community github repositories.
 // 1. Clone the repository to a temporary directory
 // 2. Ensure that the configured github user has forked the repository
@@ -207,7 +200,7 @@ func DoGenerate(_ *cobra.Command, _ []string) error {
 // 8. Create a new commit for the new changes
 // 9. Push the remote to the fork
 // 10. Potentially create a draft pull request in the remote repository
-func DoCreatePR(_ *cobra.Command, _ []string) error {
+func doCreatePR(_ *cobra.Command, _ []string) error {
 	// dir := filepath.Join(flags.Dir, flags.Tag)
 	client := github.New(github.Config{
 		CreatePullRequest: flags.SubmitPullRequest,
