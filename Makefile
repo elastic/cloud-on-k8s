@@ -437,7 +437,7 @@ docker-push:
 
 operator-buildah: go-generate generate-config-file buildah-login
 	buildah bud \
-		--isolation=chroot --storage-driver=vfs \
+		--storage-driver=vfs \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
@@ -505,7 +505,7 @@ e2e-docker-multiarch-build: go-generate
 
 e2e-buildah: go-generate buildah-login
 	buildah bud \
-		--isolation=chroot --storage-driver=vfs \
+		--storage-driver=vfs \
 		--platform $(BUILD_PLATFORM) \
 		--build-arg E2E_JSON='$(E2E_JSON)' \
 		--build-arg E2E_TAGS='$(E2E_TAGS)' \
