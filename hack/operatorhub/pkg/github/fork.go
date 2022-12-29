@@ -17,16 +17,16 @@ import (
 	"time"
 )
 
-// GithubV3JSONMediaType is the github content type to be included in all github api requests
-const GithubV3JSONMediaType = "application/vnd.github.v3+json"
-
-var (
-	// GithubAPIURL is the URL to communicate with github's api
-	GithubAPIURL = "https://api.github.com"
-	// RedhatOpenshiftEcosystemOperatorsRepo is the organization/repository for the redhat openshift operators
-	RedhatOpenshiftEcosystemOperatorsRepo = "redhat-openshift-ecosystem/certified-operators"
+const (
+	// githubAPIURL is the URL to communicate with github's api
+	githubAPIURL = "https://api.github.com"
+	// githubV3JSONMediaType is the github content type to be included in all github api requests
+	githubV3JSONMediaType    = "application/vnd.github.v3+json"
+	githubRepoForksURLFormat = "%s/repos/%s/forks"
+	httpAcceptHeader         = "Accept"
 )
 
+// githubFork is the format of a github fork as returned by the github API.
 type githubFork struct {
 	ID       uint   `json:"id"`
 	Name     string `json:"name"`
@@ -42,35 +42,71 @@ type githubFork struct {
 	Visibility    string `json:"visibility"`
 }
 
-func (c *Client) ensureFork() error {
-	exists, err := c.forkExists()
+// ensureFork will ensure that a given organization/repository
+// is forked by the Client.GitHubUsername by checking if the fork
+// already exists, and if it does not, creating the fork and waiting
+// for the fork creation to complete.
+func (c *Client) ensureFork(orgRepo string) error {
+	exists, err := c.forkExists(orgRepo)
 	if err != nil {
 		return err
 	}
 	if exists {
 		return nil
 	}
-	err = c.createFork()
+	err = c.createFork(orgRepo)
 	if err != nil {
 		return err
 	}
-	return c.waitOnForkCreation()
+	return c.waitOnForkCreation(orgRepo)
 }
 
-func (c *Client) createRequest(method, url string, body io.Reader) (*http.Request, context.CancelFunc, error) {
+// forkExists will check if a given organization/repository
+// is forked by the Client.GitHubUsername and will return
+// a bool and any errors encountered.
+func (c *Client) forkExists(orgRepo string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	req, err := c.createRequest(ctx, http.MethodGet, fmt.Sprintf(githubRepoForksURLFormat, githubAPIURL, orgRepo), nil)
+	var res *http.Response
+	res, err = c.HTTPClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("github request to ensure fork exists failed: %w", err)
+	}
+	defer res.Body.Close()
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read get forks response body: %w", err)
+	}
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return false, fmt.Errorf("github request to ensure fork exists failed, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+	}
+	var forksResponse []githubFork
+	err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&forksResponse)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode get forks response into json, body: %s: %w", string(bodyBytes), err)
+	}
+	return userInForks(c.GitHubUsername, forksResponse), nil
+}
+
+// createRequest will create an HTTP request to the given URL, with supplied HTTP method and body,
+// using the given context, setting required headers and returning the request, and any errors encountered.
+func (c *Client) createRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, cancel, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Add("Accept", GithubV3JSONMediaType)
+	req.Header.Add(httpAcceptHeader, githubV3JSONMediaType)
 	req.SetBasicAuth(c.GitHubUsername, c.GitHubToken)
-	return req, cancel, nil
+	return req, nil
 }
 
-func (c *Client) createFork() error {
-	req, cancel, err := c.createRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/forks", GithubAPIURL, RedhatOpenshiftEcosystemOperatorsRepo), nil)
+// createFork will fork a given organization/repository for the Client.GitHubUsername.
+func (c *Client) createFork(orgRepo string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
+	req, err := c.createRequest(ctx, http.MethodPost, fmt.Sprintf(githubRepoForksURLFormat, githubAPIURL, orgRepo), nil)
 	if err != nil {
 		return err
 	}
@@ -91,7 +127,10 @@ func (c *Client) createFork() error {
 	return nil
 }
 
-func (c *Client) waitOnForkCreation() error {
+// waitOnForkCreation will check if a given organization/repository has completed the fork
+// process for the Client.GitHubUsername by requesting the GitHubUsername/repository URL
+// from the Github API, looking for an eventual HTTP 200 response, timing out in 10 minutes.
+func (c *Client) waitOnForkCreation(orgRepo string) error {
 	ticker := time.NewTicker(10 * time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -99,8 +138,9 @@ func (c *Client) waitOnForkCreation() error {
 	for {
 		select {
 		case <-ticker.C:
-			req, cancel, err := c.createRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/%s", GithubAPIURL, c.GitHubUsername, strings.Split(RedhatOpenshiftEcosystemOperatorsRepo, "/")[1]), nil)
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 			defer cancel()
+			req, err := c.createRequest(ctx, http.MethodGet, fmt.Sprintf("%s/repos/%s/%s", githubAPIURL, c.GitHubUsername, strings.Split(orgRepo, "/")[1]), nil)
 			if err != nil {
 				log.Printf("failed to create request to check if fork exists: %s", err)
 				continue
@@ -125,31 +165,7 @@ func (c *Client) waitOnForkCreation() error {
 	}
 }
 
-func (c *Client) forkExists() (bool, error) {
-	req, cancel, err := c.createRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/forks", GithubAPIURL, RedhatOpenshiftEcosystemOperatorsRepo), nil)
-	defer cancel()
-	var res *http.Response
-	res, err = c.HTTPClient.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("github request to ensure fork exists failed: %w", err)
-	}
-	defer res.Body.Close()
-	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
-	if err != nil {
-		return false, fmt.Errorf("failed to read get forks response body: %w", err)
-	}
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return false, fmt.Errorf("github request to ensure fork exists failed, code: %d, body: %s", res.StatusCode, string(bodyBytes))
-	}
-	var forksResponse []githubFork
-	err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&forksResponse)
-	if err != nil {
-		return false, fmt.Errorf("failed to decode get forks response into json, body: %s: %w", string(bodyBytes), err)
-	}
-	return userInForks(c.GitHubUsername, forksResponse), nil
-}
-
+// userInForks checks if a given user is the owner of any forks in the given slice of github forks.
 func userInForks(user string, forks []githubFork) bool {
 	for _, fork := range forks {
 		if fork.Owner.Login == user {

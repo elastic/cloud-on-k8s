@@ -10,6 +10,8 @@ type GetImagesResponse struct {
 	Images []Image `json:"data"`
 }
 
+// scanStatus defines the state of the image scanning process
+// within the Red Hat certification API
 type scanStatus string
 
 const (

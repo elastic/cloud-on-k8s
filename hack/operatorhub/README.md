@@ -1,37 +1,56 @@
-# Redhat Release Operations Commands
+# OperatorHub Release Operations Commands
 
-Set of redhat commands to simplify operations required when releasing new versions of the operator for openshift, and the redhat operator registry. 
+Set of commands to simplify operations required when releasing new versions of the operator for openshift/operatorhub, and community/certified operators. 
 
 These commands include
 
-- Publishing eck operator container image to redhat catalog
+- Pushing operator image to Quay.io
+- Publishing eck operator container image within redhat catalog
 - Generate Operator Lifecycle Manager format files
 - Generate Operator bundle metadata (wrapper for [OPM](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command)
-- Publish pull request to https://github.com/redhat-openshift-ecosystem/certified-operators
+- Publish draft pull requests to both https://github.com/redhat-openshift-ecosystem/certified-operators and https://github.com/k8s-operatorhub/community-operators
 
 ## Overview
 
 ```shell
-Manage redhat release operations, such as pushing operator container to redhat catalog, operator hub release generation, building operator metadata,
-and potentially creating pull request to github.com/redhat-openshift-ecosystem/certified-operators repository.
+Manage operatorhub release operations, such as pushing operator container to quay.io, operator hub release generation, building operator metadata,
+and potentially creating pull requests to community/certified operator repositories.
 
 Usage:
-  redhat [command]
+  operatorhub [command]
 
 Available Commands:
-  all         run all redhat operations
-  bundle      generate operator bundle metadata, and potentially create pull request for new operator version
-  completion  Generate the autocompletion script for the specified shell
-  container   push and publish eck operator container to redhat catalog
-  help        Help about any command
-  operatorhub Generate Operator Lifecycle Manager format files
+  bundle             generate operator bundle metadata/create pull requests for new operator versions
+  completion         Generate the autocompletion script for the specified shell
+  container          push and publish eck operator container to quay.io
+  generate-manifests Generate operator lifecycle manager format files
+  help               Help about any command
 
 Flags:
-  -h, --help         help for redhat
-  -t, --tag string   tag/new version of operator (TAG)
-  -v, --version      version for redhat
+  -a, --api-key string               API key to use when communicating with Red Hat catalog API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)
+  -Y, --dry-run                      Run dry run of all operations. Default: true. To un-set --dry-run=false (OHUB_DRY_RUN) (default true)
+      --enable-vault                 Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT) (default true)
+      --github-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* bundle sub-command flags concerning generating operator bundle and creating PRs:
+                                     		** github-token
+                                     		** github-username
+                                     		** github-fullname
+                                     		** github-email
+                                     (OHUB_GITHUB_VAULT_SECRET)
+  -h, --help                         help for operatorhub
+  -p, --project-id string            Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)
+      --redhat-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* container sub-command flags concerning redhat interactions:
+                                     		** registry-password
+                                     		** project-id
+                                     		** api-key
+                                     (OHUB_REDHAT_VAULT_SECRET)
+  -t, --tag string                   tag/new version of operator (OHUB_TAG)
+      --vault-addr string            Vault address to use when enable-vault is set (VAULT_ADDR)
+      --vault-token string           Vault token to use when enable-vault is set (VAULT_TOKEN)
+  -v, --version                      version for operatorhub
 
-Use "redhat [command] --help" for more information about a command.
+Use "operatorhub [command] --help" for more information about a command.
 ```
 
 ## Commands
@@ -39,102 +58,134 @@ Use "redhat [command] --help" for more information about a command.
 ### Container
 
 ```shell
-Push and/or Publish eck operator container image to redhat catalog
+Push and Publish eck operator container image to quay.io.
 
 Usage:
-  redhat container [command]
+  operatorhub container [command]
 
 Available Commands:
-  publish     publish existing eck operator container image within redhat catalog
-  push        push eck operator container image to redhat catalog
+  publish     publish existing eck operator container image within quay.io
+  push        push eck operator container image to quay.io
 
 Flags:
-  -a, --api-key string                       api key to use when communicating with redhat catalog api (API_KEY)
-      --enable-vault                         Enable vault functionality to try and automatically read 'registry-password', and 'api-key' from given vault key (uses VAULT_* environment variables) (ENABLE_VAULT)
-  -F, --force                                force will force the attempted pushing of remote images, even when the exact version is found remotely. (FORCE)
-  -h, --help                                 help for container
-  -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
-  -r, --registry-password string   registry key used to communicate with redhat docker registry (REDHAT_CONNECT_REGISTRY_KEY)
-      --vault-addr string                    Vault address to use when enable-vault is set
-      --vault-secret string                  When --enable-vault is set, attempts to read 'registry-password', and 'api-key' data from given vault secret location
-      --vault-token string                   Vault token to use when enable-vault is set
+  -a, --api-key string             API key to use when communicating with redhat certification API (OHUB_API_KEY)
+  -F, --force                      force will force the attempted pushing of remote images, even when the exact version is found remotely. (OHUB_FORCE)
+  -h, --help                       help for container
+  -r, --registry-password string   registry password used to communicate with Quay.io (OHUB_REGISTRY_PASSWORD)
 
 Global Flags:
-  -t, --tag string   tag/new version of operator (TAG)
+  -Y, --dry-run                      Run dry run of all operations. Default: true. To un-set --dry-run=false (OHUB_DRY_RUN) (default true)
+      --enable-vault                 Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT) (default true)
+      --github-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* bundle sub-command flags concerning generating operator bundle and creating PRs:
+                                     		** github-token
+                                     		** github-username
+                                     		** github-fullname
+                                     		** github-email
+                                     (OHUB_GITHUB_VAULT_SECRET)
+  -h, --help                         help for operatorhub
+  -p, --project-id string            Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)
+      --redhat-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* container sub-command flags concerning redhat interactions:
+                                     		** registry-password
+                                     		** project-id
+                                     		** api-key
+                                     (OHUB_REDHAT_VAULT_SECRET)
+  -t, --tag string                   tag/new version of operator (OHUB_TAG)
+      --vault-addr string            Vault address to use when enable-vault is set (VAULT_ADDR)
+      --vault-token string           Vault token to use when enable-vault is set (VAULT_TOKEN)
 
-Use "redhat container [command] --help" for more information about a command.
+Use "operatorhub container [command] --help" for more information about a command.
 ```
 
 The `container push` sub-command will perform the following tasks:
-
-1. Determine if there is an image in the [redhat container catalog api](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
+1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
 2. If image is already found, nothing is done without using the `force` flag.
-3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator:$(tag)` to `scan.connect.redhat.com` docker registry, tagged as `scan.connect.redhat.com/$(repository-id)/eck-operator:$(tag)`.
+3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(tag)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(tag)`.
 
 The `container publish` sub-command will perform the following tasks:
-1. It will wait for the image to be found in the container catalog api.
-2. It will wait for the image scan to be successful in the container catalog api.
-3. It will "publish" the container.
+1. It will wait for the image to be found in the Red Hat certification API.
+2. It will wait for the image scan to be found successful in the Red Hat certification API.
+3. It will "publish" the container within the Red Hat certification API.
 
 #### Usage
 
 *notes*
-- `api-key` is the redhat api key that exists within the keybase application
-- `registry-password` is the JWT that can be obtained by logging into [redhat connect](https://connect.redhat.com) and clicking [Push Image Manually](https://connect.redhat.com/projects/5fa1f9fc4bbec60adbc8cc94/images/upload-image), which will then show you a `Registry Key`
-- both of these can be contained within a secret in vault, and be pulled directly from vault
+- `api-key` is the Red Hat API key that exists within the keybase application.
+- `registry-password` is the quay.io password that can be obtained by logging into [redhat connect](https://connect.redhat.com) and clicking [Push Image Manually](https://connect.redhat.com/projects/$(project-id)/images/upload-image), which will then show you a `Registry Key`.
+- `project-id` is the Red Hat certification project ID found within [redhat connect](https://connect.redhat.com).
+- All of these can be contained within a secret in vault, and be pulled directly from vault.
 
 Usage without vault
 ```shell
-./redhat container publish -a 'api-key-in-keybase' -d -r 'extremely-long-registry-key-jwt' -t 1.9.2
+./operatorhub container publish -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
 ```
 
 Usage with vault
 ```shell
-VAULT_ADDR=http://vault-server VAULT_TOKEN=my-token ./redhat container publish --enable-vault --vault-secret /secret/data/release/redhat-registry/eck-team -t 1.9.2
+OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
 ```
 
 Example vault secret
 ```shell
-❯ VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=my-token vault kv get secret/release/redhat-registry/eck-team
-======= Metadata =======
-Key                Value
----                -----
-created_time       2022-01-05T19:25:24.014404651Z
-custom_metadata    <nil>
-deletion_time      n/a
-destroyed          false
-version            3
-
-=============== Data ===============
-Key                            Value
----                            -----
-api-key                        random-api-key
-registry-password              password
+❯ VAULT_ADDR='http://0.0.0.0:8200' VAULT_TOKEN=myroot vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat
+{
+  "api-key": "api-key-in-keybase",
+  "project-id": "project-id",
+  "registry-password": "registry-password-for-quay.io"
+}
+❯ VAULT_ADDR='http://0.0.0.0:8200' VAULT_TOKEN=myroot vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-github
+{
+  "github-email": "you@email.com",
+  "github-fullname": "My Fullname",
+  "github-token": "ghp_asdflkj12340987",
+  "github-username": "ghusername"
+}
 ```
 
 ### Bundle
 
 ```shell
-Bundle and build operator metadata for publishing on openshift operator hub, and potentially create pull request to
-github.com/redhat-openshift-ecosystem/certified-operators repository.
+Bundle and build operator metadata for publishing on openshift operator hub, and create pull requests to
+certified-operators, and community-operators repositories.
 
 Usage:
-  redhat bundle [command]
+  operatorhub bundle [command]
 
 Available Commands:
-  create-pr   create pull request against github.com/redhat-openshift-ecosystem/certified-operators repository
+  create-pr   create pull requests against community and certified repositories
   generate    generate operator bundle metadata
 
 Flags:
-  -h, --help   help for bundle
+  -d, --dir string   directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)
+  -h, --help         help for bundle
 
 Global Flags:
-  -t, --tag string   tag/new version of operator (TAG)
+  -a, --api-key string               API key to use when communicating with Red Hat catalog API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)
+  -Y, --dry-run                      Run dry run of all operations. Default: true. To un-set --dry-run=false (OHUB_DRY_RUN) (default true)
+      --enable-vault                 Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT) (default true)
+      --github-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* bundle sub-command flags concerning generating operator bundle and creating PRs:
+                                     		** github-token
+                                     		** github-username
+                                     		** github-fullname
+                                     		** github-email
+                                     (OHUB_GITHUB_VAULT_SECRET)
+  -p, --project-id string            Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)
+      --redhat-vault-secret string   When --enable-vault is set, attempts to read the following flags from a given vault secret:
+                                     	* container sub-command flags concerning redhat interactions:
+                                     		** registry-password
+                                     		** project-id
+                                     		** api-key
+                                     (OHUB_REDHAT_VAULT_SECRET)
+  -t, --tag string                   tag/new version of operator (OHUB_TAG)
+      --vault-addr string            Vault address to use when enable-vault is set (VAULT_ADDR)
+      --vault-token string           Vault token to use when enable-vault is set (VAULT_TOKEN)
 
-Use "redhat bundle [command] --help" for more information about a command.
+Use "operatorhub bundle [command] --help" for more information about a command.
 ```
 
-*This command requires the output of the `operatorhub` command to be run*
+*This command requires the output of the `generate-manifests` command to be run*
 
 The bundle command will perform the following tasks:
 
@@ -254,3 +305,4 @@ The `all` command will run all above operations in a single command, including
 - [ ] name: elastic-cloud-eck.v2.6.0-bc2 in community-operators/tag/*.csv.yaml is already prefixed with 'v'
 - [ ] document that `make generate-crds-v1` needs to be run prior to this.
 - [ ] Move loginToRegistry to preflight pkg
+- [ ] getFirstValidImage flow.... called after getImages.  Can this be optimized?

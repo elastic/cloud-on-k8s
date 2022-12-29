@@ -16,8 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// GenerateConfig is the configuration for generating a bundle using the operator
-// registry tooling.
+// GenerateConfig is the configuration for generating
+// a bundle using the operator registry tooling.
 type GenerateConfig struct {
 	LocalDirectory  string
 	OutputDirectory string

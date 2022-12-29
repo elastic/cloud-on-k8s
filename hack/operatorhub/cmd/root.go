@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/all"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
@@ -22,7 +21,7 @@ import (
 // Cmd represents the root commmand for Red Hat/operatorhub release operations
 var Cmd = cobra.Command{
 	Use:     "operatorhub",
-	Version: "0.4.0",
+	Version: "0.5.0",
 	Short:   "Manage operatorhub release operations",
 	Long: `Manage operatorhub release operations, such as pushing operator container to quay.io, operator hub release generation, building operator metadata,
 and potentially creating pull requests to community/certified operator repositories.`,
@@ -93,10 +92,10 @@ func init() {
 		flags.RedhatVaultSecretFlag,
 		"",
 		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
-* container sub-command flags concerning redhat interactions:
-** registry-password
-** project-id
-** api-key
+	* container sub-command flags concerning redhat interactions:
+		** registry-password
+		** project-id
+		** api-key
 (OHUB_REDHAT_VAULT_SECRET)`,
 	)
 
@@ -105,16 +104,15 @@ func init() {
 		flags.GithubVaultSecretFlag,
 		"",
 		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
-* bundle sub-command flags concerning generating operator bundle and creating PRs:
-** github-token
-** github-username
-** github-fullname
-** github-email
+	* bundle sub-command flags concerning generating operator bundle and creating PRs:
+		** github-token
+		** github-username
+		** github-fullname
+		** github-email
 (OHUB_GITHUB_VAULT_SECRET)`,
 	)
 
 	Cmd.AddCommand(
-		all.Command(&Cmd),
 		bundle.Command(),
 		container.Command(),
 		manifests.Command(),

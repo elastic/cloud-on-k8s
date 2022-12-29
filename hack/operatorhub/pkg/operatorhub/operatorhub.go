@@ -48,6 +48,15 @@ const (
 	yamlSeparator = "---\n"
 
 	imagesEndpoint = "https://catalog.redhat.com/api/containers/v1/projects/certification/id/%s/images"
+
+	httpAcceptHeader               = "Accept"
+	httpContentTypeHeader          = "Content-Type"
+	httpXAPIKeyHeader              = "X-API-KEY"
+	httpApplicationJSONHeaderValue = "application/json"
+)
+
+var (
+	errNotFound = errors.New("not found")
 )
 
 // GenerateConfig is the configuration for the generate operation
@@ -73,12 +82,12 @@ func Generate(config GenerateConfig) error {
 	log.Println("✓")
 
 	imageDigest := ""
-	if configFile.HasDigestPinning() {
+	if configFile.hasDigestPinning() {
 		if len(config.RedhatAPIKey) == 0 {
-			return errors.New("RedHat API key is required to get image digest")
+			return errors.New("Red Hat API key is required to get image digest")
 		}
 		if len(config.RedhatProjectID) == 0 {
-			return errors.New("RedHat project ID is required to get image digest")
+			return errors.New("Red Hat project ID is required to get image digest")
 		}
 		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, configFile.NewVersion)
 		if err != nil {
@@ -102,7 +111,6 @@ func Generate(config GenerateConfig) error {
 		log.Println("ⅹ")
 		return err
 	}
-	log.Printf("Got extracts from manifest stream: %+v", *extracts)
 	log.Println("✓")
 
 	log.Printf("Rendering final operatorhub data ")
@@ -132,8 +140,8 @@ type Images struct {
 	} `json:"data"`
 }
 
-// getImageDigest connects to the RedHat catalog API to get the certified operator image digest as it is exposed
-// by the RedHat registry.
+// getImageDigest connects to the Red Hat certification API to get the certified
+// operator image digest as it is exposed by the Red Hat registry.
 func getImageDigest(apiKey, projectId, version string) (string, error) {
 	requestURL := fmt.Sprintf(imagesEndpoint, projectId)
 
@@ -141,9 +149,10 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-API-KEY", apiKey)
+
+	req.Header.Set(httpContentTypeHeader, httpApplicationJSONHeaderValue)
+	req.Header.Set(httpAcceptHeader, httpApplicationJSONHeaderValue)
+	req.Header.Set(httpXAPIKeyHeader, apiKey)
 
 	q := req.URL.Query()
 	q.Add("filter", fmt.Sprintf("repositories.tags.name==%s;deleted==false", version))
@@ -203,7 +212,9 @@ type config struct {
 	} `json:"packages"`
 }
 
-func (c *config) HasDigestPinning() bool {
+// hasDigestPinning will return true if any package
+// within the configuration has DigestPinning enabled.
+func (c *config) hasDigestPinning() bool {
 	if c == nil {
 		return false
 	}
@@ -232,8 +243,6 @@ func loadConfigFile(c GenerateConfig) (*config, error) {
 
 	return &conf, nil
 }
-
-var errNotFound = errors.New("not found")
 
 func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, func(), error) {
 	if len(manifestPaths) == 0 {

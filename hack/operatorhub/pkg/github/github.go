@@ -37,13 +37,16 @@ const (
 
 	certifiedOperatorDirectoryName = "elasticsearch-eck-operator-certified"
 	communityOperatorDirectoryName = "elastic-cloud-eck"
+
+	// githubURL is the URL to communicate with github
+	githubURL = "https://api.github.com"
 )
 
 var (
-	// certifiedOperatorsFQDN is the FQDN to use for cloning, and submitting PRs against certified operators repository.
-	certifiedOperatorsFQDN = fmt.Sprintf("https://github.com/%s/%s", certifiedOperatorOrganization, certifiedOperatorRepository)
-	// communityOperatorsFQDN is the FQDN to use for cloning, and submitting PRs against community operators repository.
-	communityOperatorsFQDN = fmt.Sprintf("https://github.com/%s/%s", communityOperatorOrganization, communityOperatorRepository)
+	// certifiedOperatorsFQDN is the FQDN to use for cloning, and submitting of PRs against certified operators repository.
+	certifiedOperatorsFQDN = fmt.Sprintf("%s/%s/%s", githubURL, certifiedOperatorOrganization, certifiedOperatorRepository)
+	// communityOperatorsFQDN is the FQDN to use for cloning, and submitting of PRs against community operators repository.
+	communityOperatorsFQDN = fmt.Sprintf("%s/%s/%s", githubURL, communityOperatorOrganization, communityOperatorRepository)
 )
 
 // Config is the configuration for the github package
@@ -71,7 +74,9 @@ type operatorHubConfig struct {
 	Packages     []map[string]interface{} `json:"packages"`
 }
 
-// New returns a new github client
+// New returns a new github client, using
+// a default HTTP client with a timeout of 10 seconds
+// if one isn't supplied within the config.
 func New(config Config) *Client {
 	c := &Client{
 		config,
@@ -95,7 +100,7 @@ type githubRepository struct {
 }
 
 // CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations
-// for each of the certified operators, and community operators github repositories:
+// for each of the certified and community operators github repositories:
 // 1. Clone the repository to a temporary directory
 // 2. Ensure that the configured github user has forked the repository
 // 3. Create a git remote
@@ -128,7 +133,15 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  communityOperatorDirectoryName,
 			mainBranchName: communityOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
-			// Describe what this is doing.
+			// Each repository (community/certified) has a set of steps
+			// that differ slightly between each repo, and this function
+			// contains those steps to be run prior to adding the data
+			// to the git repository, creating the commit, and submitting
+			// the pull request.
+			//
+			// This step simply copies the 'elastic-cloud-eck.package.yaml'
+			// file that already exists within the community-operators
+			// directory into the directory to be added to the git commit.
 			extraSteps: func() error {
 				fileName := "elastic-cloud-eck.package.yaml"
 				fileSrc := filepath.Join(c.PathToNewVersion, communityOperatorRepository, fileName)
@@ -148,11 +161,23 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  certifiedOperatorDirectoryName,
 			mainBranchName: certifiedOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
-			// Describe what this is doing.
+			// Each repository (community/certified) has a set of steps
+			// that differ slightly between each repo, and this function
+			// contains those steps to be run prior to adding the data
+			// to the git repository, creating the commit, and submitting
+			// the pull request.
+			//
+			// This step:
+			// 1. renames the elasticsearch-eck-operator-certified.{TAG}.clusterserviceversion.yaml to
+			//    elasticsearch-eck-operator-certified.clusterserviceversion.yaml.
+			// 2. replaces the container tag with the image SHA within the CSV.yaml.
 			extraSteps: func() error {
-				// mv /tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.v${IMAGE_TAG}.clusterserviceversion.yaml \
-				// /tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.clusterserviceversion.yaml
-				fileSrc := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", fmt.Sprintf("elasticsearch-eck-operator-certified.v%s.clusterserviceversion.yaml", c.GitTag))
+				// ensure git tag has a preceeding 'v'.
+				gitTag := c.GitTag
+				if !strings.HasPrefix(gitTag, "v") {
+					gitTag = fmt.Sprintf("v%s", gitTag)
+				}
+				fileSrc := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", fmt.Sprintf("elasticsearch-eck-operator-certified.%s.clusterserviceversion.yaml", gitTag))
 				fileDst := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", "elasticsearch-eck-operator-certified.clusterserviceversion.yaml")
 				log.Printf("copying (%s) to (%s)", fileSrc, fileDst)
 				if err := copy.Copy(fileSrc, fileDst); err != nil {
@@ -163,8 +188,6 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 					return fmt.Errorf("while removing file (%s)", fileSrc)
 				}
 
-				// sed -i "s/registry.connect.redhat.com\/elastic\/eck-operator:${IMAGE_TAG}/registry.connect.redhat.com\/elastic\/eck-operator@${IMAGE_SHA}/g" \
-				// 	/tmp/git/certified-operators/operators/elasticsearch-eck-operator-certified/${IMAGE_TAG}/manifests/elasticsearch-eck-operator-certified.clusterserviceversion.yaml
 				log.Printf("reading (%s) to replace git tag with container image SHA", fileDst)
 				input, err := ioutil.ReadFile(fileDst)
 				if err != nil {
@@ -200,6 +223,16 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 	return nil
 }
 
+// cloneAndCreate does the following steps
+// 1. clones the given repository to a temporary directory.
+// 2. ensure the repository has been forked by the Client.GitHubUsername
+// 3. configures a git remote for the fork.
+// 4. creates a git branch within the fork.
+// 5. copies the data from the 'generate-manifests' command into the git working tree.
+// 6. runs the defined extra steps.
+// 7. creates a git commit for the new version.
+// 8. pushes the new branch to the remote fork.
+// 9. potentially creates a draft pull request.
 func (c *Client) cloneAndCreate(repo githubRepository) error {
 	orgRepo := fmt.Sprintf("%s/%s", repo.organization, repo.repository)
 	localTempDir := filepath.Join(repo.tempDir, repo.repository)
@@ -218,7 +251,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	log.Println("✓")
 
 	log.Printf("Ensuring that (%s) repository has been forked ", orgRepo)
-	err = c.ensureFork()
+	err = c.ensureFork(orgRepo)
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed to ensure fork exists: %w", err)
@@ -269,7 +302,6 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	}
 	log.Println("✓")
 
-	// newVersion := strings.Split(c.PathToNewVersion, string(os.PathSeparator))[len(strings.Split(c.PathToNewVersion, string(os.PathSeparator)))-1]
 	destDir := filepath.Join(localTempDir, "operators", repo.directoryName, c.GitTag)
 	srcDir := filepath.Join(c.PathToNewVersion, repo.repository, c.GitTag)
 	log.Printf("copying (%s) to (%s)", srcDir, destDir)
@@ -309,15 +341,6 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	refSpec := fmt.Sprintf("+refs/heads/%[1]s:refs/heads/%[1]s", branchName)
-	// r.PushContext(ctx, &git.PushOptions{
-	// 	RemoteName: "fork",
-	// 	Auth: &git_http.BasicAuth{
-	// 		Username: c.GitHubToken,
-	// 	},
-	// 	RefSpecs: []config.RefSpec{
-	// 		config.RefSpec(refSpec),
-	// 	},
-	// })
 	err = remote.PushContext(ctx, &git.PushOptions{
 		RemoteName: "fork",
 		Auth: &git_http.BasicAuth{
@@ -338,33 +361,36 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	return nil
 }
 
+// createPullRequest will create a draft pull request for the given github repository
+// unless dry-run is set.
 func (c *Client) createPullRequest(repo githubRepository, branchName string) error {
-	log.Printf("Creating pull request for (%s) ", repo.repository)
+	if c.DryRun {
+		log.Println("Not creating draft pull request as dry-run is set")
+		return nil
+	}
+	log.Printf("Creating draft pull request for (%s) ", repo.repository)
 	var body = []byte(
 		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true}`,
 			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName))
-	req, cancel, err := c.createRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", GithubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
+	req, err := c.createRequest(ctx, http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("while creating request to create pr for (%s): %w", repo.repository, err)
+		return fmt.Errorf("while creating request to create draft pr for (%s): %w", repo.repository, err)
 	}
-	if !c.DryRun {
-		var res *http.Response
-		if res, err = c.HTTPClient.Do(req); err != nil {
-			log.Println("ⅹ")
-			return fmt.Errorf("while creating pr for (%s): %w", repo.repository, err)
-		}
-		if res.StatusCode > 299 {
-			log.Println("ⅹ")
-			if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
-				return fmt.Errorf("while creating pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
-			}
-			return fmt.Errorf("while creating pr for (%s), code: %d", repo.repository, res.StatusCode)
-		}
-		log.Println("✓")
-	} else {
-		log.Println("Not creating pull request as dry-run is set")
+	var res *http.Response
+	if res, err = c.HTTPClient.Do(req); err != nil {
+		log.Println("ⅹ")
+		return fmt.Errorf("while creating draft pr for (%s): %w", repo.repository, err)
 	}
+	if res.StatusCode > 299 {
+		log.Println("ⅹ")
+		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+			return fmt.Errorf("while creating draft pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
+		}
+		return fmt.Errorf("while creating draft pr for (%s), code: %d", repo.repository, res.StatusCode)
+	}
+	log.Println("✓")
 	return nil
 }

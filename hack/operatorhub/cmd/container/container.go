@@ -5,19 +5,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/redhat-openshift-ecosystem/openshift-preflight/certification/formatters"
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	pkg_container "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/container"
-	pkg_preflight "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/preflight"
 )
 
 // Command will return the container command
@@ -27,15 +21,6 @@ func Command() *cobra.Command {
 		Short:        "push and publish eck operator container to quay.io",
 		Long:         "Push and Publish eck operator container image to quay.io.",
 		PreRunE:      preRunE,
-		SilenceUsage: true,
-	}
-
-	preflightCmd := &cobra.Command{
-		Use:   "preflight",
-		Short: "run preflight tests against container",
-		Long: `Run preflight tests against container.
-Note: This does not publish the test results upstream.`,
-		RunE:         doPreflight,
 		SilenceUsage: true,
 	}
 
@@ -86,7 +71,7 @@ Note: This does not publish the test results upstream.`,
 		"The duration the publish operation will wait on image being scanned before failing the process completely. (OHUB_SCAN_TIMEOUT)",
 	)
 
-	cmd.AddCommand(pushCmd, preflightCmd, publishCmd)
+	cmd.AddCommand(pushCmd, publishCmd)
 
 	return cmd
 }
@@ -118,55 +103,6 @@ func doPublish(_ *cobra.Command, _ []string) error {
 		RegistryPassword:    flags.RegistryPassword,
 		Tag:                 flags.Tag,
 	})
-}
-
-// doPreflight will execute the preflight operations against a container image
-// running the verification steps to ensure that the image meets certain criteria
-// prior to being able to publish an image.
-//
-// *Note* this operation does not currently submit preflight results upstream to Red Hat.
-// The team working on the 'openshift-preflight' tool, aren't wanting to support submitting
-// results when the tool is used as a library.
-// https://github.com/redhat-openshift-ecosystem/openshift-preflight/issues/845#issuecomment-1332797435
-func doPreflight(cmd *cobra.Command, _ []string) error {
-	dir, err := os.MkdirTemp(os.TempDir(), "docker_credentials")
-	if err != nil {
-		return fmt.Errorf("while creating temporary directory for docker credentials: %w", err)
-	}
-	defer os.RemoveAll(dir)
-
-	err = pkg_container.LoginToRegistry(dir, flags.ProjectID, flags.RegistryPassword)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	containerImage := fmt.Sprintf("%s/redhat-isv-containers/%s:%s", "quay.io", flags.ProjectID, flags.Tag)
-	log.Printf("running preflight for container image: %s", containerImage)
-	results, err := pkg_preflight.Run(
-		ctx,
-		pkg_preflight.RunInput{
-			Image:                  containerImage,
-			DockerConfigPath:       filepath.Join(dir, "config.json"),
-			PyxisAPIToken:          flags.ApiKey,
-			CertificationProjectID: flags.ProjectID,
-		})
-	if err != nil {
-		return err
-	}
-	formatter, err := formatters.NewByName(formatters.DefaultFormat)
-	if err != nil {
-		return fmt.Errorf("while creating new formatater for preflight output: %w", err)
-	}
-	output, err := formatter.Format(ctx, results)
-	if err != nil {
-		return fmt.Errorf("while formatting preflight output: %w", err)
-	}
-	if !results.PassedOverall {
-		return fmt.Errorf("preflight certification failed: %s", string(output))
-	}
-	log.Printf("preflight succeeded: %s", string(output))
-	return nil
 }
 
 // doPush will push an image to the redhat registry for scanning.

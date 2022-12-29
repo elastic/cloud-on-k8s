@@ -23,8 +23,13 @@ import (
 )
 
 const (
-	eckOperatorFormat = "docker.elastic.co/eck/eck-operator-ubi8:%s"
-	registryURL       = "quay.io"
+	eckOperatorFormat              = "docker.elastic.co/eck/eck-operator-ubi8:%s"
+	registryURL                    = "quay.io"
+	httpAcceptHeader               = "Accept"
+	httpContentTypeHeader          = "Content-Type"
+	httpXAPIKeyHeader              = "X-API-KEY"
+	httpApplicationJSONHeaderValue = "application/json"
+	getImagesFilter                = "repositories.tags.name==%s"
 )
 
 var (
@@ -32,6 +37,9 @@ var (
 	catalogAPIURL                = "https://catalog.redhat.com/api/containers/v1"
 	eckOperatorRegistryReference = "%s/redhat-isv-containers/%s:%s"
 	registryUsername             = "redhat-isv-containers+%s-robot"
+	getCatalogImagesURL          = "%s/projects/certification/id/%s/images"
+	registryUserFormat           = "redhat-isv-containers+%s-robot"
+	imagePublishURL              = "%s/projects/certification/id/%s/requests/images"
 )
 
 // PushConfig is the configuration required for the push image command.
@@ -109,8 +117,8 @@ func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string
 	if err == nil && len(images) == 0 {
 		return false, nil
 	}
-	if pruneDeletedImages(images) == nil {
-		log.Println("ignoring existing deleted image")
+	if getFirstValidImage(images) == nil {
+		log.Println("ignoring existing potentially deleted image")
 		return false, nil
 	}
 	return true, nil
@@ -161,7 +169,7 @@ func GetImageSHA(httpClient *http.Client, apiKey, projectID, tag string) (string
 	if err == nil && len(images) == 0 {
 		return imageSHA, nil
 	}
-	image := pruneDeletedImages(images)
+	image := getFirstValidImage(images)
 	if image == nil {
 		return imageSHA, fmt.Errorf("couldn't find image with tag: %s", tag)
 	}
@@ -178,20 +186,20 @@ func defaultHTTPClient() *http.Client {
 	}
 }
 
+// getImages will return a slice of Images from the Red Hat Certification API
+// while filtering using the given tag, returning any errors it encounters.
 func getImages(httpClient *http.Client, apiKey, projectID, tag string) ([]Image, error) {
-	url := catalogAPIURL + "/projects/certification/id/" + projectID + "/images"
+	url := fmt.Sprintf(getCatalogImagesURL, catalogAPIURL, projectID)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request for url (%s): %w", url, err)
 	}
 
 	q := req.URL.Query()
-	q.Add("filter", fmt.Sprintf("repositories.tags.name==%s", tag))
+	q.Add("filter", fmt.Sprintf(getImagesFilter, tag))
 	req.URL.RawQuery = q.Encode()
 
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("X-API-KEY", apiKey)
+	addHeaders(req, apiKey)
 
 	var res *http.Response
 	if res, err = httpClient.Do(req); err != nil {
@@ -215,13 +223,17 @@ func getImages(httpClient *http.Client, apiKey, projectID, tag string) ([]Image,
 	return response.Images, nil
 }
 
-// pruneDeletedImages will ensure that images returned from the redhat catalog api
-// are not simply artifacts (deleted images).  If the image(s) have been deleted, they
-// do not return an architecture in the response, and simply return a subset of the
-// top-level attributes.  This will return the first non-deleted image from the slice.
-//
-// TODO rename me.  This name doesn't make sense
-func pruneDeletedImages(images []Image) *Image {
+// addHeaders will add the required headers to communicate with
+// the Red Hat certification API.
+func addHeaders(req *http.Request, apiKey string) {
+	req.Header.Add(httpAcceptHeader, httpApplicationJSONHeaderValue)
+	req.Header.Add(httpContentTypeHeader, httpApplicationJSONHeaderValue)
+	req.Header.Add(httpXAPIKeyHeader, apiKey)
+}
+
+// getFirstValidImage return the first valid image returned from the redhat catalog api
+// that contains a valid image architecture.
+func getFirstValidImage(images []Image) *Image {
 	for _, image := range images {
 		if image.Architecture != nil {
 			return &image
@@ -230,13 +242,16 @@ func pruneDeletedImages(images []Image) *Image {
 	return nil
 }
 
+// pushImageToRegistry will use the crane tool to pull the ECK operator
+// container image locally, and push it to Quay.io registry using the
+// provided credentials.
 func pushImageToRegistry(c PushConfig) error {
 	if c.DryRun {
 		log.Printf("not pushing image as dry-run is set.")
 		return nil
 	}
 
-	username := fmt.Sprintf("redhat-isv-containers+%s-robot", c.ProjectID)
+	username := fmt.Sprintf(registryUserFormat, c.ProjectID)
 	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.ProjectID, c.Tag)
 	imageToPull := fmt.Sprintf(eckOperatorFormat, c.Tag)
 
@@ -266,6 +281,9 @@ func pushImageToRegistry(c PushConfig) error {
 	return nil
 }
 
+// publishImageInProject will wait until the image with the given tag is scanned, and then attempt to publish
+// the image within the Red Hat certification API.  If imageScanTimeout is reached waiting for the image to
+// be set as scanned within the API and error will be returned.
 func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Duration, apiKey, projectID, tag string, dryRun bool) error {
 	ticker := time.NewTicker(5 * time.Minute)
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
@@ -302,6 +320,8 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 	}
 }
 
+// isImageScanned will get the first valid image tag within the Red Hat certification API
+// and ensure that the scan status is set to "passed", returning the image.
 func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, apiKey, projectID, tag string) (image *Image, done bool, err error) {
 	images, err := getImages(httpClient, apiKey, projectID, tag)
 	if err != nil {
@@ -311,7 +331,7 @@ func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, api
 	if len(images) == 0 {
 		return nil, false, nil
 	}
-	image = pruneDeletedImages(images)
+	image = getFirstValidImage(images)
 	if image == nil {
 		return nil, false, nil
 	}
@@ -328,9 +348,10 @@ func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, api
 	return nil, false, nil
 }
 
+// doPublish will publish an image with the given tag in the Red Hat certification API.
 func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag string) error {
 	log.Printf("publishing image (%s), tag %s: ", image.ID, tag)
-	url := fmt.Sprintf("%s/projects/certification/id/%s/requests/images", catalogAPIURL, projectID)
+	url := fmt.Sprintf(imagePublishURL, catalogAPIURL, projectID)
 	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "operation": "publish"}`, image.ID))
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
@@ -338,12 +359,10 @@ func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag str
 		return fmt.Errorf("failed to create request to publish image: %w", err)
 	}
 
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("X-API-KEY", apiKey)
+	addHeaders(req, apiKey)
 
-	var res *http.Response
-	if res, err = httpClient.Do(req); err != nil {
+	res, err := httpClient.Do(req)
+	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed request to publish image: %w", err)
 	}
