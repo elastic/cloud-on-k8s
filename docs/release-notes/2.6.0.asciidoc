@@ -11,6 +11,7 @@
 === New features
 
 * New CRD StackConfigPolicy to declaratively configure multiple Elasticsearch clusters. {pull}6148[#6148], {pull}6195[#6195]
+* ECK resources Helm chart - Beats. {pull}5899[#5899] (issue: {issue}5505[#5505])
 
 [[enhancement-2.6.0]]
 [float]
@@ -23,7 +24,6 @@
 * Improve user password hash comparison performance by utilizing an LRU cache. {pull}6080[#6080] (issue: {issue}6076[#6076])
 * Add default securityContext to the manager container in Operator Helm Chart. {pull}6047[#6047]
 * Allow Fleet Server to be run without TLS. {pull}6020[#6020] (issue: {issue}6000[#6000])
-* ECK resources Helm chart - Beats. {pull}5899[#5899] (issue: {issue}5505[#5505])
 
 [[bug-2.6.0]]
 [float]
