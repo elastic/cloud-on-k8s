@@ -22,5 +22,4 @@ steps:
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
           - make build 2> /dev/null
-          # Intentionally disabled during testing.
           - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json ./bin/releaser --env=prod --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
