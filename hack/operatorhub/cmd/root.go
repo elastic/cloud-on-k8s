@@ -69,7 +69,7 @@ func init() {
 	Cmd.PersistentFlags().BoolVar(
 		&flags.EnableVault,
 		flags.EnableVaultFlag,
-		true,
+		false,
 		"Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT)",
 	)
 
