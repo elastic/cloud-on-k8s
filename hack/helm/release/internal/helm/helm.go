@@ -169,14 +169,14 @@ func readCharts(chartsDir string, excludes []string) ([]chart, error) {
 	for _, fullChartPath := range append(cs, currentDirectoryCharts...) {
 		fileBytes, err := os.ReadFile(fullChartPath)
 		if err != nil {
-			return nil, fmt.Errorf("while reading %s: %w", fullChartPath, err)
+			return nil, fmt.Errorf("while reading (%s): %w", fullChartPath, err)
 		}
 		var ch chart
 		if err = yaml.Unmarshal(fileBytes, &ch); err != nil {
-			return nil, fmt.Errorf("while unmarshaling %s to chart: %w", fullChartPath, err)
+			return nil, fmt.Errorf("while unmarshaling (%s) to chart: %w", fullChartPath, err)
 		}
 		if contains(ch.Name, excludes) {
-			log.Printf("Excluding %s as it is in the excludes list", ch.Name)
+			log.Printf("Excluding (%s) as it is in the excludes list", ch.Name)
 			continue
 		}
 		ch.fullPath = filepath.Dir(fullChartPath)
@@ -252,7 +252,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 	if err := addStableHelmRepository(); err != nil {
 		return err
 	}
-	log.Printf("Done adding %s repository.\n", stableHelmChartsURL)
+	log.Printf("Done adding (%s) repository.\n", stableHelmChartsURL)
 	for _, chart := range charts {
 		chartPath := filepath.Join(tempDir, chart.Name)
 		if err := copyChartToTemporaryDirectory(chart, chartPath); err != nil {
@@ -287,7 +287,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 // repository to the Helm configuration.
 func addStableHelmRepository() error {
 	settings := cli.New()
-	log.Printf("Adding %s repository.\n", stableHelmChartsURL)
+	log.Printf("Adding (%s) repository.\n", stableHelmChartsURL)
 	// helm repo add stable https://charts.helm.sh/stable
 	if _, err := repo.NewChartRepository(&repo.Entry{
 		Name: "stable",
@@ -295,7 +295,7 @@ func addStableHelmRepository() error {
 	}, getter.All(settings)); err != nil {
 		return fmt.Errorf("while adding helm stable charts repository: %w", err)
 	}
-	log.Printf("Done adding %s repository.\n", stableHelmChartsURL)
+	log.Printf("Done adding (%s) repository.\n", stableHelmChartsURL)
 	return nil
 }
 
@@ -304,7 +304,7 @@ func addStableHelmRepository() error {
 func copyChartToTemporaryDirectory(ch chart, chartPath string) error {
 	err := os.Mkdir(chartPath, 0755)
 	if err != nil {
-		return fmt.Errorf("while making chart directory inside temporary directory %s: %w", chartPath, err)
+		return fmt.Errorf("while making chart directory inside temporary directory (%s): %w", chartPath, err)
 	}
 	err = copy(ch.fullPath, chartPath)
 	if err != nil {
@@ -423,12 +423,12 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	}
 	data, err := ioutil.ReadFile(files[0])
 	if err != nil {
-		return fmt.Errorf("while reading %s: %w", files[0], err)
+		return fmt.Errorf("while reading (%s): %w", files[0], err)
 	}
 
 	err = ioutil.WriteFile(filepath.Join(config.tempDirectory, config.chartName, files[0]), data, 0777)
 	if err != nil {
-		return fmt.Errorf("while writing %s to temp directory: %w", files[0], err)
+		return fmt.Errorf("while writing (%s) to temp directory: %w", files[0], err)
 	}
 	return nil
 }
