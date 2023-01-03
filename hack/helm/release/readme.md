@@ -34,16 +34,15 @@ The following command will execute the steps
 * Update Helm index file for "https://helm-dev.elastic.co/helm" Helm repository.
 
 ```
-releaser --charts-dir=path/to/deploy --credentials-file=path/to/gcs-bucket-credentials.json --dry-run=false
+releaser --env=dev --charts-dir=path/to/deploy --credentials-file=path/to/gcs-bucket-credentials.json --dry-run=false
 ```
 
 ## Configuration
 
 | Parameter           | Description                                                                                                    | Environment Variable    | Default                            |
 |---------------------|----------------------------------------------------------------------------------------------------------------|-------------------------|------------------------------------|
-| `--bucket`          | GCS bucket to upload Helm chart packages.                                                                      | `HELM_BUCKET`           | `elastic-helm-charts-dev`          |
+| `--env`             | Environment in which to upload Helm chart packages.                                                            | `HELM_ENV`              | `dev`                              |
 | `--charts-dir`      | Full path to directory containing Helm charts to release.                                                      | `HELM_CHARTS_DIR`       | `./deploy`                         |
-| `--charts-repo-url` | URL of Helm Charts Repository.                                                                                 | `HELM_CHARTS_REPO_URL`  | `https://helm-dev.elastic.co/helm` |
 | `--credentials-file`| Full path to credentials file to use for GCS bucket.                                                           | `HELM_CREDENTIALS_FILE` | `""`                               |
 | `--dry-run`         | Will package all Helm charts and process the Helm index, but not upload Helm packages, or update remote index. | `HELM_DRY_RUN`          | `true`                             |
 | `--excludes`        | Comma separated list of Helm chart names to exclude.                                                           | `HELM_EXCLUDES`         | `[]`                               |

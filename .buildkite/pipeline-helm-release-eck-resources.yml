@@ -10,19 +10,17 @@ steps:
       - label: "release eck-resources helm charts dev"
         key: helm-release-eck-resources-dev
         commands:
-          - .ci/setenvconfig helm/eck-resources-dev
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
           - make build 2> /dev/null
-          - ./bin/releaser --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
+          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json ./bin/releaser --env=dev --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
 
       - label: "release eck resources helm charts prod"
         depends_on:
           - "helm-release-eck-resources-dev"
         commands:
-          - .ci/setenvconfig helm/eck-resources-prod
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
           - make build 2> /dev/null
           # Intentionally disabled during testing.
-          # - ./bin/releaser --charts-dir=../../../deploy --excludes=eck-operator --enable-vault
+          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json ./bin/releaser --env=prod --charts-dir=../../../deploy --excludes=eck-operator --enable-vault

@@ -23,6 +23,7 @@ const (
 	chartsRepoURLFlag   = "charts-repo-url"
 	credentialsFileFlag = "credentials-file"
 	dryRunFlag          = "dry-run"
+	envFlag             = "env"
 	excludesFlag        = "excludes"
 	enableVaultFlag     = "enable-vault"
 	vaultSecretFlag     = "vault-secret"
@@ -34,6 +35,15 @@ const (
 	// Helm Repositories
 	elasticHelmChartsDevRepoURL  = "https://helm-dev.elastic.co/helm"
 	elasticHelmChartsProdRepoURL = "https://helm.elastic.co/helm"
+
+	// Environment flag options
+	devEnvironment  = "dev"
+	prodEnvironment = "prod"
+)
+
+var (
+	bucket        string
+	chartsRepoURL string
 )
 
 func init() {
@@ -44,7 +54,7 @@ func releaseCmd() *cobra.Command {
 	releaseCommand := &cobra.Command{
 		Use:     "release",
 		Short:   "Release ECK Helm Charts",
-		Long:    `This command will Release ECK Helm Charts to a given GCS Bucket.`,
+		Long:    `This command will Release ECK Helm Charts to a given Environment.`,
 		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --upload-index --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -52,8 +62,8 @@ func releaseCmd() *cobra.Command {
 			return helm.Release(
 				helm.ReleaseConfig{
 					ChartsDir:           viper.GetString("charts-dir"),
-					Bucket:              viper.GetString("bucket"),
-					ChartsRepoURL:       viper.GetString("charts-repo-url"),
+					Bucket:              bucket,
+					ChartsRepoURL:       chartsRepoURL,
 					CredentialsFilePath: viper.GetString("credentials-file"),
 					DryRun:              viper.GetBool("dry-run"),
 					Excludes:            viper.GetStringSlice("excludes"),
@@ -79,25 +89,18 @@ func releaseCmd() *cobra.Command {
 	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
 	flags.String(
-		bucketFlag,
-		elasticHelmChartsDevBucket,
-		"GCS bucket in which to release helm charts (env: HELM_BUCKET)",
-	)
-	_ = viper.BindPFlag(bucketFlag, flags.Lookup(bucketFlag))
-
-	flags.String(
-		chartsRepoURLFlag,
-		elasticHelmChartsDevRepoURL,
-		"URL of Helm Charts Repository (env: HELM_CHARTS_REPO_URL)",
-	)
-	_ = viper.BindPFlag(chartsRepoURLFlag, flags.Lookup(chartsRepoURLFlag))
-
-	flags.String(
 		credentialsFileFlag,
 		"",
 		"path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
 	)
 	_ = viper.BindPFlag(credentialsFileFlag, flags.Lookup(credentialsFileFlag))
+
+	flags.String(
+		envFlag,
+		devEnvironment,
+		"Environment in which to release Helm Charts (env: HELM_ENV)",
+	)
+	_ = viper.BindPFlag(envFlag, flags.Lookup(envFlag))
 
 	flags.StringSlice(
 		excludesFlag,
@@ -124,35 +127,32 @@ func releaseCmd() *cobra.Command {
 }
 
 func validate(_ *cobra.Command, _ []string) error {
+	env := viper.GetString(envFlag)
+	switch env {
+	case devEnvironment:
+		bucket = elasticHelmChartsDevBucket
+		chartsRepoURL = elasticHelmChartsDevRepoURL
+	case prodEnvironment:
+		bucket = elasticHelmChartsProdBucket
+		chartsRepoURL = elasticHelmChartsProdRepoURL
+	default:
+		return fmt.Errorf("%s flag can only be on of (%s, %s)", envFlag, devEnvironment, prodEnvironment)
+	}
+
 	if viper.GetBool(enableVaultFlag) {
 		if viper.GetString(vaultSecretFlag) == "" {
 			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
 		}
-		return readCredentialsFromVault()
+		err := readCredentialsFromVault()
+		if err != nil {
+			return err
+		}
 	}
+
 	if viper.GetString(credentialsFileFlag) == "" {
 		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
 	}
-	gcsBucket := viper.GetString(bucketFlag)
-	if gcsBucket == "" {
-		return fmt.Errorf("%s is a required flag", bucketFlag)
-	}
-	chartsRepoURL := viper.GetString(chartsRepoURLFlag)
-	if chartsRepoURL == "" {
-		return fmt.Errorf("%s is a required flag", chartsRepoURLFlag)
-	}
-	switch chartsRepoURL {
-	case elasticHelmChartsDevRepoURL:
-		if gcsBucket != elasticHelmChartsDevBucket {
-			return fmt.Errorf("%s must be set to %s when %s is set to %s", bucketFlag, elasticHelmChartsDevBucket, chartsRepoURLFlag, elasticHelmChartsDevRepoURL)
-		}
-	case elasticHelmChartsProdRepoURL:
-		if gcsBucket != elasticHelmChartsProdBucket {
-			return fmt.Errorf("%s must be set to %s when %s is set to %s", bucketFlag, elasticHelmChartsProdBucket, chartsRepoURLFlag, elasticHelmChartsProdRepoURL)
-		}
-	default:
-		return fmt.Errorf("%s can only be one of (%s, %s)", chartsRepoURLFlag, elasticHelmChartsDevRepoURL, elasticHelmChartsProdRepoURL)
-	}
+
 	return nil
 }
 
