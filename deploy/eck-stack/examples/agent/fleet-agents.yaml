@@ -6,10 +6,6 @@ eck-elasticsearch:
   #
   fullnameOverride: elasticsearch
 
-  # Version of Elasticsearch.
-  #
-  version: 8.5.0
-
   nodeSets:
   - name: default
     count: 3
@@ -28,15 +24,7 @@ eck-kibana:
   #
   fullnameOverride: kibana
   
-  # Version of Kibana.
-  #
-  version: 8.5.0
-  
   spec:
-    # Count of Kibana instances to create.
-    #
-    count: 1
-  
     # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
     #
     elasticsearchRef:
@@ -44,10 +32,13 @@ eck-kibana:
 
     config:
       # Note that these are specific to the namespace into which this example is installed, and are
-      # using `default` as configured here.  If installed outside of the `default` namespace,
-      # these 2 lines need modification.
-      xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
-      xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+      # using `elastic-stack` as configured here and detailed in the README when installing:
+      #
+      # `helm install es-kb-quickstart elastic/eck-stack -n elastic-stack`
+      #
+      # If installed outside of the `elastic-stack` namespace, the following 2 lines need modification.
+      xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.elastic-stack.svc:9200"]
+      xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.elastic-stack.svc:8220"]
       xpack.fleet.packages:
       - name: system
         version: latest
@@ -88,10 +79,6 @@ eck-kibana:
 
 eck-agent:
   enabled: true
-
-  # Version of Elastic Agent.
-  #
-  version: 8.5.0
   
   spec:
     # Reference to ECK-managed Kibana instance.
