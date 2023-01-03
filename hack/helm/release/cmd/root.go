@@ -84,21 +84,21 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		chartsDirFlag,
 		"./deploy",
-		"charts directory which contain helm charts (env: HELM_CHARTS_DIR)",
+		"Charts directory which contain helm charts (env: HELM_CHARTS_DIR)",
 	)
 	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
 	flags.String(
 		credentialsFileFlag,
 		"",
-		"path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
+		"Path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
 	)
 	_ = viper.BindPFlag(credentialsFileFlag, flags.Lookup(credentialsFileFlag))
 
 	flags.String(
 		envFlag,
 		devEnvironment,
-		"Environment in which to release Helm Charts (env: HELM_ENV)",
+		"Environment in which to release helm charts (env: HELM_ENV)",
 	)
 	_ = viper.BindPFlag(envFlag, flags.Lookup(envFlag))
 
