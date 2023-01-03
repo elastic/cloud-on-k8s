@@ -292,7 +292,7 @@ func (d *DownscaleReporter) OnShutdownStatus(
 	node.Name = podName
 	node.ShutdownStatus = string(nodeShutdownStatus.Status)
 	if len(nodeShutdownStatus.Explanation) > 0 {
-		node.Explanation = pointer.StringPtr(nodeShutdownStatus.Explanation)
+		node.Explanation = pointer.String(nodeShutdownStatus.Explanation)
 	}
 	d.nodes[podName] = node
 	if nodeShutdownStatus.Status == esclient.ShutdownStalled {

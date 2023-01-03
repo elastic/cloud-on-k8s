@@ -43,7 +43,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(3),
+			Replicas: pointer.Int32(3),
 		},
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
@@ -53,7 +53,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 
 	// simulate updated replicas & template hash label
 	updatedSset := *ssetSample.DeepCopy()
-	updatedSset.Spec.Replicas = pointer.Int32Ptr(4)
+	updatedSset.Spec.Replicas = pointer.Int32(4)
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
 	tests := []struct {

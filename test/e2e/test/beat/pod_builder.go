@@ -52,7 +52,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 		Pod: corev1.Pod{
 			ObjectMeta: meta,
 			Spec: corev1.PodSpec{
-				AutomountServiceAccountToken: ptr.BoolPtr(false),
+				AutomountServiceAccountToken: ptr.Bool(false),
 				Containers: []corev1.Container{
 					{
 						Name:  "ubuntu",
