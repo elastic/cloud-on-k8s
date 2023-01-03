@@ -27,13 +27,14 @@ RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VER}/etcd-v${ETCD_VE
 
 # gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
+ENV USE_GKE_GCLOUD_AUTH_PLUGIN=True
 RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz && \
     mkdir -p /usr/local/gcloud && \
     tar -zxf google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz -C /usr/local && \
     /usr/local/google-cloud-sdk/install.sh --quiet && \
     gcloud config set core/disable_usage_reporting true && \
     gcloud config set component_manager/disable_update_check true && \
-    gcloud components install beta --quiet && \
+    gcloud components install beta gke-gcloud-auth-plugin --quiet && \
     rm google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz
 
 # kubectl for deploying the operator and running e2e tests
