@@ -20,7 +20,7 @@ const (
 	vaultSecretDataKey = "creds.json"
 )
 
-// readCredentialsFromVault will will read a secret from vault
+// readCredentialsFromVault will read a secret from vault
 // with the address at environment variable VAULT_ADDR, using vault
 // token at environment variable VAULT_TOKEN, using configured secret
 // path from viper key 'vault-secret', writing it to '/tmp/credentials.json',
@@ -32,7 +32,6 @@ func readCredentialsFromVault() error {
 			Timeout: 10 * time.Second,
 		},
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to create vault client: %w", err)
 	}
@@ -46,7 +45,7 @@ func readCredentialsFromVault() error {
 	}
 
 	if secret == nil {
-		return fmt.Errorf("found no secret at location: %s", vaultSecret)
+		return fmt.Errorf("found no secret at location (%s)", vaultSecret)
 	}
 
 	data, ok := secret.Data[vaultSecretDataKey]
