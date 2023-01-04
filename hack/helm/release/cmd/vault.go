@@ -50,7 +50,7 @@ func readCredentialsFromVault() error {
 
 	data, ok := secret.Data[vaultSecretDataKey]
 	if !ok {
-		return fmt.Errorf("key (creds.json) not found in vault in secret (%s)", vaultSecret)
+		return fmt.Errorf("key (%s) not found in vault in secret (%s)", vaultSecretDataKey, vaultSecret)
 	}
 
 	stringData, ok := data.(string)
@@ -61,7 +61,7 @@ func readCredentialsFromVault() error {
 	if err := ioutil.WriteFile(credentialsPath, []byte(stringData), 0600); err != nil {
 		return fmt.Errorf("while writing gcs credentials file read from vault: %w", err)
 	}
-	viper.Set("credentials-file", credentialsPath)
+	viper.Set(credentialsFileFlag, credentialsPath)
 
 	return nil
 }

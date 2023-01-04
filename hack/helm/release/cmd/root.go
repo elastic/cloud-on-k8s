@@ -58,15 +58,15 @@ func releaseCmd() *cobra.Command {
 		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --upload-index --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString("charts-dir"), viper.GetString("bucket"), viper.GetString("charts-repo-url"))
+			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString(chartsDirFlag), bucket, chartsRepoURL)
 			return helm.Release(
 				helm.ReleaseConfig{
-					ChartsDir:           viper.GetString("charts-dir"),
+					ChartsDir:           viper.GetString(chartsDirFlag),
 					Bucket:              bucket,
 					ChartsRepoURL:       chartsRepoURL,
-					CredentialsFilePath: viper.GetString("credentials-file"),
-					DryRun:              viper.GetBool("dry-run"),
-					Excludes:            viper.GetStringSlice("excludes"),
+					CredentialsFilePath: viper.GetString(credentialsFileFlag),
+					DryRun:              viper.GetBool(dryRunFlag),
+					Excludes:            viper.GetStringSlice(excludesFlag),
 				})
 		},
 	}
@@ -77,20 +77,20 @@ func releaseCmd() *cobra.Command {
 		dryRunFlag,
 		"d",
 		true,
-		"Do not update upload new files to bucket, or update helm index (env: HELM_DRY_RUN)",
+		"Do not upload new files to bucket, or update helm index (env: HELM_DRY_RUN)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 
 	flags.String(
 		chartsDirFlag,
 		"./deploy",
-		"Charts directory which contain helm charts (env: HELM_CHARTS_DIR)",
+		"Charts directory which contains helm charts (env: HELM_CHARTS_DIR)",
 	)
 	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
 	flags.String(
 		credentialsFileFlag,
-		"",
+		"/tmp/credentials.json",
 		"Path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
 	)
 	_ = viper.BindPFlag(credentialsFileFlag, flags.Lookup(credentialsFileFlag))
@@ -111,14 +111,14 @@ func releaseCmd() *cobra.Command {
 
 	flags.Bool(
 		enableVaultFlag,
-		false,
+		true,
 		"Enable vault functionality to try and automatically read 'credentials-file' from given vault key (uses HELM_VAULT_* environment variables) (HELM_ENABLE_VAULT)",
 	)
 	_ = viper.BindPFlag(enableVaultFlag, flags.Lookup(enableVaultFlag))
 
 	flags.String(
 		vaultSecretFlag,
-		"",
+		"secret/ci/elastic-cloud-on-k8s/helm-gcs-credentials",
 		"When --enable-vault is set, attempts to read 'credentials-file' data from given vault secret location (HELM_VAULT_SECRET)",
 	)
 	_ = viper.BindPFlag(vaultSecretFlag, flags.Lookup(vaultSecretFlag))
