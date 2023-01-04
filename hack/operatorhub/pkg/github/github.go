@@ -58,7 +58,6 @@ type Config struct {
 	KeepTempFiles                                            bool
 	PathToNewVersion                                         string
 	ContainerImageSHA                                        string
-	CreatePullRequest                                        bool
 }
 
 // Client is the client for the github package
@@ -354,7 +353,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		return fmt.Errorf("failed to push git refspec (%s) to remote: %w", refSpec, err)
 	}
 
-	if c.CreatePullRequest {
+	if !c.DryRun {
 		return c.createPullRequest(repo, branchName)
 	}
 	log.Printf("Not creating pull request for (%s)\n", orgRepo)

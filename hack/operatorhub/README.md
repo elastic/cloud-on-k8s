@@ -63,25 +63,24 @@ If `enable-vault` flag is `true` the following keys will attempt to be read from
 | `--github-vault-secret`| Vault secret path to github secrets.                                          | `OHUB_GITHUB_VAULT_SECRET` | `""`    |
 | `--redhat-vault-secret`| Vault secret path to redhat secrets.                                          | `OHUB_REDHAT_VAULT_SECRET` | `""`    |
 
-## Commands
 
-### Container
+## Container Command
 
-####  Push
+### Push sub-command
 
 The `container push` sub-command will perform the following tasks:
 1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
 2. If image is already found, nothing is done without using the `force` flag.
 3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(tag)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(tag)`.
 
-#### Publish
+### Publish sub-command
 
 The `container publish` sub-command will perform the following tasks:
 1. It will wait for the image to be found in the Red Hat certification API.
 2. It will wait for the image scan to be found successful in the Red Hat certification API.
 3. It will "publish" the container within the Red Hat certification API.
 
-#### Usage
+### Usage
 
 Usage without vault
 ```shell
@@ -94,7 +93,7 @@ Usage with vault
 OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
 ```
 
-#### Flags
+### Flags
 
 | Parameter              | Description                                                                                                                               | Environment Variable     | Default |
 |----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|---------|
@@ -104,7 +103,7 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 | `--tag`                | Git tag to release.                                                                                                                       | `OHUB_TAG`               | `""`    |
 | `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`  |
 
-### Generate Manifests
+## Generate Manifests Command
 
 The `generate-manifests` command wil extracts CRDs and RBAC definitions from distribution YAML manifests
 (either yaml manifests from flag, or pulled from internet) and generates the files required to publish
@@ -114,7 +113,7 @@ a new release to OperatorHub.  These files are written within the following 3 di
 - upstream-community-operators
 - certified-operators
 
-#### Usage
+### Usage
 
 To generate configuration for a previously released manifest version
 
@@ -130,41 +129,43 @@ To generate configuration based on yet unreleased YAML manifests:
 
 *IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
 
-### Bundle
+## Bundle Command
 
 *This command's sub-commands all requires the output of the `generate-manifests` command to be run*
 
-#### Generate
+### Generate sub-command
 
 The `bundle generate` command will perform the following tasks:
 1. Run the [opm](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command on the output of `operatorhub` command to generate the operator metadata for operator hub publishing
-
-#### Create-PR
-
-The `bundle create-pr` command will perform the following tasks:
-1. Will create a pull request in both `redhat-openshift-ecosystem/certified-operators` and `k8s-operatorhub/community-operators` repositories using the output of both `operatorhub` command, and the `bundle generate` command.
 
 #### Usage
 
 - Ensure that the `generate-manifests` command has successfully ran
 - Run the `bundle generate` command, pointing to the output directory of the `generate-manifests` command
 
-#### Flags
-
-| Parameter              | Description                                                                                                                               | Environment Variable     | Default |
-|----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|---------|
-| `--dir`            | Directory containing the output of the `generate-manifests` command.                                                                          | `OHUB_API_KEY`           | `""`    |
-| `--tag`                | Git tag to release.                                                                                                                       | `OHUB_TAG`               | `""`    |
-| `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`  |
-
-##### Bundle Generate
-
 With and without vault
 ```shell
-./operatorhub bundle generate -d . -o "v4.6"
+./operatorhub bundle generate -d .
 ```
 
-##### Bundle Create PR
+#### Flags
+
+| Parameter                        | Description                                                                                                                               | Environment Variable                | Default |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------|
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`    |
+| `--tag`                          | Git tag to release.                                                                                                                       | `OHUB_TAG`                          | `""`    |
+
+### Create-PR sub-command
+
+The `bundle create-pr` command will perform the following tasks:
+1. Will create a pull request in both `redhat-openshift-ecosystem/certified-operators` and `k8s-operatorhub/community-operators` repositories using the output of both `operatorhub` command, and the `bundle generate` command.
+
+### Usage
+
+- Ensure that the `bundle generate` command has successfully ran
+- If using vault, ensure that your personal Github information is contained within vault, including a temporary/expiring Github API token.
+  - Your token needs to have the following scopes: `repo`, `workflow`, `read:org`, `read:user`, `user:email`
+- Run the `bundle create-pr` command.
 
 Without vault
 ```shell
@@ -176,7 +177,19 @@ With vault
 OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./operatorhub bundle create-pr -d .
 ```
 
+### Flags
 
+| Parameter                        | Description                                                                                                                               | Environment Variable                | Default |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------|
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`    |
+| `--tag`                          | Git tag to release.                                                                                                                       | `OHUB_TAG`                          | `""`    |
+| `--supported-openshift-versions` | Supported openshift versions to be included within annotations.                                                                           | `OHUB_SUPPORTED_OPENSHIFT_VERSIONS` | `"v4.6"`|
+| `--github-token`                 | User's Github API token.                                                                                                                  | `OHUB_GITHUB_TOKEN`                 | `""`    |
+| `--github-username`              | User's Github username.                                                                                                                   | `OHUB_GITHUB_USERNAME`              | `""`    |
+| `--github-fullname`              | User's Github fullname.                                                                                                                   | `OHUB_GITHUB_FULLNAME`              | `""`    |
+| `--github-email`                 | User's Github email address.                                                                                                              | `OHUB_GITHUB_EMAIL`                 | `""`    |
+| `--delete-temp-directory`        | Whether to delete the temporary directory upon completion (useful for debugging).                                                         | `OHUB_DELETE_TEMP_DIRECTORY`        | `true`  |
+| `--dry-run`                      | If set, Github forks, and branches will be created within user's remote, but pull requests will not be created.                           | `OHUB_DRY_RUN`                      | `true`  |
 
 # TODO
 

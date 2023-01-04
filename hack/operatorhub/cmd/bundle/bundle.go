@@ -54,9 +54,6 @@ certified-operators and community-operators repositories.`,
 		"directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)",
 	)
 
-	bundleCmd.Flags().MarkHidden("api-key")
-	bundleCmd.Flags().MarkHidden("project-id")
-
 	generateCmd.Flags().StringVarP(
 		&flags.SupportedOpenshiftVersions,
 		flags.SupportedOpenshiftVersionsFlag,
@@ -65,20 +62,12 @@ certified-operators and community-operators repositories.`,
 		"supported openshift versions to be included within annotations. should *not* be a range. (v4.6) (OHUB_SUPPORTED_OPENSHIFT_VERSIONS)",
 	)
 
-	createPRCmd.Flags().BoolVarP(
-		&flags.SubmitPullRequest,
-		flags.SubmitPullRequestFlag,
-		"P",
-		false,
-		"attempt to submit PRs to certified-operators, and community-operators repositories. (OHUB_SUBMIT_PULL_REQUEST)",
-	)
-
 	createPRCmd.Flags().StringVarP(
 		&flags.GithubToken,
 		flags.GithubTokenFlag,
 		"g",
 		"",
-		"if 'submit-pull-request' is enabled, user's token to communicate with github.com (OHUB_GITHUB_TOKEN)",
+		"if 'dry-run' isn't set, user's token to communicate with github.com (OHUB_GITHUB_TOKEN)",
 	)
 
 	createPRCmd.Flags().StringVarP(
@@ -86,7 +75,7 @@ certified-operators and community-operators repositories.`,
 		flags.GithubUsernameFlag,
 		"u",
 		"",
-		"if 'submit-pull-request' is enabled, github username to use to fork repositories, and submit PRs (OHUB_GITHUB_USERNAME)",
+		"if 'dry-run' isn't set, github username to use to fork repositories, and submit PRs (OHUB_GITHUB_USERNAME)",
 	)
 
 	createPRCmd.Flags().StringVarP(
@@ -94,7 +83,7 @@ certified-operators and community-operators repositories.`,
 		flags.GithubFullnameFlag,
 		"f",
 		"",
-		"if 'submit-pull-request' is enabled, github full name to use to add to commit message (OHUB_GITHUB_FULLNAME)",
+		"if 'dry-run' isn't set, github full name to use to add to commit message (OHUB_GITHUB_FULLNAME)",
 	)
 
 	createPRCmd.Flags().StringVarP(
@@ -102,7 +91,7 @@ certified-operators and community-operators repositories.`,
 		flags.GithubEmailFlag,
 		"e",
 		"",
-		"if 'submit-pull-request' is enabled, github email to use to add to commit message (OHUB_GITHUB_EMAIL)",
+		"if 'dry-run' isn't set, github email to use to add to commit message (OHUB_GITHUB_EMAIL)",
 	)
 
 	createPRCmd.Flags().BoolVarP(
@@ -206,15 +195,14 @@ func doGenerate(_ *cobra.Command, _ []string) error {
 func doCreatePR(_ *cobra.Command, _ []string) error {
 	// dir := filepath.Join(flags.Dir, flags.Tag)
 	client := github.New(github.Config{
-		CreatePullRequest: flags.SubmitPullRequest,
-		DryRun:            flags.DryRun,
-		GitHubEmail:       flags.GithubEmail,
-		GitHubFullName:    flags.GithubFullname,
-		GitHubUsername:    flags.GithubUsername,
-		GitHubToken:       flags.GithubToken,
-		GitTag:            flags.Tag,
-		KeepTempFiles:     !flags.DeleteTempDirectory,
-		PathToNewVersion:  flags.Dir,
+		DryRun:           flags.DryRun,
+		GitHubEmail:      flags.GithubEmail,
+		GitHubFullName:   flags.GithubFullname,
+		GitHubUsername:   flags.GithubUsername,
+		GitHubToken:      flags.GithubToken,
+		GitTag:           flags.Tag,
+		KeepTempFiles:    !flags.DeleteTempDirectory,
+		PathToNewVersion: flags.Dir,
 	})
 	return client.CloneRepositoryAndCreatePullRequest()
 }
