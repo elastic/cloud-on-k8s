@@ -3,9 +3,8 @@ FROM docker.io/library/golang:1.19.4
 
 ENV GOLANGCILINT_VERSION=1.48.0
 ENV SHELLCHECK_VERSION=0.8.0
-ENV KUBEBUILDER_VERSION=2.3.1
 ENV GCLOUD_VERSION=381.0.0
-ENV KUBECTL_VERSION=1.19.16
+ENV KUBECTL_VERSION=1.21.14
 ENV DOCKER_VERSION=19.03.14
 ENV DOCKER_BUILDX_VERSION=0.8.2
 ENV GOTESTSUM_VERSION=1.8.0
@@ -17,26 +16,29 @@ ENV HELM_VERSION=3.9.1
 RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
-# kubebuilder to get required tools (etcd, apiserver, etc.)
-ENV PATH=${PATH}:/usr/local/kubebuilder/bin
-RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    tar -zxf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/kubebuilder && \
-    rm kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz
+# etcd and apiserver for integration tests
+ENV KUBEAPISERVER_VERSION=1.21.14
+RUN curl -fsSL https://dl.k8s.io/v${KUBEAPISERVER_VERSION}/bin/linux/amd64/kube-apiserver -o /usr/local/bin/kube-apiserver && \
+    chmod +x /usr/local/bin/kube-apiserver
+ENV ETCD_VER=3.4.23
+RUN curl -fsSLO https://storage.googleapis.com/etcd/v${ETCD_VER}/etcd-v${ETCD_VER}-linux-amd64.tar.gz && \
+    tar zxf etcd-v${ETCD_VER}-linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 && \
+    rm -f etcd-v${ETCD_VER}-linux-amd64.tar.gz
 
 # gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
+ENV USE_GKE_GCLOUD_AUTH_PLUGIN=True
 RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz && \
     mkdir -p /usr/local/gcloud && \
     tar -zxf google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz -C /usr/local && \
     /usr/local/google-cloud-sdk/install.sh --quiet && \
     gcloud config set core/disable_usage_reporting true && \
     gcloud config set component_manager/disable_update_check true && \
-    gcloud components install beta --quiet && \
+    gcloud components install beta gke-gcloud-auth-plugin --quiet && \
     rm google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz
 
 # kubectl for deploying the operator and running e2e tests
-RUN curl -fsSLO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
+RUN curl -fsSLO https://dl.k8s.io/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
     mv kubectl /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
 
 # Docker client to build and push images

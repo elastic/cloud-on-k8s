@@ -61,7 +61,7 @@ func TestRetrieveActualPVCs(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset"},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(3),
+			Replicas: pointer.Int32(3),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},

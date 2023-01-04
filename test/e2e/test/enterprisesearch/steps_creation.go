@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
-
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"

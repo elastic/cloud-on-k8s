@@ -46,7 +46,7 @@ func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFileP
 		logFilePath:           logFilePath,
 	}
 
-	el.eventInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = el.eventInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if key, err := cache.MetaNamespaceKeyFunc(obj); err == nil {
 				el.eventQueue.Add(key)

@@ -16,8 +16,6 @@ import (
 )
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
-	// Current issues with Elastic Package Registry is causing Fleet tests to fail.  Temporarily disabling until resolved.
-	t.SkipNow()
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)

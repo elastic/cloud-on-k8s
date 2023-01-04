@@ -88,8 +88,6 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
-	// Current issues with Elastic Package Registry is causing Fleet tests to fail.  Temporarily disabling until resolved.
-	t.SkipNow()
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
@@ -132,8 +130,6 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
-	// Current issues with Elastic Package Registry is causing Fleet tests to fail.  Temporarily disabling until resolved.
-	t.SkipNow()
 	notLoggingPod := beat.NewPodBuilder("test")
 	loggingPod := beat.NewPodBuilder("test")
 	loggingPod.Pod.Namespace = "default"
@@ -160,8 +156,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
-	// Current issues with Elastic Package Registry is causing Fleet tests to fail.  Temporarily disabling until resolved.
-	t.SkipNow()
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
