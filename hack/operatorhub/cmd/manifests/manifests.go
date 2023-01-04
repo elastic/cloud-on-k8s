@@ -79,21 +79,22 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s is required", flags.TagFlag)
 	}
 
-	if flags.PreviousVersion == "" {
-		return fmt.Errorf("%s is required", flags.PrevVersionFlag)
+	// If no yaml manifests are given, then the stack, and previous version
+	// flags are required to generate manifests.
+	if len(flags.YamlManifest) == 0 {
+		if flags.PreviousVersion == "" {
+			return fmt.Errorf("%s is required", flags.PrevVersionFlag)
+		}
+
+		if flags.StackVersion == "" {
+			return fmt.Errorf("%s is required", flags.StackVersionFlag)
+		}
 	}
 
-	if flags.StackVersion == "" {
-		return fmt.Errorf("%s is required", flags.StackVersionFlag)
-	}
-
-	if flags.ApiKey == "" {
-		return fmt.Errorf("%s is required", flags.ApiKeyFlags)
-	}
-
-	if flags.ProjectID == "" {
-		return fmt.Errorf("%s is required", flags.ProjectIDFlag)
-	}
+	// validation for apikey, and redhat project id is not done
+	// here, but is done after reading the configuration file
+	// and checking whether digest pinning `digestPinning: true`
+	// is enabled for any of the packages in the config file.
 
 	return nil
 }

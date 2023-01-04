@@ -295,6 +295,10 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 		return err
 	}
 	if done {
+		if dryRun {
+			log.Printf("not publishing image as dry-run is set")
+			return nil
+		}
 		return doPublish(image, httpClient, apiKey, projectID, tag)
 	}
 

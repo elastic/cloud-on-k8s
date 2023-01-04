@@ -20,42 +20,11 @@ These commands include
   * generate - generate operator metadata for publishing on openshift operator hub
   * create-pr - perform all git operations and create pull requests for community and certified operator repositories
 
-## Commands
+## Vault Details
 
-### Container Push
+Certain flags can be automatically read from vault if the `enable-vault` flag is set, typically using the environment variables `VAULT_ADDR` and `VAULT_TOKEN`.  
 
-The `container push` sub-command will perform the following tasks:
-1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
-2. If image is already found, nothing is done without using the `force` flag.
-3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(tag)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(tag)`.
-
-### Container Publish
-
-The `container publish` sub-command will perform the following tasks:
-1. It will wait for the image to be found in the Red Hat certification API.
-2. It will wait for the image scan to be found successful in the Red Hat certification API.
-3. It will "publish" the container within the Red Hat certification API.
-
-#### Usage
-
-*notes*
-- `api-key` is the Red Hat API key that exists within the keybase application.
-- `registry-password` is the quay.io password that can be obtained by logging into [redhat connect](https://connect.redhat.com) and clicking [Push Image Manually](https://connect.redhat.com/projects/$(project-id)/images/upload-image), which will then show you a `Registry Key`.
-- `project-id` is the Red Hat certification project ID found within [redhat connect](https://connect.redhat.com).
-- All of these can be contained within a secret in vault, and be pulled directly from vault.
-
-Usage without vault
-```shell
-./operatorhub container push -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
-./operatorhub container publish -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
-```
-
-Usage with vault
-```shell
-OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
-```
-
-Example vault secret
+Example vault secrets
 ```shell
 ❯ VAULT_ADDR='http://0.0.0.0:8200' VAULT_TOKEN=myroot vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat
 {
@@ -72,115 +41,142 @@ Example vault secret
 }
 ```
 
-### Bundle
+### Vault Configuration
 
-*This command requires the output of the `generate-manifests` command to be run*
+If `enable-vault` flag is `true` the following keys will attempt to be read from vault:
 
-The bundle command will perform the following tasks:
+#### Redhat secrets from `redhat-vault-secret` vault location
 
-1. Run the [opm](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command on the output of `operatorhub` command to generate the operator metadata for operator hub publishing
-2. If the pull request option is set `-P`, will create a pull request at https://github.com/redhat-openshift-ecosystem/certified-operators repository using the output of both `operatorhub` command, and the `bundle` command.
+`api-key`, `project-id`, and `registry-password`
 
-#### Usage
+#### Github secrets from `github-vault-secret` vault location
 
-- Ensure that the `operatorhub` command has successfully ran
-- Run the bundle command, pointing to the output directory of the `operatorhub` command
+`github-email`, `github-fullname`, `github-token`, `github-username` 
 
-Generate operator metadata
-```shell
-./redhat bundle generate -d ./certified-operators -o "v4.6-v4.9"
-```
+#### Vault flags
 
-Create pull request
-```shell
-./redhat bundle create-pr -d ./certified-operators -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email' -t 'release-tag'
-```
+| Parameter              | Description                                                                   | Environment Variable       | Default |
+|----------------------  |-------------------------------------------------------------------------------|-------------------------   |---------|
+| `--enable-vault`       | If enabled the above variables will attempt to be read from vault.            | `OHUB_ENABLE_VAULT`        | `false` |
+| `--vault-addr`         | Vault address to read secrets from.                                           | `VAULT_ADDR`               | `""`    |
+| `--vault-token`        | Vault token to use for authentication.                                        | `VAULT_TOKEN`             | `""`    |
+| `--github-vault-secret`| Vault secret path to github secrets.                                          | `OHUB_GITHUB_VAULT_SECRET` | `""`    |
+| `--redhat-vault-secret`| Vault secret path to redhat secrets.                                          | `OHUB_REDHAT_VAULT_SECRET` | `""`    |
 
-### Operatorhub
+## Commands
 
-```shell
-Generate Operator Lifecycle Manager format files
+### Container
 
-Usage:
-  redhat operatorhub [flags]
+####  Push
 
-Examples:
-redhat operatorhub -t 1.9.2 -V 1.9.1 -s 7.16.0
+The `container push` sub-command will perform the following tasks:
+1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
+2. If image is already found, nothing is done without using the `force` flag.
+3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(tag)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(tag)`.
 
-Flags:
-  -c, --conf string             Path to config file to read CRDs, and packages (CONF) (default "./config.yaml")
-  -h, --help                    help for operatorhub
-  -V, --prev-version string     Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)
-  -s, --stack-version string    Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)
-  -T, --templates string        Path to the templates directory (TEMPLATES) (default "./templates")
-  -y, --yaml-manifest strings   Path to installation manifests (YAML_MANIFEST)
+#### Publish
 
-Global Flags:
-  -t, --tag string   tag/new version of operator (TAG)
-```
-
-Extracts CRDs and RBAC definitions from distribution YAML manifests and generates the files required to publish a new release to Operator Hub.
+The `container publish` sub-command will perform the following tasks:
+1. It will wait for the image to be found in the Red Hat certification API.
+2. It will wait for the image scan to be found successful in the Red Hat certification API.
+3. It will "publish" the container within the Red Hat certification API.
 
 #### Usage
 
-- Edit `config.yaml` and update the values to match the new release
-- Run the generator
-- Inspect the generated files to make sure that they are correct
+Usage without vault
+```shell
+./operatorhub container push -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
+./operatorhub container publish -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
+```
+
+Usage with vault
+```shell
+OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
+```
+
+#### Flags
+
+| Parameter              | Description                                                                                                                               | Environment Variable     | Default |
+|----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|---------|
+| `--api-key`            | API key to use when communicating with redhat certification API.                                                                          | `OHUB_API_KEY`           | `""`    |
+| `--registry-password`  | Registry password used to communicate with Quay.io.                                                                                       | `OHUB_REGISTRY_PASSWORD` | `""`    |
+| `--project-id`         | Red Hat project id within the Red Hat technology portal.                                                                                  | `OHUB_PROJECT_ID`        | `""`    |
+| `--tag`                | Git tag to release.                                                                                                                       | `OHUB_TAG`               | `""`    |
+| `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`  |
+
+### Generate Manifests
+
+The `generate-manifests` command wil extracts CRDs and RBAC definitions from distribution YAML manifests
+(either yaml manifests from flag, or pulled from internet) and generates the files required to publish
+a new release to OperatorHub.  These files are written within the following 3 directories:
+
+- community-operators
+- upstream-community-operators
+- certified-operators
+
+#### Usage
+
+To generate configuration for a previously released manifest version
 
 ```shell
-go run main.go operatorhub -c config.yaml -t 1.9.2
+./bin/operatorhub generate-manifests -c config.yaml -t '2.5.0'
 ```
 
 To generate configuration based on yet unreleased YAML manifests:
 
 ```shell
-go run main.go operatorhub -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml -s '7.16.0' -V '1.9.1' -t 1.9.2
+./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml -s '8.6.0' -V '2.5.0' -t '2.6.0'
 ```
 
-IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.
+*IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
 
-### All
+### Bundle
 
-```shell
-Run all redhat operations: push operator container; create operatorhub manifests; create operator bundle images and create PR to redhat certified operators repository
+*This command's sub-commands all requires the output of the `generate-manifests` command to be run*
 
-Usage:
-  redhat all [flags]
+#### Generate
 
-Flags:
-  -a, --api-key string                       api key to use when communicating with redhat catalog api (API_KEY)
-  -c, --conf string                          Path to config file to read CRDs, and packages (CONF) (default "./config.yaml")
-  -D, --dry-run                              dry-run will only process images locally, and will not make any changes within redhat connect
-  -F, --force                                force will force the attempted pushing of remote images, even when the exact version is found remotely.
-  -e, --github-email string                  if 'submit-pull-request' is enabled, github email to use to add to commit message (GITHUB_EMAIL)
-  -f, --github-fullname string               if 'submit-pull-request' is enabled, github full name to use to add to commit message (GITHUB_FULLNAME)
-  -g, --github-token string                  if 'submit-pull-request' is enabled, user's token to communicate with github.com (GITHUB_TOKEN)
-  -u, --github-username string               if 'submit-pull-request' is enabled, github username to use to fork repo, and submit PR
-  -h, --help                                 help for all
-  -K, --keep-temp-files                      keep temporary files around for investigation after script completes (KEEP_TEMP_FILES)
-  -V, --prev-version string                  Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)
-  -p, --project-id string                    short project id within the redhat technology portal (PROJECT_ID) (default "5fa1f9fc4bbec60adbc8cc94")
-  -r, --registry-password string   registry key used to communicate with redhat docker registry (REGISTRY_PASSWORD)
-  -s, --stack-version string                 Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)
-  -P, --submit-pull-request                  attempt to submit PR to https://github.com/redhat-openshift-ecosystem/certified-operators repo? (SUBMIT_PULL_REQUEST)
-  -t, --tag string                           tag/new version of operator (TAG)
-  -T, --templates string                     Path to the templates directory (TEMPLATES) (default "./templates")
-  -y, --yaml-manifest strings                Path to installation manifests (YAML_MANIFEST)
-```
+The `bundle generate` command will perform the following tasks:
+1. Run the [opm](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command on the output of `operatorhub` command to generate the operator metadata for operator hub publishing
 
-The `all` command will run all above operations in a single command, including
+#### Create-PR
 
-- `container` command to push the container image
-- `operatorhub` command to generate Operator Lifecycle Manager format files
-- `bundle` command to generate manifest bundle, and potentially create pull request
+The `bundle create-pr` command will perform the following tasks:
+1. Will create a pull request in both `redhat-openshift-ecosystem/certified-operators` and `k8s-operatorhub/community-operators` repositories using the output of both `operatorhub` command, and the `bundle generate` command.
 
 #### Usage
 
+- Ensure that the `generate-manifests` command has successfully ran
+- Run the `bundle generate` command, pointing to the output directory of the `generate-manifests` command
+
+#### Flags
+
+| Parameter              | Description                                                                                                                               | Environment Variable     | Default |
+|----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|---------|
+| `--dir`            | Directory containing the output of the `generate-manifests` command.                                                                          | `OHUB_API_KEY`           | `""`    |
+| `--tag`                | Git tag to release.                                                                                                                       | `OHUB_TAG`               | `""`    |
+| `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`  |
+
+##### Bundle Generate
+
+With and without vault
 ```shell
-./redhat all -a 'api-key-in-keybase' -r 'registry-password' \
-  -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email' \
-  -t '1.9.2' -s '7.16.0' -V '1.9.1' -y ../../config/crds.yaml -y ./../config/operator.yaml
+./operatorhub bundle generate -d . -o "v4.6"
 ```
+
+##### Bundle Create PR
+
+Without vault
+```shell
+./operatorhub bundle create-pr -d . -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email' -t '2.6.0'
+```
+
+With vault
+```shell
+OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./operatorhub bundle create-pr -d .
+```
+
+
 
 # TODO
 
@@ -195,3 +191,4 @@ The `all` command will run all above operations in a single command, including
 - [ ] document that `make generate-crds-v1` needs to be run prior to this.
 - [ ] Move loginToRegistry to preflight pkg
 - [ ] getFirstValidImage flow.... called after getImages.  Can this be optimized?
+- [ ] hide certain root flags in sub-commands?

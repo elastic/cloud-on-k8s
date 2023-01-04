@@ -55,7 +55,7 @@ func init() {
 		flags.ProjectIDFlag,
 		"p",
 		"",
-		"Shoft Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)",
+		"Red Hat project id within the Red Hat technology portal (OHUB_PROJECT_ID)",
 	)
 
 	Cmd.PersistentFlags().BoolVarP(

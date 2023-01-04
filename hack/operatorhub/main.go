@@ -13,7 +13,7 @@ import (
 
 func main() {
 	if err := root.Cmd.Execute(); err != nil {
-		log.Printf("failed to run redhat command: %s", err)
+		log.Printf("failed to run command: %s", err)
 		os.Exit(1)
 	}
 }

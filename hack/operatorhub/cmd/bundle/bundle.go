@@ -54,6 +54,9 @@ certified-operators and community-operators repositories.`,
 		"directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)",
 	)
 
+	bundleCmd.Flags().MarkHidden("api-key")
+	bundleCmd.Flags().MarkHidden("project-id")
+
 	generateCmd.Flags().StringVarP(
 		&flags.SupportedOpenshiftVersions,
 		flags.SupportedOpenshiftVersionsFlag,
