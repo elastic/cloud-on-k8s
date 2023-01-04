@@ -194,8 +194,6 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 # TODO
 
 - [ ] Test
-- [ ] use consts
-- [ ] Update readme since operations changed
 - [ ] Comment all funcs
 - [ ] What about the 'v' prefix we're going to add?
 - [ ] Do all the things in 'cmd/*' package have to be exported now?

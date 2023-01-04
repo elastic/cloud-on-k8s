@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/github"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/opm"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/github"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/opm"
 )
 
 // Command will return the bundle command

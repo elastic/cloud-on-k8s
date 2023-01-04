@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
-	pkg_container "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/pkg/container"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/container"
 )
 
 // Command will return the container command
@@ -95,7 +95,7 @@ func preRunE(cmd *cobra.Command, args []string) error {
 
 // doPublish will publish an existing image within the redhat catalog.
 func doPublish(_ *cobra.Command, _ []string) error {
-	return pkg_container.PublishImage(pkg_container.PublishConfig{
+	return container.PublishImage(container.PublishConfig{
 		DryRun:              flags.DryRun,
 		ImageScanTimeout:    flags.ScanTimeout,
 		ProjectID:           flags.ProjectID,
@@ -107,7 +107,7 @@ func doPublish(_ *cobra.Command, _ []string) error {
 
 // doPush will push an image to the redhat registry for scanning.
 func doPush(_ *cobra.Command, _ []string) error {
-	return pkg_container.PushImage(pkg_container.PushConfig{
+	return container.PushImage(container.PushConfig{
 		DryRun:              flags.DryRun,
 		Force:               flags.Force,
 		ProjectID:           flags.ProjectID,
