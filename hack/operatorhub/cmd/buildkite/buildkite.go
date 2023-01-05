@@ -67,19 +67,19 @@ func preRunE(cmd *cobra.Command, args []string) error {
 	flags.EnableVault = false
 
 	if flags.Tag == "" {
-		return fmt.Errorf("%s must be set", flags.TagFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
 	}
 
 	if flags.PreviousVersion == "" {
-		return fmt.Errorf("%s must be set", flags.PreviousVersion)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.PreviousVersion)
 	}
 
 	if flags.StackVersion == "" {
-		return fmt.Errorf("%s must be set", flags.StackVersion)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersion)
 	}
 
 	if flags.BuildkiteToken == "" {
-		return fmt.Errorf("%s must be set", flags.BuildkiteToken)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteToken)
 	}
 
 	return nil

@@ -13,10 +13,6 @@ import (
 	hub "github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/operatorhub"
 )
 
-const (
-	requiredErrFmt = "%s is required"
-)
-
 // Command will return the generate-manifests command
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
@@ -76,22 +72,22 @@ func Command() *cobra.Command {
 // preRunE are the pre-run operations for the generate-manifests command
 func preRunE(cmd *cobra.Command, args []string) error {
 	if flags.Conf == "" {
-		return fmt.Errorf(requiredErrFmt, flags.ConfFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.ConfFlag)
 	}
 
 	if flags.Tag == "" {
-		return fmt.Errorf(requiredErrFmt, flags.TagFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
 	}
 
 	// If no yaml manifests are given, then the stack, and previous version
 	// flags are required to generate manifests.
 	if len(flags.YamlManifest) == 0 {
 		if flags.PreviousVersion == "" {
-			return fmt.Errorf(requiredErrFmt, flags.PrevVersionFlag)
+			return fmt.Errorf(flags.RequiredErrFmt, flags.PrevVersionFlag)
 		}
 
 		if flags.StackVersion == "" {
-			return fmt.Errorf(requiredErrFmt, flags.StackVersionFlag)
+			return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersionFlag)
 		}
 	}
 

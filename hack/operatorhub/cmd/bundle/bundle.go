@@ -17,10 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/opm"
 )
 
-const (
-	requiredErrFmt = "%s is required"
-)
-
 // Command will return the bundle command
 func Command() *cobra.Command {
 	bundleCmd := &cobra.Command{
@@ -131,16 +127,16 @@ func createPRPreRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	if flags.GithubToken == "" {
-		return fmt.Errorf(requiredErrFmt, flags.GithubTokenFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GithubTokenFlag)
 	}
 	if flags.GithubUsername == "" {
-		return fmt.Errorf(requiredErrFmt, flags.GithubUsernameFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GithubUsernameFlag)
 	}
 	if flags.GithubFullname == "" {
-		return fmt.Errorf(requiredErrFmt, flags.GithubFullnameFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GithubFullnameFlag)
 	}
 	if flags.GithubEmail == "" {
-		return fmt.Errorf(requiredErrFmt, flags.GithubEmailFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GithubEmailFlag)
 	}
 
 	return nil

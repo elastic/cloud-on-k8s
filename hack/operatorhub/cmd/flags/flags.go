@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// common missing flag error
+	RequiredErrFmt = "%s is required"
+
 	// root flags
 	TagFlag               = "tag"
 	DryRunFlag            = "dry-run"
