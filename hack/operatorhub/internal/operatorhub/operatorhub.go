@@ -229,12 +229,12 @@ func (c *config) hasDigestPinning() bool {
 func loadConfigFile(c GenerateConfig) (*config, error) {
 	confBytes, err := ioutil.ReadFile(c.ConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", c.ConfigPath, err)
+		return nil, fmt.Errorf("while opening file %s: %w", c.ConfigPath, err)
 	}
 
 	var conf config
 	if err := gyaml.Unmarshal(confBytes, &conf); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config from %s: %w", c.ConfigPath, err)
+		return nil, fmt.Errorf("while unmarshaling config from %s: %w", c.ConfigPath, err)
 	}
 
 	conf.NewVersion = c.NewVersion
@@ -261,7 +261,7 @@ func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, 
 	for _, p := range manifestPaths {
 		r, err := os.Open(p)
 		if err != nil {
-			return nil, closer, fmt.Errorf("failed to open %s: %w", manifestPaths, err)
+			return nil, closer, fmt.Errorf("while opening %s: %w", manifestPaths, err)
 		}
 		rs = append(rs, r)
 	}
@@ -294,12 +294,12 @@ func makeRequest(url string) (io.Reader, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request to %s: %w", url, err)
+		return nil, fmt.Errorf("while creating request to %s: %w", url, err)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to GET %s: %w", url, err)
+		return nil, fmt.Errorf("while executing HTTP GET %s: %w", url, err)
 	}
 
 	defer func() {
@@ -358,15 +358,15 @@ type yamlExtracts struct {
 
 func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to register apiextensions/v1beta1: %w", err)
+		return nil, fmt.Errorf("while registering apiextensions/v1beta1: %w", err)
 	}
 
 	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to register apiextensions/v1: %w", err)
+		return nil, fmt.Errorf("while registering apiextensions/v1: %w", err)
 	}
 
 	if err := admissionv1.AddToScheme(scheme.Scheme); err != nil {
-		return nil, fmt.Errorf("failed to register admissionregistration/v1: %w", err)
+		return nil, fmt.Errorf("while registering admissionregistration/v1: %w", err)
 	}
 
 	decoder := scheme.Codecs.UniversalDeserializer()
@@ -383,14 +383,14 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 				return parts, nil
 			}
 
-			return nil, fmt.Errorf("failed to read CRD YAML: %w", err)
+			return nil, fmt.Errorf("while reading CRD YAML: %w", err)
 		}
 
 		yamlBytes = normalizeTrailingNewlines(yamlBytes)
 
 		runtimeObj, _, err := decoder.Decode(yamlBytes, nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode CRD YAML: %w", err)
+			return nil, fmt.Errorf("while decoding CRD YAML: %w", err)
 		}
 
 		switch obj := runtimeObj.(type) {
@@ -478,7 +478,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, i
 
 	webhooks, err := gyaml.Marshal(webhookDefinitionList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal operator webhook rules: %w", err)
+		return nil, fmt.Errorf("while marshaling operator webhook rules: %w", err)
 	}
 
 	versionParts := strings.Split(conf.NewVersion, ".")
@@ -488,7 +488,7 @@ func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, i
 
 	rbac, err := gyaml.Marshal(extracts.operatorRBAC)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal operator RBAC rules: %w", err)
+		return nil, fmt.Errorf("while marshaling operator RBAC rules: %w", err)
 	}
 
 	var additionalArgs []string
@@ -553,12 +553,12 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 	} else {
 		err := os.RemoveAll(versionDir)
 		if err != nil {
-			return fmt.Errorf("failed to remove existing directory: %w", err)
+			return fmt.Errorf("while removing existing directory: %w", err)
 		}
 	}
 
 	if err := os.MkdirAll(versionDir, 0o766); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", versionDir, err)
+		return fmt.Errorf("while creating directory %s: %w", versionDir, err)
 	}
 
 	if err := renderCSVFile(params, templatesDir, versionDir); err != nil {
@@ -593,12 +593,12 @@ func renderPackageFile(params *RenderParams, templatesDir, outDir string) error 
 func renderTemplate(params *RenderParams, templatePath, outPath string) error {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
-		return fmt.Errorf("failed to parse template at %s: %w", templatePath, err)
+		return fmt.Errorf("while parsing template at %s: %w", templatePath, err)
 	}
 
 	outFile, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		return fmt.Errorf("failed to open file for writing [%s]: %w", outPath, err)
+		return fmt.Errorf("while opening file for writing [%s]: %w", outPath, err)
 	}
 
 	defer outFile.Close()
@@ -613,11 +613,11 @@ func renderCRDs(params *RenderParams, outDir string) error {
 
 		crdFile, err := os.Create(crdPath)
 		if err != nil {
-			return fmt.Errorf("failed to create %s: %w", crdPath, err)
+			return fmt.Errorf("while creating %s: %w", crdPath, err)
 		}
 
 		if err := writeCRD(crdFile, crd.Def); err != nil {
-			return fmt.Errorf("failed to write to %s: %w", crdPath, err)
+			return fmt.Errorf("while writing to %s: %w", crdPath, err)
 		}
 	}
 
