@@ -104,7 +104,7 @@ func PublishImage(c PublishConfig) error {
 	return publishImageInProject(c.HTTPClient, c.ImageScanTimeout, c.RedhatCatalogAPIKey, c.ProjectID, c.Tag, c.DryRun)
 }
 
-// ImageExistsInProject will determine whether an image with the given tag exists in the catalog api.
+// ImageExistsInProject will determine whether an image with the given tag exists in the certification api.
 func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string) (bool, error) {
 	images, err := getImages(httpClient, apiKey, projectID, tag)
 	if err != nil && errors.Is(err, errImageNotFound) {
@@ -202,8 +202,8 @@ func addHeaders(req *http.Request, apiKey string) {
 	req.Header.Add(httpXAPIKeyHeader, apiKey)
 }
 
-// getFirstUndeletedImage return the first undeleted image returned from the redhat catalog api.
-// Images that are deleted from the Red Hat catalog API are still returned, but have no architecture
+// getFirstUndeletedImage return the first undeleted image returned from the redhat certification api.
+// Images that are deleted from the Red Hat certification API are still returned, but have no architecture
 // defined in the output, so we use that to determine if an image has been deleted.
 func getFirstUndeletedImage(images []Image) *Image {
 	for _, image := range images {

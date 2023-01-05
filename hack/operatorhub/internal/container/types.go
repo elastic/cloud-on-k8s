@@ -5,7 +5,7 @@
 package container
 
 // GetImagesResponse is a response to a request to return a set of images
-// from the Redhat Ctalog API.
+// from the Redhat certification API.
 type GetImagesResponse struct {
 	Images []Image `json:"data"`
 }
@@ -20,14 +20,14 @@ const (
 	scanStatusFailed     scanStatus = "failed"
 )
 
-// Image represents a Redhat Catalog API response
+// Image represents a Redhat certification API response
 // representing a container image.
 type Image struct {
 	// ID is the id of the image.
 	ID string `json:"_id"`
 	// Architecture is the architecture (amd64, arm64, etc).
 	Architecture *string `json:"architecture"`
-	// Repositories
+	// Repositories is a slice of Repository structs
 	Repositories []Repository `json:"repositories"`
 	// ScanStatus is the status indicating whether the image has been scanned.
 	ScanStatus scanStatus `json:"scan_status"`

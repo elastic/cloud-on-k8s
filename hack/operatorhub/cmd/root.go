@@ -48,7 +48,7 @@ func init() {
 		flags.ApiKeyFlags,
 		"a",
 		"",
-		"API key to use when communicating with Red Hat catalog API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)",
+		"API key to use when communicating with Red Hat certification API. Used in both the bundle, and generate-manifests sub-commands. (OHUB_API_KEY)",
 	)
 
 	Cmd.PersistentFlags().StringVarP(
