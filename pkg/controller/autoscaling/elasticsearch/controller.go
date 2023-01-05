@@ -26,7 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -34,9 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
@@ -89,7 +86,7 @@ func NewReconcilers(mgr manager.Manager, params operator.Parameters) (*Reconcile
 	reconcileAutoscaling := baseReconcileAutoscaling{
 		Client:           c,
 		Parameters:       params,
-		esClientProvider: newElasticsearchClient,
+		esClientProvider: commonesclient.NewClient,
 		recorder:         mgr.GetEventRecorderFor(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
@@ -261,7 +258,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.Int64Ptr(esa.Generation)
+	newStatus.ObservedGeneration = ptr.Int64(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
 		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
@@ -303,7 +300,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.Int64Ptr(esa.Generation)
+	newStatus.ObservedGeneration = ptr.Int64(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
 		v1alpha1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
@@ -369,62 +366,4 @@ func defaultResult(autoscalingSpecification v1alpha1.AutoscalingResource) *recon
 			Requeue:      true,
 			RequeueAfter: requeueAfter,
 		})
-}
-
-func newElasticsearchClient(
-	ctx context.Context,
-	c k8s.Client,
-	dialer net.Dialer,
-	es esv1.Elasticsearch,
-) (esclient.Client, error) {
-	defer tracing.Span(&ctx)()
-	url := services.ExternalServiceURL(es)
-	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-	// Get user Secret
-	var controllerUserSecret corev1.Secret
-	key := types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      esv1.InternalUsersSecret(es.Name),
-	}
-	if err := c.Get(ctx, key, &controllerUserSecret); err != nil {
-		return nil, err
-	}
-	password, ok := controllerUserSecret.Data[user.ControllerUserName]
-	if !ok {
-		return nil, fmt.Errorf("controller user %s not found in Secret %s/%s", user.ControllerUserName, key.Namespace, key.Name)
-	}
-
-	// Get public certs
-	var caSecret corev1.Secret
-	key = types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-	}
-	if err := c.Get(ctx, key, &caSecret); err != nil {
-		return nil, err
-	}
-	trustedCerts, ok := caSecret.Data[certificates.CertFileName]
-	if !ok {
-		return nil, fmt.Errorf("%s not found in Secret %s/%s", certificates.CertFileName, key.Namespace, key.Name)
-	}
-	caCerts, err := certificates.ParsePEMCerts(trustedCerts)
-	if err != nil {
-		return nil, err
-	}
-	return esclient.NewElasticsearchClient(
-		dialer,
-		k8s.ExtractNamespacedName(&es),
-		url,
-		esclient.BasicAuth{
-			Name:     user.ControllerUserName,
-			Password: string(password),
-		},
-		v,
-		caCerts,
-		esclient.Timeout(ctx, es),
-		dev.Enabled,
-	), nil
 }

@@ -1,6 +1,6 @@
-newVersion: 2.6.0-SNAPSHOT
-prevVersion: 2.5.0
-stackVersion: 8.6.0-SNAPSHOT
+newVersion: 2.7.0-SNAPSHOT
+prevVersion: 2.6.0
+stackVersion: 8.7.0-SNAPSHOT
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -26,6 +26,9 @@ crds:
   - name: elasticmapsservers.maps.k8s.elastic.co
     displayName: Elastic Maps Server
     description: Elastic Maps Server instance
+  - name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
+    displayName: Elastic Stack Config Policy
+    description: Elastic Stack Config Policy
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck

@@ -21,10 +21,31 @@ func NewFakeClient(initObjs ...runtime.Object) Client {
 
 var (
 	_ Client              = failingClient{}
-	_ client.StatusWriter = failingStatusWriter{}
+	_ client.StatusWriter = failingSubClient{}
 )
 
+type failingSubClient struct {
+	err error
+}
+
+func (fc failingSubClient) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return fc.err
+}
+
+func (fc failingSubClient) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
+	return fc.err
+}
+
+func (fc failingSubClient) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return fc.err
+}
+
+func (fc failingSubClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	return fc.err
+}
+
 type failingClient struct {
+	failingSubClient
 	err error
 }
 
@@ -62,7 +83,11 @@ func (fc failingClient) DeleteAllOf(ctx context.Context, obj client.Object, opts
 }
 
 func (fc failingClient) Status() client.StatusWriter {
-	return failingStatusWriter{err: fc.err} //nolint:gosimple
+	return fc.failingSubClient
+}
+
+func (fc failingClient) SubResource(subResource string) client.SubResourceClient {
+	return fc.failingSubClient
 }
 
 func (fc failingClient) Scheme() *runtime.Scheme {
@@ -71,16 +96,4 @@ func (fc failingClient) Scheme() *runtime.Scheme {
 
 func (fc failingClient) RESTMapper() meta.RESTMapper {
 	return nil
-}
-
-type failingStatusWriter struct {
-	err error
-}
-
-func (fsw failingStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return fsw.err
-}
-
-func (fsw failingStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return fsw.err
 }

@@ -1,0 +1,159 @@
+name: metricbeat
+spec:
+  type: metricbeat
+  version: 8.5.0
+  elasticsearchRef:
+    name: eck-elasticsearch
+  kibanaRef:
+    name: eck-kibana
+  config:
+    metricbeat:
+      autodiscover:
+        providers:
+        - hints:
+            default_config: {}
+            enabled: "true"
+          node: ${NODE_NAME}
+          type: kubernetes
+      modules:
+      - module: system
+        period: 10s
+        metricsets:
+        - cpu
+        - load
+        - memory
+        - network
+        - process
+        - process_summary
+        process:
+          include_top_n:
+            by_cpu: 5
+            by_memory: 5
+        processes:
+        - .*
+      - module: system
+        period: 1m
+        metricsets:
+        - filesystem
+        - fsstat
+        processors:
+        - drop_event:
+            when:
+              regexp:
+                system:
+                  filesystem:
+                    mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib)($|/)
+      - module: kubernetes
+        period: 10s
+        node: ${NODE_NAME}
+        hosts:
+        - https://${NODE_NAME}:10250
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        ssl:
+          verification_mode: none
+        metricsets:
+        - node
+        - system
+        - pod
+        - container
+        - volume
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        containers:
+        - args:
+          - -e
+          - -c
+          - /etc/beat.yml
+          - -system.hostfs=/hostfs
+          name: metricbeat
+          volumeMounts:
+          - mountPath: /hostfs/sys/fs/cgroup
+            name: cgroup
+          - mountPath: /var/run/docker.sock
+            name: dockersock
+          - mountPath: /hostfs/proc
+            name: proc
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        securityContext:
+          runAsUser: 0
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /sys/fs/cgroup
+          name: cgroup
+        - hostPath:
+            path: /var/run/docker.sock
+          name: dockersock
+        - hostPath:
+            path: /proc
+          name: proc
+
+clusterRole:
+  # permissions needed for metricbeat
+  # source: https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-kubernetes.html
+  name: metricbeat
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - nodes
+    - namespaces
+    - events
+    - pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - "extensions"
+    resources:
+    - replicasets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - statefulsets
+    - deployments
+    - replicasets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/stats
+    verbs:
+    - get
+  - nonResourceURLs:
+    - /metrics
+    verbs:
+    - get
+
+serviceAccount:
+  name: metricbeat
+
+clusterRoleBinding:
+  name: metricbeat
+  subjects:
+  - kind: ServiceAccount
+    name: metricbeat
+  roleRef:
+    kind: ClusterRole
+    name: metricbeat
+    apiGroup: rbac.authorization.k8s.io

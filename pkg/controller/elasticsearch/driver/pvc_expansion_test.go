@@ -35,14 +35,14 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.StringPtr(sampleStorageClass.Name),
+			StorageClassName: pointer.String(sampleStorageClass.Name),
 			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: pointer.StringPtr(sampleStorageClass.Name),
+			StorageClassName: pointer.String(sampleStorageClass.Name),
 			Resources: corev1.ResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
@@ -51,7 +51,7 @@ var (
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = pointer.BoolPtr(true)
+	sc.AllowVolumeExpansion = pointer.Bool(true)
 	return &sc
 }
 
@@ -72,7 +72,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             pointer.Int32Ptr(3),
+			Replicas:             pointer.Int32(3),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}

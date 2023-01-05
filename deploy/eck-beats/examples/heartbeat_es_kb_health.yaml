@@ -1,0 +1,24 @@
+name: heartbeat
+version: 8.5.0
+spec:
+  type: heartbeat
+  elasticsearchRef:
+    name: eck-elasticsearch
+  config:
+    heartbeat.monitors:
+    - type: tcp
+      schedule: '@every 5s'
+      # This should directly match the name of the Elasticsearch instance
+      # with "-es-http" appended to the name.
+      hosts: ["elasticsearch-es-http.default.svc:9200"]
+    - type: tcp
+      schedule: '@every 5s'
+      # This should directly match the names of the Kibana instance
+      # with "-kb-http" appended to the name.
+      hosts: ["eck-kibana-kb-http.default.svc:5601"]
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0

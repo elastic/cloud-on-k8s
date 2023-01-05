@@ -284,6 +284,19 @@ rules:
       - patch
       - delete
   - apiGroups:
+      - stackconfigpolicy.k8s.elastic.co
+    resources:
+      - stackconfigpolicies
+      - stackconfigpolicies/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
       - storage.k8s.io
     resources:
       - storageclasses

@@ -1,0 +1,21 @@
+suite: test beats
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render filebeat properly, when type is set
+    release:
+      name: quickstart
+    set:
+      spec.type: "filebeat"
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-beats
+      - equal:
+          path: spec.version
+          value: 8.5.0
+      - equal:
+          path: spec.type
+          value: filebeat

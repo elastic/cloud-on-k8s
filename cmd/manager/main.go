@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,6 +51,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1beta1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
@@ -79,6 +79,7 @@ import (
 	licensetrial "github.com/elastic/cloud-on-k8s/v2/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/remoteca"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/dev/portforward"
@@ -845,6 +846,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "LicenseTrial", registerFunc: licensetrial.Add},
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
+		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 	}
 
 	for _, c := range controllers {
@@ -923,13 +925,14 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 	defer span.End()
 
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(ctx, k8sClient, map[string]client.Object{
-		esv1.Kind:          &esv1.Elasticsearch{},
-		apmv1.Kind:         &apmv1.ApmServer{},
-		kbv1.Kind:          &kbv1.Kibana{},
-		entv1.Kind:         &entv1.EnterpriseSearch{},
-		beatv1beta1.Kind:   &beatv1beta1.Beat{},
-		agentv1alpha1.Kind: &agentv1alpha1.Agent{},
-		emsv1alpha1.Kind:   &emsv1alpha1.ElasticMapsServer{},
+		esv1.Kind:           &esv1.Elasticsearch{},
+		apmv1.Kind:          &apmv1.ApmServer{},
+		kbv1.Kind:           &kbv1.Kibana{},
+		entv1.Kind:          &entv1.EnterpriseSearch{},
+		beatv1beta1.Kind:    &beatv1beta1.Beat{},
+		agentv1alpha1.Kind:  &agentv1alpha1.Agent{},
+		emsv1alpha1.Kind:    &emsv1alpha1.ElasticMapsServer{},
+		policyv1alpha1.Kind: &policyv1alpha1.StackConfigPolicy{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return

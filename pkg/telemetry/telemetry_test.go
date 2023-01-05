@@ -25,6 +25,7 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -320,6 +321,48 @@ func TestNewReporter(t *testing.T) {
 			},
 		},
 		licenceConfigMap,
+		&policyv1alpha1.StackConfigPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "scp1",
+				Namespace: "ns1",
+			},
+			Spec: policyv1alpha1.StackConfigPolicySpec{
+				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+					ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+						"indices.recovery.max_bytes_per_sec": "100mb",
+					}},
+					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+						"repo1": "settings...",
+					}},
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+						"slm1": "settings...",
+						"slm2": "settings...",
+					}},
+				},
+			},
+			Status: policyv1alpha1.StackConfigPolicyStatus{
+				Resources: 10,
+			},
+		},
+		&policyv1alpha1.StackConfigPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "scp2",
+				Namespace: "ns2",
+			},
+			Spec: policyv1alpha1.StackConfigPolicySpec{
+				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+						"repo1": "settings...",
+					}},
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+						"slm1": "settings...",
+					}},
+				},
+			},
+			Status: policyv1alpha1.StackConfigPolicyStatus{
+				Resources: 5,
+			},
+		},
 	)
 
 	// We only want the reporter to handle the managed namespaces, in this test only ns1 and ns2 are managed.
@@ -377,6 +420,18 @@ func TestNewReporter(t *testing.T) {
     maps:
       pod_count: 1
       resource_count: 1
+    stackconfigpolicies:
+      configured_resources_count: 15
+      resource_count: 2
+      settings:
+        cluster_settings_count: 1
+        component_templates_count: 0
+        composable_index_templates_count: 0
+        index_lifecycle_policies_count: 0
+        ingest_pipelines_count: 0
+        role_mappings_count: 0
+        snapshot_lifecycle_policies_count: 3
+        snapshot_repositories_count: 2
 `),
 	}
 
@@ -407,7 +462,7 @@ func assertSameSecretContent(t *testing.T, expectedData, actualData map[string][
 			Context:  3,
 		})
 		require.NoError(t, err)
-		require.Equal(t, expected, actual, "unexpected content for %s, diff:\n%s", k, diff)
+		require.Equal(t, string(expected), string(actual), "unexpected content for %s, diff:\n%s", k, diff)
 	}
 }
 

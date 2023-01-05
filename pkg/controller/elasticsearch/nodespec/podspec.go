@@ -57,8 +57,13 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 ) (corev1.PodTemplateSpec, error) {
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources, downwardAPIVolume)
+	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume)
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {
@@ -79,10 +84,6 @@ func BuildPodTemplateSpec(
 
 	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName)
 
-	ver, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
 	if ver.GTE(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			FSGroup: pointer.Int64(defaultFsGroup),

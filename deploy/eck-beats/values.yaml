@@ -1,0 +1,111 @@
+---
+# Default values for eck-beats.
+# This is a YAML-formatted file.
+
+# Overridable names of the Beats resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-beats'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Beats resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Elastic Beats.
+#
+version: 8.5.0
+
+# Labels that will be applied to Elastic Beats.
+#
+labels: {}
+
+# Annotations that will be applied to Elastic Beats.
+#
+annotations: {}
+
+spec:
+  # Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+  #
+  # Note: This is required to be set, or the release install will fail.
+  #
+  type: ""
+
+  # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
+  #
+  # Reference to ECK-managed Kibana instance.
+  #
+  # kibanaRef:
+  #   name: quickstart
+    # Optional namespace reference to Kibana instance.
+    # If not specified, then the namespace of the Beats instance
+    # will be assumed.
+    #
+    # namespace: default
+
+  # Reference to ECK-managed Elasticsearch instance.
+  #
+  elasticsearchRef:
+    name: elasticsearch
+    # Optional namespace reference to Elasticsearch instance.
+    # If not specified, then the namespace of the Beats instance
+    # will be assumed.
+    #
+    # namespace: default
+
+  # Daemonset, or Deployment specification for the type of Beat specified.
+  # At least one is required of [daemonSet, deployment].
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
+  #
+  daemonSet: {}
+  # deployment: {}
+
+  # Configuration of Beat, which is dependent on the `type` of Beat specified.
+  # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat
+  #
+  config: {}
+
+# ServiceAccount to be used by Elastic Beats. Some Beats features (such as autodiscover or Kubernetes module metricsets)
+# require that Beat Pods interact with Kubernetes APIs. This functionality requires specific permissions
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+serviceAccount: {}
+#  name: elastic-beat-filebeat-quickstart
+#  namespace: optional-namespace
+
+# ClusterRoleBinding to be used by Elastic Beats. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+clusterRoleBinding: {}
+#  name: elastic-beat-autodiscover-binding
+#  subjects:
+#  - kind: ServiceAccount
+#    name: elastic-beat-filebeat-quickstart
+#    namespace: default
+#  roleRef:
+#    kind: ClusterRole
+#    name: elastic-beat-autodiscover
+#    apiGroup: rbac.authorization.k8s.io
+
+# ClusterRole to be used by Elastic Beats. Similar to ServiceAccount, this is required in some scenarios.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-role-based-access-control-for-beats
+#
+clusterRole: {}
+#  name: elastic-beat-autodiscover
+#  rules:
+#  - apiGroups: [""]
+#    resources:
+#    - events
+#    - pods
+#    - namespaces
+#    - nodes
+#    verbs:
+#    - get
+#    - watch
+#    - list

@@ -10,7 +10,9 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
@@ -19,6 +21,7 @@ import (
 
 func buildVolumes(
 	esName string,
+	version version.Version,
 	nodeSpec esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
@@ -52,7 +55,11 @@ func buildVolumes(
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
 		0755)
-
+	fileSettingsVolume := volume.NewSecretVolumeWithMountPath(
+		esv1.FileSettingsSecretName(esName),
+		esvolume.FileSettingsVolumeName,
+		esvolume.FileSettingsVolumeMountPath,
+	)
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))
 	for _, claimTemplate := range nodeSpec.VolumeClaimTemplates {
@@ -100,6 +107,12 @@ func buildVolumes(
 		configVolume.VolumeMount(),
 		downwardAPIVolume.VolumeMount(),
 	)
+
+	// version gate for the file-based settings volume and volumeMounts
+	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		volumes = append(volumes, fileSettingsVolume.Volume())
+		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
+	}
 
 	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
 

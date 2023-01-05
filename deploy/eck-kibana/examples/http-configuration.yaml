@@ -1,7 +1,7 @@
 ---
 # Version of Kibana.
 #
-version: 8.2.3
+version: 8.5.0
 
 # Labels that will be applied to Kibana.
 #
@@ -21,7 +21,7 @@ spec:
   # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
   #
   elasticsearchRef:
-    name: quickstart-eck-elasticsearch
+    name: eck-elasticsearch
     # namespace: default
   http:
     service:

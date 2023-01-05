@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -174,12 +175,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// start the ES observer
-	min, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
+	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}
-	if min == nil {
-		min = &d.Version
+	if minVersion == nil {
+		minVersion = &d.Version
 	}
 
 	isServiceReady, err := services.IsServiceReady(d.Client, *internalService)
@@ -194,7 +195,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			ctx,
 			resourcesState,
 			controllerUser,
-			*min,
+			*minVersion,
 			trustedHTTPCertificates,
 		),
 		isServiceReady,
@@ -235,7 +236,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		ctx,
 		resourcesState,
 		controllerUser,
-		*min,
+		*minVersion,
 		trustedHTTPCertificates,
 	)
 	defer esClient.Close()
@@ -306,6 +307,14 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Compute seed hosts based on current masters with a podIP
 	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
+	}
+
+	// reconcile an empty File based settings Secret if it doesn't exist
+	if minVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
+		if err != nil {
+			return results.WithError(err)
+		}
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user

@@ -126,7 +126,7 @@ output:
 		Volumes: []corev1.Volume{
 			{
 				Name:         "beat-metricbeat-config",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.BoolPtr(false)}},
+				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
 			},
 			{
 				Name:         "shared-data",

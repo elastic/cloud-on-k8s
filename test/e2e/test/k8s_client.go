@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -206,7 +205,7 @@ func (k *K8sClient) GetElasticPassword(nsn types.NamespacedName) (string, error)
 	return string(password), nil
 }
 
-func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
+func (k *K8sClient) GetHTTPCertsBytes(namer name.Namer, ownerNamespace, ownerName string) ([]byte, error) {
 	var secret corev1.Secret
 	secretNSN := certificates.PublicCertsSecretRef(
 		namer,
@@ -226,6 +225,14 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 	certData, exists := secret.Data[certificates.CertFileName]
 	if !exists {
 		return nil, fmt.Errorf("no certificates found in secret %s", secretNSN)
+	}
+	return certData, nil
+}
+
+func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
+	certData, err := k.GetHTTPCertsBytes(namer, ownerNamespace, ownerName)
+	if err != nil {
+		return nil, err
 	}
 	return certificates.ParsePEMCerts(certData)
 }
@@ -317,7 +324,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 
 	// execute
 	var stdout, stderr bytes.Buffer
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdin:  nil,
 		Stdout: &stdout,
 		Stderr: &stderr,

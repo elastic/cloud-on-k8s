@@ -168,9 +168,13 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 	httpClient := r.httpClient
 	if httpClient == nil {
 		// build an HTTP client to reach the Enterprise Search service
-		tlsCerts, err := r.retrieveTLSCerts()
-		if err != nil {
-			return err
+		var tlsCerts []*x509.Certificate
+		if r.ent.Spec.HTTP.TLS.Enabled() {
+			var err error
+			tlsCerts, err = r.retrieveTLSCerts()
+			if err != nil {
+				return err
+			}
 		}
 		httpClient = apmhttp.WrapClient(
 			commonhttp.Client(r.dialer, tlsCerts, 0),

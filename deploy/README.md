@@ -46,6 +46,37 @@ To see all resources installed by the helm chart
 kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack
 ```
 
+## ECK Helm Chart Development
+
+### ECK Helm Chart test suite
+
+[Helm UnitTest Plugin](https://github.com/quintush/helm-unittest) is used to ensure Helm Charts render properly.
+
+#### Installation
+
+```
+helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
+```
+
+#### Running Test Suite
+
+The test suite can be run from the Makefile in the root of the project with the following command:
+
+```
+make helm-test
+```
+
+*Note* that the Makefile target runs the script in `{root}/hack/helm/test.sh`
+
+#### Manually invoking the Helm Unit Tests for a particular Chart
+
+The Helm unit tests can be manually invoked for any of the charts with the following command:
+
+```
+cd deploy/eck-stack
+helm unittest -3 -f 'templates/tests/*.yaml' .
+``````
+
 ## Licensing
 
 The ECK Helm Charts are licensed under the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) like the operator, but require different subscription levels.
