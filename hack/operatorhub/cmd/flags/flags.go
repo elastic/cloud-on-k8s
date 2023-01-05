@@ -21,13 +21,11 @@ const (
 	// bundle command flags
 	DirFlag                        = "dir"
 	SupportedOpenshiftVersionsFlag = "supported-openshift-versions"
-	SubmitPullRequestFlag          = "submit-pull-request"
 	GithubTokenFlag                = "github-token"
 	GithubUsernameFlag             = "github-username"
 	GithubFullnameFlag             = "github-fullname"
 	GithubEmailFlag                = "github-email"
 	DeleteTempDirectoryFlag        = "delete-temp-directory"
-	ErrRequiredIfEnabled           = "%s is required if %s is enabled"
 
 	// container command flags
 	ApiKeyFlags          = "api-key"
@@ -52,7 +50,6 @@ var (
 	// bundle command variables
 	Dir                        string
 	SupportedOpenshiftVersions string
-	SubmitPullRequest          bool
 	GithubToken                string
 	GithubUsername             string
 	GithubFullname             string

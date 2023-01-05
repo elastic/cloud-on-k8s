@@ -17,6 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/opm"
 )
 
+const (
+	requiredErrFmt = "%s is required"
+)
+
 // Command will return the bundle command
 func Command() *cobra.Command {
 	bundleCmd := &cobra.Command{
@@ -126,19 +130,17 @@ func createPRPreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("directory containing output from operator hub release generator is required (%s)", flags.DirFlag)
 	}
 
-	if flags.SubmitPullRequest {
-		if flags.GithubToken == "" {
-			return fmt.Errorf(flags.ErrRequiredIfEnabled, flags.GithubTokenFlag, flags.SubmitPullRequestFlag)
-		}
-		if flags.GithubUsername == "" {
-			return fmt.Errorf(flags.ErrRequiredIfEnabled, flags.GithubUsernameFlag, flags.SubmitPullRequestFlag)
-		}
-		if flags.GithubFullname == "" {
-			return fmt.Errorf(flags.ErrRequiredIfEnabled, flags.GithubFullnameFlag, flags.SubmitPullRequestFlag)
-		}
-		if flags.GithubEmail == "" {
-			return fmt.Errorf(flags.ErrRequiredIfEnabled, flags.GithubEmailFlag, flags.SubmitPullRequestFlag)
-		}
+	if flags.GithubToken == "" {
+		return fmt.Errorf(requiredErrFmt, flags.GithubTokenFlag)
+	}
+	if flags.GithubUsername == "" {
+		return fmt.Errorf(requiredErrFmt, flags.GithubUsernameFlag)
+	}
+	if flags.GithubFullname == "" {
+		return fmt.Errorf(requiredErrFmt, flags.GithubFullnameFlag)
+	}
+	if flags.GithubEmail == "" {
+		return fmt.Errorf(requiredErrFmt, flags.GithubEmailFlag)
 	}
 
 	return nil
@@ -147,25 +149,6 @@ func createPRPreRunE(cmd *cobra.Command, args []string) error {
 // doGenerate will generate the operator bundle metadata
 func doGenerate(_ *cobra.Command, _ []string) error {
 	dir := filepath.Join(flags.Dir, "certified-operators", flags.Tag)
-	// copy files from ./certified-operators/${tag}/manifests/*.yaml to ./certified-operators/${tag}
-	// as the opm tool requires this format for some reason.
-	// TODO: I think this only needs to happen when you don't have a clean directory...
-	// TODO: TEST
-	// matches, err := filepath.Glob(filepath.Join(dir, "manifests", "*.yaml"))
-	// if err != nil {
-	// 	return fmt.Errorf("while listing *.yaml files in %s: %w", dir, err)
-	// }
-	// for _, file := range matches {
-	// 	b, err := ioutil.ReadFile(file)
-	// 	if err != nil {
-	// 		return fmt.Errorf("while reading file (%s): %w", file, err)
-	// 	}
-	// 	filename := filepath.Base(file)
-	// 	err = ioutil.WriteFile(filepath.Join(dir, filename), b, 0600)
-	// 	if err != nil {
-	// 		return fmt.Errorf("while writing file (%s): %w", filepath.Join(dir, filename), err)
-	// 	}
-	// }
 	err := opm.GenerateBundle(opm.GenerateConfig{
 		LocalDirectory:  dir,
 		OutputDirectory: dir,
