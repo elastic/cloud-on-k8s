@@ -148,9 +148,7 @@ steps:
         depends_on:
           - "redhat-preflight"
         commands:
-           # how is --tag set?
            - ./redhat container publish --dry-run=false
-           # yaml manifests can NOT be env vars
            - ./redhat generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
            - ./redhat bundle generate --dir="."
            - ./redhat bundle create-pr --dir="." --dry-run=false
