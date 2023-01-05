@@ -176,7 +176,6 @@ func doGenerate(_ *cobra.Command, _ []string) error {
 // 9. Push the remote to the fork
 // 10. Potentially create a draft pull request in the remote repository
 func doCreatePR(_ *cobra.Command, _ []string) error {
-	// dir := filepath.Join(flags.Dir, flags.Tag)
 	client := github.New(github.Config{
 		DryRun:           flags.DryRun,
 		GitHubEmail:      flags.GithubEmail,
