@@ -206,3 +206,4 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 
 - [ ] Test
 - [ ] What about the 'v' prefix we're going to add?
+- [ ] Buildkite command

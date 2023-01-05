@@ -69,7 +69,7 @@ func init() {
 	Cmd.PersistentFlags().BoolVar(
 		&flags.EnableVault,
 		flags.EnableVaultFlag,
-		false,
+		true,
 		"Enable vault functionality to try and automatically read from given vault keys (uses VAULT_* environment variables) (OHUB_ENABLE_VAULT)",
 	)
 
@@ -90,7 +90,7 @@ func init() {
 	Cmd.PersistentFlags().StringVar(
 		&flags.RedhatVaultSecret,
 		flags.RedhatVaultSecretFlag,
-		"",
+		"secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat",
 		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
 	* container sub-command flags concerning redhat interactions:
 		** registry-password
@@ -102,7 +102,7 @@ func init() {
 	Cmd.PersistentFlags().StringVar(
 		&flags.GithubVaultSecret,
 		flags.GithubVaultSecretFlag,
-		"",
+		"secret/ci/elastic-cloud-on-k8s/operatorhub-release-github",
 		`When --enable-vault is set, attempts to read the following flags from a given vault secret:
 	* bundle sub-command flags concerning generating operator bundle and creating PRs:
 		** github-token

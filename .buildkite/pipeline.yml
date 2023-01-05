@@ -115,8 +115,7 @@ steps:
         commands:
            - cd hack/operatorhub
            - make build
-           # how is --tag set?
-           - ./redhat container push --tag=$TAG
+           - ./redhat container push --dry-run=false
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -126,8 +125,10 @@ steps:
         depends_on:
           - "redhat-container-push"
         commands:
-           - /usr/local/bin/preflight check container quay.io/redhat-isv-containers/${REDHAT_PROJECT_ID}:${TAG} --pyxis-api-token=${REDHAT_API_TOKEN} --submit
-
+           - wget -O /tmp/vault.zip https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip
+           - unzip /tmp/vault.zip
+           - /tmp/vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
+           - /usr/local/bin/preflight check container quay.io/redhat-isv-containers/${OHUB_PROJECT_ID}:${OHUB_TAG} --pyxis-api-token=${OHUB_API_KEY} --certification-project-id=${OHUB_PROJECT_ID} --submit -d /tmp/auth.json
       - label: "run remaining release"
         key: "redhat-release"
         if: build.message == "run redhat release dev"
@@ -135,8 +136,8 @@ steps:
           - "redhat-preflight"
         commands:
            # how is --tag set?
-           - ./redhat container publish --tag=${TAG} --dry-run=true
+           - ./redhat container publish --dry-run=false
            # yaml manifests can NOT be env vars
-           - ./redhat generate-manifests --prev-version=${PREV_VERSION} --stack-version=${STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - ./redhat bundle generate --tag=${TAG} --dir="??"
-           - ./redhat bundle create-pr --tag=${TAG} --github-username=blah --github-email=blah --github-fullname=blah --github-token=blah --dry-run=true
+           - ./redhat generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - ./redhat bundle generate --dir="."
+           - ./redhat bundle create-pr --dir="." --dry-run=false
