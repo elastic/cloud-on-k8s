@@ -53,6 +53,7 @@ ci-internal: ci-build-image
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS=$(ENABLE_FIPS) \
+		-e VAULT_ADDR -e VAULT_TOKEN \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
 		$(CI_IMAGE) \
