@@ -7,7 +7,7 @@ package cryptutil
 import (
 	"bytes"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -15,7 +15,7 @@ import (
 // If size is greater than 0 the hashes are cached using a cache of the provided size.
 func NewPasswordHasher(size int) (PasswordHasher, error) {
 	if size > 0 {
-		lruCache, err := lru.New(size)
+		lruCache, err := lru.New[string, []byte](size)
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +35,7 @@ type PasswordHasher interface {
 type generateFromPassword func(password []byte, cost int) ([]byte, error)
 type compareHashAndPassword func(hashedPassword, password []byte) error
 type lruHashCache struct {
-	hashCache *lru.Cache
+	hashCache *lru.Cache[string, []byte]
 
 	// only to be changed for unit tests
 	generateFromPassword
@@ -70,12 +70,8 @@ func (h *lruHashCache) ReuseOrGenerateHash(password, existingHash []byte) ([]byt
 }
 
 func (h *lruHashCache) get(key string) []byte {
-	cachedValue, exists := h.hashCache.Get(key)
+	cachedHash, exists := h.hashCache.Get(key)
 	if !exists {
-		return nil
-	}
-	cachedHash, ok := cachedValue.([]byte)
-	if !ok {
 		return nil
 	}
 	return cachedHash
