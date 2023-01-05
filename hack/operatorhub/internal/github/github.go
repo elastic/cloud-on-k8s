@@ -195,8 +195,6 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 
 				lines := strings.Split(string(input), "\n")
 
-				// Unsure if this step is necessary, as the generate-bundle step does this for us.
-				// TODO: possibly remove me.
 				find := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator:%s`, c.GitTag)
 				replace := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator@%s`, c.ContainerImageSHA)
 				for _, line := range lines {
@@ -252,7 +250,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	err = c.ensureFork(orgRepo)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to ensure fork exists: %w", err)
+		return fmt.Errorf("while ensuring fork exists: %w", err)
 	}
 	log.Println("✓")
 
@@ -265,7 +263,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	})
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to create git remote: %w", err)
+		return fmt.Errorf("while creating git remote: %w", err)
 	}
 	log.Println("✓")
 
@@ -278,7 +276,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	})
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to create git branch: %w", err)
+		return fmt.Errorf("while creating git branch: %w", err)
 	}
 	log.Println("✓")
 
@@ -287,7 +285,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	w, err = r.Worktree()
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to retrieve a working tree from the git filesystem: %w", err)
+		return fmt.Errorf("while retrieving a working tree from the git filesystem: %w", err)
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
@@ -296,7 +294,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	})
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("Unable to checkout branch (%s): %w", branchName, err)
+		return fmt.Errorf("while checking out branch (%s): %w", branchName, err)
 	}
 	log.Println("✓")
 
@@ -306,7 +304,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	err = copy.Copy(srcDir, destDir)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to copy source dir (%s) to new git cloned dir (%s): %w", srcDir, destDir, err)
+		return fmt.Errorf("while copying source dir (%s) to new git cloned dir (%s): %w", srcDir, destDir, err)
 	}
 
 	if err := repo.extraSteps(); err != nil {
@@ -318,7 +316,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	_, err = w.Add(pathToAdd)
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to add destination directory (%s) to git working tree: %w", pathToAdd, err)
+		return fmt.Errorf("while adding destination directory (%s) to git working tree: %w", pathToAdd, err)
 	}
 	log.Println("✓")
 
@@ -332,7 +330,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	})
 	if err != nil {
 		log.Println("ⅹ")
-		return fmt.Errorf("failed to commit changes to git working tree: %w", err)
+		return fmt.Errorf("while commiting changes to git working tree: %w", err)
 	}
 	log.Println("✓")
 
@@ -349,7 +347,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to push git refspec (%s) to remote: %w", refSpec, err)
+		return fmt.Errorf("while pushing git refspec (%s) to remote: %w", refSpec, err)
 	}
 
 	if !c.DryRun {
