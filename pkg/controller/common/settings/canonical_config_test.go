@@ -26,7 +26,7 @@ func TestCanonicalConfig_Render(t *testing.T) {
 aab: a a a
 bbb: b  bb
 key:
-  emptyarray: []
+    emptyarray: []
 withquotes: aa"bb"aa
 zz: zzz  z z z
 `)
