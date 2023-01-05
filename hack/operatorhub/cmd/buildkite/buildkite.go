@@ -124,7 +124,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// body is the http body for submitting a buildkite request to start a new build
+// body is the HTTP body for submitting a buildkite request to start a new build
 type body struct {
 	Message string
 	Env     map[string]string
