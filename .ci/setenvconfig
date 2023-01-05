@@ -89,10 +89,7 @@ export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
-# hack for testing
-TESTS_MATCH=TestSmoke
-E2E_IMG=docker.elastic.co/eck-ci/eck-e2e-tests:2.7.0-SNAPSHOT-093f43e6
-OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator-ci:2.7.0-SNAPSHOT-093f43e6
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/aks
 BUILD_NUMBER=$BUILD_NUMBER
@@ -378,10 +375,7 @@ export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
-# hack for testing
-TESTS_MATCH=TestSmoke
-E2E_IMG=docker.elastic.co/eck-ci/eck-e2e-tests:2.7.0-SNAPSHOT-093f43e6
-OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator-ci:2.7.0-SNAPSHOT-093f43e6
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/ocp
 BUILD_NUMBER=$BUILD_NUMBER
@@ -535,10 +529,7 @@ export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
-# hack for testing
-TESTS_MATCH=TestSmoke
-E2E_IMG=docker.elastic.co/eck-ci/eck-e2e-tests:2.7.0-SNAPSHOT-093f43e6
-OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator-ci:2.7.0-SNAPSHOT-093f43e6
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 
 PIPELINE=e2e/tanzu
 BUILD_NUMBER=$BUILD_NUMBER
