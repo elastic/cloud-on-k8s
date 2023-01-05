@@ -143,7 +143,7 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 	viper.AutomaticEnv()
 
 	if viper.GetString(flags.TagFlag) == "" {
-		return fmt.Errorf("%s is required", flags.TagFlag)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
 	}
 
 	if viper.GetBool(flags.EnableVaultFlag) {
