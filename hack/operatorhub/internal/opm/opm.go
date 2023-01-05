@@ -23,7 +23,7 @@ type GenerateConfig struct {
 	OutputDirectory string
 }
 
-// GenerateBundle is used to build the operator bundle image to publish on the OpenShift OperatorHub.
+// GenerateBundle is used to build the operator bundle image to publish on OperatorHub.
 func GenerateBundle(conf GenerateConfig) error {
 	if _, err := os.Stat(conf.LocalDirectory); err != nil && os.IsNotExist(err) {
 		os.MkdirAll(conf.LocalDirectory, 0700)
@@ -53,7 +53,7 @@ func GenerateBundle(conf GenerateConfig) error {
 		if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
 			err = os.RemoveAll(file)
 			if err != nil {
-				return fmt.Errorf("deleting file %s: %w", file, err)
+				return fmt.Errorf("while deleting file %s: %w", file, err)
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func EnsureAnnotations(file string, supportedVersions string) error {
 	}
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to read file (%s): %w", file, err)
+		return fmt.Errorf("while reading file (%s): %w", file, err)
 	}
 	contents := string(b)
 	for _, annotation := range requiredAnnotations {
@@ -91,7 +91,7 @@ func EnsureLabels(file string, supportedVersions string) error {
 	}
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to read file (%s): %w", file, err)
+		return fmt.Errorf("while reading file (%s): %w", file, err)
 	}
 	contents := string(b)
 	for _, label := range requiredLabels {
@@ -107,11 +107,11 @@ func EnsureLabels(file string, supportedVersions string) error {
 func appendToFile(file, data string) error {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open file (%s) for writing: %w", file, err)
+		return fmt.Errorf("while opening file (%s) for writing: %w", file, err)
 	}
 	defer f.Close()
 	if _, err := f.WriteString(data + "\n"); err != nil {
-		return fmt.Errorf("failed to append to file (%s): %w", file, err)
+		return fmt.Errorf("while appending to file (%s): %w", file, err)
 	}
 	return nil
 }
