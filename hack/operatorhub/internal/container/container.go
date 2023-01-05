@@ -40,10 +40,10 @@ var (
 	imagePublishURL              = "%s/projects/certification/id/%s/requests/images"
 )
 
-// PushConfig is the configuration required for the push image command.
-type PushConfig struct {
+// CommonConfig are common configuration options between
+// the push and publish commands.
+type CommonConfig struct {
 	DryRun              bool
-	Force               bool
 	HTTPClient          *http.Client
 	ProjectID           string
 	RedhatCatalogAPIKey string
@@ -51,15 +51,16 @@ type PushConfig struct {
 	Tag                 string
 }
 
+// PushConfig is the configuration required for the push image command.
+type PushConfig struct {
+	CommonConfig
+	Force bool
+}
+
 // PublishConfig is the configuration required for the publish command.
 type PublishConfig struct {
-	DryRun              bool
-	HTTPClient          *http.Client
-	ProjectID           string
-	RedhatCatalogAPIKey string
-	RegistryPassword    string
-	Tag                 string
-	ImageScanTimeout    time.Duration
+	CommonConfig
+	ImageScanTimeout time.Duration
 }
 
 // PushImage will push an image to the Quay.io registry if it is determined
@@ -70,7 +71,7 @@ func PushImage(c PushConfig) error {
 		c.HTTPClient = defaultHTTPClient()
 	}
 
-	log.Printf("Determining if image already exists in project with api key: %s, project id: %s, and tag: %s", c.RedhatCatalogAPIKey, c.ProjectID, c.Tag)
+	log.Printf("Determining if image already exists within project with tag: %s", c.Tag)
 	exists, err := ImageExistsInProject(c.HTTPClient, c.RedhatCatalogAPIKey, c.ProjectID, c.Tag)
 	if err != nil {
 		log.Println("ⅹ")
