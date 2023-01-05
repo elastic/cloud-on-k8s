@@ -29,3 +29,8 @@ Read our updated <<{p}-stack-config-policy, docs>> for more details.
 ==== Helm chart for Elastic Beats
 
 We are adding a new Helm chart for workloads managed by the ECK operator. Elastic Beats are complementing the existing charts for Elasticsearch, Kibana, Agent and Fleet Agent. They can be used individually or as part of our existing Elastic Stack Helm chart. Get started by reading the  <<{p}-stack-helm-chart, docs>>.
+
+[float]
+[id="{p}-260-known-issues"]
+=== Known issues
+- If a license for an Elasticsearch cluster expires before being replaced with an updated license the ECK Operator cannot automatically update the license. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/6274[issue] is resolved in the following link:https://github.com/elastic/cloud-on-k8s/pull/6278[pull request] and will be released in an upcoming release of the Operator.
