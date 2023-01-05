@@ -11,7 +11,7 @@ New and notable changes in version 2.6.0 of {n}. Check <<release-notes-2.6.0>> f
 [id="{p}-260-stack-config-crd"]
 ==== Elastic Stack Configuration Policy: Consistently configure multiple Elasticsearch clusters
 
-A new custom resource called `StackConfigPolicy` was added to allow users to declaratively configure multiple Elasticsearch clusters. Elastic Stack configuration policies allow you to configure the following settings:
+A new `StackConfigPolicy` custom resource is added to allow users to configure the following settings in one or more Elasticsearch clusters:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
