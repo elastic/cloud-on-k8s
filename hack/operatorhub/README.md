@@ -105,7 +105,7 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 
 ## Generate Manifests Command
 
-The `generate-manifests` command wil extracts CRDs and RBAC definitions from distribution YAML manifests
+The `generate-manifests` command will extracts CRDs and RBAC definitions from distribution YAML manifests
 (either yaml manifests from flag, or pulled from internet) and generates the files required to publish
 a new release to OperatorHub.  These files are written within the following 3 directories:
 
@@ -202,8 +202,23 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 | `--delete-temp-directory`        | Whether to delete the temporary directory upon completion (useful for debugging).                                                         | `OHUB_DELETE_TEMP_DIRECTORY`        | `true`  |
 | `--dry-run`                      | If set, Github forks, and branches will be created within user's remote, but pull requests will not be created.                           | `OHUB_DRY_RUN`                      | `true`  |
 
-# TODO
+## Buildkite Command
 
-- [ ] Test
-- [ ] What about the 'v' prefix we're going to add?
-- [ ] Buildkite command
+The `buildkite` command will start the operatorhub release operation within Buildkite.
+
+To generate a Buildkite token for use with this command visit https://buildkite.com/user/api-access-tokens.
+
+### Usage
+
+```shell
+./bin/operatorhub buildkite -t '2.6.0' -b 'my-buildkite-token' --stack-version '8.6.0' --previous-version '2.5.0'
+```
+
+### Flags
+
+| Parameter           | Description                                                                                       | Environment Variable   | Default |
+|---------------------|---------------------------------------------------------------------------------------------------|------------------------|---------|
+| `--buildkite-token` | Buildkite token for communicating with the Buildkite API.                                         | `OHUB_BUILDKITE_TOKEN` | `""`    |
+| `--stack-version`   | Stack version of Elastic stack used to populate the operator cluster service version yaml.        | `OHUB_STACK_VERSION`   | `""`    |
+| `--prev-version`    | Previous version of the operator to populate 'replaces' in operator cluster service version yaml. | `OHUB_PREV_VERSION`    | `""`    |
+| `--tag`             | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`             | `""`    |

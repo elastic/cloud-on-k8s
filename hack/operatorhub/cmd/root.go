@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/buildkite"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/bundle"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/container"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
@@ -116,6 +117,7 @@ func init() {
 		bundle.Command(),
 		container.Command(),
 		manifests.Command(),
+		buildkite.Command(),
 	)
 }
 

@@ -35,7 +35,7 @@ func Command() *cobra.Command {
 		flags.PrevVersionFlag,
 		"V",
 		"",
-		"Previous version of the operator to populate 'replaces' in operator cluster service version yaml (PREV_VERSION)",
+		"Previous version of the operator to populate 'replaces' in operator cluster service version yaml (OHUB_PREV_VERSION)",
 	)
 
 	cmd.Flags().StringVarP(
@@ -43,7 +43,7 @@ func Command() *cobra.Command {
 		flags.StackVersionFlag,
 		"s",
 		"",
-		"Stack version of Elastic stack used to populate the operator cluster service version yaml (STACK_VERSION)",
+		"Stack version of Elastic stack used to populate the operator cluster service version yaml (OHUB_STACK_VERSION)",
 	)
 
 	cmd.Flags().StringVarP(
@@ -51,7 +51,7 @@ func Command() *cobra.Command {
 		flags.ConfFlag,
 		"c",
 		"./config.yaml",
-		"Path to config file to read CRDs, and packages (CONF)",
+		"Path to config file to read CRDs, and packages (OHUB_CONF)",
 	)
 
 	cmd.Flags().StringSliceVarP(
@@ -59,7 +59,7 @@ func Command() *cobra.Command {
 		flags.YamlManifestFlag,
 		"y",
 		nil,
-		"Path to installation manifests (YAML_MANIFEST)",
+		"Path to installation manifests (OHUB_YAML_MANIFEST)",
 	)
 
 	cmd.Flags().StringVarP(
@@ -67,7 +67,7 @@ func Command() *cobra.Command {
 		flags.TemplatesFlag,
 		"T",
 		"./templates",
-		"Path to the templates directory (TEMPLATES)",
+		"Path to the templates directory (OHUB_TEMPLATES)",
 	)
 
 	return cmd

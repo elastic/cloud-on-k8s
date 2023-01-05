@@ -43,6 +43,9 @@ const (
 	YamlManifestFlag = "yaml-manifest"
 	TemplatesFlag    = "templates"
 	RootPathFlag     = "root-path"
+
+	// buildkite command flag
+	BuildkiteTokenFlag = "buildkite-token"
 )
 
 var (
@@ -79,4 +82,7 @@ var (
 	YamlManifest    []string
 	Templates       string
 	RootPath        string
+
+	// buildkite command variable
+	BuildkiteToken string
 )
