@@ -71,21 +71,21 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 	var res *http.Response
 	res, err = c.HTTPClient.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("github request to ensure fork exists failed: %w", err)
+		return false, fmt.Errorf("while executing github request to ensure fork exists: %w", err)
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
 	bodyBytes, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		return false, fmt.Errorf("failed to read get forks response body: %w", err)
+		return false, fmt.Errorf("while reading get forks response body: %w", err)
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return false, fmt.Errorf("github request to ensure fork exists failed, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+		return false, fmt.Errorf("invalid status code for github request to ensure fork exists, code: %d, body: %s", res.StatusCode, string(bodyBytes))
 	}
 	var forksResponse []githubFork
 	err = json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&forksResponse)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode get forks response into json, body: %s: %w", string(bodyBytes), err)
+		return false, fmt.Errorf("while decoding get forks response into json, body: %s: %w", string(bodyBytes), err)
 	}
 	return userInForks(c.GitHubUsername, forksResponse), nil
 }
@@ -95,7 +95,7 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 func (c *Client) createRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("while creating request: %w", err)
 	}
 	req.Header.Add(httpAcceptHeader, githubV3JSONMediaType)
 	req.SetBasicAuth(c.GitHubUsername, c.GitHubToken)
@@ -113,16 +113,16 @@ func (c *Client) createFork(orgRepo string) error {
 	var res *http.Response
 	res, err = c.HTTPClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("github request to create fork failed: %w", err)
+		return fmt.Errorf("while executing github request to create fork: %w", err)
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
 	bodyBytes, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read create fork response body: %w", err)
+		return fmt.Errorf("while reading create fork response body: %w", err)
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return fmt.Errorf("github request to create fork failed, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+		return fmt.Errorf("invalid response code for github request to create fork, code: %d, body: %s", res.StatusCode, string(bodyBytes))
 	}
 	return nil
 }
