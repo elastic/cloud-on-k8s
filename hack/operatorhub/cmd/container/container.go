@@ -14,6 +14,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/container"
 )
 
+const (
+	requiredErrFmt = "%s is required"
+)
+
 // Command will return the container command
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
@@ -80,15 +84,15 @@ func Command() *cobra.Command {
 // preRunE are the pre-run operations for the container command's sub-commands.
 func preRunE(cmd *cobra.Command, args []string) error {
 	if flags.ApiKey == "" {
-		return fmt.Errorf("%s must be set", flags.ApiKeyFlags)
+		return fmt.Errorf(requiredErrFmt, flags.ApiKeyFlags)
 	}
 
 	if flags.RegistryPassword == "" {
-		return fmt.Errorf("%s must be set", flags.RegistryPasswordFlag)
+		return fmt.Errorf(requiredErrFmt, flags.RegistryPasswordFlag)
 	}
 
 	if flags.ProjectID == "" {
-		return fmt.Errorf("%s must be set", flags.ProjectIDFlag)
+		return fmt.Errorf(requiredErrFmt, flags.ProjectIDFlag)
 	}
 
 	return nil
