@@ -15,8 +15,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/docker/cli/cli/config"
-	config_types "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -117,39 +115,11 @@ func ImageExistsInProject(httpClient *http.Client, apiKey, projectID, tag string
 	if err == nil && len(images) == 0 {
 		return false, nil
 	}
-	if getFirstValidImage(images) == nil {
+	if getFirstUndeletedImage(images) == nil {
 		log.Println("ignoring existing potentially deleted image")
 		return false, nil
 	}
 	return true, nil
-}
-
-// LoginToRegistry will configure docker credentials given a redhat project ID
-// and a password, saving the credentials in the default location, which is
-// typically used by the 'preflight' command.
-func LoginToRegistry(dockerConfigDir, projectID, password string) error {
-	cf, err := config.Load(dockerConfigDir)
-	if err != nil {
-		return fmt.Errorf("failed to load docker configuration: %w", err)
-	}
-
-	authConfig := config_types.AuthConfig{
-		Username:      fmt.Sprintf(registryUsername, projectID),
-		Password:      password,
-		ServerAddress: registryURL,
-	}
-
-	creds := cf.GetCredentialsStore(registryURL)
-	err = creds.Store(authConfig)
-	if err != nil {
-		return fmt.Errorf("failed to store auth configuration for %s: %w", registryURL, err)
-	}
-
-	err = cf.Save()
-	if err != nil {
-		return fmt.Errorf("failed to save docker configuration: %w", err)
-	}
-	return nil
 }
 
 // GetImageSHA will query the Red Hat certification API, returning a list of images for a given
@@ -169,7 +139,7 @@ func GetImageSHA(httpClient *http.Client, apiKey, projectID, tag string) (string
 	if err == nil && len(images) == 0 {
 		return imageSHA, nil
 	}
-	image := getFirstValidImage(images)
+	image := getFirstUndeletedImage(images)
 	if image == nil {
 		return imageSHA, fmt.Errorf("couldn't find image with tag: %s", tag)
 	}
@@ -231,9 +201,10 @@ func addHeaders(req *http.Request, apiKey string) {
 	req.Header.Add(httpXAPIKeyHeader, apiKey)
 }
 
-// getFirstValidImage return the first valid image returned from the redhat catalog api
-// that contains a valid image architecture.
-func getFirstValidImage(images []Image) *Image {
+// getFirstUndeletedImage return the first undeleted image returned from the redhat catalog api.
+// Images that are deleted from the Red Hat catalog API are still returned, but have no architecture
+// defined in the output, so we use that to determine if an image has been deleted.
+func getFirstUndeletedImage(images []Image) *Image {
 	for _, image := range images {
 		if image.Architecture != nil {
 			return &image
@@ -335,7 +306,7 @@ func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, api
 	if len(images) == 0 {
 		return nil, false, nil
 	}
-	image = getFirstValidImage(images)
+	image = getFirstUndeletedImage(images)
 	if image == nil {
 		return nil, false, nil
 	}

@@ -17,11 +17,10 @@ import (
 // Command will return the container command
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "container",
-		Short:             "push and publish eck operator container to quay.io",
-		Long:              "Push and Publish eck operator container image to quay.io.",
-		PersistentPreRunE: preRunE,
-		SilenceUsage:      true,
+		Use:          "container",
+		Short:        "push and publish eck operator container to quay.io",
+		Long:         "Push and Publish eck operator container image to quay.io.",
+		SilenceUsage: true,
 	}
 
 	publishCmd := &cobra.Command{
@@ -29,6 +28,7 @@ func Command() *cobra.Command {
 		Short:        "publish existing eck operator container image within quay.io",
 		Long:         "Publish existing eck operator container image within quay.io using the Redhat certification API.",
 		RunE:         doPublish,
+		PreRunE:      preRunE,
 		SilenceUsage: true,
 	}
 
@@ -36,6 +36,7 @@ func Command() *cobra.Command {
 		Use:          "push",
 		Short:        "push eck operator container image to quay.io",
 		RunE:         doPush,
+		PreRunE:      preRunE,
 		SilenceUsage: true,
 	}
 
@@ -76,7 +77,7 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-// preRunE are the pre-run operations for the container command and all sub-commands.
+// preRunE are the pre-run operations for the container command's sub-commands.
 func preRunE(cmd *cobra.Command, args []string) error {
 	if flags.ApiKey == "" {
 		return fmt.Errorf("%s must be set", flags.ApiKeyFlags)

@@ -127,6 +127,17 @@ To generate configuration based on yet unreleased YAML manifests:
 ./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml -s '8.6.0' -V '2.5.0' -t '2.6.0'
 ```
 
+### Flags
+
+| Parameter         | Description                                                                                       | Environment Variable | Default           |
+|-------------------|---------------------------------------------------------------------------------------------------|----------------------|-------------------|
+| `--conf`          | Path to config.yaml file.                                                                         | `OHUB_CONF`          | `"./config.yaml"` |
+| `--yaml-manifest` | Path(s) to yaml installation manifest files.                                                      | `OHUB_YAML_MANIFEST` | `""`              |
+| `--templates`     | Path to the templates directory.                                                                  | `OHUB_TEMPLATES`     | `"./templates"`   |
+| `--stack-version` | Stack version of Elastic stack used to populate the operator cluster service version yaml.        | `OHUB_STACK_VERSION` | `""`              |
+| `--prev-version`  | Previous version of the operator to populate 'replaces' in operator cluster service version yaml. | `OHUB_PREV_VERSION`  | `""`              |
+| `--tag`           | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`           | `""`              |
+
 *IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
 
 ## Bundle Command
@@ -194,12 +205,4 @@ OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/oper
 # TODO
 
 - [ ] Test
-- [ ] Comment all funcs
 - [ ] What about the 'v' prefix we're going to add?
-- [ ] Do all the things in 'cmd/*' package have to be exported now?
-- [ ] "%s is required" is redundant.
-- [ ] name: elastic-cloud-eck.v2.6.0-bc2 in community-operators/tag/*.csv.yaml is already prefixed with 'v'
-- [ ] document that `make generate-crds-v1` needs to be run prior to this.
-- [ ] Move loginToRegistry to preflight pkg
-- [ ] getFirstValidImage flow.... called after getImages.  Can this be optimized?
-- [ ] hide certain root flags in sub-commands?

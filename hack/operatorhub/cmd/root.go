@@ -144,7 +144,7 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s is required", flags.TagFlag)
 	}
 
-	if flags.EnableVault {
+	if viper.GetBool(flags.EnableVaultFlag) {
 		// ensure that the flag variables are set using what's current in viper configuration prior to calling
 		// command to read secrets from vault, as the flags are exclusively used, not viper directly.
 		for _, flag := range []string{

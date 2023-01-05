@@ -39,7 +39,7 @@ const (
 	communityOperatorDirectoryName = "elastic-cloud-eck"
 
 	// githubURL is the URL to communicate with github
-	githubURL = "https://api.github.com"
+	githubURL = "https://github.com"
 )
 
 var (
@@ -236,12 +236,11 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	orgRepo := fmt.Sprintf("%s/%s", repo.organization, repo.repository)
 	localTempDir := filepath.Join(repo.tempDir, repo.repository)
 
-	log.Printf("Cloning (%s) repository to temporary directory ", orgRepo)
+	log.Printf("Cloning (%s) repository to temporary directory ", repo.url)
 	r, err := git.PlainClone(localTempDir, false, &git.CloneOptions{
 		URL: repo.url,
 		Auth: &git_http.BasicAuth{
-			Username: c.GitHubUsername,
-			Password: c.GitHubToken,
+			Username: c.GitHubToken,
 		},
 	})
 	if err != nil {

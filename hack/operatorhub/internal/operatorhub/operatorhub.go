@@ -576,6 +576,9 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 func renderCSVFile(params *RenderParams, templatesDir, outDir string) error {
 	templateFile := filepath.Join(templatesDir, csvTemplateFile)
 	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
+	if strings.HasPrefix(params.NewVersion, "v") {
+		csvFile = filepath.Join(outDir, fmt.Sprintf("%s.%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
+	}
 
 	return renderTemplate(params, templateFile, csvFile)
 }
