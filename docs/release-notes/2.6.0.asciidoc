@@ -19,7 +19,7 @@
 
 * Expose Kubernetes client QPS as a flag. {pull}6157[#6157]
 * Extend existing reattach-pv tool to allow using existing PVs to create newly named cluster. {pull}6118[#6118]
-* Add container-suffix operator flag to allow user to specify a container suffix to be applied across all Elastic stack container images. {pull}6086[#6086] (issue: {issue}6064[#6064])
+* Add container-suffix operator flag to allow users to specify a container suffix to be applied across all Elastic stack container images. {pull}6086[#6086] (issue: {issue}6064[#6064])
 * Elasticsearch observer improvements to avoid blocking between workers. {pull}6084[#6084] (issue: {issue}6078[#6078])
 * Improve user password hash comparison performance by utilizing an LRU cache. {pull}6080[#6080] (issue: {issue}6076[#6076])
 * Add default securityContext to the manager container in Operator Helm Chart. {pull}6047[#6047]
@@ -30,7 +30,7 @@
 === Bug fixes
 
 * Fix potential panic in Elasticsearch client equal function. {pull}6128[#6128]
-* Increment ECK-stack version to support addition of Agent/Fleet Server. {pull}6179[#6179]
+* Increment ECK-stack Helm chart version to support addition of Agent/Fleet Server. {pull}6179[#6179]
 
 [[docs-2.6.0]]
 [float]
@@ -39,9 +39,9 @@
 * Add experimental label to the StackConfigPolicy doc. {pull}6247[#6247]
 * Document Elastic Stack configuration policies. {pull}6215[#6215]
 * Update eck-diagnostics documentation for filters. {pull}6191[#6191]
-* Add additional helm documentation for Fleet Server, and Agent. {pull}6154[#6154]
+* Add additional Helm documentation for Fleet Server, and Agent. {pull}6154[#6154]
 * Update the list of Kibana keys managed by the operator. {pull}6119[#6119]
-* Add limitation on minikube without CNI. {pull}6075[#6075]
+* Document limitation on Minikube without CNI. {pull}6075[#6075]
 * Add latest APM fleet package in Kibana examples when using standalone APM server. {pull}6063[#6063] (issue: {issue}5059[#5059])
 
 [[nogroup-2.6.0]]

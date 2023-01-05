@@ -8,10 +8,10 @@
 New and notable changes in version 2.6.0 of {n}. Check <<release-notes-2.6.0>> for the full list of changes.
 
 [float]
-[id="{p}-260-autoscaling-crd"]
+[id="{p}-260-stack-config-crd"]
 ==== Elastic Stack Configuration Policy: Consistently configure multiple Elasticsearch clusters
 
-A new Custom Resource `StackConfigPolicy` was added to allow one to declaratively configure multiple Elasticsearch clusters. Elastic Stack configuration policies allow you to configure the following settings:
+A new custom resource called `StackConfigPolicy` was added to allow users to declaratively configure multiple Elasticsearch clusters. Elastic Stack configuration policies allow you to configure the following settings:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
