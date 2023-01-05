@@ -126,7 +126,7 @@ steps:
         commands:
            - cd hack/operatorhub
            - make build
-           - ./redhat container push --dry-run=false
+           - ./operatorhub container push --dry-run=false
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -148,7 +148,7 @@ steps:
         depends_on:
           - "redhat-preflight"
         commands:
-           - ./redhat container publish --dry-run=false
-           - ./redhat generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - ./redhat bundle generate --dir="."
-           - ./redhat bundle create-pr --dir="." --dry-run=false
+           - ./operatorhub container publish --dry-run=false
+           - ./operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - ./operatorhub bundle generate --dir="."
+           - ./operatorhub bundle create-pr --dir="." --dry-run=false
