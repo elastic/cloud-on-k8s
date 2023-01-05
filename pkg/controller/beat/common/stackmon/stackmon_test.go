@@ -81,29 +81,29 @@ func TestMetricBeat(t *testing.T) {
 		},
 	}
 	beatYml := `http:
-  enabled: false
+    enabled: false
 metricbeat:
-  modules:
-  - hosts:
-    - http+unix:///var/shared/metricbeat-test-beat.sock
-    metricsets:
-    - stats
-    - state
-    module: beat
-    period: 10s
-    xpack:
-      enabled: true
+    modules:
+        - hosts:
+            - http+unix:///var/shared/metricbeat-test-beat.sock
+          metricsets:
+            - stats
+            - state
+          module: beat
+          period: 10s
+          xpack:
+            enabled: true
 monitoring:
-  cluster_uuid: abcd1234
-  enabled: false
+    cluster_uuid: abcd1234
+    enabled: false
 output:
-  elasticsearch:
-    hosts:
-    - es-metrics-monitoring-url
-    password: es-password
-    ssl:
-      verification_mode: certificate
-    username: es-user
+    elasticsearch:
+        hosts:
+            - es-metrics-monitoring-url
+        password: es-password
+        ssl:
+            verification_mode: certificate
+        username: es-user
 `
 	beatSidecarFixture := stackmon.BeatSidecar{
 		Container: containerFixture,
