@@ -51,7 +51,7 @@ func readAllSecretsFromVault() error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to create vault client: %w", err)
+		return fmt.Errorf("while creating vault client: %w", err)
 	}
 
 	client.SetToken(flags.VaultToken)
@@ -73,7 +73,7 @@ func readAllSecretsFromVault() error {
 func readVaultSecretAndSetViperKeys(client *api.Client, vaultSecretPath string, keys []string) error {
 	secret, err := client.Logical().Read(vaultSecretPath)
 	if err != nil {
-		return fmt.Errorf("failed to read vault secret (%s): %w", vaultSecretPath, err)
+		return fmt.Errorf("while reading vault secret (%s): %w", vaultSecretPath, err)
 	}
 
 	if secret == nil {
@@ -87,7 +87,7 @@ func readVaultSecretAndSetViperKeys(client *api.Client, vaultSecretPath string, 
 		}
 		stringData, ok := data.(string)
 		if !ok {
-			return fmt.Errorf("failed to convert secret data to string: %T %#v", secret.Data[key], secret.Data[key])
+			return fmt.Errorf("while converting secret data to string: %T %#v", secret.Data[key], secret.Data[key])
 		}
 
 		viper.Set(key, stringData)
