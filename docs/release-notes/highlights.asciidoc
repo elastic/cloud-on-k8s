@@ -5,6 +5,7 @@
 --
 This section summarizes the most important changes in each release. For the full list, check <<eck-release-notes>>.
 
+* <<release-highlights-2.6.0>>
 * <<release-highlights-2.5.0>>
 * <<release-highlights-2.4.0>>
 * <<release-highlights-2.3.0>>
@@ -35,6 +36,7 @@ This section summarizes the most important changes in each release. For the full
 
 --
 
+include::highlights-2.6.0.asciidoc[]
 include::highlights-2.5.0.asciidoc[]
 include::highlights-2.4.0.asciidoc[]
 include::highlights-2.3.0.asciidoc[]
