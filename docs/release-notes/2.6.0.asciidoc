@@ -31,6 +31,7 @@
 
 * Fix potential panic in Elasticsearch client equal function. {pull}6128[#6128]
 * Increment ECK-stack Helm chart version to support addition of Agent/Fleet Server. {pull}6179[#6179]
+* Try to reconcile license even in absence of known health status {pull}6278[#6278] {issue}6274[#6274])
 
 [[docs-2.6.0]]
 [float]
