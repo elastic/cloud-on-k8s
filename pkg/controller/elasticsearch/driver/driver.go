@@ -279,13 +279,18 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// controllers that may be waiting for the orchestration hint.
 	results.WithError(d.maybeSetServiceAccountsOrchestrationHint(ctx, esReachable, esClient, resourcesState))
 
-	// reconcile the Elasticsearch license
-	if esReachable {
+	// reconcile the Elasticsearch license (even if we assume the cluster might not respond to requests to cover the case of
+	// expired licenses where all health API responses are 403)
+	if isServiceReady {
 		err = license.Reconcile(ctx, d.Client, d.ES, esClient, currentLicense)
 		if err != nil {
 			msg := "Could not reconcile cluster license, re-queuing"
-			log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			// only log an event if Elasticsearch is in a state where success of this API call can be expected. The API call itself
+			// will be logged by the client
+			if hasKnownHealthState {
+				log.Info(msg, "err", err, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+				d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s", msg, err.Error()))
+			}
 			results.WithReconciliationState(defaultRequeue.WithReason(msg))
 		}
 	}
