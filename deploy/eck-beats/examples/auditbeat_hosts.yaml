@@ -1,0 +1,111 @@
+name: auditbeat
+version: 8.5.0
+spec:
+  type: auditbeat
+  elasticsearchRef:
+    name: eck-elasticsearch
+  kibanaRef:
+    name: eck-kibana
+  config:
+    auditbeat.modules:
+    - module: file_integrity
+      paths:
+      - /hostfs/bin
+      - /hostfs/usr/bin
+      - /hostfs/sbin
+      - /hostfs/usr/sbin
+      - /hostfs/etc
+      exclude_files:
+      - '(?i)\.sw[nop]$'
+      - '~$'
+      - '/\.git($|/)'
+      scan_at_start: true
+      scan_rate_per_sec: 50 MiB
+      max_file_size: 100 MiB
+      hash_types: [sha1]
+      recursive: true
+    - module: auditd
+      audit_rules: |
+        # Executions
+        -a always,exit -F arch=b64 -S execve,execveat -k exec
+
+        # Unauthorized access attempts (amd64 only)
+        -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -k access
+        -a always,exit -F arch=b64 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -k access
+
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+    - add_process_metadata:
+        match_pids: ['process.pid']
+  daemonSet:
+    podTemplate:
+      spec:
+        hostPID: true  # Required by auditd module
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        securityContext:
+          runAsUser: 0
+        volumes:
+        - name: bin
+          hostPath:
+            path: /bin
+        - name: usrbin
+          hostPath:
+            path: /usr/bin
+        - name: sbin
+          hostPath:
+            path: /sbin
+        - name: usrsbin
+          hostPath:
+            path: /usr/sbin
+        - name: etc
+          hostPath:
+            path: /etc
+        - name: run-containerd
+          hostPath:
+            path: /run/containerd
+            type: DirectoryOrCreate
+        # Uncomment the below when running on GKE. See https://github.com/elastic/beats/issues/8523 for more context.
+        #- name: run
+        #  hostPath:
+        #    path: /run
+        #initContainers:
+        #- name: cos-init
+        #  image: docker.elastic.co/beats/auditbeat:8.3.3
+        #  volumeMounts:
+        #  - name: run
+        #    mountPath: /run
+        #  command: ['sh', '-c', 'export SYSTEMD_IGNORE_CHROOT=1 && systemctl stop systemd-journald-audit.socket && systemctl mask systemd-journald-audit.socket && systemctl restart systemd-journald']
+        containers:
+        - name: auditbeat
+          securityContext:
+            capabilities:
+              add:
+              # Capabilities needed for auditd module
+              - 'AUDIT_READ'
+              - 'AUDIT_WRITE'
+              - 'AUDIT_CONTROL'
+          volumeMounts:
+          - name: bin
+            mountPath: /hostfs/bin
+            readOnly: true
+          - name: sbin
+            mountPath: /hostfs/sbin
+            readOnly: true
+          - name: usrbin
+            mountPath: /hostfs/usr/bin
+            readOnly: true
+          - name: usrsbin
+            mountPath: /hostfs/usr/sbin
+            readOnly: true
+          - name: etc
+            mountPath: /hostfs/etc
+            readOnly: true
+          # Directory with root filesystems of containers executed with containerd, this can be
+          # different with other runtimes. This volume is needed to monitor the file integrity
+          # of files in containers.
+          - name: run-containerd
+            mountPath: /run/containerd
+            readOnly: true

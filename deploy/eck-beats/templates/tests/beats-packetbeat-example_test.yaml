@@ -1,0 +1,55 @@
+suite: test packetbeat
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render packetbeat configuration properly.
+    values:
+      - ../../examples/packetbeat_dns_http.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: eck-elasticsearch
+      - equal:
+          path: spec.kibanaRef.name
+          value: eck-kibana
+      - equal:
+          path: spec.config.[packetbeat.interfaces.device]
+          value: any
+      - equal:
+          path: spec.config.[packetbeat.protocols]
+          value:
+          - type: dns
+            ports:
+            - 53
+            include_authorities: true
+            include_additionals: true
+          - type: http
+            ports:
+            - 80
+            - 8000
+            - 8080
+            - 9200
+      - equal:
+          path: spec.config.[packetbeat.flows]
+          value:
+            timeout: 30s
+            period: 10s
+      - equal:
+          path: spec.daemonSet.podTemplate.spec
+          value:
+            terminationGracePeriodSeconds: 30
+            hostNetwork: true
+            automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+            dnsPolicy: ClusterFirstWithHostNet
+            containers:
+            - name: packetbeat
+              securityContext:
+                runAsUser: 0
+                capabilities:
+                  add:
+                  - NET_ADMIN
+            volumes: []

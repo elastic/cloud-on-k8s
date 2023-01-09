@@ -1,0 +1,41 @@
+suite: test heartbeat
+templates:
+  - templates/beats.yaml
+tests:
+  - it: should render heartbeat configuration properly.
+    values:
+      - ../../examples/heartbeat_es_kb_health.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Beat
+      - equal:
+          path: spec.elasticsearchRef.name
+          value: eck-elasticsearch
+      - equal:
+          path: spec.config.[heartbeat.monitors][0].type
+          value: tcp
+      - equal:
+          path: spec.config.[heartbeat.monitors][0].schedule
+          value: '@every 5s'
+      - equal:
+          path: spec.config.[heartbeat.monitors][0].hosts
+          value:
+          - "elasticsearch-es-http.default.svc:9200"
+      - equal:
+          path: spec.config.[heartbeat.monitors][1].type
+          value: tcp
+      - equal:
+          path: spec.config.[heartbeat.monitors][1].schedule
+          value: '@every 5s'
+      - equal:
+          path: spec.config.[heartbeat.monitors][1].hosts
+          value:
+          - "eck-kibana-kb-http.default.svc:5601"
+      - equal:
+          path: spec.deployment.replicas
+          value: 1
+      - equal:
+          path: spec.deployment.podTemplate.spec.securityContext.runAsUser
+          value: 0
