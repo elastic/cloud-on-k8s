@@ -315,7 +315,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile an empty File based settings Secret if it doesn't exist
-	if minVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, d.Client, d.ES, true)
 		if err != nil {
 			return results.WithError(err)
