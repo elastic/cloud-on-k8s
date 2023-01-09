@@ -237,9 +237,16 @@ func loadConfigFile(c GenerateConfig) (*config, error) {
 		return nil, fmt.Errorf("while unmarshaling config from %s: %w", c.ConfigPath, err)
 	}
 
-	conf.NewVersion = c.NewVersion
-	conf.PrevVersion = c.PrevVersion
-	conf.StackVersion = c.StackVersion
+	// allow command line flags to override config file
+	if c.NewVersion != "" {
+		conf.NewVersion = c.NewVersion
+	}
+	if c.PrevVersion != "" {
+		conf.PrevVersion = c.PrevVersion
+	}
+	if c.StackVersion != "" {
+		conf.StackVersion = c.StackVersion
+	}
 
 	return &conf, nil
 }
@@ -591,6 +598,11 @@ func renderPackageFile(params *RenderParams, templatesDir, outDir string) error 
 }
 
 func renderTemplate(params *RenderParams, templatePath, outPath string) error {
+	// ensure NewVersion is always prefixed with 'v' when rendering template
+	// to remove adding prefix in the .tpl files
+	if !strings.HasPrefix(params.NewVersion, "v") {
+		params.NewVersion = fmt.Sprintf("v%s", params.NewVersion)
+	}
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("while parsing template at %s: %w", templatePath, err)

@@ -1,5 +1,5 @@
 channels:
-- currentCSV: {{ .PackageName }}.v{{ .NewVersion }}
+- currentCSV: {{ .PackageName }}.{{ .NewVersion }}
   name: stable
 defaultChannel: stable
 packageName: {{ .PackageName }}

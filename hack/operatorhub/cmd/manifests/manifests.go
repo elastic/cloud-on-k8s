@@ -75,10 +75,6 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.ConfFlag)
 	}
 
-	if flags.Tag == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
-	}
-
 	// If no yaml manifests are given, then the stack, and previous version
 	// flags are required to generate manifests.
 	if len(flags.YamlManifest) == 0 {

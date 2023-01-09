@@ -142,7 +142,7 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 
 	viper.AutomaticEnv()
 
-	if viper.GetString(flags.TagFlag) == "" {
+	if viper.GetString(flags.TagFlag) == "" && cmd.Name() != "generate-manifests" {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
 	}
 
