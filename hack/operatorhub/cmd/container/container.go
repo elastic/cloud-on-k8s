@@ -97,23 +97,27 @@ func preRunE(cmd *cobra.Command, args []string) error {
 // doPublish will publish an existing image within the redhat catalog.
 func doPublish(_ *cobra.Command, _ []string) error {
 	return container.PublishImage(container.PublishConfig{
-		DryRun:              flags.DryRun,
-		ImageScanTimeout:    flags.ScanTimeout,
-		ProjectID:           flags.ProjectID,
-		RedhatCatalogAPIKey: flags.ApiKey,
-		RegistryPassword:    flags.RegistryPassword,
-		Tag:                 flags.Tag,
+		CommonConfig: container.CommonConfig{
+			DryRun:              flags.DryRun,
+			ProjectID:           flags.ProjectID,
+			RedhatCatalogAPIKey: flags.ApiKey,
+			RegistryPassword:    flags.RegistryPassword,
+			Tag:                 flags.Tag,
+		},
+		ImageScanTimeout: flags.ScanTimeout,
 	})
 }
 
 // doPush will push an image to the redhat registry for scanning.
 func doPush(_ *cobra.Command, _ []string) error {
 	return container.PushImage(container.PushConfig{
-		DryRun:              flags.DryRun,
-		Force:               flags.Force,
-		ProjectID:           flags.ProjectID,
-		RedhatCatalogAPIKey: flags.ApiKey,
-		RegistryPassword:    flags.RegistryPassword,
-		Tag:                 flags.Tag,
+		CommonConfig: container.CommonConfig{
+			DryRun:              flags.DryRun,
+			ProjectID:           flags.ProjectID,
+			RedhatCatalogAPIKey: flags.ApiKey,
+			RegistryPassword:    flags.RegistryPassword,
+			Tag:                 flags.Tag,
+		},
+		Force: flags.Force,
 	})
 }
