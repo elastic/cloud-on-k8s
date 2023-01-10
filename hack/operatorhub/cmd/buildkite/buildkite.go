@@ -111,27 +111,27 @@ func preRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	if flags.PreviousVersion == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.PreviousVersion)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.PrevVersionFlag)
 	}
 
 	if flags.StackVersion == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersion)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersionFlag)
 	}
 
 	if flags.GitBranch == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.GitBranch)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GitBranchFlag)
 	}
 
 	if flags.BuildkiteToken == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteToken)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteTokenFlag)
 	}
 
 	if flags.BuildkiteBranch == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteBranch)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteBranchFlag)
 	}
 
 	if flags.BuildkiteCommit == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteCommit)
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteCommitFlag)
 	}
 
 	return nil
