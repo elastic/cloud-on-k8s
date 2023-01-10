@@ -124,7 +124,7 @@ steps:
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
 
-      - label: ":helm: helm eck-resources - Chart.yaml validation check"
+      - label: ":helm: helm eck-resources - Chart.yaml validation check (expected fail when no files have changed)"
         commands:
           - ./.buildkite/scripts/helm/has-any-chartyml-changed.sh
         key: "validation-check"
