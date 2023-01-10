@@ -116,6 +116,9 @@ steps:
         key: "build-operatorhub-tool"
         if: build.message == "run operatorhub release"
         commands:
+           - export OHUB_API_KEY=$$(vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - export OHUB_PROJECT_ID=$$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - echo /tmp/preflight check container quay.io/redhat-isv-containers/$$OHUB_PROJECT_ID:$$OHUB_TAG --pyxis-api-token=$$OHUB_API_KEY --certification-project-id=$$OHUB_PROJECT_ID --submit -d /tmp/auth.json
            - cd hack/operatorhub
            - make build
            - buildkite-agent artifact upload "bin/operator*"
