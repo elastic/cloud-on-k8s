@@ -31,6 +31,7 @@ const (
 	googleCredentialsEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
 	defaultElasticHelmRepo  = "https://helm.elastic.co"
 	chartYamlGlob           = "*/Chart.yaml"
+	chartsSubdirYamlGlob    = "charts/*/Chart.yaml"
 	stableHelmChartsURL     = "https://charts.helm.sh/stable"
 )
 
@@ -165,8 +166,16 @@ func readCharts(chartsDir string, excludes []string) ([]chart, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while searching for files matching pattern (%s): %w", "Chart.yaml", err)
 	}
+	// also check if the current directory given has a sub-directory 'charts' that contains directories
+	// with charts when the releaser is given a full path to a single chart directory to process.
+	// (Glob doesn't support '**' unfortunately)
+	currentDirectorySubCharts, err := filepath.Glob(filepath.Join(chartsDir, chartsSubdirYamlGlob))
+	if err != nil {
+		return nil, fmt.Errorf("while searching for files matching pattern (%s): %w", "Chart.yaml", err)
+	}
+
 	var charts []chart
-	for _, fullChartPath := range append(cs, currentDirectoryCharts...) {
+	for _, fullChartPath := range append(cs, append(currentDirectoryCharts, currentDirectorySubCharts...)...) {
 		fileBytes, err := os.ReadFile(fullChartPath)
 		if err != nil {
 			return nil, fmt.Errorf("while reading (%s): %w", fullChartPath, err)

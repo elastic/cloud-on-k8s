@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 # get the names of the files changed between HEAD and the previous commit.
 # bash version 3+.
 # same command as filesChanged=( $(git diff --name-only HEAD~1...HEAD) ) 
