@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
 # get the names of the files changed between HEAD and the previous commit.
-# bash veersion 4.4+ only.
+# bash version 3+.
 # same command as filesChanged=( $(git diff --name-only HEAD~1...HEAD) ) 
 # avoids SC2207
-mapfile -t filesChanged < <(git diff --name-only HEAD~1...HEAD)
+filesChanged=()
+while IFS='' read -r line; do filesChanged+=("$line"); done < <(git diff --name-only HEAD~1...HEAD)
 
 re='^deploy\/eck-[a-z]+[-]*[a-z]*\/Chart\.yaml$'
 
