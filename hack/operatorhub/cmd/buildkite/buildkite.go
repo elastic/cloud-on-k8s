@@ -79,7 +79,7 @@ func Command() *cobra.Command {
 		flags.BuildkitePRRepositoryFlag,
 		"r",
 		"",
-		"Git pull request repository to use when running release. (Only required when cli tooling changes aren't merged to main) (OHUB_BUILDKITE_PR_REPOSITORY)",
+		"Git pull request repository (format git://github.com/org/repo) to use when running release. (Only required when cli tooling changes aren't merged to main) (OHUB_BUILDKITE_PR_REPOSITORY)",
 	)
 
 	cmd.Flags().StringVarP(
@@ -176,10 +176,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 // body is the HTTP body for submitting a buildkite request to start a new build
 type body struct {
-	Message               string
-	Env                   map[string]string
-	Commit                string
-	Branch                string
-	PullRequestRepository *string
-	PullRequestID         *string
+	Message               string            `json:"message"`
+	Env                   map[string]string `json:"env"`
+	Commit                string            `json:"commit"`
+	Branch                string            `json:"branch"`
+	PullRequestRepository *string           `json:"pull_request_repository"`
+	PullRequestID         *string           `json:"pull_request_id"`
 }
