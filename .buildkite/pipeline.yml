@@ -119,6 +119,11 @@ steps:
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
 
+      - label: ":helm: release eck-operator helm chart manually - pipeline upload"
+        if: build.message == "release eck-operator helm chart"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
+
       - label: ":helm: helm eck-resources - Chart.yaml validation check"
         command: .buildkite/scripts/helm/has-any-chartyml-changed.sh
         key: "validation-check"
