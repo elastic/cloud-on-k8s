@@ -10,16 +10,24 @@ steps:
       - label: "release eck-operator helm chart dev"
         key: helm-release-eck-operator-dev
         commands:
+          - export CWD=$(pwd)
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
           - make build 2> /dev/null
-          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json ./bin/releaser --env=dev --charts-dir=../../../deploy/eck-operator --enable-vault
+          - cp bin/releaser /tmp/releaser
+          # if a tag is sent as an environment variable, change to that branch.
+          - if [[ ! -z "$HELM_TAG" ]]; then git checkout ${HELM_TAG} ; fi
+          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json /tmp/releaser --env=dev --charts-dir=${CWD}/deploy/eck-operator --enable-vault
 
       - label: "release eck-operator helm chart prod"
         depends_on:
           - "helm-release-eck-operator-dev"
         commands:
+          - export CWD=$(pwd)
           - cd hack/helm/release
           # ignoring stdout to avoid "go: downloading ..." output.
           - make build 2> /dev/null
-          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json ./bin/releaser --env=prod --charts-dir=../../../deploy/eck-operator --enable-vault
+          - cp bin/releaser /tmp/releaser
+          # if a tag is sent as an environment variable, change to that branch.
+          - if [[ ! -z "$HELM_TAG" ]]; then git checkout ${HELM_TAG} ; fi
+          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json /tmp/releaser --env=prod --charts-dir=../../../deploy/eck-operator --enable-vault
