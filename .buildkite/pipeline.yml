@@ -116,8 +116,8 @@ steps:
         key: "build-operatorhub-tool"
         if: build.message == "run operatorhub release"
         commands:
-           - echo export OHUB_PROJECT_ID=$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-           - export OHUB_PROJECT_ID=$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - echo OHUB_PROJECT_ID=$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - OHUB_PROJECT_ID=$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - echo ${OHUB_PROJECT_ID}
            - exit 1
            - cd hack/operatorhub
