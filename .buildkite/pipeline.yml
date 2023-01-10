@@ -140,7 +140,8 @@ steps:
         depends_on:
           - "generate-crds"
         commands:
-           - buildkite-agent artifact download usr/local/bin/operatorhub /usr/local/bin/
+           - buildkite-agent artifact download usr/local/bin/operatorhub /usr/local/bin/operatorhub
+           - find /usr/local/bin
            - /usr/local/bin/operatorhub container push --dry-run=false
 
       - label: "run container preflight"
@@ -164,9 +165,9 @@ steps:
         depends_on:
           - "redhat-preflight"
         commands:
-           - buildkite-agent artifact download usr/local/bin/operatorhub /usr/local/bin/
-           - buildkite-agent artifact download config/crds.yaml config/
-           - buildkite-agent artifact download config/operator.yaml config/
+           - buildkite-agent artifact download usr/local/bin/operatorhub /usr/local/bin/operatorhub
+           - buildkite-agent artifact download config/crds.yaml config/crds.yaml
+           - buildkite-agent artifact download config/operator.yaml config/operator.yaml
            - /usr/local/bin/operatorhub container publish --dry-run=false
            - cd hack/operatorhub
            - /usr/local/bin/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
