@@ -144,17 +144,15 @@ steps:
       - label: "run container preflight"
         key: "redhat-preflight"
         if: build.message == "run operatorhub release"
-        agents:
-          image: "quay.io/opdev/preflight:1.2.1-linux-amd64@sha256:6f63033a934d9a9821cea2247858b0557f471b1f0fc9c4f691ae1c934d44d90b"
         depends_on:
           - "redhat-container-push"
         commands:
-           - wget -O /tmp/vault.zip https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip
-           - unzip /tmp/vault.zip
-           - /tmp/vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
-           - export OHUB_API_KEY=$(/tmp/vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-           - export OHUB_PROJECT_ID=$(/tmp/vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-           - /usr/local/bin/preflight check container quay.io/redhat-isv-containers/${OHUB_PROJECT_ID}:${OHUB_TAG} --pyxis-api-token=${OHUB_API_KEY} --certification-project-id=${OHUB_PROJECT_ID} --submit -d /tmp/auth.json
+           - wget -O /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
+           - chmod u+x /tmp/preflight
+           - vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
+           - export OHUB_API_KEY=$(vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - export OHUB_PROJECT_ID=$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - /tmp/preflight check container quay.io/redhat-isv-containers/${OHUB_PROJECT_ID}:${OHUB_TAG} --pyxis-api-token=${OHUB_API_KEY} --certification-project-id=${OHUB_PROJECT_ID} --submit -d /tmp/auth.json
 
       - label: "run remaining release"
         key: "redhat-release"
