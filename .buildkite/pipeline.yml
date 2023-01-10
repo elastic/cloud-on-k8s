@@ -147,7 +147,7 @@ steps:
         depends_on:
           - "redhat-container-push"
         commands:
-           - curl -o /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
+           - curl -L -o /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
            - chmod u+x /tmp/preflight
            - vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
            - export OHUB_API_KEY=$(vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
