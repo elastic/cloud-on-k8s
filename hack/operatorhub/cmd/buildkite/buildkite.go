@@ -51,6 +51,14 @@ func Command() *cobra.Command {
 	)
 
 	cmd.Flags().StringVarP(
+		&flags.GitBranch,
+		flags.GitBranchFlag,
+		"g",
+		"",
+		"Git branch to use when building manifests (2.6 for 2.6.0 release) (OHUB_STACK_VERSION)",
+	)
+
+	cmd.Flags().StringVarP(
 		&flags.BuildkiteToken,
 		flags.BuildkiteTokenFlag,
 		"b",
@@ -110,6 +118,10 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersion)
 	}
 
+	if flags.GitBranch == "" {
+		return fmt.Errorf(flags.RequiredErrFmt, flags.GitBranch)
+	}
+
 	if flags.BuildkiteToken == "" {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteToken)
 	}
@@ -134,6 +146,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 		Env: map[string]string{
 			"OHUB_DRY_RUN":       fmt.Sprintf("%t", flags.DryRun),
 			"OHUB_TAG":           flags.Tag,
+			"OHUB_BRANCH":        flags.GitBranch,
 			"OHUB_PREV_VERSION":  flags.PreviousVersion,
 			"OHUB_STACK_VERSION": flags.StackVersion,
 		},

@@ -46,6 +46,7 @@ const (
 	RootPathFlag     = "root-path"
 
 	// buildkite command flag
+	GitBranchFlag             = "git-branch"
 	BuildkiteTokenFlag        = "buildkite-token"
 	BuildkiteBranchFlag       = "buildkite-branch"
 	BuildkiteCommitFlag       = "buildkite-commit"
@@ -88,6 +89,7 @@ var (
 	RootPath        string
 
 	// buildkite command variable
+	GitBranch             string
 	BuildkiteToken        string
 	BuildkiteBranch       string
 	BuildkiteCommit       string

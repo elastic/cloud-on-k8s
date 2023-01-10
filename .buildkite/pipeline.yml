@@ -112,10 +112,22 @@ steps:
 
     steps:
 
+      - label: "build operatorhub tool"
+        key: "build-operatorhub-tool"
+        if: build.message == "run operatorhub release"
+        commands:
+           - export CWD=$(pwd)
+           - cd hack/operatorhub
+           - make build
+           - mv bin/operatorhub /tmp/operatorhub
+
       - label: "Generate CRDs"
         key: "generate-crds"
         if: build.message == "run operatorhub release"
+        depends_on:
+          - "build-operatorhub-tool"
         commands:
+           - git checkout ${OHUB_BRANCH}
            - make generate-crds-v1
 
       - label: "run container push"
@@ -124,9 +136,7 @@ steps:
         depends_on:
           - "generate-crds"
         commands:
-           - cd hack/operatorhub
-           - make build
-           - ./operatorhub container push --dry-run=false
+           - /tmp/operatorhub container push --dry-run=false
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -148,7 +158,8 @@ steps:
         depends_on:
           - "redhat-preflight"
         commands:
-           - ./operatorhub container publish --dry-run=false
-           - ./operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - ./operatorhub bundle generate --dir="."
-           - ./operatorhub bundle create-pr --dir="."
+           - /tmp/operatorhub container publish --dry-run=false
+           - cd "${CWD}/hack/operatorhub"
+           - /tmp/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - /tmp/operatorhub bundle generate --dir="${CWD}/hack/operatorhub"
+           - /tmp/operatorhub bundle create-pr --dir="${CWD}/hack/operatorhub"
