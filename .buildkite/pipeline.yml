@@ -116,6 +116,8 @@ steps:
         key: "build-operatorhub-tool"
         if: build.message == "run operatorhub release"
         commands:
+           - export OHUB_PROJECT_ID=$$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - echo $$OHUB_PROJECT_ID
            - cd hack/operatorhub
            - make build
            - buildkite-agent artifact upload "bin/operator*"
@@ -126,7 +128,7 @@ steps:
         depends_on:
           - "build-operatorhub-tool"
         commands:
-           - git checkout ${OHUB_BRANCH}
+           - git checkout $$OHUB_BRANCH
            - make generate-crds-v1
         artifact_paths:
         - "config/*.yaml"
@@ -152,7 +154,7 @@ steps:
            - vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
            - export OHUB_API_KEY=$$(vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - export OHUB_PROJECT_ID=$$(vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-           - /tmp/preflight check container quay.io/redhat-isv-containers/${OHUB_PROJECT_ID}:${OHUB_TAG} --pyxis-api-token=${OHUB_API_KEY} --certification-project-id=${OHUB_PROJECT_ID} --submit -d /tmp/auth.json
+           - /tmp/preflight check container quay.io/redhat-isv-containers/$$OHUB_PROJECT_ID:$$OHUB_TAG --pyxis-api-token=$$OHUB_API_KEY --certification-project-id=$$OHUB_PROJECT_ID --submit -d /tmp/auth.json
 
       - label: "run remaining release"
         key: "redhat-release"
@@ -165,6 +167,6 @@ steps:
            - chmod u+x /usr/local/bin/operatorhub
            - /usr/local/bin/operatorhub container publish --dry-run=false
            - cd hack/operatorhub
-           - /usr/local/bin/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - /usr/local/bin/operatorhub bundle generate --dir=$(pwd)
-           - /usr/local/bin/operatorhub bundle create-pr --dir=$(pwd)
+           - /usr/local/bin/operatorhub generate-manifests --prev-version=$$OHUB_PREV_VERSION --stack-version=$$OHUB_STACK_VERSION --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - /usr/local/bin/operatorhub bundle generate --dir=$$(pwd)
+           - /usr/local/bin/operatorhub bundle create-pr --dir=$$(pwd)
