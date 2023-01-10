@@ -62,7 +62,7 @@ func Command() *cobra.Command {
 		&flags.BuildkiteBranch,
 		flags.BuildkiteBranchFlag,
 		"B",
-		"",
+		"main",
 		"Git branch to use when running release (OHUB_BUILDKITE_BRANCH)",
 	)
 
@@ -70,7 +70,7 @@ func Command() *cobra.Command {
 		&flags.BuildkiteCommit,
 		flags.BuildkiteCommitFlag,
 		"c",
-		"",
+		"HEAD",
 		"Git commit SHA to use when running release (OHUB_BUILDKITE_COMMIT)",
 	)
 
@@ -79,7 +79,7 @@ func Command() *cobra.Command {
 		flags.BuildkitePRRepositoryFlag,
 		"r",
 		"",
-		"Git pull request repository to use when running release (OHUB_BUILDKITE_PR_REPOSITORY)",
+		"Git pull request repository to use when running release. (Only required when cli tooling changes aren't merged to main) (OHUB_BUILDKITE_PR_REPOSITORY)",
 	)
 
 	cmd.Flags().StringVarP(
@@ -87,7 +87,7 @@ func Command() *cobra.Command {
 		flags.BuildkitePRIDFlag,
 		"i",
 		"",
-		"Git pull request id to use when running release (OHUB_BUILDKITE_PR_ID)",
+		"Git pull request id to use when running release (Only required when cli tooling changes aren't merged to main) (OHUB_BUILDKITE_PR_ID)",
 	)
 
 	return cmd
@@ -114,6 +114,14 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteToken)
 	}
 
+	if flags.BuildkiteBranch == "" {
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteBranch)
+	}
+
+	if flags.BuildkiteCommit == "" {
+		return fmt.Errorf(flags.RequiredErrFmt, flags.BuildkiteCommit)
+	}
+
 	return nil
 }
 
@@ -124,18 +132,15 @@ func doRun(_ *cobra.Command, _ []string) error {
 	reqBody := body{
 		Message: "run operatorhub release",
 		Env: map[string]string{
+			"OHUB_DRY_RUN":       fmt.Sprintf("%t", flags.DryRun),
 			"OHUB_TAG":           flags.Tag,
 			"OHUB_PREV_VERSION":  flags.PreviousVersion,
 			"OHUB_STACK_VERSION": flags.StackVersion,
 		},
+		Branch: flags.BuildkiteBranch,
+		Commit: flags.BuildkiteCommit,
 	}
 
-	if flags.BuildkiteBranch != "" {
-		reqBody.Branch = &flags.BuildkiteBranch
-	}
-	if flags.BuildkiteCommit != "" {
-		reqBody.Commit = &flags.BuildkiteCommit
-	}
 	if flags.BuildkitePRRepository != "" {
 		reqBody.PullRequestRepository = &flags.BuildkitePRRepository
 	}
@@ -173,8 +178,8 @@ func doRun(_ *cobra.Command, _ []string) error {
 type body struct {
 	Message               string
 	Env                   map[string]string
-	Commit                *string
-	Branch                *string
+	Commit                string
+	Branch                string
 	PullRequestRepository *string
 	PullRequestID         *string
 }

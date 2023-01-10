@@ -151,4 +151,4 @@ steps:
            - ./operatorhub container publish --dry-run=false
            - ./operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
            - ./operatorhub bundle generate --dir="."
-           - ./operatorhub bundle create-pr --dir="." --dry-run=false
+           - ./operatorhub bundle create-pr --dir="."
