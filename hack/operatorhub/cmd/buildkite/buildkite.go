@@ -58,6 +58,38 @@ func Command() *cobra.Command {
 		"Buildkite token to communicate with Buildkite API (OHUB_BUILDKITE_TOKEN)",
 	)
 
+	cmd.Flags().StringVarP(
+		&flags.BuildkiteBranch,
+		flags.BuildkiteBranchFlag,
+		"B",
+		"",
+		"Git branch to use when running release (OHUB_BUILDKITE_BRANCH)",
+	)
+
+	cmd.Flags().StringVarP(
+		&flags.BuildkiteCommit,
+		flags.BuildkiteCommitFlag,
+		"c",
+		"",
+		"Git commit SHA to use when running release (OHUB_BUILDKITE_COMMIT)",
+	)
+
+	cmd.Flags().StringVarP(
+		&flags.BuildkitePRRepository,
+		flags.BuildkitePRRepositoryFlag,
+		"r",
+		"",
+		"Git pull request repository to use when running release (OHUB_BUILDKITE_PR_REPOSITORY)",
+	)
+
+	cmd.Flags().StringVarP(
+		&flags.BuildkitePRID,
+		flags.BuildkitePRIDFlag,
+		"i",
+		"",
+		"Git pull request id to use when running release (OHUB_BUILDKITE_PR_ID)",
+	)
+
 	return cmd
 }
 
@@ -97,6 +129,19 @@ func doRun(_ *cobra.Command, _ []string) error {
 			"OHUB_STACK_VERSION": flags.StackVersion,
 		},
 	}
+
+	if flags.BuildkiteBranch != "" {
+		reqBody.Branch = &flags.BuildkiteBranch
+	}
+	if flags.BuildkiteCommit != "" {
+		reqBody.Commit = &flags.BuildkiteCommit
+	}
+	if flags.BuildkitePRRepository != "" {
+		reqBody.PullRequestRepository = &flags.BuildkitePRRepository
+	}
+	if flags.BuildkitePRID != "" {
+		reqBody.PullRequestID = &flags.BuildkitePRID
+	}
 	b, err := json.Marshal(&reqBody)
 	if err != nil {
 		return fmt.Errorf("while marshaling body into json: %w", err)
@@ -126,6 +171,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 // body is the HTTP body for submitting a buildkite request to start a new build
 type body struct {
-	Message string
-	Env     map[string]string
+	Message               string
+	Env                   map[string]string
+	Commit                *string
+	Branch                *string
+	PullRequestRepository *string
+	PullRequestID         *string
 }

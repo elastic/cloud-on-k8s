@@ -46,7 +46,11 @@ const (
 	RootPathFlag     = "root-path"
 
 	// buildkite command flag
-	BuildkiteTokenFlag = "buildkite-token"
+	BuildkiteTokenFlag        = "buildkite-token"
+	BuildkiteBranchFlag       = "buildkite-branch"
+	BuildkiteCommitFlag       = "buildkite-commit"
+	BuildkitePRRepositoryFlag = "buildkite-pr-repository"
+	BuildkitePRIDFlag         = "buildkite-pr-id"
 )
 
 var (
@@ -84,5 +88,9 @@ var (
 	RootPath        string
 
 	// buildkite command variable
-	BuildkiteToken string
+	BuildkiteToken        string
+	BuildkiteBranch       string
+	BuildkiteCommit       string
+	BuildkitePRRepository string
+	BuildkitePRID         string
 )
