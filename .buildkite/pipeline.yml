@@ -118,6 +118,8 @@ steps:
         commands:
            - cd hack/operatorhub
            - make build
+           - vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat
+           - exit 1
            - buildkite-agent artifact upload "bin/operator*"
 
       - label: "Generate CRDs"
