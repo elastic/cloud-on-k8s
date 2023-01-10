@@ -129,8 +129,7 @@ steps:
            - git checkout ${OHUB_BRANCH}
            - make generate-crds-v1
         artifact_paths:
-        - "config/crds.yaml"
-        - "config/operator.yaml"
+        - "config/*.yaml"
 
       - label: "run container push"
         key: "redhat-container-push"
@@ -139,6 +138,7 @@ steps:
           - "generate-crds"
         commands:
            - buildkite-agent artifact download "bin/operator*" /usr/local/
+           - chmod u+x /usr/local/bin/operatorhub
            - /usr/local/bin/operatorhub container push --dry-run=false
 
       - label: "run container preflight"
@@ -163,8 +163,8 @@ steps:
           - "redhat-preflight"
         commands:
            - buildkite-agent artifact download "bin/operator*" /usr/local/
-           - buildkite-agent artifact download config/crds.yaml .
-           - buildkite-agent artifact download config/operator.yaml .
+           - buildkite-agent artifact download "config/*.yaml" .
+           - chmod u+x /usr/local/bin/operatorhub
            - /usr/local/bin/operatorhub container publish --dry-run=false
            - cd hack/operatorhub
            - /usr/local/bin/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
