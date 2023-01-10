@@ -3,7 +3,7 @@
 # you may not use this file except in compliance with the Elastic License 2.0.
 
 RESTRICTED_NS:= elastic-system
-DOCKER_IMAGE := docker.elastic.co/eck/manifest-gen:$(shell cat ../../VERSION)
+DOCKER_IMAGE := docker.elastic.co/eck/manifest-gen:v$(shell cat ../../VERSION)
 
 .PHONY: gen-global
 gen-global:
