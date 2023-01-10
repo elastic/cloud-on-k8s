@@ -18,7 +18,6 @@ import (
 
 const (
 	// viper flags
-	bucketFlag          = "bucket"
 	chartsDirFlag       = "charts-dir"
 	chartsRepoURLFlag   = "charts-repo-url"
 	credentialsFileFlag = "credentials-file"
