@@ -116,10 +116,11 @@ steps:
         key: "build-operatorhub-tool"
         if: build.message == "run operatorhub release"
         commands:
-           - export CWD=$(pwd)
            - cd hack/operatorhub
            - make build
-           - mv bin/operatorhub /tmp/operatorhub
+           - mv bin/operatorhub /usr/local/bin/operatorhub
+        artifact_paths:
+        - "/usr/local/bin/operatorhub"
 
       - label: "Generate CRDs"
         key: "generate-crds"
@@ -129,6 +130,9 @@ steps:
         commands:
            - git checkout ${OHUB_BRANCH}
            - make generate-crds-v1
+        artifact_paths:
+        - "config/crds.yaml"
+        - "config/operator.yaml"
 
       - label: "run container push"
         key: "redhat-container-push"
@@ -136,7 +140,8 @@ steps:
         depends_on:
           - "generate-crds"
         commands:
-           - /tmp/operatorhub container push --dry-run=false
+           - buildkite-agent artifact download /usr/local/bin/operatorhub /usr/local/bin/
+           - /usr/local/bin/operatorhub container push --dry-run=false
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -152,14 +157,18 @@ steps:
            - export OHUB_API_KEY=$(/tmp/vault read -format=json -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - export OHUB_PROJECT_ID=$(/tmp/vault read -format=json -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - /usr/local/bin/preflight check container quay.io/redhat-isv-containers/${OHUB_PROJECT_ID}:${OHUB_TAG} --pyxis-api-token=${OHUB_API_KEY} --certification-project-id=${OHUB_PROJECT_ID} --submit -d /tmp/auth.json
+
       - label: "run remaining release"
         key: "redhat-release"
         if: build.message == "run operatorhub release"
         depends_on:
           - "redhat-preflight"
         commands:
-           - /tmp/operatorhub container publish --dry-run=false
-           - cd "${CWD}/hack/operatorhub"
-           - /tmp/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-           - /tmp/operatorhub bundle generate --dir="${CWD}/hack/operatorhub"
-           - /tmp/operatorhub bundle create-pr --dir="${CWD}/hack/operatorhub"
+           - buildkite-agent artifact download /usr/local/bin/operatorhub /usr/local/bin/
+           - buildkite-agent artifact download config/crds.yaml config/
+           - buildkite-agent artifact download config/operator.yaml config/
+           - /usr/local/bin/operatorhub container publish --dry-run=false
+           - cd hack/operatorhub
+           - /usr/local/bin/operatorhub generate-manifests --prev-version=${OHUB_PREV_VERSION} --stack-version=${OHUB_STACK_VERSION} --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+           - /usr/local/bin/operatorhub bundle generate --dir=$(pwd)
+           - /usr/local/bin/operatorhub bundle create-pr --dir=$(pwd)
