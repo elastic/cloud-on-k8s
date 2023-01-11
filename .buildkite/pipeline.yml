@@ -148,6 +148,8 @@ steps:
           - "redhat-container-push"
         commands:
            - curl -o /tmp/jq https://stedolan.github.io/jq/download/linux64/jq && chmod +x /tmp/jq
+           - export OHUB_API_KEY=$$(vault read -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+           - export OHUB_PROJECT_ID=$$(vault read -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - "echo curl -s -G \"https://catalog.redhat.com/api/containers/v1/projects/certification/id/${OHUB_PROJECT_ID}/images?filter=repositories.tags.name==${OHUB_TAG}\" -H \"X-API-KEY: ${OHUB_API_KEY}\" > /tmp/redhat.json"
            - "curl -s -G \"https://catalog.redhat.com/api/containers/v1/projects/certification/id/${OHUB_PROJECT_ID}/images?filter=repositories.tags.name==${OHUB_TAG}\" -H \"X-API-KEY: ${OHUB_API_KEY}\" > /tmp/redhat.json"
            - cat /tmp/redhat.json
@@ -156,8 +158,6 @@ steps:
            - curl -L -o /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
            - chmod u+x /tmp/preflight
            - vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
-           - export OHUB_API_KEY=$$(vault read -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-           - export OHUB_PROJECT_ID=$$(vault read -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
            - /tmp/preflight check container quay.io/redhat-isv-containers/$$OHUB_PROJECT_ID:$$OHUB_TAG --pyxis-api-token=$$OHUB_API_KEY --certification-project-id=$$OHUB_PROJECT_ID --submit -d /tmp/auth.json
 
       - label: "run remaining release"
