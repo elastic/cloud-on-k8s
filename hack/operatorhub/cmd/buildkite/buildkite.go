@@ -51,6 +51,14 @@ func Command() *cobra.Command {
 	)
 
 	cmd.Flags().StringVarP(
+		&flags.SupportedOpenshiftVersions,
+		flags.SupportedOpenshiftVersionsFlag,
+		"o",
+		"v4.6",
+		"supported openshift versions to be included within annotations. should *not* be a range. (v4.6) (OHUB_SUPPORTED_OPENSHIFT_VERSIONS)",
+	)
+
+	cmd.Flags().StringVarP(
 		&flags.GitBranch,
 		flags.GitBranchFlag,
 		"g",
@@ -144,11 +152,12 @@ func doRun(_ *cobra.Command, _ []string) error {
 	reqBody := body{
 		Message: "run operatorhub release",
 		Env: map[string]string{
-			"OHUB_DRY_RUN":       fmt.Sprintf("%t", flags.DryRun),
-			"OHUB_TAG":           flags.Tag,
-			"OHUB_BRANCH":        flags.GitBranch,
-			"OHUB_PREV_VERSION":  flags.PreviousVersion,
-			"OHUB_STACK_VERSION": flags.StackVersion,
+			"OHUB_DRY_RUN":                      fmt.Sprintf("%t", flags.DryRun),
+			"OHUB_TAG":                          flags.Tag,
+			"OHUB_BRANCH":                       flags.GitBranch,
+			"OHUB_PREV_VERSION":                 flags.PreviousVersion,
+			"OHUB_STACK_VERSION":                flags.StackVersion,
+			"OHUB_SUPPORTED_OPENSHIFT_VERSIONS": flags.SupportedOpenshiftVersions,
 		},
 		Branch: flags.BuildkiteBranch,
 		Commit: flags.BuildkiteCommit,
