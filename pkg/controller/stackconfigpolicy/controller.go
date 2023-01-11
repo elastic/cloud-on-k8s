@@ -241,7 +241,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		esNsn := k8s.ExtractNamespacedName(&es)
 		configuredResources[esNsn] = es
 
-		// File based Settings is available from ES 8.5.0
+		// version gate for the ES file-based settings feature
 		v, err := version.Parse(es.Spec.Version)
 		if err != nil {
 			return results.WithError(err), status
