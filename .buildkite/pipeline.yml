@@ -148,7 +148,7 @@ steps:
           - "redhat-container-push"
         commands:
            - curl -o /tmp/jq https://stedolan.github.io/jq/download/linux64/jq && chmod +x /tmp/jq
-           - "curl -s -G https://catalog.redhat.com/api/containers/v1/projects/certification/id/$$OHUB_PROJECT_ID/images -d filter=repositoriegs.tags.name==$$OHUB_TAG -H 'X-API-KEY: $$OHUB_API_KEY' > /tmp/redhat.json"
+           - "curl -s -G https://catalog.redhat.com/api/containers/v1/projects/certification/id/$$OHUB_PROJECT_ID/images -d filter=repositories.tags.name==$$OHUB_TAG -H 'X-API-KEY: $$OHUB_API_KEY' > /tmp/redhat.json"
            - cat /tmp/redhat.json
            # The following command will fail if no data was returned, so preflight will not run if it's already run
            - /tmp/jq -e '.data[0]' /tmp/redhat.json && exit 0
