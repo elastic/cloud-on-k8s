@@ -44,9 +44,9 @@ func TestStackConfigPolicy(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// StackConfigPolicy is supported since 8.6.0
+	// StackConfigPolicy is supported for ES versions with file-based settings feature
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(version.MinFor(8, 6, 0)) {
+	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		t.SkipNow()
 	}
 
