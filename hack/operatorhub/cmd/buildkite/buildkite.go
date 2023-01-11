@@ -55,7 +55,7 @@ func Command() *cobra.Command {
 		flags.GitBranchFlag,
 		"g",
 		"",
-		"Git branch to use when building manifests (2.6 for 2.6.0 release) (OHUB_STACK_VERSION)",
+		"Git branch to use when building manifests (2.6 for 2.6.0 release) (OHUB_GIT_BRANCH)",
 	)
 
 	cmd.Flags().StringVarP(
