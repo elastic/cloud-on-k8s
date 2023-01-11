@@ -9,9 +9,9 @@ description: |-
 
 type: application
 
-version: 2.6.0
+version: 2.6.1
 
-appVersion: 2.6.0
+appVersion: 2.6.1
 
 home: https://github.com/elastic/cloud-on-k8s
 
