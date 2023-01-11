@@ -2,6 +2,12 @@
 == 2.6.0 release highlights
 
 [float]
+[id="{p}-260-known-issues"]
+=== Known issues
+- Upgrading ECK to 2.6.0 and then Elasticsearch to 8.6.0 may fail the Elasticsearch cluster. Upgrade to ECK 2.6.1 before attempting to upgrade Elasticsearch to 8.6.0. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/6303[issue] will be fixed in a future Elasticsearch release.
+
+
+[float]
 [id="{p}-260-new-and-notable"]
 === New and notable
 
