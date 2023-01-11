@@ -71,7 +71,7 @@ func Command() *cobra.Command {
 		flags.BuildkiteBranchFlag,
 		"B",
 		"main",
-		"Git branch to use when running release (OHUB_BUILDKITE_BRANCH)",
+		"Git branch with operatorhub tooling to use when running release (Should typically be `main` or same as `git-branch` flag; Could be PR branch if changes are not merged) (OHUB_BUILDKITE_BRANCH)",
 	)
 
 	cmd.Flags().StringVarP(
