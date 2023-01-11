@@ -67,3 +67,7 @@
 * Update module github.com/spf13/cobra to v1.6.1 {pull}6110[#6110]
 * Update module golang.org/x/text to v0.4.0 {pull}6100[#6100]
 
+[float]
+[id="{p}-260-known-issues"]
+=== Known issues
+- Upgrading ECK to 2.6.0 and then Elasticsearch to 8.6.0 may fail the Elasticsearch cluster. Upgrade to ECK 2.6.1 before attempting to upgrade Elasticsearch to 8.6.0. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/6303[issue] will be fixed in a future Elasticsearch release.
