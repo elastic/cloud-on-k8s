@@ -22,7 +22,7 @@ var installerManifest string
 var policiesManifest string
 
 const (
-	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=60s`
+	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=15m`
 )
 
 func Install(globalKubectlOptions ...string) error {
