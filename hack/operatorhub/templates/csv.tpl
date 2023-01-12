@@ -228,7 +228,7 @@ metadata:
               }
           }
       ]
-  name: {{ .PackageName }}.{{ .NewVersion }}
+  name: {{ .PackageName }}.v{{ .NewVersion }}
   namespace: placeholder
 spec:
   customresourcedefinitions:

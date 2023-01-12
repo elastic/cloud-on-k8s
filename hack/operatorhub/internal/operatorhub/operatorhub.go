@@ -598,10 +598,12 @@ func renderPackageFile(params *RenderParams, templatesDir, outDir string) error 
 }
 
 func renderTemplate(params *RenderParams, templatePath, outPath string) error {
-	// ensure NewVersion is always prefixed with 'v' when rendering template
-	// to remove adding prefix in the .tpl files
-	if !strings.HasPrefix(params.NewVersion, "v") {
-		params.NewVersion = fmt.Sprintf("v%s", params.NewVersion)
+	// ensure NewVersion is never prefixed with 'v' when rendering template
+	// as we use the 'v' prefix in the `name:` field, but the `version:` field
+	// cannnot have the 'v' prefix, as the certified operator automation
+	// refused to accept this field with a 'v' prefix.
+	if strings.HasPrefix(params.NewVersion, "v") {
+		params.NewVersion = strings.TrimPrefix(params.NewVersion, "v")
 	}
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
