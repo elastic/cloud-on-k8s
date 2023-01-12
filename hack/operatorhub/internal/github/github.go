@@ -267,6 +267,11 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	}
 	log.Println("✓")
 
+	err = c.syncFork(orgRepo, r, remote)
+	if err != nil {
+		return fmt.Errorf("while syncing fork with upstream: %w", err)
+	}
+
 	branchName := fmt.Sprintf("eck-%s-%s", repo.repository, c.GitTag)
 	log.Printf("Creating git branch (%s) for (%s) ", branchName, orgRepo)
 	err = r.CreateBranch(&config.Branch{

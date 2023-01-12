@@ -15,6 +15,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	git_http "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 const (
@@ -123,6 +128,41 @@ func (c *Client) createFork(orgRepo string) error {
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return fmt.Errorf("invalid response code for github request to create fork, code: %d, body: %s", res.StatusCode, string(bodyBytes))
+	}
+	return nil
+}
+
+func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *git.Remote) error {
+	err := repository.Fetch(&git.FetchOptions{
+		RemoteName: "fork",
+	})
+	if err != nil {
+		return fmt.Errorf("while fetching fork: %w", err)
+	}
+	w, err := repository.Worktree()
+	if err != nil {
+		return fmt.Errorf("while retrieving a working tree from the git filesystem: %w", err)
+	}
+	err = w.Checkout(&git.CheckoutOptions{Branch: "refs/remotes/fork/main", Create: false})
+	if err != nil {
+		return fmt.Errorf("while checking out (%s) branch (main): %w", orgRepo, err)
+	}
+	err = w.Pull(&git.PullOptions{RemoteName: "origin", ReferenceName: plumbing.NewBranchReferenceName("main")})
+	if err != nil {
+		return fmt.Errorf("while merging upstream changes from upstream/main into fork/main: %w", err)
+	}
+	refSpec := "+refs/heads/main:refs/heads/main"
+	err = repository.Push(&git.PushOptions{
+		Auth: &git_http.BasicAuth{
+			Username: c.GitHubToken,
+		},
+		RemoteName: "fork",
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(refSpec),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("while pushing merge of fork/main: %w", err)
 	}
 	return nil
 }
