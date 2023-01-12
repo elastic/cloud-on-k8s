@@ -2,7 +2,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    capabilities: Full Lifecycle
+    capabilities: Deep Insights
     categories: Database
     certified: 'false'
     containerImage: {{ .OperatorRepo }}{{ .Tag }}
