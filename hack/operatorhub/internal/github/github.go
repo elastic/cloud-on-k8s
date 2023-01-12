@@ -89,13 +89,14 @@ func New(config Config) *Client {
 }
 
 type githubRepository struct {
-	organization   string
-	repository     string
-	mainBranchName string
-	directoryName  string
-	url            string
-	tempDir        string
-	extraSteps     func() error
+	organization           string
+	repository             string
+	mainBranchName         string
+	directoryName          string
+	url                    string
+	tempDir                string
+	extraSteps             func() error
+	additionalChangedFiles []string
 }
 
 // CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations
@@ -152,6 +153,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 				return nil
 			},
+			additionalChangedFiles: []string{"elastic-cloud-eck.package.yaml"},
 		},
 		{
 			organization:   certifiedOperatorOrganization,
@@ -318,10 +320,13 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 
 	log.Printf("Adding new data to git working tree ")
 	pathToAdd := filepath.Join("operators", repo.directoryName, c.GitTag)
-	_, err = w.Add(pathToAdd)
-	if err != nil {
-		log.Println("ⅹ")
-		return fmt.Errorf("while adding destination directory (%s) to git working tree: %w", pathToAdd, err)
+
+	for _, file := range append([]string{pathToAdd}, repo.additionalChangedFiles...) {
+		_, err = w.Add(file)
+		if err != nil {
+			log.Println("ⅹ")
+			return fmt.Errorf("while adding destination directory (%s) to git working tree: %w", file, err)
+		}
 	}
 	log.Println("✓")
 
