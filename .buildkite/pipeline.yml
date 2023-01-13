@@ -115,7 +115,7 @@ steps:
       - label: ":helm: release eck-operator helm chart - pipeline upload"
         # From https://semver.org, prefixed with 'v'.
         # The '$$' is required when formatting regular expressions: https://buildkite.com/docs/pipelines/conditionals#formatting-regular-expressions
-        if: build.tag =~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$$/
+        if: build.tag != null
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
 
@@ -144,3 +144,8 @@ steps:
         if: build.message == "release eck-resources helm charts"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
+
+      - label: ":helm: release all helm charts manually - pipeline upload"
+        if: build.message == "release all helm charts"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-all.yml
