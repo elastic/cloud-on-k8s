@@ -217,7 +217,7 @@ type uploadChartsConfig struct {
 // uploadChartsAndUpdateIndex will perform the following:
 // 1. Upload Helm charts with no dependencies to GCS bucket.
 // 2. Potentially update GCS Bucket Helm index.
-// 3. Potentially uploade Helm charts with dependencies to GCS bucket.
+// 3. Potentially upload Helm charts with dependencies to GCS bucket.
 // 4. Potentially update GCS Bucket Helm index a second time.
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 
