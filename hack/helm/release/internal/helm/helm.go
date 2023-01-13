@@ -592,26 +592,29 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig) e
 	tempIndex.Merge(bucketIndex)
 	tempIndex.SortEntries()
 
-	if !conf.releaseConf.DryRun {
-		log.Printf("Writing new helm index file for %s", conf.releaseConf.ChartsRepoURL)
-		if err = tempIndex.WriteFile(filepath.Join(tempDir, "index.yaml"), 0644); err != nil {
-			return fmt.Errorf("while writing new helm index file: %w", err)
-		}
-		f, err := os.Open(filepath.Join(tempDir, "index.yaml"))
-		if err != nil {
-			return fmt.Errorf("while opening new index.yaml: %w", err)
-		}
-		defer f.Close()
+	if conf.releaseConf.DryRun {
+		log.Printf("not uploading index as dry-run is set")
+		return nil
+	}
 
-		writer := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml").NewWriter(ctx)
+	log.Printf("Writing new helm index file for %s", conf.releaseConf.ChartsRepoURL)
+	if err = tempIndex.WriteFile(filepath.Join(tempDir, "index.yaml"), 0644); err != nil {
+		return fmt.Errorf("while writing new helm index file: %w", err)
+	}
+	f, err = os.Open(filepath.Join(tempDir, "index.yaml"))
+	if err != nil {
+		return fmt.Errorf("while opening new index.yaml: %w", err)
+	}
+	defer f.Close()
 
-		if _, err = io.Copy(writer, f); err != nil {
-			return fmt.Errorf("while copying new index.yaml to bucket: %w", err)
-		}
+	writer := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml").NewWriter(ctx)
 
-		if err := writer.Close(); err != nil {
-			return fmt.Errorf("while writing new index.yaml to bucket: %w", err)
-		}
+	if _, err = io.Copy(writer, f); err != nil {
+		return fmt.Errorf("while copying new index.yaml to bucket: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("while writing new index.yaml to bucket: %w", err)
 	}
 	return nil
 }
