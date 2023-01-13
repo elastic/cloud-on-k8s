@@ -1,0 +1,8 @@
+[[release-highlights-2.6.2]]
+== 2.6.2 release highlights
+
+[float]
+[id="{p}-262-new-and-notable"]
+=== Bug fix
+
+This release is binary identical to 2.6.1 and addresses an issue with the OLM bundle for the certified operator and the community operator on OpenShift OperatorHub. It is not available on any other distribution channel. The operator logs will show version 2.6.1.
