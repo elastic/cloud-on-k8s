@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/avast/retry-go/v4"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -219,6 +220,7 @@ type uploadChartsConfig struct {
 // 3. Potentially uploade Helm charts with dependencies to GCS bucket.
 // 4. Potentially update GCS Bucket Helm index a second time.
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	tempDir, err := os.MkdirTemp(os.TempDir(), "charts")
@@ -237,12 +239,58 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 		log.Printf("Not processing charts with dependencies (%v) as the Helm index isn't being updated, or dry-run is set", conf.withDeps)
 		return nil
 	}
-	// upload charts with dependencies
-	if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
-		return err
+	// This retry is here because of caching in front of the Helm repository
+	// and the time it takes for a new release to show up in the repository.
+	// If the eck-stack chart depends on new version of any of the other
+	// eck-resources charts, and that new version is just released, then
+	// it will take ~ one hour for it to show up, so we will continue trying
+	// to get all dependencies of the helm charts, and upload them for 1 hour.
+	retry.Do(
+		func() error {
+			if err := updateHelmRepositories(); err != nil {
+				return err
+			}
+			// upload charts with dependencies
+			if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
+				return err
+			}
+			if err := updateIndex(ctx, tempDir, conf); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		retry.RetryIf(func(err error) bool {
+			if strings.Contains(err.Error(), "while updating dependencies for helm chart") {
+				return true
+			}
+			return false
+		}),
+		retry.Attempts(60),
+		retry.Delay(1*time.Minute),
+		retry.OnRetry(func(n uint, err error) {
+			log.Printf("retry #%d: %s\n", n, err)
+		}),
+	)
+
+	return nil
+}
+
+func updateHelmRepositories() error {
+	// simulates helm repo update
+	f, err := repo.LoadFile(cli.New().RepositoryConfig)
+	if err != nil {
+		return fmt.Errorf("while loading repository file: %w", err)
 	}
-	if err := updateIndex(ctx, tempDir, conf); err != nil {
-		return err
+	for _, r := range f.Repositories {
+		cr, err := repo.NewChartRepository(r, getter.All(cli.New()))
+		if err != nil {
+			return fmt.Errorf("while getting new chart repository: %w", err)
+		}
+		if _, err = cr.DownloadIndexFile(); err != nil {
+			return fmt.Errorf("while updating repository index for (%s): %w", cr.Config.Name, err)
+		}
+		log.Printf("Updated repository index for (%s)\n", cr.Config.Name)
 	}
 	return nil
 }
@@ -258,8 +306,13 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 //  5. Run 'Helm package chart' for the Helm Chart to generate a tarball.
 //  6. Copy the tarball to the GCS bucket.
 func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf ReleaseConfig) error {
-	if err := addStableHelmRepository(); err != nil {
-		return err
+	type helmRepo struct {
+		name, url string
+	}
+	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
+		if err := addHelmRepository(r.name, r.url); err != nil {
+			return err
+		}
 	}
 	log.Printf("Done adding (%s) repository.\n", stableHelmChartsURL)
 	for _, chart := range charts {
@@ -292,12 +345,12 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 	return nil
 }
 
-// addStableHelmRepository will add the 'https://charts.helm.sh/stable'
-// repository to the Helm configuration.
-func addStableHelmRepository() error {
+// addHelmRepository will add the given Helm repository name + url
+// to the local Helm configuration.
+func addHelmRepository(name, url string) error {
 	settings := cli.New()
 	log.Printf("Adding (%s) repository.\n", stableHelmChartsURL)
-	// helm repo add stable https://charts.helm.sh/stable
+	// simulates 'helm repo add' command.
 	if _, err := repo.NewChartRepository(&repo.Entry{
 		Name: "stable",
 		URL:  stableHelmChartsURL,
