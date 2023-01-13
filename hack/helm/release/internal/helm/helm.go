@@ -235,10 +235,6 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := updateIndex(ctx, tempDir, conf); err != nil {
 		return err
 	}
-	if conf.releaseConf.DryRun {
-		log.Printf("Not processing charts with dependencies (%v) as the Helm index isn't being updated, or dry-run is set", conf.withDeps)
-		return nil
-	}
 	// This retry is here because of caching in front of the Helm repository
 	// and the time it takes for a new release to show up in the repository.
 	// If the eck-stack chart depends on new version of any of the other
@@ -261,7 +257,7 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 			return nil
 		},
 		retry.RetryIf(func(err error) bool {
-			if strings.Contains(err.Error(), "while updating dependencies for helm chart") {
+			if strings.Contains(err.Error(), "while updating dependencies for helm chart") && !conf.releaseConf.DryRun {
 				return true
 			}
 			return false
