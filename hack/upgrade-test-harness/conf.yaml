@@ -62,6 +62,9 @@ testParams:
   - name: v250
     operatorVersion: 2.5.0
     stackVersion: 8.5.0
+  - name: v261
+    operatorVersion: 2.6.1
+    stackVersion: 8.6.0
   - name: upcoming
-    operatorVersion: 2.6.0
-    stackVersion: 8.6.0-SNAPSHOT
+    operatorVersion: 2.7.0
+    stackVersion: 8.7.0-SNAPSHOT
