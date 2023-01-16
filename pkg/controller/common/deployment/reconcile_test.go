@@ -94,6 +94,8 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
 	require.Equal(t, 3, int(*reconciled.Spec.Replicas))
+	// status update from earlier should still be unchanged
+	require.Equal(t, 2, int(reconciled.Status.Replicas))
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
