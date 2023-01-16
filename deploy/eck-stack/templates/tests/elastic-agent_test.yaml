@@ -18,7 +18,7 @@ tests:
           value: 8.5.0
   - it: should render agent in custom fleet example properly
     values:
-      - ../../examples/fleet-agents.yaml
+      - ../../examples/agent/fleet-agents.yaml
     release:
       name: quickstart
     asserts:
@@ -75,7 +75,7 @@ tests:
           value: 8.5.0
   - it: should render fleet server in custom fleet example properly
     values:
-      - ../../examples/fleet-agents.yaml
+      - ../../examples/agent/fleet-agents.yaml
     release:
       name: quickstart
     asserts:
