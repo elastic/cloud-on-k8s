@@ -169,7 +169,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 
 // waitOnForkCreation will check if a given organization/repository has completed the fork
 // process for the Client.GitHubUsername by requesting the GitHubUsername/repository URL
-// from the Github API, looking for an eventual HTTP 200 response, timing out in 10 minutes.
+// from the Github API, looking for an eventual HTTP 200 response, timing out in 5 minutes.
 func (c *Client) waitOnForkCreation(orgRepo string) error {
 	ticker := time.NewTicker(10 * time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
