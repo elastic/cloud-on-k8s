@@ -60,6 +60,7 @@ data:
       }
       geoip {
         source => "clientip"
+        target => "clientgeo"
       }
     }
     output {
@@ -176,8 +177,6 @@ spec:
                 mountPath: /data
         containers:
           - name: filebeat
-            securityContext:
-              runAsUser: 0
             volumeMounts:
               - name: data
                 mountPath: /data
