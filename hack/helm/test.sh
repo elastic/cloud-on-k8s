@@ -8,12 +8,9 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-STATUS=0
-
 check() {
     local TEST_DIR="$1"
-    echo ""
-    cd "${TEST_DIR}" || return
+    cd "${TEST_DIR}" || exit
 
     local SED="sed_gnu"
     if [[ "$OSTYPE" =~ "darwin" ]]; then
@@ -32,14 +29,11 @@ check() {
     helm lint --strict .
 
     helm unittest -3 -f 'templates/tests/*.yaml' .
-    if [[ "$?" -eq 1 ]]; then
-        STATUS=1
-    fi
 
     # restore changes to Chart.yaml
     git checkout Chart.yaml
 
-    cd - || return
+    cd - || exit
 }
 
 sed_gnu() {
@@ -58,5 +52,3 @@ for i in "${SCRIPT_DIR}"/../../deploy/[a-zA-Z0-9]*; do
         check "${i}"
     fi
 done
-
-exit $STATUS
