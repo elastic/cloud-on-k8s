@@ -14,7 +14,7 @@ import (
 	udiff "github.com/elastic/go-ucfg/diff"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // CanonicalConfig contains configuration for an Elastic resource ("elasticsearch.yml" or "kibana.yml"),

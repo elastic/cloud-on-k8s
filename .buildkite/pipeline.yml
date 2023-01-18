@@ -81,9 +81,12 @@ steps:
           - "operator-image-build"
           - "e2e-tests-image-build"
 
+      # Kind is created in the gcp bk agent, so no external resources to clean up
+
       # Run all e2e tests on GKE on every commit in main
 
       - label: ":k8s: main e2e-tests"
+        key: "main-e2e-tests"
         if: build.branch == "main" && build.source != "schedule"
         agents:
           memory: "4G"
@@ -97,6 +100,15 @@ steps:
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
+
+      - label: "cleanup"
+        if: build.branch == "main" && build.source != "schedule"
+        depends_on:
+          - step: "main-e2e-tests"
+            allow_failure: true
+        commands:
+          - .ci/setenvconfig cleanup/main
+          - make run-deployer
 
       # Run all e2e tests on all k8s distributions at midnight from the main branch
 

@@ -14,7 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (

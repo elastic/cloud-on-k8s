@@ -733,6 +733,27 @@ CFG
 ;;
 
 ######################################
+  cleanup/main)
+######################################
+
+clusterName="eck-${CI_PLATFORM}-e2e-main-${BUILD_NUMBER}"
+
+write_deployer_config <<CFG
+id: gke-ci
+overrides:
+  operation: delete
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
   cleanup/resilience)
 ######################################
 

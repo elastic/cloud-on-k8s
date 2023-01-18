@@ -41,9 +41,9 @@ func Test_newConfig(t *testing.T) {
 			},
 			want: `host: 0.0.0.0
 ssl:
-  certificate: /mnt/elastic-internal/http-certs/tls.crt
-  enabled: true
-  key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
 `,
 			wantErr: false,
 		},
@@ -60,9 +60,9 @@ ssl:
 			},
 			want: `host: 0.0.0.0
 ssl:
-  certificate: /mnt/elastic-internal/http-certs/tls.crt
-  enabled: true
-  key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
 ui: false
 `,
 			wantErr: false,
@@ -76,9 +76,9 @@ ui: false
 			},
 			want: `host: 0.0.0.0
 ssl:
-  certificate: /mnt/elastic-internal/http-certs/tls.crt
-  enabled: true
-  key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
 ui: false
 `,
 			wantErr: false,
@@ -94,9 +94,9 @@ ui: false
 			},
 			want: `host: 0.0.0.0
 ssl:
-  certificate: /mnt/elastic-internal/http-certs/tls.crt
-  enabled: true
-  key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
 ui: true
 `,
 			wantErr: false,
@@ -133,17 +133,17 @@ ui: true
 				ipFamily: corev1.IPv6Protocol,
 			},
 			want: `elasticsearch:
-  host: https://elasticsearch-sample-es-http.default.svc:9200
-  password: password
-  ssl:
-    certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
-    verificationMode: certificate
-  username: ns-sample-maps-user
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    password: password
+    ssl:
+        certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
+        verificationMode: certificate
+    username: ns-sample-maps-user
 host: '::'
 ssl:
-  certificate: /mnt/elastic-internal/http-certs/tls.crt
-  enabled: true
-  key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
 `,
 			wantErr: false,
 		},

@@ -28,6 +28,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 )
@@ -44,9 +45,9 @@ func TestStackConfigPolicy(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// StackConfigPolicy is supported since 8.6.0
+	// StackConfigPolicy is supported for ES versions with file-based settings feature
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(version.MinFor(8, 6, 0)) {
+	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		t.SkipNow()
 	}
 

@@ -85,15 +85,15 @@ param2: value2
 					},
 					Data: map[string][]byte{
 						"metricbeat.yml": []byte(`output:
-  elasticsearch:
-    hosts:
-    - https://monitoring-es-http.default.svc:9200
-    password: password
-    ssl:
-      certificate_authorities:
-      - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
-      verification_mode: certificate
-    username: default-monitored-default-monitoring-beat-es-mon-user
+    elasticsearch:
+        hosts:
+            - https://monitoring-es-http.default.svc:9200
+        password: password
+        ssl:
+            certificate_authorities:
+                - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
+            verification_mode: certificate
+        username: default-monitored-default-monitoring-beat-es-mon-user
 param1: value1
 param2: value2
 `),
