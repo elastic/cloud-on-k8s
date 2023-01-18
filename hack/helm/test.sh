@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-
+#
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
-
+#
 # Script to test helm charts
+#
+set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+sed_gnu() { sed -i "$@"; }
+sed_bsd() { sed -i '' "$@"; }
+
 check() {
     local TEST_DIR="$1"
-    cd "${TEST_DIR}" || exit
+    cd "${TEST_DIR}"
 
     local SED="sed_gnu"
     if [[ "$OSTYPE" =~ "darwin" ]]; then
@@ -33,21 +38,10 @@ check() {
     # restore changes to Chart.yaml
     git checkout Chart.yaml
 
-    cd - || exit
+    cd -
 }
 
-sed_gnu() {
-    sed -i "$@"
-}
-
-sed_bsd() {
-    sed -i '' "$@"
-}
-
-for i in "${SCRIPT_DIR}"/../../deploy/[a-zA-Z0-9]*; do
-    if [[ ! -d "${i}" ]]; then
-        continue
-    fi
+for i in $(find "${SCRIPT_DIR}"/../../deploy -type d); do
     if [[ -d "${i}"/templates/tests ]]; then
         check "${i}"
     fi
