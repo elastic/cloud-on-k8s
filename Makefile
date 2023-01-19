@@ -471,7 +471,7 @@ E2E_REGISTRY_NAMESPACE     ?= eck-dev
 
 E2E_IMG_TAG                := $(IMG_VERSION)
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 8.5.0
+E2E_STACK_VERSION          ?= 8.6.0
 export TESTS_MATCH         ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
