@@ -179,7 +179,7 @@ pipeline {
                     filter.addAll(failedTests)
 
                     slackSend(
-                        channel: '#cloud-k8s',
+                        channel: '#eck',
                         color: 'danger',
                         message: lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter),
                         tokenCredentialId: 'cloud-ci-slack-integration-token',

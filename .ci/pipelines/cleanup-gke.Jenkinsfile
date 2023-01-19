@@ -44,7 +44,7 @@ pipeline {
                     def msg = lib.generateSlackMessage("k8s cluster cleanup failed, manual cleanup might be required!", env.BUILD_URL, [])
 
                     slackSend(
-                        channel: '#cloud-k8s',
+                        channel: '#eck',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
