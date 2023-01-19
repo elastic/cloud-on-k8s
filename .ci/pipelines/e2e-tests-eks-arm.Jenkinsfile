@@ -62,7 +62,7 @@ pipeline {
                     def msg = lib.generateSlackMessage("E2E tests in EKS (ARM) failed!", env.BUILD_URL, filter)
 
                     slackSend(
-                        channel: '#cloud-k8s',
+                        channel: '#eck',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
