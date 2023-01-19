@@ -11,6 +11,10 @@ metadata:
     {{- toYaml .Values.annotations | nindent 4 }}
     {{- end }}
 spec:
+  {{- if .Values.auth }}
+  auth:
+    {{- toYaml .Values.auth | nindent 4 }}
+  {{- end }}
   {{- if .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml .Values.updateStrategy | nindent 4 }}

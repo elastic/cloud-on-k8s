@@ -165,3 +165,17 @@ tests:
       - equal:
           path: spec.nodeSets[3].name
           value: cold
+  - it: should render es user and roles properly
+    set:
+      auth:
+        fileRealm:
+          - secretName: filerealm-secret-1
+        roles:
+          - secretName: roles-secret-1
+    asserts:
+      - equal:
+          path: spec.auth.fileRealm[0].secretName
+          value: filerealm-secret-1
+      - equal:
+          path: spec.auth.roles[0].secretName
+          value: roles-secret-1
