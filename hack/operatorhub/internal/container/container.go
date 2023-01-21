@@ -84,12 +84,13 @@ func PushImage(c PushConfig) error {
 	}
 	if c.Force {
 		log.Println("pushing image as force was set")
-	} else {
-		log.Println("✓")
 	}
+
 	if err = pushImageToRegistry(c); err != nil {
+		log.Println("x")	
 		return fmt.Errorf("failed to push image: %w", err)
 	}
+	log.Println("✓")	
 	return nil
 }
 
