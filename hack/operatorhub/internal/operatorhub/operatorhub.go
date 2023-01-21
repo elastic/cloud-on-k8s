@@ -311,12 +311,7 @@ func makeRequest(url string) (io.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while executing HTTP GET %s: %w", url, err)
 	}
-
-	defer func() {
-		if resp.Body != nil {
-			resp.Body.Close()
-		}
-	}()
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, errNotFound
