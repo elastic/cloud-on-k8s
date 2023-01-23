@@ -163,7 +163,8 @@ pipeline {
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-85-${BUILD_NUMBER}-e2e", "8.5.3")
+                            // until https://github.com/elastic/apm-server/issues/10089 is fixed don't test 8.5.3
+                            runWith(lib, failedTests, "eck-85-${BUILD_NUMBER}-e2e", "8.5.2")
                         }
                     }
                 }
