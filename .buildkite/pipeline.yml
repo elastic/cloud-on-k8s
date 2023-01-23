@@ -112,47 +112,7 @@ steps:
 
     steps:
 
-      - label: "build operatorhub tool"
-        key: "build-operatorhub-tool"
+      - label: "redhat operatorhub"
         if: build.message == "run operatorhub release"
         commands:
-           - cd hack/operatorhub
-           - make build
-           - buildkite-agent artifact upload "bin/operator*"
-
-      - label: "Generate CRDs"
-        key: "generate-crds"
-        if: build.message == "run operatorhub release"
-        depends_on:
-          - "build-operatorhub-tool"
-        commands:
-           - git checkout $$OHUB_BRANCH
-           - make generate-crds-v1
-        artifact_paths:
-        - "config/*.yaml"
-
-      - label: "run container push"
-        key: "redhat-container-push"
-        if: build.message == "run operatorhub release"
-        depends_on:
-          - "generate-crds"
-        commands:
-           - buildkite-agent artifact download "bin/operator*" /usr/local/
-           - chmod u+x /usr/local/bin/operatorhub
-           - /usr/local/bin/operatorhub container push --dry-run=false
-
-      - label: "run container preflight"
-        key: "redhat-preflight"
-        if: build.message == "run operatorhub release"
-        depends_on:
-          - "redhat-container-push"
-        commands:
-           - .buildkite/scripts/operatorhub/operations.sh preflight
-
-      - label: "run remaining release"
-        key: "redhat-release"
-        if: build.message == "run operatorhub release"
-        depends_on:
-          - "redhat-preflight"
-        commands:
-           - .buildkite/scripts/operatorhub/operations.sh release
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
