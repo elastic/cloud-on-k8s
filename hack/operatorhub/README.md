@@ -124,6 +124,9 @@ To generate configuration for a previously released manifest version
 To generate configuration based on yet unreleased YAML manifests:
 
 ```shell
+# If using newVersion|prevVersion|stackVersion variables in config.yaml
+./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml
+# If wanting to override newVersion|prevVersion|stackVersion variables in config.yaml
 ./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml -s '8.6.0' -V '2.5.0' -t '2.6.0'
 ```
 
