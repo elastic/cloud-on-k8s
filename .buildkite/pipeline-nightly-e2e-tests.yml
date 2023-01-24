@@ -4,26 +4,31 @@ agents:
 
 steps:
 
-  # - group: "aks"
-  #   steps:
+  - group: "aks"
+    steps:
 
-  #     - label: "aks"
-  #       commands:
-  #         - .ci/setenvconfig e2e/main
-  #         - .ci/setenvconfig e2e/aks
-  #         - .buildkite/scripts/common/get-test-artifacts.sh
-  #         - make run-deployer
-  #         - make e2e-run
-  #       artifact_paths:
-  #         - "eck-diagnostic-*.zip"
+      - label: "aks"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/aks
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make -C .ci TARGET="run-deployer e2e-run" ci
+        artifact_paths:
+          - "eck-diagnostic-*.zip"
 
-  #     - wait: ~
-  #       continue_on_failure: true
+      - wait: ~
+        continue_on_failure: true
 
-  #     - label: "cleanup"
-  #       commands:
-  #         - .ci/setenvconfig cleanup/aks
-  #         - make run-deployer
+      - label: "cleanup"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+        commands:
+          - .ci/setenvconfig cleanup/aks
+          - make -C .ci TARGET=run-deployer ci
 
   - group: "eks"
     steps:
