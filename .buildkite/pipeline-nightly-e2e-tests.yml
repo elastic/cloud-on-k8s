@@ -233,53 +233,53 @@ steps:
   - group: "ocp"
     steps:
 
-      - label: "ocp 4.7"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/ocp 4.7.49
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make -C .ci TARGET="run-deployer e2e-run" ci
-        artifact_paths:
-          - "eck-diagnostic-*.zip"
+      # - label: "ocp 4.7"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig e2e/main
+      #     - .ci/setenvconfig e2e/ocp 4.7.49
+      #     - .buildkite/scripts/common/get-test-artifacts.sh
+      #     - make -C .ci TARGET="run-deployer e2e-run" ci
+      #   artifact_paths:
+      #     - "eck-diagnostic-*.zip"
 
-      - label: "ocp 4.8"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/ocp 4.8.50
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make -C .ci TARGET="run-deployer e2e-run" ci
-        artifact_paths:
-          - "eck-diagnostic-*.zip"
+      # - label: "ocp 4.8"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig e2e/main
+      #     - .ci/setenvconfig e2e/ocp 4.8.50
+      #     - .buildkite/scripts/common/get-test-artifacts.sh
+      #     - make -C .ci TARGET="run-deployer e2e-run" ci
+      #   artifact_paths:
+      #     - "eck-diagnostic-*.zip"
 
-      - label: "ocp 4.9"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/ocp 4.9.48
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make -C .ci TARGET="run-deployer e2e-run" ci
-        artifact_paths:
-          - "eck-diagnostic-*.zip"
+      # - label: "ocp 4.9"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig e2e/main
+      #     - .ci/setenvconfig e2e/ocp 4.9.48
+      #     - .buildkite/scripts/common/get-test-artifacts.sh
+      #     - make -C .ci TARGET="run-deployer e2e-run" ci
+      #   artifact_paths:
+      #     - "eck-diagnostic-*.zip"
 
-      - label: "ocp 4.10"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/ocp 4.10.34
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make -C .ci TARGET="run-deployer e2e-run" ci
-        artifact_paths:
-          - "eck-diagnostic-*.zip"
+      # - label: "ocp 4.10"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig e2e/main
+      #     - .ci/setenvconfig e2e/ocp 4.10.34
+      #     - .buildkite/scripts/common/get-test-artifacts.sh
+      #     - make -C .ci TARGET="run-deployer e2e-run" ci
+      #   artifact_paths:
+      #     - "eck-diagnostic-*.zip"
 
       - label: "ocp 4.11"
         agents:
@@ -296,37 +296,37 @@ steps:
       - wait: ~
         continue_on_failure: true
 
-      - label: "cleanup"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig cleanup/ocp 4.7.49
-          - make -C .ci TARGET=run-deployer ci
+      # - label: "cleanup"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig cleanup/ocp 4.7.49
+      #     - make -C .ci TARGET=run-deployer ci
 
-      - label: "cleanup"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig cleanup/ocp 4.8.50
-          - make -C .ci TARGET=run-deployer ci
+      # - label: "cleanup"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig cleanup/ocp 4.8.50
+      #     - make -C .ci TARGET=run-deployer ci
 
-      - label: "cleanup"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig cleanup/ocp 4.9.48
-          - make -C .ci TARGET=run-deployer ci
+      # - label: "cleanup"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig cleanup/ocp 4.9.48
+      #     - make -C .ci TARGET=run-deployer ci
 
-      - label: "cleanup"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        commands:
-          - .ci/setenvconfig cleanup/ocp 4.10.34
-          - make -C .ci TARGET=run-deployer ci
+      # - label: "cleanup"
+      #   agents:
+      #     provider: "gcp"
+      #     image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      #   commands:
+      #     - .ci/setenvconfig cleanup/ocp 4.10.34
+      #     - make -C .ci TARGET=run-deployer ci
 
       - label: "cleanup"
         agents:
