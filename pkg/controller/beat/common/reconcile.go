@@ -92,8 +92,8 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:            rp.beat.Namespace,
-		Selector:             NewLabels(rp.beat),
-		Labels:               NewLabels(rp.beat),
+		Selector:             rp.beat.GetElasticLabels(),
+		Labels:               rp.beat.GetElasticLabels(),
 		PodTemplateSpec:      rp.podTemplate,
 		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
 		Replicas:             pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
@@ -116,9 +116,9 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Owner:                &rp.beat,
-		Labels:               NewLabels(rp.beat),
+		Labels:               rp.beat.GetElasticLabels(),
 		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
-		Selectors:            NewLabels(rp.beat),
+		Selectors:            rp.beat.GetElasticLabels(),
 		Strategy:             rp.beat.Spec.DaemonSet.UpdateStrategy,
 	})
 

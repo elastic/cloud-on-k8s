@@ -47,7 +47,7 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Agent.Namespace,
 			Name:      ConfigSecretName(params.Agent.Name),
-			Labels:    labels.AddCredentialsLabel(NewLabels(params.Agent)),
+			Labels:    labels.AddCredentialsLabel(params.Agent.GetElasticLabels()),
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

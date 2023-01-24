@@ -88,7 +88,7 @@ type PodSpecParams struct {
 }
 
 func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodTemplateSpec, error) {
-	labels := NewLabels(as.Name)
+	labels := as.GetElasticLabels()
 	labels[APMVersionLabelName] = p.Version
 
 	// ensure the Pod gets rotated on config change

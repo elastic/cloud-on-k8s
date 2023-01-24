@@ -44,7 +44,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		r,
 		as,
 		Namer,
-		NewLabels(as.Name),
+		as.GetElasticLabels(),
 		initContainerParameters,
 	)
 	if err != nil {
@@ -96,8 +96,8 @@ func (r *ReconcileApmServer) deploymentParams(
 		Name:                 Deployment(as.Name),
 		Namespace:            as.Namespace,
 		Replicas:             as.Spec.Count,
-		Selector:             NewLabels(as.Name),
-		Labels:               NewLabels(as.Name),
+		Selector:             as.GetElasticLabels(),
+		Labels:               as.GetElasticLabels(),
 		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,
 		PodTemplateSpec:      podSpec,
 		Strategy:             appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},

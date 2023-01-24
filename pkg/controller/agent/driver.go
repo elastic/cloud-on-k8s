@@ -116,7 +116,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			Owner:                 &params.Agent,
 			TLSOptions:            params.Agent.Spec.HTTP.TLS,
 			Namer:                 Namer,
-			Labels:                NewLabels(params.Agent),
+			Labels:                params.Agent.GetElasticLabels(),
 			Services:              []corev1.Service{*svc},
 			GlobalCA:              params.OperatorParams.GlobalCA,
 			CACertRotation:        params.OperatorParams.CACertRotation,
@@ -185,7 +185,7 @@ func newService(agent agentv1alpha1.Agent) *corev1.Service {
 	svc.ObjectMeta.Namespace = agent.Namespace
 	svc.ObjectMeta.Name = HTTPServiceName(agent.Name)
 
-	labels := NewLabels(agent)
+	labels := agent.GetElasticLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     agent.Spec.HTTP.Protocol(),

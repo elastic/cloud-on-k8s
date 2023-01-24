@@ -165,7 +165,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 	vols = append(vols, caAssocVols...)
 
-	labels := maps.Merge(NewLabels(params.Agent), map[string]string{
+	labels := maps.Merge(params.Agent.GetElasticLabels(), map[string]string{
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{
@@ -253,7 +253,7 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, builder *defaults.
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      EnvVarsSecretName(params.Agent.Name),
 			Namespace: params.Agent.Namespace,
-			Labels:    labels.AddCredentialsLabel(NewLabels(params.Agent)),
+			Labels:    labels.AddCredentialsLabel(params.Agent.GetElasticLabels()),
 		},
 		Data: map[string][]byte{},
 	}

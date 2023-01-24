@@ -281,7 +281,7 @@ func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Vers
 func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(r.ent.Namespace)
-	if err := r.k8sClient.List(context.Background(), &pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
+	if err := r.k8sClient.List(context.Background(), &pods, client.MatchingLabels(r.ent.GetElasticLabels()), ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

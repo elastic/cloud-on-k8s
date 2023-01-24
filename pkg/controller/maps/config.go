@@ -52,7 +52,7 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ems.Namespace,
 			Name:      Config(ems.Name),
-			Labels:    commonlabels.AddCredentialsLabel(labels(ems.Name)),
+			Labels:    commonlabels.AddCredentialsLabel(ems.GetElasticLabels()),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

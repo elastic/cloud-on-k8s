@@ -73,7 +73,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 }
 
 func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
-	labels := NewLabels(kb.Name)
+	labels := kb.GetElasticLabels()
 	labels[KibanaVersionLabelName] = kb.Spec.Version
 
 	ports := getDefaultContainerPorts(kb)

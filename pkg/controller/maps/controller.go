@@ -224,7 +224,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		Owner:                 &ems,
 		TLSOptions:            ems.Spec.HTTP.TLS,
 		Namer:                 EMSNamer,
-		Labels:                labels(ems.Name),
+		Labels:                ems.GetElasticLabels(),
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -303,7 +303,7 @@ func NewService(ems emsv1alpha1.ElasticMapsServer) *corev1.Service {
 	svc.ObjectMeta.Namespace = ems.Namespace
 	svc.ObjectMeta.Name = HTTPService(ems.Name)
 
-	labels := labels(ems.Name)
+	labels := ems.GetElasticLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     ems.Spec.HTTP.Protocol(),
@@ -364,9 +364,9 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 		return deployment.Params{}, err
 	}
 
-	deploymentLabels := labels(ems.Name)
+	deploymentLabels := ems.GetElasticLabels()
 
-	podLabels := maps.Merge(labels(ems.Name), versionLabels(ems))
+	podLabels := maps.Merge(ems.GetElasticLabels(), versionLabels(ems))
 	// merge with user-provided labels
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 

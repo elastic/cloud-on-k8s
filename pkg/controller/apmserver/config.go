@@ -59,7 +59,7 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      Config(as.Name),
-			Labels:    NewLabels(as.Name),
+			Labels:    as.GetElasticLabels(),
 		},
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,

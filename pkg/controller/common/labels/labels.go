@@ -7,13 +7,11 @@ package labels
 import (
 	"strconv"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
-	// TypeLabelName used to represent a resource type in k8s resources
-	TypeLabelName = "common.k8s.elastic.co/type"
-
 	credentialsLabel = "eck.k8s.elastic.co/credentials" //nolint:gosec
 )
 
@@ -40,4 +38,9 @@ func (l TrueFalseLabel) AsMap(value bool) map[string]string {
 // AddCredentialsLabel adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
 func AddCredentialsLabel(original map[string]string) map[string]string {
 	return maps.Merge(map[string]string{credentialsLabel: "true"}, original)
+}
+
+// New will return the common Elastic labels for any instance of the Elastic Stack.
+func New(obj commonv1.HasElasticLabels) (labels map[string]string) {
+	return obj.GetElasticLabels()
 }

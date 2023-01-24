@@ -156,7 +156,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Version: "7.4.0",
 				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := NewLabels("kibana-name")
+				labels := (&kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "kibana-name"}}).GetElasticLabels()
 				labels[KibanaVersionLabelName] = "7.4.0"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
