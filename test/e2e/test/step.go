@@ -6,11 +6,13 @@ package test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -35,7 +37,8 @@ func (l StepList) WithStep(testStep Step) StepList {
 	return append(l, testStep)
 }
 
-// RunSequential runs the StepList sequentially, and fails fast on first error.
+// RunSequential runs the StepList sequentially, continues on any errors.
+// Runs eck-diagnostics and uploads artifacts when run within the CI system.
 //
 //nolint:thelper
 func (l StepList) RunSequential(t *testing.T) {
@@ -45,13 +48,19 @@ func (l StepList) RunSequential(t *testing.T) {
 			continue
 		}
 		if !t.Run(ts.Name, ts.Test) {
-			logf.Log.Error(errors.New("test failure"), "running diagnostics and continuing")
+			logf.Log.Error(errors.New("test failure"), "continuing with additional tests")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
 			}
-			// Where is it writing this?
-			// How do you upload this to google cloud storage?
-			runECKDiagnostics()
+			// Only run eck diagnostics after each run when job is
+			// run from CI, which provides a 'job-name' flag.
+			if Ctx().JobName != "" {
+				logf.Log.Info("running eck-diagnostics")
+				runECKDiagnostics()
+				logf.Log.Info("uploading artifacts from diagnostics")
+				uploadDiagnosticsArtifacts()
+			}
+			command.NewKubectl("")
 		}
 	}
 }
@@ -64,7 +73,17 @@ func runECKDiagnostics() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		log.Error(err, "Failed to run eck-diagnostics")
+		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
+	}
+}
+
+func uploadDiagnosticsArtifacts() {
+	ctx := Ctx()
+	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://devops-ci-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
 }
 

@@ -118,6 +118,7 @@ type Context struct {
 	Ocp3Cluster           bool               `json:"ocp3_cluster"`
 	Pipeline              string             `json:"pipeline"`
 	BuildNumber           string             `json:"build_number"`
+	JobName               string             `json:"job_name"`
 	Provider              string             `json:"provider"`
 	ClusterName           string             `json:"clusterName"`
 	KubernetesVersion     version.Version    `json:"kubernetes_version"`
