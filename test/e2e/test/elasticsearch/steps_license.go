@@ -17,8 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
@@ -130,7 +130,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 					Name:      secretName,
 					Labels: map[string]string{
 						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
-						labels.TypeLabelName:     license.Type,
+						commonv1.TypeLabelName:   license.Type,
 					},
 					Annotations: map[string]string{
 						license.EULAAnnotation: license.EULAAcceptedValue,
