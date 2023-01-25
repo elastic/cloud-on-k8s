@@ -11,7 +11,7 @@ experimental[]
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-Starting from ECK `2.6.0` and Elasticsearch `8.6.0`, Elastic Stack configuration policies allow you to configure the following settings:
+Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration policies allow you to configure the following settings:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
@@ -33,7 +33,7 @@ It is currently not allowed to configure an Elasticsearch cluster with more than
 Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following fields:
 
 * `name` is a unique name used to identify the policy.
-* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitraty names and values are definitions:
+* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
   ** `clusterSettings` are the settings that go into the elasticsearch.yml file.
   ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.

@@ -70,7 +70,7 @@ pipeline {
                         script {
 
                             slackSend(
-                                channel: '#cloud-k8s',
+                                channel: '#eck',
                                 color: 'good',
                                 message: "`${TAG_NAME}` was released \r\n" +
                                     "Manifests were uploaded to https://download.elastic.co/downloads/eck/${TAG_NAME}\r\n" +
@@ -166,7 +166,7 @@ pipeline {
         }
         unsuccessful {
             script {
-                slackSend channel: '#cloud-k8s',
+                slackSend channel: '#eck',
                     color: 'danger',
                     message: "${JOB_NAME} job failed! \r\n" + "${BUILD_URL}",
                     tokenCredentialId: 'cloud-ci-slack-integration-token'

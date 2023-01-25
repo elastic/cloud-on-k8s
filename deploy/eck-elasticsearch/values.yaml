@@ -18,7 +18,7 @@
 
 # Version of Elasticsearch.
 #
-version: 8.5.0
+version: 8.6.0
 
 # Labels that will be applied to Elasticsearch.
 #
@@ -27,6 +27,11 @@ labels: {}
 # Annotations that will be applied to Elasticsearch.
 #
 annotations: {}
+
+# Settings for configuring Elasticsearch users and roles.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-users-and-roles.html
+#
+auth: {}
 
 # Settings for configuring stack monitoring.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html

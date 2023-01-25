@@ -1,0 +1,37 @@
+[[release-highlights-2.6.0]]
+== 2.6.0 release highlights
+
+[float]
+[id="{p}-260-known-issues"]
+=== Known issues
+- Upgrading ECK to 2.6.0 and then Elasticsearch to 8.6.0 may lead to Elasticsearch master nodes unable to join the cluster. Upgrade to ECK 2.6.1 before attempting to upgrade Elasticsearch to 8.6.0. The underlying link:https://github.com/elastic/cloud-on-k8s/issues/6303[issue] will be fixed in a future Elasticsearch release.
+
+
+[float]
+[id="{p}-260-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.6.0 of {n}. Check <<release-notes-2.6.0>> for the full list of changes.
+
+[float]
+[id="{p}-260-stack-config-crd"]
+==== Elastic Stack Configuration Policy: Consistently configure multiple Elasticsearch clusters
+
+A new `StackConfigPolicy` custom resource is added to allow users to configure the following settings in one or more Elasticsearch clusters:
+
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/slm-api-put-policy.html[Snapshot Lifecycle Policies]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-pipeline-api.html[Ingest pipelines]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-put-lifecycle.html[Index Lifecycle Policies]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-template.html[Index templates]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html[Components templates]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
+
+Read our updated <<{p}-stack-config-policy, docs>> for more details.
+
+[float]
+[id="{p}-260-agent-fleet-helm-chart"]
+==== Helm chart for Elastic Beats
+
+We are adding a new Helm chart for workloads managed by the ECK operator. Elastic Beats are complementing the existing charts for Elasticsearch, Kibana, Agent and Fleet Agent. They can be used individually or as part of our existing Elastic Stack Helm chart. Get started by reading the  <<{p}-stack-helm-chart, docs>>.
