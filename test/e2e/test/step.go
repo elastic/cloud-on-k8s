@@ -6,6 +6,9 @@ package test
 
 import (
 	"errors"
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,12 +45,26 @@ func (l StepList) RunSequential(t *testing.T) {
 			continue
 		}
 		if !t.Run(ts.Name, ts.Test) {
-			logf.Log.Error(errors.New("test failure"), "stopping early")
+			logf.Log.Error(errors.New("test failure"), "running diagnostics and continuing")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
 			}
-			t.FailNow()
+			// Where is it writing this?
+			// How do you upload this to google cloud storage?
+			runECKDiagnostics()
 		}
+	}
+}
+
+func runECKDiagnostics() {
+	ctx := Ctx()
+	operatorNS := ctx.Operator.Namespace
+	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Error(err, "Failed to run eck-diagnostics")
 	}
 }
 
