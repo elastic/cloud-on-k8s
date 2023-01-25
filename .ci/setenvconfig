@@ -780,6 +780,10 @@ CFG
 
 clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
 
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
+
 write_deployer_config <<CFG
 id: aks-ci
 overrides:
@@ -798,6 +802,10 @@ CFG
 ######################################
 
 clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
 
 write_deployer_config <<CFG
 id: tanzu-ci
@@ -856,6 +864,10 @@ CFG
 
 ocpVersion=$2
 clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
 
 write_deployer_config <<CFG
 id: ocp-ci
