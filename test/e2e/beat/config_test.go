@@ -269,12 +269,6 @@ func TestAuditbeatConfig(t *testing.T) {
 func TestPacketbeatConfig(t *testing.T) {
 	name := "test-pb-cfg"
 
-	// https://github.com/elastic/cloud-on-k8s/issues/6346 packetbeat snapshots are panicking let's disable the test
-	// until this is addressed
-	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 7, 0)) {
-		t.SkipNow()
-	}
-
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
