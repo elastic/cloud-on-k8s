@@ -113,8 +113,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
-	esWithlicense := test.LicenseTestBuilder()
-	esWithlicense.BuildingThis = es
+	esWithlicense := test.LicenseTestBuilder(es)
 
 	var noEntries []string
 	steps := func(k *test.K8sClient) test.StepList {
