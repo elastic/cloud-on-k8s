@@ -5,6 +5,7 @@
 package test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +13,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -60,7 +68,10 @@ func (l StepList) RunSequential(t *testing.T) {
 				logf.Log.Info("uploading artifacts from diagnostics")
 				uploadDiagnosticsArtifacts()
 			}
-			command.NewKubectl("")
+			if err := deleteElasticResources(); err != nil {
+				logf.Log.Error(err, "while deleting elastic resources")
+				return
+			}
 		}
 	}
 }
@@ -85,6 +96,58 @@ func uploadDiagnosticsArtifacts() {
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
+}
+
+func deleteElasticResources() error {
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		log.Error(err, "while getting in cluster config")
+		return err
+	}
+	clntset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "while getting clientset")
+		return err
+	}
+
+	type version string
+	groupVersionMap := map[string][]version{}
+
+	apiGroups, _, _ := clntset.Discovery().ServerGroupsAndResources()
+
+	for _, group := range apiGroups {
+		if !strings.Contains(strings.ToLower(group.Name), "elastic") {
+			continue
+		}
+		for _, ver := range group.Versions {
+			groupVersionMap[group.Name] = append(groupVersionMap[group.Name], version(ver.Version))
+		}
+	}
+
+	expander := restmapper.NewDiscoveryCategoryExpander(clntset)
+	groupResources, ok := expander.Expand("elastic")
+	if !ok {
+		err = fmt.Errorf("while running 'kubectl delete elastic'")
+		log.Error(err, "while finding elastic categories in cluster")
+		return err
+	}
+	namespace := Ctx().E2ENamespace
+	dynamicClient := dynamic.New(clntset.RESTClient())
+	for _, gr := range groupResources {
+		for _, v := range groupVersionMap[gr.Group] {
+			if err := dynamicClient.Resource(schema.GroupVersionResource{
+				Group:    gr.Group,
+				Resource: gr.Resource,
+				Version:  string(v),
+			}).Namespace(namespace).DeleteCollection(context.Background(), v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
+				err = fmt.Errorf("while deleting elastic resources in %s: %s ", namespace, err)
+				log.Error(err, "group", gr.Group, "resource", gr.Resource)
+				return err
+			}
+		}
+
+	}
+	return nil
 }
 
 type StepsFunc func(k *K8sClient) StepList

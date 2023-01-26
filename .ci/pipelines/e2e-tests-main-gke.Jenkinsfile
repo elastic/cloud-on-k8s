@@ -77,10 +77,6 @@ pipeline {
                             sharedPublicly: true,
                             showInline: true
 
-                        googleStorageDownload bucketUri: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER/*.zip",
-                            credentialsId: "devops-ci-gcs-plugin",
-                            localDirectory: "."
-
                     }
 
                     sh 'exit $SHELL_EXIT_CODE'

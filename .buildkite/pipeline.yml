@@ -87,7 +87,7 @@ steps:
 
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"
-        if: build.branch == "main" && build.source != "schedule"
+        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
         agents:
           memory: "4G"
         commands:
@@ -95,6 +95,8 @@ steps:
           - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
+          # Copy any artifacts from the test run locally to be picked up s buildkite artifacts
+          - gsutil cp gs://devops-ci-artifacts/jobs/$$BUILDKITE_LABEL/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip .
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
@@ -102,7 +104,7 @@ steps:
           - "e2e-tests-image-build"
 
       - label: "cleanup"
-        if: build.branch == "main" && build.source != "schedule"
+        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
         depends_on:
           - step: "main-e2e-tests"
             allow_failure: true
