@@ -76,7 +76,6 @@ pipeline {
                             pattern: "*.zip",
                             sharedPublicly: true,
                             showInline: true
-
                     }
 
                     sh 'exit $SHELL_EXIT_CODE'
