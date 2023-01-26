@@ -113,6 +113,9 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
+	esWithlicense := test.LicenseTestBuilder()
+	esWithlicense.BuildingThis = es
+
 	var noEntries []string
 	steps := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -228,7 +231,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		}
 	}
 
-	test.Sequence(nil, steps, es).RunSequential(t)
+	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
