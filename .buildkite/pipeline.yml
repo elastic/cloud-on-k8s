@@ -113,8 +113,6 @@ steps:
     steps:
 
       - label: ":helm: release eck-operator helm chart - pipeline upload"
-        # From https://semver.org, prefixed with 'v'.
-        # The '$$' is required when formatting regular expressions: https://buildkite.com/docs/pipelines/conditionals#formatting-regular-expressions
         if: build.tag != null
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
@@ -123,22 +121,6 @@ steps:
         if: build.message == "release eck-operator helm chart"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
-
-      - label: ":helm: helm eck-resources - Chart.yaml validation check (expected fail when no files have changed)"
-        commands:
-          - ./.buildkite/scripts/helm/has-any-chartyml-changed.sh
-        key: "validation-check"
-      - label: ":helm: release eck-resources helm charts - potentially upload release pipeline"
-        # only attempt release when
-        # 1) there is no pull request related to this run
-        # 2) the branch is main. (merge to main)
-        # 3) the validation check detecting if any 'deploy/*/Chart.yaml' files changed passes
-        if: build.branch == "main"
-        depends_on: "validation-check"
-        command: |
-          if [ $$(buildkite-agent step get "outcome" --step "validation-check") == "passed" ]; then
-            buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
-          fi
 
       - label: ":helm: release eck-resources helm charts manually - pipeline upload"
         if: build.message == "release eck-resources helm charts"
