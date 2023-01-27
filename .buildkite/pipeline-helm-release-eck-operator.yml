@@ -10,22 +10,14 @@ steps:
       - label: "release eck-operator helm chart dev"
         key: helm-release-eck-operator-dev
         commands:
-          - cd hack/helm/release
-          # ignoring stdout to avoid "go: downloading ..." output.
-          - make build 2> /dev/null
-          - cp bin/releaser /tmp/releaser
-          # if a branch is sent as an environment variable, change to that branch.
-          - if [[ ! -z "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
-          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json /tmp/releaser --env=dev --charts-dir=../../../deploy/eck-operator --enable-vault
+          - make -C hack/helm/release build 2> /dev/null
+          - if [[ -n "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
+          - hack/helm/release/bin/releaser --env=dev --charts-dir=deploy/eck-operator
 
       - label: "release eck-operator helm chart prod"
         depends_on:
           - "helm-release-eck-operator-dev"
         commands:
-          - cd hack/helm/release
-          # ignoring stdout to avoid "go: downloading ..." output.
-          - make build 2> /dev/null
-          - cp bin/releaser /tmp/releaser
-          # if a branch is sent as an environment variable, change to that branch.
-          - if [[ ! -z "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
-          - VAULT_ROOT_PATH="secret/ci/elastic-cloud-on-k8s" HELM_CREDENTIALS_FILE=/tmp/credentials.json /tmp/releaser --env=prod --charts-dir=../../../deploy/eck-operator --enable-vault
+          - make -C hack/helm/release build 2> /dev/null
+          - if [[ -n "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
+          - hack/helm/release/bin/releaser --env=prod --charts-dir=deploy/eck-operator

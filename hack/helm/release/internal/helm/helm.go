@@ -314,13 +314,17 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 			return err
 		}
 	}
+	u, err := url.Parse(conf.ChartsRepoURL)
+	if err != nil {
+		return fmt.Errorf("while parsing url (%s): %w", conf.ChartsRepoURL, err)
+	}
 	for _, chart := range charts {
 		chartPath := filepath.Join(tempDir, chart.Name)
 		if err := copyChartToTemporaryDirectory(chart, chartPath); err != nil {
 			return err
 		}
 		log.Printf("Attempting to add chart (%s)\n", chart.Name)
-		if err := updateDependencyChartURLs(chartPath, conf.ChartsRepoURL); err != nil {
+		if err := updateDependencyChartURLs(chartPath, u); err != nil {
 			return err
 		}
 		if err := runChartDependencyUpdate(chartPath, chart.Name); err != nil {
@@ -333,6 +337,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 		if err := copyChartToGCSBucket(ctx, copyChartToBucketConfig{
 			bucket:        conf.Bucket,
 			chartName:     chart.Name,
+			path:          u.Path,
 			tempDirectory: tempDir,
 			sourceGlob:    source,
 			dryRun:        conf.DryRun,
@@ -414,8 +419,8 @@ func packageHelmChart(chartPath, chartName string) error {
 // copyChartToBucketConfig is the configuration for copying
 // a chart to a GCS bucket.
 type copyChartToBucketConfig struct {
-	bucket, chartName, tempDirectory, sourceGlob string
-	dryRun                                       bool
+	bucket, chartName, path, tempDirectory, sourceGlob string
+	dryRun                                             bool
 }
 
 // copyChartToGCSBucket will potentially copy a Helm chart to a GCS bucket.
@@ -437,9 +442,7 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	if len(files) == 0 {
 		return fmt.Errorf("couldn't file helm package with glob (%s)", config.sourceGlob)
 	}
-	// TODO is this 'helm' prefix always assumed?  I don't think so...
-	// This should be the trailing path of the given repo url, right?
-	destination := fmt.Sprintf("helm/%s/%s", config.chartName, files[0])
+	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, files[0])
 	log.Printf("Writing chart to bucket path (%s) \n", destination)
 	f, err := os.Open(files[0])
 	if err != nil {
@@ -518,19 +521,15 @@ func copy(source, destination string) error {
 // dependency's repository is set to 'https://helm.elastic.co', and the
 // 'repoURL' is set to another repository (such as a dev helm repo), the dependency's
 // repository will be re-written to the given 'repoURL' flag.
-func updateDependencyChartURLs(chartPath string, repoURL string) error {
+func updateDependencyChartURLs(chartPath string, repoURL *url.URL) error {
 	chartYamlFilePath := filepath.Join(chartPath, "Chart.yaml")
 	data, err := ioutil.ReadFile(chartYamlFilePath)
 	if err != nil {
 		return fmt.Errorf("while reading file (%s): %w", chartYamlFilePath, err)
 	}
-	u, err := url.Parse(repoURL)
-	if err != nil {
-		return fmt.Errorf("while parsing url (%s): %w", repoURL, err)
-	}
 	// repoURL potentially has trailing path (https://helm-dev.elastic.co/helm)
 	// this strips the trailing path, and contains only the scheme://host
-	url := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	url := fmt.Sprintf("%s://%s", repoURL.Scheme, repoURL.Host)
 	newContents := strings.ReplaceAll(
 		string(data),
 		fmt.Sprintf(`repository: "%s"`, defaultElasticHelmRepo),
