@@ -32,6 +32,14 @@ import (
 )
 
 func TestGlobalCA(t *testing.T) {
+
+	// Skip if it is the resilience pipeline because the ChaosJob can prevent
+	// assert_operator_has_been_restarted_once_more to pass when it deletes an operator Pod
+	// exactly on restart.
+	if test.Ctx().Pipeline == "e2e/resilience" {
+		t.Skip()
+	}
+
 	k := test.NewK8sClientOrFatal()
 	name := "global-ca"
 	es := elasticsearch.NewBuilder(name).
