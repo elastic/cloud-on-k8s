@@ -96,7 +96,7 @@ steps:
           - make run-deployer
           - make e2e-run
           # Copy any artifacts from the test run locally to be picked up s buildkite artifacts
-          - gsutil cp gs://devops-ci-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip .
+          - gsutil cp gs://eck-e2e-buildkite-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip .
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:

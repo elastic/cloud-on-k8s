@@ -90,7 +90,7 @@ func runECKDiagnostics() {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://devops-ci-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
