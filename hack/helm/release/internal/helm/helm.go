@@ -19,6 +19,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/avast/retry-go/v4"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -185,7 +186,7 @@ func readCharts(chartsDir string, excludes []string) ([]chart, error) {
 		if err = yaml.Unmarshal(fileBytes, &ch); err != nil {
 			return nil, fmt.Errorf("while unmarshaling (%s) to chart: %w", fullChartPath, err)
 		}
-		if contains(ch.Name, excludes) {
+		if slices.Contains(excludes, ch.Name) {
 			log.Printf("Excluding (%s) as it is in the excludes list", ch.Name)
 			continue
 		}
@@ -305,12 +306,14 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 	type helmRepo struct {
 		name, url string
 	}
+	if len(charts) == 0 {
+		return nil
+	}
 	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
 		if err := addHelmRepository(r.name, r.url); err != nil {
 			return err
 		}
 	}
-	log.Printf("Done adding (%s) repository.\n", stableHelmChartsURL)
 	for _, chart := range charts {
 		chartPath := filepath.Join(tempDir, chart.Name)
 		if err := copyChartToTemporaryDirectory(chart, chartPath); err != nil {
@@ -345,15 +348,15 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 // to the local Helm configuration.
 func addHelmRepository(name, url string) error {
 	settings := cli.New()
-	log.Printf("Adding (%s) repository.\n", stableHelmChartsURL)
+	log.Printf("Adding (%s) repository.\n", name)
 	// simulates 'helm repo add' command.
 	if _, err := repo.NewChartRepository(&repo.Entry{
-		Name: "stable",
-		URL:  stableHelmChartsURL,
+		Name: name,
+		URL:  url,
 	}, getter.All(settings)); err != nil {
 		return fmt.Errorf("while adding helm stable charts repository: %w", err)
 	}
-	log.Printf("Done adding (%s) repository.\n", stableHelmChartsURL)
+	log.Printf("Done adding (%s) repository.\n", name)
 	return nil
 }
 
