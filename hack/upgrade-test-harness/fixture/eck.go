@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -266,48 +266,6 @@ func labelSelectorFor(kind string) (string, error) {
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)
-}
-
-// TestRemoveResources is the fixture for removing a set of resources.
-func TestRemoveResources(param TestParam) *Fixture {
-	return &Fixture{
-		Name: param.Suffixed("TestRemoveResources"),
-		Steps: []*TestStep{
-			retryRetriable(param.Suffixed("RemoveResources"), deleteManifests(param.Path("stack.yaml"))),
-		},
-	}
-}
-
-// ServicesShouldBeRemoved avoids to hit https://github.com/elastic/cloud-on-k8s/issues/2693#issuecomment-607109651
-func ServicesShouldBeRemoved(param TestParam) *Fixture {
-	return &Fixture{
-		Name: param.Suffixed("ServicesShouldBeRemoved"),
-		Steps: []*TestStep{
-			retryRetriable(
-				param.Suffixed("ServicesShouldBeRemoved"),
-				func(ctx *TestContext) error {
-					client, err := ctx.K8SClient()
-					if err != nil {
-						return err
-					}
-					services, err := client.CoreV1().Services(ctx.Namespace()).List(context.TODO(), metav1.ListOptions{})
-					if err != nil {
-						return err
-					}
-					for _, service := range services.Items {
-						if service.Labels == nil {
-							continue
-						}
-						if _, hasElasticLabel := service.Labels["common.k8s.elastic.co"]; hasElasticLabel {
-							ctx.Infof("Waiting for service %s/%s to be removed", service.Namespace, service.Name)
-							return ErrRetry
-						}
-					}
-					return nil
-				},
-			),
-		},
-	}
 }
 
 // TestScaleElasticsearch is the fixture for scaling an Elasticsearch resource.

@@ -1,0 +1,69 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.6.0]]
+== {n} version 2.6.0
+
+
+
+[[feature-2.6.0]]
+[float]
+=== New features
+
+* New CRD StackConfigPolicy to declaratively configure multiple Elasticsearch clusters. {pull}6148[#6148], {pull}6195[#6195]
+* ECK resources Helm chart - Beats. {pull}5899[#5899] (issue: {issue}5505[#5505])
+
+[[enhancement-2.6.0]]
+[float]
+=== Enhancements
+
+* Expose Kubernetes client QPS as a flag. {pull}6157[#6157]
+* Extend existing reattach-pv tool to allow using existing PVs to create newly named cluster. {pull}6118[#6118]
+* Add container-suffix operator flag to allow users to specify a container suffix to be applied across all Elastic stack container images. {pull}6086[#6086] (issue: {issue}6064[#6064])
+* Elasticsearch observer improvements to avoid blocking between workers. {pull}6084[#6084] (issue: {issue}6078[#6078])
+* Improve user password hash comparison performance by utilizing an LRU cache. {pull}6080[#6080] (issue: {issue}6076[#6076])
+* Add default securityContext to the manager container in Operator Helm Chart. {pull}6047[#6047]
+* Allow Fleet Server to be run without TLS. {pull}6020[#6020] (issue: {issue}6000[#6000])
+
+[[bug-2.6.0]]
+[float]
+=== Bug fixes
+
+* Fix potential panic in Elasticsearch client equal function. {pull}6128[#6128]
+* Increment ECK-stack Helm chart version to support addition of Agent/Fleet Server. {pull}6179[#6179]
+* Try to reconcile license even in absence of known health status {pull}6278[#6278] {issue}6274[#6274])
+
+[[docs-2.6.0]]
+[float]
+=== Documentation improvements
+
+* Add experimental label to the StackConfigPolicy doc. {pull}6247[#6247]
+* Document Elastic Stack configuration policies. {pull}6215[#6215]
+* Update eck-diagnostics documentation for filters. {pull}6191[#6191]
+* Add additional Helm documentation for Fleet Server, and Agent. {pull}6154[#6154]
+* Update the list of Kibana keys managed by the operator. {pull}6119[#6119]
+* Document limitation on Minikube without CNI. {pull}6075[#6075]
+* Add latest APM fleet package in Kibana examples when using standalone APM server. {pull}6063[#6063] (issue: {issue}5059[#5059])
+
+[[nogroup-2.6.0]]
+[float]
+=== Misc
+
+* Update module github.com/hashicorp/golang-lru to v0.6.0 {pull}6172[#6172]
+* Update module github.com/google/go-containerregistry to v0.12.1 {pull}6168[#6168]
+* Update k8s to v0.25.4 {pull}6167[#6167]
+* Update module helm.sh/helm/v3 to v3.10.2 {pull}6166[#6166]
+* Update module golang.org/x/oauth2 to v0.2.0 {pull}6159[#6159]
+* Update module golang.org/x/crypto to v0.2.0 {pull}6158[#6158]
+* Update module golang.org/x/net to v0.2.0 {pull}6155[#6155]
+* Update module github.com/prometheus/client_golang to v1.14.0 {pull}6150[#6150]
+* Update module github.com/spf13/viper to v1.14.0 {pull}6145[#6145]
+* Update module sigs.k8s.io/controller-runtime to v0.13.1 {pull}6141[#6141]
+* Update module github.com/prometheus/client_golang to v1.13.1 {pull}6136[#6136]
+* Update docker.io/library/golang Docker tag to v1.19.3 {pull}6135[#6135]
+* Update module go.elastic.co/apm/module/apmzap/v2 to v2.2.0 {pull}6131[#6131]
+* Update module go.elastic.co/apm/module/apmelasticsearch/v2 to v2.2.0 {pull}6129[#6129]
+* Update module github.com/hashicorp/vault/api to v1.8.2 {pull}6127[#6127]
+* Update module github.com/spf13/cobra to v1.6.1 {pull}6110[#6110]
+* Update module golang.org/x/text to v0.4.0 {pull}6100[#6100]
+

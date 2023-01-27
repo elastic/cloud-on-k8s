@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: elasticsearch
 spec:
-  version: 8.5.0
+  version: 8.6.0
   nodeSets:
     - name: default
       count: 3
@@ -23,7 +23,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: kibana
 spec:
-  version: 8.5.0
+  version: 8.6.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -60,6 +60,7 @@ data:
       }
       geoip {
         source => "clientip"
+        target => "clientgeo"
       }
     }
     output {
@@ -92,7 +93,7 @@ spec:
     spec:
       containers:
         - name: logstash
-          image: docker.elastic.co/logstash/logstash:8.5.0
+          image: docker.elastic.co/logstash/logstash:8.6.0
           ports:
             - name: "tcp-beats"
               containerPort: 5044
@@ -150,7 +151,7 @@ metadata:
     app.kubernetes.io/component: filebeat
 spec:
   type: filebeat
-  version: 8.5.0
+  version: 8.6.0
   config:
     filebeat.inputs:
       - type: log
@@ -176,8 +177,6 @@ spec:
                 mountPath: /data
         containers:
           - name: filebeat
-            securityContext:
-              runAsUser: 0
             volumeMounts:
               - name: data
                 mountPath: /data

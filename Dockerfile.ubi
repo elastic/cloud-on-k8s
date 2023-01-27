@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.4 as builder
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.5 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
 
 # Copy the operator binary into a lighter image
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1031
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1049
 
 # Update the base image packages to the latest versions
 RUN microdnf update --setopt=tsflags=nodocs && microdnf clean all

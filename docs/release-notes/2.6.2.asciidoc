@@ -1,0 +1,17 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.6.2]]
+== {n} version 2.6.2
+
+
+This release is binary identical to 2.6.1 and addresses an issue with the OLM bundle for the certified operator and the community operator on OpenShift OperatorHub. It is not available on any other distribution channel. The operator logs will show version 2.6.1.
+
+[[bug-2.6.2]]
+[float]
+=== Bug fixes
+
+* StackConfigPolicy CRD missing in ECK 2.6.1 for OperatorHub (issue: {issue}6320[#6320])
+
+
+

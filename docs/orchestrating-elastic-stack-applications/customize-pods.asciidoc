@@ -101,4 +101,4 @@ spec:
 For further information:
 
 - https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/#pod-templates[Pod templates overview]
-- https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[Pod template spec API reference]
+- https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#podtemplatespec-v1-core[Pod template spec API reference]
