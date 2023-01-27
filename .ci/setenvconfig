@@ -48,7 +48,7 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
   GCLOUD_PROJECT=$(vault read -field=gcloud_project ${VAULT_ROOT_PATH}/k8s)
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
-  JOB_NAME=${BUILDKITE_LABEL}
+  JOB_NAME=${BUILDKITE_PIPELINE_NAME}
 
   if [[ "$environment" =~ e2e/* ]]; then
     JKS_PARAM_OPERATOR_IMAGE=$(make print-operator-image)

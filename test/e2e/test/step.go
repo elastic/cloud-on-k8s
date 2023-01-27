@@ -145,7 +145,6 @@ func deleteElasticResources() error {
 				return err
 			}
 		}
-
 	}
 	return nil
 }
