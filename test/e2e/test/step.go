@@ -90,7 +90,7 @@ func runECKDiagnostics() {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://devops-ci-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber))
+	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://devops-ci-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -140,7 +140,7 @@ func deleteElasticResources() error {
 				Resource: gr.Resource,
 				Version:  string(v),
 			}).Namespace(namespace).DeleteCollection(context.Background(), v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
-				err = fmt.Errorf("while deleting elastic resources in %s: %s ", namespace, err)
+				err = fmt.Errorf("while deleting elastic resources in %s: %w ", namespace, err)
 				log.Error(err, "group", gr.Group, "resource", gr.Resource)
 				return err
 			}
