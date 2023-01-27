@@ -9,13 +9,15 @@ set -euo pipefail
 #   OHUB_STACK_VERSION
 
 preflight() {
-    if [[ -Z ${OHUB_TAG} ]]; then
+    if [[ -z ${OHUB_TAG} ]]; then
         echo "OHUB_TAG environment variable is required"
         exit 1
     fi
 
-    export OHUB_API_KEY=$(vault read -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
-    export OHUB_PROJECT_ID=$(vault read -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)
+    OHUB_API_KEY="$(vault read -field=api-key secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)"
+    export OHUB_API_KEY
+    OHUB_PROJECT_ID="$(vault read -field=project-id secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat)"
+    export OHUB_PROJECT_ID
 
     curl -s -G "https://catalog.redhat.com/api/containers/v1/projects/certification/id/$OHUB_PROJECT_ID/images?filter=repositories.tags.name==$OHUB_TAG" -H "X-API-KEY: $OHUB_API_KEY" > /tmp/redhat.json
 
@@ -29,15 +31,15 @@ preflight() {
     # Pull authentication information for quay.io from vault
     vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/operatorhub-release-preflight > /tmp/auth.json
 
-    /tmp/preflight check container quay.io/redhat-isv-containers/$OHUB_PROJECT_ID:$OHUB_TAG --pyxis-api-token=$OHUB_API_KEY --certification-project-id=$OHUB_PROJECT_ID --submit -d /tmp/auth.json
+    /tmp/preflight check container "quay.io/redhat-isv-containers/$OHUB_PROJECT_ID:$OHUB_TAG" --pyxis-api-token="$OHUB_API_KEY" --certification-project-id="$OHUB_PROJECT_ID" --submit -d /tmp/auth.json
 }
 
 release() {
-    if [[ -Z ${OHUB_PREV_VERSION} ]]; then
+    if [[ -z ${OHUB_PREV_VERSION} ]]; then
         echo "OHUB_PREV_VERSION environment variable is required"
         exit 1
     fi
-    if [[ -Z ${OHUB_STACK_VERSION} ]]; then
+    if [[ -z ${OHUB_STACK_VERSION} ]]; then
         echo "OHUB_STACK_VERSION environment variable is required"
         exit 1
     fi
@@ -47,9 +49,9 @@ release() {
     chmod u+x /usr/local/bin/operatorhub
     /usr/local/bin/operatorhub container publish --dry-run=false
     cd hack/operatorhub
-    /usr/local/bin/operatorhub generate-manifests --prev-version=$OHUB_PREV_VERSION --stack-version=$OHUB_STACK_VERSION --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-    /usr/local/bin/operatorhub bundle generate --dir=$(pwd)
-    /usr/local/bin/operatorhub bundle create-pr --dir=$(pwd)
+    /usr/local/bin/operatorhub generate-manifests --prev-version="$OHUB_PREV_VERSION" --stack-version="$OHUB_STACK_VERSION" --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+    /usr/local/bin/operatorhub bundle generate --dir="$(pwd)"
+    /usr/local/bin/operatorhub bundle create-pr --dir="$(pwd)"
 }
 
 usage() {
