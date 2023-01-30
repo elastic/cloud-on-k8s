@@ -54,7 +54,7 @@ func releaseCmd() *cobra.Command {
 		Use:     "release",
 		Short:   "Release ECK Helm Charts",
 		Long:    `This command will Release ECK Helm Charts to a given Environment.`,
-		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --upload-index --dry-run=false"),
+		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString(chartsDirFlag), bucket, chartsRepoURL)
