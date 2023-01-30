@@ -148,6 +148,7 @@ nodeSets:
 
     # If specified, the pod's scheduling constraints
     # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
     # affinity:
     #   nodeAffinity:
     #     requiredDuringSchedulingIgnoredDuringExecution:
@@ -158,71 +159,17 @@ nodeSets:
     #           values:
     #           - antarctica-east1
     #           - antarctica-west1
-    #     preferredDuringSchedulingIgnoredDuringExecution:
-    #     - weight: 1
-    #       preference:
-    #         matchExpressions:
-    #         - key: another-node-label-key
-    #           operator: In
-    #           values:
-    #           - another-node-label-value
-    #   podAffinity:
-    #     requiredDuringSchedulingIgnoredDuringExecution:
-    #     - labelSelector:
-    #         matchExpressions:
-    #         - key: security
-    #           operator: In
-    #           values:
-    #           - S1
-    #       topologyKey: topology.kubernetes.io/zone
-    #   podAntiAffinity:
-    #     preferredDuringSchedulingIgnoredDuringExecution:
-    #     - weight: 100
-    #       podAffinityTerm:
-    #         labelSelector:
-    #           matchLabels:
-    #             elasticsearch.k8s.elastic.co/cluster-name: quickstart
-    #         topologyKey: kubernetes.io/hostname
 
     # Containers array.  Should only be used to customize the 'elasticsearch' container using the following fields.
       containers:
       - name: elasticsearch
 
         # List of environment variables to set in the 'elasticsearch' container.
+        # https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
         # env:
         # name/value environment variable pair to set within the 'elasticsearch' container.
         # - name: "my-env-var"
         #   value: "my-value"
-        # Set a named environment variable's value from a configuration source.
-        # - name: "my-env-from"
-        #   valueFrom:
-        #   Set the value from a configmap.
-        #   configMapKeyRef:
-        #     name: specialEnvConfig
-        #   Set the value from the container's field.
-        #   fieldRef:
-        #     fieldPath: spec.nodeName
-        #   Set the value from the container's resource requests.
-        #   resourceFieldRef:
-        #     containerName: "elasticsearch"
-        #     resource: requests.cpu
-        #   Set the value from a secret.
-        #   secretKeyRef:
-        #     name: specialEnvSecretConfig
-        #     key: "my-key"
-
-        # List of sources to populate environment variables in the 'elasticsearch' container.
-        # envFrom:
-        # Set environment variables from key/value pairs within a ConfigMap.
-        # - configMapRef:
-        #     name: specialEnvConfig
-        # An optional identifier to prepend to each key in the ConfigMap.
-          # prefix: "DS_"
-        # Set environment variables from key/value pairs within a Secret
-        # - secretRef:
-        #     name: specialEnvSecretConfig
-            # Specify whether the Secret must be defined
-            # optional: false
 
         # Compute Resources required by this container.
         resources:
