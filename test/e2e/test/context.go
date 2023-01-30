@@ -23,7 +23,7 @@ import (
 const (
 	// ArchARMTag is the test tag used to indicate a test run on an ARM-based cluster.
 	ArchARMTag         = "arch:arm"
-	gcpCredentialsFile = "/tmp/auth.json"
+	gcpCredentialsFile = "/tmp/auth.json" //nolint:gosec
 )
 
 var defaultElasticStackVersion = LatestReleasedVersion7x
