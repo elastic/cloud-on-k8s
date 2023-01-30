@@ -9,15 +9,9 @@ It is also designed to handle releasing to both production, and non-production H
 
 ## Buildkite integration
 
-
 ### Releasing ECK Operator Helm Chart
 
-When a semver compatible tag is pushed to git (as during a normal release), the following process will be triggered in Buildkite
-
-1. Release tool will be run with `--charts-dir` pointing directly to `eck-operator` chart directory (ignoring all eck resource Helm charts), and set to release to dev bucket/repo.
-2. If successful, the same operation will be run pointing to production bucket/repo.
-
-#### Manually releasing the ECK Operator Helm Chart
+### Manually releasing the ECK Operator Helm Chart
 
 To manually publish the ECK Operator Helm chart and it's associated CRD chart, run the below `curl` command.
 
@@ -37,14 +31,12 @@ To manually publish the ECK Operator Helm chart and it's associated CRD chart, r
     }'
 ```
 
+1. Release tool will be run with `--charts-dir` pointing directly to `eck-operator` chart directory (ignoring all eck resource Helm charts), and set to release to dev bucket/repo.
+2. If successful, the same operation will be run pointing to production bucket/repo.
+
 You can then track the progress of the build in [Buildkite](https://buildkite.com/elastic/cloud-on-k8s-operator)
 
 ### Releasing ECK Resources Helm Charts
-
-When a commit is merged to `main` branch, which includes any change to a `*/Chart.yaml` file (detectable via `git diff --name-only HEAD~1`)
-
-1. Release tool will be run with `--charts-dir` pointing directly to `deploy` chart directory (containing all charts, including `eck-operator`), set to release to dev bucket/repo, and with `--excludes` flag set to `eck-operator`.
-2. If successful, the same operation will be run pointing to production bucket/repo.
 
 #### Manually releasing the ECK Resources Helm Charts
 
@@ -65,6 +57,9 @@ To manually publish the ECK Resources Helm charts, run the below `curl` command.
         "message": "release eck-resources helm charts"
     }'
 ```
+
+1. Release tool will be run with `--charts-dir` pointing directly to `deploy` chart directory (containing all charts, including `eck-operator`), set to release to dev bucket/repo, and with `--excludes` flag set to `eck-operator`.
+2. If successful, the same operation will be run pointing to production bucket/repo.
 
 You can then track the progress of the build in [Buildkite](https://buildkite.com/elastic/cloud-on-k8s-operator)
 
