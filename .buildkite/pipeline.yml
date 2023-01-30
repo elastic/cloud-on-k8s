@@ -94,6 +94,8 @@ steps:
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
+          # Read gcp bucket credentials to allow eck-diagnostics output writing to eck-e2e-buildkite-artifacts bucket.
+          - vault read -format=json -field=data secret/ci/elastic-cloud-on-k8s/ci-gcp-k8s-operator > /tmp/auth.json
           - make e2e-run
           # Copy any artifacts from the test run locally to be picked up s buildkite artifacts
           - gsutil cp gs://eck-e2e-buildkite-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip .

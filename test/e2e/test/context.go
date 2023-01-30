@@ -22,7 +22,8 @@ import (
 
 const (
 	// ArchARMTag is the test tag used to indicate a test run on an ARM-based cluster.
-	ArchARMTag = "arch:arm"
+	ArchARMTag         = "arch:arm"
+	gcpCredentialsFile = "/tmp/auth.json"
 )
 
 var defaultElasticStackVersion = LatestReleasedVersion7x
@@ -64,6 +65,18 @@ func initializeContext() {
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
+
+	if _, err := os.Stat(gcpCredentialsFile); err == nil {
+		f, err := os.Open(gcpCredentialsFile)
+		if err != nil {
+			panic(fmt.Errorf("while opening gcp credentials file: %w", err))
+		}
+		decoder := json.NewDecoder(f)
+		if err := decoder.Decode(&ctx.GCPCredentials); err != nil {
+			panic(fmt.Errorf("failed to decode gcp credentials file: %w", err))
+		}
+	}
+
 	log.Info("Test context initialized", "context", ctx)
 }
 
@@ -94,35 +107,36 @@ type ElasticStackImages []ElasticStackImageDefinition
 
 // Context encapsulates data about a specific test run
 type Context struct {
-	Operator              NamespaceOperator  `json:"operator"`
-	E2EImage              string             `json:"e2e_image"`
-	E2ENamespace          string             `json:"e2e_namespace"`
-	E2EServiceAccount     string             `json:"e2e_service_account"`
-	ElasticStackVersion   string             `json:"elastic_stack_version"`
-	ElasticStackImages    ElasticStackImages `json:"elastic_stack_images"`
-	LogVerbosity          int                `json:"log_verbosity"`
-	OperatorImage         string             `json:"operator_image"`
-	OperatorImageRepo     string             `json:"operator_image_repo"`
-	OperatorImageTag      string             `json:"operator_image_tag"`
-	TestLicense           string             `json:"test_license"`
-	TestLicensePKeyPath   string             `json:"test_license_pkey_path"`
-	TestRegex             string             `json:"test_regex"`
-	TestRun               string             `json:"test_run"`
-	MonitoringSecrets     string             `json:"monitoring_secrets"`
-	TestTimeout           time.Duration      `json:"test_timeout"`
-	AutoPortForwarding    bool               `json:"auto_port_forwarding"`
-	DeployChaosJob        bool               `json:"deploy_chaos_job"`
-	Local                 bool               `json:"local"`
-	IgnoreWebhookFailures bool               `json:"ignore_webhook_failures"`
-	OcpCluster            bool               `json:"ocp_cluster"`
-	Ocp3Cluster           bool               `json:"ocp3_cluster"`
-	Pipeline              string             `json:"pipeline"`
-	BuildNumber           string             `json:"build_number"`
-	JobName               string             `json:"job_name"`
-	Provider              string             `json:"provider"`
-	ClusterName           string             `json:"clusterName"`
-	KubernetesVersion     version.Version    `json:"kubernetes_version"`
-	TestEnvTags           []string           `json:"test_tags"`
+	Operator              NamespaceOperator      `json:"operator"`
+	E2EImage              string                 `json:"e2e_image"`
+	E2ENamespace          string                 `json:"e2e_namespace"`
+	E2EServiceAccount     string                 `json:"e2e_service_account"`
+	ElasticStackVersion   string                 `json:"elastic_stack_version"`
+	ElasticStackImages    ElasticStackImages     `json:"elastic_stack_images"`
+	LogVerbosity          int                    `json:"log_verbosity"`
+	OperatorImage         string                 `json:"operator_image"`
+	OperatorImageRepo     string                 `json:"operator_image_repo"`
+	OperatorImageTag      string                 `json:"operator_image_tag"`
+	TestLicense           string                 `json:"test_license"`
+	TestLicensePKeyPath   string                 `json:"test_license_pkey_path"`
+	TestRegex             string                 `json:"test_regex"`
+	TestRun               string                 `json:"test_run"`
+	MonitoringSecrets     string                 `json:"monitoring_secrets"`
+	TestTimeout           time.Duration          `json:"test_timeout"`
+	AutoPortForwarding    bool                   `json:"auto_port_forwarding"`
+	DeployChaosJob        bool                   `json:"deploy_chaos_job"`
+	Local                 bool                   `json:"local"`
+	IgnoreWebhookFailures bool                   `json:"ignore_webhook_failures"`
+	OcpCluster            bool                   `json:"ocp_cluster"`
+	Ocp3Cluster           bool                   `json:"ocp3_cluster"`
+	Pipeline              string                 `json:"pipeline"`
+	BuildNumber           string                 `json:"build_number"`
+	JobName               string                 `json:"job_name"`
+	Provider              string                 `json:"provider"`
+	ClusterName           string                 `json:"clusterName"`
+	KubernetesVersion     version.Version        `json:"kubernetes_version"`
+	TestEnvTags           []string               `json:"test_tags"`
+	GCPCredentials        map[string]interface{} `json:"gcp_credentials"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
