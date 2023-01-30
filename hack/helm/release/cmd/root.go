@@ -111,7 +111,7 @@ func releaseCmd() *cobra.Command {
 	flags.Bool(
 		enableVaultFlag,
 		true,
-		"Enable vault functionality to try and automatically read 'credentials-file' from given vault key (uses HELM_VAULT_* environment variables) (HELM_ENABLE_VAULT)",
+		"Enable vault functionality to try and automatically read 'credentials-file' from given vault key (requires VAULT_ADDR and VAULT-TOKEN and uses HELM_VAULT_* environment variables) (env: HELM_ENABLE_VAULT)",
 	)
 	_ = viper.BindPFlag(enableVaultFlag, flags.Lookup(enableVaultFlag))
 
