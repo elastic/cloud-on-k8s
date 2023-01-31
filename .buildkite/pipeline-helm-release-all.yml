@@ -11,7 +11,6 @@ steps:
         key: helm-release-all-dev
         commands:
           - make -C hack/helm/release build 2> /dev/null
-          - if [[ -n "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
           - hack/helm/release/bin/releaser --env=dev
 
       - label: "release all helm charts prod"
@@ -19,5 +18,4 @@ steps:
           - "helm-release-all-dev"
         commands:
           - make -C hack/helm/release build 2> /dev/null
-          - if [[ -n "$$HELM_BRANCH" ]]; then echo "checking out $$HELM_BRANCH branch" && git checkout $$HELM_BRANCH ; fi
           - hack/helm/release/bin/releaser --env=prod

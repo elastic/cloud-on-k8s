@@ -11,8 +11,6 @@ It is also designed to handle releasing to both production, and non-production H
 
 ### Releasing ECK Operator Helm Chart
 
-*HELM_BRANCH environment variable below is used to instruct Buildkite to change to this Git branch after building the Helm tooling, but prior to running the Helm release process. If Buildkite `commit` is set, along with `pull_request_repository`, and `pull_request_id`, then Buildkite will checkout `HEAD` at the branch of the PR and build the Helm tooling from that Git commit.  If you're wanting to release the ECK helm charts from `2.7` branch using the Helm tooling at the indicated PR, then set this `HELM_BRANCH` environment variable.*
-
 ### Manually releasing the ECK Operator Helm Chart
 
 To manually publish the ECK Operator Helm chart and it's associated CRD chart, run the below `curl` command.
@@ -27,7 +25,6 @@ To manually publish the ECK Operator Helm chart and it's associated CRD chart, r
         "branch": "main",
         "env": {
           "HELM_DRY_RUN": "false",
-          "HELM_BRANCH": "2.6"
         },
         "message": "release eck-operator helm chart"
     }'
@@ -54,7 +51,6 @@ To manually publish the ECK Resources Helm charts, run the below `curl` command.
         "branch": "main",
         "env": {
           "HELM_DRY_RUN": "false",
-          "HELM_BRANCH": "2.6"
         },
         "message": "release eck-resources helm charts"
     }'
