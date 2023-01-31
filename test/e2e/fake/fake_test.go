@@ -7,17 +7,33 @@
 package fake
 
 import (
-	"fmt"
 	"testing"
-	"time"
+
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
 func TestFailingStuff(t *testing.T) {
-	time.Sleep(10 * time.Second)
-	t.Fail()
+	var steps test.StepList
+	steps = []test.Step{
+		{
+			Name: "failing test",
+			Test: func(t *testing.T) {
+				t.Error("fake error")
+			},
+		},
+	}
+	steps.RunSequential(t)
 }
 
 func TestSucceedingStuff(t *testing.T) {
-	time.Sleep(10 * time.Second)
-	t.Log(fmt.Sprintf("success"))
+	var steps test.StepList
+	steps = []test.Step{
+		{
+			Name: "failing test",
+			Test: func(t *testing.T) {
+				t.Log("success")
+			},
+		},
+	}
+	steps.RunSequential(t)
 }
