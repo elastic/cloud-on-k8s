@@ -67,8 +67,7 @@ steps:
       # Run TestSmoke on Kind on every commit in PR branch
 
       - label: ":k8s: pr e2e-tests"
-        branches: "!main"
-        if: build.message == null
+        if: build.branch != "main" && build.message == null
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
