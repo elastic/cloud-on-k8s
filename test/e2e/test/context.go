@@ -22,8 +22,7 @@ import (
 
 const (
 	// ArchARMTag is the test tag used to indicate a test run on an ARM-based cluster.
-	ArchARMTag         = "arch:arm"
-	gcpCredentialsFile = "/tmp/auth.json" //nolint:gosec
+	ArchARMTag = "arch:arm"
 )
 
 var defaultElasticStackVersion = LatestReleasedVersion7x
@@ -65,18 +64,6 @@ func initializeContext() {
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
-
-	if _, err := os.Stat(gcpCredentialsFile); err == nil {
-		f, err := os.Open(gcpCredentialsFile)
-		if err != nil {
-			panic(fmt.Errorf("while opening gcp credentials file: %w", err))
-		}
-		decoder := json.NewDecoder(f)
-		if err := decoder.Decode(&ctx.GCPCredentials); err != nil {
-			panic(fmt.Errorf("failed to decode gcp credentials file: %w", err))
-		}
-	}
-
 	log.Info("Test context initialized", "context", ctx)
 }
 

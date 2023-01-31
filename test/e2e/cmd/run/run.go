@@ -42,6 +42,8 @@ const (
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
+
+	gcpCredentialsFile = "/tmp/auth.json" //nolint:gosec
 )
 
 type stepFunc func() error
@@ -208,6 +210,17 @@ func (h *helper) initTestContext() error {
 		enc := json.NewEncoder(f)
 		if err := enc.Encode(h.testContext); err != nil {
 			return errors.Wrap(err, "failed to encode test context")
+		}
+	}
+
+	if _, err := os.Stat(gcpCredentialsFile); err == nil {
+		f, err := os.Open(gcpCredentialsFile)
+		if err != nil {
+			return errors.Wrap(err, "while opening gcp credentials file")
+		}
+		decoder := json.NewDecoder(f)
+		if err := decoder.Decode(&h.testContext.GCPCredentials); err != nil {
+			return errors.Wrap(err, "failed to decode gcp credentials file")
 		}
 	}
 
