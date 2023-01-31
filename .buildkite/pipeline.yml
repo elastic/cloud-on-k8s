@@ -68,6 +68,7 @@ steps:
 
       - label: ":k8s: pr e2e-tests"
         branches: "!main"
+        if: build.message == null
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"

@@ -80,7 +80,7 @@ func runECKDiagnostics() {
 	ctx := Ctx()
 	operatorNS := ctx.Operator.Namespace
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -90,9 +90,10 @@ func runECKDiagnostics() {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = []string{"HOME=/tmp"}
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
