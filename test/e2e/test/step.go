@@ -93,7 +93,18 @@ func uploadDiagnosticsArtifacts() {
 	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = []string{"HOME=/tmp"}
+	env := cmd.Environ()
+	found := false
+	for i, e := range env {
+		if strings.Contains(e, "HOME=") {
+			env[i] = "HOME=/tmp"
+			found = true
+		}
+	}
+	if !found {
+		env = append(env, "HOME=/tmp")
+	}
+	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
