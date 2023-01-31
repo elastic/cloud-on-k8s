@@ -1,7 +1,7 @@
 name: packetbeat
 spec:
   type: packetbeat
-  version: 8.6.0
+  version: 8.6.1
   elasticsearchRef:
     name: eck-elasticsearch
   kibanaRef:

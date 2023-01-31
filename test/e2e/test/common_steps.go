@@ -84,8 +84,9 @@ func DeleteAllEnterpriseLicenseSecrets(t *testing.T, k *K8sClient) {
 // LicenseTestBuilder is a wrapped builder for tests that require a valid Enterprise license to be installed in the operator.
 // It creates an Enterprise license secret before the test and deletes it again after the test. Callers are responsible for
 // making sure that Ctx().TestLicense contains a valid test license.
-func LicenseTestBuilder() WrappedBuilder {
+func LicenseTestBuilder(b Builder) WrappedBuilder {
 	return WrappedBuilder{
+		BuildingThis: b,
 		PreInitSteps: func(k *K8sClient) StepList {
 			//nolint:thelper
 			return StepList{
