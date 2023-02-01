@@ -64,7 +64,14 @@ func initializeContext() {
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
+
+	// Do not print credentials in the below log output
+	backup := ctx.GCPCredentials
+	ctx.GCPCredentials = nil
+
 	log.Info("Test context initialized", "context", ctx)
+
+	ctx.GCPCredentials = backup
 }
 
 func defaultContext() Context {

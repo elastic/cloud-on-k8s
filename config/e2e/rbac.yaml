@@ -73,6 +73,13 @@ rules:
       - "pods/exec"
     verbs:
       - "create"
+  # to allow eck-diagnostics to get pod logs
+  - apiGroups:
+      - ""
+    resources:
+      - "pods/logs"
+    verbs:
+      - "get"
   - apiGroups:
       - ""
     resources:
