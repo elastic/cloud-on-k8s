@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -54,15 +52,18 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 			elasticsearch.CheckClusterHealth(initial, k),
 			{
 				Name: "Create ES client",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					var err error
 					esClient, err = elasticsearch.NewElasticsearchClient(initial.Elasticsearch, k)
-					require.NoError(t, err)
-				},
+					if err != nil {
+						return err
+					}
+					return nil
+				}),
 			},
 			{
 				Name: "Misconfigure index on cluster, turning cluster red",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					settings := `
 {
     "settings": {
@@ -71,11 +72,17 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 }
 `
 					r, err := http.NewRequest(http.MethodPut, "/test-index", bytes.NewBufferString(settings))
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					response, err := esClient.Request(context.Background(), r)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					defer response.Body.Close() // nolint
-				},
+
+					return nil
+				}),
 			},
 			// wait for the cluster to become red
 			elasticsearch.CheckSpecificClusterHealth(initial, k, esv1.ElasticsearchRedHealth),
@@ -84,13 +91,18 @@ func TestRedClusterCanBeModifiedByDisablingPredicate(t *testing.T) {
 		[]test.Step{
 			{
 				Name: "Delete misconfigured index on cluster, allowing cluster to turn back green",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					r, err := http.NewRequest(http.MethodDelete, "/test-index", nil)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					response, err := esClient.Request(context.Background(), r)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					defer response.Body.Close() // nolint
-				},
+					return nil
+				}),
 			},
 		},
 	).RunSequential(t)
