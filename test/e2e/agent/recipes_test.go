@@ -89,7 +89,7 @@ func TestMultiOutputRecipe(t *testing.T) {
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 
-	t.Skip("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/6331")
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
@@ -163,7 +163,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
 
-	t.Skip("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/6331")
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {

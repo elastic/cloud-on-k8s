@@ -177,3 +177,7 @@ func IsGKE(v version.Version) bool {
 	// cloud providers append the name of the k8s platform in the version prefix (e.g.: 1.21.6-gke.1503)
 	return strings.Contains(v.String(), "gke")
 }
+
+func SkipUntilResolution(t *testing.T, knownIssueNumber int) {
+	t.Skip(fmt.Sprintf("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/%d", knownIssueNumber))
+}
