@@ -179,5 +179,6 @@ func IsGKE(v version.Version) bool {
 }
 
 func SkipUntilResolution(t *testing.T, knownIssueNumber int) {
-	t.Skip(fmt.Sprintf("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/%d", knownIssueNumber))
+	t.Helper()
+	t.Skipf("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/%d", knownIssueNumber)
 }
