@@ -18,7 +18,7 @@
 
 # Version of Elastic Agent.
 #
-version: 8.6.0
+version: 8.6.1
 
 # Labels that will be applied to Elastic Agent.
 #

@@ -56,6 +56,10 @@ func TestAPMKibanaAssociation(t *testing.T) {
 		t.SkipNow()
 	}
 
+	if test.Ctx().ElasticStackVersion == "8.7.0-SNAPSHOT" {
+		t.Skipf("Skipping due to a known issue: https://github.com/elastic/cloud-on-k8s/issues/6371")
+	}
+
 	ns := test.Ctx().ManagedNamespace(0)
 	name := "test-apm-kb-assoc"
 

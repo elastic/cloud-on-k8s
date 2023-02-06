@@ -88,8 +88,8 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
-	// This test is disabled until we understand why it is failing
-	t.Skip("TestFleetKubernetesIntegrationRecipe is disabled, see https://github.com/elastic/cloud-on-k8s/issues/6331")
+
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
@@ -134,8 +134,7 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
-	// This test is disabled until we understand why it is failing
-	t.Skip("TestFleetCustomLogsIntegrationRecipe is disabled, see https://github.com/elastic/cloud-on-k8s/issues/6331")
+	test.SkipUntilResolution(t, 6331)
 
 	notLoggingPod := beat.NewPodBuilder("test")
 	loggingPod := beat.NewPodBuilder("test")
@@ -164,8 +163,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
 
-	// This test is disabled until we understand why it is failing
-	t.Skip("TestFleetAPMIntegrationRecipe is disabled, see https://github.com/elastic/cloud-on-k8s/issues/6331")
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
