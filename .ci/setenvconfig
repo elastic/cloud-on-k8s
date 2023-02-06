@@ -667,7 +667,7 @@ GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=true
-IMG_VERSION=v$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
+IMG_VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
 ENV
 
   else
@@ -686,11 +686,7 @@ GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=false
-IMG_VERSION=$TAG_NAME
-# If IMG_VERSION doesn't begin with a 'v', add it.
-if [[ ! "${IMG_VERSION}" =~ ^v.* ]]; then
-    IMG_VERSION = "v${IMG_VERSION}"
-fi
+IMG_VERSION=${TAG_NAME#"v"}
 ENV
 
   fi
