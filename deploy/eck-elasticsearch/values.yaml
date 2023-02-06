@@ -167,7 +167,6 @@ nodeSets:
         # List of environment variables to set in the 'elasticsearch' container.
         # https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
         # env:
-        # name/value environment variable pair to set within the 'elasticsearch' container.
         # - name: "my-env-var"
         #   value: "my-value"
 
@@ -190,7 +189,7 @@ nodeSets:
           #   memory: 8Gi
           # requests:
           #   cpu: 1
-          #   memory: 4Gi
+          #   memory: 8Gi
 
         # SecurityContext defines the security options the container should be run with.
         # If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
@@ -203,34 +202,22 @@ nodeSets:
           # Whether this container has a read-only root filesystem. Default is false.
           # readOnlyRootFilesystem: false
 
-          # The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in PodSecurityContext.
-          # If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+          # The GID to run the entrypoint of the container process. Uses runtime default if unset.
           # runAsGroup: 1000
 
           # Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure
           # that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed.
-          # May also be set in PodSecurityContext. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
           # runAsNonRoot: true
 
-          # The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.
-          # If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+          # The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified.
           # runAsUser: 1000
 
     # ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec.
-    # If specified, these secrets will be passed to individual puller implementations for them to use.
     # https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
     # imagePullSecrets:
     # - name: "image-pull-secret"
 
-    # List of initialization containers belonging to the pod. Init containers are executed in order prior to containers being started.
-    # If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy.
-    # The name for an init container or normal container must be unique among all containers.
-    # Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes.
-    # The resourceRequirements of an init container are taken into account during scheduling
-    # by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers.
-    # Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated.
-    #
-    # See previous 'containers' field for a common list of fields that apply.
+    # List of initialization containers belonging to the pod.
     #
     # Common initContainers include setting sysctl, or in 7.x versions of Elasticsearch,
     # installing Elasticsearch plugins.
