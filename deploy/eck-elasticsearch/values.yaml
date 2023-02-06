@@ -103,8 +103,8 @@ secureSettings: {}
 #
 updateStrategy: {}
   # changeBudget:
-  #     maxSurge: 3
-  #     maxUnavailable: 1
+  #   maxSurge: 3
+  #   maxUnavailable: 1
 
 # Controlling of connectivity between remote clusters within the same kubernetes cluster.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-remote-clusters.html
