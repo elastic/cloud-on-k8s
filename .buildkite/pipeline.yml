@@ -119,3 +119,29 @@ steps:
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
+
+  - group: helm-release
+
+    steps:
+
+      # Disabling tag automation at this time in favor of manual releases.
+      #
+      # - label: ":helm: release eck-operator helm chart - pipeline upload"
+      #   if: build.tag != null
+      #   commands:
+      #     - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
+
+      - label: ":helm: release eck-operator helm chart manually - pipeline upload"
+        if: build.message == "release eck-operator helm chart"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
+
+      - label: ":helm: release eck-resources helm charts manually - pipeline upload"
+        if: build.message == "release eck-resources helm charts"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
+
+      - label: ":helm: release all helm charts manually - pipeline upload"
+        if: build.message == "release all helm charts"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-all.yml
