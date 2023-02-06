@@ -237,7 +237,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		Owner:                 as,
 		TLSOptions:            as.Spec.HTTP.TLS,
 		Namer:                 Namer,
-		Labels:                as.GetElasticLabels(),
+		Labels:                as.GetIdentityLabels(),
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -322,7 +322,7 @@ func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmSer
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      SecretToken(as.Name),
-			Labels:    labels.AddCredentialsLabel(as.GetElasticLabels()),
+			Labels:    labels.AddCredentialsLabel(as.GetIdentityLabels()),
 		},
 		Data: make(map[string][]byte),
 	}
@@ -373,7 +373,7 @@ func NewService(as apmv1.ApmServer) *corev1.Service {
 	svc.ObjectMeta.Namespace = as.Namespace
 	svc.ObjectMeta.Name = HTTPService(as.Name)
 
-	labels := as.GetElasticLabels()
+	labels := as.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     as.Spec.HTTP.Protocol(),

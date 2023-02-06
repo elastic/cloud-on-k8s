@@ -90,8 +90,8 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
-		Selector:             rp.agent.GetElasticLabels(),
-		Labels:               rp.agent.GetElasticLabels(),
+		Selector:             rp.agent.GetIdentityLabels(),
+		Labels:               rp.agent.GetIdentityLabels(),
 		PodTemplateSpec:      rp.podTemplate,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
@@ -114,8 +114,8 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.agent.Name),
 		Owner:                &rp.agent,
-		Labels:               rp.agent.GetElasticLabels(),
-		Selectors:            rp.agent.GetElasticLabels(),
+		Labels:               rp.agent.GetIdentityLabels(),
+		Selectors:            rp.agent.GetIdentityLabels(),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})

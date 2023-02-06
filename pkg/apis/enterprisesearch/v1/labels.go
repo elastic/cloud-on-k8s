@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for EnterpriseSearch.
-func (es *EnterpriseSearch) GetElasticLabels() map[string]string {
+func (es *EnterpriseSearch) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:                 "enterprise-search",
 		"enterprisesearch.k8s.elastic.co/name": es.Name,

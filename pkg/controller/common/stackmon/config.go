@@ -21,7 +21,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
@@ -88,7 +87,7 @@ func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, reso
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configSecretName,
 			Namespace: resource.GetNamespace(),
-			Labels:    labels.New(resource),
+			Labels:    resource.GetIdentityLabels(),
 		},
 		Data: map[string][]byte{
 			configFilename: configBytes,

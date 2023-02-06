@@ -160,7 +160,7 @@ func reconcileConfig(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Beat.Namespace,
 			Name:      ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
-			Labels:    labels.AddCredentialsLabel(params.Beat.GetElasticLabels()),
+			Labels:    labels.AddCredentialsLabel(params.Beat.GetIdentityLabels()),
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,

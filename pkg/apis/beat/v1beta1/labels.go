@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for the Beat.
-func (b *Beat) GetElasticLabels() map[string]string {
+func (b *Beat) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:     "beat",
 		"beat.k8s.elastic.co/name": b.Name,

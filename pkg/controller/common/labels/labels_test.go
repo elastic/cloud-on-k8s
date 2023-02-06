@@ -185,10 +185,10 @@ func TestTrueFalseLabel_AsMap(t *testing.T) {
 	}
 }
 
-func TestNew(t *testing.T) {
+func TestGetIdentityLabels(t *testing.T) {
 	tests := []struct {
 		name       string
-		obj        commonv1.HasElasticLabels
+		obj        commonv1.HasIdentityLabels
 		wantLabels map[string]string
 	}{
 		{
@@ -278,7 +278,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLabels := New(tt.obj); !reflect.DeepEqual(gotLabels, tt.wantLabels) {
+			if gotLabels := tt.obj.GetIdentityLabels(); !reflect.DeepEqual(gotLabels, tt.wantLabels) {
 				t.Errorf("New() = %v, want %v", gotLabels, tt.wantLabels)
 			}
 		})

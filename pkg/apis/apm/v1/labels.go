@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for the APM Server.
-func (as *ApmServer) GetElasticLabels() map[string]string {
+func (as *ApmServer) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:    "apm-server",
 		"apm.k8s.elastic.co/name": as.Name,

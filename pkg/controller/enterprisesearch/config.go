@@ -79,7 +79,7 @@ func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.Ent
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ent.Namespace,
 			Name:      ConfigName(ent.Name),
-			Labels:    labels.AddCredentialsLabel(ent.GetElasticLabels()),
+			Labels:    labels.AddCredentialsLabel(ent.GetIdentityLabels()),
 		},
 		Data: map[string][]byte{
 			ConfigFilename:         cfgBytes,

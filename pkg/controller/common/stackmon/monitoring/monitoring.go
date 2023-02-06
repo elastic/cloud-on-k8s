@@ -13,7 +13,7 @@ import (
 // HasMonitoring is the interface implemented by an Elastic Stack application that supports Stack Monitoring
 type HasMonitoring interface {
 	client.Object
-	commonv1.HasElasticLabels
+	commonv1.HasIdentityLabels
 	GetMonitoringMetricsRefs() []commonv1.ObjectSelector
 	GetMonitoringLogsRefs() []commonv1.ObjectSelector
 	MonitoringAssociation(ref commonv1.ObjectSelector) commonv1.Association

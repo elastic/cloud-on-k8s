@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for the Elasticsearch cluster.
-func (es *Elasticsearch) GetElasticLabels() map[string]string {
+func (es *Elasticsearch) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:                      "elasticsearch",
 		"elasticsearch.k8s.elastic.co/cluster-name": es.Name,

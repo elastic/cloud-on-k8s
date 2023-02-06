@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for Kibana.
-func (k *Kibana) GetElasticLabels() map[string]string {
+func (k *Kibana) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:       "kibana",
 		"kibana.k8s.elastic.co/name": k.Name,

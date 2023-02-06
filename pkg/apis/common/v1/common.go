@@ -356,11 +356,11 @@ type HasObservedGeneration interface {
 // TypeLabelName is used to represent a resource type in k8s resources
 const TypeLabelName = "common.k8s.elastic.co/type"
 
-// HasElasticLabels allows a return of Elastic assigned labels for any object.
+// HasIdentityLabels allows a return of Elastic assigned labels for any object.
 // +kubebuilder:object:generate=false
-type HasElasticLabels interface {
+type HasIdentityLabels interface {
 	client.Object
-	GetElasticLabels() map[string]string
+	GetIdentityLabels() map[string]string
 }
 
 // DisableDowngradeValidationAnnotation allows circumventing downgrade/upgrade checks.

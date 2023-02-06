@@ -126,7 +126,7 @@ func (d *driver) Reconcile(
 		Owner:                 kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
 		Namer:                 kbv1.KBNamer,
-		Labels:                kb.GetElasticLabels(),
+		Labels:                kb.GetIdentityLabels(),
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              params.GlobalCA,
 		CACertRotation:        params.CACertRotation,
@@ -224,7 +224,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 		d,
 		kb,
 		kbv1.KBNamer,
-		kb.GetElasticLabels(),
+		kb.GetIdentityLabels(),
 		initContainersParameters,
 	)
 	if err != nil {
@@ -290,8 +290,8 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 		Name:                 kbv1.KBNamer.Suffix(kb.Name),
 		Namespace:            kb.Namespace,
 		Replicas:             kb.Spec.Count,
-		Selector:             kb.GetElasticLabels(),
-		Labels:               kb.GetElasticLabels(),
+		Selector:             kb.GetIdentityLabels(),
+		Labels:               kb.GetIdentityLabels(),
 		PodTemplateSpec:      kibanaPodSpec,
 		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
@@ -335,7 +335,7 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 	svc.ObjectMeta.Namespace = kb.Namespace
 	svc.ObjectMeta.Name = kbv1.HTTPService(kb.Name)
 
-	labels := kb.GetElasticLabels()
+	labels := kb.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),

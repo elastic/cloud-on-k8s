@@ -206,7 +206,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		Owner:                 &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entv1.Namer,
-		Labels:                ent.GetElasticLabels(),
+		Labels:                ent.GetIdentityLabels(),
 		Services:              []corev1.Service{*svc},
 		GlobalCA:              r.GlobalCA,
 		CACertRotation:        r.CACertRotation,
@@ -323,7 +323,7 @@ func NewService(ent entv1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ent.Namespace
 	svc.ObjectMeta.Name = HTTPServiceName(ent.Name)
 
-	labels := ent.GetElasticLabels()
+	labels := ent.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     ent.Spec.HTTP.Protocol(),

@@ -37,7 +37,7 @@ func newReconcileAgent(objs ...runtime.Object) *ReconcileAgent {
 }
 
 func TestReconcileAgent_Reconcile(t *testing.T) {
-	defaultLabels := (&agentv1alpha1.Agent{ObjectMeta: metav1.ObjectMeta{Name: "testAgent"}}).GetElasticLabels()
+	defaultLabels := (&agentv1alpha1.Agent{ObjectMeta: metav1.ObjectMeta{Name: "testAgent"}}).GetIdentityLabels()
 	tests := []struct {
 		name     string
 		objs     []runtime.Object

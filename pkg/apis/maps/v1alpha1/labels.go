@@ -9,7 +9,7 @@ import (
 )
 
 // GetElasticLabels will return the common Elastic assigned labels for EnterprisMapsServer.
-func (m *ElasticMapsServer) GetElasticLabels() map[string]string {
+func (m *ElasticMapsServer) GetIdentityLabels() map[string]string {
 	return map[string]string{
 		commonv1.TypeLabelName:     "maps",
 		"maps.k8s.elastic.co/name": m.Name,

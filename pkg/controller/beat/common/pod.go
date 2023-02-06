@@ -84,7 +84,7 @@ func buildPodTemplate(
 		params,
 		&params.Beat,
 		namer,
-		params.Beat.GetElasticLabels(),
+		params.Beat.GetIdentityLabels(),
 		initContainerParameters(params.Beat.Spec.Type),
 	)
 	if err != nil {
@@ -188,7 +188,7 @@ func buildPodTemplate(
 		sideCars = append(sideCars, sideCar.Container)
 	}
 
-	labels := maps.Merge(params.Beat.GetElasticLabels(), map[string]string{
+	labels := maps.Merge(params.Beat.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
 
 	annotations := map[string]string{
