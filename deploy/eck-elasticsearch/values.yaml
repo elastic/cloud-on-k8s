@@ -175,13 +175,22 @@ nodeSets:
         resources:
           # Requests describes the minimum amount of compute resources required. If Requests is omitted for a container,
           # it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value.
-          requests:
-            cpu: 1
-            memory: 1Gi
-          # Limits describes the maximum amount of compute resources allowed.
+          # 
+          # Defaults used by the ECK Operator, if not specified, are below
           limits:
-            cpu: 1
-            memory: 1Gi
+            # cpu: 1
+            memory: 2Gi
+          requests:
+            # cpu: 1
+            memory: 2Gi
+
+          # Example increasing both the requests and limits values:
+          # limits:
+          #   cpu: 4
+          #   memory: 8Gi
+          # requests:
+          #   cpu: 1
+          #   memory: 4Gi
 
         # SecurityContext defines the security options the container should be run with.
         # If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
