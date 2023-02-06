@@ -13,13 +13,17 @@ import (
 	"strings"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/utils/pointer"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -60,13 +64,14 @@ func (l StepList) RunSequential(t *testing.T) {
 			if ts.OnFailure != nil {
 				ts.OnFailure()
 			}
+			ctx := Ctx()
 			// Only run eck diagnostics after each run when job is
 			// run from CI, which provides a 'job-name' flag.
-			if Ctx().JobName != "" {
-				logf.Log.Info("running eck-diagnostics")
-				runECKDiagnostics()
-				logf.Log.Info("uploading artifacts from diagnostics")
-				uploadDiagnosticsArtifacts()
+			if ctx.JobName != "" {
+				logf.Log.Info("running eck-diagnostics job")
+				if err := runECKDiagnostics(ctx.E2ENamespace, ctx.Operator.Namespace, ctx.Operator.ManagedNamespaces); err != nil {
+					logf.Log.Error(err, "while running eck diagnostics")
+				}
 			}
 			if err := deleteElasticResources(); err != nil {
 				logf.Log.Error(err, "while deleting elastic resources")
@@ -76,16 +81,66 @@ func (l StepList) RunSequential(t *testing.T) {
 	}
 }
 
-func runECKDiagnostics() {
-	ctx := Ctx()
-	operatorNS := ctx.Operator.Namespace
-	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
+func runECKDiagnostics(e2eNamespace, operatorNamespace string, managedNamespaces []string) error {
+	job := createECKDiagnosticsJob()
+	err := startJob(job)
+	if err != nil {
+		return fmt.Errorf("while starting eck diagnostics job: %w", err)
 	}
+	err = waitForJob(job)
+	if err != nil {
+		return fmt.Errorf("while waiting for eck diagnostics job to finish: %w", err)
+	}
+	// otherNS := append([]string{e2eNamespace}, managedNamespaces...)
+	// cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", operatorNamespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// if err := cmd.Run(); err != nil {
+	// 	log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
+	// }
+	// return nil
+}
+
+func createECKDiagnosticsJob(name, version, operatorNamespace, e2eNamespace string, managedNamespaces []string) batchv1.Job {
+	return batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: e2eNamespace,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  name,
+							Image: "alpine",
+							Command: []string{
+								"/bin/sh", "-c",
+							},
+							Args: []string{
+								strings.Join([]string{
+									fmt.Sprintf("wget -O /tmp/diagnostics.tar.gz https://github.com/elastic/eck-diagnostics/releases/download/%s/eck-diagnostics_%s_Linux_x86_64.tar.gz", version),
+									"cd /tmp",
+									"tar -zxf diagnostics.tar.gz",
+									fmt.Sprintf("./eck-diagnostics --output-directory /tmp -o %s, -r %s --run-agent-diagnostics", operatorNamespace, strings.Join(append([]string{e2eNamespace}, managedNamespaces...), ",")),
+								}, "&&"),
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+			BackoffLimit: pointer.Int32(1),
+		},
+	}
+}
+
+func startJob(batchv1.Job) error {
+	return nil
+}
+
+func waitForJob(batchv1.Job) error {
+	return nil
 }
 
 func uploadDiagnosticsArtifacts() {
