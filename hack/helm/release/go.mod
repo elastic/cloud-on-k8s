@@ -12,7 +12,7 @@ require (
 	golang.org/x/exp v0.0.0-20230127193734-31bee513bff7
 	google.golang.org/api v0.102.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.10.2
+	helm.sh/helm/v3 v3.10.3
 )
 
 require (
