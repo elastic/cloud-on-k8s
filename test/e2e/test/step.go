@@ -137,7 +137,15 @@ func uploadDiagnosticsArtifacts() {
 	found := false
 	for i, e := range env {
 		if strings.Contains(e, "GOOGLE_APPLICATION_CREDENTIALS") {
-			log.Info("found GOOGLE_APPLICATION_CREDENTIALS in env for gsutil command: %s", e)
+			log.Info("found GOOGLE_APPLICATION_CREDENTIALS in env for gsutil command: %s", "key", e)
+			googleEnv := strings.Split(e, "=")
+			fileName := googleEnv[1]
+			b, err := os.ReadFile(fileName)
+			if err != nil {
+				log.Error(err, "while reading google credentials file", "filename", fileName)
+				return
+			}
+			log.Info("google application credentials file data", "data", string(b))
 		}
 		if strings.Contains(e, "HOME=") {
 			env[i] = "HOME=/tmp"
