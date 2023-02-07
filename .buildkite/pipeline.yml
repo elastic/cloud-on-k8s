@@ -2,7 +2,7 @@
 agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
   cpu: "4"
-  memory: "3G"
+  memory: "2G"
 
 steps:
 
@@ -89,7 +89,7 @@ steps:
         key: "main-e2e-tests"
         if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
         agents:
-          memory: "4G"
+          memory: "5G"
         commands:
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
