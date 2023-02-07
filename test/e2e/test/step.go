@@ -130,23 +130,13 @@ func runECKDiagnostics(ctx Context, step Step) error {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("env && cat /etc/gcp/credentials.json && gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	env := cmd.Environ()
 	found := false
 	for i, e := range env {
-		if strings.Contains(e, "GOOGLE_APPLICATION_CREDENTIALS") {
-			log.Info("found GOOGLE_APPLICATION_CREDENTIALS in env for gsutil command: %s", "key", e)
-			googleEnv := strings.Split(e, "=")
-			fileName := googleEnv[1]
-			b, err := os.ReadFile(fileName)
-			if err != nil {
-				log.Error(err, "while reading google credentials file", "filename", fileName)
-				return
-			}
-			log.Info("google application credentials file data", "data", string(b))
-		}
+
 		if strings.Contains(e, "HOME=") {
 			env[i] = "HOME=/tmp"
 			found = true
@@ -156,7 +146,6 @@ func uploadDiagnosticsArtifacts() {
 		env = append(env, "HOME=/tmp")
 	}
 	cmd.Env = env
-	log.Info("assigning env to gsutil command", "env", env)
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
