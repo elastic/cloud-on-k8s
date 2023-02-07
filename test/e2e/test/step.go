@@ -227,6 +227,9 @@ func uploadDiagnosticsArtifacts() {
 	env := cmd.Environ()
 	found := false
 	for i, e := range env {
+		if strings.Contains(e, "GOOGLE_APPLICATION_CREDENTIALS") {
+			log.Info("found GOOGLE_APPLICATION_CREDENTIALS in env for gsutil command: %s", e)
+		}
 		if strings.Contains(e, "HOME=") {
 			env[i] = "HOME=/tmp"
 			found = true
