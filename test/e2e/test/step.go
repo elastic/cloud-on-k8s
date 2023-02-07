@@ -180,8 +180,8 @@ func deleteElasticResources() error {
 				Resource: gr.Resource,
 				Version:  string(v),
 			}).Namespace(namespace).DeleteCollection(context.Background(), v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
-				err = fmt.Errorf("while deleting elastic resources in %s: %w ", namespace, err)
-				log.Error(err, "group", gr.Group, "resource", gr.Resource)
+				msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
+				log.Error(err, msg, "group", gr.Group, "resource", gr.Resource)
 				return err
 			}
 		}
