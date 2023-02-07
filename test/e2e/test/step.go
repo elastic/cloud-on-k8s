@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -74,6 +73,8 @@ func (l StepList) RunSequential(t *testing.T) {
 				logf.Log.Info("running eck-diagnostics job")
 				if err := runECKDiagnostics(ctx, ts); err != nil {
 					logf.Log.Error(err, "while running eck diagnostics")
+				} else {
+					uploadDiagnosticsArtifacts()
 				}
 			}
 			if err := deleteElasticResources(); err != nil {
@@ -85,27 +86,46 @@ func (l StepList) RunSequential(t *testing.T) {
 }
 
 func runECKDiagnostics(ctx Context, step Step) error {
-	job := createECKDiagnosticsJob(
-		fmt.Sprintf(step.Name),
-		"1.3.0",
-		ctx.Operator.Namespace,
-		ctx.E2ENamespace,
-		ctx.E2EServiceAccount,
-		ctx.Operator.ManagedNamespaces,
-	)
-	err := startJob(job)
-	if err != nil {
-		return fmt.Errorf("while starting eck diagnostics job: %w", err)
+	// job := createECKDiagnosticsJob(
+	// 	fmt.Sprintf(step.Name),
+	// 	"1.3.0",
+	// 	ctx.Operator.Namespace,
+	// 	ctx.E2ENamespace,
+	// 	ctx.E2EServiceAccount,
+	// 	ctx.Operator.ManagedNamespaces,
+	// )
+	// err := startJob(job)
+	// if err != nil {
+	// 	return fmt.Errorf("while starting eck diagnostics job: %w", err)
+	// }
+	// client, err := createK8SClient()
+	// if err != nil {
+	// 	return fmt.Errorf("while creating k8s client: %w", err)
+	// }
+	// waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	// defer cancel()
+	// err = waitForJob(waitCtx, client, job)
+	// if err != nil {
+	// 	return fmt.Errorf("while waiting for eck diagnostics job to finish: %w", err)
+	// }
+	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	env := cmd.Environ()
+	found := false
+	for i, e := range env {
+		if strings.Contains(e, "HOME=") {
+			env[i] = "HOME=/tmp"
+			found = true
+		}
 	}
-	client, err := createK8SClient()
-	if err != nil {
-		return fmt.Errorf("while creating k8s client: %w", err)
+	if !found {
+		env = append(env, "HOME=/tmp")
 	}
-	waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	err = waitForJob(waitCtx, client, job)
-	if err != nil {
-		return fmt.Errorf("while waiting for eck diagnostics job to finish: %w", err)
+	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
 	}
 	return nil
 }
