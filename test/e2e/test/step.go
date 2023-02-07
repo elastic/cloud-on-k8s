@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,6 +51,7 @@ func (l StepList) WithStep(testStep Step) StepList {
 //
 //nolint:thelper
 func (l StepList) RunSequential(t *testing.T) {
+	once := sync.Once{}
 	for _, ts := range l {
 		if ts.Skip != nil && ts.Skip() {
 			log.Info("Skipping test", "name", ts.Name)
@@ -70,6 +72,7 @@ func (l StepList) RunSequential(t *testing.T) {
 			// Only run eck diagnostics after each run when job is
 			// run from CI, which provides a 'job-name' flag.
 			if ctx.JobName != "" {
+				once.Do(initGSUtil)
 				logf.Log.Info("running eck-diagnostics job")
 				err := runECKDiagnostics(ctx, ts)
 				if err != nil {
@@ -83,44 +86,25 @@ func (l StepList) RunSequential(t *testing.T) {
 	}
 }
 
+func initGSUtil() {
+	cmd := exec.Command("gcloud", "auth", "activate-service-account", "--key-file=/etc/gcp/credentials.json") //nolint:gosec
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	env := cmd.Environ()
+	ensureTmpHomeEnv(env)
+	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to initialize gsutil: %s", err))
+	}
+}
+
 func runECKDiagnostics(ctx Context, step Step) error {
-	// job := createECKDiagnosticsJob(
-	// 	fmt.Sprintf(step.Name),
-	// 	"1.3.0",
-	// 	ctx.Operator.Namespace,
-	// 	ctx.E2ENamespace,
-	// 	ctx.E2EServiceAccount,
-	// 	ctx.Operator.ManagedNamespaces,
-	// )
-	// err := startJob(job)
-	// if err != nil {
-	// 	return fmt.Errorf("while starting eck diagnostics job: %w", err)
-	// }
-	// client, err := createK8SClient()
-	// if err != nil {
-	// 	return fmt.Errorf("while creating k8s client: %w", err)
-	// }
-	// waitCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	// defer cancel()
-	// err = waitForJob(waitCtx, client, job)
-	// if err != nil {
-	// 	return fmt.Errorf("while waiting for eck diagnostics job to finish: %w", err)
-	// }
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
 	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	env := cmd.Environ()
-	found := false
-	for i, e := range env {
-		if strings.Contains(e, "HOME=") {
-			env[i] = "HOME=/tmp"
-			found = true
-		}
-	}
-	if !found {
-		env = append(env, "HOME=/tmp")
-	}
+	ensureTmpHomeEnv(env)
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
@@ -134,9 +118,16 @@ func uploadDiagnosticsArtifacts() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	env := cmd.Environ()
+	ensureTmpHomeEnv(env)
+	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
+	}
+}
+
+func ensureTmpHomeEnv(env []string) {
 	found := false
 	for i, e := range env {
-
 		if strings.Contains(e, "HOME=") {
 			env[i] = "HOME=/tmp"
 			found = true
@@ -144,10 +135,6 @@ func uploadDiagnosticsArtifacts() {
 	}
 	if !found {
 		env = append(env, "HOME=/tmp")
-	}
-	cmd.Env = env
-	if err := cmd.Run(); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
 	}
 }
 
