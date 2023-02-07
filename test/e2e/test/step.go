@@ -13,20 +13,14 @@ import (
 	"strings"
 	"testing"
 
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/utils/pointer"
 
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -67,20 +61,24 @@ func (l StepList) RunSequential(t *testing.T) {
 				ts.OnFailure()
 			}
 			ctx := Ctx()
+			defer func() {
+				err := deleteElasticResources()
+				if err != nil {
+					logf.Log.Error(err, "while deleting elastic resources")
+				}
+			}()
 			// Only run eck diagnostics after each run when job is
 			// run from CI, which provides a 'job-name' flag.
 			if ctx.JobName != "" {
 				logf.Log.Info("running eck-diagnostics job")
-				if err := runECKDiagnostics(ctx, ts); err != nil {
+				err := runECKDiagnostics(ctx, ts)
+				if err != nil {
 					logf.Log.Error(err, "while running eck diagnostics")
-				} else {
-					uploadDiagnosticsArtifacts()
+					continue
 				}
+				uploadDiagnosticsArtifacts()
 			}
-			if err := deleteElasticResources(); err != nil {
-				logf.Log.Error(err, "while deleting elastic resources")
-				return
-			}
+
 		}
 	}
 }
@@ -109,7 +107,7 @@ func runECKDiagnostics(ctx Context, step Step) error {
 	// 	return fmt.Errorf("while waiting for eck diagnostics job to finish: %w", err)
 	// }
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	env := cmd.Environ()
@@ -128,95 +126,6 @@ func runECKDiagnostics(ctx Context, step Step) error {
 		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
 	}
 	return nil
-}
-
-func createECKDiagnosticsJob(name, version, operatorNamespace, e2eNamespace, svcAccount string, managedNamespaces []string) batchv1.Job {
-	return batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: e2eNamespace,
-			Labels: map[string]string{
-				"eck-diagnostics": name,
-			},
-		},
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  name,
-							Image: "alpine",
-							Command: []string{
-								"/bin/sh", "-c",
-							},
-							Args: []string{
-								strings.Join([]string{
-									fmt.Sprintf("wget -O /tmp/diagnostics.tar.gz https://github.com/elastic/eck-diagnostics/releases/download/%[1]s/eck-diagnostics_%[1]s_Linux_x86_64.tar.gz", version),
-									"cd /tmp",
-									"tar -zxf diagnostics.tar.gz",
-									fmt.Sprintf("HOME=/tmp ./eck-diagnostics --output-directory /tmp -o %s, -r %s --run-agent-diagnostics", operatorNamespace, strings.Join(append([]string{e2eNamespace}, managedNamespaces...), ",")),
-								}, " && "),
-							},
-						},
-					},
-					ServiceAccountName: svcAccount,
-					RestartPolicy:      corev1.RestartPolicyNever,
-				},
-			},
-			BackoffLimit: pointer.Int32(1),
-		},
-	}
-}
-
-func startJob(job batchv1.Job) error {
-	client, err := NewK8sClient()
-	if err != nil {
-		return fmt.Errorf("while creating k8s client: %w", err)
-	}
-	err = client.Client.Create(context.Background(), &job)
-	if err != nil {
-		return fmt.Errorf("while creating job: %w", err)
-	}
-	return nil
-}
-
-func waitForJob(ctx context.Context, client *kubernetes.Clientset, job batchv1.Job) error {
-	watch, err := client.CoreV1().Pods(job.GetNamespace()).Watch(ctx, metav1.ListOptions{
-		LabelSelector: labels.FormatLabels(job.Labels),
-	})
-	if err != nil {
-		return fmt.Errorf("while retrieving watcher for job: %w", err)
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			logf.Log.Error(fmt.Errorf("job for %s did not complete", job.GetName()), "while waiting for job to complete")
-			return nil
-		case event := <-watch.ResultChan():
-			logf.Log.Info("event type: %v", event.Type)
-			pod, ok := event.Object.(*corev1.Pod)
-			if !ok {
-				continue
-			}
-			switch pod.Status.Phase {
-			case corev1.PodRunning, corev1.PodPending:
-				continue
-			case corev1.PodFailed:
-				logf.Log.Error(fmt.Errorf("while running eck-diagnostics for %s: %s", job.GetName(), pod.Status.String()), "pod failed")
-				return nil
-			case corev1.PodSucceeded:
-				return nil
-			}
-		}
-	}
-}
-
-func createK8SClient() (*kubernetes.Clientset, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	return kubernetes.NewForConfig(cfg)
 }
 
 func uploadDiagnosticsArtifacts() {
