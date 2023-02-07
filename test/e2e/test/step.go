@@ -130,7 +130,7 @@ func runECKDiagnostics(ctx Context, step Step) error {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("printenv && cat /etc/gcp/credentials.json && gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	cmd := exec.Command("env && cat /etc/gcp/credentials.json && gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	env := cmd.Environ()
