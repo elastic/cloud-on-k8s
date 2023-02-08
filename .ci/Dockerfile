@@ -93,7 +93,7 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
 RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
 
 # Add an exception to avoid `fatal: detected dubious ownership in repository`
-# as recent versions of git require the .git folder to be owned by the same user
+# as recent versions of git require the .git folder to be owned by the current user
 RUN git config --global --add safe.directory /go/src/github.com/elastic/cloud-on-k8s
 
 # Cache ECK Go dependencies in this Docker image
