@@ -168,5 +168,5 @@ exclude (
 // both of these dependencies are used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin both of these
 replace (
 	github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654
-	github.com/dgryski/go-lttb => github.com/dgryski/go-lttb f8fc36cdbff1
+	github.com/dgryski/go-lttb => github.com/dgryski/go-lttb v0.0.0-20230207170358-f8fc36cdbff1
 )
