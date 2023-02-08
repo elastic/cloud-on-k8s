@@ -18,6 +18,8 @@ steps:
 
       - label: ":docker: e2e-tests container image"
         key: "e2e-tests-image-build"
+        agents:
+          memory: "3G"
         commands:
           - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
