@@ -213,7 +213,7 @@ rules:
       - patch
       - delete
   - apiGroups:
-      - apmservers.apm.k8s.elastic.co
+      - apm.apm.k8s.elastic.co
     resources:
       - apmservers
       - apmservers/status
