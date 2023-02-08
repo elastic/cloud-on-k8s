@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -95,8 +95,8 @@ func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedN
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
 			Labels: map[string]string{
-				labels.TypeLabelName: Type,
-				LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
+				commonv1.TypeLabelName: Type,
+				LicenseLabelType:       string(LicenseTypeEnterpriseTrial),
 			},
 			Annotations: map[string]string{
 				EULAAnnotation: EULAAcceptedValue,

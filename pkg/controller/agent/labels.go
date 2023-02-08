@@ -4,11 +4,6 @@
 
 package agent
 
-import (
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
-)
-
 const (
 	// TypeLabelValue represents the Agent type.
 	TypeLabelValue = "agent"
@@ -19,11 +14,3 @@ const (
 	// NamespaceLabelName used to represent an Agent in k8s resources
 	NamespaceLabelName = "agent.k8s.elastic.co/namespace"
 )
-
-// NewLabels returns the set of common labels for an Elastic Agent.
-func NewLabels(agent agentv1alpha1.Agent) map[string]string {
-	return map[string]string{
-		labels.TypeLabelName: TypeLabelValue,
-		NameLabelName:        agent.Name,
-	}
-}
