@@ -57,7 +57,7 @@ func (l StepList) RunSequential(t *testing.T) {
 			log.Info("Skipping test", "name", ts.Name)
 			continue
 		}
-		if !t.Run(ts.Name, ts.Test) { // nolint:nestif
+		if !t.Run(ts.Name, ts.Test) { //nolint:nestif
 			logf.Log.Error(errors.New("test failure"), "continuing with additional tests")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
@@ -97,7 +97,7 @@ func initGSUtil() {
 
 func runECKDiagnostics(ctx Context, step Step) error {
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") // nolint:gosec
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
@@ -109,7 +109,7 @@ func runECKDiagnostics(ctx Context, step Step) error {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) // nolint:gosec
+	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
