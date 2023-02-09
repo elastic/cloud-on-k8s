@@ -100,7 +100,7 @@ steps:
           - vault read -field=service-account secret/ci/elastic-cloud-on-k8s/ci-gcp-k8s-operator > /tmp/auth.json
           - make e2e-run
           # Copy any artifacts from the test run locally to be picked up s buildkite artifacts
-          - gsutil cp gs://eck-e2e-buildkite-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip .
+          - if gsutil ls "gs://eck-e2e-buildkite-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip" ; then gsutil cp "gs://eck-e2e-buildkite-artifacts/jobs/$$BUILDKITE_PIPELINE_NAME/$$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip" ; fi
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
