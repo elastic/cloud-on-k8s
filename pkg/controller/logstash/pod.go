@@ -85,13 +85,13 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithLivenessProbe(livenessProbe(false)).
 		WithVolumeLikes(vols...)
 
-	// TODO integrate with api.ssl.enabled
-	// if params.Logstash.Spec.HTTP.TLS.Enabled() {
+	//  TODO integrate with api.ssl.enabled
+	//  if params.Logstash.Spec.HTTP.TLS.Enabled() {
 	//	httpVol := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, params.Logstash.Name)
 	//	builder.
 	//		WithVolumes(httpVol.Volume()).
 	//		WithVolumeMounts(httpVol.VolumeMount())
-	//}
+	//  }
 
 	return builder.PodTemplate
 }
