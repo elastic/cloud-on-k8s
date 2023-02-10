@@ -6,10 +6,12 @@ package logstash
 
 import (
 	"context"
+	"hash"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"hash"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,13 +65,13 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
-	cfg, err := defaultConfig()
+	cfg := defaultConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	// merge with user settings last so they take precedence
-	if err = cfg.MergeWith(existingCfg, userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(existingCfg, userProvidedCfg); err != nil {
 		return nil, err
 	}
 
@@ -114,10 +116,10 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 }
 
 // TODO: remove testing value
-func defaultConfig() (*settings.CanonicalConfig, error) {
+func defaultConfig() *settings.CanonicalConfig {
 	settingsMap := map[string]interface{}{
 		"node.name": "test",
 	}
 
-	return settings.MustCanonicalConfig(settingsMap), nil
+	return settings.MustCanonicalConfig(settingsMap)
 }

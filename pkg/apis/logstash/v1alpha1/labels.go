@@ -9,9 +9,9 @@ import (
 )
 
 // GetIdentityLabels will return the common Elastic assigned labels for Logstash
-func (logstash* Logstash) GetIdentityLabels() map[string]string {
+func (logstash *Logstash) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName: "logstash",
-		"logstash.k8s.elastic.co/name":          logstash.Name,
+		commonv1.TypeLabelName:         "logstash",
+		"logstash.k8s.elastic.co/name": logstash.Name,
 	}
 }

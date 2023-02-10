@@ -8,8 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -17,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"

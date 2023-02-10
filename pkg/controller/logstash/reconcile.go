@@ -6,8 +6,9 @@ package logstash
 
 import (
 	"context"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
 	"reflect"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -23,8 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-
-func  reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus){
+func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
@@ -53,14 +53,6 @@ func  reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*
 	}
 
 	return results.WithError(err), status
-}
-
-// ReconciliationParams are the parameters used during an Elastic Logstash's reconciliation.
-type ReconciliationParams struct {
-	ctx         context.Context
-	client      k8s.Client
-	logstash    logstashv1alpha1.Logstash
-	podTemplate corev1.PodTemplateSpec
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
