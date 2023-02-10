@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -847,6 +849,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
+		{name: "Logstash", registerFunc: logstash.Add},
 	}
 
 	for _, c := range controllers {
@@ -925,14 +928,15 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 	defer span.End()
 
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(ctx, k8sClient, map[string]client.Object{
-		esv1.Kind:           &esv1.Elasticsearch{},
-		apmv1.Kind:          &apmv1.ApmServer{},
-		kbv1.Kind:           &kbv1.Kibana{},
-		entv1.Kind:          &entv1.EnterpriseSearch{},
-		beatv1beta1.Kind:    &beatv1beta1.Beat{},
-		agentv1alpha1.Kind:  &agentv1alpha1.Agent{},
-		emsv1alpha1.Kind:    &emsv1alpha1.ElasticMapsServer{},
-		policyv1alpha1.Kind: &policyv1alpha1.StackConfigPolicy{},
+		esv1.Kind:             &esv1.Elasticsearch{},
+		apmv1.Kind:            &apmv1.ApmServer{},
+		kbv1.Kind:             &kbv1.Kibana{},
+		entv1.Kind:            &entv1.EnterpriseSearch{},
+		beatv1beta1.Kind:      &beatv1beta1.Beat{},
+		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
+		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
+		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
@@ -973,6 +977,7 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&logstashv1alpha1.Logstash{},
 	}
 	for _, obj := range webhookObjects {
 		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{

@@ -5,6 +5,7 @@
 package scheme
 
 import (
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,6 +56,7 @@ func SetupScheme() {
 		agentv1alpha1.AddToScheme,
 		emsv1alpha1.AddToScheme,
 		policyv1alpha1.AddToScheme,
+		logstashv1alpha1.AddToScheme,
 	}
 	mustAddSchemeOnce(&addToScheme, schemes)
 }
@@ -72,6 +74,7 @@ func SetupV1beta1Scheme() {
 		entv1beta1.AddToScheme,
 		beatv1beta1.AddToScheme,
 		agentv1alpha1.AddToScheme,
+		logstashv1alpha1.AddToScheme,
 	}
 	mustAddSchemeOnce(&addToSchemeV1beta1, schemes)
 }
