@@ -188,6 +188,14 @@ func versioned(b *baseClient, v version.Version) Client {
 	}
 }
 
+func (c *baseClient) BasicAuthUser() BasicAuth {
+	return c.User
+}
+
+func (c *baseClient) CaCerts() []*x509.Certificate {
+	return c.caCerts
+}
+
 func (c *baseClient) URL() string {
 	return c.Endpoint
 }

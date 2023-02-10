@@ -191,7 +191,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		ctx,
 		d.ES,
-		d.newElasticsearchClient(
+		d.elasticsearchClientProvider(
 			ctx,
 			resourcesState,
 			controllerUser,
@@ -391,6 +391,22 @@ func (d *defaultDriver) newElasticsearchClient(
 	)
 }
 
+func (d *defaultDriver) elasticsearchClientProvider(
+	ctx context.Context,
+	state *reconcile.ResourcesState,
+	user esclient.BasicAuth,
+	v version.Version,
+	caCerts []*x509.Certificate,
+) func(existingEsClient esclient.Client) esclient.Client {
+	return func(existingEsClient esclient.Client) esclient.Client {
+		url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+		if isEsClientUpToDate(existingEsClient, v, user, url, caCerts) {
+			return existingEsClient
+		}
+		return d.newElasticsearchClient(ctx, state, user, v, caCerts)
+	}
+}
+
 // maybeSetServiceAccountsOrchestrationHint attempts to update an orchestration hint to let the association controllers
 // know whether all the nodes in the cluster are ready to authenticate service accounts.
 func (d *defaultDriver) maybeSetServiceAccountsOrchestrationHint(
@@ -522,4 +538,19 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
+}
+
+func isEsClientUpToDate(esClient esclient.Client, version version.Version, user esclient.BasicAuth, url string, caCerts []*x509.Certificate) bool {
+	if esClient == nil {
+		return false
+	}
+	if len(esClient.CaCerts()) != len(caCerts) {
+		return false
+	}
+	for i := range esClient.CaCerts() {
+		if !esClient.CaCerts()[i].Equal(caCerts[i]) {
+			return false
+		}
+	}
+	return esClient.Version().Equals(version) && esClient.BasicAuthUser() == user && esClient.URL() == url
 }

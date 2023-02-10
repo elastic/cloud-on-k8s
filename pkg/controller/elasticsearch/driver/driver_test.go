@@ -6,7 +6,11 @@ package driver
 
 import (
 	"context"
+	"crypto/x509"
+	"net/http"
 	"testing"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +22,86 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
+
+func Test_isEsClientUpToDate(t *testing.T) {
+	defaultVersion := version.MustParse("8.6.1")
+	defaultUser := esclient.BasicAuth{Name: "foo", Password: "bar"}
+	defaultURL := "https://foo.bar"
+	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
+	defaultEsClient := esclient.NewFullMockClient(defaultVersion, defaultUser,
+		func(req *http.Request) *http.Response { return nil },
+		defaultURL, defaultCaCerts)
+	tests := []struct {
+		name     string
+		esClient esclient.Client
+		version  version.Version
+		user     esclient.BasicAuth
+		url      string
+		caCerts  []*x509.Certificate
+		want     bool
+	}{
+		{
+			name:     "A new client is created if none is passed",
+			esClient: nil,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the version does not match",
+			esClient: defaultEsClient,
+			version:  version.MustParse("8.6.0"),
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the user does not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     esclient.BasicAuth{Name: "foo", Password: "changed"},
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the url does not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      "https://foo.com",
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the caCerts do not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  []*x509.Certificate{{Raw: []byte("bar")}},
+			want:     false,
+		},
+		{
+			name:     "The client is reused if nothing has changed",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := isEsClientUpToDate(tt.esClient, tt.version, tt.user, tt.url, tt.caCerts)
+			assert.Equal(t, tt.want, actual)
+		})
+	}
+}
 
 func Test_esReachableConditionMessage(t *testing.T) {
 	type args struct {
