@@ -40,6 +40,7 @@ const (
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server-ubi8"
+	LogstashImage         Image = "logstash/logstash"
 )
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
