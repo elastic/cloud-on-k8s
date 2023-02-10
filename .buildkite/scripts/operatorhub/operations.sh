@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
 
 # Required environment variables:
 #  For 'preflight' command:
@@ -7,6 +10,8 @@ set -euo pipefail
 #  For 'release' command:
 #   OHUB_PREV_VERSION
 #   OHUB_STACK_VERSION
+
+set -euo pipefail
 
 preflight() {
     if [[ -z ${OHUB_TAG} ]]; then
@@ -25,7 +30,7 @@ preflight() {
     jq -e '.data[0]' /tmp/redhat.json && exit 0
 
     # Install known working version of preflight tool.
-    curl -L -o /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
+    curl -sL -o /tmp/preflight https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-amd64
     chmod u+x /tmp/preflight
 
     # Pull authentication information for quay.io from vault
@@ -46,7 +51,6 @@ release() {
 
     buildkite-agent artifact download "bin/operator*" /usr/local/
     buildkite-agent artifact download "config/*.yaml" .
-    chmod u+x /usr/local/bin/operatorhub
     /usr/local/bin/operatorhub container publish --dry-run=false
     cd hack/operatorhub
     /usr/local/bin/operatorhub generate-manifests --prev-version="$OHUB_PREV_VERSION" --stack-version="$OHUB_STACK_VERSION" --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
@@ -67,7 +71,7 @@ fi
 
 case "$1" in
     preflight)
-        list_all
+        preflight
         ;;
     release)
         release

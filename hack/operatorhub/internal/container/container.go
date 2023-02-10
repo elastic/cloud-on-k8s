@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -34,7 +34,6 @@ var (
 	errImageNotFound             = fmt.Errorf("image not found")
 	catalogAPIURL                = "https://catalog.redhat.com/api/containers/v1"
 	eckOperatorRegistryReference = "%s/redhat-isv-containers/%s:%s"
-	registryUsername             = "redhat-isv-containers+%s-robot"
 	getCatalogImagesURL          = "%s/projects/certification/id/%s/images"
 	registryUserFormat           = "redhat-isv-containers+%s-robot"
 	imagePublishURL              = "%s/projects/certification/id/%s/requests/images"
@@ -87,10 +86,10 @@ func PushImage(c PushConfig) error {
 	}
 
 	if err = pushImageToRegistry(c); err != nil {
-		log.Println("x")	
+		log.Println("x")
 		return fmt.Errorf("failed to push image: %w", err)
 	}
-	log.Println("✓")	
+	log.Println("✓")
 	return nil
 }
 
@@ -161,8 +160,10 @@ func defaultHTTPClient() *http.Client {
 // getImages will return a slice of Images from the Red Hat Certification API
 // while filtering using the given tag, returning any errors it encounters.
 func getImages(httpClient *http.Client, apiKey, projectID, tag string) ([]Image, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
 	url := fmt.Sprintf(getCatalogImagesURL, catalogAPIURL, projectID)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request for url (%s): %w", url, err)
 	}
@@ -179,13 +180,13 @@ func getImages(httpClient *http.Client, apiKey, projectID, tag string) ([]Image,
 	}
 	defer res.Body.Close()
 	if res.StatusCode > 299 {
-		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return nil, fmt.Errorf("failed to check whether image exists, body: %s, code: %d", string(bodyBytes), res.StatusCode)
 		}
 		return nil, fmt.Errorf("failed to check whether image exists, code: %d", res.StatusCode)
 	}
 	var bodyBytes []byte
-	if bodyBytes, err = ioutil.ReadAll(res.Body); err != nil {
+	if bodyBytes, err = io.ReadAll(res.Body); err != nil {
 		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 	response := GetImagesResponse{}
@@ -263,7 +264,7 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 	defer cancel()
 
 	log.Printf("waiting for image to complete scan process... ")
-	image, done, err := isImageScanned(httpClient, imageScanTimeout, apiKey, projectID, tag)
+	image, done, err := isImageScanned(httpClient, apiKey, projectID, tag)
 	if err != nil {
 		return err
 	}
@@ -278,7 +279,7 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 	for {
 		select {
 		case <-ticker.C:
-			image, done, err := isImageScanned(httpClient, imageScanTimeout, apiKey, projectID, tag)
+			image, done, err := isImageScanned(httpClient, apiKey, projectID, tag)
 			if err != nil {
 				return err
 			}
@@ -299,10 +300,10 @@ func publishImageInProject(httpClient *http.Client, imageScanTimeout time.Durati
 
 // isImageScanned will get the first valid image tag within the Red Hat certification API
 // and ensure that the scan status is set to "passed", returning the image.
-func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, apiKey, projectID, tag string) (image *Image, done bool, err error) {
+func isImageScanned(httpClient *http.Client, apiKey, projectID, tag string) (image *Image, done bool, err error) {
 	images, err := getImages(httpClient, apiKey, projectID, tag)
 	if err != nil {
-		log.Println(fmt.Sprintf("failed to find image in redhat catlog api, retrying: %s", err))
+		log.Printf("failed to find image in redhat catlog api, retrying: %s", err)
 		return nil, false, nil
 	}
 	if len(images) == 0 {
@@ -327,10 +328,12 @@ func isImageScanned(httpClient *http.Client, imageScanTimeout time.Duration, api
 
 // doPublish will publish an image with the given tag in the Red Hat certification API.
 func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
 	log.Printf("publishing image (%s), tag %s: ", image.ID, tag)
 	url := fmt.Sprintf(imagePublishURL, catalogAPIURL, projectID)
 	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "operation": "publish"}`, image.ID))
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed to create request to publish image: %w", err)
@@ -346,7 +349,7 @@ func doPublish(image *Image, httpClient *http.Client, apiKey, projectID, tag str
 	defer res.Body.Close()
 	if res.StatusCode > 299 {
 		log.Println("ⅹ")
-		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return fmt.Errorf("failed request to publish image, body: %s, code: %d", string(bodyBytes), res.StatusCode)
 		}
 		return fmt.Errorf("failed request to publish image, code: %d", res.StatusCode)
