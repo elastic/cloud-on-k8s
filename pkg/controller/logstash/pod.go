@@ -6,19 +6,20 @@ package logstash
 
 import (
 	"fmt"
+	"hash"
+	"path"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
-	"hash"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"path"
 )
 
 const (
@@ -50,7 +51,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateSpec {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -84,17 +85,16 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithLivenessProbe(livenessProbe(false)).
 		WithVolumeLikes(vols...)
 
-	//TODO integrate with api.ssl.enabled
-	//if params.Logstash.Spec.HTTP.TLS.Enabled() {
+	// TODO integrate with api.ssl.enabled
+	// if params.Logstash.Spec.HTTP.TLS.Enabled() {
 	//	httpVol := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, params.Logstash.Name)
 	//	builder.
 	//		WithVolumes(httpVol.Volume()).
 	//		WithVolumeMounts(httpVol.VolumeMount())
 	//}
 
-	return builder.PodTemplate, nil
+	return builder.PodTemplate
 }
-
 
 func getDefaultContainerPorts(logstash logstashv1alpha1.Logstash) []corev1.ContainerPort {
 	return []corev1.ContainerPort{

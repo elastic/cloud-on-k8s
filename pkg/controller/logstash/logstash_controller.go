@@ -6,6 +6,7 @@ package logstash
 
 import (
 	"context"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"

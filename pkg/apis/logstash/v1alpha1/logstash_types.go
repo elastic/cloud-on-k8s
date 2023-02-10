@@ -5,9 +5,10 @@
 package v1alpha1
 
 import (
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 const (
@@ -21,7 +22,7 @@ type LogstashSpec struct {
 	// Version of the Logstash.
 	Version string `json:"version"`
 
-	Count    int32                 `json:"count,omitempty"`
+	Count int32 `json:"count,omitempty"`
 
 	// Image is the Logstash Docker image to deploy. Version and Type have to match the Logstash in the image.
 	// +kubebuilder:validation:Optional
@@ -58,7 +59,6 @@ type LogstashSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
 }
 
 // LogstashStatus defines the observed state of Logstash
@@ -94,8 +94,8 @@ type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec                 LogstashSpec                                         `json:"spec,omitempty"`
-	Status               LogstashStatus                                       `json:"status,omitempty"`
+	Spec   LogstashSpec   `json:"spec,omitempty"`
+	Status LogstashStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -106,7 +106,6 @@ type LogstashList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Logstash `json:"items"`
 }
-
 
 func (l *Logstash) ServiceAccountName() string {
 	return l.Spec.ServiceAccountName
