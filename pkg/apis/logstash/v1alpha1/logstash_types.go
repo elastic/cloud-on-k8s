@@ -38,8 +38,15 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
+	// HTTP holds the HTTP layer configuration for the Logstash Metrics API
+	// +kubebuilder:validation:Optional
+	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+
 	// PodTemplate provides customisation options for the Logstash pods.
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash.
 	// Secrets data can be then referenced in the Logstash config using the Secret's keys or as specified in `Entries` field of
@@ -52,12 +59,6 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.
-	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
-
-	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
-	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 }
 
 // LogstashStatus defines the observed state of Logstash

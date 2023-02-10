@@ -7,9 +7,9 @@ package logstash
 import (
 	"context"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"hash/fnv"
 
 	"github.com/go-logr/logr"
@@ -75,29 +75,30 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	svc, err := common.ReconcileService(params.Context, params.Client, newService(params.Logstash), &params.Logstash)
+	_, err := common.ReconcileService(params.Context, params.Client, newService(params.Logstash), &params.Logstash)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	_, results = certificates.Reconciler{
-		K8sClient:             params.Client,
-		DynamicWatches:        params.Watches,
-		Owner:                 &params.Logstash,
-		TLSOptions:            params.Logstash.Spec.HTTP.TLS,
-		Namer:                 logstashv1alpha1.Namer,
-		Labels:                params.Logstash.GetIdentityLabels(),
-		Services:              []corev1.Service{*svc},
-		GlobalCA:              params.OperatorParams.GlobalCA,
-		CACertRotation:        params.OperatorParams.CACertRotation,
-		CertRotation:          params.OperatorParams.CertRotation,
-		GarbageCollectSecrets: true,
-	}.ReconcileCAAndHTTPCerts(params.Context)
-	if results.HasError() {
-		_, err := results.Aggregate()
-		k8s.EmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return results, params.Status
-	}
+	//_, results = certificates.Reconciler{
+	//	K8sClient:             params.Client,
+	//	DynamicWatches:        params.Watches,
+	//	Owner:                 &params.Logstash,
+	//	TLSOptions:            params.Logstash.Spec.HTTP.TLS,
+	//	Namer:                 logstashv1alpha1.Namer,
+	//	Labels:                params.Logstash.GetIdentityLabels(),
+	//	Services:              []corev1.Service{*svc},
+	//	GlobalCA:              params.OperatorParams.GlobalCA,
+	//	CACertRotation:        params.OperatorParams.CACertRotation,
+	//	CertRotation:          params.OperatorParams.CertRotation,
+	//	GarbageCollectSecrets: true,
+	//}.ReconcileCAAndHTTPCerts(params.Context)
+	//
+	//if results.HasError() {
+	//	_, err := results.Aggregate()
+	//	k8s.EmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+	//	return results, params.Status
+	//}
 
 	configHash := fnv.New32a()
 

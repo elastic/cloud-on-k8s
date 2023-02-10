@@ -7,7 +7,7 @@ package logstash
 import (
 	"fmt"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -85,12 +85,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithVolumeLikes(vols...)
 
 	//TODO integrate with api.ssl.enabled
-	if params.Logstash.Spec.HTTP.TLS.Enabled() {
-		httpVol := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, params.Logstash.Name)
-		builder.
-			WithVolumes(httpVol.Volume()).
-			WithVolumeMounts(httpVol.VolumeMount())
-	}
+	//if params.Logstash.Spec.HTTP.TLS.Enabled() {
+	//	httpVol := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, params.Logstash.Name)
+	//	builder.
+	//		WithVolumes(httpVol.Volume()).
+	//		WithVolumeMounts(httpVol.VolumeMount())
+	//}
 
 	return builder.PodTemplate, nil
 }

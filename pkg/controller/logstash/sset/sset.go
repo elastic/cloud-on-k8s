@@ -26,7 +26,6 @@ type Params struct {
 }
 
 func New(params Params) (appsv1.StatefulSet, error) {
-
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      params.Name,
