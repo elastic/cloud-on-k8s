@@ -19,15 +19,12 @@ steps:
       - label: ":docker: e2e-tests container image"
         key: "e2e-tests-image-build"
         agents:
-          memory: "4G"
+          ephemeralStorage: "20G"
         depends_on:
           - "operator-image-build"
         commands:
           - .ci/setenvconfig pr
           - .buildkite/scripts/common/get-test-artifacts.sh
-          # Ensure the go cache is cleared prior to build to not continue
-          # failing 'Pod ephemeral local storage usage exceeds the total limit of containers 10G'
-          - go clean -modcache
           - make e2e-buildah
 
   - group: checks
