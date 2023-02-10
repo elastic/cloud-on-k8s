@@ -9118,8 +9118,8 @@ spec:
                 format: int32
                 type: integer
               http:
-                description: HTTP holds the HTTP layer configuration for the Agent
-                  in Fleet mode with Fleet Server enabled.
+                description: HTTP holds the HTTP layer configuration for the Logstash
+                  Metrics API
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
