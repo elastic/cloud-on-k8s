@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
-	golang.org/x/exp v0.0.0-20230212135524-a684f29349b6
+	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 	google.golang.org/api v0.109.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.11.1
