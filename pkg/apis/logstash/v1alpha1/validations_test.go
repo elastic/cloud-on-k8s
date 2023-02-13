@@ -6,27 +6,28 @@ package v1alpha1
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCheckNameLength(t *testing.T) {
 	testCases := []struct {
-		name          string
-		logstashName  string
-		wantErr       bool
-		wantErrMsg    string
+		name         string
+		logstashName string
+		wantErr      bool
+		wantErrMsg   string
 	}{
 		{
-			name:          "valid configuration",
-			logstashName:  "test-logstash",
-			wantErr:       false,
+			name:         "valid configuration",
+			logstashName: "test-logstash",
+			wantErr:      false,
 		},
 		{
-			name:          "long Logstash name",
-			logstashName:  "extremely-long-winded-and-unnecessary-name-for-logstash",
-			wantErr:       true,
-			wantErrMsg:    "name exceeds maximum allowed length",
+			name:         "long Logstash name",
+			logstashName: "extremely-long-winded-and-unnecessary-name-for-logstash",
+			wantErr:      true,
+			wantErrMsg:   "name exceeds maximum allowed length",
 		},
 	}
 
