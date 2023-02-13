@@ -62,9 +62,10 @@ There are 3 test suites:
   A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
   
 #### Pull Request validation
-  After submitting a PR, a run of unit tests, integration tests and a single E2E test (`SamplesTest`) on a single provider (GKE) can be triggered by commenting the PR with `jenkins test this please`.
-  
-  For changes larger in scope and touching CI pipeline, e2e test runner and/or providers a full E2E test suite can be triggered by commenting the PR with `run/e2e-tests`. This will trigger the same set of pipelines that are triggered during nightly testing. Note that green checkmark next to this build result (`devops-ci/e2e-tests`) in GitHub only means that scheduling runs was successful. Inspect all results by going to `Details` > `Open Blue Ocean`.
+
+For security reasons, an Elastic engineer will trigger continuous integration to run these tests and report any failures in the pull request.
+
+All tests must pass to validate a pull request.
 
 ### Logging
 
