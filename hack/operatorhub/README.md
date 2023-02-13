@@ -126,8 +126,6 @@ To generate configuration based on yet unreleased YAML manifests:
 ```shell
 # If using newVersion|prevVersion|stackVersion variables in config.yaml
 ./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml
-# If wanting to override newVersion|prevVersion|stackVersion variables in config.yaml
-./bin/operatorhub generate-manifests -c config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml -s '8.6.0' -V '2.5.0' -t '2.6.0'
 ```
 
 ### Flags
@@ -137,8 +135,6 @@ To generate configuration based on yet unreleased YAML manifests:
 | `--conf`          | Path to config.yaml file.                                                                         | `OHUB_CONF`          | `"./config.yaml"` |
 | `--yaml-manifest` | Path(s) to yaml installation manifest files.                                                      | `OHUB_YAML_MANIFEST` | `""`              |
 | `--templates`     | Path to the templates directory.                                                                  | `OHUB_TEMPLATES`     | `"./templates"`   |
-| `--stack-version` | Stack version of Elastic stack used to populate the operator cluster service version yaml.        | `OHUB_STACK_VERSION` | `""`              |
-| `--prev-version`  | Previous version of the operator to populate 'replaces' in operator cluster service version yaml. | `OHUB_PREV_VERSION`  | `""`              |
 | `--tag`           | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`           | `""`              |
 
 *IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
@@ -222,6 +218,4 @@ To generate a Buildkite token for use with this command visit https://buildkite.
 | Parameter           | Description                                                                                       | Environment Variable   | Default |
 |---------------------|---------------------------------------------------------------------------------------------------|------------------------|---------|
 | `--buildkite-token` | Buildkite token for communicating with the Buildkite API.                                         | `OHUB_BUILDKITE_TOKEN` | `""`    |
-| `--stack-version`   | Stack version of Elastic stack used to populate the operator cluster service version yaml.        | `OHUB_STACK_VERSION`   | `""`    |
-| `--prev-version`    | Previous version of the operator to populate 'replaces' in operator cluster service version yaml. | `OHUB_PREV_VERSION`    | `""`    |
 | `--tag`             | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`             | `""`    |

@@ -7,9 +7,6 @@
 # Required environment variables:
 #  For 'preflight' command:
 #   OHUB_TAG
-#  For 'release' command:
-#   OHUB_PREV_VERSION
-#   OHUB_STACK_VERSION
 
 set -euo pipefail
 
@@ -40,20 +37,11 @@ preflight() {
 }
 
 release() {
-    if [[ -z ${OHUB_PREV_VERSION} ]]; then
-        echo "OHUB_PREV_VERSION environment variable is required"
-        exit 1
-    fi
-    if [[ -z ${OHUB_STACK_VERSION} ]]; then
-        echo "OHUB_STACK_VERSION environment variable is required"
-        exit 1
-    fi
-
     buildkite-agent artifact download "bin/operator*" /usr/local/
     buildkite-agent artifact download "config/*.yaml" .
     /usr/local/bin/operatorhub container publish --dry-run=false
     cd hack/operatorhub
-    /usr/local/bin/operatorhub generate-manifests --prev-version="$OHUB_PREV_VERSION" --stack-version="$OHUB_STACK_VERSION" --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+    /usr/local/bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
     /usr/local/bin/operatorhub bundle generate --dir="$(pwd)"
     /usr/local/bin/operatorhub bundle create-pr --dir="$(pwd)"
 }

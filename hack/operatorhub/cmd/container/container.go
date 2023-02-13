@@ -41,8 +41,8 @@ func Command() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&flags.ApiKey,
-		flags.ApiKeyFlags,
+		&flags.APIKey,
+		flags.APIKeyFlags,
 		"a",
 		"",
 		"API key to use when communicating with redhat certification API (OHUB_API_KEY)",
@@ -79,8 +79,8 @@ func Command() *cobra.Command {
 
 // preRunE are the pre-run operations for the container command's sub-commands.
 func preRunE(cmd *cobra.Command, args []string) error {
-	if flags.ApiKey == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.ApiKeyFlags)
+	if flags.APIKey == "" {
+		return fmt.Errorf(flags.RequiredErrFmt, flags.APIKeyFlags)
 	}
 
 	if flags.RegistryPassword == "" {
@@ -100,7 +100,7 @@ func doPublish(_ *cobra.Command, _ []string) error {
 		CommonConfig: container.CommonConfig{
 			DryRun:              flags.DryRun,
 			ProjectID:           flags.ProjectID,
-			RedhatCatalogAPIKey: flags.ApiKey,
+			RedhatCatalogAPIKey: flags.APIKey,
 			RegistryPassword:    flags.RegistryPassword,
 			Tag:                 flags.Tag,
 		},
@@ -114,7 +114,7 @@ func doPush(_ *cobra.Command, _ []string) error {
 		CommonConfig: container.CommonConfig{
 			DryRun:              flags.DryRun,
 			ProjectID:           flags.ProjectID,
-			RedhatCatalogAPIKey: flags.ApiKey,
+			RedhatCatalogAPIKey: flags.APIKey,
 			RegistryPassword:    flags.RegistryPassword,
 			Tag:                 flags.Tag,
 		},

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -33,22 +33,6 @@ func Command() *cobra.Command {
 		SilenceUsage: true,
 		RunE:         doRun,
 	}
-
-	cmd.Flags().StringVarP(
-		&flags.PreviousVersion,
-		flags.PrevVersionFlag,
-		"V",
-		"",
-		"Previous version of the operator to use during release (OHUB_PREV_VERSION)",
-	)
-
-	cmd.Flags().StringVarP(
-		&flags.StackVersion,
-		flags.StackVersionFlag,
-		"s",
-		"",
-		"Stack version of Elastic stack to use during release (OHUB_STACK_VERSION)",
-	)
 
 	cmd.Flags().StringVarP(
 		&flags.SupportedOpenshiftVersions,
@@ -118,14 +102,6 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
 	}
 
-	if flags.PreviousVersion == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.PrevVersionFlag)
-	}
-
-	if flags.StackVersion == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersionFlag)
-	}
-
 	if flags.GitBranch == "" {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.GitBranchFlag)
 	}
@@ -155,8 +131,6 @@ func doRun(_ *cobra.Command, _ []string) error {
 			"OHUB_DRY_RUN":                      fmt.Sprintf("%t", flags.DryRun),
 			"OHUB_TAG":                          flags.Tag,
 			"OHUB_BRANCH":                       flags.GitBranch,
-			"OHUB_PREV_VERSION":                 flags.PreviousVersion,
-			"OHUB_STACK_VERSION":                flags.StackVersion,
 			"OHUB_SUPPORTED_OPENSHIFT_VERSIONS": flags.SupportedOpenshiftVersions,
 		},
 		Branch: flags.BuildkiteBranch,
@@ -185,7 +159,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
+	bodyBytes, err = io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read buildkite response body: %w", err)
 	}

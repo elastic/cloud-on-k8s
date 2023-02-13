@@ -31,15 +31,13 @@ const (
 	DeleteTempDirectoryFlag        = "delete-temp-directory"
 
 	// container command flags
-	ApiKeyFlags          = "api-key"
+	APIKeyFlags          = "api-key"
 	RegistryPasswordFlag = "registry-password"
 	ProjectIDFlag        = "project-id"
 	ForceFlag            = "force"
 	ScanTimeoutFlag      = "scan-timeout"
 
 	// operatorhub command flags
-	PrevVersionFlag  = "prev-version"
-	StackVersionFlag = "stack-version"
 	ConfFlag         = "conf"
 	YamlManifestFlag = "yaml-manifest"
 	TemplatesFlag    = "templates"
@@ -65,7 +63,7 @@ var (
 	DeleteTempDirectory        bool
 
 	// container command variables
-	ApiKey           string
+	APIKey           string
 	RegistryPassword string
 	ProjectID        string
 	Force            bool
@@ -81,12 +79,10 @@ var (
 	GithubVaultSecret string
 
 	// operatorhub command variables
-	PreviousVersion string
-	StackVersion    string
-	Conf            string
-	YamlManifest    []string
-	Templates       string
-	RootPath        string
+	Conf         string
+	YamlManifest []string
+	Templates    string
+	RootPath     string
 
 	// buildkite command variable
 	GitBranch             string

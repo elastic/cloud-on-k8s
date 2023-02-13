@@ -27,22 +27,6 @@ func Command() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(
-		&flags.PreviousVersion,
-		flags.PrevVersionFlag,
-		"V",
-		"",
-		"Previous version of the operator to populate 'replaces' in operator cluster service version yaml (OHUB_PREV_VERSION)",
-	)
-
-	cmd.Flags().StringVarP(
-		&flags.StackVersion,
-		flags.StackVersionFlag,
-		"s",
-		"",
-		"Stack version of Elastic stack used to populate the operator cluster service version yaml (OHUB_STACK_VERSION)",
-	)
-
-	cmd.Flags().StringVarP(
 		&flags.Conf,
 		flags.ConfFlag,
 		"c",
@@ -75,18 +59,6 @@ func preRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(flags.RequiredErrFmt, flags.ConfFlag)
 	}
 
-	// If no yaml manifests are given, then the stack, and previous version
-	// flags are required to generate manifests.
-	if len(flags.YamlManifest) == 0 {
-		if flags.PreviousVersion == "" {
-			return fmt.Errorf(flags.RequiredErrFmt, flags.PrevVersionFlag)
-		}
-
-		if flags.StackVersion == "" {
-			return fmt.Errorf(flags.RequiredErrFmt, flags.StackVersionFlag)
-		}
-	}
-
 	// validation for apikey, and redhat project id is not done
 	// here, but is done after reading the configuration file
 	// and checking whether digest pinning `digestPinning: true`
@@ -99,12 +71,10 @@ func preRunE(cmd *cobra.Command, args []string) error {
 func doRun(_ *cobra.Command, _ []string) error {
 	return hub.Generate(hub.GenerateConfig{
 		NewVersion:      flags.Tag,
-		PrevVersion:     flags.PreviousVersion,
-		StackVersion:    flags.StackVersion,
 		ConfigPath:      flags.Conf,
 		ManifestPaths:   flags.YamlManifest,
 		TemplatesPath:   flags.Templates,
-		RedhatAPIKey:    flags.ApiKey,
+		RedhatAPIKey:    flags.APIKey,
 		RedhatProjectID: flags.ProjectID,
 	})
 }
