@@ -38,6 +38,17 @@ tests:
       - equal:
           path: metadata.name
           value: override
+  - it: setting volumeClaimDeletePolicy should work properly
+    set:
+      volumeClaimDeletePolicy: DeleteOnScaledownOnly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: spec.volumeClaimDeletePolicy
+          value: DeleteOnScaledownOnly 
   - it: should render labels, annotations, and additional custom values properly
     set:
       labels:
