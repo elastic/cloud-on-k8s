@@ -48,7 +48,15 @@ tests:
           of: Elasticsearch
       - equal:
           path: spec.volumeClaimDeletePolicy
-          value: DeleteOnScaledownOnly 
+          value: DeleteOnScaledownOnly
+  - it: setting volumeClaimDeletePolicy incorrectly should fail
+    set:
+      volumeClaimDeletePolicy: invalid
+    release:
+      name: quickstart
+    asserts:
+      - failedTemplate:
+          errorMessage: volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'
   - it: should render labels, annotations, and additional custom values properly
     set:
       labels:
@@ -100,7 +108,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-elasticsearch
-            helm.sh/chart: eck-elasticsearch-0.3.0
+            helm.sh/chart: eck-elasticsearch-0.4.0
             test: label
       - equal:
           path: metadata.annotations
