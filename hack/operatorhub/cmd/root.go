@@ -6,8 +6,10 @@ package root
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	gyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -19,7 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/manifests"
 )
 
-// Cmd represents the root commmand for Red Hat/operatorhub release operations
+// Cmd represents the root command for Red Hat/operatorhub release operations
 var Cmd = cobra.Command{
 	Use:     "operatorhub",
 	Version: "0.5.0",
@@ -35,12 +37,12 @@ and potentially creating pull requests to community/certified operator repositor
 func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-	Cmd.PersistentFlags().StringVarP(
-		&flags.Tag,
-		flags.TagFlag,
-		"t",
-		"",
-		"tag/new version of operator (OHUB_TAG)",
+	Cmd.Flags().StringVarP(
+		&flags.ConfigPath,
+		flags.ConfFlag,
+		"c",
+		"./config.yaml",
+		"Path to configiguration file (OHUB_CONF)",
 	)
 
 	Cmd.PersistentFlags().StringVarP(
@@ -135,16 +137,16 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to bind flags: %w", err)
 	}
 
+	if err := setVariablesFromConfigurationFile(); err != nil {
+		return err
+	}
+
 	// vault environment variables need to also support not
 	// having OHUB prefix, as they exist in CI/Buildkite.
 	viper.BindEnv(flags.VaultAddressFlag, "VAULT_ADDR")
 	viper.BindEnv(flags.VaultTokenFlag, "VAULT_TOKEN")
 
 	viper.AutomaticEnv()
-
-	if viper.GetString(flags.TagFlag) == "" && cmd.Name() != "generate-manifests" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
-	}
 
 	if viper.GetBool(flags.EnableVaultFlag) {
 		// ensure that the flag variables are set using what's current in viper configuration prior to calling
@@ -168,6 +170,27 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) error {
 	// (sub)commands to use the variables in cmd/flags directly without calling viper.
 	bindFlags(cmd, viper.GetViper())
 
+	return nil
+}
+
+func setVariablesFromConfigurationFile() error {
+	confFilePath := viper.GetString(flags.ConfFlag)
+	b, err := os.ReadFile(confFilePath)
+	if err != nil {
+		return fmt.Errorf("while reading configuration file %s: %w", confFilePath, err)
+	}
+	err = gyaml.Unmarshal(b, flags.Conf)
+	if err != nil {
+		return fmt.Errorf("while unmarshaling config file into configuration struct: %w", err)
+	}
+	if flags.Conf == nil {
+		return fmt.Errorf("configuration from config file empty after yaml unmarshal")
+	}
+	for k, v := range map[string]string{"newVersion": flags.Conf.NewVersion, "prevVersion": flags.Conf.PrevVersion, "stackVersion": flags.Conf.StackVersion} {
+		if v == "" {
+			return fmt.Errorf("%s must be defined in %s and not be empty", k, confFilePath)
+		}
+	}
 	return nil
 }
 

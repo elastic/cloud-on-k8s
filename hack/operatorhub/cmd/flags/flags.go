@@ -13,13 +13,13 @@ const (
 	RequiredErrFmt = "%s is required"
 
 	// root flags
-	TagFlag               = "tag"
+	ConfFlag              = "conf"
 	DryRunFlag            = "dry-run"
 	EnableVaultFlag       = "enable-vault"
 	VaultAddressFlag      = "vault-addr"
 	VaultTokenFlag        = "vault-token"
 	RedhatVaultSecretFlag = "redhat-vault-secret"
-	GithubVaultSecretFlag = "github-vault-secret"
+	GithubVaultSecretFlag = "github-vault-secret" //nolint:gosec
 
 	// bundle command flags
 	DirFlag                        = "dir"
@@ -38,13 +38,11 @@ const (
 	ScanTimeoutFlag      = "scan-timeout"
 
 	// operatorhub command flags
-	ConfFlag         = "conf"
 	YamlManifestFlag = "yaml-manifest"
 	TemplatesFlag    = "templates"
 	RootPathFlag     = "root-path"
 
 	// buildkite command flag
-	GitBranchFlag             = "git-branch"
 	BuildkiteTokenFlag        = "buildkite-token"
 	BuildkiteBranchFlag       = "buildkite-branch"
 	BuildkiteCommitFlag       = "buildkite-commit"
@@ -70,25 +68,58 @@ var (
 	ScanTimeout      time.Duration
 
 	// root command variables
-	Tag               string
+	ConfigPath        string
 	DryRun            bool
 	EnableVault       bool
+	GithubVaultSecret string
+	RedhatVaultSecret string
 	VaultAddress      string
 	VaultToken        string
-	RedhatVaultSecret string
-	GithubVaultSecret string
 
 	// operatorhub command variables
-	Conf         string
+	Conf         *Config
 	YamlManifest []string
 	Templates    string
 	RootPath     string
 
 	// buildkite command variable
-	GitBranch             string
 	BuildkiteToken        string
 	BuildkiteBranch       string
 	BuildkiteCommit       string
 	BuildkitePRRepository string
 	BuildkitePRID         string
 )
+
+// Config is the configuration that matches the config.yaml
+type Config struct {
+	NewVersion   string `json:"newVersion"`
+	PrevVersion  string `json:"prevVersion"`
+	StackVersion string `json:"stackVersion"`
+	CRDs         []struct {
+		Name        string `json:"name"`
+		DisplayName string `json:"displayName"`
+		Description string `json:"description"`
+	} `json:"crds"`
+	Packages []struct {
+		OutputPath          string `json:"outputPath"`
+		PackageName         string `json:"packageName"`
+		DistributionChannel string `json:"distributionChannel"`
+		OperatorRepo        string `json:"operatorRepo"`
+		UbiOnly             bool   `json:"ubiOnly"`
+		DigestPinning       bool   `json:"digestPinning"`
+	} `json:"packages"`
+}
+
+// HasDigestPinning will return true if any package
+// within the configuration has DigestPinning enabled.
+func (c *Config) HasDigestPinning() bool {
+	if c == nil {
+		return false
+	}
+	for _, pkg := range c.Packages {
+		if pkg.DigestPinning {
+			return true
+		}
+	}
+	return false
+}

@@ -102,7 +102,7 @@ func doPublish(_ *cobra.Command, _ []string) error {
 			ProjectID:           flags.ProjectID,
 			RedhatCatalogAPIKey: flags.APIKey,
 			RegistryPassword:    flags.RegistryPassword,
-			Tag:                 flags.Tag,
+			Tag:                 flags.Conf.NewVersion,
 		},
 		ImageScanTimeout: flags.ScanTimeout,
 	})
@@ -116,7 +116,7 @@ func doPush(_ *cobra.Command, _ []string) error {
 			ProjectID:           flags.ProjectID,
 			RedhatCatalogAPIKey: flags.APIKey,
 			RegistryPassword:    flags.RegistryPassword,
-			Tag:                 flags.Tag,
+			Tag:                 flags.Conf.NewVersion,
 		},
 		Force: flags.Force,
 	})

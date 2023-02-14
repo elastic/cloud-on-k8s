@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	gyaml "github.com/ghodss/yaml"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -61,10 +61,7 @@ var (
 
 // GenerateConfig is the configuration for the generate operation
 type GenerateConfig struct {
-	NewVersion      string
-	PrevVersion     string
-	StackVersion    string
-	ConfigPath      string
+	ConfigFile      *flags.Config
 	ManifestPaths   []string
 	TemplatesPath   string
 	RedhatAPIKey    string
@@ -73,23 +70,16 @@ type GenerateConfig struct {
 
 // Generate will generate the Operator Lifecycle Manager format files
 func Generate(config GenerateConfig) error {
-	log.Printf("Loading configuration file (%s) ", config.ConfigPath)
-	configFile, err := loadConfigFile(config)
-	if err != nil {
-		log.Println("ⅹ")
-		return err
-	}
-	log.Println("✓")
-
-	imageDigest := ""
-	if configFile.hasDigestPinning() {
+	var imageDigest string
+	if config.ConfigFile.HasDigestPinning() {
 		if len(config.RedhatAPIKey) == 0 {
 			return errors.New("Red Hat API key is required to get image digest")
 		}
 		if len(config.RedhatProjectID) == 0 {
 			return errors.New("Red Hat project ID is required to get image digest")
 		}
-		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, configFile.NewVersion)
+		var err error
+		imageDigest, err = getImageDigest(config.RedhatAPIKey, config.RedhatProjectID, config.ConfigFile.NewVersion)
 		if err != nil {
 			log.Println("ⅹ")
 			return err
@@ -97,7 +87,7 @@ func Generate(config GenerateConfig) error {
 	}
 
 	log.Printf("Gathering and extracting data from yaml manifest path %v ", config.ManifestPaths)
-	manifestStream, close, err := getInstallManifestStream(configFile, config.ManifestPaths)
+	manifestStream, close, err := getInstallManifestStream(config.ConfigFile, config.ManifestPaths)
 	if err != nil {
 		log.Println("ⅹ")
 		return err
@@ -114,14 +104,14 @@ func Generate(config GenerateConfig) error {
 	log.Println("✓")
 
 	log.Printf("Rendering final operatorhub data ")
-	for i := range configFile.Packages {
-		params, err := buildRenderParams(configFile, i, extracts, imageDigest)
+	for i := range config.ConfigFile.Packages {
+		params, err := buildRenderParams(config.ConfigFile, i, extracts, imageDigest)
 		if err != nil {
 			log.Println("ⅹ")
 			return err
 		}
 
-		outDir := configFile.Packages[i].OutputPath
+		outDir := config.ConfigFile.Packages[i].OutputPath
 		if err := render(params, config.TemplatesPath, outDir); err != nil {
 			log.Println("ⅹ")
 			return err
@@ -192,66 +182,7 @@ func getImageDigest(apiKey, projectId, version string) (string, error) {
 	return imageDigest, nil
 }
 
-// config is the configuration that matches the config.yaml
-type config struct {
-	NewVersion   string `json:"newVersion"`
-	PrevVersion  string `json:"prevVersion"`
-	StackVersion string `json:"stackVersion"`
-	CRDs         []struct {
-		Name        string `json:"name"`
-		DisplayName string `json:"displayName"`
-		Description string `json:"description"`
-	} `json:"crds"`
-	Packages []struct {
-		OutputPath          string `json:"outputPath"`
-		PackageName         string `json:"packageName"`
-		DistributionChannel string `json:"distributionChannel"`
-		OperatorRepo        string `json:"operatorRepo"`
-		UbiOnly             bool   `json:"ubiOnly"`
-		DigestPinning       bool   `json:"digestPinning"`
-	} `json:"packages"`
-}
-
-// hasDigestPinning will return true if any package
-// within the configuration has DigestPinning enabled.
-func (c *config) hasDigestPinning() bool {
-	if c == nil {
-		return false
-	}
-	for _, pkg := range c.Packages {
-		if pkg.DigestPinning {
-			return true
-		}
-	}
-	return false
-}
-
-func loadConfigFile(c GenerateConfig) (*config, error) {
-	confBytes, err := ioutil.ReadFile(c.ConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("while opening file %s: %w", c.ConfigPath, err)
-	}
-
-	var conf config
-	if err := gyaml.Unmarshal(confBytes, &conf); err != nil {
-		return nil, fmt.Errorf("while unmarshaling config from %s: %w", c.ConfigPath, err)
-	}
-
-	// allow command line flags to override config file
-	if c.NewVersion != "" {
-		conf.NewVersion = c.NewVersion
-	}
-	if c.PrevVersion != "" {
-		conf.PrevVersion = c.PrevVersion
-	}
-	if c.StackVersion != "" {
-		conf.StackVersion = c.StackVersion
-	}
-
-	return &conf, nil
-}
-
-func getInstallManifestStream(conf *config, manifestPaths []string) (io.Reader, func(), error) {
+func getInstallManifestStream(conf *flags.Config, manifestPaths []string) (io.Reader, func(), error) {
 	if len(manifestPaths) == 0 {
 		s, err := installManifestFromWeb(conf.NewVersion)
 		return s, func() {}, err
@@ -447,7 +378,7 @@ type RenderParams struct {
 	UbiOnly          bool
 }
 
-func buildRenderParams(conf *config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
+func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
 	for _, c := range conf.CRDs {
 		if crd, ok := extracts.crds[c.Name]; ok {
 			crd.DisplayName = c.DisplayName

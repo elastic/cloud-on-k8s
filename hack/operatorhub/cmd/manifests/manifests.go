@@ -5,8 +5,6 @@
 package manifests
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
@@ -25,14 +23,6 @@ func Command() *cobra.Command {
 		PreRunE:      preRunE,
 		RunE:         doRun,
 	}
-
-	cmd.Flags().StringVarP(
-		&flags.Conf,
-		flags.ConfFlag,
-		"c",
-		"./config.yaml",
-		"Path to config file to read CRDs, and packages (OHUB_CONF)",
-	)
 
 	cmd.Flags().StringSliceVarP(
 		&flags.YamlManifest,
@@ -55,23 +45,17 @@ func Command() *cobra.Command {
 
 // preRunE are the pre-run operations for the generate-manifests command
 func preRunE(cmd *cobra.Command, args []string) error {
-	if flags.Conf == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.ConfFlag)
-	}
-
 	// validation for apikey, and redhat project id is not done
 	// here, but is done after reading the configuration file
 	// and checking whether digest pinning `digestPinning: true`
 	// is enabled for any of the packages in the config file.
-
 	return nil
 }
 
 // doRun will run the generate-manifests command
 func doRun(_ *cobra.Command, _ []string) error {
 	return hub.Generate(hub.GenerateConfig{
-		NewVersion:      flags.Tag,
-		ConfigPath:      flags.Conf,
+		ConfigFile:      flags.Conf,
 		ManifestPaths:   flags.YamlManifest,
 		TemplatesPath:   flags.Templates,
 		RedhatAPIKey:    flags.APIKey,

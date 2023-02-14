@@ -23,7 +23,6 @@ steps:
         depends_on:
           - "build-operatorhub-tool"
         commands:
-          - git checkout $$OHUB_BRANCH
           - make generate-crds-v1
         artifact_paths:
         - "config/*.yaml"

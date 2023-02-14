@@ -144,7 +144,7 @@ func createPRPreRunE(cmd *cobra.Command, args []string) error {
 
 // doGenerate will generate the operator bundle metadata
 func doGenerate(_ *cobra.Command, _ []string) error {
-	dir := filepath.Join(flags.Dir, "certified-operators", flags.Tag)
+	dir := filepath.Join(flags.Dir, "certified-operators", flags.Conf.NewVersion)
 	err := opm.GenerateBundle(opm.GenerateConfig{
 		LocalDirectory:  dir,
 		OutputDirectory: dir,
@@ -178,7 +178,7 @@ func doCreatePR(_ *cobra.Command, _ []string) error {
 		GitHubFullName:   flags.GithubFullname,
 		GitHubUsername:   flags.GithubUsername,
 		GitHubToken:      flags.GithubToken,
-		GitTag:           flags.Tag,
+		GitTag:           flags.Conf.NewVersion,
 		KeepTempFiles:    !flags.DeleteTempDirectory,
 		PathToNewVersion: flags.Dir,
 	})

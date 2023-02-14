@@ -43,14 +43,6 @@ func Command() *cobra.Command {
 	)
 
 	cmd.Flags().StringVarP(
-		&flags.GitBranch,
-		flags.GitBranchFlag,
-		"g",
-		"",
-		"Git branch to use when building manifests (2.6 for 2.6.0 release) (OHUB_GIT_BRANCH)",
-	)
-
-	cmd.Flags().StringVarP(
 		&flags.BuildkiteToken,
 		flags.BuildkiteTokenFlag,
 		"b",
@@ -98,12 +90,8 @@ func preRunE(cmd *cobra.Command, args []string) error {
 	// disable vault integration for this operation
 	flags.EnableVault = false
 
-	if flags.Tag == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.TagFlag)
-	}
-
-	if flags.GitBranch == "" {
-		return fmt.Errorf(flags.RequiredErrFmt, flags.GitBranchFlag)
+	if flags.Conf.NewVersion == "" {
+		return fmt.Errorf(flags.RequiredErrFmt, "newVersion")
 	}
 
 	if flags.BuildkiteToken == "" {
@@ -129,8 +117,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 		Message: "run operatorhub release",
 		Env: map[string]string{
 			"OHUB_DRY_RUN":                      fmt.Sprintf("%t", flags.DryRun),
-			"OHUB_TAG":                          flags.Tag,
-			"OHUB_BRANCH":                       flags.GitBranch,
+			"OHUB_TAG":                          flags.Conf.NewVersion,
 			"OHUB_SUPPORTED_OPENSHIFT_VERSIONS": flags.SupportedOpenshiftVersions,
 		},
 		Branch: flags.BuildkiteBranch,

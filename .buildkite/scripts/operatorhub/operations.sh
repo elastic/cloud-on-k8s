@@ -39,8 +39,8 @@ preflight() {
 release() {
     buildkite-agent artifact download "bin/operator*" /usr/local/
     buildkite-agent artifact download "config/*.yaml" .
-    /usr/local/bin/operatorhub container publish --dry-run=false
     cd hack/operatorhub
+    /usr/local/bin/operatorhub container publish --dry-run=false
     /usr/local/bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
     /usr/local/bin/operatorhub bundle generate --dir="$(pwd)"
     /usr/local/bin/operatorhub bundle create-pr --dir="$(pwd)"

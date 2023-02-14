@@ -10,6 +10,16 @@ These commands include
 - Generate Operator bundle metadata (wrapper for [OPM](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command)
 - Publish draft pull requests to both https://github.com/redhat-openshift-ecosystem/certified-operators and https://github.com/k8s-operatorhub/community-operators
 
+## Configuration
+
+All commands require the configuration file `config.yaml` to be modified prior to running the commands.
+
+| Configuration  | Description                                                                       |
+|----------------|-----------------------------------------------------------------------------------|
+| `newVersion`   | The new version of the ECK Operator that is to be released.                       |
+| `prevVersion`  | The previous version of the ECK Operator that `newVersion` will replace.          |
+| `stackVersion` | The Elastic Stack version that will be the default for this ECK Operator version. |
+
 ## Commands Overview
 
 * container - parent command
@@ -69,9 +79,9 @@ If `enable-vault` flag is `true` the following keys will attempt to be read from
 ### Push sub-command
 
 The `container push` sub-command will perform the following tasks:
-1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag`, using the provided `project-id`.
+1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag` associated with `newVersion`, using the provided `project-id`.
 2. If image is already found, nothing is done without using the `force` flag.
-3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(tag)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(tag)`.
+3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(newVersion)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(newVersion)`.
 
 ### Publish sub-command
 
@@ -84,24 +94,24 @@ The `container publish` sub-command will perform the following tasks:
 
 Usage without vault
 ```shell
-./operatorhub container push -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
-./operatorhub container publish -a 'api-key-in-keybase' -p `project-id` -t 2.6.0 -r `registry-password-for-quay.io` --dry-run=false
+./operatorhub container push -a 'api-key-in-keybase' -p `project-id`-r `registry-password-for-quay.io` --dry-run=false
+./operatorhub container publish -a 'api-key-in-keybase' -p `project-id` -r `registry-password-for-quay.io` --dry-run=false
 ```
 
 Usage with vault
 ```shell
-OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
+OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./bin/operatorhub container publish --enable-vault --dry-run=false
 ```
 
 ### Flags
 
-| Parameter              | Description                                                                                                                               | Environment Variable     | Default |
-|----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|---------|
-| `--api-key`            | API key to use when communicating with redhat certification API.                                                                          | `OHUB_API_KEY`           | `""`    |
-| `--registry-password`  | Registry password used to communicate with Quay.io.                                                                                       | `OHUB_REGISTRY_PASSWORD` | `""`    |
-| `--project-id`         | Red Hat project id within the Red Hat technology portal.                                                                                  | `OHUB_PROJECT_ID`        | `""`    |
-| `--tag`                | Git tag to release.                                                                                                                       | `OHUB_TAG`               | `""`    |
-| `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`  |
+| Parameter              | Description                                                                                                                               | Environment Variable     | Default           |
+|----------------------  |-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|-------------------|
+| `--api-key`            | API key to use when communicating with redhat certification API.                                                                          | `OHUB_API_KEY`           | `""`              |
+| `--conf`               | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`              | `"./config.yaml"` |
+| `--registry-password`  | Registry password used to communicate with Quay.io.                                                                                       | `OHUB_REGISTRY_PASSWORD` | `""`              |
+| `--project-id`         | Red Hat project id within the Red Hat technology portal.                                                                                  | `OHUB_PROJECT_ID`        | `""`              |
+| `--dry-run`            | Only validation will be run for the push command if set. The publish command will ensure the image is scanned but will not publish if set.| `OHUB_DRY_RUN`           | `true`            |
 
 ## Generate Manifests Command
 
@@ -118,7 +128,7 @@ a new release to OperatorHub.  These files are written within the following 3 di
 To generate configuration for a previously released manifest version
 
 ```shell
-./bin/operatorhub generate-manifests -c config.yaml -t '2.5.0'
+./bin/operatorhub generate-manifests -c config.yaml
 ```
 
 To generate configuration based on yet unreleased YAML manifests:
@@ -135,7 +145,6 @@ To generate configuration based on yet unreleased YAML manifests:
 | `--conf`          | Path to config.yaml file.                                                                         | `OHUB_CONF`          | `"./config.yaml"` |
 | `--yaml-manifest` | Path(s) to yaml installation manifest files.                                                      | `OHUB_YAML_MANIFEST` | `""`              |
 | `--templates`     | Path to the templates directory.                                                                  | `OHUB_TEMPLATES`     | `"./templates"`   |
-| `--tag`           | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`           | `""`              |
 
 *IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
 
@@ -160,10 +169,10 @@ With and without vault
 
 #### Flags
 
-| Parameter                        | Description                                                                                                                               | Environment Variable                | Default |
-|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------|
-| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`    |
-| `--tag`                          | Git tag to release.                                                                                                                       | `OHUB_TAG`                          | `""`    |
+| Parameter                        | Description                                                                                                                               | Environment Variable                | Default           |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`              |
+| `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
 
 ### Create-PR sub-command
 
@@ -179,27 +188,27 @@ The `bundle create-pr` command will perform the following tasks:
 
 Without vault
 ```shell
-./operatorhub bundle create-pr -d . -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email' -t '2.6.0'
+./operatorhub bundle create-pr -d . -f 'Your Name' -g 'your-github-token' -u 'your-github-username' -e 'your-github-email'
 ```
 
 With vault
 ```shell
-OHUB_TAG=2.6.0-bc2 OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./operatorhub bundle create-pr -d .
+OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-github" OHUB_REDHAT_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-redhat" VAULT_ADDR='https://vault-server:8200' VAULT_TOKEN=my-token ./operatorhub bundle create-pr -d .
 ```
 
 ### Flags
 
-| Parameter                        | Description                                                                                                                               | Environment Variable                | Default |
-|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------|
-| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`    |
-| `--tag`                          | Git tag to release.                                                                                                                       | `OHUB_TAG`                          | `""`    |
-| `--supported-openshift-versions` | Supported openshift versions to be included within annotations.                                                                           | `OHUB_SUPPORTED_OPENSHIFT_VERSIONS` | `"v4.6"`|
-| `--github-token`                 | User's Github API token.                                                                                                                  | `OHUB_GITHUB_TOKEN`                 | `""`    |
-| `--github-username`              | User's Github username.                                                                                                                   | `OHUB_GITHUB_USERNAME`              | `""`    |
-| `--github-fullname`              | User's Github fullname.                                                                                                                   | `OHUB_GITHUB_FULLNAME`              | `""`    |
-| `--github-email`                 | User's Github email address.                                                                                                              | `OHUB_GITHUB_EMAIL`                 | `""`    |
-| `--delete-temp-directory`        | Whether to delete the temporary directory upon completion (useful for debugging).                                                         | `OHUB_DELETE_TEMP_DIRECTORY`        | `true`  |
-| `--dry-run`                      | If set, Github forks, and branches will be created within user's remote, but pull requests will not be created.                           | `OHUB_DRY_RUN`                      | `true`  |
+| Parameter                        | Description                                                                                                                               | Environment Variable                | Default           |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`              |
+| `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
+| `--supported-openshift-versions` | Supported openshift versions to be included within annotations.                                                                           | `OHUB_SUPPORTED_OPENSHIFT_VERSIONS` | `"v4.6"`          |
+| `--github-token`                 | User's Github API token.                                                                                                                  | `OHUB_GITHUB_TOKEN`                 | `""`              |
+| `--github-username`              | User's Github username.                                                                                                                   | `OHUB_GITHUB_USERNAME`              | `""`              |
+| `--github-fullname`              | User's Github fullname.                                                                                                                   | `OHUB_GITHUB_FULLNAME`              | `""`              |
+| `--github-email`                 | User's Github email address.                                                                                                              | `OHUB_GITHUB_EMAIL`                 | `""`              |
+| `--delete-temp-directory`        | Whether to delete the temporary directory upon completion (useful for debugging).                                                         | `OHUB_DELETE_TEMP_DIRECTORY`        | `true`            |
+| `--dry-run`                      | If set, Github forks, and branches will be created within user's remote, but pull requests will not be created.                           | `OHUB_DRY_RUN`                      | `true`            |
 
 ## Buildkite Command
 
@@ -210,12 +219,12 @@ To generate a Buildkite token for use with this command visit https://buildkite.
 ### Usage
 
 ```shell
-./bin/operatorhub buildkite -t '2.6.0' -b 'my-buildkite-token' --stack-version '8.6.0' --previous-version '2.5.0'
+./bin/operatorhub buildkite -b 'my-buildkite-token'
 ```
 
 ### Flags
 
-| Parameter           | Description                                                                                       | Environment Variable   | Default |
-|---------------------|---------------------------------------------------------------------------------------------------|------------------------|---------|
-| `--buildkite-token` | Buildkite token for communicating with the Buildkite API.                                         | `OHUB_BUILDKITE_TOKEN` | `""`    |
-| `--tag`             | Current version of the operator to populate the operator cluster service version yaml.            | `OHUB_TAG`             | `""`    |
+| Parameter           | Description                                                                                       | Environment Variable   | Default           |
+|---------------------|---------------------------------------------------------------------------------------------------|------------------------|-------------------|
+| `--buildkite-token` | Buildkite token for communicating with the Buildkite API.                                         | `OHUB_BUILDKITE_TOKEN` | `""`              |
+| `--conf`            | Path to config.yaml file.                                                                         | `OHUB_CONF`            | `"./config.yaml"` |
