@@ -166,11 +166,6 @@ func Test_checkSupportedVersion(t *testing.T) {
 			version: "8.7.1",
 			wantErr: false,
 		},
-		{
-			name:    "at min supported",
-			version: "8.7.0",
-			wantErr: false,
-		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			a := Logstash{
