@@ -96,13 +96,6 @@ func (d Defaulter) WithReadinessProbe(readinessProbe *corev1.Probe) Defaulter {
 	return d
 }
 
-func (d Defaulter) WithLivenessProbe(livenessProbe *corev1.Probe) Defaulter {
-	if d.base.LivenessProbe == nil {
-		d.base.LivenessProbe = livenessProbe
-	}
-	return d
-}
-
 // envExists checks if an env var with the given name already exists in the provided slice.
 func (d Defaulter) envExists(name string) bool {
 	for _, v := range d.base.Env {

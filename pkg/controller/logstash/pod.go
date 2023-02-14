@@ -11,7 +11,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
+
+	// "k8s.io/apimachinery/pkg/util/intstr"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -81,8 +82,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
-		//WithReadinessProbe(readinessProbe(false)).
-		//WithLivenessProbe(livenessProbe(false)).
+		// WithReadinessProbe(readinessProbe(false)).
+		// WithLivenessProbe(livenessProbe(false)).
 		WithVolumeLikes(vols...)
 
 	//  TODO integrate with api.ssl.enabled
@@ -102,46 +103,46 @@ func getDefaultContainerPorts(logstash logstashv1alpha1.Logstash) []corev1.Conta
 	}
 }
 
-// readinessProbe is the readiness probe for the Logstash container
-func readinessProbe(useTLS bool) corev1.Probe {
-	scheme := corev1.URISchemeHTTP
-	if useTLS {
-		scheme = corev1.URISchemeHTTPS
-	}
-	return corev1.Probe{
-		FailureThreshold:    3,
-		InitialDelaySeconds: 30,
-		PeriodSeconds:       10,
-		SuccessThreshold:    1,
-		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(network.HTTPPort),
-				Path:   "/",
-				Scheme: scheme,
-			},
-		},
-	}
-}
-
-// livenessProbe is the liveness probe for the Logstash container
-func livenessProbe(useTLS bool) corev1.Probe {
-	scheme := corev1.URISchemeHTTP
-	if useTLS {
-		scheme = corev1.URISchemeHTTPS
-	}
-	return corev1.Probe{
-		FailureThreshold:    3,
-		InitialDelaySeconds: 60,
-		PeriodSeconds:       10,
-		SuccessThreshold:    1,
-		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(network.HTTPPort),
-				Path:   "/",
-				Scheme: scheme,
-			},
-		},
-	}
-}
+//// readinessProbe is the readiness probe for the Logstash container
+// func readinessProbe(useTLS bool) corev1.Probe {
+//	scheme := corev1.URISchemeHTTP
+//	if useTLS {
+//		scheme = corev1.URISchemeHTTPS
+//	}
+//	return corev1.Probe{
+//		FailureThreshold:    3,
+//		InitialDelaySeconds: 30,
+//		PeriodSeconds:       10,
+//		SuccessThreshold:    1,
+//		TimeoutSeconds:      5,
+//		ProbeHandler: corev1.ProbeHandler{
+//			HTTPGet: &corev1.HTTPGetAction{
+//				Port:   intstr.FromInt(network.HTTPPort),
+//				Path:   "/",
+//				Scheme: scheme,
+//			},
+//		},
+//	}
+//}
+//
+//// livenessProbe is the liveness probe for the Logstash container
+// func livenessProbe(useTLS bool) corev1.Probe {
+//	scheme := corev1.URISchemeHTTP
+//	if useTLS {
+//		scheme = corev1.URISchemeHTTPS
+//	}
+//	return corev1.Probe{
+//		FailureThreshold:    3,
+//		InitialDelaySeconds: 60,
+//		PeriodSeconds:       10,
+//		SuccessThreshold:    1,
+//		TimeoutSeconds:      5,
+//		ProbeHandler: corev1.ProbeHandler{
+//			HTTPGet: &corev1.HTTPGetAction{
+//				Port:   intstr.FromInt(network.HTTPPort),
+//				Path:   "/",
+//				Scheme: scheme,
+//			},
+//		},
+//	}
+//}
