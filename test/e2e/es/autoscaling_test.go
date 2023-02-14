@@ -114,8 +114,7 @@ func TestAutoscaling(t *testing.T) {
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
-	autoscalerWithLicense := test.LicenseTestBuilder()
-	autoscalerWithLicense.BuildingThis = autoscalingBuilder
+	autoscalerWithLicense := test.LicenseTestBuilder(autoscalingBuilder)
 
 	autoscalingCapacityTest := autoscaling.NewAutoscalingCapacityTest(esBuilder.Elasticsearch, k8sClient)
 

@@ -52,7 +52,7 @@ func esSecretsLabels(es esv1.Elasticsearch) map[string]string {
 	return map[string]string{
 		label.ClusterNamespaceLabelName: es.Namespace,
 		label.ClusterNameLabelName:      es.Name,
-		labels.TypeLabelName:            esuser.ServiceAccountTokenType,
+		commonv1.TypeLabelName:          esuser.ServiceAccountTokenType,
 	}
 }
 

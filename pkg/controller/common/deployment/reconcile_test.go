@@ -78,10 +78,15 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &retrieved)
 
+	// simulating a status update by the deployment controller
+	withStatusUpdate := retrieved
+	withStatusUpdate.Status.Replicas = 2
+	require.NoError(t, k8sClient.Status().Update(context.Background(), &withStatusUpdate))
+
 	// reconciling the same should be a no-op
 	reconciledAgain, err := Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
-	comparison.RequireEqual(t, &reconciled, &reconciledAgain)
+	comparison.RequireEqual(t, &withStatusUpdate, &reconciledAgain)
 
 	// update with a new spec
 	expected.Spec.Replicas = pointer.Int32(3)
@@ -89,6 +94,8 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
 	require.Equal(t, 3, int(*reconciled.Spec.Replicas))
+	// status update from earlier should still be unchanged
+	require.Equal(t, 2, int(reconciled.Status.Replicas))
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)

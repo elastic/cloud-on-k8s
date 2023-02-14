@@ -117,8 +117,7 @@ func TestAutoscalingLegacy(t *testing.T) {
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
 
-	esWithLicense := test.LicenseTestBuilder()
-	esWithLicense.BuildingThis = esBuilder
+	esWithLicense := test.LicenseTestBuilder(esBuilder)
 
 	autoscalingCapacityTest := autoscaling.NewAutoscalingCapacityTest(esBuilder.Elasticsearch, k8sClient)
 

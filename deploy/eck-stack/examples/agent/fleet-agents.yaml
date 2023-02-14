@@ -1,0 +1,117 @@
+---
+eck-elasticsearch:
+  enabled: true
+
+  # Name of the Elasticsearch instance.
+  #
+  fullnameOverride: elasticsearch
+
+  nodeSets:
+  - name: default
+    count: 3
+    # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
+    # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
+    # and leave node.store.allow_mmap unset.
+    # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+    #
+    config:
+      node.store.allow_mmap: false
+
+eck-kibana:
+  enabled: true
+
+  # Name of the Kibana instance.
+  #
+  fullnameOverride: kibana
+  
+  spec:
+    # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+    #
+    elasticsearchRef:
+      name: elasticsearch
+
+    config:
+      # Note that these are specific to the namespace into which this example is installed, and are
+      # using `elastic-stack` as configured here and detailed in the README when installing:
+      #
+      # `helm install es-kb-quickstart elastic/eck-stack -n elastic-stack`
+      #
+      # If installed outside of the `elastic-stack` namespace, the following 2 lines need modification.
+      xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.elastic-stack.svc:9200"]
+      xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.elastic-stack.svc:8220"]
+      xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+      - name: kubernetes
+        version: latest
+      xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        is_default_fleet_server: true
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        unenroll_timeout: 900
+        is_default: true
+        package_policies:
+        - package:
+            name: system
+          name: system-1
+        - package:
+            name: kubernetes
+          name: kubernetes-1
+
+eck-agent:
+  enabled: true
+  
+  spec:
+    # Reference to ECK-managed Kibana instance.
+    #
+    kibanaRef:
+      name: kibana
+
+    elasticsearchRefs: []
+
+    # Reference to ECK-managed Fleet instance.
+    #
+    fleetServerRef:
+      name: fleet-server
+    
+    mode: fleet
+
+    daemonSet:
+      podTemplate:
+        spec:
+          serviceAccountName: elastic-agent
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          automountServiceAccountToken: true
+          securityContext:
+            runAsUser: 0
+  
+eck-fleet-server:
+  enabled: true
+
+  fullnameOverride: "fleet-server"
+
+  spec:
+    kibanaRef:
+      name: kibana
+    elasticsearchRefs:
+    - name: elasticsearch

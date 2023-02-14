@@ -1,0 +1,236 @@
+:page_id: stack-config-policy
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Elastic Stack configuration policies
+
+experimental[]
+
+NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration policies allow you to configure the following settings:
+
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/slm-api-put-policy.html[Snapshot Lifecycle Policies]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-pipeline-api.html[Ingest pipelines]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-put-lifecycle.html[Index Lifecycle Policies]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-template.html[Index templates]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html[Components templates]
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
+
+A policy can be applied to one or more Elasticsearch clusters in any namespace managed by the ECK operator.
+Configuration policy settings applied by the ECK operator are immutable through the Elasticsearch REST API.
+It is currently not allowed to configure an Elasticsearch cluster with more than one policy.
+
+[float]
+[id="{p}-{page_id}-definition"]
+== Define Elastic Stack configuration policies
+
+Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following fields:
+
+* `name` is a unique name used to identify the policy.
+* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
+  ** `clusterSettings` are the settings that go into the elasticsearch.yml file.
+  ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots.
+  ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
+  ** `securityRoleMappings` are role mappings, to define which roles are assigned to each user by identifying them through rules.
+  ** `ingestPipelines` are ingest pipelines, to perform common transformations on your data before indexing.
+  ** `indexLifecyclePolicies` are index lifecycle policies, to automatically manage the index lifecycle.
+  ** `indexTemplates.componentTemplates` are component templates that are building blocks for constructing index templates that specify index mappings, settings, and aliases.
+  ** `indexTemplates.composableIndexTemplates` are index templates to define settings, mappings, and aliases that can be applied automatically to new indices.
+
+The following fields are optional:
+
+* `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, the policy applies to all namespaces managed by the operator, otherwise the policy only applies to the namespace of the policy.
+* `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
+* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-custom-images,Elasticsearch Secure Settings>>.
+
+Secure settings may be required to configure Cloud snapshot repositories (azure, gcs, s3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
+(<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
+
+Example of applying a policy that configures snapshot repository, SLM Policies, and cluster settings:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+metadata:
+  name: test-stack-config-policy
+  # namespace: elastic-system or test-namespace
+spec:
+  resourceSelector:
+    matchLabels:
+      env: my-label
+  secureSettings:
+  - secretName: "my-secure-settings"
+  elasticsearch:
+    clusterSettings:
+      indices.recovery.max_bytes_per_sec: "100mb"
+    snapshotRepositories:
+      test-repo:
+        type: gcs
+        settings:
+          bucket: my-bucket
+    snapshotLifecyclePolicies:
+      test-slm:
+        schedule: "0 1 2 3 4 ?"
+        name: "<production-snap-{now/d}>"
+        repository: test-repo
+        config:
+          indices: ["*"]
+          ignore_unavailable: true
+          include_global_state: false
+        retention:
+          expire_after: "7d"
+          min_count: 1
+          max_count: 20
+----
+
+Another example of configuring role mappings, ingest pipelines, ILM and index templates:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+metadata:
+  name: test-stack-config-policy
+spec:
+  elasticsearch:
+    securityRoleMappings:
+      everyone-kibana:
+        enabled: true
+        metadata:
+          _foo: something
+          uuid: b9a59ba9-6b92-4be2-bb8d-02bb270cb3a7
+        roles:
+        - kibana_user
+        rules:
+          field:
+            username: '*'
+    ingestPipelines:
+      test-pipeline:
+        description: "optional description"
+        processors:
+        - set:
+            field: my-keyword-field
+            value: foo
+      test-2-pipeline:
+        description: "optional description"
+        processors:
+        - set:
+            field: my-keyword-field
+            value: foo
+    indexLifecyclePolicies:
+      test-ilm:
+        phases:
+          delete:
+            actions:
+              delete: {}
+            min_age: 30d
+          warm:
+            actions:
+              forcemerge:
+                max_num_segments: 1
+            min_age: 10d
+    indexTemplates:
+      componentTemplates:
+        test-component-template:
+          template:
+            mappings:
+              properties:
+                '@timestamp':
+                  type: date
+        test-runtime-component-template-test:
+          template:
+            mappings:
+              runtime:
+                day_of_week:
+                  type: keyword
+      composableIndexTemplates:
+        test-template:
+          composed_of:
+          - test-component-template
+          - test-runtime-component-template-test
+          index_patterns:
+          - test*
+          - bar*
+          priority: 500
+          template:
+            aliases:
+              mydata: {}
+            mappings:
+              _source:
+                enabled: true
+              properties:
+                created_at:
+                  format: EEE MMM dd HH:mm:ss Z yyyy
+                  type: date
+                host_name:
+                  type: keyword
+            settings:
+              number_of_shards: 1
+          version: 1
+----
+
+[float]
+[id="{p}-{page_id}-monitoring"]
+== Monitor Elastic Stack configuration policies
+
+In addition to the logs generated by the operator, a config policy status is maintained in the `StackConfigPolicy` resource. This status gives information in which phase the policy is ("Applying", "Ready", "Error") and it indicates the number of resources for which the policy could be applied.
+
+[source,sh]
+----
+kubectl get stackconfigpolicy
+----
+
+[source,sh]
+----
+NAME                           READY   PHASE   AGE
+test-stack-config-policy       1/1     Ready   1m42s
+test-err-stack-config-policy   0/1     Error   1m42s
+----
+
+When not all resources are ready, you can get more information about the reason by reading the full status:
+
+[source,sh]
+----
+kubectl get -n b scp test-err-stack-config-policy -o jsonpath="{.status}" | jq .
+----
+
+[source,json]
+----
+{
+  "errors": 1,
+  "observedGeneration": 3,
+  "phase": "Error",
+  "readyCount": "0/1",
+  "resources": 1,
+  "resourcesStatuses": {
+    "b/banana-staging": {
+      "currentVersion": 1670342369361604600,
+      "error": {
+        "message": "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [es-snapshots]",
+        "version": 1670342482739637500
+      },
+      "expectedVersion": 1670342482739637500,
+      "phase": "Error"
+    }
+  }
+}
+----
+
+Important events are also reported through Kubernetes events, such as when two config policies conflict or you don't have the appropriate license:
+
+[source,sh]
+----
+54s    Warning   Unexpected          stackconfigpolicy/config-test   conflict: resource Elasticsearch ns1/cluster-a already configured by StackConfigpolicy default/config-test-2
+----
+
+[source,sh]
+----
+17s    Warning   ReconciliationError stackconfigpolicy/config-test   StackConfigPolicy is an enterprise feature. Enterprise features are disabled
+----

@@ -6,7 +6,7 @@ eck-elasticsearch:
 
   # Version of Elasticsearch.
   #
-  version: 8.5.0
+  version: 8.6.1
 
   nodeSets:
   - name: default
@@ -15,7 +15,7 @@ eck-elasticsearch:
       # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
       # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
       # and leave node.store.allow_mmap unset.
-      # ref: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
       #
       node.store.allow_mmap: false
     volumeClaimTemplates:
@@ -38,7 +38,7 @@ eck-kibana:
   
   # Version of Kibana.
   #
-  version: 8.5.0
+  version: 8.6.1
   
   spec:
     # Count of Kibana replicas to create.

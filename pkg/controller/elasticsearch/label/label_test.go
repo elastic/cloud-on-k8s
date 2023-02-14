@@ -16,8 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
@@ -111,17 +111,17 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 1, 0),
 				nodeRoles: &v1.Node{
-					Master:    pointer.BoolPtr(false),
-					Data:      pointer.BoolPtr(false),
-					Ingest:    pointer.BoolPtr(false),
-					ML:        pointer.BoolPtr(false),
-					Transform: pointer.BoolPtr(false),
+					Master:    pointer.Bool(false),
+					Data:      pointer.Bool(false),
+					Ingest:    pointer.Bool(false),
+					ML:        pointer.Bool(false),
+					Transform: pointer.Bool(false),
 				},
 				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:             "name",
-				labels.TypeLabelName:             "elasticsearch",
+				commonv1.TypeLabelName:           "elasticsearch",
 				VersionLabelName:                 "7.1.0",
 				string(NodeTypesMasterLabelName): "false",
 				string(NodeTypesDataLabelName):   "false",
@@ -139,18 +139,18 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 3, 0),
 				nodeRoles: &v1.Node{
-					Master:     pointer.BoolPtr(false),
-					Data:       pointer.BoolPtr(true),
-					Ingest:     pointer.BoolPtr(false),
-					ML:         pointer.BoolPtr(false),
-					Transform:  pointer.BoolPtr(true),
-					VotingOnly: pointer.BoolPtr(true),
+					Master:     pointer.Bool(false),
+					Data:       pointer.Bool(true),
+					Ingest:     pointer.Bool(false),
+					ML:         pointer.Bool(false),
+					Transform:  pointer.Bool(true),
+					VotingOnly: pointer.Bool(true),
 				},
 				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                 "name",
-				labels.TypeLabelName:                 "elasticsearch",
+				commonv1.TypeLabelName:               "elasticsearch",
 				VersionLabelName:                     "7.3.0",
 				string(NodeTypesMasterLabelName):     "false",
 				string(NodeTypesDataLabelName):       "true",
@@ -169,17 +169,17 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 7, 0),
 				nodeRoles: &v1.Node{
-					Master:    pointer.BoolPtr(false),
-					Data:      pointer.BoolPtr(true),
-					Ingest:    pointer.BoolPtr(false),
-					ML:        pointer.BoolPtr(false),
-					Transform: pointer.BoolPtr(true),
+					Master:    pointer.Bool(false),
+					Data:      pointer.Bool(true),
+					Ingest:    pointer.Bool(false),
+					ML:        pointer.Bool(false),
+					Transform: pointer.Bool(true),
 				},
 				scheme: "https",
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				labels.TypeLabelName:                          "elasticsearch",
+				commonv1.TypeLabelName:                        "elasticsearch",
 				VersionLabelName:                              "7.7.0",
 				string(NodeTypesMasterLabelName):              "false",
 				string(NodeTypesDataLabelName):                "true",
@@ -206,7 +206,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				labels.TypeLabelName:                          "elasticsearch",
+				commonv1.TypeLabelName:                        "elasticsearch",
 				VersionLabelName:                              "7.10.0",
 				string(NodeTypesMasterLabelName):              "true",
 				string(NodeTypesDataLabelName):                "true",
@@ -237,7 +237,7 @@ func TestNewPodLabels(t *testing.T) {
 			},
 			want: map[string]string{
 				ClusterNameLabelName:                          "name",
-				labels.TypeLabelName:                          "elasticsearch",
+				commonv1.TypeLabelName:                        "elasticsearch",
 				VersionLabelName:                              "7.12.0",
 				string(NodeTypesMasterLabelName):              "true",
 				string(NodeTypesDataLabelName):                "true",

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	FileBasedSettingsMinPreVersion = version.MinFor(8, 6, 0)
+	FileBasedSettingsMinPreVersion = version.MinFor(8, 6, 1)
 	FileBasedSettingsMinVersion    = version.WithoutPre(FileBasedSettingsMinPreVersion)
 )
 

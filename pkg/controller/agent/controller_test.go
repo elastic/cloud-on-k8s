@@ -37,7 +37,7 @@ func newReconcileAgent(objs ...runtime.Object) *ReconcileAgent {
 }
 
 func TestReconcileAgent_Reconcile(t *testing.T) {
-	defaultLabels := NewLabels(agentv1alpha1.Agent{ObjectMeta: metav1.ObjectMeta{Name: "testAgent"}})
+	defaultLabels := (&agentv1alpha1.Agent{ObjectMeta: metav1.ObjectMeta{Name: "testAgent"}}).GetIdentityLabels()
 	tests := []struct {
 		name     string
 		objs     []runtime.Object
@@ -149,7 +149,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testAgent-agent",
 						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "4210085657"),
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
 					},
 					Status: appsv1.DeploymentStatus{
 						AvailableReplicas: 1,

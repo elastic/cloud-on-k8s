@@ -81,29 +81,29 @@ func TestMetricBeat(t *testing.T) {
 		},
 	}
 	beatYml := `http:
-  enabled: false
+    enabled: false
 metricbeat:
-  modules:
-  - hosts:
-    - http+unix:///var/shared/metricbeat-test-beat.sock
-    metricsets:
-    - stats
-    - state
-    module: beat
-    period: 10s
-    xpack:
-      enabled: true
+    modules:
+        - hosts:
+            - http+unix:///var/shared/metricbeat-test-beat.sock
+          metricsets:
+            - stats
+            - state
+          module: beat
+          period: 10s
+          xpack:
+            enabled: true
 monitoring:
-  cluster_uuid: abcd1234
-  enabled: false
+    cluster_uuid: abcd1234
+    enabled: false
 output:
-  elasticsearch:
-    hosts:
-    - es-metrics-monitoring-url
-    password: es-password
-    ssl:
-      verification_mode: certificate
-    username: es-user
+    elasticsearch:
+        hosts:
+            - es-metrics-monitoring-url
+        password: es-password
+        ssl:
+            verification_mode: certificate
+        username: es-user
 `
 	beatSidecarFixture := stackmon.BeatSidecar{
 		Container: containerFixture,
@@ -111,12 +111,9 @@ output:
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat-beat-monitoring-metricbeat-config",
 				Namespace: "test",
-				// *note* the following is a bug in the common/stackmon/NewMetricBeatSidecar func
-				// and this type should be the underlying CRD type, not hard-coded to Elasticsearch.
-				// https://github.com/elastic/cloud-on-k8s/issues/5967
 				Labels: map[string]string{
-					"common.k8s.elastic.co/type":                "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": "beat",
+					"common.k8s.elastic.co/type": "beat",
+					"beat.k8s.elastic.co/name":   "beat",
 				},
 			},
 			Data: map[string][]byte{
@@ -126,7 +123,7 @@ output:
 		Volumes: []corev1.Volume{
 			{
 				Name:         "beat-metricbeat-config",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.BoolPtr(false)}},
+				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
 			},
 			{
 				Name:         "shared-data",

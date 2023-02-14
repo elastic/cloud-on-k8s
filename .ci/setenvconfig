@@ -686,7 +686,7 @@ GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=false
-IMG_VERSION=$TAG_NAME
+IMG_VERSION=${TAG_NAME#"v"}
 ENV
 
   fi
@@ -733,10 +733,56 @@ CFG
 ;;
 
 ######################################
+  cleanup/main)
+######################################
+
+clusterName="eck-${CI_PLATFORM}-e2e-main-${BUILD_NUMBER}"
+
+write_deployer_config <<CFG
+id: gke-ci
+overrides:
+  operation: delete
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
+  cleanup/resilience)
+######################################
+
+clusterName="eck-${CI_PLATFORM}-e2e-resilience-${BUILD_NUMBER}"
+
+write_deployer_config <<CFG
+id: gke-ci
+overrides:
+  operation: delete
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+    rootPath: $VAULT_ROOT_PATH
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
   cleanup/aks)
 ######################################
 
 clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
 
 write_deployer_config <<CFG
 id: aks-ci
@@ -756,6 +802,10 @@ CFG
 ######################################
 
 clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
 
 write_deployer_config <<CFG
 id: tanzu-ci
@@ -814,6 +864,10 @@ CFG
 
 ocpVersion=$2
 clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
+
+write_env <<ENV
+VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+ENV
 
 write_deployer_config <<CFG
 id: ocp-ci

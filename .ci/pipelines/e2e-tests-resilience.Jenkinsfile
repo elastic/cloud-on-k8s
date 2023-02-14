@@ -50,7 +50,7 @@ pipeline {
                     def msg = lib.generateSlackMessage("E2E resilience tests failed!", env.BUILD_URL, filter)
 
                     slackSend(
-                        channel: '#cloud-k8s',
+                        channel: '#eck',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
@@ -62,7 +62,7 @@ pipeline {
         cleanup {
             script {
                 build job: 'cloud-on-k8s-e2e-cleanup',
-                    parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-resilience-${BUILD_NUMBER}-e2e")],
+                    parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-jks-e2e-resilience-${BUILD_NUMBER}")],
                     wait: false
             }
             cleanWs()

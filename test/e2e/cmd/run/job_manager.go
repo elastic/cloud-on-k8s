@@ -103,7 +103,7 @@ func (jm *JobsManager) Start() {
 		runtime.HandleCrash()
 	}()
 
-	jm.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = jm.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if pod, ok := obj.(*corev1.Pod); ok {
 				log.Info("Pod added", "name", pod.Name)

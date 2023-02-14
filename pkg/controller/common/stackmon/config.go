@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -88,7 +87,7 @@ func newBeatConfig(ctx context.Context, client k8s.Client, beatName string, reso
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configSecretName,
 			Namespace: resource.GetNamespace(),
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(resource)),
+			Labels:    resource.GetIdentityLabels(),
 		},
 		Data: map[string][]byte{
 			configFilename: configBytes,

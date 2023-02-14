@@ -1,5 +1,5 @@
 name: auditbeat
-version: 8.5.0
+version: 8.6.1
 spec:
   type: auditbeat
   elasticsearchRef:

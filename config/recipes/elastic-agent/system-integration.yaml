@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 8.5.0
+  version: 8.6.1
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -31,7 +31,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.5.0
+          version: 8.6.1
       data_stream:
         namespace: default
       streams:
@@ -136,7 +136,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.5.0
+  version: 8.6.1
   nodeSets:
   - name: default
     count: 3
@@ -148,7 +148,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.5.0
+  version: 8.6.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

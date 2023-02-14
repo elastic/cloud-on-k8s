@@ -1,0 +1,17 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.6.1]]
+== {n} version 2.6.1
+
+
+
+
+
+[[bug-2.6.1]]
+[float]
+=== Bug fixes
+
+* Update minimum version to use Elasticsearch file-based settings feature {pull}6305[#6305] (issue: {issue}6303[#6303])
+
+

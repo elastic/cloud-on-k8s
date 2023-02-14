@@ -112,23 +112,23 @@ func (n *Node) IsConfiguredWithRole(role NodeRole) bool {
 
 	switch role {
 	case DataRole:
-		return pointer.BoolPtrDerefOr(n.Data, true)
+		return pointer.BoolDeref(n.Data, true)
 	case DataFrozenRole, DataColdRole, DataContentRole, DataHotRole, DataWarmRole:
 		// These roles should really be defined in node.roles. Since they were not, assume they are enabled unless node.data is set to false.
-		return pointer.BoolPtrDerefOr(n.Data, true)
+		return pointer.BoolDeref(n.Data, true)
 	case IngestRole:
-		return pointer.BoolPtrDerefOr(n.Ingest, true)
+		return pointer.BoolDeref(n.Ingest, true)
 	case MLRole:
-		return pointer.BoolPtrDerefOr(n.ML, true)
+		return pointer.BoolDeref(n.ML, true)
 	case MasterRole:
-		return pointer.BoolPtrDerefOr(n.Master, true)
+		return pointer.BoolDeref(n.Master, true)
 	case RemoteClusterClientRole:
-		return pointer.BoolPtrDerefOr(n.RemoteClusterClient, true)
+		return pointer.BoolDeref(n.RemoteClusterClient, true)
 	case TransformRole:
 		// all data nodes are transform nodes by default as well.
-		return pointer.BoolPtrDerefOr(n.Transform, n.IsConfiguredWithRole(DataRole))
+		return pointer.BoolDeref(n.Transform, n.IsConfiguredWithRole(DataRole))
 	case VotingOnlyRole:
-		return pointer.BoolPtrDerefOr(n.VotingOnly, false)
+		return pointer.BoolDeref(n.VotingOnly, false)
 	}
 
 	// This point should never be reached. The default is to assume that a node has all roles except voting_only.
@@ -147,10 +147,10 @@ func DefaultCfg(ver version.Version) ElasticsearchSettings {
 	settings := ElasticsearchSettings{
 		// Values below only make sense if there is no "node.roles" in the configuration provided by the user
 		Node: &Node{
-			Master: pointer.BoolPtr(true),
-			Data:   pointer.BoolPtr(true),
-			Ingest: pointer.BoolPtr(true),
-			ML:     pointer.BoolPtr(true),
+			Master: pointer.Bool(true),
+			Data:   pointer.Bool(true),
+			Ingest: pointer.Bool(true),
+			ML:     pointer.Bool(true),
 		},
 	}
 
@@ -190,5 +190,5 @@ func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 		cfg.Node = &Node{}
 	}
 
-	cfg.Node.Transform = pointer.BoolPtr(false)
+	cfg.Node.Transform = pointer.Bool(false)
 }

@@ -6,7 +6,6 @@ package maps
 
 import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
-	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 )
 
 const (
@@ -19,14 +18,6 @@ const (
 	// Type represents the MapsServer type
 	Type = "maps"
 )
-
-// labels constructs a new set of labels for a MapsServer pod
-func labels(emsName string) map[string]string {
-	return map[string]string{
-		NameLabelName:              emsName,
-		commonlabels.TypeLabelName: Type,
-	}
-}
 
 func versionLabels(ems emsv1alpha1.ElasticMapsServer) map[string]string {
 	return map[string]string{

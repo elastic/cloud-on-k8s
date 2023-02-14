@@ -6,7 +6,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 8.5.0
+  version: 8.6.1
   nodeSets:
   - name: master
     count: 1
@@ -41,7 +41,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 8.5.0
+  version: 8.6.1
   count: 1
   config:
     xpack.fleet.packages:
@@ -57,7 +57,7 @@ metadata:
   labels:
     app: hulk
 spec:
-  version: 8.5.0
+  version: 8.6.1
   count: 1
   elasticsearchRef:
     name: hulk
