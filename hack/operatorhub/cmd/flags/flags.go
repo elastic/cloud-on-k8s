@@ -22,13 +22,12 @@ const (
 	GithubVaultSecretFlag = "github-vault-secret" //nolint:gosec
 
 	// bundle command flags
-	DirFlag                        = "dir"
-	SupportedOpenshiftVersionsFlag = "supported-openshift-versions"
-	GithubTokenFlag                = "github-token"
-	GithubUsernameFlag             = "github-username"
-	GithubFullnameFlag             = "github-fullname"
-	GithubEmailFlag                = "github-email"
-	DeleteTempDirectoryFlag        = "delete-temp-directory"
+	DirFlag                 = "dir"
+	GithubTokenFlag         = "github-token"
+	GithubUsernameFlag      = "github-username"
+	GithubFullnameFlag      = "github-fullname"
+	GithubEmailFlag         = "github-email"
+	DeleteTempDirectoryFlag = "delete-temp-directory"
 
 	// container command flags
 	APIKeyFlags          = "api-key"
@@ -52,13 +51,12 @@ const (
 
 var (
 	// bundle command variables
-	Dir                        string
-	SupportedOpenshiftVersions string
-	GithubToken                string
-	GithubUsername             string
-	GithubFullname             string
-	GithubEmail                string
-	DeleteTempDirectory        bool
+	Dir                 string
+	GithubToken         string
+	GithubUsername      string
+	GithubFullname      string
+	GithubEmail         string
+	DeleteTempDirectory bool
 
 	// container command variables
 	APIKey           string
@@ -92,10 +90,11 @@ var (
 
 // Config is the configuration that matches the config.yaml
 type Config struct {
-	NewVersion   string `json:"newVersion"`
-	PrevVersion  string `json:"prevVersion"`
-	StackVersion string `json:"stackVersion"`
-	CRDs         []struct {
+	NewVersion                   string `json:"newVersion"`
+	PrevVersion                  string `json:"prevVersion"`
+	StackVersion                 string `json:"stackVersion"`
+	MinSupportedOpenshiftVersion string `json:"minSupportedOpenShiftVersion"`
+	CRDs                         []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`

@@ -35,14 +35,6 @@ func Command() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(
-		&flags.SupportedOpenshiftVersions,
-		flags.SupportedOpenshiftVersionsFlag,
-		"o",
-		"v4.6",
-		"supported openshift versions to be included within annotations. should *not* be a range. (v4.6) (OHUB_SUPPORTED_OPENSHIFT_VERSIONS)",
-	)
-
-	cmd.Flags().StringVarP(
 		&flags.BuildkiteToken,
 		flags.BuildkiteTokenFlag,
 		"b",
@@ -118,7 +110,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 		Env: map[string]string{
 			"OHUB_DRY_RUN":                      fmt.Sprintf("%t", flags.DryRun),
 			"OHUB_TAG":                          flags.Conf.NewVersion,
-			"OHUB_SUPPORTED_OPENSHIFT_VERSIONS": flags.SupportedOpenshiftVersions,
+			"OHUB_SUPPORTED_OPENSHIFT_VERSIONS": flags.Conf.MinSupportedOpenshiftVersion,
 		},
 		Branch: flags.BuildkiteBranch,
 		Commit: flags.BuildkiteCommit,

@@ -19,6 +19,7 @@ All commands require the configuration file `config.yaml` to be modified prior t
 | `newVersion`   | The new version of the ECK Operator that is to be released.                       |
 | `prevVersion`  | The previous version of the ECK Operator that `newVersion` will replace.          |
 | `stackVersion` | The Elastic Stack version that will be the default for this ECK Operator version. |
+| `minSupportedOpenshiftVersion` | Miniumum supported openshift version.                             |
 
 ## Commands Overview
 
@@ -202,7 +203,6 @@ OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-git
 |----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
 | `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`              |
 | `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
-| `--supported-openshift-versions` | Supported openshift versions to be included within annotations.                                                                           | `OHUB_SUPPORTED_OPENSHIFT_VERSIONS` | `"v4.6"`          |
 | `--github-token`                 | User's Github API token.                                                                                                                  | `OHUB_GITHUB_TOKEN`                 | `""`              |
 | `--github-username`              | User's Github username.                                                                                                                   | `OHUB_GITHUB_USERNAME`              | `""`              |
 | `--github-fullname`              | User's Github fullname.                                                                                                                   | `OHUB_GITHUB_FULLNAME`              | `""`              |

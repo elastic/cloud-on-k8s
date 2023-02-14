@@ -54,14 +54,6 @@ certified-operators and community-operators repositories.`,
 		"directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)",
 	)
 
-	generateCmd.Flags().StringVarP(
-		&flags.SupportedOpenshiftVersions,
-		flags.SupportedOpenshiftVersionsFlag,
-		"o",
-		"v4.6",
-		"supported openshift versions to be included within annotations. should *not* be a range. (v4.6) (OHUB_SUPPORTED_OPENSHIFT_VERSIONS)",
-	)
-
 	createPRCmd.Flags().StringVarP(
 		&flags.GithubToken,
 		flags.GithubTokenFlag,
@@ -112,10 +104,10 @@ func generateCmdPreRunE(cmd *cobra.Command, args []string) error {
 	if flags.Dir == "" {
 		return fmt.Errorf("directory containing output from operator hub release generator is required (%s)", flags.DirFlag)
 	}
-	if flags.SupportedOpenshiftVersions == "" {
-		return fmt.Errorf("supported openshift versions flag (%s) is required", flags.SupportedOpenshiftVersionsFlag)
-	} else if strings.Contains(flags.SupportedOpenshiftVersions, "-") {
-		return fmt.Errorf("supported openshift versions flag (%s) should not be a range", flags.SupportedOpenshiftVersionsFlag)
+	if flags.Conf.MinSupportedOpenshiftVersion == "" {
+		return fmt.Errorf("minimum supported openshift version is required in configuration file")
+	} else if strings.Contains(flags.Conf.MinSupportedOpenshiftVersion, "-") {
+		return fmt.Errorf("minimum supported openshift version in configuration file should not be a range")
 	}
 	return nil
 }
@@ -152,11 +144,11 @@ func doGenerate(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	err = opm.EnsureAnnotations(path.Join(dir, "metadata", "annotations.yaml"), flags.SupportedOpenshiftVersions)
+	err = opm.EnsureAnnotations(path.Join(dir, "metadata", "annotations.yaml"), flags.Conf.MinSupportedOpenshiftVersion)
 	if err != nil {
 		return err
 	}
-	return opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.SupportedOpenshiftVersions)
+	return opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.Conf.MinSupportedOpenshiftVersion)
 }
 
 // doCreatePR will execute a number of local, and potentially remote github operations
