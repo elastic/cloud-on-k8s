@@ -121,6 +121,12 @@ func (b *PodTemplateBuilder) WithReadinessProbe(readinessProbe corev1.Probe) *Po
 	return b
 }
 
+// WithLivenessProbe sets up the given liveness probe, unless already provided in the template.
+func (b *PodTemplateBuilder) WithLivenessProbe(livenessProbe corev1.Probe) *PodTemplateBuilder {
+	b.containerDefaulter.WithLivenessProbe(&livenessProbe)
+	return b
+}
+
 // WithAffinity sets a default affinity, unless already provided in the template.
 // An empty affinity in the spec is not overridden.
 func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplateBuilder {
