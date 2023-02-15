@@ -89,7 +89,6 @@ type LogstashStatus struct {
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Logstash version"
-// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
 // +kubebuilder:storageversion
 type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
