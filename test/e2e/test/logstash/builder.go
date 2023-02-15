@@ -18,7 +18,7 @@ import (
 )
 
 type Builder struct {
-	Logstash    v1alpha1.Logstash
+	Logstash         v1alpha1.Logstash
 	MutatedFrom *Builder
 }
 
@@ -40,15 +40,15 @@ func newBuilder(name, randSuffix string) Builder {
 		Logstash: v1alpha1.Logstash{
 			ObjectMeta: meta,
 			Spec: v1alpha1.LogstashSpec{
-				Count:   1,
+				Count: 1,
 				Version: def.Version,
 			},
 		},
 	}.
-		WithImage(def.Image).
-		WithSuffix(randSuffix).
-		WithLabel(run.TestNameLabel, name).
-		WithPodLabel(run.TestNameLabel, name)
+	WithImage(def.Image).
+	WithSuffix(randSuffix).
+	WithLabel(run.TestNameLabel, name).
+	WithPodLabel(run.TestNameLabel, name)
 }
 
 func (b Builder) WithImage(image string) Builder {
@@ -133,6 +133,7 @@ func (b Builder) ServiceName() string {
 func (b Builder) ListOptions() []client.ListOption {
 	return test.LogstashPodListOptions(b.Logstash.Namespace, b.Logstash.Name)
 }
+
 
 func (b Builder) SkipTest() bool {
 	supportedVersions := version.SupportedLogstashVersions
