@@ -81,8 +81,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
-		//WithReadinessProbe(readinessProbe(false)).
-		//WithLivenessProbe(livenessProbe(false)).
+		WithReadinessProbe(readinessProbe(false)).
+		WithLivenessProbe(livenessProbe(false)).
 		WithVolumeLikes(vols...)
 
 	//  TODO integrate with api.ssl.enabled

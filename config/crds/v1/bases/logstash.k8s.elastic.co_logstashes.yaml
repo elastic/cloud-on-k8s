@@ -7994,8 +7994,4 @@ spec:
     served: true
     storage: true
     subresources:
-      scale:
-        labelSelectorPath: .status.selector
-        specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
       status: {}
