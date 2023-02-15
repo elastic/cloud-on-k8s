@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-
 // CheckSecrets checks that expected secrets have been created.
 func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 	return test.CheckSecretsContent(k, b.Logstash.Namespace, func() []test.ExpectedSecret {
@@ -25,7 +24,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				Keys: []string{"logstash.yml"},
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
-					"logstash.k8s.elastic.co/name":       logstashName,
+					"logstash.k8s.elastic.co/name":   logstashName,
 				},
 			},
 		}
@@ -45,8 +44,8 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			logstash.Status.ObservedGeneration = 0
 
 			expected := logstashv1alpha1.LogstashStatus{
-				ExpectedNodes:       b.Logstash.Spec.Count,
-				AvailableNodes:      b.Logstash.Spec.Count,
+				ExpectedNodes:  b.Logstash.Spec.Count,
+				AvailableNodes: b.Logstash.Spec.Count,
 				Version:        b.Logstash.Spec.Version,
 			}
 			if logstash.Status != expected {
