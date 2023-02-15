@@ -21,6 +21,8 @@ func Test_generateSrc(t *testing.T) {
 	require.NoError(t, err)
 	input := filepath.Join("testdata", "test.key")
 	var out bytes.Buffer
-	generateSrc(input, &out)
+	bytes, err := os.ReadFile(input)
+	require.NoError(t, err)
+	generateSrc(bytes, &out)
 	require.Equal(t, expectedBytes, out.Bytes())
 }

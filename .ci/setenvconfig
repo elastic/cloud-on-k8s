@@ -557,8 +557,8 @@ stackVersion=$2
 generatedClusterName="eck-${CI_PLATFORM}-e2e-stack-$(sed "s|\.||g" <<< $stackVersion)-${BUILD_NUMBER}"
 clusterName=${3:-$generatedClusterName}
 
-isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
-testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
+buildLicensePubkey=$(case $stackVersion in (*-SNAPSHOT)  echo dev;; esac)
+testLicensePKeyPath=$(case $buildLicensePubkey in (dev) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
@@ -566,7 +566,7 @@ VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
-IS_SNAPSHOT_BUILD=${isSnapshotVersion}
+BUILD_LICENSE_PUBKEY=${buildLicensePubkey}
 
 TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 TEST_LICENSE_PKEY_PATH=$testLicensePKeyPath
@@ -702,7 +702,7 @@ VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
-IS_SNAPSHOT_BUILD=yes
+BUILD_LICENSE_PUBKEY=dev
 GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 ENV

@@ -46,13 +46,13 @@ ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
 ci-internal: ci-build-image
-	# --userns=host to support Docker daemon host configured to run containers only in user namespaces
+	@ # --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
 	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS \
+		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS -e BUILD_LICENSE_PUBKEY \
 		-e VAULT_ADDR -e VAULT_TOKEN \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
