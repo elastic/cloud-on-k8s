@@ -223,7 +223,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - logstashs
+    - logstashes
   sideEffects: None
 - admissionReviewVersions:
   - v1alpha1

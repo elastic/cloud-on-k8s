@@ -110,8 +110,6 @@ const (
 	BeatAssociationType           = "beat"
 	BeatMonitoringAssociationType = "beat-monitoring"
 
-	LogstashMonitoringAssociationType = "ls-monitoring"
-
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
