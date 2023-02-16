@@ -6,12 +6,18 @@ package logstash
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
+
+type logstashStatus struct {
+	Version string `json:"version"`
+	Status  string `json:"status"`
+}
 
 // CheckSecrets checks that expected secrets have been created.
 func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
@@ -58,6 +64,28 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	println(test.Ctx().TestTimeout)
-	// TODO: Add stack checks
-	return test.StepList{}
+	return test.StepList{
+		{
+			Name: "Logstash should respond to requests",
+			Test: test.Eventually(func() error {
+				client, err := NewLogstashClient(b.Logstash, k)
+				if err != nil {
+					return err
+				}
+				bytes, err := DoRequest(client, b.Logstash, "GET", "/")
+				if err != nil {
+					return err
+				}
+				var status logstashStatus
+				if err := json.Unmarshal(bytes, &status); err != nil {
+					return err
+				}
+
+				if status.Status != "green" {
+					return fmt.Errorf("expected green but got %s", status.Status)
+				}
+				return nil
+			}),
+		},
+	}
 }
