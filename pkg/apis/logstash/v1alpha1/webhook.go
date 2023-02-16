@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: SchemeGroupVersion.Group, Kind: Kind}
+	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 	validationLog = ulog.Log.WithName("logstash-v1alpha1-validation")
 )
 

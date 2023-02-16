@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
 func TestSamples(t *testing.T) {
@@ -78,6 +79,12 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
+		case logstash.Builder:
+			return b.WithNamespace(namespace).
+				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)

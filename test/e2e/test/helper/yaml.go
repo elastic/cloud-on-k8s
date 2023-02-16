@@ -33,6 +33,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -42,6 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
 type BuilderTransform func(test.Builder) test.Builder
@@ -59,7 +61,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
 	scheme.AddKnownTypes(entv1.GroupVersion, &entv1.EnterpriseSearch{}, &entv1.EnterpriseSearchList{})
 	scheme.AddKnownTypes(agentv1alpha1.GroupVersion, &agentv1alpha1.Agent{}, &agentv1alpha1.AgentList{})
-
+	scheme.AddKnownTypes(logstashv1alpha1.GroupVersion, &logstashv1alpha1.Logstash{}, &logstashv1alpha1.LogstashList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{}, &rbacv1.ClusterRoleBindingList{})
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
@@ -107,6 +109,10 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
+			builder = transform(b)
+		case *logstashv1alpha1.Logstash:
+			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
+			b.Logstash = *decodedObj
 			builder = transform(b)
 		default:
 			return builders, fmt.Errorf("unexpected object type: %t", decodedObj)
@@ -303,6 +309,14 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
+
+			builder = b
+		case *logstashv1alpha1.Logstash:
+			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
+			b = b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
 
 			builder = b
 		case *corev1.ServiceAccount:
