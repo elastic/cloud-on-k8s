@@ -29,7 +29,7 @@ crds:
   - name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
     displayName: Elastic Stack Config Policy
     description: Elastic Stack Config Policy
-  - name: logstashes.stackconfigpolicy.k8s.elastic.co
+  - name: logstashes.logstash.k8s.elastic.co
     displayName: Logstash
     description: Logstash instance
 packages:
