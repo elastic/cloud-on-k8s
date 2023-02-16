@@ -20,6 +20,13 @@ func TestSingleLogstash(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
 
+func TestMultipleLogstashes(t *testing.T) {
+	name := "test-multiple-logstashes"
+	logstashBuilder := logstash.NewBuilder(name).
+		WithNodeCount(3)
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
 func TestLogstashServerVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 

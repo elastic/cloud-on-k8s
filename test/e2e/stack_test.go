@@ -19,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
 
@@ -72,6 +74,9 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	entUpdated := ent.WithVersion(updatedVersion)
+	logstash := logstash.NewBuilder("ls").
+		WithVersion(initialVersion) // pre 8.x doesn't require any config, but we change the version after calling
+	logstashUpdated := logstash.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
@@ -81,8 +86,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
 	fbUpdated := fb.WithVersion(updatedVersion)
 
-	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
-	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
+	initialBuilders := []test.Builder{es, kb, apm, ent, fb, logstash}
+	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated, logstashUpdated}
 
 	versionUpgrade := func(k *test.K8sClient) test.StepList {
 		steps := test.StepList{}
@@ -101,6 +106,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 					ApmServer:        ref(k8s.ExtractNamespacedName(&apm.ApmServer)),
 					EnterpriseSearch: ref(k8s.ExtractNamespacedName(&ent.EnterpriseSearch)),
 					Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
+					Logstash:             ref(k8s.ExtractNamespacedName(&logstash.Logstash)),
 				}
 				err := stackVersions.Retrieve(k.Client)
 				// check the retrieved versions first (before returning on err)
@@ -128,6 +134,7 @@ type StackResourceVersions struct {
 	ApmServer        refVersion
 	EnterpriseSearch refVersion
 	Beat             refVersion
+	Logstash         refVersion
 }
 
 func (s StackResourceVersions) IsValid() bool {
@@ -140,7 +147,7 @@ func (s StackResourceVersions) IsValid() bool {
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
-	for _, ref := range []refVersion{s.Elasticsearch, s.Kibana, s.ApmServer, s.EnterpriseSearch, s.Beat} {
+	for _, ref := range []refVersion{s.Elasticsearch, s.Kibana, s.ApmServer, s.EnterpriseSearch, s.Beat, s.Logstash} {
 		if ref.version != version {
 			return false
 		}
@@ -149,7 +156,7 @@ func (s StackResourceVersions) AllSetTo(version string) bool {
 }
 
 func (s *StackResourceVersions) Retrieve(client k8s.Client) error {
-	calls := []func(c k8s.Client) error{s.retrieveBeat, s.retrieveApmServer, s.retrieveKibana, s.retrieveEnterpriseSearch, s.retrieveElasticsearch}
+	calls := []func(c k8s.Client) error{s.retrieveBeat, s.retrieveApmServer, s.retrieveKibana, s.retrieveEnterpriseSearch, s.retrieveElasticsearch, s.retrieveLogstash}
 	// grab at least one error if multiple occur
 	var callsErr error
 	for _, f := range calls {
@@ -221,5 +228,14 @@ func (s *StackResourceVersions) retrieveBeat(c k8s.Client) error {
 		return err
 	}
 	s.Beat.version = beat.Status.Version
+	return nil
+}
+
+func (s *StackResourceVersions) retrieveLogstash(c k8s.Client) error {
+	var logstash logstashv1alpha1.Logstash
+	if err := c.Get(context.Background(), s.Logstash.ref, &logstash); err != nil {
+		return err
+	}
+	s.Logstash.version = logstash.Status.Version
 	return nil
 }
