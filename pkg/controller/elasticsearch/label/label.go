@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -115,8 +116,8 @@ func ExtractVersion(labels map[string]string) (version.Version, error) {
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{
-		ClusterNameLabelName: es.Name,
-		labels.TypeLabelName: Type,
+		ClusterNameLabelName:   es.Name,
+		commonv1.TypeLabelName: Type,
 	}
 }
 

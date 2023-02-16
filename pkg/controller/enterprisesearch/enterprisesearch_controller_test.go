@@ -23,7 +23,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -250,7 +249,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 			Name:      "ent-pod1",
 			Labels: map[string]string{
 				EnterpriseSearchNameLabelName: ent.Name,
-				labels.TypeLabelName:          Type,
+				commonv1.TypeLabelName:        Type,
 				VersionLabelName:              "7.7.0",
 			},
 		},

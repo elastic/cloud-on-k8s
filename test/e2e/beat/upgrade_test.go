@@ -12,9 +12,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/filebeat"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -46,7 +46,7 @@ func TestBeatVersionUpgradeToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(fbBuilder.Beat.Namespace),
 		client.MatchingLabels(map[string]string{
-			labels.TypeLabelName:     beatcommon.TypeLabelValue,
+			commonv1.TypeLabelName:   beatcommon.TypeLabelValue,
 			beatcommon.NameLabelName: fbBuilder.Beat.Name,
 		}),
 	}
@@ -84,7 +84,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(fbBuilder.Beat.Namespace),
 		client.MatchingLabels(map[string]string{
-			labels.TypeLabelName:     beatcommon.TypeLabelValue,
+			commonv1.TypeLabelName:   beatcommon.TypeLabelValue,
 			beatcommon.NameLabelName: fbBuilder.Beat.Name,
 		}),
 	}

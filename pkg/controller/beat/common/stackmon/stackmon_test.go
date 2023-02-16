@@ -111,12 +111,9 @@ output:
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat-beat-monitoring-metricbeat-config",
 				Namespace: "test",
-				// *note* the following is a bug in the common/stackmon/NewMetricBeatSidecar func
-				// and this type should be the underlying CRD type, not hard-coded to Elasticsearch.
-				// https://github.com/elastic/cloud-on-k8s/issues/5967
 				Labels: map[string]string{
-					"common.k8s.elastic.co/type":                "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": "beat",
+					"common.k8s.elastic.co/type": "beat",
+					"beat.k8s.elastic.co/name":   "beat",
 				},
 			},
 			Data: map[string][]byte{
