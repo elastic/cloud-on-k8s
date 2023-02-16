@@ -11,12 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	// "k8s.io/apimachinery/pkg/types"
-
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	// mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
