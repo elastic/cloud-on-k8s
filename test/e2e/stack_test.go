@@ -106,7 +106,7 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 					ApmServer:        ref(k8s.ExtractNamespacedName(&apm.ApmServer)),
 					EnterpriseSearch: ref(k8s.ExtractNamespacedName(&ent.EnterpriseSearch)),
 					Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
-					Logstash:             ref(k8s.ExtractNamespacedName(&logstash.Logstash)),
+					Logstash:         ref(k8s.ExtractNamespacedName(&logstash.Logstash)),
 				}
 				err := stackVersions.Retrieve(k.Client)
 				// check the retrieved versions first (before returning on err)

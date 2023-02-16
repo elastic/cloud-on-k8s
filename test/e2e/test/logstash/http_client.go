@@ -13,7 +13,6 @@ import (
 	"net/url"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
@@ -29,6 +28,7 @@ func (e *APIError) Error() string {
 // TODO refactor identical to Kibana client
 func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
+	// TODO: Integrate with TLS on metrics API
 	// if ems.Spec.HTTP.TLS.Enabled() {
 	//	crts, err := k.GetHTTPCerts(maps.EMSNamer, ems.Namespace, ems.Name)
 	//	if err != nil {

@@ -9,10 +9,9 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"hash/fnv"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
