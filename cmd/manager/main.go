@@ -879,6 +879,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
 		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},
+		{name: "LOGSTASH-MONITORING", registerFunc: associationctl.AddLogstashMonitoring},
 	}
 
 	for _, c := range assocControllers {
@@ -917,6 +918,7 @@ func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespace
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		For(&emsv1alpha1.ElasticMapsServerList{}, associationctl.MapsESAssociationLabelNamespace, associationctl.MapsESAssociationLabelName).
+		For(&logstashv1alpha1.LogstashList{}, associationctl.LogstashAssociationLabelNamespace, associationctl.LogstashAssociationLabelName).
 		DoGarbageCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("user garbage collector failed: %w", err)

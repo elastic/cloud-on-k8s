@@ -5,6 +5,7 @@
 package logstash
 
 import (
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -107,6 +108,12 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 	b.MutatedFrom = mutatedFrom
+	return b
+}
+
+func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
+	b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
 	return b
 }
 

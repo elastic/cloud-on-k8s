@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -48,6 +49,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			logstash.Status.ObservedGeneration = 0
+			logstash.Status.MonitoringAssociationStatus = commonv1.AssociationStatusMap{}
 
 			expected := logstashv1alpha1.LogstashStatus{
 				ExpectedNodes:  b.Logstash.Spec.Count,

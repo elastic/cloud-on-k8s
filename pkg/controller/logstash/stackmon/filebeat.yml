@@ -1,0 +1,18 @@
+filebeat.modules:
+  - module: logstash
+    log:
+      enabled: true
+      var.paths:
+        - "/usr/share/logstash/logs/logstash-plain.log"
+        - "/usr/share/logstash/logs/logstash-json.log"
+    slowlog:
+      enabled: true
+      var.paths:
+        - "/usr/share/logstash/logs/logstash-slowlog-plain.log"
+        - "/usr/share/logstash/logs/logstash-slowlog-json.log"
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated

@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -82,6 +83,12 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	}
 
 	configHash := fnv.New32a()
+
+	// reconcile beats config secrets if Stack Monitoring is defined
+	err = stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
 
 	if res := reconcileConfig(params, configHash); res.HasError() {
 		return results.WithResults(res), params.Status

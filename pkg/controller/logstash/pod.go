@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
@@ -84,6 +85,11 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
 		WithVolumeLikes(vols...)
+
+	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
+	if err != nil {
+		return corev1.PodTemplateSpec{}
+	}
 
 	//  TODO integrate with api.ssl.enabled
 	//  if params.Logstash.Spec.HTTP.TLS.Enabled() {
