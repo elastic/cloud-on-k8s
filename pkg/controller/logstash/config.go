@@ -115,10 +115,10 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	return common.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.ConfigRef, LogstashConfigFileName)
 }
 
-// TODO: remove testing value
 func defaultConfig() *settings.CanonicalConfig {
 	settingsMap := map[string]interface{}{
-		"node.name": "test",
+		// Set 'api.http.host' by defaut to `0.0.0.0` for readiness probe to work.
+		"api.http.host": "0.0.0.0",
 	}
 
 	return settings.MustCanonicalConfig(settingsMap)
