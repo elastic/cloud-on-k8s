@@ -57,7 +57,7 @@ func (l StepList) RunSequential(t *testing.T) {
 			log.Info("Skipping test", "name", ts.Name)
 			continue
 		}
-		if !t.Run(ts.Name, ts.Test) { 
+		if !t.Run(ts.Name, ts.Test) {
 			logf.Log.Error(errors.New("test failure"), "continuing with additional tests")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
@@ -93,7 +93,7 @@ func initGSUtil() {
 
 func runECKDiagnostics(ctx Context, step Step) {
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostics-%s.zip", step.Name), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostics-%s.zip", strings.ReplaceAll(step.Name, " ", "_")), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
