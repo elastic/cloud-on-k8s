@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
