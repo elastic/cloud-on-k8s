@@ -1,0 +1,39 @@
+:page_id: fips
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Deploy a FIPS compatible version of ECK
+
+The Federal Information Processing Standard (FIPS) Publication 140-2, (FIPS PUB 140-2), titled "Security Requirements for Cryptographic Modules" is a U.S. government computer security standard used to approve cryptographic modules. ECK offers a FIPS compliant image that is a drop-in replacement for the standard image.
+
+For the ECK operator, adherence to FIPS 140-2 is ensured by
+
+- Using FIPS approved / NIST recommended cryptographic algorithms
+- Compiling the operator using the link:https://github.com/golang/go/blob/dev.boringcrypto/README.boringcrypto.md[BoringCrypto] library for various cryptographic primitives.
+
+== Installation
+
+=== FIPS compliant installation using Helm
+
+Simply modify the `image.repository` Helm chart value to append `-fips` to install a FIPS compliant version of the ECK Operator.  Reference <<{p}-install-helm,Instsall ECK using the Helm chart>> for full Helm installation instructions.
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator \
+  -n elastic-system --create-namespace \
+  --set=image.repository=docker.elastic.co/eck/eck-operator-fips
+----
+
+=== FIPS compliant installation using manifests
+
+The `StatefulSet` will need to be patched after installation using manifests to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS compliant version of the ECK Operator.  Reference <<{p}-deploy-eck,Instsall ECK using manifests>> for full manifest installation instructions.
+
+NOTE: `${ECK_VERSION}` in the following patch command needs to be replaced with the version of the Operator that is being installed.
+
+[source,sh]
+----
+kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "image":"docker.elastic.co/eck/eck-operator-fips:${ECK_VERSION}"}]}}}}'
+----
