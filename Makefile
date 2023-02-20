@@ -108,7 +108,7 @@ tidy:
 	go mod tidy
 
 go-generate:
-	# we use this in pkg/controller/common/license
+	@ # we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
 generate-crds-v1: go-generate controller-gen
