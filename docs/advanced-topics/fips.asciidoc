@@ -7,7 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Deploy a FIPS compatible version of ECK
 
-The Federal Information Processing Standard (FIPS) Publication 140-2, (FIPS PUB 140-2), titled "Security Requirements for Cryptographic Modules" is a U.S. government computer security standard used to approve cryptographic modules. Since version 2.6 ECK offers a FIPS compliant image that is a drop-in replacement for the standard image.
+The Federal Information Processing Standard (FIPS) Publication 140-2, (FIPS PUB 140-2), titled "Security Requirements for Cryptographic Modules" is a U.S. government computer security standard used to approve cryptographic modules. Since version 2.6 ECK offers a FIPS-enabled image that is a drop-in replacement for the standard image.
 
 For the ECK operator, adherence to FIPS 140-2 is ensured by
 
@@ -29,9 +29,16 @@ helm install elastic-operator elastic/eck-operator \
 
 === FIPS compliant installation using manifests
 
-The `StatefulSet` will need to be patched after installation using manifests to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS compliant version of the ECK Operator.  Reference <<{p}-deploy-eck,Instsall ECK using manifests>> for full manifest installation instructions.
+The `StatefulSet` definition within the yaml installation manifest will need to be patched prior to installation to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS-enabled version of the ECK Operator.  Reference <<{p}-deploy-eck,Instsall ECK using manifests>> for full manifest installation instructions.
 
-NOTE: `${ECK_VERSION}` in the following patch command needs to be replaced with the version of the Operator that is being installed.
+NOTE: `${ECK_VERSION}` in the following command needs to be replaced with the version of the Operator that is to be installed.
+
+[source,sh]
+----
+curl -s https://download.elastic.co/downloads/eck/${ECK_VERSION}/operator.yaml | sed 's/\(.*image:\).*$/\1 "docker.elastic.co\/eck\/eck-operator-fips:${ECK_VERSION}"/g' | kubectl apply -f -
+----
+
+If the Operator has already been installed using the manifests, the installation can be patched instead:
 
 [source,sh]
 ----
