@@ -8,7 +8,6 @@
 #
 # Log in to docker.elastic.co if the namespace eck, eck-ci or eck-snapshots is used
 # Log in to gcloud if GCR is used
-# Log in to hub.docker.com if docker.io is used
 
 set -euo pipefail
 
@@ -40,14 +39,6 @@ docker-login() {
         *.gcr.io/*)
             echo "Authentication to ${registry}..."
             gcloud auth configure-docker --quiet 2> /dev/null
-        ;;
-
-        docker.io/*)
-            DOCKERHUB_LOGIN=$(retry vault read -field=username "${VAULT_ROOT_PATH}/release/docker-hub-eck")
-            DOCKERHUB_PASSWORD=$(retry vault read -field=token "${VAULT_ROOT_PATH}/release/docker-hub-eck")
-
-            echo "Authentication to ${registry}..."
-            docker login -u "${DOCKERHUB_LOGIN}" -p "${DOCKERHUB_PASSWORD}" 2> /dev/null
         ;;
 
         *)
