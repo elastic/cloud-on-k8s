@@ -158,7 +158,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.2.0 | MIT
 | link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.8.0 | MIT
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.7.0 | BSD-3-Clause
-| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.6.0 | BSD-3-Clause
+| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.7.0 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.3.0 | BSD-3-Clause
 | link:https://golang.org/x/sync[$$golang.org/x/sync$$] | v0.1.0 | BSD-3-Clause
 | link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.5.0 | BSD-3-Clause
