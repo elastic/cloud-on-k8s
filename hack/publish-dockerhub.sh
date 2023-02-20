@@ -9,7 +9,7 @@
 set -eu
 
 install_docker_extension() {
-    [[ -f ~/.docker/cli-plugins/docker-buildx ]] && return || true
+    [[ ! -f ~/.docker/cli-plugins/docker-buildx ]] && return
 
     DOCKER_BUILDX_VERSION=0.8.2
     mkdir -p ~/.docker/cli-plugins
