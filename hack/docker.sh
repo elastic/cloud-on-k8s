@@ -12,25 +12,9 @@
 
 set -euo pipefail
 
-# ensure environment variable is set before testing if it's a zero value.
-CI=${CI:-}
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
 
 retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
-
-if [[ -f "${REGISTRY_ENV}" && "${DOCKER_LOGIN:-}" != "" ]]; then
-    echo "error: setting DOCKER_LOGIN/DOCKER_PASSWORD is incompatible the '.registry.env' file"
-    echo "either unset the environment variables, or remove the '.registry.env' file"
-    exit
-fi
-
-# source variables if present
-if [[ -f ${REGISTRY_ENV} ]]; then
-    # shellcheck disable=SC2046
-    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
-fi
 
 docker-login() {
     local image=$1
@@ -38,7 +22,7 @@ docker-login() {
 
     # Since this check doesn't work very well in Jenkins, and Jenkins sets
     # environment variable 'CI' only perform this check when not in Jenkins.
-    if [[ -z "${CI}" && -f ~/.docker/config.json ]] && grep -q "${registry}" ~/.docker/config.json; then
+    if [[ -z "${CI:-}" && -f ~/.docker/config.json ]] && grep -q "${registry}" ~/.docker/config.json; then
         echo "not authenticating to ${registry} as configuration block already exists in ~/.docker/config.json"
         return
     fi
@@ -46,6 +30,9 @@ docker-login() {
     case "$image" in
 
         docker.elastic.co/*)
+            DOCKER_LOGIN=$(retry vault read -field=username "${VAULT_ROOT_PATH}/docker-registry-elastic")
+            DOCKER_PASSWORD=$(retry vault read -field=password "${VAULT_ROOT_PATH}/docker-registry-elastic")
+
             echo "Authentication to ${registry}..."
             docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" docker.elastic.co 2> /dev/null
         ;;
@@ -56,6 +43,9 @@ docker-login() {
         ;;
 
         docker.io/*)
+            DOCKERHUB_LOGIN=$(retry vault read -field=username "${VAULT_ROOT_PATH}/release/docker-hub-eck")
+            DOCKERHUB_PASSWORD=$(retry vault read -field=token "${VAULT_ROOT_PATH}/release/docker-hub-eck")
+
             echo "Authentication to ${registry}..."
             docker login -u "${DOCKERHUB_LOGIN}" -p "${DOCKERHUB_PASSWORD}" 2> /dev/null
         ;;
