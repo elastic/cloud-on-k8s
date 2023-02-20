@@ -35,7 +35,7 @@ NOTE: `${ECK_VERSION}` in the following command needs to be replaced with the ve
 
 [source,sh]
 ----
-curl -s https://download.elastic.co/downloads/eck/${ECK_VERSION}/operator.yaml | sed 's/\(.*image:\).*$/\1 "docker.elastic.co\/eck\/eck-operator-fips:${ECK_VERSION}"/g' | kubectl apply -f -
+curl -s https://download.elastic.co/downloads/eck/${ECK_VERSION}/operator.yaml | sed -r 's#(image:.*eck-operator.*)"#\1-fips"#' | kubectl apply -f -
 ----
 
 If the Operator has already been installed using the manifests, the installation can be patched instead:
