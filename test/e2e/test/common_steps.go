@@ -15,8 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 )
 
@@ -50,7 +50,7 @@ func CreateEnterpriseLicenseSecret(t *testing.T, k *K8sClient, secretName string
 				Namespace: Ctx().ManagedNamespace(0),
 				Name:      secretName,
 				Labels: map[string]string{
-					labels.TypeLabelName:      license.Type,
+					commonv1.TypeLabelName:    license.Type,
 					license.LicenseLabelScope: string(license.LicenseScopeOperator),
 				},
 			},
@@ -67,7 +67,7 @@ func DeleteAllEnterpriseLicenseSecrets(t *testing.T, k *K8sClient) {
 	Eventually(func() error {
 		// Delete operator license secret
 		var licenseSecrets corev1.SecretList
-		err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{labels.TypeLabelName: license.Type}))
+		err := k.Client.List(context.Background(), &licenseSecrets, k8sclient.MatchingLabels(map[string]string{commonv1.TypeLabelName: license.Type}))
 		if err != nil {
 			return err
 		}
@@ -84,8 +84,9 @@ func DeleteAllEnterpriseLicenseSecrets(t *testing.T, k *K8sClient) {
 // LicenseTestBuilder is a wrapped builder for tests that require a valid Enterprise license to be installed in the operator.
 // It creates an Enterprise license secret before the test and deletes it again after the test. Callers are responsible for
 // making sure that Ctx().TestLicense contains a valid test license.
-func LicenseTestBuilder() WrappedBuilder {
+func LicenseTestBuilder(b Builder) WrappedBuilder {
 	return WrappedBuilder{
+		BuildingThis: b,
 		PreInitSteps: func(k *K8sClient) StepList {
 			//nolint:thelper
 			return StepList{

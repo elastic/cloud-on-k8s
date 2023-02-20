@@ -18,10 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -284,7 +284,7 @@ func remoteClustersInvolvedWith(
 	if err := c.List(ctx,
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
-			labels.TypeLabelName:            remoteca.TypeLabelValue,
+			commonv1.TypeLabelName:          remoteca.TypeLabelValue,
 			RemoteClusterNamespaceLabelName: es.Namespace,
 			RemoteClusterNameLabelName:      es.Name,
 		}),

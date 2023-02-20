@@ -125,8 +125,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 
 func TestFleetMode(t *testing.T) {
 
-	// This test is disabled until we understand why it is failing
-	t.Skip("TestFleetMode is disabled, see https://github.com/elastic/cloud-on-k8s/issues/6308")
+	test.SkipUntilResolution(t, 6331)
 
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	// installation of policies and integrations through Kibana file based configuration was broken between those versions:

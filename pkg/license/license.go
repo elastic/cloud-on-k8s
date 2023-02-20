@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -127,7 +127,7 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 			Namespace: nsn.Namespace,
 			Name:      nsn.Name,
 			Labels: map[string]string{
-				labels.TypeLabelName: Type,
+				commonv1.TypeLabelName: Type,
 			},
 		},
 		Data: info.toMap(),

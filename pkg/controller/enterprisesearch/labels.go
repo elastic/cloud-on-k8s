@@ -6,7 +6,6 @@ package enterprisesearch
 
 import (
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 )
 
 const (
@@ -19,14 +18,6 @@ const (
 	// VersionLabelName is a label used to track the version of an Enterprise Search Pod.
 	VersionLabelName = "enterprisesearch.k8s.elastic.co/version"
 )
-
-// Labels returns labels that identify the given Enterprise Search resource
-func Labels(entName string) map[string]string {
-	return map[string]string{
-		EnterpriseSearchNameLabelName: entName,
-		labels.TypeLabelName:          Type,
-	}
-}
 
 func VersionLabels(ent entv1.EnterpriseSearch) map[string]string {
 	return map[string]string{

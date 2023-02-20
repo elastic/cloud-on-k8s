@@ -38,9 +38,9 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 		return deployment.Params{}, err
 	}
 
-	deploymentLabels := Labels(ent.Name)
+	deploymentLabels := ent.GetIdentityLabels()
 
-	podLabels := maps.Merge(Labels(ent.Name), VersionLabels(ent))
+	podLabels := maps.Merge(ent.GetIdentityLabels(), VersionLabels(ent))
 	// merge with user-provided labels
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 

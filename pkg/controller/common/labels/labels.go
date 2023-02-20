@@ -11,9 +11,6 @@ import (
 )
 
 const (
-	// TypeLabelName used to represent a resource type in k8s resources
-	TypeLabelName = "common.k8s.elastic.co/type"
-
 	credentialsLabel = "eck.k8s.elastic.co/credentials" //nolint:gosec
 )
 

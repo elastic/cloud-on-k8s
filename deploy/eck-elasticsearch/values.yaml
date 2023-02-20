@@ -18,7 +18,7 @@
 
 # Version of Elasticsearch.
 #
-version: 8.6.0
+version: 8.6.1
 
 # Labels that will be applied to Elasticsearch.
 #
@@ -37,31 +37,83 @@ auth: {}
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
 #
 monitoring: {}
+  # metrics:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability 
+  # logs:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
 
 # Control the Elasticsearch transport module used for internal communication between nodes.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-transport-settings.html
 #
 transport: {}
+  # service:
+  #   metadata:
+  #     labels:
+  #       my-custom: label
+  #   spec:
+  #     type: LoadBalancer
+  # tls:
+  #   subjectAltNames:
+  #     - ip: 1.2.3.4
+  #     - dns: hulk.example.com
+  #   certificate:
+  #     secretName: custom-ca
 
 # Settings to control how Elasticsearch will be accessed.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-accessing-elastic-services.html
 #
 http: {}
+  # service:
+  #   metadata:
+  #     labels:
+  #       my-custom: label
+  #   spec:
+  #     type: LoadBalancer
+  # tls:
+  #   selfSignedCertificate:
+  #     # To fully disable TLS for the HTTP layer of Elasticsearch, simply
+  #     # set the below field to 'true', removing all other fields.
+  #     disabled: false
+  #     subjectAltNames:
+  #       - ip: 1.2.3.4
+  #       - dns: hulk.example.com
+  #   certificate:
+  #     secretName: custom-ca
 
 # Control Elasticsearch Secure Settings.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html#k8s-es-secure-settings
 #
 secureSettings: {}
+  # - secretName: one-secure-settings-secret
+  # Projection of secret keys to specific paths
+  # - secretName: gcs-secure-settings
+  #   entries:
+  #   - key: gcs.client.default.credentials_file
+  #   - key: gcs_client_1
+  #     path: gcs.client.client_1.credentials_file
+  #   - key: gcs_client_2
+  #     path: gcs.client.client_2.credentials_file
 
 # Settings for limiting the number of simultaneous changes to an Elasticsearch resource.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-update-strategy.html
 #
 updateStrategy: {}
+  # changeBudget:
+  #   maxSurge: 3
+  #   maxUnavailable: 1
 
 # Controlling of connectivity between remote clusters within the same kubernetes cluster.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-remote-clusters.html
 #
 remoteClusters: {}
+  # - name: cluster-two
+  #   elasticsearchRef:
+  #     name: cluster-two
+  #     namespace: ns-two
 
 # Node configuration settings.
 # The node roles which can be configured here are:
@@ -85,11 +137,147 @@ nodeSets:
     #
     node.store.allow_mmap: false
   podTemplate:
+    # The following spec is exactly the Kubernetes Core V1 PodTemplateSpec. Any fields within the PodTemplateSpec
+    # are supported within the 'spec' field below.  Please see below documentation for the exhaustive list of fields.
+    #
+    # https://v1-24.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#podtemplatespec-v1-core
+    #
+    # Only the commonly overridden/used fields will be noted below.
+    # 
     spec:
+
+    # If specified, the pod's scheduling constraints
+    # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    # affinity:
+    #   nodeAffinity:
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       nodeSelectorTerms:
+    #       - matchExpressions:
+    #         - key: topology.kubernetes.io/zone
+    #           operator: In
+    #           values:
+    #           - antarctica-east1
+    #           - antarctica-west1
+
+    # Containers array.  Should only be used to customize the 'elasticsearch' container using the following fields.
       containers:
       - name: elasticsearch
+
+        # List of environment variables to set in the 'elasticsearch' container.
+        # https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
+        # env:
+        # - name: "my-env-var"
+        #   value: "my-value"
+
+        # Compute Resources required by this container.
         resources:
-          requests:
-            cpu: 1
+          # Requests describes the minimum amount of compute resources required. If Requests is omitted for a container,
+          # it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value.
+          # 
+          # Defaults used by the ECK Operator, if not specified, are below
           limits:
-            memory: 1Gi
+            # cpu: 1
+            memory: 2Gi
+          requests:
+            # cpu: 1
+            memory: 2Gi
+
+          # Example increasing both the requests and limits values:
+          # limits:
+          #   cpu: 4
+          #   memory: 8Gi
+          # requests:
+          #   cpu: 1
+          #   memory: 8Gi
+
+        # SecurityContext defines the security options the container should be run with.
+        # If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+        #
+        # These typically are set automatically by the ECK Operator, and should only be adjusted
+        # with the full knowledge of the effects of each field.
+        #
+        # securityContext:
+
+          # Whether this container has a read-only root filesystem. Default is false.
+          # readOnlyRootFilesystem: false
+
+          # The GID to run the entrypoint of the container process. Uses runtime default if unset.
+          # runAsGroup: 1000
+
+          # Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure
+          # that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed.
+          # runAsNonRoot: true
+
+          # The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified.
+          # runAsUser: 1000
+
+    # ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec.
+    # https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
+    # imagePullSecrets:
+    # - name: "image-pull-secret"
+
+    # List of initialization containers belonging to the pod.
+    #
+    # Common initContainers include setting sysctl, or in 7.x versions of Elasticsearch,
+    # installing Elasticsearch plugins.
+    #
+    # https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+    # initContainers:
+    # - command:
+    #   - sh
+    #   - "-c"
+    #   - sysctl -w vm.max_map_count=262144
+    #   name: sysctl
+    #   securityContext:
+    #     privileged: true
+    # - command:
+    #   - sh
+    #   - "-c"
+    #   - bin/elasticsearch-plugin install --batch repository-s3
+    #   name: install-plugins
+    #   securityContext:
+    #     privileged: true
+
+
+    # NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node.
+    # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+    # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
+    # nodeSelector:
+    #   diskType: ssd
+    #   environment: production
+
+    # If specified, indicates the pod's priority. "system-node-critical" and "system-cluster-critical" are two special keywords which indicate the highest priorities with the former being the highest priority.
+    # Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+    # priorityClassName: ""
+
+    # SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty. See type description for default values of each field.
+    # See previously defined 'securityContext' within 'podTemplate' for all available fields.
+    # securityContext: {}
+
+    # ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+    # https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+    # serviceAccountName: ""
+
+    # Optional duration in seconds to wait for the Elasticsearch pod to terminate gracefully.
+    # terminationGracePeriodSeconds: 30s
+
+    # If specified, the pod's tolerations that will apply to all containers within the pod.
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    # tolerations:
+    # - key: "node-role.kubernetes.io/elasticsearch"
+    #   effect: "NoSchedule"
+    #   operator: "Exists"
+
+    # TopologySpreadConstraints describes how a group of pods ought to spread across topology domains.
+    # Scheduler will schedule pods in a way which abides by the constraints. All topologySpreadConstraints are ANDed.
+    #
+    # These settings are generally applied within each `nodeSets[].podTemplate` field to apply to a specific Elasticsearch nodeset.
+    #
+    # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-advanced-node-scheduling.html
+    # topologySpreadConstraints: {}
+
+    # List of volumes that can be mounted by containers belonging to the pod.
+    # https://kubernetes.io/docs/concepts/storage/volumes
+    # volumes: []

@@ -16,8 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	esuser "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -41,7 +41,7 @@ func newUserSecret(
 			Labels: map[string]string{
 				associationNameLabel:      associationNameValue,
 				associationNamespaceLabel: associationNamespaceValue,
-				labels.TypeLabelName:      esuser.AssociatedUserType,
+				commonv1.TypeLabelName:    esuser.AssociatedUserType,
 			},
 		},
 	}
@@ -59,7 +59,7 @@ func newServiceAccountSecret(
 			Labels: map[string]string{
 				associationNameLabel:      associationNameValue,
 				associationNamespaceLabel: associationNamespaceValue,
-				labels.TypeLabelName:      esuser.ServiceAccountTokenType,
+				commonv1.TypeLabelName:    esuser.ServiceAccountTokenType,
 			},
 		},
 	}

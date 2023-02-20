@@ -27,7 +27,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
 )
@@ -38,7 +37,7 @@ func TestReconcile(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
-				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", labels.TypeLabelName: label.Type},
+				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 			},
 			Spec: policyv1.PodDisruptionBudgetSpec{
 				MinAvailable: intStrPtr(intstr.FromInt(3)),
@@ -90,7 +89,7 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", labels.TypeLabelName: label.Type},
+					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(5)),
@@ -191,7 +190,7 @@ func Test_expectedPDB(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", labels.TypeLabelName: label.Type},
+					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(3)),
@@ -222,7 +221,7 @@ func Test_expectedPDB(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
-					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", labels.TypeLabelName: label.Type},
+					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(3)),
@@ -251,7 +250,7 @@ func Test_expectedPDB(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", labels.TypeLabelName: label.Type},
+					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(42)),

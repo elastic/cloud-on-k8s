@@ -4,8 +4,6 @@
 
 package kibana
 
-import "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
-
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
@@ -19,11 +17,3 @@ const (
 	// Type represents the Kibana type
 	Type = "kibana"
 )
-
-// NewLabels constructs a new set of labels for a Kibana pod
-func NewLabels(kibanaName string) map[string]string {
-	return map[string]string{
-		KibanaNameLabelName:  kibanaName,
-		labels.TypeLabelName: Type,
-	}
-}
