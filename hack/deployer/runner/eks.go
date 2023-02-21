@@ -32,6 +32,10 @@ metadata:
   name: {{.ClusterName}}
   region: {{.Region}}
   version: "{{.KubernetesVersion}}"
+  tags:
+    {{- range $key, $value := .Tags }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
 nodeGroups:
   - name: ng-1
     instanceType: {{.MachineType}}
@@ -69,6 +73,7 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"MachineType":       plan.MachineType,
 			"NodeAMI":           plan.Eks.NodeAMI,
 			"WorkDir":           plan.Eks.WorkDir,
+			"Tags":              eksElasticTags(),
 		},
 	}, nil
 }

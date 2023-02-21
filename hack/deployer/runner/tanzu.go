@@ -385,7 +385,11 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 		return false, err
 	}
 	log.Println("Creating Azure resource group")
-	err = azure.Cmd("group", "create", "-l", t.plan.Tanzu.Location, "--name", t.plan.Tanzu.ResourceGroup).
+	err = azure.Cmd("group", "create",
+		"-l", t.plan.Tanzu.Location,
+		"--name", t.plan.Tanzu.ResourceGroup,
+		"--tags", azureElasticTags(),
+	).
 		WithoutStreaming().Run()
 	return true, err
 }

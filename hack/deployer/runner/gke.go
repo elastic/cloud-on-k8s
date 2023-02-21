@@ -220,9 +220,10 @@ func (d *GKEDriver) resourcesLabels() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return fmt.Sprintf(
-		"username=%s,cluster_name=%s,plan_id=%s,region=%s",
-		username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
+		"%s,username=%s,cluster_name=%s,plan_id=%s,region=%s",
+		gkeElasticLabels(), username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
 	), nil
 }
 

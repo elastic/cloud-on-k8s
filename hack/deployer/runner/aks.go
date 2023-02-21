@@ -160,8 +160,9 @@ func (d *AKSDriver) create() error {
 		"--node-count", fmt.Sprintf("%d", d.plan.Aks.NodeCount), "--node-vm-size", d.plan.MachineType,
 		"--kubernetes-version", d.plan.KubernetesVersion,
 		"--node-osdisk-size", "120", "--enable-addons", "http_application_routing", "--output", "none", "--generate-ssh-keys",
-		"--zones", d.plan.Aks.Zones, servicePrincipal).
-		Run()
+		"--zones", d.plan.Aks.Zones, servicePrincipal,
+		"--tags", azureElasticTags(),
+	).Run()
 }
 
 func (d *AKSDriver) GetCredentials() error {
