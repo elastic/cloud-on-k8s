@@ -54,6 +54,7 @@ type LogstashSpec struct {
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
 	// PodTemplate provides customisation options for the Logstash pods.
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.

@@ -22,6 +22,6 @@ spec:
     api.http.host: "0.0.0.0"
     queue.type: memory
   podTemplate:
-      spec:
-        containers:
-          - name: logstash
+    spec:
+      containers:
+        - name: logstash
