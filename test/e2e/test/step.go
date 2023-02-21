@@ -73,7 +73,7 @@ func (l StepList) RunSequential(t *testing.T) {
 			if ctx.JobName != "" {
 				once.Do(initGSUtil)
 				logf.Log.Info("running eck-diagnostics job")
-				runECKDiagnostics(ctx, t.Name())
+				runECKDiagnostics(ctx, t.Name(), ts)
 				uploadDiagnosticsArtifacts()
 			}
 		}
@@ -90,9 +90,10 @@ func initGSUtil() {
 	}
 }
 
-func runECKDiagnostics(ctx Context, testName string) {
+func runECKDiagnostics(ctx Context, testName string, step Step) {
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
-	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(testName, " ", "_"), "/", "-")
+	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
+	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
 	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostics-%s.zip", normalizedTestName), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

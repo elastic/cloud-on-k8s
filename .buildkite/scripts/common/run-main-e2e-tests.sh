@@ -5,8 +5,12 @@ set -euo pipefail
 # On any command failures, make sure that diagnostics are copied from bucket to local Buildkite environment
 # to be uploaded as artifacts.
 onError() {
+    # Debugging....
+    echo gsutil ls "gs://eck-e2e-buildkite-artifacts/jobs/$BUILDKITE_PIPELINE_NAME/$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip"
+    gsutil ls "gs://eck-e2e-buildkite-artifacts/jobs/$BUILDKITE_PIPELINE_NAME/$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip" || true
     # On Copy any artifacts from the test run locally to be picked up s buildkite artifacts
     if gsutil ls "gs://eck-e2e-buildkite-artifacts/jobs/$BUILDKITE_PIPELINE_NAME/$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip" ; then
+        echo "Copying files from Google Cloud Storage..."
         gsutil cp "gs://eck-e2e-buildkite-artifacts/jobs/$BUILDKITE_PIPELINE_NAME/$BUILDKITE_BUILD_NUMBER/eck-diagnostic*.zip"
     fi
 }
