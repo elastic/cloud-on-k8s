@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -31,8 +32,13 @@ const (
 )
 
 func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (stackmon.BeatSidecar, error) {
+	esRef := logstash.Spec.Monitoring.Metrics.ElasticsearchRefs[0]
+	nsn := types.NamespacedName{
+		Namespace: logstashv1alpha1.GetOrDefaultNamespace(esRef.Namespace),
+		Name:      esRef.Name,
+	}
 	username := user.MonitoringUserName
-	password, err := user.GetMonitoringUserPassword(client, k8s.ExtractNamespacedName(&logstash))
+	password, err := user.GetMonitoringUserPassword(client, nsn)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -47,7 +53,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		fmt.Sprintf("%s://localhost:%d", "http" /*logstash.Spec.HTTP.Protocol()*/, network.HTTPPort),
 		username,
 		password,
-		false, /* logstash.Spec.HTTP.TLS.Enabled() */
+		false,
 	)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
