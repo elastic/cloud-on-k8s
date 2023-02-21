@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -49,14 +47,16 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			logstash.Status.ObservedGeneration = 0
-			logstash.Status.MonitoringAssociationStatus = commonv1.AssociationStatusMap{}
 
 			expected := logstashv1alpha1.LogstashStatus{
 				ExpectedNodes:  b.Logstash.Spec.Count,
 				AvailableNodes: b.Logstash.Spec.Count,
 				Version:        b.Logstash.Spec.Version,
 			}
-			if logstash.Status != expected {
+
+			if (logstash.Status.ExpectedNodes != expected.ExpectedNodes) ||
+				(logstash.Status.AvailableNodes != expected.AvailableNodes) ||
+				(logstash.Status.Version != expected.Version) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, logstash.Status)
 			}
 			return nil
