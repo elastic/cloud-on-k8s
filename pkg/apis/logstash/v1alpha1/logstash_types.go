@@ -94,10 +94,9 @@ type LogstashStatus struct {
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Logstash is the Schema for the logstashes API
-// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories=elastic,shortName=ls
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
@@ -115,7 +114,7 @@ type Logstash struct {
 	MonitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // LogstashList contains a list of Logstash
 type LogstashList struct {
