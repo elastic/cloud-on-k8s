@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -57,7 +57,7 @@ func init() {
 type TanzuDriverFactory struct{}
 
 func (t TanzuDriverFactory) Create(plan Plan) (Driver, error) {
-	vaultClient, err := vault.NewClient(plan.VaultInfo)
+	vaultClient, err := vault.NewClient()
 	if err != nil {
 		return nil, err
 	}

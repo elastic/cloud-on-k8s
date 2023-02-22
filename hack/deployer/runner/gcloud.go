@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -21,25 +21,25 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultInfo vault.Info, vaultPath string, serviceAccountVaultFieldName string,
+	vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	//nolint:nestif
 	if asServiceAccount {
 		log.Println("Authenticating as service account...")
 
-		client, err := vault.NewClient(vaultInfo)
-		if err != nil {
-			return err
-		}
-
 		gcpDir := filepath.Join(os.Getenv("HOME"), GCPDir)
 		keyFileName := filepath.Join(gcpDir, ServiceAccountFilename)
-		if err = os.MkdirAll(gcpDir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(gcpDir, os.ModePerm); err != nil {
 			return err
 		}
 
-		if err := client.ReadIntoFile(keyFileName, vaultPath, serviceAccountVaultFieldName); err != nil {
+		_, err := vault.SecretFile{
+			Path:          vaultPath,
+			Name:          keyFileName,
+			FieldResolver: func() string { return serviceAccountVaultFieldName },
+		}.Read()
+		if err != nil {
 			return err
 		}
 

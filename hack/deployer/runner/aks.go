@@ -10,7 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 func init() {
@@ -42,7 +42,7 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 	// plan.ServiceAccount = true typically means a CI run vs a local run on a dev machine
 	if plan.ServiceAccount {
 		var err error
-		vaultClient, err = vault.NewClient(plan.VaultInfo)
+		vaultClient, err = vault.NewClient()
 		if err != nil {
 			return nil, err
 		}
