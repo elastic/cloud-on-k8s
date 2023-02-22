@@ -165,8 +165,7 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 }
 
 func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	switch typ {
-	case commonv1.LogstashMonitoringAssociationType:
+	if typ == commonv1.LogstashMonitoringAssociationType {
 		for _, esRef := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
 			if esRef.IsDefined() {
 				return l.Status.MonitoringAssociationStatus
