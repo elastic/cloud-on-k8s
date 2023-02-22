@@ -7,6 +7,7 @@ package stackmon
 import (
 	"context"
 	_ "embed" // for the beats config files
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
