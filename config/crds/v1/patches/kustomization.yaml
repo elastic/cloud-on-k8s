@@ -70,7 +70,7 @@ patchesJson6902:
       kind: CustomResourceDefinition
       name: elasticmapsservers.maps.k8s.elastic.co
     path: maps-patches.yaml
-    # custom patches for Beat
+    # custom patches for Logstash
   - target:
       group: apiextensions.k8s.io
       version: v1
