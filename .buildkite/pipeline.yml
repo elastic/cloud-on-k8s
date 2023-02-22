@@ -23,8 +23,11 @@ steps:
         depends_on:
           - "operator-image-build"
         commands:
+          - echo "E2E_TAGS $${E2E_TAGS}"
           - .ci/setenvconfig pr
+          - echo "E2E_TAGS $${E2E_TAGS}"
           - .buildkite/scripts/common/get-test-artifacts.sh
+          - echo "E2E_TAGS $${E2E_TAGS}"
           - make e2e-buildah
 
   - group: checks
