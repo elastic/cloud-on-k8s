@@ -220,10 +220,9 @@ func (d *GKEDriver) resourcesLabels() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return fmt.Sprintf(
-		"%s,username=%s,cluster_name=%s,plan_id=%s,region=%s",
-		gkeElasticLabels(), username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
+		"username=%s,cluster_name=%s,plan_id=%s,region=%s",
+		username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
 	), nil
 }
 
@@ -258,6 +257,8 @@ func (d *GKEDriver) create() error {
 	if err != nil {
 		return err
 	}
+	labels = fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels)
+
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +

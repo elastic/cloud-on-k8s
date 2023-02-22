@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -154,6 +155,7 @@ func (d *AKSDriver) create() error {
 		servicePrincipal = fmt.Sprintf(" --service-principal %s --client-secret %s", secrets[0], secrets[1])
 	}
 
+	// https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create
 	return azure.Cmd("aks",
 		"create", "--resource-group", d.plan.Aks.ResourceGroup,
 		"--name", d.plan.ClusterName, "--location", d.plan.Aks.Location,
@@ -161,7 +163,7 @@ func (d *AKSDriver) create() error {
 		"--kubernetes-version", d.plan.KubernetesVersion,
 		"--node-osdisk-size", "120", "--enable-addons", "http_application_routing", "--output", "none", "--generate-ssh-keys",
 		"--zones", d.plan.Aks.Zones, servicePrincipal,
-		"--tags", azureElasticTags(),
+		"--tags", strings.Join(toList(elasticTags), " "),
 	).Run()
 }
 

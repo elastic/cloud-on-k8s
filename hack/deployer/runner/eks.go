@@ -73,7 +73,7 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"MachineType":       plan.MachineType,
 			"NodeAMI":           plan.Eks.NodeAMI,
 			"WorkDir":           plan.Eks.WorkDir,
-			"Tags":              eksElasticTags(),
+			"Tags":              elasticTags,
 		},
 	}, nil
 }

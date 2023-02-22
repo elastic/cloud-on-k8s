@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
@@ -385,12 +386,12 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 		return false, err
 	}
 	log.Println("Creating Azure resource group")
+	// https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest#az-group-create
 	err = azure.Cmd("group", "create",
 		"-l", t.plan.Tanzu.Location,
 		"--name", t.plan.Tanzu.ResourceGroup,
-		"--tags", azureElasticTags(),
-	).
-		WithoutStreaming().Run()
+		"--tags", strings.Join(toList(elasticTags), " "),
+	).WithoutStreaming().Run()
 	return true, err
 }
 

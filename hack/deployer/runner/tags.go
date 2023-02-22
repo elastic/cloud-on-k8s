@@ -6,7 +6,6 @@ package runner
 
 import (
 	"fmt"
-	"strings"
 )
 
 var (
@@ -19,27 +18,12 @@ var (
 	}
 )
 
-func toKVList(m map[string]string) []string {
+// toList transforms a map into a slice of string where each element corresponds
+// to an entry in the map represented in the form 'key=value'.
+func toList(m map[string]string) []string {
 	l := []string{}
 	for k, v := range m {
 		l = append(l, fmt.Sprintf("%s=%s", k, v))
 	}
 	return l
-}
-
-// https://eksctl.io/usage/schema/#metadata-tags
-func eksElasticTags() map[string]string {
-	return elasticTags
-}
-
-// https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create
-// https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest#az-group-create
-func azureElasticTags() string {
-	return strings.Join(toKVList(elasticTags), " ")
-}
-
-// https://cloud.google.com/kubernetes-engine/docs/how-to/tags
-// https://cloud.google.com/kubernetes-engine/docs/how-to/creating-managing-labels
-func gkeElasticLabels() string {
-	return strings.Join(toKVList(elasticTags), ",")
 }
