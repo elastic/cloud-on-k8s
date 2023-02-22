@@ -13,9 +13,20 @@ import (
 
 var warnings = []validation{
 	noUnsupportedSettings,
+	validClientAuthentication,
 }
 
+type nodeSetChecker func(*common.CanonicalConfig, int) field.ErrorList
+
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
+	return checkNodeSets(es, validateSettings)
+}
+
+func validClientAuthentication(es esv1.Elasticsearch) field.ErrorList {
+	return checkNodeSets(es, validateClientAuthentication)
+}
+
+func checkNodeSets(es esv1.Elasticsearch, check nodeSetChecker) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
@@ -26,10 +37,35 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
 		}
-		unsupported := config.HasKeys(esv1.UnsupportedSettings)
-		for _, setting := range unsupported {
-			errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(i).Child("config").Child(setting), unsupportedConfigErrMsg))
-		}
+		newErrs := check(config, i)
+		errs = append(errs, newErrs...)
+	}
+	return errs
+}
+
+func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList {
+	var errs field.ErrorList
+	unsupported := config.HasKeys(esv1.UnsupportedSettings)
+	for _, setting := range unsupported {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
+	}
+	return errs
+}
+
+func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
+	type ClientAuthSetting struct {
+		Value string `config:"xpack.security.http.ssl.client_authentication"`
+	}
+	forbiddenValue := "required" // we allow 'none' and 'optional' but 'required' is not supported
+
+	var errs field.ErrorList
+	var setting ClientAuthSetting
+	if err := config.Unpack(&setting); err != nil {
+		return errs
+	}
+	if setting.Value == forbiddenValue {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
+			setting.Value, unsupportedClientAuthenticationMsg))
 	}
 	return errs
 }
