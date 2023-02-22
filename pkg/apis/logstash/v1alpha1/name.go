@@ -13,7 +13,7 @@ const (
 	configSuffix      = "config"
 )
 
-// Namer is a Namer that is configured with the defaults for resources related to an Agent resource.
+// Namer is a Namer that is configured with the defaults for resources related to a Logstash resource.
 var Namer = common_name.NewNamer("ls")
 
 // ConfigSecretName returns the name of a secret used to storage Logstash configuration data.
