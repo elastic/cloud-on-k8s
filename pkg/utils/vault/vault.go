@@ -10,9 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -91,42 +89,27 @@ func (f SecretFile) readFromVault() ([]byte, error) {
 
 	log.Printf("Read secret %s from vault", f.Path)
 
-	var secret *api.Secret
-	if err := retry.Do(
-		func() error {
-			// use the client or create a new one
-			var client = f.client
-			if client == nil {
-				c, err := api.NewClient(api.DefaultConfig())
-				if err != nil {
-					return err
-				}
-				client = c.Logical()
-			}
-
-			// prefix the path with the vault root path environment variable.
-			rootPath := os.Getenv(vaultRootPathEnvVar)
-			if rootPath == "" {
-				rootPath = defaultVaultRootPath
-			}
-
-			// read the secret
-			var err error
-			secret, err = client.Read(fmt.Sprintf("%s/%s", rootPath, f.Path))
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		retry.Attempts(10),
-		retry.Delay(1*time.Second),
-		retry.OnRetry(func(n uint, err error) {
-			log.Printf("retry #%d: %s\n", n, err)
-		}),
-	); err != nil {
-		return nil, err
+	// use the client or create a new one
+	var client = f.client
+	if client == nil {
+		c, err := api.NewClient(api.DefaultConfig())
+		if err != nil {
+			return nil, err
+		}
+		client = c.Logical()
 	}
 
+	// prefix the path with the vault root path environment variable.
+	rootPath := os.Getenv(vaultRootPathEnvVar)
+	if rootPath == "" {
+		rootPath = defaultVaultRootPath
+	}
+
+	// read the secret
+	secret, err := client.Read(fmt.Sprintf("%s/%s", rootPath, f.Path))
+	if err != nil {
+		return nil, err
+	}
 	if secret == nil {
 		return nil, fmt.Errorf("no data found at %s", f.Path)
 	}
