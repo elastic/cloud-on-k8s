@@ -106,9 +106,7 @@ steps:
           memory: "5G"
         commands:
           - buildkite-agent artifact download "root/.kube/config" /
-          - cat /root/.kube/config
-          # - kubectl config use-context eck-bk-e2e-main-$${BUILDKITE_BUILD_NUMBER}
-          - gcloud container clusters get-credentials eck-bk-e2e-main-$${BUILDKITE_BUILD_NUMBER} --region europe-west6 --project elastic-cloud-dev
+          - kubectl config use-context gke_elastic-cloud-dev_europe-west6_eck-bk-e2e-main-$${BUILDKITE_BUILD_NUMBER}
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
           - .buildkite/scripts/common/run-main-e2e-tests.sh
