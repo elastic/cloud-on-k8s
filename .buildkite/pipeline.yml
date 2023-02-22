@@ -87,6 +87,16 @@ steps:
 
       # Run all e2e tests on GKE on every commit in main
 
+      - label: ":k8s: main e2e-tests build cluster"
+        key: "main-e2e-tests-build-cluster"
+        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
+        agents:
+          memory: "5G"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .buildkite/scripts/common/get-test-artifacts.sh
+          - make run-deployer
+
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"
         if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
@@ -101,6 +111,7 @@ steps:
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
+          - "main-e2e-tests-build-cluster"
 
       - label: "cleanup"
         if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
