@@ -106,6 +106,7 @@ steps:
           memory: "5G"
         commands:
           - buildkite-agent artifact download "root/.kube/config" /
+          - ls -l /root/.kube/
           - kubectl config use-context eck-bk-e2e-main-$${BUILDKITE_BUILD_NUMBER}
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
