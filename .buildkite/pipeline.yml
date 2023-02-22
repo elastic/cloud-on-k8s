@@ -20,8 +20,6 @@ steps:
         key: "e2e-tests-image-build"
         agents:
           ephemeralStorage: "20G"
-        depends_on:
-          - "operator-image-build"
         commands:
           - echo "E2E_TAGS $${E2E_TAGS}"
           - .ci/setenvconfig pr
