@@ -105,7 +105,7 @@ steps:
         agents:
           memory: "5G"
         commands:
-          - buildkite-agent artifact download "/root/.kube/config" /
+          - buildkite-agent artifact download "root/.kube/config" /
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
           - .buildkite/scripts/common/run-main-e2e-tests.sh
