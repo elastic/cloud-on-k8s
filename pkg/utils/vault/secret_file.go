@@ -10,24 +10,29 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/hashicorp/vault/api"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
 )
 
 const (
-	vaultAddrEnvVar     = "VAULT_ADDR"
-	vaultTokenEnvVar    = "VAULT_TOKEN"
-	vaultRootPathEnvVar = "VAULT_ROOT_PATH"
+	// inMemory is the name of the file to use to not write it to disk and only keep it in memory
+	inMemory = "in-memory"
 
 	// buildLicensePubKeyPrefixEnvVar allows to prefix the field to retrieve a specific license public key secret
 	buildLicensePubKeyPrefixEnvVar = "BUILD_LICENSE_PUBKEY"
-	defaultVaultRootPath           = "secret/ci/elastic-cloud-on-k8s"
 
-	// inMemory is the name of the file to use to not write it to disk and only keep it in memory
-	inMemory = "in-memory"
+	retryTimeout  = 10 * time.Second
+	retryInterval = 1 * time.Second
 )
 
-// SecretFile maps a Vault Secret into a file that is optionally written to disk
+type vaultClient interface {
+	Read(path string) (*api.Secret, error)
+}
+
+// SecretFile maps a Vault Secret into a file that is optionally written to disk.
 type SecretFile struct {
 	// Name is the name of the file to optionaly write the secret to disk. If the value is 'in-memory' the file is not written to disk.
 	Name string
@@ -68,50 +73,34 @@ func (f SecretFile) Read() ([]byte, error) {
 	return bytes, nil
 }
 
-// LicensePubKeyPrefix prefixes the given field with the value of the build license public key environment variable.
-func LicensePubKeyPrefix(field string) func() string {
-	return func() string {
-		prefix := os.Getenv(buildLicensePubKeyPrefixEnvVar)
-		if prefix != "" {
-			field = fmt.Sprintf("%s-%s", prefix, field)
-		}
-		return field
-	}
-}
-
 func (f SecretFile) readFromVault() ([]byte, error) {
-	if os.Getenv(vaultAddrEnvVar) == "" {
-		return nil, fmt.Errorf("%s must be set", vaultAddrEnvVar)
-	}
-	if os.Getenv(vaultTokenEnvVar) == "" {
-		return nil, fmt.Errorf("%s must be set", vaultTokenEnvVar)
-	}
-
 	log.Printf("Read secret %s from vault", f.Path)
 
-	// use the client or create a new one
-	var client = f.client
-	if client == nil {
-		c, err := api.NewClient(api.DefaultConfig())
-		if err != nil {
-			return nil, err
+	var secret *api.Secret
+	if err := retry.UntilSuccess(func() error {
+		// use the client or create a new one
+		var client = f.client
+		if client == nil {
+			c, err := NewClient()
+			if err != nil {
+				return err
+			}
+			client = c.Logical()
 		}
-		client = c.Logical()
-	}
 
-	// prefix the path with the vault root path environment variable.
-	rootPath := os.Getenv(vaultRootPathEnvVar)
-	if rootPath == "" {
-		rootPath = defaultVaultRootPath
-	}
-
-	// read the secret
-	secret, err := client.Read(fmt.Sprintf("%s/%s", rootPath, f.Path))
-	if err != nil {
+		// read the secret
+		var err error
+		path := fmt.Sprintf("%s/%s", rootPath(), f.Path)
+		secret, err = client.Read(path)
+		if err != nil {
+			return err
+		}
+		if secret == nil {
+			return fmt.Errorf("no data found at %s", path)
+		}
+		return nil
+	}, retryTimeout, retryInterval); err != nil {
 		return nil, err
-	}
-	if secret == nil {
-		return nil, fmt.Errorf("no data found at %s", f.Path)
 	}
 
 	// validate mutual exclusions
@@ -151,6 +140,13 @@ func (f SecretFile) readFromVault() ([]byte, error) {
 	return []byte(stringVal), nil
 }
 
-type vaultClient interface {
-	Read(path string) (*api.Secret, error)
+// LicensePubKeyPrefix is a field resolver that prefixes the given field with the value of the build license public key environment variable.
+func LicensePubKeyPrefix(field string) func() string {
+	return func() string {
+		prefix := os.Getenv(buildLicensePubKeyPrefixEnvVar)
+		if prefix != "" {
+			field = fmt.Sprintf("%s-%s", prefix, field)
+		}
+		return field
+	}
 }
