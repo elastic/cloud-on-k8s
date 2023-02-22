@@ -31,6 +31,8 @@ type Driver interface {
 	Execute() error
 	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
+	// Authenticate authenticates the deployer to the cloud provider.
+	Authenticate() error
 }
 
 func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {

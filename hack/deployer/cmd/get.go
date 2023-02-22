@@ -13,6 +13,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner"
 )
 
+var (
+	authenticate bool
+)
+
 func GetCommand() *cobra.Command {
 	var plansFile, configFile, clientBuildDefDir *string
 	var getCommand = &cobra.Command{
@@ -54,6 +58,12 @@ func GetCommand() *cobra.Command {
 				return err
 			}
 
+			if authenticate {
+				if err := driver.Authenticate(); err != nil {
+					return err
+				}
+			}
+
 			return driver.GetCredentials()
 		},
 	}
@@ -81,6 +91,8 @@ func GetCommand() *cobra.Command {
 			return nil
 		},
 	}
+
+	getCredentialsCommand.Flags().BoolVar(&authenticate, "authenticate", false, "Authenticate the deployer to the cloud provider")
 
 	getCommand.AddCommand(getClusterNameCommand)
 	getCommand.AddCommand(getCredentialsCommand)

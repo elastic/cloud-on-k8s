@@ -86,6 +86,10 @@ func (e *EKSDriver) newCmd(cmd string) *exec.Command {
 		AsTemplate(e.ctx)
 }
 
+func (e *EKSDriver) Authenticate() error {
+	return fmt.Errorf("unimplemented")
+}
+
 func (e *EKSDriver) Execute() error {
 	defer e.runCleanup()
 	if err := e.auth(); err != nil {

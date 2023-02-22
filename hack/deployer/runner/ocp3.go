@@ -59,6 +59,10 @@ func (OCP3DriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
+func (d *OCP3Driver) Authenticate() error {
+	return fmt.Errorf("unimplemented")
+}
+
 func (d OCP3Driver) Execute() error {
 	var err error
 
