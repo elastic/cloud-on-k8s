@@ -108,7 +108,7 @@ tidy:
 	go mod tidy
 
 go-generate:
-	# we use this in pkg/controller/common/license
+	@ # we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
 generate-crds-v1: go-generate controller-gen
@@ -512,7 +512,7 @@ e2e-buildah: go-generate buildah-login
 		$(E2E_IMG)
 
 e2e-run: go-generate
-	@go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
+	go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--e2e-tags='$(E2E_TAGS)' \

@@ -13,7 +13,7 @@ set -o pipefail
 
 ROOT=$(dirname $0)/..
 
-write_env()               { cat > $ROOT/.env; }
+write_env()               { tee $ROOT/.env; }
 write_deployer_config()   { cat > $ROOT/deployer-config.yml; }
 write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
