@@ -50,6 +50,10 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
           env:
+            - name: E2E_JSON
+              value: "{{ .Context.LogToFile }}"
+            - name: E2E_TAGS
+              value: "{{ .Context.E2ETags }}"
             - name: POD_IP
               valueFrom:
                 fieldRef:

@@ -486,8 +486,7 @@ E2E_TAGS += $(GO_TAGS)
 export E2E_TAGS
 
 e2e-docker-build: go-generate
-	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) --build-arg E2E_TAGS='$(E2E_TAGS)' \
-       -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build --progress=plain -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
@@ -497,8 +496,6 @@ e2e-docker-multiarch-build: go-generate
 	docker buildx build \
 		--progress=plain \
 		--file test/e2e/Dockerfile \
-		--build-arg E2E_JSON=$(E2E_JSON) \
-		--build-arg E2E_TAGS='$(E2E_TAGS)' \
 		--platform $(BUILD_PLATFORM) \
 		--push \
 		-t $(E2E_IMG) .
@@ -507,8 +504,6 @@ e2e-buildah: go-generate buildah-login
 	buildah bud \
 		--isolation=chroot --storage-driver=vfs \
 		--platform $(BUILD_PLATFORM) \
-		--build-arg E2E_JSON='$(E2E_JSON)' \
-		--build-arg E2E_TAGS='$(E2E_TAGS)' \
 		-f test/e2e/Dockerfile \
 		-t $(E2E_IMG) \
 		.
@@ -520,6 +515,7 @@ e2e-run: go-generate
 	@go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
+		--e2e-tags='$(E2E_TAGS)' \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \

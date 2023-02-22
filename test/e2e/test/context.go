@@ -122,6 +122,8 @@ type Context struct {
 	ClusterName           string             `json:"clusterName"`
 	KubernetesVersion     version.Version    `json:"kubernetes_version"`
 	TestEnvTags           []string           `json:"test_tags"`
+	E2ETags               string             `json:"e2e_tags"`
+	LogToFile             bool               `json:"log_to_file"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
