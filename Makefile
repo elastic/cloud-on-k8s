@@ -241,9 +241,7 @@ build-operator-image:
 
 build-operator-multiarch-image:
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
-	@ (docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
-	&& docker buildx imagetools inspect $(OPERATOR_DOCKERHUB_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null) \
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 
@@ -382,14 +380,13 @@ BUILD_PLATFORM ?= "linux/amd64,linux/arm64"
 
 buildah-login:
 	@ buildah login \
-		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry)" \
-		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry)" \
+		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
+		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
 		$(REGISTRY)
 
 docker-multiarch-build: go-generate generate-config-file 
 ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -409,7 +406,6 @@ ifeq ($(SNAPSHOT),false)
 		--platform linux/amd64,linux/arm64 \
 		-f Dockerfile.ubi \
 		-t $(OPERATOR_IMAGE_UBI) \
-		-t $(OPERATOR_DOCKERHUB_IMAGE_UBI) \
 		--push
 else
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
