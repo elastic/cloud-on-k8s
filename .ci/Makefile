@@ -20,9 +20,9 @@ endif
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifndef VAULT_TOKEN
 ifdef BUILD_ID
-VAULT_TOKEN = $(shell $(vault) write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+export VAULT_TOKEN = $(shell $(vault) write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 else
-VAULT_TOKEN = $(shell $(vault) write -field=token auth/github/login token=$(GITHUB_TOKEN))
+export VAULT_TOKEN = $(shell $(vault) write -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
 NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml > tmp && mv tmp $(ROOT_DIR)/deployer-config.yml)
 endif
