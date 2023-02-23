@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	LogstashContainerName = "logstash"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
