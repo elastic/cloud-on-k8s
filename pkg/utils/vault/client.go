@@ -6,6 +6,7 @@ package vault
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +103,7 @@ func readCachedToken() (string, error) {
 	}
 	path := filepath.Join(dir, ".vault-token")
 	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil // no cached token present
 	}
 	if err != nil {
