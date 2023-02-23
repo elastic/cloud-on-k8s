@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -19,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -33,16 +30,6 @@ const (
 )
 
 func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (stackmon.BeatSidecar, error) {
-	esRef := logstash.Spec.Monitoring.Metrics.ElasticsearchRefs[0]
-	nsn := types.NamespacedName{
-		Namespace: logstashv1alpha1.GetOrDefaultNamespace(esRef.Namespace),
-		Name:      esRef.Name,
-	}
-	username := user.MonitoringUserName
-	password, err := user.GetMonitoringUserPassword(client, nsn)
-	if err != nil {
-		return stackmon.BeatSidecar{}, err
-	}
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
 		ctx,
 		client,
@@ -52,8 +39,8 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		metricbeatConfigTemplate,
 		logstashv1alpha1.Namer,
 		fmt.Sprintf("%s://localhost:%d", "http" /*logstash.Spec.HTTP.Protocol()*/, network.HTTPPort),
-		username,
-		password,
+		"", /* no username for metrics API */
+		"", /* no password for metrics API */
 		false,
 	)
 	if err != nil {
