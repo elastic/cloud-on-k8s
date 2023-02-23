@@ -21,7 +21,7 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultInfo vault.Info, vaultPath string, serviceAccountVaultFieldName string,
+	vaultInfo vault.Info, vaultPath string, serviceAccountVaultFieldName string, //nolint:unparam
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	//nolint:nestif
