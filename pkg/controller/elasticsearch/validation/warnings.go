@@ -42,19 +42,16 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 }
 
 func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
-	type ClientAuthSetting struct {
-		Value string `config:"xpack.security.http.ssl.client_authentication"`
-	}
 	forbiddenValue := "required" // we allow 'none' and 'optional' but 'required' is not supported
 
 	var errs field.ErrorList
-	var setting ClientAuthSetting
-	if err := config.Unpack(&setting); err != nil {
+	value, err := config.String(esv1.XPackSecurityHttpSslClientAuthentication)
+	if err != nil {
 		return errs
 	}
-	if setting.Value == forbiddenValue {
+	if value == forbiddenValue {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
-			setting.Value, unsupportedClientAuthenticationMsg))
+			value, unsupportedClientAuthenticationMsg))
 	}
 	return errs
 }
