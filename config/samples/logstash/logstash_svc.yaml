@@ -21,7 +21,22 @@ spec:
     log.level: info
     api.http.host: "0.0.0.0"
     queue.type: memory
-  podTemplate:
-    spec:
-      containers:
-        - name: logstash
+  services:
+    - name: metrics
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 9600
+              name: "stats"
+              protocol: TCP
+              targetPort: 9600
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 5044
+              name: "beats"
+              protocol: TCP
+              targetPort: 5044

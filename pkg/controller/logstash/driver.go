@@ -7,11 +7,7 @@ package logstash
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
-
 	"hash/fnv"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -76,7 +71,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	_, err := common.ReconcileService(params.Context, params.Client, newService(params.Logstash), &params.Logstash)
+	_, err := reconcileServices(params)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -89,24 +84,4 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	podTemplate := buildPodTemplate(params, configHash)
 	return reconcileStatefulSet(params, podTemplate)
-}
-
-func newService(logstash logstashv1alpha1.Logstash) *corev1.Service {
-	svc := corev1.Service{
-		ObjectMeta: logstash.Spec.HTTP.Service.ObjectMeta,
-		Spec:       logstash.Spec.HTTP.Service.Spec,
-	}
-
-	svc.ObjectMeta.Namespace = logstash.Namespace
-	svc.ObjectMeta.Name = logstashv1alpha1.HTTPServiceName(logstash.Name)
-
-	labels := logstash.GetIdentityLabels()
-	ports := []corev1.ServicePort{
-		{
-			Name:     logstash.Spec.HTTP.Protocol(),
-			Protocol: corev1.ProtocolTCP,
-			Port:     network.HTTPPort,
-		},
-	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }

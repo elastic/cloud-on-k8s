@@ -34,3 +34,7 @@ func Name(name string) string {
 func HTTPServiceName(name string) string {
 	return Namer.Suffix(name, httpServiceSuffix)
 }
+
+func UserServiceName(deployName string, name string) string {
+	return Namer.Suffix(deployName, name)
+}

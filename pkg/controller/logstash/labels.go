@@ -4,13 +4,26 @@
 
 package logstash
 
+import (
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+)
+
 const (
 	// TypeLabelValue represents the Logstash type.
 	TypeLabelValue = "logstash"
 
-	// NameLabelName used to represent an Logstash in k8s resources
+	// NameLabelName used to represent a Logstash in k8s resources
 	NameLabelName = "logstash.k8s.elastic.co/name"
 
-	// NamespaceLabelName used to represent an Logstash in k8s resources
+	// NamespaceLabelName used to represent a Logstash in k8s resources
 	NamespaceLabelName = "logstash.k8s.elastic.co/namespace"
 )
+
+// NewLabels returns the set of common labels for an Elastic Logstash.
+func NewLabels(logstash logstashv1alpha1.Logstash) map[string]string {
+	return map[string]string{
+		commonv1.TypeLabelName: TypeLabelValue,
+		NameLabelName:          logstash.Name,
+	}
+}

@@ -98,7 +98,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 
 func getDefaultContainerPorts(logstash logstashv1alpha1.Logstash) []corev1.ContainerPort {
 	return []corev1.ContainerPort{
-		{Name: logstash.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
+		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
 	}
 }
 

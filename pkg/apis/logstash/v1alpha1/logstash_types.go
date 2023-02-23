@@ -44,7 +44,7 @@ type LogstashSpec struct {
 	//       a lot like `HTTPConfig`, but is applicable for more than just an HTTP endpoint, as logstash may need to
 	//       be opened up for other services: beats, TCP, UDP, etc, inputs
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	Services []LogstashService `json:"services,omitempty"`
 
 	// PodTemplate provides customisation options for the Logstash pods.
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -62,6 +62,14 @@ type LogstashSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+}
+
+type LogstashService struct {
+	Name string `json:"name,omitempty"`
+	// Service defines the template for the associated Kubernetes Service object.
+	Service commonv1.ServiceTemplate `json:"service,omitempty"`
+	// TLS defines options for configuring TLS for HTTP.
+	TLS commonv1.TLSOptions `json:"tls,omitempty"`
 }
 
 // LogstashStatus defines the observed state of Logstash
