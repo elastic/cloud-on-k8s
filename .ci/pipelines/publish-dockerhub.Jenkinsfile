@@ -18,11 +18,6 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
     }
 
-    parameters {
-        string(name: "DRY_RUN", defaultValue: "true", description: "If true, image is published to docker.elastic.co/eck-dev, otherwise to docker.io")
-        string(name: "ECK_VERSION", defaultValue: "", description: "ECK version to publish")
-    }
-
     stages {
         stage("Publish ECK to Docker Hub") {
             steps {
