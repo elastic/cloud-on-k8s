@@ -124,6 +124,42 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			},
 			expectErrors: true,
 		},
+		{
+			name: "supported client auth setting and value combination OK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]interface{}{
+									esv1.XPackSecurityHttpSslClientAuthentication: "optional",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "unsupported client auth setting and value combination",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]interface{}{
+									esv1.XPackSecurityHttpSslClientAuthentication: "required",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
