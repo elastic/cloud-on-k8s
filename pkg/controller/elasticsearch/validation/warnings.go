@@ -13,20 +13,9 @@ import (
 
 var warnings = []validation{
 	noUnsupportedSettings,
-	validClientAuthentication,
 }
-
-type nodeSetChecker func(*common.CanonicalConfig, int) field.ErrorList
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
-	return checkNodeSets(es, validateSettings)
-}
-
-func validClientAuthentication(es esv1.Elasticsearch) field.ErrorList {
-	return checkNodeSets(es, validateClientAuthentication)
-}
-
-func checkNodeSets(es esv1.Elasticsearch, check nodeSetChecker) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
@@ -37,8 +26,8 @@ func checkNodeSets(es esv1.Elasticsearch, check nodeSetChecker) field.ErrorList 
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
 		}
-		newErrs := check(config, i)
-		errs = append(errs, newErrs...)
+		errs = append(errs, validateSettings(config, i)...)
+		errs = append(errs, validateClientAuthentication(config, i)...)
 	}
 	return errs
 }

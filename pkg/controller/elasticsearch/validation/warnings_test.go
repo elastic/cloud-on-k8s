@@ -124,26 +124,8 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			},
 			expectErrors: true,
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual := noUnsupportedSettings(tt.es)
-			actualErrors := len(actual) > 0
-			if tt.expectErrors != actualErrors {
-				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
-			}
-		})
-	}
-}
-
-func Test_validateClientAuthentication(t *testing.T) {
-	tests := []struct {
-		name         string
-		es           esv1.Elasticsearch
-		expectErrors bool
-	}{
 		{
-			name: "supported setting and value combination OK",
+			name: "supported client auth setting and value combination OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -161,7 +143,7 @@ func Test_validateClientAuthentication(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "unsupported setting and value combination",
+			name: "unsupported client auth setting and value combination",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -181,7 +163,7 @@ func Test_validateClientAuthentication(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := validClientAuthentication(tt.es)
+			actual := noUnsupportedSettings(tt.es)
 			actualErrors := len(actual) > 0
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
