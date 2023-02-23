@@ -30,7 +30,7 @@ type Params struct {
 	RevisionHistoryLimit *int32
 }
 
-func New(params Params) (appsv1.StatefulSet, error) {
+func New(params Params) appsv1.StatefulSet {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      params.Name,
@@ -59,7 +59,7 @@ func New(params Params) (appsv1.StatefulSet, error) {
 	// store a hash of the sset resource in its labels for comparison purposes
 	sset.Labels = hash.SetTemplateHashLabel(sset.Labels, sset.Spec)
 
-	return sset, nil
+	return sset
 }
 
 // Reconcile creates or updates the expected StatefulSet.
