@@ -69,10 +69,6 @@ func (a *Logstash) validate(old *Logstash) error {
 				errors = append(errors, err...)
 			}
 		}
-
-		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, a.Name, errors)
-		}
 	}
 
 	for _, dc := range defaultChecks {
