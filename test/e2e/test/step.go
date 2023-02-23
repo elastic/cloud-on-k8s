@@ -92,7 +92,11 @@ func initGSUtil() {
 
 func runECKDiagnostics(ctx Context, testName string, step Step) {
 	otherNS := append([]string{ctx.E2ENamespace}, ctx.Operator.ManagedNamespaces...)
+	// The following appends the test, and it's sub-test names together with a '-'.
+	// Example: For TestAutoscalingLegacy/Secrets_should_eventually_be_created:
+	// testName: TestAutoscalingLegacy, step.Name: Secrets_should_eventually_be_created
 	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
+	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
 	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	cmd.Stdout = os.Stdout
@@ -128,6 +132,7 @@ func ensureTmpHomeEnv(env []string) []string {
 	return env
 }
 
+// This simulates "kubectl delete elastic" in the e2e namespace.
 func deleteElasticResources() error {
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
