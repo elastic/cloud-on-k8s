@@ -12,16 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Read(t *testing.T) {
+func Test_ReadFile(t *testing.T) {
+	c := newMockClient(t, "key", "42")
 	f := SecretFile{
 		Name:          "test.json",
 		Path:          "test",
 		FieldResolver: func() string { return "key" },
-		client: newMockVaultClient(t,
-			map[string]interface{}{
-				"key": "42",
-			},
-		),
 	}
 	// garbage the file when the test is complete
 	t.Cleanup(func() {
@@ -33,9 +29,9 @@ func Test_Read(t *testing.T) {
 	assert.Error(t, err)
 
 	// load the secret file
-	bytes, err := f.Read()
+	bytes, err := ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, readCount(f.client))
+	assert.Equal(t, 1, readCount(c))
 	assert.Equal(t, `42`, string(bytes))
 
 	// check that the file exists
@@ -47,9 +43,9 @@ func Test_Read(t *testing.T) {
 	assert.NoError(t, err)
 
 	// load the file to checlk we read the new content and don't read in vault
-	bytes, err = f.Read()
+	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, readCount(f.client))
+	assert.Equal(t, 1, readCount(c))
 	assert.Equal(t, `new_content`, string(bytes))
 
 	// check that the file exists
@@ -61,9 +57,9 @@ func Test_Read(t *testing.T) {
 	assert.NoError(t, err)
 
 	// load again from vault to read the initial value
-	bytes, err = f.Read()
+	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, readCount(f.client))
+	assert.Equal(t, 2, readCount(c))
 	assert.Equal(t, `42`, string(bytes))
 
 	// delete the file
@@ -72,9 +68,9 @@ func Test_Read(t *testing.T) {
 
 	// load in-memory
 	f.Name = "in-memory"
-	bytes, err = f.Read()
+	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, readCount(f.client))
+	assert.Equal(t, 3, readCount(c))
 	assert.Equal(t, `42`, string(bytes))
 
 	// check that the file does not exist
@@ -83,129 +79,126 @@ func Test_Read(t *testing.T) {
 }
 
 func Test_LicensePubKeyPrefix(t *testing.T) {
+	c := newMockClient(t,
+		"secret", "s3cr3t",
+		"special-secret", "sp3c!@l",
+	)
 	f := SecretFile{
 		Name:          "in-memory",
 		Path:          "test",
 		FieldResolver: LicensePubKeyPrefix("secret"),
-		client: newMockVaultClient(t,
-			map[string]interface{}{
-				"secret":         "s3cr3t",
-				"special-secret": "sp3c!@l",
-			},
-		),
 	}
 
 	// happy path
-	bytes, err := f.Read()
+	bytes, err := ReadFile(c, f)
 	assert.NoError(t, err)
 	assert.Equal(t, "s3cr3t", string(bytes))
 
 	// happy path with the env var
 	t.Setenv("BUILD_LICENSE_PUBKEY", "special")
-	bytes, err = f.Read()
+	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
 	assert.Equal(t, "sp3c!@l", string(bytes))
 
 	// error if the field is not found
 	t.Setenv("BUILD_LICENSE_PUBKEY", "bad")
-	_, err = f.Read()
+	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 }
 
 func Test_SecretFile_Base64Encoded(t *testing.T) {
+	c := newMockClient(t, "f", "eyJ5b3BsYSI6ImJvdW0ifQ==")
 	f := SecretFile{
 		Name:          "in-memory",
 		Path:          "test",
 		FieldResolver: func() string { return "f" },
 		Base64Encoded: true,
-		client: newMockVaultClient(t,
-			map[string]interface{}{
-				"f": "eyJ5b3BsYSI6ImJvdW0ifQ==",
-			},
-		),
 	}
 
 	// happy path: decode
-	bytes, err := f.Read()
+	bytes, err := ReadFile(c, f)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"yopla":"boum"}`, string(bytes))
 
 	// happy path: not decode
 	f.Base64Encoded = false
-	bytes, err = f.Read()
+	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
 	assert.Equal(t, `eyJ5b3BsYSI6ImJvdW0ifQ==`, string(bytes))
 
 	// error if format JSON is set
 	f.FormatJSON = true
-	_, err = f.Read()
+	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 	// rollback
 	f.FormatJSON = false
 
 	// error if FieldResolver is not set
 	f.FieldResolver = nil
-	_, err = f.Read()
+	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 	// rollback
 	f.FieldResolver = func() string { return "f" }
 
 	// error if the secret is not in base64
 	f.Base64Encoded = true
-	f.client = newMockVaultClient(t,
-		map[string]interface{}{
-			"f": "notbase64",
-		},
-	)
-	_, err = f.Read()
+	c = newMockClient(t, "f", "notbase64")
+	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 }
 
 func Test_SecretFile_FormatJson(t *testing.T) {
+	c := newMockClient(t,
+		"a", "1",
+		"b", "2",
+	)
+
 	f := SecretFile{
 		Name:       "in-memory",
 		Path:       "test",
 		FormatJSON: true,
-		client: newMockVaultClient(t,
-			map[string]interface{}{
-				"a": "1",
-				"b": "2",
-			},
-		),
 	}
 
 	// happy path
-	bytes, err := f.Read()
+	bytes, err := ReadFile(c, f)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"a":"1","b":"2"}`, string(bytes))
 
 	// error if FieldResolver is set
 	f.FieldResolver = func() string { return "a" }
-	_, err = f.Read()
+	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 }
 
-type mockVaultClient struct {
+type mockClient struct {
 	data      map[string]interface{}
 	readCount int
 }
 
-func newMockVaultClient(t *testing.T, data map[string]interface{}) vaultClient {
+func newMockClient(t *testing.T, data ...string) Client {
 	t.Helper()
-	t.Setenv("VAULT_TOKEN", "0")
-	t.Setenv("VAULT_ADDR", "secr.ets")
-	return &mockVaultClient{
-		data:      data,
+
+	if len(data)%2 != 0 {
+		t.Fatal("length of data must be an even number")
+	}
+
+	dataMap := map[string]interface{}{}
+	for i := 0; i < len(data); i += 2 {
+		dataMap[data[i]] = data[i+1]
+	}
+
+	return &mockClient{
+		data:      dataMap,
 		readCount: 0,
 	}
 }
 
-func (c *mockVaultClient) Read(path string) (*api.Secret, error) {
+func (c *mockClient) Read(path string) (*api.Secret, error) {
 	c.readCount++
 	return &api.Secret{Data: c.data}, nil
 }
 
-func readCount(c vaultClient) int {
-	m, _ := c.(*mockVaultClient)
+func readCount(c Client) int {
+	m, _ := c.(*mockClient)
 	return m.readCount
 }

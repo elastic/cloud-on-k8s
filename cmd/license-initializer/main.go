@@ -32,12 +32,15 @@ var Cmd = &cobra.Command{
 			handleErr(fmt.Errorf("%s is a required environment variable pointing to a DER encoded public key", pubKeyFlag))
 		}
 
-		bytes, err := vault.SecretFile{
+		c, err := vault.NewClient()
+		handleErr(err)
+
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          pubkeyFile,
 			Path:          "license",
 			FieldResolver: vault.LicensePubKeyPrefix("pubkey"),
 			Base64Encoded: true,
-		}.Read()
+		})
 		handleErr(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
 
 		outFile := viper.GetString(outFileFlag)

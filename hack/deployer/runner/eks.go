@@ -193,7 +193,7 @@ func (e *EKSDriver) auth() error {
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
 func (e *EKSDriver) fetchSecrets() error {
-	client, err := vault.NewClient()
+	c, err := vault.NewClient()
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func (e *EKSDriver) fetchSecrets() error {
 		"access-key":       awsAccessKeyID,
 		"secret-key":       awsSecretAccessKey,
 	} {
-		val, err := client.Get(EKSVaultPath, vaultKey)
+		val, err := vault.Get(c, EKSVaultPath, vaultKey)
 		if err != nil {
 			return err
 		}

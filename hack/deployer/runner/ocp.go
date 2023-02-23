@@ -89,11 +89,17 @@ type runtimeState struct {
 type OCPDriver struct {
 	plan         Plan
 	runtimeState runtimeState
+	vaultClient  vault.Client
 }
 
 func (*OCPDriverFactory) Create(plan Plan) (Driver, error) {
+	c, err := vault.NewClient()
+	if err != nil {
+		return nil, err
+	}
 	return &OCPDriver{
-		plan: plan,
+		plan:        plan,
+		vaultClient: c,
 	}, nil
 }
 
@@ -234,11 +240,7 @@ func (d *OCPDriver) ensureClientImage() error {
 
 func (d *OCPDriver) ensurePullSecret() error {
 	if d.plan.Ocp.PullSecret == "" {
-		client, err := vault.NewClient()
-		if err != nil {
-			return err
-		}
-		s, err := client.Get(OCPVaultPath, OCPPullSecretFieldName)
+		s, err := vault.Get(d.vaultClient, OCPVaultPath, OCPPullSecretFieldName)
 		if err != nil {
 			return err
 		}
@@ -294,7 +296,7 @@ func (d *OCPDriver) authToGCP() error {
 	}
 
 	if err := authToGCP(
-		OCPVaultPath, OCPServiceAccountVaultFieldName,
+		d.vaultClient, OCPVaultPath, OCPServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.plan.Ocp.GCloudProject,
 	); err != nil {
 		return err

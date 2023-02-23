@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/vault/api"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
 )
 
 const (
@@ -19,8 +21,8 @@ const (
 )
 
 // Get fetches contents of a single field at a specified path in Vault
-func (c *Client) Get(secretPath string, fieldName string) (string, error) {
-	result, err := c.GetMany(secretPath, fieldName)
+func Get(c Client, secretPath string, fieldName string) (string, error) {
+	result, err := GetMany(c, secretPath, fieldName)
 	if err != nil {
 		return "", err
 	}
@@ -30,8 +32,12 @@ func (c *Client) Get(secretPath string, fieldName string) (string, error) {
 
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
-func (c *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
-	secret, err := c.read(secretPath)
+func GetMany(c Client, secretPath string, fieldNames ...string) ([]string, error) {
+	secretPath = filepath.Join(rootPath(), secretPath)
+	secret, err := read(c, secretPath)
+	if secret == nil {
+		return nil, fmt.Errorf("no data found at %s", secretPath)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +60,22 @@ func (c *Client) GetMany(secretPath string, fieldNames ...string) ([]string, err
 	return result, nil
 }
 
-// read reads data from Vault at the given relative path appended to the root path configured at the client level.
-// An error is returned if no data is found.
-func (c *Client) read(relativeSecretPath string) (*api.Secret, error) {
-	absoluteSecretPath := filepath.Join(rootPath(), relativeSecretPath)
-	secret, err := c.Logical().Read(absoluteSecretPath)
-	if secret == nil {
-		return nil, fmt.Errorf("no data found at %s", absoluteSecretPath)
+func read(c Client, secretPath string) (*api.Secret, error) {
+	var secret *api.Secret
+	if err := retry.UntilSuccess(func() error {
+		var err error
+		secret, err = c.Read(secretPath)
+		if err != nil {
+			return err
+		}
+		if secret == nil {
+			return fmt.Errorf("no data found at %s", secretPath)
+		}
+		return nil
+	}, retryTimeout, retryInterval); err != nil {
+		return nil, err
 	}
-	return secret, err
+	return secret, nil
 }
 
 func rootPath() string {

@@ -254,42 +254,46 @@ func isOcp3Cluster(h *helper) bool {
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 
+	c, err := vault.NewClient()
+	if err != nil {
+		return err
+	}
+
 	if h.testLicense != "" {
-		bytes, err := vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          h.testLicense,
 			Path:          "test-licenses",
 			FieldResolver: vault.LicensePubKeyPrefix("enterprise"),
-		}.Read()
+		})
 		if err != nil {
-			return fmt.Errorf("reading %v: %w", h.testLicense, err)
+			return err
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
 	}
 
 	if h.testLicensePKeyPath != "" {
-		bytes, err := vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          h.testLicensePKeyPath,
 			Path:          "license",
 			FieldResolver: func() string { return "dev-privkey" },
 			Base64Encoded: true,
-		}.Read()
+		})
 		if err != nil {
-			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
+			return err
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
 		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
 	}
 
 	if h.monitoringSecrets != "" {
-		f := vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:       h.monitoringSecrets,
 			Path:       "monitoring-cluster",
 			FormatJSON: true,
-		}
-		bytes, err := f.Read()
+		})
 		if err != nil {
-			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
+			return err
 		}
 
 		monitoringSecrets := struct {

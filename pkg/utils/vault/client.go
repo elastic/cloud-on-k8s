@@ -21,11 +21,11 @@ const (
 	ghTokenEnvVar = "GITHUB_TOKEN" //nolint:gosec
 )
 
-type Client struct {
-	*api.Client
+type Client interface {
+	Read(path string) (*api.Secret, error)
 }
 
-func NewClient() (*Client, error) {
+func NewClient() (Client, error) {
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func NewClient() (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{client}, nil
+	return client.Logical(), nil
 }
 
 // auth fetches the token using approle (with role id and secret id) or github (with token)

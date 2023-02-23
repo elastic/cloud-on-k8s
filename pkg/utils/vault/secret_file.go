@@ -10,11 +10,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
-
-	"github.com/hashicorp/vault/api"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
 )
 
 const (
@@ -27,10 +24,6 @@ const (
 	retryTimeout  = 10 * time.Second
 	retryInterval = 1 * time.Second
 )
-
-type vaultClient interface {
-	Read(path string) (*api.Secret, error)
-}
 
 // SecretFile maps a Vault Secret into a file that is optionally written to disk.
 type SecretFile struct {
@@ -45,20 +38,16 @@ type SecretFile struct {
 	FieldResolver func() string
 	// Base64Encoded indicates if the secret needs to be decoded. It is only usable with FieldResolver is set.
 	Base64Encoded bool
-
-	// client is the client to connect to Vault.
-	// Exposing it here allows you to inject a mock for testing.
-	client vaultClient
 }
 
-// Read reads the file if it exists or else reads the Secret from Vault and
+// ReadFile reads the file if it exists or else reads the Secret from Vault and
 // writes it to the file on disk.
-func (f SecretFile) Read() ([]byte, error) {
+func ReadFile(c Client, f SecretFile) ([]byte, error) {
 	if _, err := os.Stat(f.Name); err == nil {
 		return os.ReadFile(f.Name)
 	}
 
-	bytes, err := f.readFromVault()
+	bytes, err := f.readFromVault(c)
 	if err != nil {
 		return nil, err
 	}
@@ -73,33 +62,12 @@ func (f SecretFile) Read() ([]byte, error) {
 	return bytes, nil
 }
 
-func (f SecretFile) readFromVault() ([]byte, error) {
-	log.Printf("Read secret %s from vault", f.Path)
+func (f SecretFile) readFromVault(c Client) ([]byte, error) {
+	log.Printf("Read %s from vault", f.Path)
 
-	var secret *api.Secret
-	if err := retry.UntilSuccess(func() error {
-		// use the client or create a new one
-		var client = f.client
-		if client == nil {
-			c, err := NewClient()
-			if err != nil {
-				return err
-			}
-			client = c.Logical()
-		}
-
-		// read the secret
-		var err error
-		path := fmt.Sprintf("%s/%s", rootPath(), f.Path)
-		secret, err = client.Read(path)
-		if err != nil {
-			return err
-		}
-		if secret == nil {
-			return fmt.Errorf("no data found at %s", path)
-		}
-		return nil
-	}, retryTimeout, retryInterval); err != nil {
+	secretPath := filepath.Join(rootPath(), f.Path)
+	secret, err := read(c, secretPath)
+	if err != nil {
 		return nil, err
 	}
 
@@ -124,11 +92,11 @@ func (f SecretFile) readFromVault() ([]byte, error) {
 	var ok bool
 	val, ok := secret.Data[field]
 	if !ok {
-		return nil, fmt.Errorf("field %s not found at %s", field, f.Path)
+		return nil, fmt.Errorf("field %s not found at %s", field, secretPath)
 	}
 	stringVal, ok := val.(string)
 	if !ok {
-		return nil, fmt.Errorf("secret %s is not a string", f.Path)
+		return nil, fmt.Errorf("secret %s is not a string", secretPath)
 	}
 
 	// decode from Base64 encoded and return
@@ -140,7 +108,7 @@ func (f SecretFile) readFromVault() ([]byte, error) {
 	return []byte(stringVal), nil
 }
 
-// LicensePubKeyPrefix is a field resolver that prefixes the given field with the value of the build license public key environment variable.
+// LicensePubKeyPrefix is a specific field resolver that prefixes the given field with the value of the build license public key environment variable.
 func LicensePubKeyPrefix(field string) func() string {
 	return func() string {
 		prefix := os.Getenv(buildLicensePubKeyPrefixEnvVar)

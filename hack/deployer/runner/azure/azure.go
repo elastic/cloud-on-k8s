@@ -25,8 +25,8 @@ const (
 	azureClientImage = "mcr.microsoft.com/azure-cli"
 )
 
-func NewCredentials(client *vault.Client) (Credentials, error) {
-	creds, err := client.GetMany(AKSVaultPath, "appId", "password", "tenant", "subscription")
+func NewCredentials(c vault.Client) (Credentials, error) {
+	creds, err := vault.GetMany(c, AKSVaultPath, "appId", "password", "tenant", "subscription")
 	if err != nil {
 		return Credentials{}, err
 	}

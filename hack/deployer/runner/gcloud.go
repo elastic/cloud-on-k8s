@@ -21,7 +21,7 @@ const (
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
 func authToGCP(
-	vaultPath string, serviceAccountVaultFieldName string,
+	client vault.Client, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
 ) error {
 	//nolint:nestif
@@ -34,11 +34,11 @@ func authToGCP(
 			return err
 		}
 
-		_, err := vault.SecretFile{
+		_, err := vault.ReadFile(client, vault.SecretFile{
 			Path:          vaultPath,
 			Name:          keyFileName,
 			FieldResolver: func() string { return serviceAccountVaultFieldName },
-		}.Read()
+		})
 		if err != nil {
 			return err
 		}
