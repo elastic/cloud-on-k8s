@@ -241,9 +241,7 @@ build-operator-image:
 
 build-operator-multiarch-image:
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
-	@ (docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
-	&& docker buildx imagetools inspect $(OPERATOR_DOCKERHUB_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null) \
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 
@@ -382,14 +380,13 @@ BUILD_PLATFORM ?= "linux/amd64,linux/arm64"
 
 buildah-login:
 	@ buildah login \
-		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry)" \
-		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry)" \
+		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
+		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
 		$(REGISTRY)
 
 docker-multiarch-build: go-generate generate-config-file 
 ifeq ($(SNAPSHOT),false)
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ hack/docker.sh -l -m $(OPERATOR_DOCKERHUB_IMAGE)
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -409,7 +406,6 @@ ifeq ($(SNAPSHOT),false)
 		--platform linux/amd64,linux/arm64 \
 		-f Dockerfile.ubi \
 		-t $(OPERATOR_IMAGE_UBI) \
-		-t $(OPERATOR_DOCKERHUB_IMAGE_UBI) \
 		--push
 else
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
@@ -486,8 +482,7 @@ E2E_TAGS += $(GO_TAGS)
 export E2E_TAGS
 
 e2e-docker-build: go-generate
-	DOCKER_BUILDKIT=1 docker build --progress=plain --build-arg E2E_JSON=$(E2E_JSON) --build-arg E2E_TAGS='$(E2E_TAGS)' \
-       -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build --progress=plain -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
@@ -497,8 +492,6 @@ e2e-docker-multiarch-build: go-generate
 	docker buildx build \
 		--progress=plain \
 		--file test/e2e/Dockerfile \
-		--build-arg E2E_JSON=$(E2E_JSON) \
-		--build-arg E2E_TAGS='$(E2E_TAGS)' \
 		--platform $(BUILD_PLATFORM) \
 		--push \
 		-t $(E2E_IMG) .
@@ -507,8 +500,6 @@ e2e-buildah: go-generate buildah-login
 	buildah bud \
 		--isolation=chroot --storage-driver=vfs \
 		--platform $(BUILD_PLATFORM) \
-		--build-arg E2E_JSON='$(E2E_JSON)' \
-		--build-arg E2E_TAGS='$(E2E_TAGS)' \
 		-f test/e2e/Dockerfile \
 		-t $(E2E_IMG) \
 		.
@@ -517,9 +508,10 @@ e2e-buildah: go-generate buildah-login
 		$(E2E_IMG)
 
 e2e-run: go-generate
-	@go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
+	go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
+		--e2e-tags='$(E2E_TAGS)' \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
