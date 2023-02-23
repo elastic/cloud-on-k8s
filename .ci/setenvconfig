@@ -13,7 +13,7 @@ set -o pipefail
 
 ROOT=$(dirname $0)/..
 
-write_env()               { cat > $ROOT/.env; }
+write_env()               { tee $ROOT/.env; }
 write_deployer_config()   { cat > $ROOT/deployer-config.yml; }
 write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
@@ -98,6 +98,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=aks
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: aks-ci
@@ -213,6 +214,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -258,6 +260,7 @@ E2E_PROVIDER=kind
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="kind,$ipFamily"
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: kind-ci
@@ -304,6 +307,7 @@ CLUSTER_NAME=${clusterName}
 TESTS_MATCH=$TESTS_MATCH
 TEST_OPTS=-race
 E2E_TAGS=$E2E_TAGS
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -345,6 +349,7 @@ E2E_PROVIDER=gke
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -385,6 +390,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
@@ -502,6 +508,7 @@ CLUSTER_NAME=${clusterName}
 KUBERNETES_VERSION=default
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="arch:arm"
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: eks-arm-ci
@@ -539,6 +546,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=tanzu
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: tanzu-ci
@@ -583,6 +591,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci

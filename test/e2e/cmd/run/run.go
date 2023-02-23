@@ -192,6 +192,8 @@ func (h *helper) initTestContext() error {
 		Ocp3Cluster:           isOcp3Cluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 		TestEnvTags:           h.testEnvTags,
+		E2ETags:               h.e2eTags,
+		LogToFile:             h.logToFile,
 	}
 
 	for i, ns := range h.managedNamespaces {

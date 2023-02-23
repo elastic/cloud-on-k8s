@@ -50,6 +50,7 @@ type runFlags struct {
 	logToFile              bool
 	ignoreWebhookFailures  bool
 	deployChaosJob         bool
+	e2eTags                string
 	testEnvTags            []string
 }
 
@@ -107,6 +108,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	cmd.Flags().BoolVar(&flags.ignoreWebhookFailures, "ignore-webhook-failures", false, "Specifies if webhook errors should be ignored. Useful when running test locally. False by default")
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
+	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
 	logutil.BindFlags(cmd.PersistentFlags())
 
