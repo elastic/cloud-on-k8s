@@ -17,6 +17,11 @@ install_docker_extension() {
     chmod a+x ~/.docker/cli-plugins/docker-buildx
 }
 
+vault_login() {
+    VAULT_TOKEN=$(vault write -field=token auth/approle/login role_id="${VAULT_ROLE_ID}" secret_id="${VAULT_SECRET_ID}")
+    export VAULT_TOKEN
+}
+
 registry_login() {
     DOCKERHUB_LOGIN=$(vault read -field=username secret/release/docker-hub-eck)
     DOCKERHUB_PASSWORD=$(vault read -field=token secret/release/docker-hub-eck)
@@ -44,6 +49,7 @@ if [[ "${DRY_RUN:-}" == "false" ]]; then
 fi
 
 install_docker_extension
+vault_login
 registry_login
 
 publish eck-operator
