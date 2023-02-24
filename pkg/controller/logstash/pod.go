@@ -73,7 +73,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
-	ports := getDefaultContainerPorts(params.Logstash)
+	ports := getDefaultContainerPorts()
 
 	builder = builder.
 		WithResources(DefaultResources).
@@ -96,7 +96,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 	return builder.PodTemplate
 }
 
-func getDefaultContainerPorts(logstash logstashv1alpha1.Logstash) []corev1.ContainerPort {
+func getDefaultContainerPorts() []corev1.ContainerPort {
 	return []corev1.ContainerPort{
 		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
 	}

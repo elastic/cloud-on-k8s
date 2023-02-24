@@ -49,7 +49,7 @@ func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("fail to request %s, status is %d)\n", path, resp.StatusCode)
+		return nil, fmt.Errorf("fail to request %s, status is %d)", path, resp.StatusCode)
 	}
 	return io.ReadAll(resp.Body)
 }

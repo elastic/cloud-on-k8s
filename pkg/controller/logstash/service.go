@@ -5,12 +5,13 @@
 package logstash
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // reconcileServices reconcile Services defined in spec
@@ -26,20 +27,20 @@ func reconcileServices(params Params) ([]corev1.Service, error) {
 		}
 
 		return []corev1.Service{*svc}, nil
-	} else {
-		var svcs []corev1.Service
-		for _, service := range params.Logstash.Spec.Services {
-			svc := newService(service, params.Logstash)
+	}
 
-			if err := reconcileService(params, svc); err != nil {
-				return []corev1.Service{}, err
-			}
+	svcs := make([]corev1.Service, len(params.Logstash.Spec.Services))
+	for i, service := range params.Logstash.Spec.Services {
+		svc := newService(service, params.Logstash)
 
-			svcs = append(svcs, *svc)
+		if err := reconcileService(params, svc); err != nil {
+			return []corev1.Service{}, err
 		}
 
-		return svcs, nil
+		svcs[i] = *svc
 	}
+
+	return svcs, nil
 }
 
 func reconcileService(params Params, service *corev1.Service) error {
