@@ -25,8 +25,8 @@ func TestHTTPService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HTTPServiceName(tt.args.logstashName); got != tt.want {
-				t.Errorf("HTTPService() = %v, want %v", got, tt.want)
+			if got := DefaultServiceName(tt.args.logstashName); got != tt.want {
+				t.Errorf("DefaultService() = %v, want %v", got, tt.want)
 			}
 		})
 	}

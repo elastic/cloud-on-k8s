@@ -33,7 +33,7 @@ func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Cli
 func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path string) ([]byte, error) {
 	scheme := "http"
 
-	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:9600%s", scheme, v1alpha1.HTTPServiceName(logstash.Name), logstash.Namespace, path))
+	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:9600%s", scheme, v1alpha1.DefaultServiceName(logstash.Name), logstash.Namespace, path))
 	if err != nil {
 		return nil, fmt.Errorf("while parsing URL: %w", err)
 	}

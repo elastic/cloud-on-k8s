@@ -74,11 +74,11 @@ func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alp
 func newDefaultService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{},
-		Spec:       corev1.ServiceSpec{},
+		Spec:       corev1.ServiceSpec{ClusterIP: "None"},
 	}
 
 	svc.ObjectMeta.Namespace = logstash.Namespace
-	svc.ObjectMeta.Name = logstashv1alpha1.HTTPServiceName(logstash.Name)
+	svc.ObjectMeta.Name = logstashv1alpha1.DefaultServiceName(logstash.Name)
 
 	labels := NewLabels(logstash)
 	ports := []corev1.ServicePort{

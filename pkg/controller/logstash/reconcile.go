@@ -31,7 +31,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	s := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
-		ServiceName:          logstashv1alpha1.HTTPServiceName(params.Logstash.Name),
+		ServiceName:          logstashv1alpha1.DefaultServiceName(params.Logstash.Name),
 		Selector:             params.Logstash.GetIdentityLabels(),
 		Labels:               params.Logstash.GetIdentityLabels(),
 		PodTemplateSpec:      podTemplate,
