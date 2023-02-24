@@ -90,7 +90,6 @@ steps:
           memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
