@@ -95,7 +95,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 
 func (d *GKEDriver) Authenticate() error {
 	return authToGCP(
-		d.plan.VaultInfo, GKEVaultPath, GKEServiceAccountVaultFieldName,
+		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
 	)
 }
