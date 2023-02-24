@@ -18,13 +18,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
+func reconcileConfig(params Params, configHash hash.Hash) error {
 	defer tracing.Span(&params.Context)()
-	results := reconciler.NewResult(params.Context)
 
 	cfgBytes, err := buildConfig(params)
 	if err != nil {
-		return results.WithError(err)
+		return err
 	}
 
 	expected := corev1.Secret{
@@ -39,12 +38,12 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
-		return results.WithError(err)
+		return err
 	}
 
 	_, _ = configHash.Write(cfgBytes)
 
-	return results
+	return nil
 }
 
 func buildConfig(params Params) ([]byte, error) {

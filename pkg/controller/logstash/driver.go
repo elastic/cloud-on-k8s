@@ -78,8 +78,8 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	configHash := fnv.New32a()
 
-	if res := reconcileConfig(params, configHash); res.HasError() {
-		return results.WithResults(res), params.Status
+	if err := reconcileConfig(params, configHash); err != nil {
+		return results.WithError(err), params.Status
 	}
 
 	podTemplate := buildPodTemplate(params, configHash)
