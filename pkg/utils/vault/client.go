@@ -17,6 +17,7 @@ import (
 
 const (
 	addrEnvVar    = "VAULT_ADDR"
+	tokenEnvVar   = "VAULT_TOKEN"
 	roleIDEnvVar  = "VAULT_ROLE_ID"
 	secretEnvVar  = "VAULT_SECRET_ID"
 	ghTokenEnvVar = "GITHUB_TOKEN" //nolint:gosec
@@ -71,20 +72,20 @@ func auth(c *api.Client) error {
 		var err error
 		token, err = readCachedToken()
 		if err != nil {
-			return errors.Wrap(err, "failed to read cached token")
+			return errors.Wrap(err, "while reading cached token")
 		}
 		if token == "" {
-			return fmt.Errorf("set VAULT_TOKEN or VAULT_ROLE_ID/VAULT_SECRET_ID or GITHUB_TOKEN or run `vault login`")
+			return fmt.Errorf("set %s or %s/%s or %s or run `vault login`", tokenEnvVar, roleIDEnvVar, secretEnvVar, ghTokenEnvVar)
 		}
 	}
 
 	if token == "" {
 		resp, err := c.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
 		if err != nil {
-			return errors.Wrapf(err, "failed to vault login using method %s", method)
+			return errors.Wrapf(err, "while logging into vault using method %s", method)
 		}
 		if resp.Auth == nil {
-			return fmt.Errorf("failed to vault login: no auth info in response")
+			return fmt.Errorf("while logging into vault: no auth info in response")
 		}
 		token = resp.Auth.ClientToken
 	}

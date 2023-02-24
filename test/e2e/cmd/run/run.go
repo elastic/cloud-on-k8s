@@ -268,7 +268,7 @@ func (h *helper) initTestSecrets() error {
 			FieldResolver: vault.LicensePubKeyPrefix("enterprise"),
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
@@ -282,7 +282,7 @@ func (h *helper) initTestSecrets() error {
 			Base64Encoded: true,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
 		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
@@ -295,7 +295,7 @@ func (h *helper) initTestSecrets() error {
 			FormatJSON: true,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
 		}
 
 		monitoringSecrets := struct {

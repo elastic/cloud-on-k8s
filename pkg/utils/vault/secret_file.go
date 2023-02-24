@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	// inMemory is the name of the file to use to not write it to disk and only keep it in memory
-	inMemory = "in-memory"
+	// InMemoryFile is the name of the file to use to not write it to disk and only keep it in memory
+	InMemoryFile = "in-memory"
 
 	// buildLicensePubKeyPrefixEnvVar allows to prefix the field to retrieve a specific license public key secret
 	buildLicensePubKeyPrefixEnvVar = "BUILD_LICENSE_PUBKEY"
@@ -52,7 +52,7 @@ func ReadFile(c Client, f SecretFile) ([]byte, error) {
 		return nil, err
 	}
 
-	if f.Name != inMemory {
+	if f.Name != InMemoryFile {
 		err = os.WriteFile(f.Name, bytes, 0600)
 		if err != nil {
 			return nil, err
