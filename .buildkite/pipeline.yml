@@ -69,7 +69,7 @@ steps:
       # Run TestSmoke on Kind on every commit in PR branch
 
       - label: ":k8s: pr e2e-tests"
-        if: build.branch != "main" && build.message == null
+        branches: "!main"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -89,9 +89,9 @@ steps:
 
       - label: ":k8s: main e2e-tests build cluster"
         key: "main-e2e-tests-build-cluster"
-        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
+        if: build.branch == "main" && build.source != "schedule"
         agents:
-          memory: "5G"
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .buildkite/scripts/common/get-test-artifacts.sh
@@ -101,9 +101,9 @@ steps:
 
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"
-        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
+        if: build.branch == "main" && build.source != "schedule"
         agents:
-          memory: "5G"
+          memory: "4G"
         commands:
           - buildkite-agent artifact download "root/.kube/config" /
           - .ci/setenvconfig e2e/main
@@ -118,7 +118,7 @@ steps:
           - "main-e2e-tests-build-cluster"
 
       - label: "cleanup"
-        if: (build.branch == "main" && build.source != "schedule") || build.message == "run main-e2e-tests"
+        if: build.branch == "main" && build.source != "schedule"
         depends_on:
           - step: "main-e2e-tests"
             allow_failure: true

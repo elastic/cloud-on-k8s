@@ -222,7 +222,7 @@ func (h *helper) initTestContext() error {
 		}
 		decoder := json.NewDecoder(f)
 		if err := decoder.Decode(&h.testContext.GCPCredentials); err != nil {
-			return errors.Wrap(err, "failed to decode gcp credentials file")
+			return errors.Wrap(err, "while decoding gcp credentials file")
 		}
 	}
 

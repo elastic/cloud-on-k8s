@@ -65,7 +65,7 @@ func initializeContext() {
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
 
-	// Do not print credentials in the below log output
+	// Do not print credentials in the following log output
 	backup := ctx.GCPCredentials
 	ctx.GCPCredentials = nil
 

@@ -45,8 +45,12 @@ func (l StepList) WithStep(testStep Step) StepList {
 	return append(l, testStep)
 }
 
-// RunSequential runs the StepList sequentially, continues on any errors.
-// Runs eck-diagnostics and uploads artifacts when run within the CI system.
+// RunSequential runs the StepList sequentially, continuing on any errors.
+// If the tests are running within CI, the following occurs:
+//   - ECK-diagnostics is run after each failure
+//   - The resulting Zip file is uploaded to a GS Bucket
+//   - All Zip files are downloaded to local agent when tests complete and are
+//     added as Buildkite artifacts.
 //
 //nolint:thelper
 func (l StepList) RunSequential(t *testing.T) {
@@ -86,7 +90,7 @@ func initGSUtil() {
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to initialize gsutil: %s", err))
+		log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
 	}
 }
 
@@ -103,7 +107,7 @@ func runECKDiagnostics(ctx Context, testName string, step Step) {
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to run eck-diagnostics: %s", err))
+		log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
 	}
 }
 
@@ -114,7 +118,7 @@ func uploadDiagnosticsArtifacts() {
 	cmd.Stderr = os.Stderr
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to run gsutil: %s", err))
+		log.Error(err, fmt.Sprintf("while running gsutil: %s", err))
 	}
 }
 
