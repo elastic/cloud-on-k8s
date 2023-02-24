@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/retry"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
 )
@@ -254,8 +255,18 @@ func isOcp3Cluster(h *helper) bool {
 
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
+
+	c, err := vault.NewClient()
+	if err != nil {
+		return err
+	}
+
 	if h.testLicense != "" {
-		bytes, err := os.ReadFile(h.testLicense)
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
+			Name:          h.testLicense,
+			Path:          "test-licenses",
+			FieldResolver: vault.LicensePubKeyPrefix("enterprise"),
+		})
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
@@ -264,7 +275,12 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.testLicensePKeyPath != "" {
-		bytes, err := os.ReadFile(h.testLicensePKeyPath)
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
+			Name:          h.testLicensePKeyPath,
+			Path:          "license",
+			FieldResolver: func() string { return "dev-privkey" },
+			Base64Encoded: true,
+		})
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
@@ -273,7 +289,11 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.monitoringSecrets != "" {
-		bytes, err := os.ReadFile(h.monitoringSecrets)
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
+			Name:       h.monitoringSecrets,
+			Path:       "monitoring-cluster",
+			FormatJSON: true,
+		})
 		if err != nil {
 			return fmt.Errorf("reading %v: %w", h.monitoringSecrets, err)
 		}

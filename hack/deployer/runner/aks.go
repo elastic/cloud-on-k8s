@@ -10,7 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 func init() {
@@ -34,21 +34,20 @@ type AKSDriverFactory struct {
 type AKSDriver struct {
 	plan        Plan
 	ctx         map[string]interface{}
-	vaultClient *vault.Client
+	vaultClient vault.Client
 }
 
 func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
-	var vaultClient *vault.Client
+	var c vault.Client
 	// plan.ServiceAccount = true typically means a CI run vs a local run on a dev machine
 	if plan.ServiceAccount {
-		var err error
-		vaultClient, err = vault.NewClient(plan.VaultInfo)
+		c, err := vault.NewClient()
 		if err != nil {
 			return nil, err
 		}
 
 		if plan.Aks.ResourceGroup == "" {
-			resourceGroup, err := vaultClient.Get(azure.AKSVaultPath, AKSResourceGroupVaultFieldName)
+			resourceGroup, err := vault.Get(c, azure.AKSVaultPath, AKSResourceGroupVaultFieldName)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +66,7 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"Location":          plan.Aks.Location,
 			"Zones":             plan.Aks.Zones,
 		},
-		vaultClient: vaultClient,
+		vaultClient: c,
 	}, nil
 }
 
@@ -147,7 +146,7 @@ func (d *AKSDriver) create() error {
 	if d.plan.ServiceAccount {
 		// our service principal doesn't have permissions to create a service principal for aks cluster
 		// instead, we reuse the current service principal as the one for aks cluster
-		secrets, err := d.vaultClient.GetMany(azure.AKSVaultPath, "appId", "password")
+		secrets, err := vault.GetMany(d.vaultClient, azure.AKSVaultPath, "appId", "password")
 		if err != nil {
 			return err
 		}
