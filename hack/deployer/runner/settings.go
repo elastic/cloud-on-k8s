@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
 )
 
 // Plans encapsulates list of plans, expected to map to a file
@@ -36,7 +34,6 @@ type Plan struct {
 	Eks                     *EKSSettings   `yaml:"eks,omitempty"`
 	Kind                    *KindSettings  `yaml:"kind,omitempty"`
 	Tanzu                   *TanzuSettings `yaml:"tanzu,omitempty"`
-	VaultInfo               vault.Info     `yaml:"vaultInfo,omitempty"`
 	ServiceAccount          bool           `yaml:"serviceAccount"`
 	EnforceSecurityPolicies bool           `yaml:"enforceSecurityPolicies"`
 	DiskSetup               string         `yaml:"diskSetup"`
