@@ -63,7 +63,6 @@ var UnsupportedSettings = []string{
 	XPackSecurityAuthcReservedRealmEnabled,
 	XPackSecurityEnabled,
 	XPackSecurityHttpSslCertificate,
-	XPackSecurityHttpSslClientAuthentication,
 	XPackSecurityHttpSslEnabled,
 	XPackSecurityHttpSslKey,
 	XPackSecurityTransportSslCertificate,

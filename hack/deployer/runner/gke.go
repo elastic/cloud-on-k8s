@@ -17,6 +17,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -46,8 +47,9 @@ type GKEDriverFactory struct {
 }
 
 type GKEDriver struct {
-	plan Plan
-	ctx  map[string]interface{}
+	plan        Plan
+	ctx         map[string]interface{}
+	vaultClient vault.Client
 }
 
 func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
@@ -66,6 +68,11 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
 	}
 
+	c, err := vault.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
@@ -82,6 +89,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"ClusterIPv4CIDR":   clusterIPv4CIDR,
 			"ServicesIPv4CIDR":  servicesIPv4CIDR,
 		},
+		vaultClient: c,
 	}, nil
 }
 
@@ -94,7 +102,7 @@ func (d *GKEDriver) Authenticate() error {
 
 func (d *GKEDriver) Execute() error {
 	if err := authToGCP(
-		d.plan.VaultInfo, GKEVaultPath, GKEServiceAccountVaultFieldName,
+		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
 	); err != nil {
 		return err

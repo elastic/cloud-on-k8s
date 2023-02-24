@@ -92,6 +92,12 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
 
 RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
 
+ENV VAULT_VERSION=1.12.3
+RUN curl -fsSLO "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip" && \
+    unzip vault_${VAULT_VERSION}_linux_amd64.zip && \
+    mv vault /usr/local/bin/vault && \
+    rm vault_${VAULT_VERSION}_linux_amd64.zip
+
 # Add an exception to avoid `fatal: detected dubious ownership in repository`
 # as recent versions of git require the .git folder to be owned by the current user
 RUN git config --global --add safe.directory /go/src/github.com/elastic/cloud-on-k8s

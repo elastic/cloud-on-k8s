@@ -25,7 +25,7 @@ bin
 vendor/
 
 # Elastic public key
-license.key
+license.*key
 
 # test licenses used in the E2E tests
 test-license.json
