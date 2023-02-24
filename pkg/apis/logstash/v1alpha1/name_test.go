@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestHTTPService(t *testing.T) {
+func TestDefaultService(t *testing.T) {
 	type args struct {
 		logstashName string
 	}
@@ -20,7 +20,7 @@ func TestHTTPService(t *testing.T) {
 		{
 			name: "sample",
 			args: args{logstashName: "sample"},
-			want: "sample-ls-http",
+			want: "sample-ls-default",
 		},
 	}
 	for _, tt := range tests {
