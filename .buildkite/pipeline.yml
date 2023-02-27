@@ -142,3 +142,12 @@ steps:
         if: build.message == "release all helm charts"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-all.yml
+
+  - group: redhat-release
+
+    steps:
+
+      - label: "redhat operatorhub"
+        if: build.message == "run operatorhub release"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
