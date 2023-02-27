@@ -110,7 +110,7 @@ steps:
       # Run all e2e tests on all k8s distributions at midnight from the main branch
 
       - label: ":k8s: nightly e2e-tests"
-        if: build.branch == "main" && build.source == "schedule"
+        if: build.branch == "main" && build.source == "schedule" || (build.message == "run ocp nightly-e2e-tests")
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
         depends_on:
