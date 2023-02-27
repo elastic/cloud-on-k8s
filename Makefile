@@ -574,7 +574,7 @@ run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 set-kubeconfig: build-deployer
-	./hack/deployer/deployer get credentials --authenticate --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean ci-check build-operator-multiarch-image
 	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
