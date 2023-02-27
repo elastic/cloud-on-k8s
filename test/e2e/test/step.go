@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	gcpCredentialsFile = "/var/run/secrets/e2e/gcp-credentials.json"
+	gcpCredentialsFile = "/var/run/secrets/e2e/gcp-credentials.json" //nolint:gosec
 )
 
 // Step represents a single test
