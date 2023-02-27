@@ -18,7 +18,7 @@ For the ECK operator, adherence to FIPS 140-2 is ensured by
 
 === FIPS compliant installation using Helm
 
-Simply modify the `image.repository` Helm chart value to append `-fips` to install a FIPS compliant version of the ECK Operator.  Reference <<{p}-install-helm,Instsall ECK using the Helm chart>> for full Helm installation instructions.
+Modify the `image.repository` Helm chart value to append `-fips` to install a FIPS compliant version of the ECK Operator. Refer to <<{p}-install-helm>> for full Helm installation instructions.
 
 [source,sh]
 ----
