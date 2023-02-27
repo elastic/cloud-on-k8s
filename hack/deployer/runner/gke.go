@@ -93,13 +93,6 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-func (d *GKEDriver) Authenticate() error {
-	return authToGCP(
-		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
-	)
-}
-
 func (d *GKEDriver) Execute() error {
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
@@ -316,6 +309,20 @@ func (d *GKEDriver) bindRoles() error {
 }
 
 func (d *GKEDriver) GetCredentials() error {
+	log.Println("Verifying gcloud authentication...")
+	// --verbosity flag here disables warnings, and survey output.
+	out, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)" --verbosity error`).StdoutOnly().OutputList()
+	if err != nil {
+		return fmt.Errorf("while retrieving list of credentialed gcloud accounts: %w", err)
+	}
+	if len(out) == 0 {
+		if err = authToGCP(
+			d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
+			d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
+		); err != nil {
+			return fmt.Errorf("while authenticating to GCP: %w", err)
+		}
+	}
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()

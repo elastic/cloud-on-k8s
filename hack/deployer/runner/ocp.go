@@ -112,10 +112,6 @@ func (d *OCPDriver) setup() []func() error {
 	}
 }
 
-func (d *OCPDriver) Authenticate() error {
-	return fmt.Errorf("unimplemented")
-}
-
 func (d *OCPDriver) Execute() error {
 	// client image requires a plan which we don't have in GetCredentials
 	setup := append(d.setup(), d.ensureClientImage)

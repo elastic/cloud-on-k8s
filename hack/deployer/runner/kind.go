@@ -77,10 +77,6 @@ type KindDriver struct {
 	clientImage string
 }
 
-func (k *KindDriver) Authenticate() error {
-	return fmt.Errorf("unimplemented")
-}
-
 func (k *KindDriver) Execute() error {
 	if err := k.ensureClientImage(); err != nil {
 		return err

@@ -70,10 +70,6 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-func (d *AKSDriver) Authenticate() error {
-	return fmt.Errorf("unimplemented")
-}
-
 func (d *AKSDriver) Execute() error {
 	if err := d.auth(); err != nil {
 		return err

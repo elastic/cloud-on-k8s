@@ -8,8 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -19,9 +19,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
+)
+
+const (
+	gcpCredentialsFile = "/var/run/secrets/e2e/gcp-credentials.json"
 )
 
 // Step represents a single test
@@ -67,14 +73,11 @@ func (l StepList) RunSequential(t *testing.T) {
 			}
 			ctx := Ctx()
 			defer func() {
-				err := deleteElasticResources()
-				if err != nil {
+				if err := deleteElasticResources(); err != nil {
 					logf.Log.Error(err, "while deleting elastic resources")
 				}
 			}()
-			// Only run eck diagnostics after each run when job is
-			// run from CI, which provides a 'job-name' flag.
-			if ctx.JobName != "" {
+			if canRunDiagnostics(ctx) {
 				once.Do(initGSUtil)
 				logf.Log.Info("running eck-diagnostics job")
 				runECKDiagnostics(ctx, t.Name(), ts)
@@ -84,12 +87,26 @@ func (l StepList) RunSequential(t *testing.T) {
 	}
 }
 
+// canRunDiagnostics will determine if this e2e test run has the ability to run eck-diagnostics after
+// each test failure, which includes uploading the resulting zip file to a GS bucket. If the job name
+// is set (not empty) and the google credentials file exists, then we should be able to run diagnostics.
+func canRunDiagnostics(ctx Context) bool {
+	if _, err := os.Stat(gcpCredentialsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
+		return false
+	} else if err != nil {
+		log.Error(err, "while checking for existence of %s", gcpCredentialsFile)
+		return false
+	}
+	if ctx.JobName == "" {
+		return false
+	}
+	return true
+}
+
 func initGSUtil() {
-	cmd := exec.Command("gcloud", "auth", "activate-service-account", "--key-file=/etc/gcp/credentials.json")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
-	if err := cmd.Run(); err != nil {
+	if _, _, err := command.New("gsutil", []string{
+		"auth", "activate-service-account", "--key-file=/var/run/secrets/e2e/gcp-credentials.json",
+	}...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
 		log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
 	}
 }
@@ -102,45 +119,49 @@ func runECKDiagnostics(ctx Context, testName string, step Step) {
 	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
-	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
-	if err := cmd.Run(); err != nil {
+	if _, _, err := command.New("eck-diagnostics", []string{
+		"--output-directory", "/tmp",
+		"-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName),
+		"-o", ctx.Operator.Namespace,
+		"-r", strings.Join(otherNS, ","),
+		"--run-agent-diagnostics",
+	}...).Build().Execute(context.Background()); err != nil {
 		log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
 	}
+	// temporarily disabling to verify why this is needed for eck-diagnostics.
+	// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 }
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
-	if err := cmd.Run(); err != nil {
+	if _, _, err := command.New("gsutil", []string{
+		"cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber),
+	}...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
 		log.Error(err, fmt.Sprintf("while running gsutil: %s", err))
 	}
 }
 
-func ensureTmpHomeEnv(env []string) []string {
-	found := false
-	for i, e := range env {
-		if strings.Contains(e, "HOME=") {
-			env[i] = "HOME=/tmp"
-			found = true
-		}
-	}
-	if !found {
-		env = append(env, "HOME=/tmp")
-	}
-	return env
-}
+// GSUtil command requires a valid writable home directory to be set to function properly,
+// as it writes some of it's configuration locally when running, so /tmp is used.
+// func ensureTmpHomeEnv(env []string) []string {
+// 	found := false
+// 	for i, e := range env {
+// 		if strings.Contains(e, "HOME=") {
+// 			env[i] = "HOME=/tmp"
+// 			found = true
+// 		}
+// 	}
+// 	if !found {
+// 		env = append(env, "HOME=/tmp")
+// 	}
+// 	return env
+// }
 
 // This simulates "kubectl delete elastic" in the e2e namespace.
 func deleteElasticResources() error {
-	cfg, err := rest.InClusterConfig()
+	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, "while getting in cluster config")
+		log.Error(err, "while getting kubernetes config")
 		return err
 	}
 	clntset, err := kubernetes.NewForConfig(cfg)
@@ -152,7 +173,11 @@ func deleteElasticResources() error {
 	type version string
 	groupVersionMap := map[string][]version{}
 
-	apiGroups, _, _ := clntset.Discovery().ServerGroupsAndResources()
+	apiGroups, _, err := clntset.Discovery().ServerGroupsAndResources()
+	if err != nil {
+		log.Error(err, "while running kubernetes client discovery")
+		return err
+	}
 
 	for _, group := range apiGroups {
 		if !strings.Contains(strings.ToLower(group.Name), "elastic") {

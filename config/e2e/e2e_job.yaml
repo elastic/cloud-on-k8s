@@ -9,19 +9,6 @@ metadata:
 data:
   testcontext.json: |
 {{ .Context | toPrettyJson | indent 4 }}
-{{- if .Context.GCPCredentials }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: "eck-diagnostics-credentials"
-  namespace: {{ .Context.E2ENamespace }}
-  labels:
-    test-run: {{ .Context.TestRun }}
-data:
-  credentials.json: |
-{{ .Context.GCPCredentials | toPrettyJson | indent 4 }}
-{{- end }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -60,10 +47,6 @@ spec:
               mountPath: /etc/e2e
             - name: test-secrets
               mountPath: /var/run/secrets/e2e
-{{- if .Context.GCPCredentials }}
-            - name: test-gcp-credentials
-              mountPath: /etc/gcp
-{{- end }}
           securityContext:
             allowPrivilegeEscalation: false
           env:
@@ -77,7 +60,7 @@ spec:
                   fieldPath: status.podIP
 {{- if .Context.GCPCredentials }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: "/etc/gcp/credentials.json"
+              value: "/var/run/secrets/e2e/gcp-credentials.json"
 {{- end }}
       volumes:
         - name: test-config
@@ -86,10 +69,5 @@ spec:
         - name: test-secrets
           secret:
             secretName: "eck-{{ .Context.TestRun }}"
-{{- if .Context.GCPCredentials }}
-        - name: test-gcp-credentials
-          configMap:
-            name: "eck-diagnostics-credentials"
-{{- end }}
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test

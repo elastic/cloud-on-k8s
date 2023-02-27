@@ -6,6 +6,7 @@ package run
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -43,8 +44,6 @@ const (
 	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
-
-	gcpCredentialsFile = "/tmp/auth.json" //nolint:gosec
 )
 
 type stepFunc func() error
@@ -216,17 +215,6 @@ func (h *helper) initTestContext() error {
 		}
 	}
 
-	if _, err := os.Stat(gcpCredentialsFile); err == nil {
-		f, err := os.Open(gcpCredentialsFile)
-		if err != nil {
-			return errors.Wrap(err, "while opening gcp credentials file")
-		}
-		decoder := json.NewDecoder(f)
-		if err := decoder.Decode(&h.testContext.GCPCredentials); err != nil {
-			return errors.Wrap(err, "while decoding gcp credentials file")
-		}
-	}
-
 	return nil
 }
 
@@ -273,6 +261,23 @@ func (h *helper) initTestSecrets() error {
 	c, err := vault.NewClient()
 	if err != nil {
 		return err
+	}
+
+	// Only initialize gcp credentials when running in CI
+	if h.jobName != "" {
+		b, err := vault.ReadFile(c, vault.SecretFile{
+			Name:          "gcp-credentials.json",
+			Path:          "ci-gcp-k8s-operator",
+			FieldResolver: func() string { return "service-account" },
+		})
+		if err != nil {
+			return fmt.Errorf("reading gcp credentials: %w", err)
+		}
+		h.testSecrets["gcp-credentials.json"] = string(b)
+		decoder := json.NewDecoder(bytes.NewReader(b))
+		if err := decoder.Decode(&h.testContext.GCPCredentials); err != nil {
+			return fmt.Errorf("while decoding gcp credentials: %w", err)
+		}
 	}
 
 	if h.testLicense != "" {

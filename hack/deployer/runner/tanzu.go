@@ -115,10 +115,6 @@ type TanzuDriver struct {
 	installerStateDirBasename string
 }
 
-func (t *TanzuDriver) Authenticate() error {
-	return fmt.Errorf("unimplemented")
-}
-
 func (t *TanzuDriver) Execute() error {
 	if err := run(t.setup()); err != nil {
 		return err
