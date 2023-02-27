@@ -9229,11 +9229,10 @@ spec:
                   only be used if ECK is enforcing RBAC on references.
                 type: string
               services:
-                description: 'HTTP holds the HTTP layer configuration for the Logstash
-                  Metrics API TODO: This should likely be changed to a more general
-                  `Services LogstashService[]`, where `LogstashService` looks a lot
-                  like `HTTPConfig`, but is applicable for more than just an HTTP
-                  endpoint, as logstash may need to be opened up for other services:
+                description: 'Services contains details of services that Logstash
+                  should expose - similar to the HTTP layer configuration for the
+                  rest of the stack, but also applicable for more use cases than the
+                  metrics API, as logstash may need to be opened up for other services:
                   beats, TCP, UDP, etc, inputs'
                 items:
                   properties:

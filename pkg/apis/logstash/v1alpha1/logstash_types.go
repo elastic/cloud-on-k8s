@@ -39,10 +39,9 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
-	// HTTP holds the HTTP layer configuration for the Logstash Metrics API
-	// TODO: This should likely be changed to a more general `Services LogstashService[]`, where `LogstashService` looks
-	//       a lot like `HTTPConfig`, but is applicable for more than just an HTTP endpoint, as logstash may need to
-	//       be opened up for other services: beats, TCP, UDP, etc, inputs
+	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
+	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
+	// be opened up for other services: beats, TCP, UDP, etc, inputs
 	// +kubebuilder:validation:Optional
 	Services []LogstashService `json:"services,omitempty"`
 
