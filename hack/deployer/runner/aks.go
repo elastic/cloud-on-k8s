@@ -41,7 +41,8 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 	var c vault.Client
 	// plan.ServiceAccount = true typically means a CI run vs a local run on a dev machine
 	if plan.ServiceAccount {
-		c, err := vault.NewClient()
+		var err error
+		c, err = vault.NewClient()
 		if err != nil {
 			return nil, err
 		}
