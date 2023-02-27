@@ -14,7 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 )
 
-// reconcileServices reconcile Services defined in spec
+// reconcileServices reconcile Services defined in the spec.
 // When Services are empty, a default Service for port 9600 is created.
 // If api.http.port is customized, user is expected to config Services.
 // When Services exist, the port 9600 does not attach to any of Service.
