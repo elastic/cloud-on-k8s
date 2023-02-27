@@ -315,7 +315,9 @@ func (d *GKEDriver) GetCredentials() error {
 	if err != nil {
 		return fmt.Errorf("while retrieving list of credentialed gcloud accounts: %w", err)
 	}
-	if len(out) == 0 {
+	// If there's no authenticated user, or the authenticated user doesn't exist in the elastic-cloud-dev account
+	// then we need to authenticate with what's within vault.
+	if len(out) == 0 || (len(out) > 0 && !strings.Contains(out[0], "elastic-cloud-dev")) {
 		if err = authToGCP(
 			d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
 			d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
