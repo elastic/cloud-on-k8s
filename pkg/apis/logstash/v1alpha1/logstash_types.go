@@ -47,6 +47,7 @@ type LogstashSpec struct {
 	Services []LogstashService `json:"services,omitempty"`
 
 	// PodTemplate provides customisation options for the Logstash pods.
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.
@@ -90,7 +91,7 @@ type LogstashStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Logstash is the Schema for the logstashes API
 // +k8s:openapi-gen=true
@@ -110,7 +111,7 @@ type Logstash struct {
 	Status LogstashStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // LogstashList contains a list of Logstash
 type LogstashList struct {

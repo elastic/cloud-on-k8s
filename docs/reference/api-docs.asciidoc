@@ -1835,6 +1835,9 @@ KibanaSpec holds the specification of a Kibana instance.
 
 Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API group
 
+.Resource Types
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstash[$$Logstash$$]
+
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstash"]
@@ -1842,21 +1845,18 @@ Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API g
 
 Logstash is the Schema for the logstashes API
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashlist[$$LogstashList$$]
-****
+
 
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
+| *`apiVersion`* __string__ | `logstash.k8s.elastic.co/v1alpha1`
+| *`kind`* __string__ | `Logstash`
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashspec[$$LogstashSpec$$]__ | 
 | *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashstatus[$$LogstashStatus$$]__ | 
 |===
-
-
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashservice"]
