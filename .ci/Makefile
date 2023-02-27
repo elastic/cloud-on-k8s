@@ -7,6 +7,9 @@
 ROOT_DIR               := $(CURDIR)/..
 GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
 
+# This is used to get IMG_VERSION in yaml-upload
+-include $(ROOT_DIR)/.env
+
 vault := ../hack/retry.sh 5 vault
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
