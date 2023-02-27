@@ -93,7 +93,6 @@ steps:
           memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
         artifact_paths:
           - "/root/.kube/config"
@@ -107,7 +106,6 @@ steps:
           - buildkite-agent artifact download "root/.kube/config" /
           - .ci/setenvconfig e2e/main
           - make set-kubeconfig
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - .buildkite/scripts/common/run-main-e2e-tests.sh
         artifact_paths:
           - "eck-diagnostic-*.zip"
