@@ -29,7 +29,7 @@ helm install elastic-operator elastic/eck-operator \
 
 === FIPS compliant installation using manifests
 
-The `StatefulSet` definition within the yaml installation manifest will need to be patched prior to installation to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS-enabled version of the ECK Operator.  Reference <<{p}-deploy-eck,Instsall ECK using manifests>> for full manifest installation instructions.
+The `StatefulSet` definition within the yaml installation manifest will need to be patched prior to installation to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS-enabled version of the ECK Operator. Refer to <<{p}-install-yaml-manifests>> for full manifest installation instructions.
 
 NOTE: `${ECK_VERSION}` in the following command needs to be replaced with the version of the Operator that is to be installed.
 
