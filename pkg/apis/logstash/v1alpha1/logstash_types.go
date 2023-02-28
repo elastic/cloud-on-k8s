@@ -39,6 +39,17 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
+	// Pipelines holds the Logstash Pipelines. At most one of [`Pipelines`, `PipelinesRef`] can be specified.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Pipelines []map[string]string `json:"pipelines,omitempty"`
+
+	// PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+	// Logstash pipelines must be specified as yaml, under a single "pipeline.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
+	// can be specified.
+	// +kubebuilder:validation:Optional
+	PipelinesRef *commonv1.ConfigSource `json:"pipelinesRef,omitempty"`
+
 	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
 	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
 	// be opened up for other services: beats, TCP, UDP, etc, inputs

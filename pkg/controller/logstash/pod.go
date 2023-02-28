@@ -32,6 +32,9 @@ const (
 	LogstashConfigVolumeName = "logstash"
 	LogstashConfigFileName   = "logstash.yml"
 
+	PipelineVolumeName = "pipeline"
+	PipelineFileName   = "pipelines.yml"
+
 	// ConfigHashAnnotationName is an annotation used to store the Logstash config hash.
 	ConfigHashAnnotationName = "logstash.k8s.elastic.co/config-hash"
 
@@ -63,6 +66,13 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 			LogstashConfigVolumeName,
 			path.Join(ConfigMountPath, LogstashConfigFileName),
 			LogstashConfigFileName,
+			0644),
+		// volume with logstash pipeline file
+		volume.NewSecretVolume(
+			logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
+			PipelineVolumeName,
+			path.Join(ConfigMountPath, PipelineFileName),
+			PipelineFileName,
 			0644),
 	}
 

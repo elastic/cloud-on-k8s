@@ -1896,6 +1896,7 @@ LogstashSpec defines the desired state of Logstash
 | *`image`* __string__ | Image is the Logstash Docker image to deploy. Version and Type have to match the Logstash in the image.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Logstash configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Logstash configuration. Logstash settings must be specified as yaml, under a single "logstash.yml" entry. At most one of [`Config`, `ConfigRef`] can be specified.
+| *`pipelines`* __object array__ | Pipelines holds the Logstash Pipelines. At most one of [`Pipelines`, `PipelineRef`] can be specified.
 | *`services`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashservice[$$LogstashService$$] array__ | Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to be opened up for other services: beats, TCP, UDP, etc, inputs
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options for the Logstash pods.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.
@@ -1922,6 +1923,18 @@ LogstashStatus defines the observed state of Logstash
 | *`availableNodes`* __integer__ | 
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Logstash instance. It corresponds to the metadata generation, which is updated on mutation by the API Server. If the generation observed in status diverges from the generation in metadata, the Logstash controller has not yet processed the changes contained in the Logstash specification.
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-pipeline"]
+=== Pipeline
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashspec[$$LogstashSpec$$]
+****
+
 
 
 
