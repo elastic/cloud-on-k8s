@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestDefaultService(t *testing.T) {
+func TestAPIService(t *testing.T) {
 	type args struct {
 		logstashName string
 	}
@@ -20,12 +20,12 @@ func TestDefaultService(t *testing.T) {
 		{
 			name: "sample",
 			args: args{logstashName: "sample"},
-			want: "sample-ls-default",
+			want: "sample-ls-api",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultServiceName(tt.args.logstashName); got != tt.want {
+			if got := APIServiceName(tt.args.logstashName); got != tt.want {
 				t.Errorf("DefaultService() = %v, want %v", got, tt.want)
 			}
 		})

@@ -19,15 +19,15 @@ import (
 // When a service is defined that matches the API service name, then that service is used to define
 // the service for the logstash API. If not, then a default service is created for the API service
 func reconcileServices(params Params) ([]corev1.Service, error) {
-	createdApiService := false
+	createdAPIService := false
 
-	var svcs []corev1.Service
+	svcs := make([]corev1.Service, 0)
 	for _, service := range params.Logstash.Spec.Services {
 		var svc *corev1.Service
 		logstash := params.Logstash
-		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.DefaultServiceName(logstash.Name) {
-			svc = newDefaultService(params.Logstash)
-			createdApiService = true
+		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
+			svc = newAPIService(params.Logstash)
+			createdAPIService = true
 		} else {
 			svc = newService(service, params.Logstash)
 		}
@@ -36,8 +36,8 @@ func reconcileServices(params Params) ([]corev1.Service, error) {
 		}
 		svcs = append(svcs, *svc)
 	}
-	if !createdApiService {
-		svc := newDefaultService(params.Logstash)
+	if !createdAPIService {
+		svc := newAPIService(params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, err
 		}
@@ -75,14 +75,14 @@ func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alp
 	return &svc
 }
 
-func newDefaultService(logstash logstashv1alpha1.Logstash) *corev1.Service {
+func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec:       corev1.ServiceSpec{ClusterIP: "None"},
 	}
 
 	svc.ObjectMeta.Namespace = logstash.Namespace
-	svc.ObjectMeta.Name = logstashv1alpha1.DefaultServiceName(logstash.Name)
+	svc.ObjectMeta.Name = logstashv1alpha1.APIServiceName(logstash.Name)
 
 	labels := NewLabels(logstash)
 	ports := []corev1.ServicePort{

@@ -127,7 +127,7 @@ func (b Builder) Count() int32 {
 }
 
 func (b Builder) ServiceName() string {
-	return b.Logstash.Name + "-ls-default"
+	return b.Logstash.Name + "-ls-api"
 }
 
 func (b Builder) ListOptions() []client.ListOption {
