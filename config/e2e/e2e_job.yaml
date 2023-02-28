@@ -58,10 +58,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-{{- if .Context.GCPCredentials }}
-            - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: "/var/run/secrets/e2e/gcp-credentials.json"
-{{- end }}
       volumes:
         - name: test-config
           configMap:
