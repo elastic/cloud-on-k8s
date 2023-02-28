@@ -109,11 +109,6 @@ func initGSUtil() {
 	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
 	}
-	// if _, _, err := command.New("gsutil", []string{
-	// 	"auth", "activate-service-account", "--key-file=/var/run/secrets/e2e/gcp-credentials.json",
-	// }...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
-	// 	log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
-	// }
 }
 
 func runECKDiagnostics(ctx Context, testName string, step Step) {
@@ -126,19 +121,10 @@ func runECKDiagnostics(ctx Context, testName string, step Step) {
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
 	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
 	setupStdOutErr(cmd)
-	// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
+	// If /tmp is not set as HOME, the k8s client can't cache responses,
+	// and a single run of diagnostics is incredibly slow.
+	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {
-		// if _, _, err := command.New("eck-diagnostics", []string{
-		// 	"--output-directory", "/tmp",
-		// 	"-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName),
-		// 	"-o", ctx.Operator.Namespace,
-		// 	"-r", strings.Join(otherNS, ","),
-		// 	"--run-agent-diagnostics",
-		// }...).Build().Execute(context.Background()); err != nil {
-		// 	log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
-		// }
-		// temporarily disabling to verify why this is needed for eck-diagnostics.
-		// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 		log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
 	}
 }
@@ -149,9 +135,6 @@ func uploadDiagnosticsArtifacts() {
 	setupStdOutErr(cmd)
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {
-		// if _, _, err := command.New("gsutil", []string{
-		// 	"cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber),
-		// }...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
 		log.Error(err, fmt.Sprintf("while running gsutil: %s", err))
 	}
 }
