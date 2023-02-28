@@ -14,30 +14,34 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 )
 
-// reconcileServices reconcile Services defined in the spec.
-// When Services are empty, a default Service for port 9600 is created.
-// If api.http.port is customized, user is expected to config Services.
-// When Services exist, the port 9600 does not attach to any of Service.
+// reconcileServices reconcile Services defined in spec
+//
+// When a service is defined that matches the API service name, then that service is used to define
+// the service for the logstash API. If not, then a default service is created for the API service
 func reconcileServices(params Params) ([]corev1.Service, error) {
-	if len(params.Logstash.Spec.Services) == 0 {
-		svc := newDefaultService(params.Logstash)
+	createdApiService := false
 
+	var svcs []corev1.Service
+	for _, service := range params.Logstash.Spec.Services {
+		var svc *corev1.Service
+		logstash := params.Logstash
+		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.DefaultServiceName(logstash.Name) {
+			svc = newDefaultService(params.Logstash)
+			createdApiService = true
+		} else {
+			svc = newService(service, params.Logstash)
+		}
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, err
 		}
-
-		return []corev1.Service{*svc}, nil
+		svcs = append(svcs, *svc)
 	}
-
-	svcs := make([]corev1.Service, len(params.Logstash.Spec.Services))
-	for i, service := range params.Logstash.Spec.Services {
-		svc := newService(service, params.Logstash)
-
+	if !createdApiService {
+		svc := newDefaultService(params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, err
 		}
-
-		svcs[i] = *svc
+		svcs = append(svcs, *svc)
 	}
 
 	return svcs, nil
