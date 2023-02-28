@@ -53,9 +53,6 @@ func buildConfig(params Params) ([]byte, error) {
 	}
 
 	cfg := defaultConfig()
-	if err != nil {
-		return nil, err
-	}
 
 	// merge with user settings last so they take precedence
 	if err := cfg.MergeWith(userProvidedCfg); err != nil {
