@@ -25,8 +25,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	gcpCredentialsFile = "/var/run/secrets/e2e/gcp-credentials.json" //nolint:gosec
+var (
+	// local variable for storing ctx.GCPCredentials path such
+	// that initGSUtil can use it.
+	gcpCredentialsPath string
 )
 
 // Step represents a single test
@@ -77,6 +79,7 @@ func (l StepList) RunSequential(t *testing.T) {
 				}
 			}()
 			if canRunDiagnostics(ctx) {
+				gcpCredentialsPath = ctx.GCPCredentialsPath
 				once.Do(initGSUtil)
 				logf.Log.Info("running eck-diagnostics job")
 				runECKDiagnostics(ctx, t.Name(), ts)
@@ -90,10 +93,10 @@ func (l StepList) RunSequential(t *testing.T) {
 // each test failure, which includes uploading the resulting zip file to a GS bucket. If the job name
 // is set (not empty) and the google credentials file exists, then we should be able to run diagnostics.
 func canRunDiagnostics(ctx Context) bool {
-	if _, err := os.Stat(gcpCredentialsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(ctx.GCPCredentialsPath); err != nil && errors.Is(err, fs.ErrNotExist) {
 		return false
 	} else if err != nil {
-		log.Error(err, "while checking for existence of %s", gcpCredentialsFile)
+		log.Error(err, "while checking for existence of %s", ctx.GCPCredentialsPath)
 		return false
 	}
 	if ctx.JobName == "" {
@@ -103,7 +106,7 @@ func canRunDiagnostics(ctx Context) bool {
 }
 
 func initGSUtil() {
-	cmd := exec.Command("gcloud", "auth", "activate-service-account", "--key-file=/etc/gcp/credentials.json")
+	cmd := exec.Command("gcloud", "auth", "activate-service-account", fmt.Sprintf("--key-file=%s", gcpCredentialsPath)) //nolint:gosec
 	setupStdOutErr(cmd)
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {

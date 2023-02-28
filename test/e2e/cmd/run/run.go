@@ -6,7 +6,6 @@ package run
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -274,10 +273,7 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("reading gcp credentials: %w", err)
 		}
 		h.testSecrets["gcp-credentials.json"] = string(b)
-		decoder := json.NewDecoder(bytes.NewReader(b))
-		if err := decoder.Decode(&h.testContext.GCPCredentials); err != nil {
-			return fmt.Errorf("while decoding gcp credentials: %w", err)
-		}
+		h.testContext.GCPCredentialsPath = "/var/run/secrets/e2e/gcp-credentials.json"
 	}
 
 	if h.testLicense != "" {
