@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -22,8 +23,6 @@ import (
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
 )
 
 const (
@@ -104,11 +103,17 @@ func canRunDiagnostics(ctx Context) bool {
 }
 
 func initGSUtil() {
-	if _, _, err := command.New("gsutil", []string{
-		"auth", "activate-service-account", "--key-file=/var/run/secrets/e2e/gcp-credentials.json",
-	}...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
+	cmd := exec.Command("gcloud", "auth", "activate-service-account", "--key-file=/etc/gcp/credentials.json")
+	setupStdOutErr(cmd)
+	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
+	if err := cmd.Run(); err != nil {
 		log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
 	}
+	// if _, _, err := command.New("gsutil", []string{
+	// 	"auth", "activate-service-account", "--key-file=/var/run/secrets/e2e/gcp-credentials.json",
+	// }...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
+	// 	log.Error(err, fmt.Sprintf("while initializing gsutil: %s", err))
+	// }
 }
 
 func runECKDiagnostics(ctx Context, testName string, step Step) {
@@ -119,43 +124,58 @@ func runECKDiagnostics(ctx Context, testName string, step Step) {
 	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
-	if _, _, err := command.New("eck-diagnostics", []string{
-		"--output-directory", "/tmp",
-		"-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName),
-		"-o", ctx.Operator.Namespace,
-		"-r", strings.Join(otherNS, ","),
-		"--run-agent-diagnostics",
-	}...).Build().Execute(context.Background()); err != nil {
+	cmd := exec.Command("eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", ctx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
+	setupStdOutErr(cmd)
+	// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
+	if err := cmd.Run(); err != nil {
+		// if _, _, err := command.New("eck-diagnostics", []string{
+		// 	"--output-directory", "/tmp",
+		// 	"-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName),
+		// 	"-o", ctx.Operator.Namespace,
+		// 	"-r", strings.Join(otherNS, ","),
+		// 	"--run-agent-diagnostics",
+		// }...).Build().Execute(context.Background()); err != nil {
+		// 	log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
+		// }
+		// temporarily disabling to verify why this is needed for eck-diagnostics.
+		// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 		log.Error(err, fmt.Sprintf("while running eck-diagnostics: %s", err))
 	}
-	// temporarily disabling to verify why this is needed for eck-diagnostics.
-	// cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 }
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	if _, _, err := command.New("gsutil", []string{
-		"cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber),
-	}...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
+	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	setupStdOutErr(cmd)
+	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
+	if err := cmd.Run(); err != nil {
+		// if _, _, err := command.New("gsutil", []string{
+		// 	"cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber),
+		// }...).WithEnv("HOME=/tmp").Build().Execute(context.Background()); err != nil {
 		log.Error(err, fmt.Sprintf("while running gsutil: %s", err))
 	}
 }
 
+func setupStdOutErr(cmd *exec.Cmd) {
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+}
+
 // GSUtil command requires a valid writable home directory to be set to function properly,
 // as it writes some of it's configuration locally when running, so /tmp is used.
-// func ensureTmpHomeEnv(env []string) []string {
-// 	found := false
-// 	for i, e := range env {
-// 		if strings.Contains(e, "HOME=") {
-// 			env[i] = "HOME=/tmp"
-// 			found = true
-// 		}
-// 	}
-// 	if !found {
-// 		env = append(env, "HOME=/tmp")
-// 	}
-// 	return env
-// }
+func ensureTmpHomeEnv(env []string) []string {
+	found := false
+	for i, e := range env {
+		if strings.Contains(e, "HOME=") {
+			env[i] = "HOME=/tmp"
+			found = true
+		}
+	}
+	if !found {
+		env = append(env, "HOME=/tmp")
+	}
+	return env
+}
 
 // This simulates "kubectl delete elastic" in the e2e namespace.
 func deleteElasticResources() error {
