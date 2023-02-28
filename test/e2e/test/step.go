@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -176,42 +175,36 @@ func deleteElasticResources() error {
 		return err
 	}
 
-	type version string
-	groupVersionMap := map[string][]version{}
+	groupVersionToResourceListMap := map[string][]v1.APIResource{}
 
-	apiGroups, _, err := clntset.Discovery().ServerGroupsAndResources()
+	_, resources, err := clntset.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		log.Error(err, "while running kubernetes client discovery")
 		return err
 	}
 
-	for _, group := range apiGroups {
-		if !strings.Contains(strings.ToLower(group.Name), "elastic") {
-			continue
-		}
-		for _, ver := range group.Versions {
-			groupVersionMap[group.Name] = append(groupVersionMap[group.Name], version(ver.Version))
+	for _, resource := range resources {
+		if strings.Contains(resource.GroupVersion, "k8s.elastic.co") {
+			groupVersionToResourceListMap[resource.GroupVersion] = resource.APIResources
 		}
 	}
 
-	expander := restmapper.NewDiscoveryCategoryExpander(clntset)
-	groupResources, ok := expander.Expand("elastic")
-	if !ok {
-		err = fmt.Errorf("while running 'kubectl delete elastic'")
-		log.Error(err, "while finding elastic categories in cluster")
-		return err
-	}
 	namespace := Ctx().E2ENamespace
 	dynamicClient := dynamic.New(clntset.RESTClient())
-	for _, gr := range groupResources {
-		for _, v := range groupVersionMap[gr.Group] {
+	for gv, resources := range groupVersionToResourceListMap {
+		gvSlice := strings.Split(gv, "/")
+		if len(gvSlice) != 2 {
+			continue
+		}
+		group, version := gvSlice[0], gvSlice[1]
+		for _, resource := range resources {
 			if err := dynamicClient.Resource(schema.GroupVersionResource{
-				Group:    gr.Group,
-				Resource: gr.Resource,
-				Version:  string(v),
+				Group:    group,
+				Resource: resource.Name,
+				Version:  version,
 			}).Namespace(namespace).DeleteCollection(context.Background(), v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
 				msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
-				log.Error(err, msg, "group", gr.Group, "resource", gr.Resource)
+				log.Error(err, msg, "group", group, "resource", resource.Name, "version", version)
 				return err
 			}
 		}
