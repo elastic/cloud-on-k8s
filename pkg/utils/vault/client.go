@@ -5,7 +5,6 @@
 package vault
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/fs"
 	"log"
@@ -53,7 +52,6 @@ func auth(c *api.Client) error {
 
 	// return if token is already set
 	if token != "" {
-		log.Printf("vault token '%s' already set", base64.StdEncoding.EncodeToString([]byte(token)))
 		return nil
 	}
 

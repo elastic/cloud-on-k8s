@@ -8,12 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -65,8 +62,6 @@ func ReadFile(c Client, f SecretFile) ([]byte, error) {
 }
 
 func (f SecretFile) readFromVault(c Client) ([]byte, error) {
-	log.Printf("Read %s from vault using client: %s", f.Path, spew.Sdump(c))
-
 	secretPath := filepath.Join(rootPath(), f.Path)
 	secret, err := read(c, secretPath)
 	if err != nil {
