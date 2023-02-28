@@ -52,7 +52,7 @@ func auth(c *api.Client) error {
 
 	// return if token is already set
 	if token != "" {
-		log.Print("vault token already set")
+		log.Printf("vault token '%s' already set", token)
 		return nil
 	}
 
