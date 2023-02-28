@@ -148,7 +148,7 @@ func setupStdOutErr(cmd *exec.Cmd) {
 }
 
 // GSUtil command requires a valid writable home directory to be set to function properly,
-// as it writes some of it's configuration locally when running, so /tmp is used.
+// as it writes some of its configuration locally when running, so /tmp is used.
 func ensureTmpHomeEnv(env []string) []string {
 	found := false
 	for i, e := range env {

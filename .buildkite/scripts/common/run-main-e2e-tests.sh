@@ -13,8 +13,6 @@ onError() {
 
 main() {
     trap 'onError' ERR
-    # Read gcp bucket credentials to allow eck-diagnostics output writing to eck-e2e-buildkite-artifacts bucket.
-    vault read -field=service-account secret/ci/elastic-cloud-on-k8s/ci-gcp-k8s-operator > /tmp/auth.json
     make e2e-run
 }
 
