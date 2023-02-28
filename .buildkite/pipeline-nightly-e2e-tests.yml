@@ -285,6 +285,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
           # Cache the license from vault to avoid 20 minute TTL in CI.
+          - mkdir -p /go/src/github.com/elastic/cloud-on-k8s/.ci || true
           - vault read -field=pubkey secret/ci/elastic-cloud-on-k8s/license > /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
