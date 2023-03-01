@@ -39,6 +39,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		metricbeatConfigTemplate,
 		logstashv1alpha1.Namer,
 		fmt.Sprintf("%s://localhost:%d", "http" /*logstash.Spec.HTTP.Protocol()*/, network.HTTPPort),
+		//TODO: integrate username password with Logstash metrics API
 		"", /* no username for metrics API */
 		"", /* no password for metrics API */
 		false,
