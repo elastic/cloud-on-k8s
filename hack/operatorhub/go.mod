@@ -9,7 +9,7 @@ require (
 	github.com/google/go-containerregistry v0.12.0
 	github.com/hashicorp/vault/api v1.8.2
 	github.com/operator-framework/operator-registry v1.19.5
-	github.com/otiai10/copy v1.2.0
+	github.com/otiai10/copy v1.9.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
