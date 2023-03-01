@@ -41,7 +41,7 @@ print-ci-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
-ci:
+ci: get-test-artifacts
 	@ $(MAKE) DOCKER_CMD="make $(TARGET)" ci-internal
 
 ci-interactive:
