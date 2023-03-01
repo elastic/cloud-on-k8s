@@ -64,7 +64,6 @@ func initializeContext() {
 	}
 
 	logutil.ChangeVerbosity(ctx.LogVerbosity)
-
 	log.Info("Test context initialized", "context", ctx)
 }
 
