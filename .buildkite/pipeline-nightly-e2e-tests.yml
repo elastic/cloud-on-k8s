@@ -264,7 +264,6 @@ steps:
       #     - "eck-diagnostic-*.zip"
 
       - label: "ocp 4.11"
-        if: build.message == "run ocp nightly-e2e-tests"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -322,7 +321,6 @@ steps:
     steps:
 
       - label: "e2e/tanzu"
-        if: build.message == "run tanzu nightly-e2e-tests"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -348,7 +346,6 @@ steps:
     steps:
 
       - label: "e2e/resilience"
-        if: build.message == "run resilience nightly-e2e-tests"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
