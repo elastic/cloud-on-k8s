@@ -7,7 +7,6 @@ package vault
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,17 +63,13 @@ func auth(c *api.Client) error {
 
 	switch {
 	case roleID != "" && secretID != "":
-		log.Print("authenticating using vault approle")
 		method = "approle"
 		data = map[string]interface{}{"role_id": roleID, "secret_id": secretID}
 	case ghToken != "":
-		log.Print("authenticating using vault github token")
 		method = "github"
 		data = map[string]interface{}{"token": ghToken}
 	default:
-		log.Print("authenticating using default in switch statement")
 		var err error
-		log.Printf("attempting to read cached token")
 		token, err = readCachedToken()
 		if err != nil {
 			return errors.Wrap(err, "while reading cached token")
@@ -85,7 +80,6 @@ func auth(c *api.Client) error {
 	}
 
 	if token == "" {
-		log.Printf("attempting vault login using method %s", method)
 		resp, err := c.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
 		if err != nil {
 			return errors.Wrapf(err, "while logging into vault using method %s", method)
@@ -96,7 +90,6 @@ func auth(c *api.Client) error {
 		token = resp.Auth.ClientToken
 	}
 
-	log.Printf("setting token explicitly during vault login process")
 	c.SetToken(token)
 	return nil
 }
