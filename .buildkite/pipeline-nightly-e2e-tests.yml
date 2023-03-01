@@ -284,8 +284,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
-          # Cache the license from vault to avoid 20 minute TTL in CI.
-          - vault read -field=pubkey secret/ci/elastic-cloud-on-k8s/license > .ci/license.key
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
