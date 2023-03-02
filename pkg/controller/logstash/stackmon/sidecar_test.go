@@ -78,6 +78,7 @@ func TestWithMonitoring(t *testing.T) {
 		name                      string
 		ls                        func() logstashv1alpha1.Logstash
 		containersLength          int
+		esEnvVarsLength           int
 		podVolumesLength          int
 		metricsVolumeMountsLength int
 		logVolumeMountsLength     int
@@ -97,6 +98,7 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleLs
 			},
 			containersLength:          2,
+			esEnvVarsLength:           0,
 			podVolumesLength:          2,
 			metricsVolumeMountsLength: 2,
 		},
@@ -109,6 +111,7 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleLs
 			},
 			containersLength:      2,
+			esEnvVarsLength:       1,
 			podVolumesLength:      3,
 			logVolumeMountsLength: 3,
 		},
@@ -122,6 +125,7 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleLs
 			},
 			containersLength:          3,
+			esEnvVarsLength:           1,
 			podVolumesLength:          4,
 			metricsVolumeMountsLength: 2,
 			logVolumeMountsLength:     3,
@@ -136,6 +140,7 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleLs
 			},
 			containersLength:          3,
+			esEnvVarsLength:           1,
 			podVolumesLength:          5,
 			metricsVolumeMountsLength: 2,
 			logVolumeMountsLength:     3,

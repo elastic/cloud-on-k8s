@@ -80,6 +80,9 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	}
 
 	if monitoring.IsLogsDefined(&logstash) {
+		// enable Stack logging to write Logstash logs to disk
+		builder.WithEnv(fileLogStyleEnvVar())
+
 		b, err := Filebeat(ctx, client, logstash)
 		if err != nil {
 			return nil, err
