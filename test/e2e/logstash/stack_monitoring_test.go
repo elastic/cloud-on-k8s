@@ -33,6 +33,7 @@ func TestLogstashStackMonitoring(t *testing.T) {
 		WithNodeCount(1).
 		WithMonitoring(metrics.Ref(), logs.Ref()).
 		//TODO: remove command when Logstash has built with a monitor version of log4j2.properties
+		// https://github.com/elastic/logstash/issues/14941
 		WithCommand([]string{"sh", "-c", "curl -o 'log4j2.properties' 'https://raw.githubusercontent.com/elastic/logstash/main/config/log4j2.properties' && mv log4j2.properties config/log4j2.properties && /usr/local/bin/docker-entrypoint"})
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
