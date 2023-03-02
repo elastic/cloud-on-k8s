@@ -32,9 +32,9 @@ var _ webhook.Validator = &Logstash{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (a *Logstash) ValidateCreate() error {
-	validationLog.V(1).Info("Validate create", "name", a.Name)
-	return a.validate(nil)
+func (l *Logstash) ValidateCreate() error {
+	validationLog.V(1).Info("Validate create", "name", l.Name)
+	return l.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
