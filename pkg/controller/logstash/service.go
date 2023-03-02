@@ -21,7 +21,7 @@ import (
 func reconcileServices(params Params) ([]corev1.Service, error) {
 	createdAPIService := false
 
-	svcs := make([]corev1.Service, 0)
+	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
 	for _, service := range params.Logstash.Spec.Services {
 		var svc *corev1.Service
 		logstash := params.Logstash
