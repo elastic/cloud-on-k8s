@@ -1,15 +1,3 @@
-apiVersion: elasticsearch.k8s.elastic.co/v1
-kind: Elasticsearch
-metadata:
-  name: elasticsearch-sample
-spec:
-  version: 8.6.1
-  nodeSets:
-    - name: default
-      count: 3
-      config:
-        node.store.allow_mmap: false
----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:

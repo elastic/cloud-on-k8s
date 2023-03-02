@@ -48,11 +48,11 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	}
 
 	var status logstashv1alpha1.LogstashStatus
-	if status, err = calculateStatus(&params, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas); err != nil {
-		err = errors.Wrap(err, "while calculating status")
-	}
 
-	return results.WithError(err), status
+	if status, err = calculateStatus(&params, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas); err != nil {
+		results.WithError(errors.Wrap(err, "while calculating status"))
+	}
+	return results, status
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster

@@ -79,27 +79,3 @@ func TestLogstashName(t *testing.T) {
 		})
 	}
 }
-
-func TestConfigMapName(t *testing.T) {
-	type args struct {
-		logstashName string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "sample",
-			args: args{logstashName: "sample"},
-			want: "sample-ls-configmap",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ConfigMapName(tt.args.logstashName); got != tt.want {
-				t.Errorf("ConfigMap() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}

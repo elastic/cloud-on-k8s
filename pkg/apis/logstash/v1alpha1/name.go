@@ -21,10 +21,6 @@ func ConfigSecretName(name string) string {
 	return Namer.Suffix(name, configSuffix)
 }
 
-func ConfigMapName(name string) string {
-	return Namer.Suffix(name, "configmap")
-}
-
 // Name returns the name of Logstash.
 func Name(name string) string {
 	return Namer.Suffix(name)
