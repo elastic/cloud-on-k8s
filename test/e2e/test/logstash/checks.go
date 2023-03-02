@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -87,5 +89,63 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+	}
+}
+
+func CheckServices(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Logstash services should be created",
+		Test: test.Eventually(func() error {
+			serviceNames := map[string]struct{}{}
+			serviceNames[logstashv1alpha1.APIServiceName(b.Logstash.Name)] = struct{}{}
+			for _, r := range b.Logstash.Spec.Services {
+				serviceNames[logstashv1alpha1.UserServiceName(b.Logstash.Name, r.Name)] = struct{}{}
+			}
+			for serviceName := range serviceNames {
+				svc, err := k.GetService(b.Logstash.Namespace, serviceName)
+				if err != nil {
+					return err
+				}
+				if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+					if len(svc.Status.LoadBalancer.Ingress) == 0 {
+						return fmt.Errorf("load balancer for %s not ready yet", svc.Name)
+					}
+				}
+			}
+			return nil
+		}),
+	}
+}
+
+// CheckServicesEndpoints checks that services have the expected number of endpoints
+func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Logstash services should have endpoints",
+		Test: test.Eventually(func() error {
+			servicePorts := make(map[string]int32)
+			servicePorts[logstashv1alpha1.APIServiceName(b.Logstash.Name)] = b.Logstash.Spec.Count
+			for _, r := range b.Logstash.Spec.Services {
+				portsPerService := int32(len(r.Service.Spec.Ports))
+				servicePorts[logstashv1alpha1.UserServiceName(b.Logstash.Name, r.Name)] = b.Logstash.Spec.Count * portsPerService
+			}
+
+			for endpointName, addrPortCount := range servicePorts {
+				if addrPortCount == 0 {
+					continue
+				}
+				endpoints, err := k.GetEndpoints(b.Logstash.Namespace, endpointName)
+				if err != nil {
+					return err
+				}
+				if len(endpoints.Subsets) == 0 {
+					return fmt.Errorf("no subset for endpoint %s", endpointName)
+				}
+				if int32(len(endpoints.Subsets[0].Addresses)*len(endpoints.Subsets[0].Ports)) != addrPortCount {
+					return fmt.Errorf("%d addresses and %d ports found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses),
+						len(endpoints.Subsets[0].Ports), endpointName, addrPortCount)
+				}
+			}
+			return nil
+		}),
 	}
 }

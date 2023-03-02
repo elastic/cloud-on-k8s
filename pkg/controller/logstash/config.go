@@ -73,7 +73,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 
 func defaultConfig() *settings.CanonicalConfig {
 	settingsMap := map[string]interface{}{
-		// Set 'api.http.host' by defaut to `0.0.0.0` for readiness probe to work.
+		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
 	}
 

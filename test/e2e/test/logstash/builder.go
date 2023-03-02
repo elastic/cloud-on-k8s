@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
@@ -18,7 +18,7 @@ import (
 )
 
 type Builder struct {
-	Logstash    v1alpha1.Logstash
+	Logstash    logstashv1alpha1.Logstash
 	MutatedFrom *Builder
 }
 
@@ -35,11 +35,11 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().ImageDefinitionFor(v1alpha1.Kind)
+	def := test.Ctx().ImageDefinitionFor(logstashv1alpha1.Kind)
 	return Builder{
-		Logstash: v1alpha1.Logstash{
+		Logstash: logstashv1alpha1.Logstash{
 			ObjectMeta: meta,
-			Spec: v1alpha1.LogstashSpec{
+			Spec: logstashv1alpha1.LogstashSpec{
 				Count:   1,
 				Version: def.Version,
 			},
@@ -110,12 +110,17 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 	return b
 }
 
+func (b Builder) WithServices(services ...logstashv1alpha1.LogstashService) Builder {
+	b.Logstash.Spec.Services = append(b.Logstash.Spec.Services, services...)
+	return b
+}
+
 func (b Builder) NSN() types.NamespacedName {
 	return k8s.ExtractNamespacedName(&b.Logstash)
 }
 
 func (b Builder) Kind() string {
-	return v1alpha1.Kind
+	return logstashv1alpha1.Kind
 }
 
 func (b Builder) Spec() interface{} {

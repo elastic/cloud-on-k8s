@@ -15,20 +15,20 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  count: 3
+  count: 2
   version: 8.6.1
   config:
     log.level: info
     api.http.host: "0.0.0.0"
     queue.type: memory
   services:
-    - name: metrics
+    - name: api
       service:
         spec:
           type: ClusterIP
           ports:
             - port: 9600
-              name: "stats"
+              name: "api"
               protocol: TCP
               targetPort: 9600
     - name: beats
@@ -37,6 +37,10 @@ spec:
           type: ClusterIP
           ports:
             - port: 5044
-              name: "beats"
+              name: "filebeat"
               protocol: TCP
               targetPort: 5044
+            - port: 5045
+              name: "winlogbeat"
+              protocol: TCP
+              targetPort: 5045
