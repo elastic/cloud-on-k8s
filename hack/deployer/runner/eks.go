@@ -34,9 +34,13 @@ metadata:
   version: "{{.KubernetesVersion}}"
 nodeGroups:
   - name: ng-1
+    amiFamily: AmazonLinux2
     instanceType: {{.MachineType}}
     desiredCapacity: {{.NodeCount}}
     ami: {{.NodeAMI}}
+    overrideBootstrapCommand: |
+      #!/bin/bash
+      /etc/eks/bootstrap.sh {{.ClusterName}}
     iam:
       instanceProfileARN: {{.InstanceProfileARN}}
       instanceRoleARN: {{.InstanceRoleARN}}
