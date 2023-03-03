@@ -11,7 +11,7 @@ import (
 const (
 	apiServiceSuffix = "api"
 	configSuffix     = "config"
-	pipelineSuffix       = "pipeline"
+	pipelineSuffix   = "pipeline"
 )
 
 // Namer is a Namer that is configured with the defaults for resources related to a Logstash resource.
