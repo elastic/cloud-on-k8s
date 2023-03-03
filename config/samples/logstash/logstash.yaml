@@ -1,3 +1,4 @@
+
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
@@ -9,6 +10,9 @@ spec:
     log.level: info
     api.http.host: "0.0.0.0"
     queue.type: memory
+  pipelines:
+    - pipeline.id: main
+      config.string: input { exec { command => 'uptime' interval => 10 } } output { stdout{} }
   podTemplate:
     spec:
       containers:
