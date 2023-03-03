@@ -8,6 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -16,9 +21,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-type logstashStatus struct {
-	Version string `json:"version"`
-	Status  string `json:"status"`
+type Request struct {
+	Name string
+	Path string
+}
+
+type Want struct {
+	Status string
+	// Key is field path of ucfg.Config. Value is the expected string
+	// example, pipelines.demo.batch_size : 2
+	Match map[string]string
 }
 
 // CheckSecrets checks that expected secrets have been created.
@@ -30,6 +42,14 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			{
 				Name: logstashName + "-ls-config",
 				Keys: []string{"logstash.yml"},
+				Labels: map[string]string{
+					"eck.k8s.elastic.co/credentials": "true",
+					"logstash.k8s.elastic.co/name":   logstashName,
+				},
+			},
+			{
+				Name: logstashName + "-ls-pipeline",
+				Keys: []string{"pipelines.yml"},
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
 					"logstash.k8s.elastic.co/name":   logstashName,
@@ -65,29 +85,63 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	println(test.Ctx().TestTimeout)
 	return test.StepList{
-		{
-			Name: "Logstash should respond to requests",
-			Test: test.Eventually(func() error {
-				client, err := NewLogstashClient(b.Logstash, k)
-				if err != nil {
-					return err
-				}
-				bytes, err := DoRequest(client, b.Logstash, "GET", "/")
-				if err != nil {
-					return err
-				}
-				var status logstashStatus
-				if err := json.Unmarshal(bytes, &status); err != nil {
-					return err
-				}
-
-				if status.Status != "green" {
-					return fmt.Errorf("expected green but got %s", status.Status)
-				}
-				return nil
+		b.CheckMetricsRequest(k,
+			Request{
+				Name: "metrics",
+				Path: "/",
+			},
+			Want{
+				Status: "green",
 			}),
+		b.CheckMetricsRequest(k,
+			Request{
+				Name: "default pipeline",
+				Path: "/_node/pipelines/demo",
+			},
+			Want{
+				Status: "green",
+				Match:  map[string]string{"pipelines.demo.workers": "2"},
+			}),
+	}
+}
+
+func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) test.Step {
+	return test.Step{
+		Name: fmt.Sprintf("Logstash should respond to %s requests", req.Name),
+		Test: func(t *testing.T) {
+			t.Helper()
+
+			// send request and parse to map obj
+			client, err := NewLogstashClient(b.Logstash, k)
+			require.NoError(t, err)
+
+			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path)
+			require.NoError(t, err)
+
+			var response map[string]interface{}
+			err = json.Unmarshal(bytes, &response)
+			require.NoError(t, err)
+
+			// parse response to ucfg.Config for traverse
+			res, err := settings.NewCanonicalConfigFrom(response)
+			require.NoError(t, err)
+
+			// check status
+			status, err := res.String("status")
+			require.NoError(t, err)
+			if status != want.Status {
+				require.NoError(t, fmt.Errorf("expected %s but got %s", want.Status, status))
+			}
+
+			// check expected string
+			for k, v := range want.Match {
+				str, err := res.String(k)
+				require.NoError(t, err)
+				if str != v {
+					require.NoError(t, fmt.Errorf("expected %s to be %s but got %s", k, v, str))
+				}
+			}
 		},
 	}
 }
