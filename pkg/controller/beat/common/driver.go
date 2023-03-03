@@ -105,7 +105,7 @@ func Reconcile(
 		if errors.Is(err, beat_stackmon.ErrMonitoringClusterUUIDUnavailable) {
 			results.WithReconciliationState(reconciler.RequeueAfter(10 * time.Second).WithReason("ElasticsearchRef UUID unavailable while configuring Beats stack monitoring"))
 		}
-		return results, params.Status
+		return results.WithError(err), params.Status
 	}
 	var reconcileResults *reconciler.Results
 	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params)

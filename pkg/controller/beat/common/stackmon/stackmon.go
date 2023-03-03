@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
@@ -64,15 +65,11 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 		return stackmon.BeatSidecar{}, err
 	}
 
-	var es esv1.Elasticsearch
-	if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
+	uuid, err := associatedESUUID(ctx, client, beat)
+	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
-	if !ok {
-		// returning specific error here so this operation can be retried.
-		return stackmon.BeatSidecar{}, ErrMonitoringClusterUUIDUnavailable
-	}
+
 	beatTemplate, err := template.New("beat_stack_monitoring").Parse(metricbeatConfigTemplate)
 	if err != nil {
 		return stackmon.BeatSidecar{}, fmt.Errorf("while parsing template for beats stack monitoring configuration: %w", err)
@@ -122,6 +119,30 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, vers
 	})
 
 	return sidecar, nil
+}
+
+func associatedESUUID(ctx context.Context, client k8s.Client, beat *v1beta1.Beat) (string, error) {
+	if beat.ElasticsearchRef().IsExternal() {
+		remoteES, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace))
+		if err != nil {
+			return "", fmt.Errorf("while retrieving external ES connection info: %w", err)
+		}
+		uuid, err := remoteES.Request("/", "{.cluster_uuid}")
+		if err != nil {
+			return "", fmt.Errorf("while retrieving remote cluster UUID %w", err)
+		}
+		return uuid, nil
+	}
+	var es esv1.Elasticsearch
+	if err := client.Get(ctx, beat.ElasticsearchRef().WithDefaultNamespace(beat.Namespace).NamespacedName(), &es); err != nil {
+		return "", err
+	}
+	uuid, ok := es.Annotations[bootstrap.ClusterUUIDAnnotationName]
+	if !ok {
+		// returning specific error here so this operation can be retried.
+		return "", ErrMonitoringClusterUUIDUnavailable
+	}
+	return uuid, nil
 }
 
 // GetStackMonitoringSocketURL will return a path to a Unix socket that will be used to expose and query metrics.
