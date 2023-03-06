@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/elastic/cloud-on-k8s/hack/helm/release/internal/helm"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -38,6 +39,8 @@ const (
 	// Environment flag options
 	devEnvironment  = "dev"
 	prodEnvironment = "prod"
+
+	vaultSecretField = "creds.json"
 )
 
 var (
@@ -117,7 +120,7 @@ func releaseCmd() *cobra.Command {
 
 	flags.String(
 		vaultSecretFlag,
-		"secret/ci/elastic-cloud-on-k8s/helm-gcs-credentials",
+		"helm-gcs-credentials",
 		"When --enable-vault is set, attempts to read 'credentials-file' data from given vault secret location (HELM_VAULT_SECRET)",
 	)
 	_ = viper.BindPFlag(vaultSecretFlag, flags.Lookup(vaultSecretFlag))
@@ -138,18 +141,25 @@ func validate(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("%s flag can only be on of (%s, %s)", envFlag, devEnvironment, prodEnvironment)
 	}
 
+	credentialsFile := viper.GetString(credentialsFileFlag)
+	if credentialsFile == "" {
+		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
+	}
+
 	if viper.GetBool(enableVaultFlag) {
-		if viper.GetString(vaultSecretFlag) == "" {
+		secretPath := viper.GetString(vaultSecretFlag)
+		if secretPath == "" {
 			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
 		}
-		err := readCredentialsFromVault()
+
+		_, err := vault.SecretFile{
+			Name:          credentialsFile,
+			Path:          secretPath,
+			FieldResolver: func() string { return "creds.json" },
+		}.Read()
 		if err != nil {
 			return err
 		}
-	}
-
-	if viper.GetString(credentialsFileFlag) == "" {
-		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
 	}
 
 	return nil

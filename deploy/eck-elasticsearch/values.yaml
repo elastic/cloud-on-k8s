@@ -115,6 +115,11 @@ remoteClusters: {}
   #     name: cluster-two
   #     namespace: ns-two
 
+# VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
+# Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
+# Defaults to DeleteOnScaledownAndClusterDeletion if unset.
+volumeClaimDeletePolicy: ""
+
 # Node configuration settings.
 # The node roles which can be configured here are:
 # - "master"

@@ -13,14 +13,12 @@ steps:
         key: "operator-image-build"
         commands:
           - .ci/setenvconfig pr
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make operator-buildah
 
       - label: ":docker: e2e-tests container image"
         key: "e2e-tests-image-build"
         commands:
           - .ci/setenvconfig pr
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make e2e-buildah
 
   - group: checks
@@ -92,7 +90,6 @@ steps:
           memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
@@ -145,3 +142,12 @@ steps:
         if: build.message == "release all helm charts"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-all.yml
+
+  - group: redhat-release
+
+    steps:
+
+      - label: "redhat operatorhub"
+        if: build.message == "run operatorhub release"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml

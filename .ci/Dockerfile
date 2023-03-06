@@ -8,7 +8,7 @@ ENV KUBECTL_VERSION=1.21.14
 ENV DOCKER_VERSION=19.03.14
 ENV DOCKER_BUILDX_VERSION=0.8.2
 ENV GOTESTSUM_VERSION=1.8.0
-ENV EKSCTL_VERSION=0.74.0
+ENV EKSCTL_VERSION=0.132.0
 ENV ECK_DIAG_VERSION=1.2.0
 ENV HELM_VERSION=3.9.1
 
@@ -91,6 +91,12 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
     rm get_helm.sh
 
 RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
+
+ENV VAULT_VERSION=1.12.3
+RUN curl -fsSLO "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip" && \
+    unzip vault_${VAULT_VERSION}_linux_amd64.zip && \
+    mv vault /usr/local/bin/vault && \
+    rm vault_${VAULT_VERSION}_linux_amd64.zip
 
 # Add an exception to avoid `fatal: detected dubious ownership in repository`
 # as recent versions of git require the .git folder to be owned by the current user
