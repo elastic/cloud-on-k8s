@@ -1,0 +1,292 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-agent-k8s-elastic-co-v1alpha1-agent
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-agent-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - agent.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - agents
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-apm-k8s-elastic-co-v1-apmserver
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-apm-validation-v1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - apm.k8s.elastic.co
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - apmservers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-apm-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - apm.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - apmservers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-beat-k8s-elastic-co-v1beta1-beat
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-beat-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - beat.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - beats
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-es-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-enterprisesearch-k8s-elastic-co-v1-enterprisesearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-ent-validation-v1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - enterprisesearch.k8s.elastic.co
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - enterprisesearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-ent-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - enterprisesearch.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - enterprisesearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kibana-k8s-elastic-co-v1-kibana
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-kb-validation-v1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - kibana.k8s.elastic.co
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - kibanas
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-kb-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - kibana.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - kibanas
+  sideEffects: None
+- admissionReviewVersions:
+  - v1alpha1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-ems-k8s-elastic-co-v1alpha1-mapsservers
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-ems-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - maps.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - mapsservers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-scp-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - stackconfigpolicy.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - stackconfigpolicies
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-es-validation-v1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-autoscaling-k8s-elastic-co-v1alpha1-elasticsearchautoscaler
+  failurePolicy: Ignore
+  matchPolicy: Exact
+  name: elastic-esa-validation-v1alpha1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - autoscaling.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearchautoscalers
+  sideEffects: None
