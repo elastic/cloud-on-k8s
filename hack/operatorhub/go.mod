@@ -8,7 +8,7 @@ require (
 	github.com/go-git/go-git/v5 v5.6.0
 	github.com/google/go-containerregistry v0.12.0
 	github.com/hashicorp/vault/api v1.8.2
-	github.com/operator-framework/operator-registry v1.19.5
+	github.com/operator-framework/operator-registry v1.26.4
 	github.com/otiai10/copy v1.9.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
@@ -16,11 +16,12 @@ require (
 	k8s.io/api v0.25.4
 	k8s.io/apiextensions-apiserver v0.25.0
 	k8s.io/apimachinery v0.25.4
-	k8s.io/kubectl v0.22.4
+	k8s.io/kubectl v0.25.0
 )
 
 require (
 	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
+	github.com/adrg/xdg v0.4.0 // indirect
 	github.com/bshuster-repo/logrus-logstash-hook v1.0.2 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/docker/cli v20.10.21+incompatible // indirect
@@ -131,7 +132,7 @@ require (
 	github.com/onsi/gomega v1.24.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
-	github.com/operator-framework/api v0.16.0 // indirect
+	github.com/operator-framework/api v0.17.2-0.20220915200120-ff2dbc53d381 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -181,7 +182,7 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
