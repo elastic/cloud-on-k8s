@@ -32,6 +32,7 @@ overrides:
 AZURE_CLIENT_SECRET: {{.AzureClientSecret}}
 AZURE_CONTROL_PLANE_MACHINE_TYPE: {{.AzureMachineType}} 
 AZURE_LOCATION: {{.AzureLocation}}
+AZURE_CUSTOM_TAGS: {{.AzureCustomTags}}
 AZURE_NODE_MACHINE_TYPE: {{.AzureMachineType}}
 AZURE_NODE_SUBNET_CIDR: 10.0.1.0/24
 AZURE_RESOURCE_GROUP: {{.ResourceGroup}}
@@ -250,6 +251,7 @@ func (t *TanzuDriver) createInstallerConfig() error {
 		"AzureClientSecret":   t.azureCredentials.ClientSecret,
 		"AzureMachineType":    t.plan.MachineType,
 		"AzureLocation":       t.plan.Tanzu.Location,
+		"AzureCustomTags":     strings.Join(toList(elasticTags), ","),
 		"ResourceGroup":       t.plan.Tanzu.ResourceGroup,
 		"SSHPubKey":           t.plan.Tanzu.SSHPubKey,
 		"AzureSubscriptionID": t.azureCredentials.SubscriptionID,
