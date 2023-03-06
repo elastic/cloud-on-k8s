@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
@@ -31,6 +32,7 @@ overrides:
 AZURE_CLIENT_SECRET: {{.AzureClientSecret}}
 AZURE_CONTROL_PLANE_MACHINE_TYPE: {{.AzureMachineType}} 
 AZURE_LOCATION: {{.AzureLocation}}
+AZURE_CUSTOM_TAGS: {{.AzureCustomTags}}
 AZURE_NODE_MACHINE_TYPE: {{.AzureMachineType}}
 AZURE_NODE_SUBNET_CIDR: 10.0.1.0/24
 AZURE_RESOURCE_GROUP: {{.ResourceGroup}}
@@ -249,6 +251,7 @@ func (t *TanzuDriver) createInstallerConfig() error {
 		"AzureClientSecret":   t.azureCredentials.ClientSecret,
 		"AzureMachineType":    t.plan.MachineType,
 		"AzureLocation":       t.plan.Tanzu.Location,
+		"AzureCustomTags":     strings.Join(toList(elasticTags), ","),
 		"ResourceGroup":       t.plan.Tanzu.ResourceGroup,
 		"SSHPubKey":           t.plan.Tanzu.SSHPubKey,
 		"AzureSubscriptionID": t.azureCredentials.SubscriptionID,
@@ -385,8 +388,12 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 		return false, err
 	}
 	log.Println("Creating Azure resource group")
-	err = azure.Cmd("group", "create", "-l", t.plan.Tanzu.Location, "--name", t.plan.Tanzu.ResourceGroup).
-		WithoutStreaming().Run()
+	// https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest#az-group-create
+	err = azure.Cmd("group", "create",
+		"-l", t.plan.Tanzu.Location,
+		"--name", t.plan.Tanzu.ResourceGroup,
+		"--tags", strings.Join(toList(elasticTags), " "),
+	).WithoutStreaming().Run()
 	return true, err
 }
 
