@@ -58,7 +58,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/kubernetes/client-go[$$k8s.io/client-go$$] | v0.26.2 | Apache-2.0
 | link:https://github.com/kubernetes/klog[$$k8s.io/klog/v2$$] | v2.90.1 | Apache-2.0
 | link:https://github.com/kubernetes/utils[$$k8s.io/utils$$] | v0.0.0-20221128185143-99ec85e7a448 | Apache-2.0
-| link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.14.4 | Apache-2.0
+| link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.14.5 | Apache-2.0
 | link:https://sigs.k8s.io/controller-tools[$$sigs.k8s.io/controller-tools$$] | v0.11.3 | Apache-2.0
 |===
 
