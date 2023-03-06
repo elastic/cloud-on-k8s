@@ -131,8 +131,8 @@ func GetServiceIPAddresses(svc corev1.Service) []net.IP {
 	return ipAddrs
 }
 
-// EmitErrorEvent emits an event if the error is report-worthy
-func EmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...interface{}) {
+// MaybeEmitErrorEvent emits an event if the error is report-worthy
+func MaybeEmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...interface{}) {
 	// ignore nil errors and conflict issues
 	if err == nil || apierrors.IsConflict(err) {
 		return

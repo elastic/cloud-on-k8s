@@ -194,7 +194,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		} else {
 			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
 			results.WithError(err)
-			k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+			k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 		}
 	}
 
@@ -212,7 +212,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }

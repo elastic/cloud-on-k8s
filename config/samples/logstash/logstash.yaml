@@ -1,0 +1,15 @@
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 3
+  version: 8.6.1
+  config:
+    log.level: info
+    api.http.host: "0.0.0.0"
+    queue.type: memory
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash

@@ -154,7 +154,7 @@ func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Reques
 	}
 
 	result, err := results.Aggregate()
-	k8s.EmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, agent, events.EventReconciliationError, "Reconciliation error: %v", err)
 
 	return result, err
 }
@@ -195,7 +195,7 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	// Run create validations only as update validations require old object which we don't have here.
 	if err := agent.ValidateCreate(); err != nil {
 		logconf.FromContext(ctx).Error(err, "Validation failed")
-		k8s.EmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 	return nil
