@@ -27,7 +27,7 @@ WARNING: Some Docker images are incompatible with the `restricted` SCC. This is 
 
 . Set virtual memory settings on the Kubernetes nodes.
 +
-Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes.
+Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.12/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes.
 +
 Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level. This has performance implications and is not recommended for production workloads.
 +
@@ -52,7 +52,7 @@ oc adm pod-network make-projects-global elastic-system
 
 . Create a namespace to hold the Elastic resources ({eck_resources_list}):
 +
-NOTE: A namespace other than the default namespaces: default, kube-system, kube-public, openshift-node, openshift-infra, openshift is required such that default https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
+NOTE: A namespace other than the default namespaces (default, kube-system, kube-*, openshift-*, etc) is required such that default https://docs.openshift.com/container-platform/4.12/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
 
 [source,shell]
 ----
@@ -73,7 +73,7 @@ In this example the user `developer` is allowed to manage Elastic resources in t
 
 Use the following code to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
 
-NOTE: A namespace other than the default namespaces: default, kube-system, kube-public, openshift-node, openshift-infra, openshift is required such that default https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
+NOTE: A namespace other than the default namespaces (default, kube-system, kube-*, openshift-*, etc) is required such that default https://docs.openshift.com/container-platform/4.12/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
 
 [source,shell,subs="attributes,+macros"]
 ----
