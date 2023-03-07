@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.6.0
-Time    : 2023-02-08T21:57:58Z
+Version : v0.7.0
+Time    : 2023-03-05T04:00:43Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.7.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15805,11 +15805,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.7.0
-Time    : 2023-02-14T17:04:22Z
+Version : v0.8.0
+Time    : 2023-03-05T02:51:52Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.8.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15916,11 +15916,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.5.0
-Time    : 2023-02-07T00:05:19Z
+Version : v0.6.0
+Time    : 2023-03-04T03:20:52Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.6.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15953,11 +15953,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.5.0
-Time    : 2023-02-07T17:11:03Z
+Version : v0.6.0
+Time    : 2023-03-05T01:20:54Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.6.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
