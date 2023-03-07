@@ -77,7 +77,7 @@ func referencedElasticsearchStatusVersion(c k8s.Client, esRef commonv1.ObjectSel
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/", "{ .version.number }")
+		ver, err := info.Version("/", "{ .version.number }")
 		if err != nil {
 			return "", err
 		}
