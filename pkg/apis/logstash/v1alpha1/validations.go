@@ -17,6 +17,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkSingleConfigSource,
+		checkSinglePipelineSource,
 	}
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
@@ -49,6 +50,18 @@ func checkSingleConfigSource(a *Logstash) field.ErrorList {
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("config"), msg),
 			field.Forbidden(field.NewPath("spec").Child("configRef"), msg),
+		}
+	}
+
+	return nil
+}
+
+func checkSinglePipelineSource(a *Logstash) field.ErrorList {
+	if a.Spec.Pipelines != nil && a.Spec.PipelinesRef != nil {
+		msg := "Specify at most one of [`pipelines`, `pipelinesRef`], not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("pipelines"), msg),
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef"), msg),
 		}
 	}
 
