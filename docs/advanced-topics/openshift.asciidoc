@@ -52,7 +52,7 @@ oc adm pod-network make-projects-global elastic-system
 
 . Create a namespace to hold the Elastic resources ({eck_resources_list}):
 +
-NOTE: A namespace other than the default namespaces (default, kube-system, kube-*, openshift-*, etc) is required such that default https://docs.openshift.com/container-platform/4.12/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
+NOTE: A namespace other than the default namespaces (default, kube-*, openshift-*, etc) is required such that default https://docs.openshift.com/container-platform/4.12/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) permissions are applied automatically. Elastic resources will not work properly in any of the default namespaces.
 
 [source,shell]
 ----
