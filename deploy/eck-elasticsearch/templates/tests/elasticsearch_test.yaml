@@ -198,3 +198,48 @@ tests:
       - equal:
           path: spec.auth.roles[0].secretName
           value: roles-secret-1
+  - it: should render image properly
+    set:
+      image: my.regis.try/es:8
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.regis.try/es:8
+  - it: should render image properly
+    set:
+      image: my.registry.com/elastic/elasticsearch:8.7.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/elasticsearch:8.7.0
+  - it: should render podDisruptionBudget properly
+    set:
+      podDisruptionBudget:
+        spec:
+          minAvailable: 2
+          selector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: quickstart
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value:
+             spec:
+              minAvailable: 2
+              selector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: quickstart
+  - it: should render serviceAccountName properly
+    set:
+      serviceAccountName: my-sa
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: my-sa
+  - it: should render revisionHistoryLimit properly
+    set:
+      revisionHistoryLimit: 2
+    asserts:
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 2
