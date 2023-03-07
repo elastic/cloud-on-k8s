@@ -7,6 +7,8 @@ package v1alpha1
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
@@ -17,6 +19,8 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkSingleConfigSource,
+		checkMonitoring,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
@@ -53,4 +57,15 @@ func checkSingleConfigSource(a *Logstash) field.ErrorList {
 	}
 
 	return nil
+}
+
+func checkMonitoring(k *Logstash) field.ErrorList {
+	return validations.Validate(k, k.Spec.Version)
+}
+
+func checkAssociations(k *Logstash) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
+	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), k.GetMonitoringMetricsRefs()...)
+	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), k.GetMonitoringLogsRefs()...)
+	return append(err1, err2...)
 }
