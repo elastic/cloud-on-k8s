@@ -79,7 +79,7 @@ ci-build-image:
 # all artifacts needed to run e2e tests
 get-test-artifacts: monitoring-secrets.json test-license.json license.key
 
-ifneq (,$(IS_SNAPSHOT_BUILD))
+ifeq (dev,$(BUILD_LICENSE_PUBKEY))
        SECRET_FIELD_PREFIX ?= dev-
 get-test-artifacts: dev-private.key
 endif
