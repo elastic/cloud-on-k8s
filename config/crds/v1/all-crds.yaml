@@ -9121,6 +9121,25 @@ spec:
                 description: Image is the Logstash Docker image to deploy. Version
                   and Type have to match the Logstash in the image.
                 type: string
+              pipelines:
+                description: Pipelines holds the Logstash Pipelines. At most one of
+                  [`Pipelines`, `PipelinesRef`] can be specified.
+                items:
+                  additionalProperties:
+                    type: string
+                  type: object
+                type: array
+                x-kubernetes-preserve-unknown-fields: true
+              pipelinesRef:
+                description: PipelinesRef contains a reference to an existing Kubernetes
+                  Secret holding the Logstash Pipelines. Logstash pipelines must be
+                  specified as yaml, under a single "pipeline.yml" entry. At most
+                  one of [`Pipelines`, `PipelinesRef`] can be specified.
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                type: object
               podTemplate:
                 description: PodTemplate provides customisation options for the Logstash
                   pods.

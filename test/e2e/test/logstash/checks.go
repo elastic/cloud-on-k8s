@@ -21,9 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-type logstashStatus struct {
-	Version string `json:"version"`
-	Status  string `json:"status"`
 type Request struct {
 	Name string
 	Path string
@@ -88,29 +85,6 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	println(test.Ctx().TestTimeout)
-	return test.StepList{
-		{
-			Name: "Logstash should respond to requests",
-			Test: test.Eventually(func() error {
-				client, err := NewLogstashClient(b.Logstash, k)
-				if err != nil {
-					return err
-				}
-				bytes, err := DoRequest(client, b.Logstash, "GET", "/")
-				if err != nil {
-					return err
-				}
-				var status logstashStatus
-				if err := json.Unmarshal(bytes, &status); err != nil {
-					return err
-				}
-
-				if status.Status != "green" {
-					return fmt.Errorf("expected green but got %s", status.Status)
-				}
-				return nil
-			}),
 	return test.StepList{
 		b.CheckMetricsRequest(k,
 			Request{
