@@ -42,12 +42,11 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 
-	// HTTP holds the HTTP layer configuration for the Logstash Metrics API
-	// TODO: This should likely be changed to a more general `Services LogstashService[]`, where `LogstashService` looks
-	//       a lot like `HTTPConfig`, but is applicable for more than just an HTTP endpoint, as logstash may need to
-	//       be opened up for other services: beats, TCP, UDP, etc, inputs
+	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
+	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
+	// be opened up for other services: beats, TCP, UDP, etc, inputs
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	Services []LogstashService `json:"services,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Logstash.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
@@ -74,6 +73,14 @@ type LogstashSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
+type LogstashService struct {
+	Name string `json:"name,omitempty"`
+	// Service defines the template for the associated Kubernetes Service object.
+	Service commonv1.ServiceTemplate `json:"service,omitempty"`
+	// TLS defines options for configuring TLS for HTTP.
+	TLS commonv1.TLSOptions `json:"tls,omitempty"`
+}
+
 // LogstashStatus defines the observed state of Logstash
 type LogstashStatus struct {
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
@@ -98,6 +105,7 @@ type LogstashStatus struct {
 // +kubebuilder:object:root=true
 
 // Logstash is the Schema for the logstashes API
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories=elastic,shortName=ls
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="available",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
@@ -110,8 +118,8 @@ type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec                 LogstashSpec                                         `json:"spec,omitempty"`
-	Status               LogstashStatus                                       `json:"status,omitempty"`
+	Spec   LogstashSpec   `json:"spec,omitempty"`
+	Status LogstashStatus `json:"status,omitempty"`
 	MonitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 

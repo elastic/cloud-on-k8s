@@ -40,6 +40,13 @@ spec:
   remoteClusters:
     {{- toYaml .Values.remoteClusters | nindent 2 }}
   {{- end }}
+  {{- if .Values.volumeClaimDeletePolicy }}
+  volumeClaimDeletePolicy:
+    {{- if and (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownOnly")) (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownAndClusterDeletion")) }}
+    {{ fail "volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'" }}
+    {{- end }}
+    {{- toYaml .Values.volumeClaimDeletePolicy | nindent 4 }}
+  {{- end }}
   {{- if eq (len .Values.nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}

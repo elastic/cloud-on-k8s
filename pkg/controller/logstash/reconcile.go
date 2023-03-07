@@ -28,10 +28,10 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	s, _ := sset.New(sset.Params{
+	s := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
-		ServiceName:          logstashv1alpha1.HTTPServiceName(params.Logstash.Name),
+		ServiceName:          logstashv1alpha1.APIServiceName(params.Logstash.Name),
 		Selector:             params.Logstash.GetIdentityLabels(),
 		Labels:               params.Logstash.GetIdentityLabels(),
 		PodTemplateSpec:      podTemplate,
@@ -48,11 +48,11 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	}
 
 	var status logstashv1alpha1.LogstashStatus
-	if status, err = calculateStatus(&params, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas); err != nil {
-		err = errors.Wrap(err, "while calculating status")
-	}
 
-	return results.WithError(err), status
+	if status, err = calculateStatus(&params, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas); err != nil {
+		results.WithError(errors.Wrap(err, "while calculating status"))
+	}
+	return results, status
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
@@ -22,7 +22,7 @@ import (
 )
 
 type Builder struct {
-	Logstash    v1alpha1.Logstash
+	Logstash    logstashv1alpha1.Logstash
 	MutatedFrom *Builder
 }
 
@@ -39,11 +39,11 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().ImageDefinitionFor(v1alpha1.Kind)
+	def := test.Ctx().ImageDefinitionFor(logstashv1alpha1.Kind)
 	return Builder{
-		Logstash: v1alpha1.Logstash{
+		Logstash: logstashv1alpha1.Logstash{
 			ObjectMeta: meta,
-			Spec: v1alpha1.LogstashSpec{
+			Spec: logstashv1alpha1.LogstashSpec{
 				Count:   1,
 				Version: def.Version,
 			},
@@ -114,6 +114,12 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 	return b
 }
 
+func (b Builder) WithServices(services ...logstashv1alpha1.LogstashService) Builder {
+	b.Logstash.Spec.Services = append(b.Logstash.Spec.Services, services...)
+	return b
+}
+
+
 func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
 	b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
 	b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
@@ -166,7 +172,7 @@ func (b Builder) NSN() types.NamespacedName {
 }
 
 func (b Builder) Kind() string {
-	return v1alpha1.Kind
+	return logstashv1alpha1.Kind
 }
 
 func (b Builder) Spec() interface{} {
@@ -178,7 +184,7 @@ func (b Builder) Count() int32 {
 }
 
 func (b Builder) ServiceName() string {
-	return b.Logstash.Name + "-ls-http"
+	return b.Logstash.Name + "-ls-api"
 }
 
 func (b Builder) ListOptions() []client.ListOption {

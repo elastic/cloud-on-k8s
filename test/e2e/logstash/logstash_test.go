@@ -9,6 +9,9 @@ package logstash
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
@@ -19,6 +22,76 @@ func TestSingleLogstash(t *testing.T) {
 		WithNodeCount(1)
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
+
+func TestLogstashWithCustomService(t *testing.T) {
+	name := "test-multiple-custom-logstash"
+	service := logstashv1alpha1.LogstashService {
+		Name: "test",
+		Service: commonv1.ServiceTemplate{
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Port: 9200},
+				},
+			},
+		},
+	}
+	logstashBuilder := (logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithServices(service))
+
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
+func TestLogstashWithReworkedApiService(t *testing.T) {
+	name := "test-multiple-custom-logstash"
+	service := logstashv1alpha1.LogstashService {
+		Name: "api",
+		Service: commonv1.ServiceTemplate{
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Port: 9200},
+				},
+			},
+		},
+	}
+	logstashBuilder := (logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithServices(service))
+
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
+func TestLogstashWithCustomServiceAndAmendedApi(t *testing.T) {
+	name := "test-multiple-custom-logstash"
+	customService := logstashv1alpha1.LogstashService {
+		Name: "test",
+		Service: commonv1.ServiceTemplate{
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Port: 9200},
+				},
+			},
+		},
+	}
+
+	apiService := logstashv1alpha1.LogstashService {
+		Name: "api",
+		Service: commonv1.ServiceTemplate{
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Port: 9601},
+				},
+			},
+		},
+	}
+
+	logstashBuilder := (logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithServices(apiService, customService))
+
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
 
 func TestMultipleLogstashes(t *testing.T) {
 	name := "test-multiple-logstashes"

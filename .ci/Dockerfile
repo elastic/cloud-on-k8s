@@ -1,5 +1,5 @@
 # Docker image used for continuous integration
-FROM docker.io/library/golang:1.20.0
+FROM docker.io/library/golang:1.19.5
 
 ENV GOLANGCILINT_VERSION=1.48.0
 ENV SHELLCHECK_VERSION=0.8.0
@@ -91,6 +91,12 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
     rm get_helm.sh
 
 RUN helm plugin install https://github.com/quintush/helm-unittest --version 0.2.8
+
+ENV VAULT_VERSION=1.12.3
+RUN curl -fsSLO "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip" && \
+    unzip vault_${VAULT_VERSION}_linux_amd64.zip && \
+    mv vault /usr/local/bin/vault && \
+    rm vault_${VAULT_VERSION}_linux_amd64.zip
 
 # Add an exception to avoid `fatal: detected dubious ownership in repository`
 # as recent versions of git require the .git folder to be owned by the current user

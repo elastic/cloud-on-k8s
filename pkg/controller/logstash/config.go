@@ -5,33 +5,25 @@
 package logstash
 
 import (
-	"context"
 	"hash"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
+func reconcileConfig(params Params, configHash hash.Hash) error {
 	defer tracing.Span(&params.Context)()
-	results := reconciler.NewResult(params.Context)
 
 	cfgBytes, err := buildConfig(params)
 	if err != nil {
-		return results.WithError(err)
+		return err
 	}
 
 	expected := corev1.Secret{
@@ -46,64 +38,28 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
-		return results.WithError(err)
+		return err
 	}
 
 	_, _ = configHash.Write(cfgBytes)
 
-	return results
+	return nil
 }
 
 func buildConfig(params Params) ([]byte, error) {
-	existingCfg, err := getExistingConfig(params.Context, params.Client, params.Logstash)
-	if err != nil {
-		return nil, err
-	}
-
 	userProvidedCfg, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := defaultConfig()
-	if err != nil {
-		return nil, err
-	}
 
 	// merge with user settings last so they take precedence
-	if err := cfg.MergeWith(existingCfg, userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(userProvidedCfg); err != nil {
 		return nil, err
 	}
 
 	return cfg.Render()
-}
-
-// getExistingConfig retrieves the canonical config, if one exists
-func getExistingConfig(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (*settings.CanonicalConfig, error) {
-	var secret corev1.Secret
-	key := types.NamespacedName{
-		Namespace: logstash.Namespace,
-		Name:      logstashv1alpha1.ConfigSecretName(logstash.Name),
-	}
-	err := client.Get(context.Background(), key, &secret)
-	if err != nil && apierrors.IsNotFound(err) {
-		ulog.FromContext(ctx).V(1).Info("Logstash config secret does not exist", "namespace", logstash.Namespace, "name", logstash.Name)
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	rawCfg, exists := secret.Data[LogstashConfigFileName]
-	if !exists {
-		return nil, nil
-	}
-
-	cfg, err := settings.ParseConfig(rawCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
@@ -117,7 +73,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 
 func defaultConfig() *settings.CanonicalConfig {
 	settingsMap := map[string]interface{}{
-		// Set 'api.http.host' by defaut to `0.0.0.0` for readiness probe to work.
+		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
 	}
 

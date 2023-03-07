@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestHTTPService(t *testing.T) {
+func TestAPIService(t *testing.T) {
 	type args struct {
 		logstashName string
 	}
@@ -20,13 +20,13 @@ func TestHTTPService(t *testing.T) {
 		{
 			name: "sample",
 			args: args{logstashName: "sample"},
-			want: "sample-ls-http",
+			want: "sample-ls-api",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HTTPServiceName(tt.args.logstashName); got != tt.want {
-				t.Errorf("HTTPService() = %v, want %v", got, tt.want)
+			if got := APIServiceName(tt.args.logstashName); got != tt.want {
+				t.Errorf("DefaultService() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -75,30 +75,6 @@ func TestLogstashName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Name(tt.args.logstashName); got != tt.want {
 				t.Errorf("Logstash Name() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfigMapName(t *testing.T) {
-	type args struct {
-		logstashName string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "sample",
-			args: args{logstashName: "sample"},
-			want: "sample-ls-configmap",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ConfigMapName(tt.args.logstashName); got != tt.want {
-				t.Errorf("ConfigMap() = %v, want %v", got, tt.want)
 			}
 		})
 	}

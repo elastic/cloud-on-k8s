@@ -24,6 +24,7 @@
 * Improve user password hash comparison performance by utilizing an LRU cache. {pull}6080[#6080] (issue: {issue}6076[#6076])
 * Add default securityContext to the manager container in Operator Helm Chart. {pull}6047[#6047]
 * Allow Fleet Server to be run without TLS. {pull}6020[#6020] (issue: {issue}6000[#6000])
+* Release a FIPS-compliant operator image. {pull}6071[#6071]
 
 [[bug-2.6.0]]
 [float]

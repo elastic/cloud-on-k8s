@@ -118,6 +118,11 @@ func (c *CanonicalConfig) SetStrings(key string, vals ...string) error {
 	return nil
 }
 
+// String returns a string value for the given key
+func (c *CanonicalConfig) String(key string) (string, error) {
+	return c.asUCfg().String(key, -1, Options...)
+}
+
 // Unpack returns a typed config given a struct pointer.
 func (c *CanonicalConfig) Unpack(cfg interface{}) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {

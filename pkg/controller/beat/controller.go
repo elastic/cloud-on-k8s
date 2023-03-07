@@ -160,7 +160,7 @@ func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request
 	}
 
 	res, err := results.Aggregate()
-	k8s.EmitErrorEvent(r.recorder, err, &beat, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEvent(r.recorder, err, &beat, events.EventReconciliationError, "Reconciliation error: %v", err)
 
 	return res, err
 }
@@ -192,7 +192,7 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 
 	if err := beat.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, beat, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
 	}
 

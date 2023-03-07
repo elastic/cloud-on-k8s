@@ -7,7 +7,7 @@ metadata:
     certified: 'false'
     containerImage: {{ .OperatorRepo }}{{ .Tag }}
     createdAt: {{ now | date "2006-01-02 15:04:05" }}
-    description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server on Kubernetes and OpenShift
+    description: Run Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server and Logstash on Kubernetes and OpenShift
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
     alm-examples: |-
@@ -225,6 +225,17 @@ metadata:
                   "elasticsearchRef": {
                       "name": "elasticsearch-sample"
                   }
+              }
+          },
+          {
+              "apiVersion": "logstash.k8s.elastic.co/v1alpha1",
+              "kind": "Logstash",
+              "metadata" : {
+                  "name": "logstash-sample"
+              },
+              "spec": {
+                  "version": "{{ .StackVersion }}",
+                  "count": 1
               }
           }
       ]

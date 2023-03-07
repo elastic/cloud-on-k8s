@@ -84,8 +84,8 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
-		checks.CheckServices(b, k),
-		checks.CheckServicesEndpoints(b, k),
+		CheckServices(b, k),
+		CheckServicesEndpoints(b, k),
 		checks.CheckPods(b, k),
 	}
 }

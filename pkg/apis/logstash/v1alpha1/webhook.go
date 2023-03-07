@@ -32,57 +32,53 @@ var _ webhook.Validator = &Logstash{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (a *Logstash) ValidateCreate() error {
-	validationLog.V(1).Info("Validate create", "name", a.Name)
-	return a.validate(nil)
+func (l *Logstash) ValidateCreate() error {
+	validationLog.V(1).Info("Validate create", "name", l.Name)
+	return l.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (a *Logstash) ValidateDelete() error {
-	validationLog.V(1).Info("Validate delete", "name", a.Name)
+func (l *Logstash) ValidateDelete() error {
+	validationLog.V(1).Info("Validate delete", "name", l.Name)
 	return nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (a *Logstash) ValidateUpdate(old runtime.Object) error {
-	validationLog.V(1).Info("Validate update", "name", a.Name)
+func (l *Logstash) ValidateUpdate(old runtime.Object) error {
+	validationLog.V(1).Info("Validate update", "name", l.Name)
 	oldObj, ok := old.(*Logstash)
 	if !ok {
 		return errors.New("cannot cast old object to Logstash type")
 	}
 
-	return a.validate(oldObj)
+	return l.validate(oldObj)
 }
 
 // WebhookPath returns the HTTP path used by the validating webhook.
-func (a *Logstash) WebhookPath() string {
+func (l *Logstash) WebhookPath() string {
 	return webhookPath
 }
 
-func (a *Logstash) validate(old *Logstash) error {
+func (l *Logstash) validate(old *Logstash) error {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
-			if err := uc(old, a); err != nil {
+			if err := uc(old, l); err != nil {
 				errors = append(errors, err...)
 			}
-		}
-
-		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, a.Name, errors)
 		}
 	}
 
 	for _, dc := range defaultChecks {
-		if err := dc(a); err != nil {
+		if err := dc(l); err != nil {
 			errors = append(errors, err...)
 		}
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, a.Name, errors)
+		return apierrors.NewInvalid(groupKind, l.Name, errors)
 	}
 	return nil
 }

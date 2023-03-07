@@ -16,15 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-type APIError struct {
-	StatusCode int
-	msg        string
-}
-
-func (e *APIError) Error() string {
-	return e.msg
-}
-
 // TODO refactor identical to Kibana client
 func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
@@ -42,7 +33,7 @@ func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Cli
 func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path string) ([]byte, error) {
 	scheme := "http"
 
-	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:9600%s", scheme, v1alpha1.HTTPServiceName(logstash.Name), logstash.Namespace, path))
+	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:9600%s", scheme, v1alpha1.APIServiceName(logstash.Name), logstash.Namespace, path))
 	if err != nil {
 		return nil, fmt.Errorf("while parsing URL: %w", err)
 	}
@@ -58,10 +49,7 @@ func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, &APIError{
-			StatusCode: resp.StatusCode,
-			msg:        fmt.Sprintf("fail to request %s, status is %d)", path, resp.StatusCode),
-		}
+		return nil, fmt.Errorf("fail to request %s, status is %d)", path, resp.StatusCode)
 	}
 	return io.ReadAll(resp.Body)
 }
