@@ -26,6 +26,8 @@ spec:
     spec:
       containers:
         - name: logstash
+          #TODO: remove command when Logstash has built with a monitor version of log4j2.properties
+          # https://github.com/elastic/logstash/issues/14941
           command: ['sh', '-c', 'curl -o "log4j2.properties" "https://raw.githubusercontent.com/elastic/logstash/main/config/log4j2.properties" && mv log4j2.properties config/log4j2.properties && /usr/local/bin/docker-entrypoint']
   monitoring:
     metrics:
