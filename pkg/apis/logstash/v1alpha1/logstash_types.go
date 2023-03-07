@@ -118,8 +118,8 @@ type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   LogstashSpec   `json:"spec,omitempty"`
-	Status LogstashStatus `json:"status,omitempty"`
+	Spec                 LogstashSpec                                         `json:"spec,omitempty"`
+	Status               LogstashStatus                                       `json:"status,omitempty"`
 	MonitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
