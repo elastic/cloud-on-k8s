@@ -11,7 +11,7 @@ The Federal Information Processing Standard (FIPS) Publication 140-2, (FIPS PUB 
 
 For the ECK operator, adherence to FIPS 140-2 is ensured by:
 
-- Using FIPS approved / NIST recommended cryptographic algorithms
+- Using FIPS approved / NIST recommended cryptographic algorithms.
 - Compiling the operator using the link:https://github.com/golang/go/blob/dev.boringcrypto/README.boringcrypto.md[BoringCrypto] library for various cryptographic primitives.
 
 == Installation
