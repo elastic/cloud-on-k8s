@@ -26,13 +26,13 @@ func NewPipelinesConfig() *PipelinesConfig {
 	return fromConfig(ucfg.New())
 }
 
-// NewPipelinesConfigFrom creates a new pipeline from the API type after normalizing the data.
+// NewPipelinesConfigFrom creates a new pipeline from spec.
 func NewPipelinesConfigFrom(data []map[string]string) (*PipelinesConfig, error) {
 	config, err := ucfg.NewFrom(data, Options...)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkTypeArray(config); err != nil {
+	if err := checkIsDict(config); err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
@@ -45,7 +45,7 @@ func MustPipelinesConfig(cfg interface{}) *PipelinesConfig {
 	if err != nil {
 		panic(err)
 	}
-	if err := checkTypeArray(config); err != nil {
+	if err := checkIsDict(config); err != nil {
 		panic(err)
 	}
 	return fromConfig(config)
@@ -59,7 +59,7 @@ func ParsePipelinesConfig(yml []byte) (*PipelinesConfig, error) {
 		return nil, err
 	}
 
-	if err := checkTypeArray(config); err != nil {
+	if err := checkIsDict(config); err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
@@ -72,7 +72,7 @@ func MustParsePipelineConfig(yml []byte) *PipelinesConfig {
 	if err != nil {
 		panic(err)
 	}
-	if err := checkTypeArray(config); err != nil {
+	if err := checkIsDict(config); err != nil {
 		panic(err)
 	}
 	return fromConfig(config)
@@ -91,8 +91,8 @@ func (c *PipelinesConfig) Render() ([]byte, error) {
 	return yaml.Marshal(out)
 }
 
-// Diff returns the flattened keys where c and c2 differ.
-// This is used in test only
+// Diff returns true if the key/value or the sequence of two PipelinesConfig are different
+// Use for testing only.
 func (c *PipelinesConfig) Diff(c2 *PipelinesConfig) (bool, error) {
 	if c == c2 {
 		return false, nil
@@ -118,6 +118,7 @@ func (c *PipelinesConfig) Diff(c2 *PipelinesConfig) (bool, error) {
 	return diffSlice(s, s2)
 }
 
+// diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different
 func diffSlice(s1, s2 []map[string]string) (bool, error) {
 	if len(s1) != len(s2) {
 		return true, fmt.Errorf("array size doesn't match %d, %d", len(s1), len(s2))
@@ -145,10 +146,10 @@ func fromConfig(in *ucfg.Config) *PipelinesConfig {
 	return (*PipelinesConfig)(in)
 }
 
-// checkTypeArray checks if config is an Array or empty, otherwise throws error
-func checkTypeArray(config *ucfg.Config) error {
+// checkIsDict throws error if config is a key/val map
+func checkIsDict(config *ucfg.Config) error {
 	if config.IsDict() {
-		return errors.New("config is not an array")
+		return errors.New("pipelines should be an array")
 	}
 	return nil
 }
