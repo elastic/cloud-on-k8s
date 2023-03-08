@@ -20,6 +20,10 @@
 #
 version: 8.6.1
 
+# Elasticsearch Docker image to deploy
+#
+# image:
+
 # Labels that will be applied to Elasticsearch.
 #
 labels: {}
@@ -114,6 +118,34 @@ remoteClusters: {}
   #   elasticsearchRef:
   #     name: cluster-two
   #     namespace: ns-two
+
+# VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
+# Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
+# Defaults to DeleteOnScaledownAndClusterDeletion if unset.
+#
+volumeClaimDeletePolicy: ""
+
+# Settings to limit the disruption when pods need to be rescheduled for some reason such as upgrades or routine maintenance.
+# Default budget selects all cluster pods and sets `maxUnavailable` to 1.
+# To disable, set to the empty value (`{}`).
+#
+# podDisruptionBudget:
+#   spec:
+#     minAvailable: 2
+#     selector:
+#       matchLabels:
+#         elasticsearch.k8s.elastic.co/cluster-name: quickstart
+
+
+# Used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
+# Can only be used if ECK is enforcing RBAC on references.
+#
+# serviceAccountName: ""
+
+# Number of revisions to retain to allow rollback in the underlying StatefulSets.
+# Defaults to 10.
+#
+# revisionHistoryLimit: 2
 
 # Node configuration settings.
 # The node roles which can be configured here are:

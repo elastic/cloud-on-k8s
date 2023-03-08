@@ -35,6 +35,8 @@ spec:
           #- "--delete-operator-delay=2m"
           #- "--update-operator-replicas-delay=5m"
           env:
+          - name: E2E_TAGS
+            value: "{{ .Context.E2ETags }}"
           - name: CHAOS
             value: "true"
           imagePullPolicy: IfNotPresent

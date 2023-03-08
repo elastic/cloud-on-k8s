@@ -1,0 +1,46 @@
+:page_id: fips
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Deploy a FIPS compatible version of ECK
+
+The Federal Information Processing Standard (FIPS) Publication 140-2, (FIPS PUB 140-2), titled "Security Requirements for Cryptographic Modules" is a U.S. government computer security standard used to approve cryptographic modules. Since version 2.6 ECK offers a FIPS-enabled image that is a drop-in replacement for the standard image.
+
+For the ECK operator, adherence to FIPS 140-2 is ensured by:
+
+- Using FIPS approved / NIST recommended cryptographic algorithms.
+- Compiling the operator using the link:https://github.com/golang/go/blob/dev.boringcrypto/README.boringcrypto.md[BoringCrypto] library for various cryptographic primitives.
+
+== Installation
+
+=== FIPS compliant installation using Helm
+
+Modify the `image.repository` Helm chart value to append `-fips` to install a FIPS compliant version of the ECK Operator. Refer to <<{p}-install-helm>> for full Helm installation instructions.
+
+[source,sh]
+----
+helm install elastic-operator elastic/eck-operator \
+  -n elastic-system --create-namespace \
+  --set=image.repository=docker.elastic.co/eck/eck-operator-fips
+----
+
+=== FIPS compliant installation using manifests
+
+The `StatefulSet` definition within the yaml installation manifest will need to be patched prior to installation to append `-fips` to the `spec.template.spec.containers[*].image` to install a FIPS-enabled version of the ECK Operator. Refer to <<{p}-install-yaml-manifests>> for full manifest installation instructions.
+
+NOTE: `${ECK_VERSION}` in the following command needs to be replaced with the version of the Operator that is to be installed.
+
+[source,sh]
+----
+curl -s https://download.elastic.co/downloads/eck/${ECK_VERSION}/operator.yaml | sed -r 's#(image:.*eck-operator.*)"#\1-fips"#' | kubectl apply -f -
+----
+
+If the Operator has already been installed using the manifests, the installation can be patched instead:
+
+[source,sh]
+----
+kubectl patch sts elastic-operator -n elastic-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager", "image":"docker.elastic.co/eck/eck-operator-fips:${ECK_VERSION}"}]}}}}'
+----

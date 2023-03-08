@@ -218,8 +218,16 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 						Value: "true",
 					},
 					{
+						Name:  "FLEET_SERVER_HOST",
+						Value: "0.0.0.0",
+					},
+					{
 						Name:  "FLEET_SERVER_INSECURE_HTTP",
 						Value: "true",
+					},
+					{
+						Name:  "FLEET_SERVER_PORT",
+						Value: "8220",
 					},
 					{
 						Name:  "FLEET_URL",

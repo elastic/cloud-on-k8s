@@ -56,5 +56,5 @@ For more information, check the following references:
 - https://cloud.google.com/container-registry/docs/how-to[Google Container Registry]
 - https://docs.microsoft.com/en-us/azure/container-registry/[Azure Container Registry]
 - https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html[Amazon Elastic Container Registry]
-- https://docs.openshift.com/container-platform/4.1/registry/architecture-component-imageregistry.html[OpenShift Container Platform registry]
+- https://docs.openshift.com/container-platform/4.12/registry/index.html[OpenShift Container Platform registry]
 

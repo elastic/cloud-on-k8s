@@ -75,7 +75,7 @@ var (
 				if err != nil {
 					return "", err
 				}
-				// Bypass: ver, err := ref.Request("/", "{ .version.number }") and just return the version
+				// Bypass: ver, err := ref.Version("/", "{ .version.number }") and just return the version
 				return stackVersion, nil
 			}
 

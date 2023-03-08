@@ -413,6 +413,47 @@ func TestCanonicalConfig_SetStrings(t *testing.T) {
 	}
 }
 
+func TestCanonicalConfig_String(t *testing.T) {
+	tests := []struct {
+		name    string
+		c       *CanonicalConfig
+		key     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "gets a string value",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"foo": map[string]string{
+					"bar": "baz",
+				},
+			}),
+			key:     "foo.bar",
+			want:    "baz",
+			wantErr: false,
+		},
+		{
+			name: "when value is not convertible to a string",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"foo": []string{"bar"},
+			}),
+			key:     "foo",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value, err := tt.c.String(tt.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CanonicalConfig.String() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err == nil {
+				require.Equal(t, tt.want, value)
+			}
+		})
+	}
+}
+
 func TestNewCanonicalConfigFrom(t *testing.T) {
 	type args struct {
 		data untypedDict

@@ -204,7 +204,8 @@ webhooks:
     - kibanas
   sideEffects: None
 - admissionReviewVersions:
-  - v1alpha1
+  - v1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
