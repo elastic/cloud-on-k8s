@@ -51,6 +51,9 @@ type LogstashSpec struct {
 	// Monitoring enables you to collect and ship log and monitoring data of this Logstash.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+	// This feature is under technical preview. To allow Logstash outputs log to disk and ships the log through Filebeat,
+	// the Logstash docker image requires a customised log4j2.properties to write log to file.
+	// The default log4j2.properties in docker only writes log to stdout. Issue: https://github.com/elastic/logstash/issues/14941
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
