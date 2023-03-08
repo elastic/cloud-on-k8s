@@ -66,7 +66,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	}
 
 	configHash := fnv.New32a()
-	volumes := make([]corev1.Volume, 0)
+	var volumes []corev1.Volume
 
 	if monitoring.IsMetricsDefined(&logstash) {
 		b, err := Metricbeat(ctx, client, logstash)
