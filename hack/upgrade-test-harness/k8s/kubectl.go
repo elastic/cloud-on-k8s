@@ -117,12 +117,7 @@ func (h *Kubectl) GetPods(namespace string, labelSelector string) ([]corev1.Pod,
 
 // LoadResources loads manifests from the given file path.
 func (h *Kubectl) LoadResources(filePath string) (*resource.Result, error) {
-	dynamicClient, err := h.factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-	verifier := resource.NewQueryParamVerifier(dynamicClient, h.factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	validator, err := h.factory.Validator(metav1.FieldValidationStrict, verifier)
+	validator, err := h.factory.Validator(true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain validator: %w", err)
 	}
