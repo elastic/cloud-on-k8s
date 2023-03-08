@@ -7,6 +7,8 @@ package common
 import (
 	"context"
 	"fmt"
+	"github.com/elastic/go-ucfg"
+	uyaml "github.com/elastic/go-ucfg/yaml"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +36,23 @@ func ParseConfigRef(
 	configRef *commonv1.ConfigSource,
 	secretKey string, // retrieve config data from that entry in the secret
 ) (*settings.CanonicalConfig, error) {
+	parsed, err := ParseConfigRefToConfig(driver, resource, configRef, secretKey, ConfigRefWatchName, settings.Options)
+	if err != nil {
+		return nil, err
+	}
+	return (*settings.CanonicalConfig)(parsed), nil
+}
+
+// ParseConfigRefToConfig retrieves the content of a secret referenced in `configRef`, sets up dynamic watches for that secret,
+// and parses the secret content into ucfg.Config.
+func ParseConfigRefToConfig(
+	driver driver.Interface,
+	resource runtime.Object, // eg. Beat, EnterpriseSearch
+	configRef *commonv1.ConfigSource,
+	secretKey string, // retrieve config data from that entry in the secret
+	configRefWatchName func(types.NamespacedName) string,
+	configOptions []ucfg.Option,
+) (*ucfg.Config, error) {
 	resourceMeta, err := meta.Accessor(resource)
 	if err != nil {
 		return nil, err
@@ -46,7 +65,7 @@ func ParseConfigRef(
 	if configRef != nil && configRef.SecretName != "" {
 		secretNames = append(secretNames, configRef.SecretName)
 	}
-	if err := watches.WatchUserProvidedSecrets(resourceNsn, driver.DynamicWatches(), ConfigRefWatchName(resourceNsn), secretNames); err != nil {
+	if err := watches.WatchUserProvidedSecrets(resourceNsn, driver.DynamicWatches(), configRefWatchName(resourceNsn), secretNames); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +85,9 @@ func ParseConfigRef(
 		driver.Recorder().Event(resource, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 		return nil, errors.New(msg)
 	}
-	parsed, err := settings.ParseConfig(data)
+
+	parsed, err := uyaml.NewConfig(data, configOptions...)
+
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
 		driver.Recorder().Event(resource, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)

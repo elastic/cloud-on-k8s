@@ -32,7 +32,7 @@ func NewPipelinesConfigFrom(data []map[string]string) (*PipelinesConfig, error) 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkIsDict(config); err != nil {
+	if err := checkIsArray(config); err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
@@ -45,7 +45,7 @@ func MustPipelinesConfig(cfg interface{}) *PipelinesConfig {
 	if err != nil {
 		panic(err)
 	}
-	if err := checkIsDict(config); err != nil {
+	if err := checkIsArray(config); err != nil {
 		panic(err)
 	}
 	return fromConfig(config)
@@ -58,8 +58,7 @@ func ParsePipelinesConfig(yml []byte) (*PipelinesConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if err := checkIsDict(config); err != nil {
+	if err := checkIsArray(config); err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
@@ -72,7 +71,7 @@ func MustParsePipelineConfig(yml []byte) *PipelinesConfig {
 	if err != nil {
 		panic(err)
 	}
-	if err := checkIsDict(config); err != nil {
+	if err := checkIsArray(config); err != nil {
 		panic(err)
 	}
 	return fromConfig(config)
@@ -146,8 +145,8 @@ func fromConfig(in *ucfg.Config) *PipelinesConfig {
 	return (*PipelinesConfig)(in)
 }
 
-// checkIsDict throws error if config is a key/val map
-func checkIsDict(config *ucfg.Config) error {
+// checkIsArray throws error if config is a key/val map
+func checkIsArray(config *ucfg.Config) error {
 	if config.IsDict() {
 		return errors.New("pipelines should be an array")
 	}
