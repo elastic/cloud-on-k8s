@@ -1,0 +1,41 @@
+steps:
+  - group: helm-release
+    steps:
+
+      - label: "operator dev helm chart"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+          || build.message == "release eck-operator helm charts"
+        key: "operator-dev-helm"
+        commands:
+          - make -C hack/helm/release build 2> /dev/null
+          - hack/helm/release/bin/releaser --env=dev --charts-dir=deploy/eck-operator
+
+      - label: "stack dev helm charts"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+          || build.message == "release eck-resources helm charts"
+        key: "stack-dev-helm"
+        commands:
+          - make -C hack/helm/release build 2> /dev/null
+          - hack/helm/release/bin/releaser --env=dev --excludes=eck-operator
+
+      - label: "operator prod helm chart"
+        if: build.message == "release eck-operator helm charts"
+        depends_on:
+          - "operator-dev-helm"
+        commands:
+          - make -C hack/helm/release build 2> /dev/null
+          - hack/helm/release/bin/releaser --env=prod --charts-dir=deploy/eck-operator
+
+      - label: "stack prod helm charts"
+        if: build.message == "release eck-resources helm charts"
+        depends_on:
+          - "stack-dev-helm"
+        commands:
+          - make -C hack/helm/release build 2> /dev/null
+          - hack/helm/release/bin/releaser --env=prod --excludes=eck-operator
