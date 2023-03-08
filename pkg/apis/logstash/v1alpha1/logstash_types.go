@@ -151,7 +151,7 @@ func (l *Logstash) GetObservedGeneration() int64 {
 }
 
 func (l *Logstash) GetAssociations() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
+	var associations []commonv1.Association
 
 	for _, ref := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
 		if ref.IsDefined() {
