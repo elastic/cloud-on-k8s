@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	ContainerName = "logstash"
-
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/usr/share/logstash/config"
 
@@ -56,7 +54,7 @@ var (
 func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateSpec {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
-	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
+	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 	vols := []volume.VolumeLike{
 		// volume with logstash configuration file
 		volume.NewSecretVolume(
