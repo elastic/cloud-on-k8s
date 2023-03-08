@@ -7,7 +7,7 @@
 package logstash
 
 import (
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -15,15 +15,11 @@ import (
 	"testing"
 )
 
-var (
-	MinESVersion = version.MustParse("8.0.0")
-)
-
 // TestLogstashStackMonitoring tests that when Logstash is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestLogstashStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}
@@ -46,15 +42,4 @@ func TestLogstashStackMonitoring(t *testing.T) {
 	}
 
 	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
-}
-
-func IsSupportedVersion(v string) error {
-	ver, err := version.Parse(v)
-	if err != nil {
-		return err
-	}
-	if ver.LT(MinESVersion) {
-		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinESVersion)
-	}
-	return nil
 }
