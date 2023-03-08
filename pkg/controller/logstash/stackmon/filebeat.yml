@@ -5,6 +5,7 @@ filebeat.modules:
       var.paths:
         - "/usr/share/logstash/logs/logstash-plain.log"
         - "/usr/share/logstash/logs/logstash-json.log"
+        - "/usr/share/logstash/logs/logstash-deprecation.log"
     slowlog:
       enabled: true
       var.paths:
