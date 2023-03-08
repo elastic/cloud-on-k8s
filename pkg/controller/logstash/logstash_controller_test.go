@@ -57,7 +57,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 						},
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
-						Version:    "8.6.1",
+						Version: "8.6.1",
 					},
 					Status: logstashv1alpha1.LogstashStatus{
 						ObservedGeneration: 1,
@@ -81,7 +81,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
-					Version:    "8.6.1",
+					Version: "8.6.1",
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					ObservedGeneration: 1,
@@ -133,7 +133,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.6.1",
-						Count: 1,
+						Count:   1,
 					},
 					Status: logstashv1alpha1.LogstashStatus{
 						ObservedGeneration: 1,
@@ -178,7 +178,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
-					Count: 1,
+					Count:   1,
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					Version:            "8.6.1",

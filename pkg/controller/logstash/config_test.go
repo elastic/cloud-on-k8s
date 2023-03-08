@@ -23,8 +23,7 @@ import (
 func Test_newConfig(t *testing.T) {
 	type args struct {
 		runtimeObjs []runtime.Object
-		logstash         v1alpha1.Logstash
-		ipFamily    corev1.IPFamily
+		logstash    v1alpha1.Logstash
 	}
 	tests := []struct {
 		name    string
@@ -36,10 +35,9 @@ func Test_newConfig(t *testing.T) {
 			name: "no user config",
 			args: args{
 				runtimeObjs: nil,
-				logstash:         v1alpha1.Logstash{},
+				logstash:    v1alpha1.Logstash{},
 			},
-			want:
-`api:
+			want: `api:
     http:
         host: 0.0.0.0
 `,
@@ -55,8 +53,7 @@ func Test_newConfig(t *testing.T) {
 					}}},
 				},
 			},
-			want:
-`api:
+			want: `api:
     http:
         host: 0.0.0.0
 log:
@@ -68,10 +65,9 @@ log:
 			name: "with configRef",
 			args: args{
 				runtimeObjs: []runtime.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
-				logstash:         logstashWithConfigRef("cfg", nil),
+				logstash:    logstashWithConfigRef("cfg", nil),
 			},
-			want:
-`api:
+			want: `api:
     http:
         host: 0.0.0.0
 log:
@@ -87,8 +83,7 @@ log:
 					"log.level": "warn",
 				}}),
 			},
-			want:
-`api:
+			want: `api:
     http:
         host: 0.0.0.0
 log:
@@ -99,20 +94,19 @@ log:
 		{
 			name: "non existing configRef",
 			args: args{
-				logstash:      logstashWithConfigRef("cfg", nil),
+				logstash: logstashWithConfigRef("cfg", nil),
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			params := Params{
-				Context: context.Background(),
-				Client: k8s.NewFakeClient(tt.args.runtimeObjs...),
+				Context:       context.Background(),
+				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: record.NewFakeRecorder(10),
-				Watches: watches.NewDynamicWatches(),
-				Logstash: tt.args.logstash,
+				Watches:       watches.NewDynamicWatches(),
+				Logstash:      tt.args.logstash,
 			}
 
 			got, err := buildConfig(params)
