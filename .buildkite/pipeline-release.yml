@@ -1,0 +1,50 @@
+agents:
+  provider: "k8s"
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
+  memory: "4G"
+
+# for all merge in main or commit associated with a tag
+
+steps:
+
+  - group: release
+
+    steps:
+
+      - label: "k8s manifests"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+        commands:
+          - buildkite-agent artifact download 'config/*.yaml' config/
+          - .buildkite/scripts/build/setenv.sh
+          - .buildkite/scripts/release/k8s-manifests.sh
+
+      - label: "helm release"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+
+      - label: "redhat operatorhub"
+        if: |
+          build.message =~ /^buildkite test .*release.*/
+          || build.message == "release eck on operatorhub"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
+
+      # - label: "redhat operatorhub"
+      #   if: |
+      #     build.message =~ /^buildkite test .*release.*/
+      #     || build.message == "release eck on operatorhub"
+      #   depends_on:
+      #     - "operator-image-build"
+      #   commands:
+      #     - buildkite-agent artifact download "config/*.yaml" .
+      #     - cd hack/operatorhub
+      #     - make build
+      #     - bin/operatorhub container push --dry-run=\${DRY_RUN:-true}
+      #     - .buildkite/scripts/release/operatorhub.sh preflight
+      #     - bin/operatorhub container publish --dry-run=\${DRY_RUN:-true}
+      #     - bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+      #     - bin/operatorhub bundle generate --dir="\$(pwd)"
+      #     - bin/operatorhub bundle create-pr --dir="\$(pwd)" --dry-run=\${DRY_RUN:-true}

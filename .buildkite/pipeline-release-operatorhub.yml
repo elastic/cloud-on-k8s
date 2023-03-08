@@ -25,6 +25,7 @@ steps:
           - "generate-crds"
         commands:
           - buildkite-agent artifact download "bin/operator*" /usr/local/
+          - chmod u+x /usr/local/bin/operatorhub
           - /usr/local/bin/operatorhub container push --dry-run=\$DRY_RUN
 
       - label: "run container preflight"
