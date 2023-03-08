@@ -89,6 +89,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		}
 
 		// create a logs volume shared between Logstash and Filebeat
+		// TODO: revisit log volume when persistent storage is added
 		logsVolume := volume.NewEmptyDirVolume(logstashLogsVolumeName, logstashLogsMountPath)
 		volumes = append(volumes, logsVolume.Volume())
 		filebeat := b.Container

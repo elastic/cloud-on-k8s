@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// TestESStackMonitoring tests that when an Logstash is configured with monitoring, its log and metrics are
+// TestLogstashStackMonitoring tests that when Logstash is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestLogstashStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
