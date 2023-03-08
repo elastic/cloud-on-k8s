@@ -1,13 +1,5 @@
-
-agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-  cpu: "4"
-  memory: "2G"
-
 steps:
-
   - group: redhat-release
-
     steps:
 
       - label: "build operatorhub tool"
@@ -33,18 +25,18 @@ steps:
           - "generate-crds"
         commands:
           - buildkite-agent artifact download "bin/operator*" /usr/local/
-          - /usr/local/bin/operatorhub container push --dry-run=false
+          - /usr/local/bin/operatorhub container push --dry-run=\$DRY_RUN
 
       - label: "run container preflight"
         key: "redhat-preflight"
         depends_on:
           - "redhat-container-push"
         commands:
-          - .buildkite/scripts/operatorhub/operations.sh preflight
+          - .buildkite/scripts/release/operatorhub.sh preflight
 
       - label: "run remaining release"
         key: "redhat-release"
         depends_on:
           - "redhat-preflight"
         commands:
-          - .buildkite/scripts/operatorhub/operations.sh release
+          - .buildkite/scripts/release/operatorhub.sh release
