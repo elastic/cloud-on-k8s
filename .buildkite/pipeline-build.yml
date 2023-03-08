@@ -1,0 +1,74 @@
+
+agents:
+  provider: "gcp"
+  image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+  machineType: "n1-standard-16"
+
+steps:
+
+  - group: build
+    steps:
+
+      - label: ":docker: ci image"
+        command: make -C .ci ci-build-image
+
+      - wait
+
+      # TODO: faster buildah build for PR branch
+      # - label: ":docker: operator image"
+      #   if: build.pull_request.id != null || build.env("GITHUB_PR_TRIGGER_COMMENT") != ""
+      #   key: "operator-image-build"
+      #   commands:
+      #     - .buildkite/scripts/build/setenv.sh
+      #     - make operator-buildah
+      #     # save image for e2e-tests
+      #     - buildkite-agent meta-data set operator-image $$(make print-operator-image)
+      #   artifact_paths:
+      #     - config/*.yaml
+      #   agents:
+      #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
+      #     cpu: "4"
+      #     memory: "2G"
+
+      # multiarch dockerx build for !PR branch
+      - label: ":docker: multiarch operator image"
+        #if: build.pull_request.id == null || build.env("GITHUB_PR_TRIGGER_COMMENT") == "buildkite test build please"
+        key: "operator-image-build"
+        commands:
+          - .buildkite/scripts/build/setenv.sh
+          - make -C .ci TARGET="generate-crds-v1 build-operator-multiarch-image" ci
+          # save image for e2e-tests
+          - buildkite-agent meta-data set operator-image $$(make print-operator-image)
+        artifact_paths:
+          - config/*.yaml
+
+      - label: ":docker: e2e-tests image"
+        key: "e2e-tests-image-build"
+        commands:
+          - .buildkite/scripts/build/setenv.sh
+          - make -C .ci TARGET="e2e-docker-multiarch-build" ci
+          # save image for e2e-tests
+          - buildkite-agent meta-data set e2e-image $$(make print-e2e-image)
+
+      # dev-license build for main nightly builds
+      - label: ":docker: dev-license operator image"
+        if: | 
+          ( build.branch == "main" && build.source == "schedule" )
+          || build.message =~ /^buildkite test .*release.*/
+        key: "dev-operator-image-build"
+        env:
+          BUILD_LICENSE_PUBKEY: "dev"
+        commands:
+          - .buildkite/scripts/build/setenv.sh
+          - make -C .ci TARGET="build-operator-multiarch-image" ci
+
+      # fips build for tag builds
+      - label: ":docker: fips operator image"
+        if: |
+          build.tag != null 
+          || build.message =~ /^buildkite test .*release.*/
+        env:
+          ENABLE_FIPS: "true"
+        commands:
+          - .buildkite/scripts/build/setenv.sh
+          - make -C .ci TARGET="build-operator-multiarch-image" ci
