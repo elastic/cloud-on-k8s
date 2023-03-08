@@ -7,6 +7,7 @@ package common
 import (
 	"context"
 	"fmt"
+
 	"github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 

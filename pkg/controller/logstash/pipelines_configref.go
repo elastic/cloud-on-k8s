@@ -6,12 +6,14 @@ package logstash
 
 import (
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
