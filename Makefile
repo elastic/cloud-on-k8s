@@ -480,6 +480,9 @@ E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test e
 E2E_TAGS += $(GO_TAGS)
 export E2E_TAGS
 
+print-e2e-image:
+	@ echo $(E2E_IMG)
+
 e2e-docker-build: go-generate
 	DOCKER_BUILDKIT=1 docker build --progress=plain -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
