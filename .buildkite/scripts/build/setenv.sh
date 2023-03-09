@@ -77,7 +77,7 @@ main() {
     elif is_pr; then
         REGISTRY_NAMESPACE=eck-ci
         IMG_SUFFIX="-pr"
-        IMG_VERSION="pr$BUILDKITE_PULL_REQUEST-$sha1"
+        IMG_VERSION="$BUILDKITE_PULL_REQUEST-$sha1"
 
         set_env BUILD_PLATFORM=linux/amd64
 
@@ -91,6 +91,9 @@ main() {
     set_env "IMG_SUFFIX=$IMG_SUFFIX"
     image_version_suffix="${BUILD_LICENSE_PUBKEY:+-$BUILD_LICENSE_PUBKEY}"
     set_env "IMG_VERSION=$IMG_VERSION$image_version_suffix"
+    # force old schema as long as setenvconfig is used to run e2e tests
+    # to be removed once pipeline-gen is used
+    set_env "E2E_IMG_TAG=$version-$sha1"
 }
 
 main "$@"
