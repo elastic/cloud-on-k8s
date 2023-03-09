@@ -26,7 +26,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.6.0"
+				ent.Spec.Version = "8.7.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				return serialize(t, ent)
 			},
@@ -38,7 +38,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.6.0"
+				ent.Spec.Version = "8.7.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -58,7 +58,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.version: Invalid value: "7.13.0": Unsupported version: version 7.13.0 is lower than the lowest supported version of 8.6.0`,
+				`spec.version: Invalid value: "7.13.0": Unsupported version for Stack Monitoring. Required >= 8.7.0`,
 			),
 		},
 		{
@@ -67,7 +67,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.6.0"
+				ent.Spec.Version = "8.7.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
@@ -84,7 +84,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.6.0"
+				ent.Spec.Version = "8.7.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},

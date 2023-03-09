@@ -31,12 +31,12 @@ var (
 
 // Validate validates that the resource version is supported for Stack Monitoring and that there is exactly one
 // Elasticsearch reference defined to send monitoring data when Stack Monitoring is defined
-func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList {
+func Validate(resource monitoring.HasMonitoring, version string, minVersion version.Version) field.ErrorList {
 	var errs field.ErrorList
 	if monitoring.IsDefined(resource) {
-		err := IsSupportedVersion(version)
+		err := IsSupportedVersion(version, minVersion)
 		if err != nil {
-			finalMinStackVersion, _ := semver.FinalizeVersion(MinStackVersion.String()) // discards prerelease suffix
+			finalMinStackVersion, _ := semver.FinalizeVersion(minVersion.String()) // discards prerelease suffix
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), version,
 				fmt.Sprintf(UnsupportedVersionMsg, finalMinStackVersion)))
 		}
@@ -55,13 +55,13 @@ func Validate(resource monitoring.HasMonitoring, version string) field.ErrorList
 }
 
 // IsSupportedVersion returns true if the resource version is supported for Stack Monitoring, else returns false
-func IsSupportedVersion(v string) error {
+func IsSupportedVersion(v string, minVersion version.Version) error {
 	ver, err := version.Parse(v)
 	if err != nil {
 		return err
 	}
-	if ver.LT(MinStackVersion) {
-		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", MinStackVersion)
+	if ver.LT(minVersion) {
+		return fmt.Errorf("unsupported version for Stack Monitoring: required >= %s", minVersion)
 	}
 	return nil
 }

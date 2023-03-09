@@ -14,6 +14,11 @@ import (
 )
 
 var (
+	// MinStackMonVersion is the minimum version of Logstash to enable Stack Monitoring on an Elastic Stack application.
+	// This requirement comes from the fact that we configure Logstash to write logs to disk for Filebeat
+	// via the env var LOG_STYLE available from this version.
+	MinStackMonVersion = version.MustParse("8.7.0-SNAPSHOT")
+
 	defaultChecks = []func(*Logstash) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
@@ -60,7 +65,7 @@ func checkSingleConfigSource(l *Logstash) field.ErrorList {
 }
 
 func checkMonitoring(l *Logstash) field.ErrorList {
-	return validations.Validate(l, l.Spec.Version)
+	return validations.Validate(l, l.Spec.Version, MinStackMonVersion)
 }
 
 func checkAssociations(l *Logstash) field.ErrorList {
