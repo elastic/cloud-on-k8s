@@ -5,7 +5,7 @@ go 1.19
 require (
 	cloud.google.com/go/storage v1.29.0
 	github.com/avast/retry-go/v4 v4.3.3
-	github.com/elastic/cloud-on-k8s/v2 v2.0.0-20230309150839-5eadcc091baa
+	github.com/elastic/cloud-on-k8s/v2 v2.0.0-00010101000000-000000000000
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/spf13/cobra v1.6.1
@@ -15,6 +15,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.11.2
 )
+
+replace github.com/elastic/cloud-on-k8s/v2 => ../../..
 
 require (
 	cloud.google.com/go v0.107.0 // indirect
