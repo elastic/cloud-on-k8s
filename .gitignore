@@ -24,8 +24,9 @@ bin
 # ignore vendor/
 vendor/
 
-# Elastic public key
-license.*key
+# Elastic license keys
+license.key
+dev-private.key
 
 # test licenses used in the E2E tests
 test-license.json
