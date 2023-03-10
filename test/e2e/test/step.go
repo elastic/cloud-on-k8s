@@ -134,7 +134,7 @@ func runECKDiagnostics(ctx Context, testName string, step Step) {
 
 func uploadDiagnosticsArtifacts() {
 	ctx := Ctx()
-	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://eck-e2e-buildkite-artifacts/jobs/%s/%s/", ctx.JobName, ctx.BuildNumber)) //nolint:gosec
+	cmd := exec.Command("gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://%s/jobs/%s/%s/", ctx.GSBucketName, ctx.JobName, ctx.BuildNumber)) //nolint:gosec
 	setupStdOutErr(cmd)
 	cmd.Env = ensureTmpHomeEnv(cmd.Environ())
 	if err := cmd.Run(); err != nil {

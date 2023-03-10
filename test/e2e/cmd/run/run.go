@@ -193,6 +193,7 @@ func (h *helper) initTestContext() error {
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
+		GSBucketName:          h.gsBucketName,
 	}
 
 	for i, ns := range h.managedNamespaces {
