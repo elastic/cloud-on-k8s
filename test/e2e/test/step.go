@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,6 +176,9 @@ func deleteElasticResources() error {
 		return err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	groupVersionToResourceListMap := map[string][]v1.APIResource{}
 
 	_, resources, err := clntset.Discovery().ServerGroupsAndResources()
@@ -202,11 +206,21 @@ func deleteElasticResources() error {
 				Group:    group,
 				Resource: resource.Name,
 				Version:  version,
-			}).Namespace(namespace).DeleteCollection(context.Background(), v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
+			}).Namespace(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
 				msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
 				log.Error(err, msg, "group", group, "resource", resource.Name, "version", version)
 				return err
 			}
+		}
+	}
+
+	list, err := clntset.CoreV1().Secrets(namespace).List(ctx, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
+	}
+	for _, secret := range list.Items {
+		if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
 		}
 	}
 	return nil
