@@ -5,7 +5,7 @@ go 1.19
 require (
 	cloud.google.com/go/storage v1.29.0
 	github.com/avast/retry-go/v4 v4.3.3
-	github.com/elastic/cloud-on-k8s/v2 v2.0.0-00010101000000-000000000000
+	github.com/elastic/cloud-on-k8s/v2 v2.0.0-20230310104906-952145181103
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
