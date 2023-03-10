@@ -128,7 +128,7 @@ func (e *EKSDriver) Execute() error {
 			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
-			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
+			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
 			if err := e.GetCredentials(); err != nil {
