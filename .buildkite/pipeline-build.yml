@@ -14,25 +14,8 @@ steps:
 
       - wait
 
-      # TODO: faster buildah build for PR branch
-      # - label: ":docker: operator image"
-      #   if: build.pull_request.id != null || build.env("GITHUB_PR_TRIGGER_COMMENT") != ""
-      #   key: "operator-image-build"
-      #   commands:
-      #     - .buildkite/scripts/build/setenv.sh
-      #     - make operator-buildah
-      #     # save image for e2e-tests
-      #     - buildkite-agent meta-data set operator-image $$(make print-operator-image)
-      #   artifact_paths:
-      #     - config/*.yaml
-      #   agents:
-      #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-      #     cpu: "4"
-      #     memory: "2G"
-
       # multiarch dockerx build for !PR branch
       - label: ":docker: multiarch operator image"
-        #if: build.pull_request.id == null || build.env("GITHUB_PR_TRIGGER_COMMENT") == "buildkite test build please"
         key: "operator-image-build"
         commands:
           - .buildkite/scripts/build/setenv.sh

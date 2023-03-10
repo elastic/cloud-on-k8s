@@ -31,20 +31,3 @@ steps:
           || build.message == "release eck on operatorhub"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
-
-      # - label: "redhat operatorhub"
-      #   if: |
-      #     build.message =~ /^buildkite test .*release.*/
-      #     || build.message == "release eck on operatorhub"
-      #   depends_on:
-      #     - "operator-image-build"
-      #   commands:
-      #     - buildkite-agent artifact download "config/*.yaml" .
-      #     - cd hack/operatorhub
-      #     - make build
-      #     - bin/operatorhub container push --dry-run=\${DRY_RUN:-true}
-      #     - .buildkite/scripts/release/operatorhub.sh preflight
-      #     - bin/operatorhub container publish --dry-run=\${DRY_RUN:-true}
-      #     - bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
-      #     - bin/operatorhub bundle generate --dir="\$(pwd)"
-      #     - bin/operatorhub bundle create-pr --dir="\$(pwd)" --dry-run=\${DRY_RUN:-true}
