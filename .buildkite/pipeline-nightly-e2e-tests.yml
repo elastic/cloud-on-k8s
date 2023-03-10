@@ -8,6 +8,7 @@ steps:
     steps:
 
       - label: "aks"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -33,6 +34,7 @@ steps:
     steps:
 
       - label: "eks"
+        if: build.message == "run eks e2e tests"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
@@ -73,6 +75,7 @@ steps:
     steps:
 
       - label: "gke 1.21"
+        if: build.message == "invalid"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
@@ -82,6 +85,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.22"
+        if: build.message == "invalid"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
@@ -91,6 +95,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.23"
+        if: build.message == "invalid"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
@@ -121,6 +126,7 @@ steps:
     steps:
 
       - label: "kind 1.20"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -133,6 +139,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.21"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -145,6 +152,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.22 ipv4"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -157,6 +165,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.22 ipv6"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -169,6 +178,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.23 ipv4"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -181,6 +191,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.23 ipv6"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -193,6 +204,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.24 ipv4"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -205,6 +217,7 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "kind 1.24 ipv6"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -264,6 +277,7 @@ steps:
       #     - "eck-diagnostic-*.zip"
 
       - label: "ocp 4.11"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -321,6 +335,7 @@ steps:
     steps:
 
       - label: "e2e/tanzu"
+        if: build.message == "invalid"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -346,6 +361,7 @@ steps:
     steps:
 
       - label: "e2e/resilience"
+        if: build.message == "invalid"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
