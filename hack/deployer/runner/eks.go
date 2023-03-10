@@ -44,7 +44,9 @@ nodeGroups:
     ami: {{.NodeAMI}}
     overrideBootstrapCommand: |
       #!/bin/bash
-      /etc/eks/bootstrap.sh {{.ClusterName}}
+      source /var/lib/cloud/scripts/eksctl/bootstrap.helper.sh
+
+      /etc/eks/bootstrap.sh {{.ClusterName}} --container-runtime containerd --kubelet-extra-args "--node-labels=${NODE_LABELS}"
     iam:
       instanceProfileARN: {{.InstanceProfileARN}}
       instanceRoleARN: {{.InstanceRoleARN}}
