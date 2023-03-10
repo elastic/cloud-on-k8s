@@ -1,16 +1,13 @@
-
-agents:
-  provider: "gcp"
-  image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-  machineType: "n1-standard-16"
-
 steps:
-
   - group: build
     steps:
 
       - label: ":docker: ci image"
         command: make -C .ci ci-build-image
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
 
       - wait
 
@@ -22,6 +19,10 @@ steps:
           - make -C .ci TARGET="generate-crds-v1 build-operator-multiarch-image" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set operator-image $$(make print-operator-image)
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
         artifact_paths:
           - config/*.yaml
 
@@ -32,6 +33,10 @@ steps:
           - make -C .ci TARGET="e2e-docker-multiarch-build" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set e2e-image $$(make print-e2e-image)
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
 
       # dev-license build for main nightly builds
       - label: ":docker: dev-license operator image"
@@ -44,6 +49,10 @@ steps:
         commands:
           - .buildkite/scripts/build/setenv.sh
           - make -C .ci TARGET="build-operator-multiarch-image" ci
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
 
       # fips build for tag builds
       - label: ":docker: fips operator image"
@@ -55,3 +64,7 @@ steps:
         commands:
           - .buildkite/scripts/build/setenv.sh
           - make -C .ci TARGET="build-operator-multiarch-image" ci
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"

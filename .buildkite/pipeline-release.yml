@@ -1,14 +1,5 @@
-agents:
-  provider: "k8s"
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-  memory: "4G"
-
-# for all merge in main or commit associated with a tag
-
 steps:
-
   - group: release
-
     steps:
 
       - label: "k8s manifests"
