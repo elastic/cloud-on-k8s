@@ -31,6 +31,7 @@ steps:
 
       - label: "run container preflight"
         key: "redhat-preflight"
+        if: build.env("DRY_RUN") == "false"
         depends_on:
           - "redhat-container-push"
         commands:
