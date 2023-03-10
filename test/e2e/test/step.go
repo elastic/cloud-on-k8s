@@ -223,6 +223,16 @@ func deleteElasticResources() error {
 			return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
 		}
 	}
+
+	pods, err := clntset.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("while listing all pods in namespace %s: %w", namespace, err)
+	}
+	for _, pod := range pods.Items {
+		if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("while deleting pod %s in namespace %s: %w", pod.GetName(), namespace, err)
+		}
+	}
 	return nil
 }
 
