@@ -158,17 +158,17 @@ func (d *OCPDriver) Execute() error {
 func (d *OCPDriver) create() error {
 	log.Println("Creating cluster...")
 	params := map[string]interface{}{
-		"GCloudProject":     d.plan.Ocp.GCloudProject,
-		"ClusterName":       d.plan.ClusterName,
-		"Region":            d.plan.Ocp.Region,
-		"AdminUsername":     d.plan.Ocp.AdminUsername,
-		"KubernetesVersion": d.plan.KubernetesVersion,
-		"MachineType":       d.plan.MachineType,
-		"LocalSsdCount":     d.plan.Ocp.LocalSsdCount,
-		"NodeCount":         d.plan.Ocp.NodeCount,
-		"BaseDomain":        d.baseDomain(),
-		"OCPStateBucket":    OCPStateBucket,
-		"PullSecret":        d.plan.Ocp.PullSecret,
+		GoogleCloudProjectCtxKey: d.plan.Ocp.GCloudProject,
+		"ClusterName":            d.plan.ClusterName,
+		"Region":                 d.plan.Ocp.Region,
+		"AdminUsername":          d.plan.Ocp.AdminUsername,
+		"KubernetesVersion":      d.plan.KubernetesVersion,
+		"MachineType":            d.plan.MachineType,
+		"LocalSsdCount":          d.plan.Ocp.LocalSsdCount,
+		"NodeCount":              d.plan.Ocp.NodeCount,
+		"BaseDomain":             d.baseDomain(),
+		"OCPStateBucket":         OCPStateBucket,
+		"PullSecret":             d.plan.Ocp.PullSecret,
 	}
 	var tpl bytes.Buffer
 	if err := template.Must(template.New("").Parse(OcpInstallerConfigTemplate)).Execute(&tpl, params); err != nil {
