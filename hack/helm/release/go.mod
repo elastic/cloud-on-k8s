@@ -5,22 +5,23 @@ go 1.19
 require (
 	cloud.google.com/go/storage v1.29.0
 	github.com/avast/retry-go/v4 v4.3.3
-	github.com/elastic/cloud-on-k8s/v2 v2.0.0-20230301233528-48d6eed92fac
+	github.com/elastic/cloud-on-k8s/v2 v2.0.0-00010101000000-000000000000
 	github.com/google/go-cmp v0.5.9
-	github.com/hashicorp/vault/api v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833
-	google.golang.org/api v0.111.0
+	google.golang.org/api v0.112.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.11.2
 )
 
+replace github.com/elastic/cloud-on-k8s/v2 => ../../..
+
 require (
-	cloud.google.com/go v0.107.0 // indirect
+	cloud.google.com/go v0.110.0 // indirect
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/iam v0.11.0 // indirect
+	cloud.google.com/go/iam v0.12.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
@@ -77,6 +78,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/hashicorp/vault/api v1.9.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
@@ -109,13 +111,12 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.41.0 // indirect
+	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rubenv/sql-migrate v1.3.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -133,29 +134,29 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/oauth2 v0.5.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/oauth2 v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230223222841-637eb2293923 // indirect
+	google.golang.org/genproto v0.0.0-20230303212802-e74f57abe488 // indirect
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/api v0.26.1 // indirect
+	k8s.io/api v0.26.2 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
-	k8s.io/apimachinery v0.26.1 // indirect
+	k8s.io/apimachinery v0.26.2 // indirect
 	k8s.io/apiserver v0.26.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
-	k8s.io/client-go v0.26.1 // indirect
+	k8s.io/client-go v0.26.2 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect

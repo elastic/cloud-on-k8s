@@ -1,4 +1,5 @@
 # Docker image used for continuous integration
+# Version is frozen in 1.19.5 due to an issue with the go linter.
 FROM docker.io/library/golang:1.19.5
 
 ENV GOLANGCILINT_VERSION=1.48.0

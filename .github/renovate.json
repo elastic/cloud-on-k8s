@@ -39,7 +39,8 @@
         "k8s.io/utils",
         "golang.org/x/crypto",
         "golang.org/x/net",
-        "golang.org/x/oauth2"
+        "golang.org/x/oauth2",
+        "github.com/elastic/cloud-on-k8s/v2"
       ],
       "updateTypes": [
         "digest"
