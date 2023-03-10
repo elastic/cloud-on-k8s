@@ -10,7 +10,7 @@ steps:
           - chmod u+x bin/operatorhub
           - buildkite-agent artifact upload "bin/operator*"
 
-      - label: "Generate CRDs"
+      - label: "generate crds"
         key: "generate-crds"
         depends_on:
           - "build-operatorhub-tool"
@@ -27,7 +27,7 @@ steps:
           - buildkite-agent artifact download "bin/operator*" /usr/local/
           - chmod u+x /usr/local/bin/operatorhub
           - cd hack/operatorhub
-          - /usr/local/bin/operatorhub container push --dry-run=\$DRY_RUN
+          - /usr/local/bin/operatorhub container push --dry-run=\${DRY_RUN:-true}
 
       - label: "run container preflight"
         key: "redhat-preflight"
