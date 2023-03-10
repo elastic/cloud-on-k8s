@@ -111,7 +111,7 @@ func (e *EKSDriver) Execute() error {
 		if exists {
 			log.Printf("Deleting cluster ...")
 			// --wait to surface failures to delete all resources in the Cloud formation
-			return e.newCmd("eksctl delete cluster -v 0 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
+			return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
 		}
 		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:

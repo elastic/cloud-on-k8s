@@ -28,7 +28,7 @@ steps:
         command: "make lint check-local-changes"
         agents:
           cpu: "6"
-          memory: "7G"
+          memory: "6G"
 
       - label: ":go: generate"
         command: "make generate check-local-changes"
