@@ -244,7 +244,8 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
-				WithPodLabel(run.TestNameLabel, fullTestName)
+				WithPodLabel(run.TestNameLabel, fullTestName).
+				WithDefaultPersistentVolumes() // to force the use of our e2e storage class which relies on local volume provisioner
 		case *kbv1.Kibana:
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
