@@ -10,6 +10,8 @@
 
 set -euo pipefail
 
+DRY_RUN=${DRY_RUN:-true}
+
 preflight() {
     if [[ -z ${OHUB_TAG} ]]; then
         echo "OHUB_TAG environment variable is required"
@@ -38,10 +40,14 @@ preflight() {
 
 release() {
     cd hack/operatorhub
-    /usr/local/bin/operatorhub container publish --dry-run="${DRY_RUN:-true}"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        /usr/local/bin/operatorhub container publish --dry-run="$DRY_RUN"
+    fi
     /usr/local/bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
     /usr/local/bin/operatorhub bundle generate --dir="$(pwd)"
-    /usr/local/bin/operatorhub bundle create-pr --dir="$(pwd)" --dry-run="${DRY_RUN:-true}"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        /usr/local/bin/operatorhub bundle create-pr --dir="$(pwd)" --dry-run="$DRY_RUN"
+    fi
 }
 
 usage() {
