@@ -12,11 +12,11 @@ steps:
           - .buildkite/scripts/build/setenv.sh
           - .buildkite/scripts/release/k8s-manifests.sh
 
-      - label: "helm release"
+      - label: ":buildkite:"
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
 
-      - label: "redhat operatorhub"
+      - label: ":buildkite:"
         if: |
           build.message =~ /^buildkite test .*operatorhub.*/
           || build.message =~ /^release eck .*operatorhub.*/
