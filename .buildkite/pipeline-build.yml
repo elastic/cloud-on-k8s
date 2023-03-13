@@ -74,13 +74,11 @@ steps:
         commands:
           - cd hack/operatorhub
           - make build
-        artifact_paths:
-          - "bin/operatorhub"
+          - buildkite-agent artifact upload bin/operatorhub
 
       - label: ":go: helm releaser tool"
         key: "build-helm-releaser-tool"
         commands:
           - cd hack/helm/release
           - make build
-        artifact_paths:
-          - "bin/releaser"
+          - buildkite-agent artifact upload bin/releaser
