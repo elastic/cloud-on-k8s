@@ -8,7 +8,7 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-operator helm charts"
-        depends-on:
+        depends_on:
           - "build-helm-releaser-tool"
         key: "eck-operator-dev-helm"
         commands:
@@ -22,7 +22,7 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-resources helm charts"
-        depends-on:
+        depends_on:
           - "build-helm-releaser-tool"
         key: "eck-resources-dev-helm"
         commands:
