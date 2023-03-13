@@ -40,6 +40,7 @@ steps:
       - label: "run remaining release"
         key: "redhat-release"
         depends_on:
+          - "redhat-container-push"
           - "redhat-preflight"
         commands:
           - .buildkite/scripts/release/operatorhub.sh release
