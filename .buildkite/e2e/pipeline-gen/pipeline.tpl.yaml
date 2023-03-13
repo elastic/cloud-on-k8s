@@ -1,0 +1,82 @@
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
+
+steps:
+
+{{- range $test := .Tests }}
+
+  - label: "{{ $test.Name }}"
+    key: "e2e-{{ $test.SlugName }}"
+    env:
+    {{- range $key, $val := $test.Env }}
+      {{$key}}: "{{$val}}"
+    {{- end }}
+
+    commands:
+
+      {{- range $key, $val := $test.Env }}
+      - echo '{{$key}}="{{$val}}"' >> .env
+      {{- end }}
+
+      - .buildkite/scripts/test/set-deployer-config.sh
+
+    {{- if $test.Dind }}
+      - make -C .ci TARGET="run-deployer e2e-run e2e-generate-xml" ci
+    {{- else }}
+      - make run-deployer e2e-run e2e-generate-xml
+    {{- end }}
+
+      - mkdir tests-report && mv e2e-tests.xml tests-report/e2e-tests-{{ $test.SlugName }}.xml
+
+    {{- if $test.Dind }}
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+    {{- end }}
+
+    artifact_paths:
+      - tests-report/*.xml
+      - "eck-diagnostic-*.zip"
+    
+{{- end }}
+
+{{- if .IsCleanup }}
+
+  - group: ":broom:"
+
+    steps:
+
+{{- end }}
+
+{{- range $test := .Runs }}
+
+    {{- if not $test.NoCleanup }}
+
+      - label: ":broom: {{ $test.Name }}"
+        depends_on:
+          - step: "e2e-{{ $test.SlugName }}"
+            allow_failure: true
+        env:
+          DEPLOYER_OPERATION: delete
+
+        {{- range $key, $val := $test.Env }}
+          {{$key}}: "{{$val}}"
+        {{- end }}
+
+        commands:
+          - .buildkite/scripts/test/set-deployer-config.sh
+
+        {{- if not $test.Dind }}
+          - make run-deployer
+        {{- else }}
+          - make -C .ci TARGET="run-deployer" ci
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+        {{- end }}
+    
+    {{- end }}
+
+{{- end }}
+
