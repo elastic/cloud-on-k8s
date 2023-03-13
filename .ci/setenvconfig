@@ -48,9 +48,7 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
 
-  if [[ "$environment" =~ e2e/* ]]; then
-    JKS_PARAM_OPERATOR_IMAGE=$(make print-operator-image)
-  fi
+  JKS_PARAM_OPERATOR_IMAGE=$(buildkite-agent meta-data get operator-image)
 
 # Dev local execution
 else
@@ -288,8 +286,7 @@ E2E_TAGS="${E2E_TAGS:-e2e}"
 write_env <<ENV
 export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
-IMG_SUFFIX=-ci
-REGISTRY_NAMESPACE=eck-snapshots
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
@@ -614,8 +611,7 @@ clusterName="eck-${CI_PLATFORM}-e2e-pr-${BUILD_NUMBER}"
 write_env <<ENV
 export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
-IMG_SUFFIX=-ci
-REGISTRY_NAMESPACE=eck-snapshots
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
