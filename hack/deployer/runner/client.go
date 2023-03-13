@@ -5,21 +5,28 @@
 package runner
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
-const clientBaseImageName = "docker.elastic.co/eck-ci/deployer"
+const (
+	dockerRegistry          = "docker.elastic.co"
+	dockerRegistryVaultPath = "docker-registry-elastic"
+	clientBaseImageName     = dockerRegistry + "/eck-ci/deployer"
+)
 
-func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string) (string, error) {
+func ensureClientImage(driverID string, vaultClient vault.Client, clientVersion string, clientBuildDefDir string) (string, error) {
 	if clientVersion == "" {
 		return "", errors.New("clientVersion must not be empty")
 	}
@@ -43,7 +50,7 @@ func ensureClientImage(driverID, clientVersion string, clientBuildDefDir string)
 		return image, fmt.Errorf("while building client image %s: %w", image, err)
 	}
 
-	if err = dockerLogin(); err != nil {
+	if err = dockerLogin(vaultClient); err != nil {
 		return image, fmt.Errorf("while logging into docker registry: %w", err)
 	}
 
@@ -77,13 +84,28 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 	return fmt.Sprintf("%s-%s:%s-%.8x", clientBaseImageName, driverID, clientVersion, h.Sum(nil)), nil
 }
 
-func dockerLogin() error {
-	registryEnv := ".registry.env"
-	if _, err := os.Stat(registryEnv); os.IsNotExist(err) {
-		// not attempting login when registry env file does not exist (typically outside of CI)
-		log.Printf("Not attempting Docker login as .registry.env is not present in the filesystem.")
-		return nil
+func dockerLogin(client vault.Client) error {
+	// skip docker login in dev if registry exists in docker auth config file
+	if os.Getenv("CI") != "true" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		dockerConfig := filepath.Join(homeDir, ".docker", "config.json")
+		b, err := ioutil.ReadFile(dockerConfig)
+		if err != nil {
+			return err
+		}
+		if bytes.Contains(b, []byte(dockerRegistry)) {
+			log.Printf("Skip docker login as %s already exists in %s", dockerRegistry, dockerConfig)
+			return nil
+		}
 	}
-	return exec.NewCommand(`docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWORD" docker.elastic.co 2> /dev/null`).
-		WithVariablesFromFile(registryEnv).Run()
+
+	creds, err := vault.GetMany(client, dockerRegistryVaultPath, "username", "password")
+	if err != nil {
+		return err
+	}
+
+	return exec.NewCommand(fmt.Sprintf(`docker login -u "%s" -p "%s" %s 2> /dev/null`, creds[0], creds[1], dockerRegistry)).Run()
 }
