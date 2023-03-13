@@ -85,19 +85,21 @@ func clientImageName(driverID, clientVersion, dockerfileName string) (string, er
 
 func dockerLogin(client vault.Client) error {
 	// skip docker login in dev if registry exists in docker auth config file
-	if os.Getenv("CI") != "true" {
+	if os.Getenv("CI") != "true" { //nolint:nestif
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return err
 		}
 		dockerConfig := filepath.Join(homeDir, ".docker", "config.json")
-		b, err := os.ReadFile(dockerConfig)
-		if err != nil {
-			return err
-		}
-		if bytes.Contains(b, []byte(dockerRegistry)) {
-			log.Printf("Skip docker login as %s already exists in %s", dockerRegistry, dockerConfig)
-			return nil
+		if _, err := os.Stat(dockerConfig); err == nil {
+			b, err := os.ReadFile(dockerConfig)
+			if err != nil {
+				return err
+			}
+			if bytes.Contains(b, []byte(dockerRegistry)) {
+				log.Printf("Skip docker login as %s already exists in %s", dockerRegistry, dockerConfig)
+				return nil
+			}
 		}
 	}
 
