@@ -2,14 +2,6 @@ steps:
   - group: redhat-release
     steps:
 
-      - label: "build operatorhub tool"
-        key: "build-operatorhub-tool"
-        commands:
-          - cd hack/operatorhub
-          - make build
-          - chmod u+x bin/operatorhub
-          - buildkite-agent artifact upload "bin/operator*"
-
       - label: "generate crds"
         key: "generate-crds"
         depends_on:
@@ -23,11 +15,12 @@ steps:
         key: "redhat-container-push"
         depends_on:
           - "generate-crds"
+          - "build-operatorhub-tool"
         commands:
-          - buildkite-agent artifact download "bin/operator*" /usr/local/
+          - buildkite-agent artifact download "bin/operatorhub" /usr/local/
           - chmod u+x /usr/local/bin/operatorhub
           - cd hack/operatorhub
-          - /usr/local/bin/operatorhub container push --dry-run=\${DRY_RUN:-true}
+          - operatorhub container push --dry-run=\${DRY_RUN:-true}
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -40,7 +33,11 @@ steps:
       - label: "run remaining release"
         key: "redhat-release"
         depends_on:
+          - "build-operatorhub-tool"
           - "redhat-container-push"
           - "redhat-preflight"
         commands:
+          - buildkite-agent artifact download "config/*.yaml" .
+          - buildkite-agent artifact download "bin/operatorhub" /usr/local/
+          - chmod u+x /usr/local/bin/operatorhub
           - .buildkite/scripts/release/operatorhub.sh release

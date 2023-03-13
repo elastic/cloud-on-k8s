@@ -68,3 +68,19 @@ steps:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
+
+      - label: ":go: operatorhub tool"
+        key: "build-operatorhub-tool"
+        commands:
+          - cd hack/operatorhub
+          - make build
+        artifact_paths:
+          - "bin/operatorhub"
+
+      - label: ":go: helm releaser tool"
+        key: "build-helm-releaser-tool"
+        commands:
+          - cd hack/helm/release
+          - make build
+        artifact_paths:
+          - "bin/releaser"
