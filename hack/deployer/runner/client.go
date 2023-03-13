@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -92,7 +91,7 @@ func dockerLogin(client vault.Client) error {
 			return err
 		}
 		dockerConfig := filepath.Join(homeDir, ".docker", "config.json")
-		b, err := ioutil.ReadFile(dockerConfig)
+		b, err := os.ReadFile(dockerConfig)
 		if err != nil {
 			return err
 		}
