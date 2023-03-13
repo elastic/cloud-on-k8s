@@ -18,7 +18,7 @@ steps:
 
       - label: "redhat operatorhub"
         if: |
-          build.message =~ /^buildkite test .*release.*/
+          build.message =~ /^buildkite test .*operatorhub.*/
           || build.message =~ /^release eck .*operatorhub.*/
         commands:
           - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
