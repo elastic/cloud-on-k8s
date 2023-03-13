@@ -54,7 +54,7 @@ ci-internal: ci-build-image
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ECK_CI_VOLUME):/root/ \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS -e BUILD_LICENSE_PUBKEY \
+		-e CI -e SHARED_VOLUME_NAME=$(ECK_CI_VOLUME) -e ENABLE_FIPS -e BUILD_LICENSE_PUBKEY \
 		-e VAULT_ADDR -e VAULT_TOKEN -e VAULT_ROLE_ID -e VAULT_SECRET_ID -e VAULT_ROOT_PATH \
 		-w $(GO_MOUNT_PATH) \
 		--network="host" \
