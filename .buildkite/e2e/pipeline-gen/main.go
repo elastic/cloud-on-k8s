@@ -164,18 +164,17 @@ func commonTestEnv(name string, slugName string) map[string]string {
 	}
 
 	return map[string]string{
-		"VAULT_CLIENT_TIMEOUT": "120",
-		"PIPELINE":             fmt.Sprintf("e2e/%s", name),
-		"CLUSTER_NAME":         fmt.Sprintf("eck-e2e-%s-%s", slugName, buildN),
-		"BUILD_NUMBER":         buildN,
-		"TEST_LICENSE":         "in-memory",
-		"MONITORING_SECRETS":   "in-memory",
-		"TEST_OPTS":            "-race",
-		"E2E_JSON":             "true",
-		"GO_TAGS":              "release",
-		"LICENSE_PUBKEY":       "in-memory",
-		"OPERATOR_IMAGE":       getMetadata("operator-image") + operatorImageSuffix(),
-		"E2E_IMG":              getMetadata("e2e-image"),
+		"PIPELINE":              fmt.Sprintf("e2e/%s", name),
+		"CLUSTER_NAME":          fmt.Sprintf("eck-e2e-%s-%s", slugName, buildN),
+		"BUILD_NUMBER":          buildN,
+		"TEST_OPTS":             "-race",
+		"E2E_JSON":              "true",
+		"GO_TAGS":               "release",
+		"export LICENSE_PUBKEY": "in-memory",
+		"TEST_LICENSE":          "in-memory",
+		"MONITORING_SECRETS":    "in-memory",
+		"OPERATOR_IMAGE":        getMetadata("operator-image") + operatorImageSuffix(),
+		"E2E_IMG":               getMetadata("e2e-image"),
 	}
 }
 
