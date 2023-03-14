@@ -4,7 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Script to publish ECK operator image from docker.elastic.co/eck registry to docker.io/eck-operator registry (aka Docker Hub).
+# Script to publish ECK operator image from docker.elastic.co/eck registry to docker.io/elastic registry (aka Docker Hub).
 # By default, the script is executed with DRY_RUN=true and images are published to docker.elastic.co/eck-dev registry.
 
 set -eu
