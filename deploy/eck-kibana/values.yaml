@@ -18,7 +18,7 @@
 
 # Version of Kibana.
 #
-version: 8.6.1
+version: 8.7.0
 
 # Labels that will be applied to Kibana.
 #
