@@ -21,17 +21,17 @@ import (
 
 func Test_buildPipeline(t *testing.T) {
 	defaultPipelinesConfig := MustPipelinesConfig(
-		[]map[string]string{
+		[]map[string]interface{}{
 			{
-				"pipeline.id":   "demo",
-				"config.string": "input { exec { command => \"uptime\" interval => 5 } } output { stdout{} }",
+				"pipeline.id": "main",
+				"path.config": "/usr/share/logstash/pipeline",
 			},
 		},
 	)
 
 	for _, tt := range []struct {
 		name      string
-		pipelines []map[string]string
+		pipelines []commonv1.Config
 		configRef *commonv1.ConfigSource
 		client    k8s.Client
 		want      *PipelinesConfig
@@ -42,9 +42,11 @@ func Test_buildPipeline(t *testing.T) {
 			want: defaultPipelinesConfig,
 		},
 		{
-			name:      "pipeline populated",
-			pipelines: []map[string]string{{"pipeline.id": "main"}},
-			want:      MustParsePipelineConfig([]byte(`- "pipeline.id": "main"`)),
+			name: "pipeline populated",
+			pipelines: []commonv1.Config{
+				{Data: map[string]interface{}{"pipeline.id": "main"}},
+			},
+			want: MustParsePipelineConfig([]byte(`- "pipeline.id": "main"`)),
 		},
 		{
 			name: "configref populated - no secret",

@@ -118,7 +118,7 @@ func (b Builder) WithServices(services ...logstashv1alpha1.LogstashService) Buil
 	return b
 }
 
-func (b Builder) WithPipelines(pipelines []map[string]string) Builder {
+func (b Builder) WithPipelines(pipelines []commonv1.Config) Builder {
 	b.Logstash.Spec.Pipelines = pipelines
 	return b
 }

@@ -10,12 +10,12 @@ import (
 
 	ucfg "github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v3"
 )
 
 // PipelinesConfig contains configuration for Logstash pipeline ("pipelines.yml"),
-// as array of map of string
+// `.` in between the key, pipeline.id, is treated as string
+// pipelines.yml is expected an array of pipeline definition
 type PipelinesConfig ucfg.Config
 
 // Options are config options for the YAML file.
@@ -27,12 +27,9 @@ func NewPipelinesConfig() *PipelinesConfig {
 }
 
 // NewPipelinesConfigFrom creates a new pipeline from spec.
-func NewPipelinesConfigFrom(data []map[string]string) (*PipelinesConfig, error) {
+func NewPipelinesConfigFrom(data []map[string]interface{}) (*PipelinesConfig, error) {
 	config, err := ucfg.NewFrom(data, Options...)
 	if err != nil {
-		return nil, err
-	}
-	if err := checkIsArray(config); err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
@@ -45,9 +42,6 @@ func MustPipelinesConfig(cfg interface{}) *PipelinesConfig {
 	if err != nil {
 		panic(err)
 	}
-	if err := checkIsArray(config); err != nil {
-		panic(err)
-	}
 	return fromConfig(config)
 }
 
@@ -58,9 +52,6 @@ func ParsePipelinesConfig(yml []byte) (*PipelinesConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkIsArray(config); err != nil {
-		return nil, err
-	}
 	return fromConfig(config), nil
 }
 
@@ -69,9 +60,6 @@ func ParsePipelinesConfig(yml []byte) (*PipelinesConfig, error) {
 func MustParsePipelineConfig(yml []byte) *PipelinesConfig {
 	config, err := uyaml.NewConfig(yml, Options...)
 	if err != nil {
-		panic(err)
-	}
-	if err := checkIsArray(config); err != nil {
 		panic(err)
 	}
 	return fromConfig(config)
@@ -103,8 +91,8 @@ func (c *PipelinesConfig) Diff(c2 *PipelinesConfig) (bool, error) {
 		return true, fmt.Errorf("empty rhs config %s", c.asUCfg().FlattenedKeys(Options...))
 	}
 
-	var s []map[string]string
-	var s2 []map[string]string
+	var s []map[string]interface{}
+	var s2 []map[string]interface{}
 	err := c.asUCfg().Unpack(&s, Options...)
 	if err != nil {
 		return true, err
@@ -118,7 +106,7 @@ func (c *PipelinesConfig) Diff(c2 *PipelinesConfig) (bool, error) {
 }
 
 // diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different
-func diffSlice(s1, s2 []map[string]string) (bool, error) {
+func diffSlice(s1, s2 []map[string]interface{}) (bool, error) {
 	if len(s1) != len(s2) {
 		return true, fmt.Errorf("array size doesn't match %d, %d", len(s1), len(s2))
 	}
@@ -143,12 +131,4 @@ func (c *PipelinesConfig) asUCfg() *ucfg.Config {
 
 func fromConfig(in *ucfg.Config) *PipelinesConfig {
 	return (*PipelinesConfig)(in)
-}
-
-// checkIsArray throws error if config is a key/val map
-func checkIsArray(config *ucfg.Config) error {
-	if config.IsDict() {
-		return errors.New("pipelines should be an array")
-	}
-	return nil
 }

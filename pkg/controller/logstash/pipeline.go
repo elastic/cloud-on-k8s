@@ -62,7 +62,11 @@ func buildPipeline(params Params) ([]byte, error) {
 // `pipelineRef` field.
 func getUserPipeline(params Params) (*PipelinesConfig, error) {
 	if params.Logstash.Spec.Pipelines != nil {
-		return NewPipelinesConfigFrom(params.Logstash.Spec.Pipelines)
+		var pipelines []map[string]interface{}
+		for _, p := range params.Logstash.Spec.Pipelines {
+			pipelines = append(pipelines, p.Data)
+		}
+		return NewPipelinesConfigFrom(pipelines)
 	}
 	return ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
 }
@@ -70,8 +74,8 @@ func getUserPipeline(params Params) (*PipelinesConfig, error) {
 func defaultPipeline() *PipelinesConfig {
 	pipelines := []map[string]string{
 		{
-			"pipeline.id":   "demo",
-			"config.string": "input { exec { command => \"uptime\" interval => 5 } } output { stdout{} }",
+			"pipeline.id": "main",
+			"path.config": "/usr/share/logstash/pipeline",
 		},
 	}
 

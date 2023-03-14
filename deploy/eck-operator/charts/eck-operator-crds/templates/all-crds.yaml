@@ -9179,8 +9179,6 @@ spec:
                 description: Pipelines holds the Logstash Pipelines. At most one of
                   [`Pipelines`, `PipelinesRef`] can be specified.
                 items:
-                  additionalProperties:
-                    type: string
                   type: object
                 type: array
                 x-kubernetes-preserve-unknown-fields: true

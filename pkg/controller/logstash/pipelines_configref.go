@@ -7,13 +7,8 @@ package logstash
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
@@ -36,17 +31,6 @@ func ParseConfigRef(
 	parsed, err := common.ParseConfigRefToConfig(driver, resource, configRef, secretKey, PipelinesRefWatchName, Options)
 	if err != nil {
 		return nil, err
-	}
-
-	if parsed != nil {
-		if err := checkIsArray(parsed); err != nil {
-			resourceMeta, _ := meta.Accessor(resource)
-			namespace := resourceMeta.GetNamespace()
-
-			msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
-			driver.Recorder().Event(resource, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			return nil, errors.Wrap(err, msg)
-		}
 	}
 
 	return (*PipelinesConfig)(parsed), nil

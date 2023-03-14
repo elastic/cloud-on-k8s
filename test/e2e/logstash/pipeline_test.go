@@ -27,6 +27,8 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 		StringData: map[string]string{
 			"pipelines.yml": `
 - pipeline.id: generator
+  pipeline.workers: 1
+  queue.drain: false
   config.string: input { generator {} } filter { sleep { time => 10 } } output { stdout { codec => dots } }
 - pipeline.id: demo
   config.string: input { stdin{} } output { stdout{} }`,
@@ -95,14 +97,18 @@ func TestPipelineConfigLogstash(t *testing.T) {
 
 	b := logstash.NewBuilder(name).
 		WithNodeCount(1).
-		WithPipelines([]map[string]string{
+		WithPipelines([]commonv1.Config{
 			{
-				"pipeline.id": "split",
-				"path.config": mountPath,
+				Data: map[string]interface{}{
+					"pipeline.id": "split",
+					"path.config": mountPath,
+				},
 			},
 			{
-				"pipeline.id":   "demo",
-				"config.string": "input { stdin{} } output { stdout{} }",
+				Data: map[string]interface{}{
+					"pipeline.id":   "demo",
+					"config.string": "input { stdin{} } output { stdout{} }",
+				},
 			},
 		}).
 		WithVolumes(corev1.Volume{

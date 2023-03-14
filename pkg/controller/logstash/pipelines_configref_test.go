@@ -147,7 +147,7 @@ func TestParseConfigRef(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
-						"configFile.yml": []byte(`"this.is": "an invalid array"`),
+						"configFile.yml": []byte("this.is invalid config"),
 					}},
 			},
 			wantErr:     true,

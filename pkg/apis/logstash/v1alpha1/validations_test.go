@@ -155,7 +155,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			name: "pipelinesRef absent, pipelines present",
 			logstash: Logstash{
 				Spec: LogstashSpec{
-					Pipelines: []map[string]string{},
+					Pipelines: []commonv1.Config{},
 				},
 			},
 			wantErr: false,
@@ -180,7 +180,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			name: "both present",
 			logstash: Logstash{
 				Spec: LogstashSpec{
-					Pipelines:    []map[string]string{},
+					Pipelines:    []commonv1.Config{},
 					PipelinesRef: &commonv1.ConfigSource{},
 				},
 			},

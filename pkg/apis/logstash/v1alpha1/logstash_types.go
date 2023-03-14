@@ -42,7 +42,7 @@ type LogstashSpec struct {
 	// Pipelines holds the Logstash Pipelines. At most one of [`Pipelines`, `PipelinesRef`] can be specified.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Pipelines []map[string]string `json:"pipelines,omitempty"`
+	Pipelines []commonv1.Config `json:"pipelines,omitempty"`
 
 	// PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
 	// Logstash pipelines must be specified as yaml, under a single "pipeline.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]

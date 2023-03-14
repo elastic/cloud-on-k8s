@@ -12,14 +12,16 @@ import (
 
 func TestPipelinesConfig_Render(t *testing.T) {
 	config := MustPipelinesConfig(
-		[]map[string]string{
+		[]map[string]interface{}{
 			{
 				"pipeline.id":   "demo",
 				"config.string": "input { exec { command => \"uptime\" interval => 5 } } output { stdout{} }",
 			},
 			{
 				"pipeline.id":                 "standard",
+				"pipeline.workers":            1,
 				"queue.type":                  "persisted",
+				"queue.drain":                 true,
 				"dead_letter_queue.max_bytes": "1024mb",
 				"path.config":                 "/tmp/logstash/*.config",
 			},
@@ -32,6 +34,8 @@ func TestPipelinesConfig_Render(t *testing.T) {
 - dead_letter_queue.max_bytes: 1024mb
   path.config: /tmp/logstash/*.config
   pipeline.id: standard
+  pipeline.workers: 1
+  queue.drain: true
   queue.type: persisted
 `)
 	require.Equal(t, string(expected), string(output))
@@ -54,7 +58,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "simple input",
 			input: "- pipeline.id: demo\n  config.string: input { exec { command => \"${ENV}\" interval => 5 } }",
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{
 						"pipeline.id":   "demo",
 						"config.string": "input { exec { command => \"${ENV}\" interval => 5 } }",
@@ -64,10 +68,36 @@ func TestParsePipelinesConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:  "number input",
+			input: "- pipeline.id: main\n  pipeline.workers: 4",
+			want: MustPipelinesConfig(
+				[]map[string]interface{}{
+					{
+						"pipeline.id":      "main",
+						"pipeline.workers": 4,
+					},
+				},
+			),
+			wantErr: false,
+		},
+		{
+			name:  "boolean input",
+			input: "- pipeline.id: main\n  queue.drain: false",
+			want: MustPipelinesConfig(
+				[]map[string]interface{}{
+					{
+						"pipeline.id": "main",
+						"queue.drain": false,
+					},
+				},
+			),
+			wantErr: false,
+		},
+		{
 			name:  "trim whitespaces between key and value",
 			input: "- pipeline.id :  demo \n  path.config :  /tmp/logstash/*.config ",
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{
 						"pipeline.id": "demo",
 						"path.config": "/tmp/logstash/*.config",
@@ -85,7 +115,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "trim newlines",
 			input: "- pipeline.id: demo \n\n- pipeline.id: demo2 \n",
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"pipeline.id": "demo"},
 					{"pipeline.id": "demo2"},
 				},
@@ -96,7 +126,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "ignore comments",
 			input: "- pipeline.id: demo \n#this is a comment\n  pipeline.workers: \"1\"\n",
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{
 						"pipeline.id":      "demo",
 						"pipeline.workers": "1",
@@ -109,7 +139,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "support quotes",
 			input: `- "pipeline.id": "quote"`,
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"pipeline.id": "quote"},
 				},
 			),
@@ -119,17 +149,11 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "support special characters",
 			input: `- config.string: "${node.ip}%.:=+è! /"`,
 			want: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"config.string": `${node.ip}%.:=+è! /`},
 				},
 			),
 			wantErr: false,
-		},
-		{
-			name:    "invalid entry",
-			input:   "config: not an array",
-			want:    nil,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -172,7 +196,7 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 			name: "lhs nil",
 			c:    nil,
 			c2: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 					{"b": "b"},
 				},
@@ -182,7 +206,7 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "rhs nil",
 			c: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 				},
 			),
@@ -192,13 +216,13 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "same multi key value",
 			c: MustPipelinesConfig(
-				[]map[string]string{
-					{"a": "a", "b": "b"},
+				[]map[string]interface{}{
+					{"a": "a", "b": "b", "c": 1, "d": true},
 				},
 			),
 			c2: MustPipelinesConfig(
-				[]map[string]string{
-					{"b": "b", "a": "a"},
+				[]map[string]interface{}{
+					{"c": 1, "b": "b", "a": "a", "d": true},
 				},
 			),
 			wantDiff: false,
@@ -206,12 +230,12 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "different value",
 			c: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 				},
 			),
 			c2: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "b"},
 				},
 			),
@@ -220,12 +244,12 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "array size different",
 			c: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 				},
 			),
 			c2: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 					{"a": "a"},
 				},
@@ -235,13 +259,13 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "respects list order",
 			c: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"a": "a"},
 					{"b": "b"},
 				},
 			),
 			c2: MustPipelinesConfig(
-				[]map[string]string{
+				[]map[string]interface{}{
 					{"b": "b"},
 					{"a": "a"},
 				},
