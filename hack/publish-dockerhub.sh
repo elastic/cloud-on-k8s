@@ -4,7 +4,8 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Script to publish ECK operator image from docker.elastic.co registry to docker.io registry (aka Docker Hub).
+# Script to publish ECK operator image from docker.elastic.co/eck registry to docker.io/elastic registry (aka Docker Hub).
+# By default, the script is executed with DRY_RUN=true and images are published to docker.elastic.co/eck-dev registry.
 
 set -eu
 
@@ -23,14 +24,27 @@ vault_login() {
 }
 
 registry_login() {
-    DOCKERHUB_LOGIN=$(vault read -field=username secret/release/docker-hub-eck)
-    DOCKERHUB_PASSWORD=$(vault read -field=token secret/release/docker-hub-eck)
+    if [[ "${DRY_RUN:-}" == "false" ]]; then
+        username=$(vault read -field=username secret/devops-ci/cloud-on-k8s/docker-registry-elastic)
+        password=$(vault read -field=password secret/devops-ci/cloud-on-k8s/docker-registry-elastic)
+    else
+        username=$(vault read -field=username secret/release/docker-hub-eck)
+        password=$(vault read -field=token secret/release/docker-hub-eck)
+    fi
 
-    docker login -u "${DOCKERHUB_LOGIN}" -p "${DOCKERHUB_PASSWORD}" 2> /dev/null
+    docker login -u "$username" -p "$password" 2> /dev/null
 }
 
 publish() {
     local name=$1
+
+    REGISTRY_SRC="docker.elastic.co/eck"
+    REGISTRY_DST="docker.elastic.co/eck-dev"
+
+    if [[ "${DRY_RUN:-}" == "false" ]]; then
+        REGISTRY_DST="docker.io/elastic"
+    fi
+
     docker buildx imagetools create -t "$REGISTRY_DST/$name:$ECK_VERSION" "$REGISTRY_SRC/$name:$ECK_VERSION"
 }
 
@@ -39,13 +53,6 @@ publish() {
 if [[ "${ECK_VERSION:-}" == "" ]]; then
     echo "ECK_VERSION must be set"
     exit 1
-fi
-
-REGISTRY_SRC="docker.elastic.co/eck"
-REGISTRY_DST="docker.elastic.co/eck-dev"
-
-if [[ "${DRY_RUN:-}" == "false" ]]; then
-    REGISTRY_DST="docker.io/elastic"
 fi
 
 install_docker_extension
