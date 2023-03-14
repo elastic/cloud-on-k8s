@@ -1,6 +1,6 @@
-newVersion: 2.7.0-SNAPSHOT
+newVersion: 2.7.0
 prevVersion: 2.6.2
-stackVersion: 8.7.0-SNAPSHOT
+stackVersion: 8.7.0
 minSupportedOpenshiftVersion: v4.7
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
