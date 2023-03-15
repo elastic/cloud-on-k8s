@@ -29,7 +29,8 @@ steps:
         if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this/
         command: |
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
-          ./pipeline-gen \$GITHUB_PR_TRIGGER_COMMENT_ARGS | buildkite-agent pipeline upload
+          args="\$(sed "s|.*this ||" <<< \$GITHUB_PR_TRIGGER_COMMENT)"
+          ./pipeline-gen \$args | buildkite-agent pipeline upload
 
       # for commits in main
       - label: ":buildkite: e2e"
