@@ -10,27 +10,25 @@ steps:
           - "e2e-tests-image-build"
         if: |
             ( build.branch != "main" )
-            && build.env("GITHUB_PR_TRIGGER_COMMENT") == null
+            && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this/
             && ( build.message !~ /^buildkite test .*e2e.*/ || build.message !~ /^buildkite test .*release.*/ )
         command: |
-          cd .buildkite/e2e/pipeline-gen
-          go build -o pipeline-gen
-          cat <<E2E | ./pipeline-gen | buildkite-agent pipeline upload
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
           - label: "kind/TestSmoke"
             fixed:
               E2E_PROVIDER: kind
               TESTS_MATCH: TestSmoke
-          E2E
+          DEF
 
       # for PR comment
       - label: ":buildkite:"
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
-        if: build.env("GITHUB_PR_TRIGGER_COMMENT") != null
+        if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this/
         command: |
-          cd .buildkite/e2e/pipeline-gen
-          go build -o pipeline-gen
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           ./pipeline-gen \$GITHUB_PR_TRIGGER_COMMENT_ARGS | buildkite-agent pipeline upload
 
       # for commits in main
@@ -42,10 +40,9 @@ steps:
           ( build.branch == "main" && build.source == "webhook" )
           || build.message =~ /^buildkite test .*e2e\/main.*/
         command: |
-          cd .buildkite/e2e/pipeline-gen
-          go build -o pipeline-gen
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
-          - label: gke/allTests
+          - label: gke/all
             fixed:
               E2E_PROVIDER: gke
           DEF
@@ -60,8 +57,7 @@ steps:
             build.tag != null
             || build.message =~ /^buildkite test .*release.*/
         command: |
-          cd .buildkite/e2e/pipeline-gen
-          go build -o pipeline-gen
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
           - label: gke/TestSmoke
             fixed:
@@ -78,6 +74,5 @@ steps:
           ( build.branch == "main" && build.source == "schedule" )
           || build.message =~ /^buildkite test .*e2e\/all.*/
         command: |
-          cd .buildkite/e2e/pipeline-gen
-          go build -o pipeline-gen
-          cat ../matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload

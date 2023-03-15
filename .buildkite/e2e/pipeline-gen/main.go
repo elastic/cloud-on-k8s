@@ -11,18 +11,40 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"path/filepath"
+	"runtime"
+	"sort"
 
 	"log"
 	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	EnvVarProvider             = "E2E_PROVIDER"
+	EnvVarK8sVersion           = "DEPLOYER_K8S_VERSION"
+	EnvVarStackVersion         = "E2E_STACK_VERSION"
+	EnvVarBuildkiteBuildNumber = "BUILDKITE_BUILD_NUMBER"
+	EnvVarBuildNumber          = "BUILD_NUMBER"
+	EnvVarPipeline             = "PIPELINE"
+	EnvVarClusterName          = "CLUSTER_NAME"
+	EnvVarTestOpts             = "TEST_OPTS"
+	EnvVarTestsMatch           = "TESTS_MATCH"
+	EnvVarBuildLicensePubkey   = "BUILD_LICENSE_PUBKEY"
+	EnvVarLicensePubKey        = "export LICENSE_PUBKEY"
+	EnvVarTestLicense          = "TEST_LICENSE"
+	EnvVarMonitoringSecrets    = "MONITORING_SECRETS"
+	EnvVarE2EJson              = "E2E_JSON"
+	EnvVarGoTags               = "GO_TAGS"
+	EnvVarOperatorImage        = "OPERATOR_IMAGE"
+	EnvVarE2EImage             = "E2E_IMG"
 )
 
 var (
@@ -37,10 +59,19 @@ var (
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
 	chars    = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
 
+	shortcuts = map[string]string{
+		"p": EnvVarProvider,
+		"k": EnvVarK8sVersion,
+		"s": EnvVarStackVersion,
+		"t": EnvVarTestsMatch,
+	}
+
 	fixed string
 	mixed string
 
 	output string
+
+	rootDir string
 )
 
 func init() {
@@ -50,30 +81,31 @@ func init() {
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		fmt.Printf("failed to get current path")
+		os.Exit(1)
+	}
+	rootDir = filepath.Join(filepath.Dir(filename), "../../..")
 }
 
 func main() {
 	stat, err := os.Stdin.Stat()
 	handlErr("failed to read stdin", err)
 
-	var runs []Runs
+	var groups []Group
 
 	// no stdin
 	if stat.Mode()&os.ModeCharDevice != 0 {
-		if output == "envfile" {
-			for k, v := range commonTestEnv("dev", "dev") {
-				fmt.Printf("%s=%s\n", k, v)
-			}
-			return
-		}
 
-		fixedEnv, err := listToEnv(fixed)
+		fixedEnv, err := stringListToEnv(fixed)
 		handlErr("failed to read fixed variables", err)
 
-		mixedEnv, err := listToEnvs(mixed)
+		mixedEnv, err := stringListToEnvs(mixed)
 		handlErr("failed to read mixed variables", err)
 
-		runs = []Runs{{
+		groups = []Group{{
 			Fixed: fixedEnv,
 			Mixed: mixedEnv,
 		}}
@@ -85,24 +117,35 @@ func main() {
 			handlErr("failed to read stdin", errors.New("nothing on /dev/stdin"))
 		}
 
-		err = yaml.Unmarshal(in, &runs)
+		err = yaml.Unmarshal(in, &groups)
 		handlErr("failed to parse stdin", err)
 	}
 
 	// build a flat list of the tests to run
 	tests := make([]TestRun, 0)
 	cleanup := false
-	for i := range runs {
-		if runs[i].Mixed == nil {
-			runs[i].Mixed = []Env{{}}
+	for i := range groups {
+		if groups[i].Mixed == nil {
+			groups[i].Mixed = []Env{{}}
 		}
-		for j := range runs[i].Mixed {
-			test, err := newTest(runs[i].Label, runs[i].Fixed, runs[i].Mixed[j])
-			handlErr("failed to create new test", err)
+		for j := range groups[i].Mixed {
+			test, err := newTest(groups[i].Label, groups[i].Fixed, groups[i].Mixed[j])
+			handlErr("failed to create test", err)
 
 			tests = append(tests, test)
 			cleanup = cleanup || test.Cleanup
 		}
+	}
+
+	if output == "envfile" {
+		if len(tests) > 1 {
+			handlErr("not supported with output envfile", errors.New("more than 1 test to run"))
+			return
+		}
+		for k, v := range tests[0].Env {
+			fmt.Printf("%s=%s\n", k, v)
+		}
+		return
 	}
 
 	tpl, err := template.New("pipeline.yaml").Parse(pipelineTemplate)
@@ -115,31 +158,38 @@ func main() {
 	handlErr("failed to generate pipeline", err)
 }
 
-func listToEnv(str string) (Env, error) {
+func stringListToEnv(str string) (Env, error) {
+	if str == "" {
+		return nil, nil
+	}
 	env := Env{}
 	for _, elem := range strings.Split(str, ",") {
 		kv := strings.Split(elem, "=")
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kv)
+			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", elem)
 		}
 		env[kv[0]] = kv[1]
 	}
 	return env, nil
 }
 
-func listToEnvs(str string) ([]Env, error) {
+func stringListToEnvs(str string) ([]Env, error) {
+	if str == "" {
+		return nil, nil
+	}
 	envs := []Env{}
-	for _, elem := range strings.Split(str, ",") {
+	s := strings.Split(str, ",")
+	for _, elem := range s {
 		kv := strings.Split(elem, "=")
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kv)
+			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", elem)
 		}
 		envs = append(envs, Env{kv[0]: kv[1]})
 	}
 	return envs, nil
 }
 
-type Runs struct {
+type Group struct {
 	Label string
 	Fixed Env
 	Mixed []Env
@@ -157,19 +207,47 @@ type TestRun struct {
 	Cleanup  bool
 }
 
-func newTest(parentLabel string, fixed Env, mixed Env) (TestRun, error) {
-	provider, ok := fixed["E2E_PROVIDER"]
+func newTest(groupLabel string, fixed Env, mixed Env) (TestRun, error) {
+	resolveShortcuts(fixed)
+	resolveShortcuts(mixed)
+
+	// find k8s provider
+	provider, ok := fixed[EnvVarProvider]
 	if !ok {
-		return TestRun{}, fmt.Errorf("E2E_PROVIDER not defined")
+		provider, ok = mixed[EnvVarProvider]
+		if !ok {
+			return TestRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
+		}
 	}
 
-	name := parentLabel
+	name := getName(groupLabel, provider, mixed)
+	slugName := getSlugName(name)
+	t := TestRun{
+		Name:     name,
+		SlugName: slugName,
+		Dind:     slices.Contains(providersInDocker, provider),
+		Cleanup:  !slices.Contains(providersNoCleanup, provider),
+		Env:      commonTestEnv(name, slugName),
+	}
+
+	// merge fixed and mixed vars
+	for k, v := range fixed {
+		t.Env[k] = v
+	}
+	for k, v := range mixed {
+		t.Env[k] = v
+	}
+
+	return t, nil
+}
+
+func getName(groupLabel, provider string, mixed Env) string {
+	name := groupLabel
 	if name == "" {
 		name = provider
 	}
 
-	// use the two first env values as suffix if more than one env in the matrix
-	// to name the test
+	// use the two first env var values as suffix if more than one var in the mixed vars
 	if len(mixed) > 1 {
 		suffixes := make([]string, 0)
 		i := 0
@@ -187,56 +265,76 @@ func newTest(parentLabel string, fixed Env, mixed Env) (TestRun, error) {
 			}
 		}
 		sort.Strings(suffixes)
-		name = fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
+
+		return fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
+	}
+	return name
+}
+
+func getSlugName(name string) string {
+	// sanitize
+	name = strings.ReplaceAll(name, ".", "-")
+	name = strings.ReplaceAll(name, ":", "-")
+	name = strings.ReplaceAll(name, "/", "-")
+	name = strings.ToLower(name)
+
+	// truncate
+	if len(name) > 16 {
+		name = name[:16]
 	}
 
-	slugName := fmt.Sprintf("%s-%s", truncateText(sanitize(name), 16), randString(4))
-
-	t := TestRun{
-		Name:     name,
-		SlugName: slugName,
-		Dind:     slices.Contains(providersInDocker, provider),
-		Cleanup:  !slices.Contains(providersNoCleanup, provider),
-		Env:      commonTestEnv(name, slugName),
+	// random id
+	id := make([]rune, 4)
+	for i := range id {
+		id[i] = chars[rand.Intn(len(chars))]
 	}
 
-	for k, v := range fixed {
-		t.Env[k] = v
-	}
-	for k, v := range mixed {
-		t.Env[k] = v
-	}
+	return fmt.Sprintf("%s-%s", name, string(id))
+}
 
-	return t, nil
+func resolveShortcuts(e Env) {
+	for k, v := range e {
+		for short, long := range shortcuts {
+			if k == short {
+				e[long] = v
+				delete(e, short)
+			}
+		}
+	}
 }
 
 func commonTestEnv(name string, slugName string) map[string]string {
-	buildN, ok := os.LookupEnv("BUILDKITE_BUILD_NUMBER")
+	buildNumber, ok := os.LookupEnv(EnvVarBuildkiteBuildNumber)
 	if !ok {
-		buildN = "0"
+		buildNumber = "0"
 	}
 
-	return map[string]string{
-		"PIPELINE":              fmt.Sprintf("e2e/%s", name),
-		"CLUSTER_NAME":          fmt.Sprintf("eck-e2e-%s-%s", slugName, buildN),
-		"BUILD_NUMBER":          buildN,
-		"TEST_OPTS":             "-race",
-		"E2E_JSON":              "true",
-		"GO_TAGS":               "release",
-		"export LICENSE_PUBKEY": "in-memory",
-		"TEST_LICENSE":          "in-memory",
-		"MONITORING_SECRETS":    "in-memory",
-		"OPERATOR_IMAGE":        getMetadata("operator-image") + operatorImageSuffix(),
-		"E2E_IMG":               getMetadata("e2e-image"),
+	operatorImageSuffix := os.Getenv(EnvVarBuildLicensePubkey)
+	if operatorImageSuffix != "" {
+		operatorImageSuffix = fmt.Sprintf("-%s", operatorImageSuffix)
 	}
-}
 
-func operatorImageSuffix() string {
-	suffix := os.Getenv("BUILD_LICENSE_PUBKEY")
-	if suffix != "" {
-		return fmt.Sprintf("-%s", suffix)
+	env := map[string]string{
+		EnvVarPipeline:          fmt.Sprintf("e2e/%s", name),
+		EnvVarClusterName:       fmt.Sprintf("eck-e2e-%s-%s", slugName, buildNumber),
+		EnvVarBuildNumber:       buildNumber,
+		EnvVarTestOpts:          "-race",
+		EnvVarE2EJson:           "true",
+		EnvVarGoTags:            "release",
+		EnvVarLicensePubKey:     "in-memory",
+		EnvVarTestLicense:       "in-memory",
+		EnvVarMonitoringSecrets: "in-memory",
+		EnvVarOperatorImage:     getMetadata("operator-image") + operatorImageSuffix,
+		EnvVarE2EImage:          getMetadata("e2e-image"),
 	}
-	return suffix
+
+	if os.Getenv("CI") != "true" {
+		env[EnvVarLicensePubKey] = filepath.Join(rootDir, ".ci/license.key")
+		env[EnvVarTestLicense] = filepath.Join(rootDir, ".ci/test-license.json")
+		env[EnvVarMonitoringSecrets] = ""
+	}
+
+	return env
 }
 
 func getMetadata(key string) string {
@@ -244,36 +342,13 @@ func getMetadata(key string) string {
 	if os.Getenv("CI") == "true" {
 		cmd = exec.Command("buildkite-agent", "meta-data", "get", key)
 	} else {
-		// dev mode
-		return "TO BE SET"
+		cmd = exec.Command("make", "-C", rootDir, fmt.Sprintf("print-%s", key))
 	}
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatal("fail to execute: ", cmd, err)
 	}
 	return strings.Trim(string(out), "\n")
-}
-
-func sanitize(s string) string {
-	s = strings.ReplaceAll(s, ".", "-")
-	s = strings.ReplaceAll(s, ":", "-")
-	s = strings.ReplaceAll(s, "/", "-")
-	return strings.ToLower(s)
-}
-
-func truncateText(s string, max int) string {
-	if max > len(s) {
-		return s
-	}
-	return s[:max]
-}
-
-func randString(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(b)
 }
 
 func handlErr(context string, err error) {
