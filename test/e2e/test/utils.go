@@ -16,8 +16,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -181,4 +187,74 @@ func IsGKE(v version.Version) bool {
 func SkipUntilResolution(t *testing.T, knownIssueNumber int) {
 	t.Helper()
 	t.Skipf("Skip until we understand why it is failing, see https://github.com/elastic/cloud-on-k8s/issues/%d", knownIssueNumber)
+}
+
+// This simulates "kubectl delete elastic" in the e2e namespace.
+func deleteTestResources(ctx context.Context) error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "while getting kubernetes config")
+		return err
+	}
+	clntset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "while getting clientset")
+		return err
+	}
+
+	groupVersionToResourceListMap := map[string][]v1.APIResource{}
+
+	_, resources, err := clntset.Discovery().ServerGroupsAndResources()
+	if err != nil {
+		log.Error(err, "while running kubernetes client discovery")
+		return err
+	}
+
+	for _, resource := range resources {
+		if strings.Contains(resource.GroupVersion, "k8s.elastic.co") {
+			groupVersionToResourceListMap[resource.GroupVersion] = resource.APIResources
+		}
+	}
+
+	namespace := Ctx().E2ENamespace
+	dynamicClient := dynamic.New(clntset.RESTClient())
+	for gv, resources := range groupVersionToResourceListMap {
+		gvSlice := strings.Split(gv, "/")
+		if len(gvSlice) != 2 {
+			continue
+		}
+		group, version := gvSlice[0], gvSlice[1]
+		for _, resource := range resources {
+			if err := dynamicClient.Resource(schema.GroupVersionResource{
+				Group:    group,
+				Resource: resource.Name,
+				Version:  version,
+			}).Namespace(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
+				msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
+				log.Error(err, msg, "group", group, "resource", resource.Name, "version", version)
+				return err
+			}
+		}
+	}
+
+	list, err := clntset.CoreV1().Secrets(namespace).List(ctx, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
+	}
+	for _, secret := range list.Items {
+		if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
+		}
+	}
+
+	pods, err := clntset.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("while listing all pods in namespace %s: %w", namespace, err)
+	}
+	for _, pod := range pods.Items {
+		if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("while deleting pod %s in namespace %s: %w", pod.GetName(), namespace, err)
+		}
+	}
+	return nil
 }
