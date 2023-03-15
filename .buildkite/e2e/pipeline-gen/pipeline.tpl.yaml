@@ -41,7 +41,7 @@ steps:
     
 {{- end }}
 
-{{- if .IsCleanup }}
+{{- if .Cleanup }}
 
   - group: ":broom:"
 
@@ -49,9 +49,9 @@ steps:
 
 {{- end }}
 
-{{- range $test := .Runs }}
+{{- range $test := .Tests }}
 
-    {{- if not $test.NoCleanup }}
+    {{- if $test.Cleanup }}
 
       - label: ":broom: {{ $test.Name }}"
         depends_on:
@@ -67,10 +67,10 @@ steps:
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
 
-        {{- if not $test.Dind }}
-          - make run-deployer
-        {{- else }}
+        {{- if $test.Dind }}
           - make -C .ci TARGET="run-deployer" ci
+        {{- else }}
+          - make run-deployer
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"

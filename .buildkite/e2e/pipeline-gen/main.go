@@ -7,6 +7,7 @@ package main
 import (
 	_ "embed"
 	"errors"
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -35,9 +36,19 @@ var (
 
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
 	chars    = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
+
+	fixed string
+	mixed string
+
+	output string
 )
 
 func init() {
+	flag.StringVar(&fixed, "f", "", "fixed variables")
+	flag.StringVar(&mixed, "m", "", "mixed variables")
+	flag.StringVar(&output, "o", "buildkite-pipeline", "Type of output: buildkite-pipeline or envfile")
+	flag.Parse()
+
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
@@ -45,23 +56,38 @@ func main() {
 	stat, err := os.Stdin.Stat()
 	handlErr("failed to read stdin", err)
 
-	if stat.Mode()&os.ModeCharDevice != 0 {
-		vars := commonTestEnv("dev", "dev")
-		for k, v := range vars {
-			fmt.Printf(`%s=\"%s\"\n`, k, v)
-		}
-		return
-	}
-
-	in, err := io.ReadAll(os.Stdin)
-	handlErr("failed to read stdin", err)
-	if len(in) == 0 {
-		handlErr("failed to read stdin", errors.New("nothing on /dev/stdin"))
-	}
-
 	var runs []Runs
-	err = yaml.Unmarshal(in, &runs)
-	handlErr("failed to parse stdin", err)
+
+	// no stdin
+	if stat.Mode()&os.ModeCharDevice != 0 {
+		if output == "envfile" {
+			for k, v := range commonTestEnv("dev", "dev") {
+				fmt.Printf("%s=%s\n", k, v)
+			}
+			return
+		}
+
+		fixedEnv, err := listToEnv(fixed)
+		handlErr("failed to read fixed variables", err)
+
+		mixedEnv, err := listToEnvs(mixed)
+		handlErr("failed to read mixed variables", err)
+
+		runs = []Runs{{
+			Fixed: fixedEnv,
+			Mixed: mixedEnv,
+		}}
+
+	} else {
+		in, err := io.ReadAll(os.Stdin)
+		handlErr("failed to read stdin", err)
+		if len(in) == 0 {
+			handlErr("failed to read stdin", errors.New("nothing on /dev/stdin"))
+		}
+
+		err = yaml.Unmarshal(in, &runs)
+		handlErr("failed to parse stdin", err)
+	}
 
 	// build a flat list of the tests to run
 	tests := make([]TestRun, 0)
@@ -75,7 +101,7 @@ func main() {
 			handlErr("failed to create new test", err)
 
 			tests = append(tests, test)
-			cleanup = cleanup || !test.NoCleanup
+			cleanup = cleanup || test.Cleanup
 		}
 	}
 
@@ -89,6 +115,30 @@ func main() {
 	handlErr("failed to generate pipeline", err)
 }
 
+func listToEnv(str string) (Env, error) {
+	env := Env{}
+	for _, elem := range strings.Split(str, ",") {
+		kv := strings.Split(elem, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kv)
+		}
+		env[kv[0]] = kv[1]
+	}
+	return env, nil
+}
+
+func listToEnvs(str string) ([]Env, error) {
+	envs := []Env{}
+	for _, elem := range strings.Split(str, ",") {
+		kv := strings.Split(elem, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kv)
+		}
+		envs = append(envs, Env{kv[0]: kv[1]})
+	}
+	return envs, nil
+}
+
 type Runs struct {
 	Label string
 	Fixed Env
@@ -100,15 +150,23 @@ type Env map[string]string
 
 // TestRun is a run of the full e2e tests suite
 type TestRun struct {
-	Name      string
-	SlugName  string
-	Env       Env
-	Dind      bool
-	NoCleanup bool
+	Name     string
+	SlugName string
+	Env      Env
+	Dind     bool
+	Cleanup  bool
 }
 
 func newTest(parentLabel string, fixed Env, mixed Env) (TestRun, error) {
+	provider, ok := fixed["E2E_PROVIDER"]
+	if !ok {
+		return TestRun{}, fmt.Errorf("E2E_PROVIDER not defined")
+	}
+
 	name := parentLabel
+	if name == "" {
+		name = provider
+	}
 
 	// use the two first env values as suffix if more than one env in the matrix
 	// to name the test
@@ -132,19 +190,14 @@ func newTest(parentLabel string, fixed Env, mixed Env) (TestRun, error) {
 		name = fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
 	}
 
-	provider, ok := fixed["E2E_PROVIDER"]
-	if !ok {
-		return TestRun{}, fmt.Errorf("E2E_PROVIDER not defined for run '%s'", name)
-	}
-
 	slugName := fmt.Sprintf("%s-%s", truncateText(sanitize(name), 16), randString(4))
 
 	t := TestRun{
-		Name:      name,
-		SlugName:  slugName,
-		Dind:      slices.Contains(providersInDocker, provider),
-		NoCleanup: slices.Contains(providersNoCleanup, provider),
-		Env:       commonTestEnv(name, slugName),
+		Name:     name,
+		SlugName: slugName,
+		Dind:     slices.Contains(providersInDocker, provider),
+		Cleanup:  !slices.Contains(providersNoCleanup, provider),
+		Env:      commonTestEnv(name, slugName),
 	}
 
 	for k, v := range fixed {
