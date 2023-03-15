@@ -70,7 +70,7 @@ func referencedEntStatusVersion(c k8s.Client, entRef commonv1.ObjectSelector) (s
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/api/ent/v1/internal/version", "{ .number }")
+		ver, err := info.Version("/api/ent/v1/internal/version", "{ .number }")
 		if err != nil {
 			return "", err
 		}

@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -41,7 +42,8 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 	var c vault.Client
 	// plan.ServiceAccount = true typically means a CI run vs a local run on a dev machine
 	if plan.ServiceAccount {
-		c, err := vault.NewClient()
+		var err error
+		c, err = vault.NewClient()
 		if err != nil {
 			return nil, err
 		}
@@ -153,14 +155,16 @@ func (d *AKSDriver) create() error {
 		servicePrincipal = fmt.Sprintf(" --service-principal %s --client-secret %s", secrets[0], secrets[1])
 	}
 
+	// https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create
 	return azure.Cmd("aks",
 		"create", "--resource-group", d.plan.Aks.ResourceGroup,
 		"--name", d.plan.ClusterName, "--location", d.plan.Aks.Location,
 		"--node-count", fmt.Sprintf("%d", d.plan.Aks.NodeCount), "--node-vm-size", d.plan.MachineType,
 		"--kubernetes-version", d.plan.KubernetesVersion,
 		"--node-osdisk-size", "120", "--enable-addons", "http_application_routing", "--output", "none", "--generate-ssh-keys",
-		"--zones", d.plan.Aks.Zones, servicePrincipal).
-		Run()
+		"--zones", d.plan.Aks.Zones, servicePrincipal,
+		"--tags", strings.Join(toList(elasticTags), " "),
+	).Run()
 }
 
 func (d *AKSDriver) GetCredentials() error {

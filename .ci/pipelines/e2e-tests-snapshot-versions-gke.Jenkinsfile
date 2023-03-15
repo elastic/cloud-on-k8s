@@ -33,6 +33,11 @@ pipeline {
                 }
             }
         }
+        stage('Set env') {
+            steps {
+                sh '.ci/setenvconfig dev/build'
+            }
+        }
         stage('Validate Jenkins pipelines') {
             steps {
                 sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
@@ -40,7 +45,6 @@ pipeline {
         }
         stage('Run checks') {
             steps {
-                sh '.ci/setenvconfig dev/build'
                 sh 'make -C .ci license.key TARGET=ci-check ci'
             }
         }

@@ -1,0 +1,24 @@
+steps:
+  - group: release
+    steps:
+
+      - label: "k8s manifests"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+        commands:
+          - buildkite-agent artifact download 'config/*.yaml' config/
+          - .buildkite/scripts/build/setenv.sh
+          - .buildkite/scripts/release/k8s-manifests.sh
+
+      - label: ":buildkite:"
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+
+      - label: ":buildkite:"
+        if: |
+          build.message =~ /^buildkite test .*operatorhub.*/
+          || build.message =~ /^release eck .*operatorhub.*/
+        commands:
+          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml

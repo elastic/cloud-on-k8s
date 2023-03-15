@@ -464,7 +464,7 @@ switch-registry-dev: # just use the default values of variables
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
 
-E2E_IMG_TAG                := $(IMG_VERSION)
+E2E_IMG_TAG                ?= $(IMG_VERSION)
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
 E2E_STACK_VERSION          ?= 8.6.1
 export TESTS_MATCH         ?= "^Test" #testing # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
@@ -479,6 +479,9 @@ E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test e
 # this relies on the deprecated space separated build constraints in Go which makes construction in make easier
 E2E_TAGS += $(GO_TAGS)
 export E2E_TAGS
+
+print-e2e-image:
+	@ echo $(E2E_IMG)
 
 e2e-docker-build: go-generate
 	DOCKER_BUILDKIT=1 docker build --progress=plain -t $(E2E_IMG) -f test/e2e/Dockerfile .

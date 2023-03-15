@@ -266,6 +266,8 @@ func (d *GKEDriver) create() error {
 	if err != nil {
 		return err
 	}
+	labels = fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels)
+
 	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
