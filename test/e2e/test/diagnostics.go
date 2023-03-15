@@ -60,6 +60,6 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
-	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:gosec
-	run(ctx, "gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://%s/jobs/%s/%s/", testCtx.GSBucketName, testCtx.JobName, testCtx.BuildNumber))                                                                                   //nolint:gosec
+	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	run(ctx, "gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://%s/jobs/%s/%s/", testCtx.GSBucketName, testCtx.JobName, testCtx.BuildNumber))
 }
