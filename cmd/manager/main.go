@@ -876,6 +876,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "AGENT-KB", registerFunc: associationctl.AddAgentKibana},
 		{name: "AGENT-FS", registerFunc: associationctl.AddAgentFleetServer},
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
+		{name: "LOGSTASH-ES", registerFunc: associationctl.AddLogstashES},
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
 		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},

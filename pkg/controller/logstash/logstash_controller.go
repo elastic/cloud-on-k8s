@@ -7,6 +7,8 @@ package logstash
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -163,6 +165,14 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
 	status := newStatus(logstash)
+
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, logstash.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !areAssocsConfigured {
+		return results, status
+	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err := r.validate(ctx, logstash); err != nil {
