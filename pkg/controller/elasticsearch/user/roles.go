@@ -44,6 +44,8 @@ const (
 
 	FleetAdminUserRole = "eck_fleet_admin_user_role"
 
+	LogstashUserRole = "eck_logstash_user_role"
+
 	// V70 indicates version 7.0
 	V70 = "v70"
 
@@ -147,6 +149,15 @@ var (
 					Application: "kibana-.kibana",
 					Resources:   []string{"*"},
 					Privileges:  []string{"feature_fleet.all", "feature_fleetv2.all"},
+				},
+			},
+		},
+		LogstashUserRole: esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"logstash-*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 			},
 		},

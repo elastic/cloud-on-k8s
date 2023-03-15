@@ -88,6 +88,9 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 
-	podTemplate := buildPodTemplate(params, configHash)
+	podTemplate, err := buildPodTemplate(params, configHash)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
 	return reconcileStatefulSet(params, podTemplate)
 }

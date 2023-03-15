@@ -18,6 +18,10 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
+
+	// TODO review service account
+	// LogstashServiceAccount is the Elasticsearch service account to be used to authenticate.
+	LogstashServiceAccount commonv1.ServiceAccountName = "logstash"
 )
 
 // LogstashSpec defines the desired state of Logstash
@@ -30,6 +34,10 @@ type LogstashSpec struct {
 	// Image is the Logstash Docker image to deploy. Version and Type have to match the Logstash in the image.
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
+
+	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+	// +kubebuilder:validation:Optional
+	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 
 	// Config holds the Logstash configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 	// +kubebuilder:validation:Optional
@@ -98,6 +106,9 @@ type LogstashStatus struct {
 	// controller has not yet processed the changes contained in the Logstash specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+	ElasticsearchAssociationsStatus commonv1.AssociationStatusMap `json:"elasticsearchAssociationsStatus,omitempty"`
+
 	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 }
@@ -120,6 +131,7 @@ type Logstash struct {
 
 	Spec                 LogstashSpec                                         `json:"spec,omitempty"`
 	Status               LogstashStatus                                       `json:"status,omitempty"`
+	EsAssocConfs         map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 	MonitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
@@ -132,6 +144,12 @@ type LogstashList struct {
 	Items           []Logstash `json:"items"`
 }
 
+func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
+	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
+	copy(refs, l.Spec.ElasticsearchRefs)
+
+	return refs
+}
 func (l *Logstash) ServiceAccountName() string {
 	return l.Spec.ServiceAccountName
 }
@@ -151,7 +169,14 @@ func (l *Logstash) GetObservedGeneration() int64 {
 }
 
 func (l *Logstash) GetAssociations() []commonv1.Association {
-	var associations []commonv1.Association
+	associations := make([]commonv1.Association, 0)
+
+	for _, ref := range l.Spec.ElasticsearchRefs {
+		associations = append(associations, &LogstashESAssociation{
+			Logstash: l,
+			ref:      ref.WithDefaultNamespace(l.Namespace),
+		})
+	}
 
 	for _, ref := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
 		if ref.IsDefined() {
@@ -174,7 +199,12 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 }
 
 func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ == commonv1.LogstashMonitoringAssociationType {
+	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		if len(l.Spec.ElasticsearchRefs) > 0 {
+			return l.Status.ElasticsearchAssociationsStatus
+		}
+	case commonv1.LogstashMonitoringAssociationType:
 		for _, esRef := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
 			if esRef.IsDefined() {
 				return l.Status.MonitoringAssociationStatus
@@ -192,12 +222,67 @@ func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.A
 
 func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
 	switch typ {
+	case commonv1.ElasticsearchAssociationType:
+		l.Status.ElasticsearchAssociationsStatus = status
+		return nil
 	case commonv1.LogstashMonitoringAssociationType:
 		l.Status.MonitoringAssociationStatus = status
 		return nil
 	default:
 		return fmt.Errorf("association type %s not known", typ)
 	}
+}
+
+type LogstashESAssociation struct {
+	// The associated Logstash
+	*Logstash
+	// ref is the object selector of the Elasticsearch used in Association
+	ref commonv1.ObjectSelector
+}
+
+var _ commonv1.Association = &LogstashESAssociation{}
+
+func (lses *LogstashESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
+func (lses *LogstashESAssociation) Associated() commonv1.Associated {
+	if lses == nil {
+		return nil
+	}
+	if lses.Logstash == nil {
+		lses.Logstash = &Logstash{}
+	}
+	return lses.Logstash
+}
+
+func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (lses *LogstashESAssociation) AssociationRef() commonv1.ObjectSelector {
+	return lses.ref
+}
+
+func (lses *LogstashESAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName(lses.ref)
+}
+
+func (lses *LogstashESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(lses, lses.ref, lses.EsAssocConfs)
+}
+
+func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	if lses.EsAssocConfs == nil {
+		lses.EsAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
+	}
+	if conf != nil {
+		lses.EsAssocConfs[lses.ref] = *conf
+	}
+}
+
+func (lses *LogstashESAssociation) AssociationID() string {
+	return fmt.Sprintf("%s-%s", lses.ref.Namespace, lses.ref.NameOrSecretName())
 }
 
 type LogstashMonitoringAssociation struct {
