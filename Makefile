@@ -240,7 +240,7 @@ build-operator-image:
 
 build-operator-multiarch-image:
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) 2>&1 >/dev/null \
 	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
 	|| $(MAKE) docker-multiarch-build
 
