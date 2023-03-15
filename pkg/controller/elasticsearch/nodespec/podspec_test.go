@@ -248,7 +248,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	initContainerEnv := defaults.ExtendPodDownwardEnvVars(
 		[]corev1.EnvVar{
 			{Name: "my-env", Value: "my-value"},
-			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.ProbeUserName)},
+			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: sampleES.Spec.HTTP.Protocol()},
 			{Name: settings.HeadlessServiceName, Value: HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name))},
