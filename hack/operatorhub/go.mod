@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.6.0
 	github.com/google/go-containerregistry v0.12.0
 	github.com/hashicorp/vault/api v1.8.2
