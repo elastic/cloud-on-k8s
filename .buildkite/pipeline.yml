@@ -23,7 +23,7 @@ steps:
       - label: ":go: checks"
         commands:
           - "make check-license-header check-predicates shellcheck reattach-pv"
-          - .buildkite/scripts/build/setenv_test.sh
+          - env -i .buildkite/scripts/build/setenv_test.sh
 
   - group: tests
     steps:
