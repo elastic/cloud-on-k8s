@@ -129,7 +129,7 @@ func main() {
 			groups[i].Mixed = []Env{{}}
 		}
 		for j := range groups[i].Mixed {
-			test, err := newTest(groups[i].Label, groups[i].Fixed, groups[i].Mixed[j])
+			test, err := newTest(groups[i].Label, groups[i].Fixed, len(groups[i].Mixed), groups[i].Mixed[j])
 			handlErr("failed to create test", err)
 
 			tests = append(tests, test)
@@ -207,7 +207,7 @@ type TestRun struct {
 	Cleanup  bool
 }
 
-func newTest(groupLabel string, fixed Env, mixed Env) (TestRun, error) {
+func newTest(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestRun, error) {
 	resolveShortcuts(fixed)
 	resolveShortcuts(mixed)
 
@@ -220,7 +220,7 @@ func newTest(groupLabel string, fixed Env, mixed Env) (TestRun, error) {
 		}
 	}
 
-	name := getName(groupLabel, provider, mixed)
+	name := getName(groupLabel, provider, mixedLen, mixed)
 	slugName := getSlugName(name)
 	t := TestRun{
 		Name:     name,
@@ -241,14 +241,14 @@ func newTest(groupLabel string, fixed Env, mixed Env) (TestRun, error) {
 	return t, nil
 }
 
-func getName(groupLabel, provider string, mixed Env) string {
+func getName(groupLabel, provider string, mixedLen int, mixed Env) string {
 	name := groupLabel
 	if name == "" {
 		name = provider
 	}
 
 	// use the two first env var values as suffix if more than one var in the mixed vars
-	if len(mixed) > 1 {
+	if mixedLen > 1 {
 		suffixes := make([]string, 0)
 		i := 0
 		for _, val := range mixed {
