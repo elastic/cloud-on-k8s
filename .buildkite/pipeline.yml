@@ -118,22 +118,6 @@ steps:
   # -- Release --
 
   - label: ":buildkite:"
-    depends_on:
-      - "operator-image-build"
-    if: build.message =~ /^buildkite test .*release.*/
-    env:
-      DRY_RUN: true
     commands:
       - buildkite-agent pipeline upload .buildkite/pipeline-release.yml
 
-  - label: ":buildkite:"
-    depends_on:
-      - "operator-image-build"
-    if: |
-      ( build.branch == "main" && build.source != "schedule" )
-      || build.tag != null
-      || build.message =~ /^release eck/
-    env:
-      DRY_RUN: false
-    commands:
-      - buildkite-agent pipeline upload .buildkite/pipeline-release.yml

@@ -7,18 +7,29 @@ steps:
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
+        depends_on:
+          - "operator-image-build"
         commands:
           - buildkite-agent artifact download 'config/*.yaml' config/
           - .buildkite/scripts/build/setenv.sh
           - .buildkite/scripts/release/k8s-manifests.sh
 
+      # dry run helm charts release
       - label: ":buildkite:"
-        commands:
-          - buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+        if: build.message =~ /^buildkite test .*release.*/
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+
+      # live helm charts release
+      - label: ":buildkite:"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^release eck/
+        command: |
+          sed "s|DRY_RUN: true|DRY_RUN: false|" .buildkite/pipeline-release-helm.yml | buildkite-agent pipeline upload 
 
       - label: ":buildkite:"
         if: |
           build.message =~ /^buildkite test .*operatorhub.*/
           || build.message =~ /^release eck .*operatorhub.*/
-        commands:
-          - buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
