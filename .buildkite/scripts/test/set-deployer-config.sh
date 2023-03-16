@@ -46,12 +46,12 @@ write_deployer_config() {
 
     # k8s version for ocp, kind    
     if [[ "${DEPLOYER_CLIENT_VERSION:-}" != "" ]]; then
-    w "  clientVersion: ${DEPLOYER_CLIENT_VERSION}"
+    w '  clientVersion: "'"${DEPLOYER_CLIENT_VERSION}"'"'
     fi
 
     # k8s version other providers
     if [[ "${DEPLOYER_K8S_VERSION:-}" != "" ]]; then
-    w "  kubernetesVersion: ${DEPLOYER_K8S_VERSION}"
+    w '  kubernetesVersion: "'"${DEPLOYER_K8S_VERSION}"'"'
     fi
 
     case "$E2E_PROVIDER" in gke|ocp)
