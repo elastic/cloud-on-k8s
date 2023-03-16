@@ -21,7 +21,9 @@ steps:
         command: "make generate check-local-changes"
 
       - label: ":go: checks"
-        commands: "make check-license-header check-predicates shellcheck reattach-pv"
+        commands:
+          - "make check-license-header check-predicates shellcheck reattach-pv"
+          - env -i .buildkite/scripts/build/setenv_test.sh
 
   - group: tests
     steps:
@@ -49,20 +51,4 @@ steps:
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
 
   - label: ":buildkite:"
-    depends_on:
-      - "operator-image-build"
-    if: build.message =~ /^buildkite test .*release.*/
-    env:
-      DRY_RUN: true
-    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
-
-  - label: ":buildkite:"
-    depends_on:
-      - "operator-image-build"
-    if: |
-      ( build.branch == "main" && build.source != "schedule" )
-      || build.tag != null
-      || build.message =~ /^release eck/
-    env:
-      DRY_RUN: false
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
