@@ -25,7 +25,6 @@ ROOT="$WD/../../.."
 # shellcheck disable=SC1091
 source "$ROOT/.env"
 
-
 write_stack_version_def() {
     # TODO
     echo '[]' > "$ROOT/stack-versions-def.json"
