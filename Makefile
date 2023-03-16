@@ -382,14 +382,14 @@ docker-multiarch-build: go-generate generate-config-file
 		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		--push
-ifeq ($(PUBLISH_IMAGE_UBI),true)
-	@ $(MAKE) docker-multiarch-build-ubi
-endif
 ifeq ($(PUBLISH_IMAGE_DOCKERHUB),true)
 	@ $(MAKE) docker-multiarch-build-dockerhub
 endif
+ifeq ($(PUBLISH_IMAGE_UBI),true)
+	@ $(MAKE) docker-multiarch-build-ubi
+endif
 
-docker-multiarch-build-dockerhub: go-generate generate-config-file
+docker-multiarch-build-dockerhub:
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -399,7 +399,7 @@ docker-multiarch-build-dockerhub: go-generate generate-config-file
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
 		--push
 
-docker-multiarch-build-ubi: go-generate generate-config-file
+docker-multiarch-build-ubi:
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -408,7 +408,7 @@ docker-multiarch-build-ubi: go-generate generate-config-file
 		--platform $(BUILD_PLATFORM) \
 		-f Dockerfile.ubi \
 		-t $(OPERATOR_IMAGE_UBI) \
-		--push	
+		--push
 
 publish-operator-image:
 	@ docker pull $(OPERATOR_IMAGE) \
