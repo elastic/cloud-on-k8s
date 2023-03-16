@@ -75,7 +75,9 @@ steps:
 
       - label: ":k8s: main e2e-tests build cluster"
         key: "main-e2e-tests-build-cluster"
-        if: build.branch == "main" && build.source != "schedule"
+        if: |
+          build.branch == "main" && build.source != "schedule"
+          || build.message =~ /^buildkite test .*e2e\/main.*/
         agents:
           memory: "4G"
         commands:
