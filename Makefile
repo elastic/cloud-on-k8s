@@ -233,17 +233,6 @@ go-debug:
 		--enable-leader-election=false \
 		--manage-webhook-certs=false)
 
-build-operator-image:
-	@ docker pull $(OPERATOR_IMAGE) \
-	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
-	|| $(MAKE) docker-build docker-push
-
-build-operator-multiarch-image:
-	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
-	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) | grep -q 'linux/arm64' 2>&1 >/dev/null \
-	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
-	|| $(MAKE) docker-multiarch-build
-
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
@@ -420,7 +409,12 @@ docker-multiarch-build-ubi: go-generate generate-config-file
 		-t $(OPERATOR_IMAGE_UBI) \
 		--push	
 
-docker-build: go-generate generate-config-file 
+publish-operator-image:
+	@ docker pull $(OPERATOR_IMAGE) \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-build docker-push
+
+docker-build: go-generate generate-config-file
 	DOCKER_BUILDKIT=1 docker build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -431,7 +425,13 @@ docker-build: go-generate generate-config-file
 docker-push:
 	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
 
-operator-buildah: go-generate generate-config-file buildah-login
+buildah-login:
+	@ buildah login \
+		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
+		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
+		$(REGISTRY)
+
+buildah-operator-image: go-generate generate-config-file buildah-login
 	buildah bud \
 		--isolation=chroot --storage-driver=vfs \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
@@ -489,6 +489,11 @@ e2e-docker-build: go-generate
 
 e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
+
+publish-e2e-multiarch-image:
+	@ docker buildx imagetools inspect $(E2E_IMG) 2>&1 >/dev/null \
+	&& echo "OK: image $(E2E_IMG) already published" \
+	|| $(MAKE) e2e-docker-multiarch-build
 
 e2e-docker-multiarch-build: go-generate
 	@ hack/docker.sh -l -m $(E2E_IMG)
@@ -565,7 +570,7 @@ ci-check: check-license-header lint shellcheck generate check-local-changes chec
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-setup-e2e: e2e-compile run-deployer e2e-docker-multiarch-build
+setup-e2e: e2e-compile run-deployer publish-e2e-multiarch-image
 
 ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
