@@ -37,9 +37,9 @@ main() {
     init_env
 
     if is_not_buildkite; then
-        # default "dev" values
-        echo "No Buildkite environment variables, exited."
-        return
+        echo "# dev mode"
+        echo export BUILDKITE_PULL_REQUEST=dev
+        export BUILDKITE_PULL_REQUEST=dev
     fi
 
     sha1=$(git rev-parse --short=8 --verify HEAD)
