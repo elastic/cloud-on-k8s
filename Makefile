@@ -382,10 +382,10 @@ docker-multiarch-build: go-generate generate-config-file
 		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
 		--push
-ifeq ($(ENABLE_BUILD_UBI),true)
+ifeq ($(PUBLISH_IMAGE_UBI),true)
 	@ $(MAKE) docker-multiarch-build-ubi
 endif
-ifeq ($(ENABLE_BUILD_OPERATORHUB),true)
+ifeq ($(PUBLISH_IMAGE_DOCKERHUB),true)
 	@ $(MAKE) docker-multiarch-build-dockerhub
 endif
 

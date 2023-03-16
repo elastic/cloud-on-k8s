@@ -63,7 +63,7 @@ main() {
         IMG_VERSION="$BUILDKITE_TAG"
 
         set_env SNAPSHOT=false
-        set_env ENABLE_BUILD_UBI=true
+        set_env PUBLISH_IMAGE_UBI=true
 
     elif is_merge_main; then
         REGISTRY_NAMESPACE=eck-snapshots
