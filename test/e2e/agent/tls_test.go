@@ -19,7 +19,7 @@ import (
 // TestFleetAgentWithoutTLS tests a Fleet Server, and Elastic Agent with TLS disabled for the HTTP layer.
 func TestFleetAgentWithoutTLS(t *testing.T) {
 
-	test.SkipUntilResolution(t, 6331)
+	// test.SkipUntilResolution(t, 6331)
 
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 

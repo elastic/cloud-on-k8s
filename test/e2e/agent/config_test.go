@@ -125,7 +125,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 
 func TestFleetMode(t *testing.T) {
 
-	test.SkipUntilResolution(t, 6331)
+	// test.SkipUntilResolution(t, 6331)
 
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	// installation of policies and integrations through Kibana file based configuration was broken between those versions:
