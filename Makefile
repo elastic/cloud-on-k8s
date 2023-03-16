@@ -65,7 +65,8 @@ ifeq ($(ENABLE_FIPS),true)
 	OPERATOR_IMAGE               := $(BASE_IMG)-fips:$(IMG_VERSION)
 	OPERATOR_IMAGE_UBI           := $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
 	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)	
+	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)
+	BUILD_PLATFORM := linux/amd64
 endif
 
 print-operator-image:
