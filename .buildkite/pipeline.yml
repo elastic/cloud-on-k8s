@@ -81,8 +81,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - make run-deployer
-        artifact_paths:
-          - "/root/.kube/config"
 
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"
@@ -92,7 +90,6 @@ steps:
         agents:
           memory: "4G"
         commands:
-          - buildkite-agent artifact download "root/.kube/config" /
           - .ci/setenvconfig e2e/main
           - make set-kubeconfig
           - .buildkite/scripts/common/run-main-e2e-tests.sh
