@@ -52,6 +52,6 @@ pipeline-gen -o envfile -f E2E_PROVIDER=gke,DEPLOYER_K8S_VERSION=1.23,E2E_STACK_
 ### 'p'k's't' shortcuts for the most used variables
 
 ```sh
-pipeline-gen -f p=gke,t=kind -m s=8.5.0.3,s=8.6.0 | tee pipeline.yml
+pipeline-gen -f p=gke,k=1.23,t=TestSmoke -m s=8.5.0,s=8.6.0 | tee pipeline.yml
 pipeline-gen -o envfile -f p=gke,k=1.23,s=8.6.0,t=TestSmoke | tee ../../../.env
 ```
