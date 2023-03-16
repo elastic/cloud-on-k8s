@@ -83,6 +83,8 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - make run-deployer
+        depends_on:
+          - "operator-image-build"
 
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"

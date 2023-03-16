@@ -2,6 +2,12 @@ steps:
 
   - group: "aks"
     steps:
+      - label: "aks build cluster"
+        key: "aks-nightly-e2e-tests-build-cluster"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/aks
+          - make run-deployer
 
       - label: "aks"
         agents:
@@ -10,9 +16,12 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
-          - make -C .ci TARGET="run-deployer e2e-run" ci
+          - make set-kubeconfig
+          - make -C .ci TARGET="e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "aks-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -28,14 +37,23 @@ steps:
   - group: "eks"
     steps:
 
-      - label: "eks"
+      - label: "eks build cluster"
+        key: "eks-nightly-e2e-tests-build-cluster"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
           - make run-deployer
+
+      - label: "eks"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/eks
+          - make set-kubeconfig
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "eks-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -68,32 +86,59 @@ steps:
   - group: "gke"
     steps:
 
-      - label: "gke 1.21"
+      - label: "gke 1.21 build cluster"
+        key: "gke121-nightly-e2e-tests-build-cluster"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
           - make run-deployer
+
+      - label: "gke 1.21"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/gke-k8s-versions 1.21
+          - make set-kubeconfig
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "gke121-nightly-e2e-tests-build-cluster"
+
+      - label: "gke 1.22 build cluster"
+        key: "gke122-nightly-e2e-tests-build-cluster"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/gke-k8s-versions 1.22
+          - make run-deployer
 
       - label: "gke 1.22"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
-          - make run-deployer
+          - make set-kubeconfig
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "gke122-nightly-e2e-tests-build-cluster"
+
+      - label: "gke 1.23 build cluster"
+        key: "gke123-nightly-e2e-tests-build-cluster"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/gke-k8s-versions 1.23
+          - make run-deployer
 
       - label: "gke 1.23"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
-          - make run-deployer
+          - make set-kubeconfig
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "gke123-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -259,6 +304,13 @@ steps:
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
 
+      - label: "ocp build cluster"
+        key: "ocp-nightly-e2e-tests-build-cluster"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/ocp 4.11.5
+          - make run-deployer
+
       - label: "ocp 4.11"
         agents:
           provider: "gcp"
@@ -266,9 +318,12 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
-          - make -C .ci TARGET="run-deployer e2e-run" ci
+          - make set-kubeconfig
+          - make -C .ci TARGET="e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "ocp-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -316,6 +371,13 @@ steps:
   - group: "tanzu"
     steps:
 
+      - label: "tanzu build cluster"
+        key: "tanzu-nightly-e2e-tests-build-cluster"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/tanzu
+          - make run-deployer
+
       - label: "e2e/tanzu"
         agents:
           provider: "gcp"
@@ -323,9 +385,12 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/tanzu
-          - make -C .ci TARGET="run-deployer e2e-run" ci
+          - make set-kubeconfig
+          - make -C .ci TARGET="e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "tanzu-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -341,14 +406,23 @@ steps:
   - group: "resilience"
     steps:
 
-      - label: "e2e/resilience"
+      - label: "resilience build cluster"
+        key: "resilience-nightly-e2e-tests-build-cluster"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
           - make run-deployer
+
+      - label: "e2e/resilience"
+        commands:
+          - .ci/setenvconfig e2e/main
+          - .ci/setenvconfig e2e/resilience
+          - make set-kubeconfig
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
+        depends_on:
+          - "resilience-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
