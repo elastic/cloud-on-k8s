@@ -375,16 +375,14 @@ switch-tanzu:
 ##  --    Docker images    --  ##
 #################################
 
-BUILD_PLATFORM ?= "linux/amd64,linux/arm64"
+BUILD_PLATFORM ?= "linux/amd64,linux/arm64"	
 
-buildah-login:
-	@ buildah login \
-		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
-		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
-		$(REGISTRY)
+publish-operator-multiarch-image:
+	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) 2>&1 >/dev/null \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-multiarch-build
 
-docker-multiarch-build: go-generate generate-config-file 
-ifeq ($(SNAPSHOT),false)
+docker-multiarch-build: go-generate generate-config-file
 	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
 	docker buildx build . \
 		--progress=plain \
@@ -393,31 +391,34 @@ ifeq ($(SNAPSHOT),false)
 		--build-arg VERSION='$(VERSION)' \
 		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_IMAGE) \
+		--push
+ifeq ($(ENABLE_BUILD_UBI),true)
+	@ $(MAKE) docker-multiarch-build-ubi
+endif
+ifeq ($(ENABLE_BUILD_OPERATORHUB),true)
+	@ $(MAKE) docker-multiarch-build-dockerhub
+endif
+
+docker-multiarch-build-dockerhub: go-generate generate-config-file
+	docker buildx build . \
+		--progress=plain \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		--build-arg VERSION='$(VERSION)' \
+		--platform $(BUILD_PLATFORM) \
 		-t $(OPERATOR_DOCKERHUB_IMAGE) \
 		--push
-	# The following UBI build should already have the binary cached, and should
-	# be a quick operation.
-	docker buildx build . \
-		--progress=plain \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
-		--platform linux/amd64,linux/arm64 \
-		-f Dockerfile.ubi \
-		-t $(OPERATOR_IMAGE_UBI) \
-		--push
-else
-	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+
+docker-multiarch-build-ubi: go-generate generate-config-file
 	docker buildx build . \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform $(BUILD_PLATFORM) \
-		-t $(OPERATOR_IMAGE) \
-		--push
-endif
-	
+		-f Dockerfile.ubi \
+		-t $(OPERATOR_IMAGE_UBI) \
+		--push	
 
 docker-build: go-generate generate-config-file 
 	DOCKER_BUILDKIT=1 docker build . \
