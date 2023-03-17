@@ -67,7 +67,7 @@ max_dns_errors=${PRE_STOP_MAX_DNS_ERRORS:=2}
 global_dns_error_cnt=0
 
 function request() {
-	local status exit
+    local status exit
     status=$(curl -k -sS -o $resp_body -w "%{http_code}" "$@")
     exit=$?
     if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
@@ -91,8 +91,8 @@ function retry() {
     exit=$?
     wait=$((2 ** count))
     count=$((count + 1))
-	if [ $global_dns_error_cnt -gt $max_dns_errors ]; then
-		error_exit "too many DNS errors, giving up"
+    if [ $global_dns_error_cnt -gt $max_dns_errors ]; then
+      error_exit "too many DNS errors, giving up"
     fi
     if [ $count -lt "$retries" ]; then
       printf "Retry %s/%s exited %s, retrying in %s seconds...\n" "$count" "$retries" "$exit" "$wait" >&2
@@ -111,9 +111,9 @@ function error_exit() {
 }
 
 function delayed_exit() {
-	local elapsed=$(duration $script_start)
+    local elapsed=$(duration $script_start)
     sleep $(($PRE_STOP_ADDITIONAL_WAIT_SECONDS - $elapsed))
-	exit 0
+    exit 0
 }
 
 function is_master(){
@@ -148,7 +148,7 @@ if ! supports_node_shutdown $version; then
   delayed_exit 
 fi
 
-# setup basic auth if credentials are available TODO dedicated user?
+# setup basic auth if credentials are available
 if [ -f "{{.PreStopUserPasswordPath}}" ]; then
   PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
   BASIC_AUTH="-u {{.PreStopUserName}}:${PROBE_PASSWORD}"
