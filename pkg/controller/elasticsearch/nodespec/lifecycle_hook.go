@@ -55,9 +55,9 @@ script_start=$(date +%s)
 
 # compute time in seconds since the given start time
 function duration() {
-	local start=$1
-	end=$(date +%s)
-	echo $((end-start))
+  local start=$1
+  end=$(date +%s)
+  echo $((end-start))
 }
 
 # use DNS errors as a proxy to abort this script early if there is no chance of successful completion
@@ -67,19 +67,19 @@ max_dns_errors=${PRE_STOP_MAX_DNS_ERRORS:=2}
 global_dns_error_cnt=0
 
 function request() {
-    local status exit
-    status=$(curl -k -sS -o $resp_body -w "%{http_code}" "$@")
-    exit=$?
-    if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
-		# track curl DNS errors separately
-		if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
-		# make sure we have a non-zero exit code in the presence of errors
-		if [ "$exit" -eq 0 ]; then exit=1; fi
-        echo  $status $resp_body
-        return $exit
-    fi
-    global_dns_error_cnt=0
-    return 0
+  local status exit
+  status=$(curl -k -sS -o $resp_body -w "%{http_code}" "$@")
+  exit=$?
+  if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
+    # track curl DNS errors separately
+    if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
+    # make sure we have a non-zero exit code in the presence of errors
+    if [ "$exit" -eq 0 ]; then exit=1; fi
+    echo  $status $resp_body
+    return $exit
+  fi
+  global_dns_error_cnt=0
+  return 0
 }
 
 function retry() {
@@ -111,9 +111,9 @@ function error_exit() {
 }
 
 function delayed_exit() {
-    local elapsed=$(duration $script_start)
-    sleep $(($PRE_STOP_ADDITIONAL_WAIT_SECONDS - $elapsed))
-    exit 0
+  local elapsed=$(duration $script_start)
+  sleep $(($PRE_STOP_ADDITIONAL_WAIT_SECONDS - $elapsed))
+  exit 0
 }
 
 function is_master(){
@@ -122,17 +122,17 @@ function is_master(){
 }
 
 function supports_node_shutdown() {
-	local version="$1"
-	version=${version#[vV]}
-	major="${version%%\.*}"
-	minor="${version#*.}"
-	minor="${minor%.*}"
-	patch="${version##*.}"
-	# node shutdown is supported as of 7.15.2
-	if [ "$major" -lt 7 ]  || ([ "$major" -eq 7 ] && [ "$minor" -eq 15 ] && [ "$patch" -lt 2 ]); then 
-		return 1
-	fi
-	return 0
+  local version="$1"
+  version=${version#[vV]}
+  major="${version%%\.*}"
+  minor="${version#*.}"
+  minor="${minor%.*}"
+  patch="${version##*.}"
+  # node shutdown is supported as of 7.15.2
+  if [ "$major" -lt 7 ]  || ([ "$major" -eq 7 ] && [ "$minor" -eq 15 ] && [ "$patch" -lt 2 ]); then
+    return 1
+  fi
+  return 0
 }
 
 version=""
