@@ -24,19 +24,6 @@ func NewPreStopHook() *v1.LifecycleHandler {
 	}
 }
 
-/*
-  - use probe user:
- 	- need to elevate permissions
-	- if permission elevations fails because ES not operational: status quo
-	- maintenance issue: misleading user name/pw path
-  - add new user
-	- somewhat unnecessary, does not improve security posture
-	- can use meaningful name
-	- probably best compromise
-  - rename probe user and extend permissions
-	- transition issue: readiness probe will fail for existing nodes: this is a blocker
-*/
-
 const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
