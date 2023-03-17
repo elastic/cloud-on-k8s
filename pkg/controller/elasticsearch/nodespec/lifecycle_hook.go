@@ -73,6 +73,8 @@ function request() {
     if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
 		# track curl DNS errors separately
 		if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
+		# make sure we have a non-zero exit code in the presence of errors
+		if [ "$exit" -eq 0 ]; then exit=1; fi
         echo  $status $resp_body
         return $exit
     fi
@@ -176,12 +178,12 @@ if grep -q -v '"nodes":\[\]' $resp_body; then
 fi
 
 echo "initiating node shutdown"
-retry 10 request -X PUT $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d'
+retry 10 request -X PUT $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d"
 {
-  "type": "$shutdown_type",
-  "reason": "pre-stop hook"
+  \"type\": \"$shutdown_type\",
+  \"reason\": \"pre-stop hook\"
 }
-'
+"
 if [ "$?" -ne 0 ]; then
    error_exit "Failed to call node shutdown API" $resp_body
 fi
