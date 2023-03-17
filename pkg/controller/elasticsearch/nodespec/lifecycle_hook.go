@@ -42,6 +42,11 @@ set -euo pipefail
 # target the Pod IP before Elasticsearch stops.
 PRE_STOP_ADDITIONAL_WAIT_SECONDS=${PRE_STOP_ADDITIONAL_WAIT_SECONDS:=50}
 
+# PRE_STOP_SHUTDOWN_TYPE controls the type of shutdown that will be communicated to Elasticsearch. This should not be
+# changed to anything but restart. Specifically setting remove can lead to extensive data migration that might exceed the
+# terminationGracePeriodSeconds and lead to an incomplete shutdown.
+shutdown_type=${PRE_STOP_SHUTDOWN_TYPE:=restart}
+
 # capture response bodies in a temp file for better error messages and to extract necessary information for subsequent requests
 resp_body=$(mktemp)
 trap "rm -f $resp_body" EXIT
@@ -58,7 +63,7 @@ function duration() {
 # use DNS errors as a proxy to abort this script early if there is no chance of successful completion
 # DNS errors are for example expected when the whole cluster including its service is being deleted
 # and the service URL can no longer be resolved even though we still have running Pods.
-max_dns_errors=2
+max_dns_errors=${PRE_STOP_MAX_DNS_ERRORS:=2}
 global_dns_error_cnt=0
 
 function request() {
@@ -173,7 +178,7 @@ fi
 echo "initiating node shutdown"
 retry 10 request -X PUT $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d'
 {
-  "type": "restart", 
+  "type": "$shutdown_type",
   "reason": "pre-stop hook"
 }
 '
