@@ -143,7 +143,7 @@ if [[ -f "{{.LabelsFile}}" ]]; then
   version=$(echo "${version}" | tr -d '"')
 fi
 
-# if ES version does not support node shutdown exit early TODO bash regex 
+# if ES version does not support node shutdown exit early
 if ! supports_node_shutdown $version; then
   delayed_exit 
 fi
