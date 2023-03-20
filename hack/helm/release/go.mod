@@ -17,6 +17,10 @@ require (
 
 replace github.com/elastic/cloud-on-k8s/v2 => ../../..
 
+// pulled by github.com/google/go-containerregistry pulled by github.com/elastic/cloud-on-k8s/v2
+// incompatible with oras.land/oras-go v1.2.2 pulled by helm.sh/helm/v3
+exclude github.com/docker/docker v23.0.1+incompatible
+
 require (
 	cloud.google.com/go v0.110.0 // indirect
 	cloud.google.com/go/compute v1.18.0 // indirect
@@ -39,7 +43,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v23.0.1+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v23.0.1+incompatible // indirect
+	github.com/docker/docker v20.10.21+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
