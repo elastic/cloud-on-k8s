@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	kbctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -274,6 +275,10 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Kibana.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+func (b Builder) GetTypeLabel() string {
+	return kbctl.Type
 }
 
 // -- test.Subject impl

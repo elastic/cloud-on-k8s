@@ -383,10 +383,14 @@ func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
 }
 
 func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
-	ns := k8sclient.InNamespace(esNamespace)
+	return StackPodListOptions(esNamespace, esName, label.Type)
+}
+
+func StackPodListOptions(namespace, name, typeLabel string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(namespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		commonv1.TypeLabelName:     label.Type,
-		label.ClusterNameLabelName: esName,
+		commonv1.TypeLabelName:     typeLabel,
+		label.ClusterNameLabelName: name,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

@@ -5,6 +5,7 @@
 package logstash
 
 import (
+	lsctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -148,6 +149,10 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+func (b Builder) GetTypeLabel() string {
+	return lsctl.TypeLabelValue
 }
 
 func (b Builder) NSN() types.NamespacedName {

@@ -360,3 +360,9 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
 }
+
+// GetTypeLabel The implementation is for the compatibility of stack monitoring test
+// beat does not have such test and only returns a static string "beat"
+func (b Builder) GetTypeLabel() string {
+	return "beat"
+}

@@ -27,6 +27,7 @@ type Monitored interface {
 	GetMetricsIndexPattern() string
 	GetLogsCluster() *types.NamespacedName
 	GetMetricsCluster() *types.NamespacedName
+	GetTypeLabel() string
 }
 
 func MonitoredSteps(monitored Monitored, k8sClient *test.K8sClient) test.StepList {
@@ -63,9 +64,10 @@ func (c stackMonitoringChecks) CheckBeatSidecars() test.Step {
 		Name: "Check that beat sidecars are running",
 		Test: test.Eventually(func() error {
 			pods, err := c.k8sClient.GetPods(
-				test.ESPodListOptions(
+				test.StackPodListOptions(
 					c.monitored.Namespace(),
-					c.monitored.Name())...,
+					c.monitored.Name(),
+					c.monitored.GetTypeLabel())...,
 			)
 			if err != nil {
 				return err
