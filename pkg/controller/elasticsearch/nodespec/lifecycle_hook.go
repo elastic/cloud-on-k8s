@@ -49,6 +49,7 @@ shutdown_type=${PRE_STOP_SHUTDOWN_TYPE:=restart}
 
 # capture response bodies in a temp file for better error messages and to extract necessary information for subsequent requests
 resp_body=$(mktemp)
+# shellcheck disable=SC2064
 trap "rm -f $resp_body" EXIT
 
 script_start=$(date +%s)
@@ -68,14 +69,14 @@ global_dns_error_cnt=0
 
 function request() {
   local status exit
-  status=$(curl -k -sS -o $resp_body -w "%{http_code}" "$@")
+  status=$(curl -k -sS -o "$resp_body" -w "%{http_code}" "$@")
   exit=$?
   if [ "$exit" -ne 0 ] || [ "$status" -lt 200 ] || [ "$status" -gt 299 ]; then
     # track curl DNS errors separately
     if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
     # make sure we have a non-zero exit code in the presence of errors
     if [ "$exit" -eq 0 ]; then exit=1; fi
-    echo  $status $resp_body
+    echo  "$status" "$resp_body"
     return $exit
   fi
   global_dns_error_cnt=0
@@ -91,7 +92,7 @@ function retry() {
     exit=$?
     wait=$((2 ** count))
     count=$((count + 1))
-    if [ $global_dns_error_cnt -gt $max_dns_errors ]; then
+    if [ $global_dns_error_cnt -gt "$max_dns_errors" ]; then
       error_exit "too many DNS errors, giving up"
     fi
     if [ $count -lt "$retries" ]; then
@@ -105,19 +106,28 @@ function retry() {
   return 0
 }
 
+function log() {
+   local timestamp
+   timestamp=$(date --iso-8601=seconds)
+   echo "{\"@timestamp\": \"${timestamp}\", \"message\": \"$1\", \"ecs.version\": \"1.2.0\", \"event.dataset\": \"elasticsearch.pre-stop-hook\"}" | tee /proc/1/fd/2 2> /dev/null 
+}
+
 function error_exit() {
-  echo $1 1>&2
+  log "$1"
   exit 1
 }
 
 function delayed_exit() {
-  local elapsed=$(duration $script_start)
-  sleep $(($PRE_STOP_ADDITIONAL_WAIT_SECONDS - $elapsed))
+  local elapsed
+  elapsed=$(duration "$script_start")
+  local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
+  log "delaying termination for $remaining seconds"
+  sleep $remaining
   exit 0
 }
 
 function is_master(){
-  labels="{{.LabelsFile}}"
+  local labels="{{.LabelsFile}}"
   grep 'master="true"' $labels
 }
 
@@ -129,7 +139,7 @@ function supports_node_shutdown() {
   minor="${minor%.*}"
   patch="${version##*.}"
   # node shutdown is supported as of 7.15.2
-  if [ "$major" -lt 7 ]  || ([ "$major" -eq 7 ] && [ "$minor" -eq 15 ] && [ "$patch" -lt 2 ]); then
+  if [ "$major" -lt 7 ]  || { [ "$major" -eq 7 ] && [ "$minor" -eq 15 ] && [ "$patch" -lt 2 ]; }; then
     return 1
   fi
   return 0
@@ -144,7 +154,7 @@ if [[ -f "{{.LabelsFile}}" ]]; then
 fi
 
 # if ES version does not support node shutdown exit early
-if ! supports_node_shutdown $version; then
+if ! supports_node_shutdown "$version"; then
   delayed_exit 
 fi
 
@@ -163,39 +173,40 @@ if is_master; then
   # we ignore the error here and try to call at least node shutdown
 fi
 
-echo "retrieving node ID"
+log "retrieving node ID"
 retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
 if [ "$?"  -ne 0 ]; then
-	error_exit $status
+	error_exit "$status"
 fi
 
-NODE_ID=$(grep $POD_NAME $resp_body | cut -f 1 -d ' ')
+NODE_ID=$(grep "$POD_NAME" "$resp_body" | cut -f 1 -d ' ')
 
 # check if there is an ongoing shutdown request
-request -X GET $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH
-if grep -q -v '"nodes":\[\]' $resp_body; then
+request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
+if grep -q -v '"nodes":\[\]' "$resp_body"; then
+	log "shutdown managed by ECK operator"
 	delayed_exit      
 fi
 
-echo "initiating node shutdown"
-retry 10 request -X PUT $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d"
+log "initiating node shutdown"
+retry 10 request -X PUT $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH -H 'Content-Type: application/json' -d"
 {
   \"type\": \"$shutdown_type\",
   \"reason\": \"pre-stop hook\"
 }
 "
 if [ "$?" -ne 0 ]; then
-   error_exit "Failed to call node shutdown API" $resp_body
+   error_exit "Failed to call node shutdown API" "$resp_body"
 fi
 
 while :
 do 
-   echo "waiting for node shutdown to complete"
-   request -X GET $ES_URL/_nodes/$NODE_ID/shutdown $BASIC_AUTH
+   log "waiting for node shutdown to complete"
+   request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
    if [ "$?" -ne 0 ]; then
       continue
    fi
-   if grep -q -v 'IN_PROGRESS\|STALLED' $resp_body; then 
+   if grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"; then
       break
    fi
    sleep 10 
