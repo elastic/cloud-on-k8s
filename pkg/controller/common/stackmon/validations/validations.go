@@ -54,7 +54,7 @@ func Validate(resource monitoring.HasMonitoring, version string, minVersion vers
 	return errs
 }
 
-// IsSupportedVersion returns true if the resource version is supported for Stack Monitoring, else returns false
+// IsSupportedVersion returns error if the resource version is not supported for Stack Monitoring
 func IsSupportedVersion(v string, minVersion version.Version) error {
 	ver, err := version.Parse(v)
 	if err != nil {
