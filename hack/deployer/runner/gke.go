@@ -326,7 +326,7 @@ func (d *GKEDriver) GetCredentials() error {
 	if !ok {
 		return fmt.Errorf("while retrieving google cloud project: key %s was not a string, was %T ", GoogleCloudProjectCtxKey, gcloudProjectInt)
 	}
-	// If there's no authenticated user, or the authenticated user doesn't exist in the configured project 
+	// If there's no authenticated user, or the authenticated user doesn't exist in the configured project
 	// then we need to authenticate with what's within vault.
 	if len(out) == 0 || (len(out) > 0 && !strings.Contains(out[0], gCloudProject)) {
 		if err := authToGCP(
