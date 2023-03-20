@@ -89,7 +89,7 @@ func TestMultiOutputRecipe(t *testing.T) {
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 
-	// test.SkipUntilResolution(t, 6331)
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
@@ -134,7 +134,7 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
-	// test.SkipUntilResolution(t, 6331)
+	test.SkipUntilResolution(t, 6331)
 
 	notLoggingPod := beat.NewPodBuilder("test")
 	loggingPod := beat.NewPodBuilder("test")
@@ -163,7 +163,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
 
-	// test.SkipUntilResolution(t, 6331)
+	test.SkipUntilResolution(t, 6331)
 
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {

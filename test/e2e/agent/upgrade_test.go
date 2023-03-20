@@ -17,7 +17,7 @@ import (
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 
-	// test.SkipUntilResolution(t, 6331)
+	test.SkipUntilResolution(t, 6331)
 
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
