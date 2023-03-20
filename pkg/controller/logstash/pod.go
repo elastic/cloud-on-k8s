@@ -59,6 +59,11 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	//envs, err := buildEnv(params)
+	//if err != nil {
+	//	return corev1.PodTemplateSpec{}, err
+	//}
+
 	labels := maps.Merge(params.Logstash.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
 
@@ -76,7 +81,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
-		WithVolumeLikes(vols...)
+		WithVolumeLikes(vols...) //.WithEnv(envs...)
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {

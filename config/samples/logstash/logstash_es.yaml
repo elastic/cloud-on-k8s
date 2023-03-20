@@ -10,6 +10,18 @@ spec:
       config:
         node.store.allow_mmap: false
 ---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample2
+spec:
+  version: 8.6.1
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        node.store.allow_mmap: false
+---
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
@@ -17,8 +29,9 @@ metadata:
 spec:
   count: 1
   version: 8.6.1
-  elasticsearchRef:
-    name: elasticsearch-sample
+  elasticsearchRefs:
+    - name: elasticsearch-sample
+    - name: elasticsearch-sample2
   config:
     log.level: info
     api.http.host: "0.0.0.0"
@@ -27,3 +40,25 @@ spec:
     spec:
       containers:
         - name: logstash
+---
+#apiVersion: agent.k8s.elastic.co/v1alpha1
+#kind: Agent
+#metadata:
+#  name: elastic-agent
+#spec:
+#  version: 8.6.1
+#  elasticsearchRefs:
+#    - name: elasticsearch-sample
+#    - name: elasticsearch-sample2
+#  daemonSet:
+#    podTemplate:
+#      spec:
+#        containers:
+#          - name: agent
+#            securityContext:
+#              runAsUser: 0
+#            env:
+#              - name: NODE_NAME
+#                valueFrom:
+#                  fieldRef:
+#                    fieldPath: spec.nodeName
