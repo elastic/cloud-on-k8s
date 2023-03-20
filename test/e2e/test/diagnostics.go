@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -21,7 +22,8 @@ var once sync.Once
 
 // canRunDiagnostics will determine if this e2e test run has the ability to run eck-diagnostics after
 // each test failure, which includes uploading the resulting zip file to a GS bucket. If the job name
-// is set (not empty) and the google credentials file exists, then we should be able to run diagnostics.
+// is set (not empty), the google credentials file exists, and the eck-diagnostics binary exists
+// then we should be able to run diagnostics.
 func canRunDiagnostics(ctx Context) bool {
 	if _, err := os.Stat(ctx.GCPCredentialsPath); err != nil && errors.Is(err, fs.ErrNotExist) {
 		return false
@@ -30,6 +32,9 @@ func canRunDiagnostics(ctx Context) bool {
 		return false
 	}
 	if ctx.JobName == "" {
+		return false
+	}
+	if _, err := exec.LookPath("eck-diagnostics"); err != nil {
 		return false
 	}
 	return true
@@ -54,10 +59,12 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 		run(ctx, "initialising gs-util", "gcloud", "auth", "activate-service-account", fmt.Sprintf("--key-file=%s", testCtx.GCPCredentialsPath))
 	})
 	otherNS := append([]string{testCtx.E2ENamespace}, testCtx.Operator.ManagedNamespaces...)
-	// The following appends the test, and it's sub-test names together with a '-'.
-	// Example: For TestAutoscalingLegacy/Secrets_should_eventually_be_created:
-	// testName: TestAutoscalingLegacy, step.Name: Secrets_should_eventually_be_created
-	fullTestName := fmt.Sprintf("%s-%s", testName, step.Name)
+	// The following appends the clustername, test name, and it's sub-test names together with a '-'.
+	// The cluster name is added tot he eck-diagnostics file name to avoid conflicts at the last step
+	// of the e2e tests where all diagnostics are downloaded locally to the same directory, and uploaded to buildkite as artifacts.
+	// Example: For TestAutoscalingLegacy/Secrets_should_eventually_be_created in cluster eck-bk-e2e-pr-2373:
+	// testName: TestAutoscalingLegacy, step.Name: Secrets_should_eventually_be_created, clustername: eck-bk-e2e-pr-2373
+	fullTestName := fmt.Sprintf("%s-%s-%s", testCtx.ClusterName, testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
 	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
