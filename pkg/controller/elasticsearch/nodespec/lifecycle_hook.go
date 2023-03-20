@@ -76,7 +76,7 @@ function request() {
     if [ "$exit" -eq 6 ]; then ((global_dns_error_cnt++)); fi
     # make sure we have a non-zero exit code in the presence of errors
     if [ "$exit" -eq 0 ]; then exit=1; fi
-    echo  "$status" "$resp_body"
+    log  "$status" "$3" #by convention the third arg contains the URL
     return $exit
   fi
   global_dns_error_cnt=0
@@ -109,7 +109,7 @@ function retry() {
 function log() {
    local timestamp
    timestamp=$(date --iso-8601=seconds)
-   echo "{\"@timestamp\": \"${timestamp}\", \"message\": \"$1\", \"ecs.version\": \"1.2.0\", \"event.dataset\": \"elasticsearch.pre-stop-hook\"}" | tee /proc/1/fd/2 2> /dev/null 
+   echo "{\"@timestamp\": \"${timestamp}\", \"message\": \"$@\", \"ecs.version\": \"1.2.0\", \"event.dataset\": \"elasticsearch.pre-stop-hook\"}" | tee /proc/1/fd/2 2> /dev/null
 }
 
 function error_exit() {
