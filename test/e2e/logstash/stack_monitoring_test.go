@@ -21,8 +21,7 @@ import (
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestLogstashStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, logstashv1alpha1.MinStackMonVersion)
-	if err != nil {
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(logstashv1alpha1.MinStackMonVersion) {
 		t.SkipNow()
 	}
 
