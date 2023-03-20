@@ -125,11 +125,6 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
-func (b Builder) WithCommand(command []string) Builder {
-	b.Logstash.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "logstash", Command: command}}
-	return b
-}
-
 func (b Builder) GetMetricsIndexPattern() string {
 	return ".monitoring-logstash-8-mb"
 }
