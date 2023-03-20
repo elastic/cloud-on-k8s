@@ -25,6 +25,7 @@ steps:
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
           || build.message =~ /^release eck/
+          && build.message !~ /^buildkite test .*release.*/
         command: |
           sed "s|DRY_RUN: true|DRY_RUN: false|" .buildkite/pipeline-release-helm.yml | buildkite-agent pipeline upload 
 
