@@ -247,28 +247,39 @@ func getName(groupLabel, provider string, mixedLen int, mixed Env) string {
 		name = provider
 	}
 
-	// use the two first env var values as suffix if more than one var in the mixed vars
-	if mixedLen > 1 {
-		suffixes := make([]string, 0)
-		i := 0
-		for _, val := range mixed {
-			suffix := val
-			// extract semver (e.g.: kind node image)
-			match := semverRE.FindStringSubmatch(suffix)
-			if len(match) > 0 {
-				suffix = match[0]
-			}
-			suffixes = append(suffixes, suffix)
-			i++
-			if i == 2 {
-				break
-			}
-		}
-		sort.Strings(suffixes)
-
-		return fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
+	if mixedLen < 2 {
+		return name
 	}
-	return name
+
+	// try use the two first env var values as suffix if more than one var in the mixed vars
+
+	suffixes := make([]string, 0)
+	i := 0
+	for _, val := range mixed {
+		suffix := val
+		// do not repeat name
+		if suffix == name {
+			continue
+		}
+		// extract semver (e.g.: kind node image)
+		match := semverRE.FindStringSubmatch(suffix)
+		if len(match) > 0 {
+			suffix = match[0]
+		}
+		suffixes = append(suffixes, suffix)
+		i++
+		if i == 2 {
+			break
+		}
+	}
+	sort.Strings(suffixes)
+
+	if len(suffixes) == 0 {
+		return name
+	}
+
+	return fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
+
 }
 
 func getSlugName(name string) string {
