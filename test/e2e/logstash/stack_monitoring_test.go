@@ -7,10 +7,10 @@
 package logstash
 
 import (
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"testing"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
