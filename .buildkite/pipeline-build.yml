@@ -42,7 +42,7 @@ steps:
       - label: ":docker: dev-license operator image"
         if: | 
           ( build.branch == "main" && build.source == "schedule" )
-          || build.message =~ /^buildkite test .*release.*/
+          || build.message =~ /^buildkite test .*dev-build.*/
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
