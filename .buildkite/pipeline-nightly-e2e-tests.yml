@@ -45,6 +45,8 @@ steps:
           - make run-deployer
 
       - label: "eks"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
@@ -94,6 +96,8 @@ steps:
           - make run-deployer
 
       - label: "gke 1.21"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
@@ -112,6 +116,8 @@ steps:
           - make run-deployer
 
       - label: "gke 1.22"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
@@ -130,6 +136,8 @@ steps:
           - make run-deployer
 
       - label: "gke 1.23"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
@@ -414,6 +422,8 @@ steps:
           - make run-deployer
 
       - label: "e2e/resilience"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
