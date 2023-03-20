@@ -126,11 +126,6 @@ function delayed_exit() {
   exit 0
 }
 
-function is_master(){
-  local labels="{{.LabelsFile}}"
-  grep 'master="true"' $labels
-}
-
 function supports_node_shutdown() {
   local version="$1"
   version=${version#[vV]}
@@ -167,11 +162,6 @@ else
 fi
 
 ES_URL={{.ServiceURL}}
-
-if is_master; then
-  retry 10 request -X POST "$ES_URL/_cluster/voting_config_exclusions?node_names=$POD_NAME" $BASIC_AUTH
-  # we ignore the error here and try to call at least node shutdown
-fi
 
 log "retrieving node ID"
 retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
