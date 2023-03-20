@@ -66,7 +66,8 @@ func HandleDownscale(
 	// initiate shutdown of nodes that should be removed
 	// if leaving nodes is empty this should cancel any ongoing shutdowns
 	leavingNodes := leavingNodeNames(downscales)
-	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, leavingNodes); err != nil {
+	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
+	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, leavingNodes, terminatingNodes); err != nil {
 		return results.WithError(err)
 	}
 
