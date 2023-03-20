@@ -29,6 +29,8 @@ steps:
     steps:
 
       - label: "eks"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
@@ -69,6 +71,8 @@ steps:
     steps:
 
       - label: "gke 1.21"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
@@ -78,6 +82,8 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.22"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
@@ -87,6 +93,8 @@ steps:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.23"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
@@ -342,6 +350,8 @@ steps:
     steps:
 
       - label: "e2e/resilience"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience

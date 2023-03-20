@@ -49,7 +49,7 @@ is_not_buildkite() {
 }
 
 is_tag() {
-    [[ "${BUILDKITE_TAG:-}" =~ ^[0-9]+.[0-9]+.[0-9]+ ]] && return 0 || return 1
+    [[ "${BUILDKITE_TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]] && return 0 || return 1
 }
 
 is_merge_main() {
