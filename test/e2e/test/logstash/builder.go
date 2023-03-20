@@ -131,15 +131,7 @@ func (b Builder) WithCommand(command []string) Builder {
 }
 
 func (b Builder) GetMetricsIndexPattern() string {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.GTE(version.MinFor(8, 3, 0)) {
-		return ".monitoring-logstash-8-mb"
-	}
-	if v.GTE(version.MinFor(8, 0, 0)) {
-		return fmt.Sprintf("metricbeat-%d.%d.%d*", v.Major, v.Minor, v.Patch)
-	}
-
-	return ".monitoring-logstash-*"
+	return ".monitoring-logstash-8-mb"
 }
 
 func (b Builder) Name() string {
