@@ -5,11 +5,12 @@
 package logstash
 
 import (
-	lsctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	lsctl "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
