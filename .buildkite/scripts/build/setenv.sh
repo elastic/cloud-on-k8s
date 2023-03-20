@@ -37,9 +37,9 @@ main() {
     init_env
 
     if is_not_buildkite; then
-        # default "dev" values
-        echo "No Buildkite environment variables, exited."
-        return
+        echo "# dev mode"
+        echo export BUILDKITE_PULL_REQUEST=dev
+        export BUILDKITE_PULL_REQUEST=dev
     fi
 
     sha1=$(git rev-parse --short=8 --verify HEAD)
@@ -61,6 +61,9 @@ main() {
         REGISTRY_NAMESPACE=eck
         IMG_SUFFIX=""
         IMG_VERSION="$BUILDKITE_TAG"
+
+        set_env SNAPSHOT=false
+        set_env PUBLISH_IMAGE_UBI=true
 
     elif is_merge_main; then
         REGISTRY_NAMESPACE=eck-snapshots
