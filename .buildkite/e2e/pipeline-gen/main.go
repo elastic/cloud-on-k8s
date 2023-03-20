@@ -15,7 +15,6 @@ import (
 	"runtime"
 	"sort"
 
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -75,8 +74,8 @@ var (
 )
 
 func init() {
-	flag.StringVar(&fixed, "f", "", "fixed variables")
-	flag.StringVar(&mixed, "m", "", "mixed variables")
+	flag.StringVar(&fixed, "f", "", "Fixed variables (comma-separated list)")
+	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of colon-separated list)")
 	flag.StringVar(&output, "o", "buildkite-pipeline", "Type of output: buildkite-pipeline or envfile")
 	flag.Parse()
 
@@ -92,7 +91,7 @@ func init() {
 
 func main() {
 	stat, err := os.Stdin.Stat()
-	handlErr("failed to read stdin", err)
+	handlErr("Failed to read stdin", err)
 
 	var groups []Group
 
@@ -100,10 +99,10 @@ func main() {
 	if stat.Mode()&os.ModeCharDevice != 0 {
 
 		fixedEnv, err := stringListToEnv(fixed)
-		handlErr("failed to read fixed variables", err)
+		handlErr("Failed to read fixed variables", err)
 
 		mixedEnv, err := stringListToEnvs(mixed)
-		handlErr("failed to read mixed variables", err)
+		handlErr("Failed to read mixed variables", err)
 
 		groups = []Group{{
 			Fixed: fixedEnv,
@@ -112,34 +111,34 @@ func main() {
 
 	} else {
 		in, err := io.ReadAll(os.Stdin)
-		handlErr("failed to read stdin", err)
+		handlErr("Failed to read stdin", err)
 		if len(in) == 0 {
-			handlErr("failed to read stdin", errors.New("nothing on /dev/stdin"))
+			handlErr("Failed to read stdin", errors.New("nothing on /dev/stdin"))
 		}
 
 		err = yaml.Unmarshal(in, &groups)
-		handlErr("failed to parse stdin", err)
+		handlErr("Failed to parse stdin", err)
 	}
 
 	// build a flat list of the tests to run
-	tests := make([]TestRun, 0)
+	tests := make([]TestsSuiteRun, 0)
 	cleanup := false
 	for i := range groups {
 		if groups[i].Mixed == nil {
 			groups[i].Mixed = []Env{{}}
 		}
 		for j := range groups[i].Mixed {
-			test, err := newTest(groups[i].Label, groups[i].Fixed, len(groups[i].Mixed), groups[i].Mixed[j])
-			handlErr("failed to create test", err)
+			ts, err := newTestsSuite(groups[i].Label, groups[i].Fixed, len(groups[i].Mixed), groups[i].Mixed[j])
+			handlErr("Failed to create tests suite", err)
 
-			tests = append(tests, test)
-			cleanup = cleanup || test.Cleanup
+			tests = append(tests, ts)
+			cleanup = cleanup || ts.Cleanup
 		}
 	}
 
 	if output == "envfile" {
 		if len(tests) > 1 {
-			handlErr("not supported with output envfile", errors.New("more than 1 test to run"))
+			handlErr("Not supported with output envfile", errors.New("more than 1 test suite to run"))
 			return
 		}
 		for k, v := range tests[0].Env {
@@ -149,13 +148,13 @@ func main() {
 	}
 
 	tpl, err := template.New("pipeline.yaml").Parse(pipelineTemplate)
-	handlErr("failed to parse template", err)
+	handlErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
 		"Cleanup": cleanup,
 		"Tests":   tests,
 	})
-	handlErr("failed to generate pipeline", err)
+	handlErr("Failed to generate pipeline", err)
 }
 
 func stringListToEnv(str string) (Env, error) {
@@ -178,28 +177,35 @@ func stringListToEnvs(str string) ([]Env, error) {
 		return nil, nil
 	}
 	envs := []Env{}
-	s := strings.Split(str, ",")
-	for _, elem := range s {
-		kv := strings.Split(elem, "=")
-		if len(kv) != 2 {
-			return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", elem)
+	mixedsStr := strings.Split(str, ",")
+	for _, mixedStr := range mixedsStr {
+		mixedEnv := Env{}
+		envStr := strings.Split(mixedStr, ":")
+		for _, kvStr := range envStr {
+			kv := strings.Split(kvStr, "=")
+			if len(kv) != 2 {
+				return nil, fmt.Errorf("no environment variable found in format `k=v` for %s", kvStr)
+			}
+			mixedEnv[kv[0]] = kv[1]
+
 		}
-		envs = append(envs, Env{kv[0]: kv[1]})
+		envs = append(envs, mixedEnv)
 	}
 	return envs, nil
 }
 
+// Group corresponds to a group of e2e tests suite
 type Group struct {
 	Label string
 	Fixed Env
 	Mixed []Env
 }
 
-// Env corresponds to the environment variables to run a test
+// Env corresponds to the environment variables to run an e2e tests suite
 type Env map[string]string
 
-// TestRun is a run of the full e2e tests suite
-type TestRun struct {
+// TestsSuiteRun is a run the e2e tests suite
+type TestsSuiteRun struct {
 	Name     string
 	SlugName string
 	Env      Env
@@ -207,7 +213,7 @@ type TestRun struct {
 	Cleanup  bool
 }
 
-func newTest(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestRun, error) {
+func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestsSuiteRun, error) {
 	resolveShortcuts(fixed)
 	resolveShortcuts(mixed)
 
@@ -216,18 +222,22 @@ func newTest(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestRun, er
 	if !ok {
 		provider, ok = mixed[EnvVarProvider]
 		if !ok {
-			return TestRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
+			return TestsSuiteRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
 		}
 	}
 
 	name := getName(groupLabel, provider, mixedLen, mixed)
 	slugName := getSlugName(name)
-	t := TestRun{
+	env, err := commonTestEnv(name, slugName)
+	if err != nil {
+		return TestsSuiteRun{}, err
+	}
+	t := TestsSuiteRun{
 		Name:     name,
 		SlugName: slugName,
 		Dind:     slices.Contains(providersInDocker, provider),
 		Cleanup:  !slices.Contains(providersNoCleanup, provider),
-		Env:      commonTestEnv(name, slugName),
+		Env:      env,
 	}
 
 	// merge fixed and mixed vars
@@ -239,6 +249,17 @@ func newTest(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestRun, er
 	}
 
 	return t, nil
+}
+
+func resolveShortcuts(e Env) {
+	for k, v := range e {
+		for short, long := range shortcuts {
+			if k == short {
+				e[long] = v
+				delete(e, short)
+			}
+		}
+	}
 }
 
 func getName(groupLabel, provider string, mixedLen int, mixed Env) string {
@@ -303,26 +324,24 @@ func getSlugName(name string) string {
 	return fmt.Sprintf("%s-%s", name, string(id))
 }
 
-func resolveShortcuts(e Env) {
-	for k, v := range e {
-		for short, long := range shortcuts {
-			if k == short {
-				e[long] = v
-				delete(e, short)
-			}
-		}
-	}
-}
-
-func commonTestEnv(name string, slugName string) map[string]string {
+func commonTestEnv(name string, slugName string) (map[string]string, error) {
 	buildNumber, ok := os.LookupEnv(EnvVarBuildkiteBuildNumber)
 	if !ok {
 		buildNumber = "0"
 	}
 
+	operatorImage, err := getMetadata("operator-image")
+	if err != nil {
+		return nil, err
+	}
+	e2eImage, err := getMetadata("e2e-image")
+	if err != nil {
+		return nil, err
+	}
+
 	operatorImageSuffix := os.Getenv(EnvVarBuildLicensePubkey)
 	if operatorImageSuffix != "" {
-		operatorImageSuffix = fmt.Sprintf("-%s", operatorImageSuffix)
+		operatorImage = fmt.Sprintf("%s-%s", operatorImage, operatorImageSuffix)
 	}
 
 	env := map[string]string{
@@ -335,20 +354,21 @@ func commonTestEnv(name string, slugName string) map[string]string {
 		EnvVarLicensePubKey:     "in-memory",
 		EnvVarTestLicense:       "in-memory",
 		EnvVarMonitoringSecrets: "in-memory",
-		EnvVarOperatorImage:     getMetadata("operator-image") + operatorImageSuffix,
-		EnvVarE2EImage:          getMetadata("e2e-image"),
+		EnvVarOperatorImage:     operatorImage,
+		EnvVarE2EImage:          e2eImage,
 	}
 
+	// dev mode
 	if os.Getenv("CI") != "true" {
 		env[EnvVarLicensePubKey] = filepath.Join(rootDir, ".ci/license.key")
 		env[EnvVarTestLicense] = filepath.Join(rootDir, ".ci/test-license.json")
 		env[EnvVarMonitoringSecrets] = ""
 	}
 
-	return env
+	return env, nil
 }
 
-func getMetadata(key string) string {
+func getMetadata(key string) (string, error) {
 	var cmd *exec.Cmd
 	if os.Getenv("CI") == "true" {
 		cmd = exec.Command("buildkite-agent", "meta-data", "get", key)
@@ -357,9 +377,9 @@ func getMetadata(key string) string {
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		log.Fatal("fail to execute: ", cmd, err)
+		return "", err
 	}
-	return strings.Trim(string(out), "\n")
+	return strings.Trim(string(out), "\n"), nil
 }
 
 func handlErr(context string, err error) {
