@@ -167,7 +167,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.7.0 | BSD-3-Clause
 | link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.2.0 | Apache-2.0
 | link:https://google.golang.org/appengine[$$google.golang.org/appengine$$] | v1.6.7 | Apache-2.0
-| link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.29.0 | BSD-3-Clause
+| link:https://google.golang.org/protobuf[$$google.golang.org/protobuf$$] | v1.29.1 | BSD-3-Clause
 | link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause
 | link:https://gopkg.in/inf.v0[$$gopkg.in/inf.v0$$] | v0.9.1 | BSD-3-Clause
 | link:https://gopkg.in/ini.v1[$$gopkg.in/ini.v1$$] | v1.67.0 | Apache-2.0

@@ -16488,11 +16488,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/appengine@v1.6.7
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.29.0
-Time    : 2023-03-08T15:14:08Z
+Version : v1.29.1
+Time    : 2023-03-14T09:20:35Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.29.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.29.1/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
