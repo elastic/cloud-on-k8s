@@ -1,7 +1,3 @@
-agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
-  memory: "4G"
-
 steps:
 
   - group: "aks"
@@ -14,7 +10,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -34,10 +29,11 @@ steps:
     steps:
 
       - label: "eks"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
@@ -58,7 +54,6 @@ steps:
   #       commands:
   #         - .ci/setenvconfig e2e/main
   #         - .ci/setenvconfig e2e/eks-arm
-  #         - .buildkite/scripts/common/get-test-artifacts.sh
   #         - make run-deployer
   #         - make e2e-run
   #       artifact_paths:
@@ -76,30 +71,33 @@ steps:
     steps:
 
       - label: "gke 1.21"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.22"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
 
       - label: "gke 1.23"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
@@ -134,7 +132,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.20.15@sha256:6f2d011dffe182bad80b85f6c00e8ca9d86b5b8922cdf433d53575c4c5212248 0.14.0 ipv4
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -147,7 +144,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.21.12@sha256:f316b33dd88f8196379f38feb80545ef3ed44d9197dca1bfd48bcb1583210207 0.14.0 ipv4
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -160,7 +156,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105 0.14.0 ipv4
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -173,7 +168,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105 0.14.0 ipv6
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -186,7 +180,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae 0.14.0 ipv4
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -199,7 +192,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae 0.14.0 ipv6
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -212,7 +204,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c 0.14.0 ipv4
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -225,7 +216,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c 0.14.0 ipv6
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -240,7 +230,6 @@ steps:
       #   commands:
       #     - .ci/setenvconfig e2e/main
       #     - .ci/setenvconfig e2e/ocp 4.7.49
-      #     - .buildkite/scripts/common/get-test-artifacts.sh
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
@@ -252,7 +241,6 @@ steps:
       #   commands:
       #     - .ci/setenvconfig e2e/main
       #     - .ci/setenvconfig e2e/ocp 4.8.50
-      #     - .buildkite/scripts/common/get-test-artifacts.sh
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
@@ -264,7 +252,6 @@ steps:
       #   commands:
       #     - .ci/setenvconfig e2e/main
       #     - .ci/setenvconfig e2e/ocp 4.9.48
-      #     - .buildkite/scripts/common/get-test-artifacts.sh
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
@@ -276,7 +263,6 @@ steps:
       #   commands:
       #     - .ci/setenvconfig e2e/main
       #     - .ci/setenvconfig e2e/ocp 4.10.34
-      #     - .buildkite/scripts/common/get-test-artifacts.sh
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
@@ -288,7 +274,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -346,7 +331,6 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/tanzu
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -366,10 +350,11 @@ steps:
     steps:
 
       - label: "e2e/resilience"
+        agents:
+          memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:

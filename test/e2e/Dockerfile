@@ -1,12 +1,8 @@
 # Docker image for the E2E tests runner
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.19.5
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.2
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
-ARG E2E_JSON
-ENV E2E_JSON $E2E_JSON
-ARG E2E_TAGS
-ENV E2E_TAGS $E2E_TAGS
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 

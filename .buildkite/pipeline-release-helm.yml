@@ -1,0 +1,55 @@
+
+env:
+  DRY_RUN: true
+
+steps:
+  - group: helm-release
+    steps:
+
+      - label: "operator dev helm chart"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+          || build.message == "release eck-operator helm charts"
+        depends_on:
+          - "build-helm-releaser-tool"
+        key: "eck-operator-dev-helm"
+        commands:
+          - buildkite-agent artifact download "bin/releaser" /usr/local/
+          - chmod u+x /usr/local/bin/releaser
+          - releaser --env=dev --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+
+      - label: "eck-resources dev helm charts"
+        if: |
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+          || build.message == "release eck-resources helm charts"
+        depends_on:
+          - "build-helm-releaser-tool"
+        key: "eck-resources-dev-helm"
+        commands:
+          - buildkite-agent artifact download "bin/releaser" /usr/local/
+          - chmod u+x /usr/local/bin/releaser
+          - releaser --env=dev --excludes=eck-operator --dry-run=\$DRY_RUN
+
+      - label: "operator prod helm chart"
+        if: build.message == "release eck-operator helm charts"
+        depends_on:
+          - "build-helm-releaser-tool"
+          - "eck-operator-dev-helm"
+        commands:
+          - buildkite-agent artifact download "bin/releaser" /usr/local/
+          - chmod u+x /usr/local/bin/releaser
+          - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+
+      - label: "eck-resources prod helm charts"
+        if: build.message == "release eck-resources helm charts"
+        depends_on:
+          - "build-helm-releaser-tool"
+          - "eck-resources-dev-helm"
+        commands:
+          - buildkite-agent artifact download "bin/releaser" /usr/local/
+          - chmod u+x /usr/local/bin/releaser
+          - releaser --env=prod --excludes=eck-operator --dry-run=\$DRY_RUN

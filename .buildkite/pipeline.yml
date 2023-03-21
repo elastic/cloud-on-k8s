@@ -1,27 +1,12 @@
-
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:01671ac6
   cpu: "4"
   memory: "2G"
 
+env:
+  VAULT_ROOT_PATH: secret/ci/elastic-cloud-on-k8s
+
 steps:
-
-  - group: build
-    steps:
-
-      - label: ":docker: operator container image"
-        key: "operator-image-build"
-        commands:
-          - .ci/setenvconfig pr
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make operator-buildah
-
-      - label: ":docker: e2e-tests container image"
-        key: "e2e-tests-image-build"
-        commands:
-          - .ci/setenvconfig pr
-          - .buildkite/scripts/common/get-test-artifacts.sh
-          - make e2e-buildah
 
   - group: checks
     steps:
@@ -37,8 +22,8 @@ steps:
 
       - label: ":go: checks"
         commands:
-          - .ci/setenvconfig pr
-          - make check-license-header check-predicates shellcheck reattach-pv
+          - "make check-license-header check-predicates shellcheck reattach-pv"
+          - env -i .buildkite/scripts/build/setenv_test.sh
 
   - group: tests
     steps:
@@ -59,7 +44,12 @@ steps:
       - label: ":go: helm-tests"
         command: "make helm-test"
 
-  # Different e2e tests are run depending on the branch and the build source
+  # -- Build --
+
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
+
+  # -- E2E --
 
   - group: e2e-tests
     steps:
@@ -87,12 +77,13 @@ steps:
 
       - label: ":k8s: main e2e-tests"
         key: "main-e2e-tests"
-        if: build.branch == "main" && build.source != "schedule"
+        if: |
+          build.branch == "main" && build.source != "schedule"
+          || build.message =~ /^buildkite test .*e2e\/main.*/
         agents:
           memory: "4G"
         commands:
           - .ci/setenvconfig e2e/main
-          - .buildkite/scripts/common/get-test-artifacts.sh
           - make run-deployer
           - make e2e-run
         artifact_paths:
@@ -102,7 +93,9 @@ steps:
           - "e2e-tests-image-build"
 
       - label: "cleanup"
-        if: build.branch == "main" && build.source != "schedule"
+        if: |
+          build.branch == "main" && build.source != "schedule"
+          || build.message =~ /^buildkite test .*e2e\/main.*/
         depends_on:
           - step: "main-e2e-tests"
             allow_failure: true
@@ -113,35 +106,18 @@ steps:
       # Run all e2e tests on all k8s distributions at midnight from the main branch
 
       - label: ":k8s: nightly e2e-tests"
-        if: build.branch == "main" && build.source == "schedule"
+        if: |
+          build.branch == "main" && build.source == "schedule"
+          || build.message =~ /^buildkite test .*e2e\/nightly.*/
         commands:
             - buildkite-agent pipeline upload .buildkite/pipeline-nightly-e2e-tests.yml
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
 
-  - group: helm-release
+  # -- Release --
 
-    steps:
+  - label: ":buildkite:"
+    commands:
+      - buildkite-agent pipeline upload .buildkite/pipeline-release.yml
 
-      # Disabling tag automation at this time in favor of manual releases.
-      #
-      # - label: ":helm: release eck-operator helm chart - pipeline upload"
-      #   if: build.tag != null
-      #   commands:
-      #     - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
-
-      - label: ":helm: release eck-operator helm chart manually - pipeline upload"
-        if: build.message == "release eck-operator helm chart"
-        commands:
-          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-operator.yml
-
-      - label: ":helm: release eck-resources helm charts manually - pipeline upload"
-        if: build.message == "release eck-resources helm charts"
-        commands:
-          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-eck-resources.yml
-
-      - label: ":helm: release all helm charts manually - pipeline upload"
-        if: build.message == "release all helm charts"
-        commands:
-          - buildkite-agent pipeline upload .buildkite/pipeline-helm-release-all.yml

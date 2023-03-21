@@ -7,6 +7,9 @@ package stackmon
 import (
 	"context"
 	_ "embed"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -94,43 +97,46 @@ metricbeat:
           xpack:
             enabled: true
 monitoring:
-    cluster_uuid: abcd1234
+    cluster_uuid: %s
     enabled: false
 output:
     elasticsearch:
         hosts:
-            - es-metrics-monitoring-url
+            - %s
         password: es-password
         ssl:
             verification_mode: certificate
         username: es-user
 `
-	beatSidecarFixture := stackmon.BeatSidecar{
-		Container: containerFixture,
-		ConfigSecret: corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat-beat-monitoring-metricbeat-config",
-				Namespace: "test",
-				Labels: map[string]string{
-					"common.k8s.elastic.co/type": "beat",
-					"beat.k8s.elastic.co/name":   "beat",
+	beatSidecarFixture := func(beatYml string) stackmon.BeatSidecar {
+		return stackmon.BeatSidecar{
+			Container: containerFixture,
+			ConfigSecret: corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "beat-beat-monitoring-metricbeat-config",
+					Namespace: "test",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type": "beat",
+						"beat.k8s.elastic.co/name":   "beat",
+					},
+				},
+				Data: map[string][]byte{
+					"metricbeat.yml": []byte(beatYml),
 				},
 			},
-			Data: map[string][]byte{
-				"metricbeat.yml": []byte(beatYml),
+			Volumes: []corev1.Volume{
+				{
+					Name:         "beat-metricbeat-config",
+					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
+				},
+				{
+					Name:         "shared-data",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
 			},
-		},
-		Volumes: []corev1.Volume{
-			{
-				Name:         "beat-metricbeat-config",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
-			},
-			{
-				Name:         "shared-data",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			},
-		},
+		}
 	}
+
 	esFixture := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "es",
@@ -179,6 +185,38 @@ output:
 		AuthSecretKey:  "es-user",
 		URL:            "es-metrics-monitoring-url",
 	})
+
+	esAPIFixture := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(200)
+		_, _ = res.Write([]byte(`{
+  "name": "instance-0000000000",
+  "cluster_name": "86eed713483a440d8e5a0242e420726f",
+  "cluster_uuid": "QGq3wcU7Sd6bC31wh37eKQ",
+  "version": {
+    "number": "8.6.2",
+    "build_flavor": "default",
+    "build_type": "docker",
+    "build_hash": "2d58d0f136141f03239816a4e360a8d17b6d8f29",
+    "build_date": "2023-02-13T09:35:20.314882762Z",
+    "build_snapshot": false,
+    "lucene_version": "9.4.2",
+    "minimum_wire_compatibility_version": "7.17.0",
+    "minimum_index_compatibility_version": "7.0.0"
+  },
+  "tagline": "You Know, for Search"
+}`))
+	}))
+	defer esAPIFixture.Close()
+
+	externalESSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "external-es"},
+		Data: map[string][]byte{
+			"url":      []byte(esAPIFixture.URL),
+			"username": []byte("es-user"),
+			"password": []byte("es-password"),
+		},
+	}
+
 	type args struct {
 		client  k8s.Client
 		beat    func() *v1beta1.Beat
@@ -202,7 +240,37 @@ output:
 				},
 				version: "8.2.3",
 			},
-			want:    beatSidecarFixture,
+			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "abcd1234", "es-metrics-monitoring-url")),
+			wantErr: false,
+		},
+		{
+			name: "Beat with stack monitoring enabled and remote elasticsearchRef",
+			args: args{
+				client: k8s.NewFakeClient(&beatFixture, &externalESSecret),
+				beat: func() *v1beta1.Beat {
+					beat := beatFixture.DeepCopy()
+					beat.Spec.ElasticsearchRef = v1.ObjectSelector{SecretName: "external-es"}
+					beat.Spec.Monitoring = commonv1.Monitoring{
+						Metrics: commonv1.MetricsMonitoring{
+							ElasticsearchRefs: []v1.ObjectSelector{{SecretName: "external-es"}},
+						},
+						Logs: commonv1.LogsMonitoring{
+							ElasticsearchRefs: []v1.ObjectSelector{{SecretName: "external-es"}},
+						},
+					}
+					assocConf := &commonv1.AssociationConf{
+						AuthSecretName: "external-es",
+						AuthSecretKey:  "password",
+						URL:            esAPIFixture.URL,
+					}
+					for i := range beat.GetAssociations() {
+						beat.GetAssociations()[i].SetAssociationConf(assocConf)
+					}
+					return beat
+				},
+				version: "8.2.3",
+			},
+			want:    beatSidecarFixture(fmt.Sprintf(beatYml, "QGq3wcU7Sd6bC31wh37eKQ", esAPIFixture.URL)),
 			wantErr: false,
 		},
 		{

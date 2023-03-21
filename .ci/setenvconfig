@@ -13,7 +13,7 @@ set -o pipefail
 
 ROOT=$(dirname $0)/..
 
-write_env()               { cat > $ROOT/.env; }
+write_env()               { tee $ROOT/.env; }
 write_deployer_config()   { cat > $ROOT/deployer-config.yml; }
 write_stack_version_def() { cat > $ROOT/stack-versions-def.json; }
 
@@ -48,9 +48,7 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
 
-  if [[ "$environment" =~ e2e/* ]]; then
-    JKS_PARAM_OPERATOR_IMAGE=$(make print-operator-image)
-  fi
+  JKS_PARAM_OPERATOR_IMAGE=$(buildkite-agent meta-data get operator-image)
 
 # Dev local execution
 else
@@ -79,7 +77,7 @@ case $environment in
 clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -96,6 +94,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=aks
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: aks-ci
@@ -116,7 +115,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-custom-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 REGISTRY_NAMESPACE=eck-snapshots
@@ -194,7 +193,7 @@ generatedClusterName="eck-${CI_PLATFORM}-e2e-gke-$(sed "s|\.||g" <<< $gkeVersion
 clusterName=${3:-$generatedClusterName}
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -211,6 +210,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -238,7 +238,7 @@ ipFamily=$4
 clusterName="eck-${CI_PLATFORM}-e2e-kind-$(sed "s|\.||g" <<< $kindVersion)-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -256,6 +256,7 @@ E2E_PROVIDER=kind
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="kind,$ipFamily"
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: kind-ci
@@ -283,10 +284,9 @@ TESTS_MATCH="${TESTS_MATCH:-^Test}"
 E2E_TAGS="${E2E_TAGS:-e2e}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
-IMG_SUFFIX=-ci
-REGISTRY_NAMESPACE=eck-snapshots
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
@@ -301,6 +301,7 @@ CLUSTER_NAME=${clusterName}
 TESTS_MATCH=$TESTS_MATCH
 TEST_OPTS=-race
 E2E_TAGS=$E2E_TAGS
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -323,7 +324,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-resilience-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 E2E_DEPLOY_CHAOS_JOB=true
 IMG_SUFFIX=-ci
@@ -342,6 +343,7 @@ E2E_PROVIDER=gke
 OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -365,7 +367,7 @@ ocpVersion=$2
 clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -382,6 +384,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
@@ -403,7 +406,7 @@ CFG
 ######################################
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -442,7 +445,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-eks-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -479,7 +482,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-eks-arm-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -499,6 +502,7 @@ CLUSTER_NAME=${clusterName}
 KUBERNETES_VERSION=default
 TEST_OPTS=-race
 E2E_TEST_ENV_TAGS="arch:arm"
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: eks-arm-ci
@@ -519,7 +523,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
@@ -536,6 +540,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=tanzu
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: tanzu-ci
@@ -557,16 +562,16 @@ stackVersion=$2
 generatedClusterName="eck-${CI_PLATFORM}-e2e-stack-$(sed "s|\.||g" <<< $stackVersion)-${BUILD_NUMBER}"
 clusterName=${3:-$generatedClusterName}
 
-isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
-testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
+buildLicensePubkey=$(case $stackVersion in (*-SNAPSHOT)  echo dev;; esac)
+testLicensePKeyPath=$(case $buildLicensePubkey in (dev) echo "${PROJECT_PATH}/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-ci
 E2E_REGISTRY_NAMESPACE=eck-ci
-IS_SNAPSHOT_BUILD=${isSnapshotVersion}
+BUILD_LICENSE_PUBKEY=${buildLicensePubkey}
 
 TEST_LICENSE=${PROJECT_PATH}/.ci/test-license.json
 TEST_LICENSE_PKEY_PATH=$testLicensePKeyPath
@@ -580,6 +585,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 TEST_OPTS=-race
+E2E_JSON=true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -603,10 +609,9 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-pr-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
-IMG_SUFFIX=-ci
-REGISTRY_NAMESPACE=eck-snapshots
+OPERATOR_IMAGE=$JKS_PARAM_OPERATOR_IMAGE
 E2E_REGISTRY_NAMESPACE=eck-ci
 
 GO_TAGS=release
@@ -658,7 +663,7 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 REGISTRY_NAMESPACE=eck-snapshots
 IMG_SUFFIX=
@@ -677,7 +682,7 @@ ENV
 ###############
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 REGISTRY_NAMESPACE=eck
 IMG_SUFFIX=
@@ -686,6 +691,8 @@ GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 
 SNAPSHOT=false
+PUBLISH_IMAGE_UBI=true
+PUBLISH_IMAGE_DOCKERHUB=true
 IMG_VERSION=${TAG_NAME#"v"}
 ENV
 
@@ -697,12 +704,12 @@ ENV
 ######################################
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 
 IMG_SUFFIX=-dev-ci
 REGISTRY_NAMESPACE=eck-snapshots
 E2E_REGISTRY_NAMESPACE=eck-ci
-IS_SNAPSHOT_BUILD=yes
+BUILD_LICENSE_PUBKEY=dev
 GO_TAGS=release
 export LICENSE_PUBKEY=${PROJECT_PATH}/.ci/license.key
 ENV
@@ -781,7 +788,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-aks-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 ENV
 
 write_deployer_config <<CFG
@@ -804,7 +811,7 @@ CFG
 clusterName="eck-${CI_PLATFORM}-e2e-tanzu-${BUILD_NUMBER}"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 ENV
 
 write_deployer_config <<CFG
@@ -866,7 +873,7 @@ ocpVersion=$2
 clusterName="eck-${CI_PLATFORM}-e2e-ocp-$(sed "s|\.||g" <<< ${ocpVersion})-$BUILD_NUMBER"
 
 write_env <<ENV
-VAULT_ROOT_PATH=$VAULT_ROOT_PATH
+export VAULT_ROOT_PATH=$VAULT_ROOT_PATH
 ENV
 
 write_deployer_config <<CFG

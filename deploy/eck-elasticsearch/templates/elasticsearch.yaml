@@ -40,8 +40,28 @@ spec:
   remoteClusters:
     {{- toYaml .Values.remoteClusters | nindent 2 }}
   {{- end }}
+  {{- if .Values.volumeClaimDeletePolicy }}
+  volumeClaimDeletePolicy:
+    {{- if and (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownOnly")) (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownAndClusterDeletion")) }}
+    {{ fail "volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'" }}
+    {{- end }}
+    {{- toYaml .Values.volumeClaimDeletePolicy | nindent 4 }}
+  {{- end }}
   {{- if eq (len .Values.nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}
   nodeSets:
 {{ toYaml .Values.nodeSets | nindent 4 }}
+  {{- if .Values.image }}
+  image: {{ .Values.image }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget }}
+  podDisruptionBudget:
+    {{- toYaml .Values.podDisruptionBudget | nindent 4 }}
+  {{- end }}
+  {{- if .Values.serviceAccountName }}
+  serviceAccountName: {{ .Values.serviceAccountName }}
+  {{- end }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}

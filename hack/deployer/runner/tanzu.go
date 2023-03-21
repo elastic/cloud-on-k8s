@@ -11,12 +11,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -31,6 +32,7 @@ overrides:
 AZURE_CLIENT_SECRET: {{.AzureClientSecret}}
 AZURE_CONTROL_PLANE_MACHINE_TYPE: {{.AzureMachineType}} 
 AZURE_LOCATION: {{.AzureLocation}}
+AZURE_CUSTOM_TAGS: {{.AzureCustomTags}}
 AZURE_NODE_MACHINE_TYPE: {{.AzureMachineType}}
 AZURE_NODE_SUBNET_CIDR: 10.0.1.0/24
 AZURE_RESOURCE_GROUP: {{.ResourceGroup}}
@@ -57,19 +59,19 @@ func init() {
 type TanzuDriverFactory struct{}
 
 func (t TanzuDriverFactory) Create(plan Plan) (Driver, error) {
-	vaultClient, err := vault.NewClient(plan.VaultInfo)
+	c, err := vault.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	credentials, err := azure.NewCredentials(vaultClient)
+	credentials, err := azure.NewCredentials(c)
 	if err != nil {
 		return nil, err
 	}
 
 	// we have some legacy config in vault that probably should not be there: container registry name
 	// is not strictly sensitive information
-	acrName, err := vaultClient.Get(azure.AKSVaultPath, "acr-name")
+	acrName, err := vault.Get(c, azure.AKSVaultPath, "acr-name")
 	if err != nil {
 		return nil, err
 	}
@@ -77,14 +79,14 @@ func (t TanzuDriverFactory) Create(plan Plan) (Driver, error) {
 	// users can optionally provide their SSH pubkey to log into hosts provisioned by this driver
 	// however we need a pubkey in any case to be able to run the installer, thus we have a default in vault.
 	if plan.Tanzu.SSHPubKey == "" {
-		key, err := vaultClient.Get(TanzuVaultPath, "ssh_public_key")
+		key, err := vault.Get(c, TanzuVaultPath, "ssh_public_key")
 		if err != nil {
 			return nil, err
 		}
 		plan.Tanzu.SSHPubKey = key
 	}
 
-	storageAccount, err := vaultClient.Get(TanzuVaultPath, "storage_account")
+	storageAccount, err := vault.Get(c, TanzuVaultPath, "storage_account")
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +251,7 @@ func (t *TanzuDriver) createInstallerConfig() error {
 		"AzureClientSecret":   t.azureCredentials.ClientSecret,
 		"AzureMachineType":    t.plan.MachineType,
 		"AzureLocation":       t.plan.Tanzu.Location,
+		"AzureCustomTags":     strings.Join(toList(elasticTags), ","),
 		"ResourceGroup":       t.plan.Tanzu.ResourceGroup,
 		"SSHPubKey":           t.plan.Tanzu.SSHPubKey,
 		"AzureSubscriptionID": t.azureCredentials.SubscriptionID,
@@ -385,8 +388,12 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 		return false, err
 	}
 	log.Println("Creating Azure resource group")
-	err = azure.Cmd("group", "create", "-l", t.plan.Tanzu.Location, "--name", t.plan.Tanzu.ResourceGroup).
-		WithoutStreaming().Run()
+	// https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest#az-group-create
+	err = azure.Cmd("group", "create",
+		"-l", t.plan.Tanzu.Location,
+		"--name", t.plan.Tanzu.ResourceGroup,
+		"--tags", strings.Join(toList(elasticTags), " "),
+	).WithoutStreaming().Run()
 	return true, err
 }
 

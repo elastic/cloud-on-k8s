@@ -1,5 +1,5 @@
 name: heartbeat
-version: 8.6.1
+version: 8.8.0-SNAPSHOT
 spec:
   type: heartbeat
   elasticsearchRef:

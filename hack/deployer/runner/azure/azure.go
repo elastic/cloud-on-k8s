@@ -10,7 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
-	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/vault"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 type Credentials struct {
@@ -25,8 +25,8 @@ const (
 	azureClientImage = "mcr.microsoft.com/azure-cli"
 )
 
-func NewCredentials(client *vault.Client) (Credentials, error) {
-	creds, err := client.GetMany(AKSVaultPath, "appId", "password", "tenant", "subscription")
+func NewCredentials(c vault.Client) (Credentials, error) {
+	creds, err := vault.GetMany(c, AKSVaultPath, "appId", "password", "tenant", "subscription")
 	if err != nil {
 		return Credentials{}, err
 	}
