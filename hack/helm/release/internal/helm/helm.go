@@ -363,7 +363,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 // to the local Helm configuration.
 func addHelmRepository(name, url string) error {
 	settings := cli.New()
-	// Ensure the file directory exists
+	// Ensure the configuration file's directory path exists
 	err := os.MkdirAll(filepath.Dir(settings.RepositoryConfig), os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -388,7 +388,9 @@ func addHelmRepository(name, url string) error {
 
 	c := repo.Entry{
 		Name: name,
-		URL:  strings.TrimSuffix(url, "/helm"),
+		// The index (index.yaml) for both production and dev exist at '/', not '/helm'
+		// which is where the helm data exists so trim the '/helm' suffix.
+		URL: strings.TrimSuffix(url, "/helm"),
 	}
 
 	f.Update(&c)
