@@ -32,7 +32,7 @@ registry_login() {
         password=$(vault read -field=password secret/devops-ci/cloud-on-k8s/docker-registry-elastic)
     fi
 
-    docker login -u "$username" -p "$password" 2> /dev/null
+    docker login -u "$username" -p "$password" "$REGISTRY_DST" 2> /dev/null
 }
 
 publish() {
