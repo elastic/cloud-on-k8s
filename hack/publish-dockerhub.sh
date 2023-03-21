@@ -12,7 +12,7 @@ set -eu
 install_docker_extension() {
     [[ -f ~/.docker/cli-plugins/docker-buildx ]] && return
 
-    DOCKER_BUILDX_VERSION=0.8.2
+    DOCKER_BUILDX_VERSION=0.10.4
     mkdir -p ~/.docker/cli-plugins
     curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-arm64
     chmod a+x ~/.docker/cli-plugins/docker-buildx
