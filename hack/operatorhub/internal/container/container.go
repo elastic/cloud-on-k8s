@@ -252,6 +252,7 @@ func pushImageToRegistry(c PushConfig) error {
 		log.Println("ⅹ")
 		return fmt.Errorf("while pushing (%s): %w", formattedEckOperatorRedhatReference, err)
 	}
+	log.Println("✓")
 	// Since we only push when dry-run isn't set, go ahead and
 	// tag this image as 'latest' such that it shows up at the
 	// top of the RedHat Catalog.
