@@ -243,7 +243,7 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// eck-resources charts, and that new version is just released, then
 	// it will take ~ one hour for it to show up, so we will continue trying
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
-	retry.Do(
+	err = retry.Do(
 		func() error {
 			log.Printf("attempting to update helm repository for charts with dependencies")
 			if err := updateHelmRepositories(); err != nil {
@@ -273,6 +273,9 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 			log.Printf("retry #%d: %s\n", n, err)
 		}),
 	)
+	if err != nil {
+		return fmt.Errorf("while processing charts with dependencies: %w", err)
+	}
 
 	return nil
 }
