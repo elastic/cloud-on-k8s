@@ -58,10 +58,10 @@ steps:
 
       - label: ":k8s: pr e2e-tests"
         branches: "!main"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-          machineType: "n1-standard-16"
+        # agents:
+        #   provider: "gcp"
+        #   image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+        #   machineType: "n1-standard-16"
         commands:
             - .ci/setenvconfig pr
             - make run-deployer

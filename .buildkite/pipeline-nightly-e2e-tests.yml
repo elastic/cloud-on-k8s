@@ -3,11 +3,14 @@ steps:
   - group: "aks"
     steps:
       - label: "aks build cluster"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         key: "aks-nightly-e2e-tests-build-cluster"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
-          - make run-deployer
+          - make -C .ci TARGET="run-deployer" ci
 
       - label: "aks"
         commands:
