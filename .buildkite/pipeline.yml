@@ -58,15 +58,13 @@ steps:
 
       - label: ":k8s: pr e2e-tests"
         branches: "!main"
-        # agents:
-        #   provider: "gcp"
-        #   image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        #   machineType: "n1-standard-16"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          machineType: "n1-standard-16"
         commands:
             - .ci/setenvconfig pr
-            - make run-deployer
-            - make -C .ci get-test-artifacts
-            - .buildkite/scripts/common/run-e2e-tests.sh
+            - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
