@@ -1,0 +1,194 @@
+:page_id: logstash
+:agent_recipes: https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/config/recipes/logstash
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Logstash on ECK
+
+This section describes how to configure and deploy Logstash with ECK.
+
+* <<{p}-logstash-quickstart,Quickstart>>
+* <<{p}-logstash-configuration,Configuration>>
+* <<{p}-logstash-configuration-examples,Configuration examples>>
+
+NOTE: Running Logstash on ECK is compatible only with Logstash 8.7+.
+
+[id="{p}-logstash-quickstart"]
+== Quickstart
+
+. Apply the following specification to deploy Elastic Agent with the System metrics integration to harvest CPU metrics from the Agent Pods. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
++
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+ EOF
+----
++
+Check <<{p}-logstash-configuration-examples>> for more ready-to-use manifests.
+
+. Monitor the status of Logstash
++
+[source,sh]
+----
+kubectl get logstash
+----
++
+[source,sh,subs="attributes"]
+----
+NAME              AVAILABLE   EXPECTED   AGE   VERSION
+quickstart        3           3          4s    {version}
+----
+
+. List all the Pods that belong to a given Logstash specification.
++
+[source,sh]
+----
+kubectl get pods --selector='logstash.k8s.elastic.co/name=quickstart'
+----
++
+[source,sh]
+----
+NAME                     READY   STATUS    RESTARTS   AGE
+quickstart-sample-ls-0   1/1     Running   0          91s
+quickstart-sample-ls-1   1/1     Running   0          91s
+quickstart-sample-ls-2   1/1     Running   0          91s
+----
+
+. Access logs for one of the Pods.
++
+[source,sh]
+----
+kubectl logs -f quickstart-sample-ls-0
+----
+
+== Configuration
+
+
+[id="{p}-logstash-upgrade-specification"]
+=== Upgrade the Logstash specification
+
+You can upgrade the Logstash version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of Logstash's Pods.
+
+[id="{p}-logstash-custom-configuration"]
+=== Customize the Logstash configuration
+
+The Logstash configuration (equivalent to logstash.yml) is defined in the `config` element:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+  config:
+----
+
+Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `logstash.yml` entry with this configuration:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+  configRef:
+    secretName: quickstart-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: quickstart-config
+stringData:
+  logstash.yml: |-
+
+----
+
+
+[id="{p}-logstash-pipelines"]
+=== Adding Logstash Pipelines
+
+
+Elastic Agent supports the use of multiple outputs. Therefore, the `elasticsearchRefs` element accepts multiple references to Elasticsearch clusters. ECK populates the outputs section of the Elastic Agent configuration based on those references. If you configure more than one output, you also have to specify a unique `outputName` attribute.
+
+To send Elastic Agent's internal monitoring and log data to a different Elasticsearch cluster called `agent-monitoring` in the `elastic-monitoring` namespace, and the harvested metrics to our `quickstart` cluster, you have to define two `elasticsearchRefs` as shown in the following example:
+
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  elasticsearchRefs:
+  - name: quickstart
+    outputName: default
+  - name: agent-monitoring
+    namespace: elastic-monitoring
+    outputName: monitoring
+...
+----
+
+[id="{p}-logstash-connect-es"]
+=== Customize the connection to an Elasticsearch cluster
+
+The `elasticsearchRefs` element allows ECK to automatically configure Elastic Agent to establish a secured connection to one or more managed Elasticsearch clusters. By default, it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+
+Check <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
+
+
+[id="{p}-logstash-configuration-examples"]
+== Configuration examples
+
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Logstash deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance.
+
+CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+
+
+=== System integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/system-integration.yaml
+----
+
+Deploys Logstash with a single pipeline
+
+=== Kubernetes integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/kubernetes-integration.yaml
+----
+
+Deploys Logstash with multiple pipelines
+
+=== Elasticsearch and Kibana Stack Monitoring
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {beats_url}/stack_monitoring.yaml
+----
+
+Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring] and Filebeat using autodiscover. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana.
+
+NOTE: In this example, TLS verification is disabled when Metricbeat communicates with the monitored cluster, which is not secure and should not be used in production. To solve this, use custom certificates and configure Metricbeat to verify them.
+
