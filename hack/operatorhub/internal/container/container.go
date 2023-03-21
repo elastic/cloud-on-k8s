@@ -220,7 +220,7 @@ func getFirstUndeletedImage(images []Image) *Image {
 // container image locally, and push it to Quay.io registry using the
 // provided credentials.
 func pushImageToRegistry(c PushConfig) error {
-	if c.DryRun && !c.Force {
+	if c.DryRun {
 		log.Printf("not pushing image as dry-run is set.")
 		return nil
 	}
@@ -263,7 +263,7 @@ func pushImageToRegistry(c PushConfig) error {
 			Password: c.RegistryPassword}),
 	)
 	if err != nil {
-	        log.Println("ⅹ")
+		log.Println("ⅹ")
 		return fmt.Errorf("while tagging (%s) as 'latest': %w", formattedEckOperatorRedhatReference, err)
 	}
 	log.Println("✓")
