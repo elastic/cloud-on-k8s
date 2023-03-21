@@ -36,19 +36,26 @@ registry_login() {
 }
 
 publish() {
-    local name=$1
+    local image_name=$1
 
-    REGISTRY_SRC="docker.elastic.co/eck"
-    REGISTRY_DST="docker.elastic.co/eck-dev"
-
-    if [[ "${DRY_RUN:-}" == "false" ]]; then
-        REGISTRY_DST="docker.io/elastic"
-    fi
-
-    docker buildx imagetools create -t "$REGISTRY_DST/$name:$ECK_VERSION" "$REGISTRY_SRC/$name:$ECK_VERSION"
+    docker buildx imagetools create \
+        -t "$REGISTRY_DST/$NAMESPACE_DST/$image_name:$ECK_VERSION" \
+        "$REGISTRY_SRC/$NAMESPACE_SRC/$image_name:$ECK_VERSION"
 }
 
 # main
+
+REGISTRY_SRC=docker.elastic.co
+NAMESPACE_SRC=eck
+
+# default values of dry run
+REGISTRY_DST=docker.elastic.co
+NAMESPACE_DST=eck-ci
+
+if [[ "${DRY_RUN:-}" == "false" ]]; then
+    REGISTRY_DST="docker.io"
+    NAMESPACE_DST=elastic
+fi
 
 if [[ "${ECK_VERSION:-}" == "" ]]; then
     echo "ECK_VERSION must be set"
