@@ -17,6 +17,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
@@ -92,7 +93,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
-		WithVolumeLikes(vols...)
+		WithVolumeLikes(vols...).
+		WithInitContainerDefaults()
 
 	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {
@@ -116,6 +118,13 @@ func getDefaultContainerPorts() []corev1.ContainerPort {
 	}
 }
 
+func getContainerPorts() []corev1.ContainerPort {
+	return []corev1.ContainerPort{
+		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
+	}
+}
+
+
 // readinessProbe is the readiness probe for the Logstash container
 func readinessProbe(useTLS bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
@@ -136,4 +145,9 @@ func readinessProbe(useTLS bool) corev1.Probe {
 			},
 		},
 	}
+}
+
+// GetLogstashContainer returns the Logstash container from the given podSpec.
+func GetLogstashContainer(podSpec corev1.PodSpec) *corev1.Container {
+	return pod.ContainerByName(podSpec, "logstash")
 }

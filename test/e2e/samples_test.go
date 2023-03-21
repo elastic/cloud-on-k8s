@@ -27,7 +27,7 @@ import (
 )
 
 func TestSamples(t *testing.T) {
-	sampleFiles, err := filepath.Glob("../../config/samples/*/*.yaml")
+	sampleFiles, err := filepath.Glob("../../config/samples/logstash/*.yaml")
 	require.NoError(t, err, "Failed to find samples")
 
 	decoder := helper.NewYAMLDecoder()

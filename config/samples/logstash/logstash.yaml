@@ -3,7 +3,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  count: 3
+  count: 2
   version: 8.6.1
   config:
     log.level: info
