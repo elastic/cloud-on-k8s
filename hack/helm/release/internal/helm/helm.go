@@ -228,7 +228,6 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 		return fmt.Errorf("while creating temporary directory for charts: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
-	log.Printf("charts with no deps: %d", len(conf.noDeps))
 	// upload charts without dependencies
 	if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
 		return err
@@ -236,7 +235,6 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := updateIndex(ctx, tempDir, conf); err != nil {
 		return err
 	}
-	log.Printf("charts with deps: %d", len(conf.withDeps))
 	// This retry is here because of caching in front of the Helm repository
 	// and the time it takes for a new release to show up in the repository.
 	// If the eck-stack chart depends on new version of any of the other
@@ -245,20 +243,16 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
 	err = retry.Do(
 		func() error {
-			log.Printf("attempting to add default helm repositories")
 			if err := addDefaultHelmRepositories(conf.releaseConf); err != nil {
 				return err
 			}
-			log.Printf("attempting to update helm repository for charts with dependencies")
 			if err := updateHelmRepositories(); err != nil {
 				return err
 			}
 			// upload charts with dependencies
-			log.Printf("uploading charts with dependencies")
 			if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
 				return err
 			}
-			log.Printf("updating index for charts with dependencies")
 			if err := updateIndex(ctx, tempDir, conf); err != nil {
 				return err
 			}
@@ -369,13 +363,38 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 // to the local Helm configuration.
 func addHelmRepository(name, url string) error {
 	settings := cli.New()
+	// Ensure the file directory exists
+	err := os.MkdirAll(filepath.Dir(settings.RepositoryConfig), os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
 	log.Printf("Adding (%s) repository.\n", name)
 	// simulates 'helm repo add' command.
-	if _, err := repo.NewChartRepository(&repo.Entry{
+	b, err := ioutil.ReadFile(settings.RepositoryConfig)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	var f repo.File
+	if err := yaml.Unmarshal(b, &f); err != nil {
+		return err
+	}
+
+	// return early if repository already exists
+	if f.Has(name) {
+		log.Printf("Done adding (%s) repository.\n", name)
+		return nil
+	}
+
+	c := repo.Entry{
 		Name: name,
-		URL:  url,
-	}, getter.All(settings)); err != nil {
-		return fmt.Errorf("while adding helm stable charts repository: %w", err)
+		URL:  strings.TrimSuffix(url, "/helm"),
+	}
+
+	f.Update(&c)
+
+	if err := f.WriteFile(settings.RepositoryConfig, 0644); err != nil {
+		return err
 	}
 	log.Printf("Done adding (%s) repository.\n", name)
 	return nil
