@@ -114,7 +114,7 @@ function log() {
 
 function error_exit() {
   log "$@"
-  exit 1
+  delayed_exit 1
 }
 
 function delayed_exit() {
@@ -123,7 +123,7 @@ function delayed_exit() {
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
   log "delaying termination for $remaining seconds"
   sleep $remaining
-  exit 0
+  exit ${1-0}
 }
 
 function supports_node_shutdown() {
@@ -166,7 +166,7 @@ ES_URL={{.ServiceURL}}
 log "retrieving node ID"
 retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
 if [ "$?" -ne 0 ]; then
-	error_exit "$status"
+	error_exit "failed to retrieve node ID"
 fi
 
 NODE_ID=$(grep "$POD_NAME" "$resp_body" | cut -f 1 -d ' ')
@@ -186,7 +186,7 @@ retry 10 request -X PUT $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH -H 'Conte
 }
 "
 if [ "$?" -ne 0 ]; then
-   error_exit "Failed to call node shutdown API" "$status"
+   error_exit "failed to call node shutdown API"
 fi
 
 while :
