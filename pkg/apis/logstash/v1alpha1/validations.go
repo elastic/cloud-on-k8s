@@ -7,9 +7,8 @@ package v1alpha1
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
