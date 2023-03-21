@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func Test_separateChartsWithDependencies(t *testing.T) {
@@ -100,8 +101,14 @@ func Test_separateChartsWithDependencies(t *testing.T) {
 }
 
 func Test_readCharts(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.FailNow()
+		return
+	}
 	tests := []struct {
 		name          string
+		existingPath  string
 		chartsToWrite []string
 		excludes      []string
 		want          []chart
@@ -133,25 +140,61 @@ func Test_readCharts(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:          "existing charts is correct",
+			existingPath:  filepath.Join(cwd, "..", "..", "..", "..", "..", "deploy", "eck-operator"),
+			chartsToWrite: nil,
+			excludes:      nil,
+			want: []chart{
+				{
+					Name:    "eck-operator",
+					Version: "2.8.0-SNAPSHOT",
+					Dependencies: []dependency{
+						{
+							Name:    "eck-operator-crds",
+							Version: "2.8.0-SNAPSHOT",
+						},
+					},
+				},
+				{
+					Name:         "eck-operator-crds",
+					Version:      "2.8.0-SNAPSHOT",
+					Dependencies: nil,
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir, err := os.MkdirTemp(os.TempDir(), "readCharts")
-			if err != nil {
-				t.Errorf(fmt.Sprintf("failed making temporary directory: %s", err))
-				return
+			path := tt.existingPath
+			if tt.existingPath == "" {
+				dir, err := os.MkdirTemp(os.TempDir(), "readCharts")
+				if err != nil {
+					t.Errorf(fmt.Sprintf("failed making temporary directory: %s", err))
+					return
+				}
+				path = dir
+				for _, ch := range tt.chartsToWrite {
+					mustWriteChart(t, dir, ch)
+				}
+				defer os.RemoveAll(dir)
+			} else {
+				t.Logf("using path: %s", tt.existingPath)
 			}
-			defer os.RemoveAll(dir)
-			for _, ch := range tt.chartsToWrite {
-				mustWriteChart(t, dir, ch)
-			}
-			got, err := readCharts(dir, tt.excludes)
+			got, err := readCharts(path, tt.excludes)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("readCharts() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("readCharts() = diff: %s", cmp.Diff(got, tt.want))
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(chart{}, "fullPath")) {
+				t.Errorf("readCharts() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(chart{}, "fullPath")))
+			}
+			noDeps, withDeps := separateChartsWithDependencies(got)
+			t.Logf("got no deps: %+v", noDeps)
+			t.Logf("got deps: %+v", withDeps)
+			if len(noDeps)+len(withDeps) != len(got) {
+				t.Errorf("separateChartsWithDependencies: total deps (%d) + no deps (%d) != charts from readCharts (%d)", len(withDeps), len(noDeps), len(got))
 			}
 		})
 	}

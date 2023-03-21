@@ -221,7 +221,6 @@ type uploadChartsConfig struct {
 // 3. Potentially upload Helm charts with dependencies to GCS bucket.
 // 4. Potentially update GCS Bucket Helm index a second time.
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	tempDir, err := os.MkdirTemp(os.TempDir(), "charts")
@@ -229,6 +228,7 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 		return fmt.Errorf("while creating temporary directory for charts: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
+	log.Printf("charts with no deps: %d", len(conf.noDeps))
 	// upload charts without dependencies
 	if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
 		return err
@@ -236,6 +236,7 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := updateIndex(ctx, tempDir, conf); err != nil {
 		return err
 	}
+	log.Printf("charts with deps: %d", len(conf.withDeps))
 	// This retry is here because of caching in front of the Helm repository
 	// and the time it takes for a new release to show up in the repository.
 	// If the eck-stack chart depends on new version of any of the other
@@ -244,13 +245,16 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
 	retry.Do(
 		func() error {
+			log.Printf("attempting to update helm repository for charts with dependencies")
 			if err := updateHelmRepositories(); err != nil {
 				return err
 			}
 			// upload charts with dependencies
+			log.Printf("uploading charts with dependencies")
 			if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
 				return err
 			}
+			log.Printf("updating index for charts with dependencies")
 			if err := updateIndex(ctx, tempDir, conf); err != nil {
 				return err
 			}
