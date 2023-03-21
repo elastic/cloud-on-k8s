@@ -2,9 +2,10 @@
 
 set -euo pipefail
 
-ROOT=$(dirname $0)/../../..
+ROOT=$(dirname "$0")/../../..
 
-source $ROOT/.env
+# shellcheck disable=SC1091
+source "$ROOT/.env"
 
 # On any command failures, make sure that diagnostics are copied from bucket to local Buildkite environment
 # to be uploaded as artifacts.
