@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
+	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type logstashStatus struct {
@@ -51,6 +51,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 
 			logstash.Status.ObservedGeneration = 0
 
+			// pod status
 			expected := logstashv1alpha1.LogstashStatus{
 				ExpectedNodes:  b.Logstash.Spec.Count,
 				AvailableNodes: b.Logstash.Spec.Count,
@@ -62,6 +63,19 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				(logstash.Status.Version != expected.Version) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, logstash.Status)
 			}
+
+			// monitoring status
+			expectedMonitoringInStatus := len(logstash.Spec.Monitoring.Metrics.ElasticsearchRefs) + len(logstash.Spec.Monitoring.Metrics.ElasticsearchRefs)
+			actualMonitoringInStatus := len(logstash.Status.MonitoringAssociationStatus)
+			if expectedMonitoringInStatus != actualMonitoringInStatus {
+				return fmt.Errorf("expected %d monitoring associations in status but got %d", expectedMonitoringInStatus, actualMonitoringInStatus)
+			}
+			for a, s := range logstash.Status.MonitoringAssociationStatus {
+				if s != v1.AssociationEstablished {
+					return fmt.Errorf("monitoring association %s has status %s ", a, s)
+				}
+			}
+
 			return nil
 		}),
 	}
