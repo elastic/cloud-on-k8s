@@ -34,15 +34,15 @@ steps:
           - chmod u+x /usr/local/bin/releaser
           - releaser --env=dev --excludes=eck-operator --dry-run=\$DRY_RUN
 
-      # - label: "operator prod helm chart"
-      #   if: build.message == "release eck-operator helm charts"
-      #   depends_on:
-      #     - "build-helm-releaser-tool"
-      #     - "eck-operator-dev-helm"
-      #   commands:
-      #     - buildkite-agent artifact download "bin/releaser" /usr/local/
-      #     - chmod u+x /usr/local/bin/releaser
-      #     - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+      - label: "operator prod helm chart"
+        if: build.message == "release eck-operator helm charts"
+        depends_on:
+          - "build-helm-releaser-tool"
+          - "eck-operator-dev-helm"
+        commands:
+          - buildkite-agent artifact download "bin/releaser" /usr/local/
+          - chmod u+x /usr/local/bin/releaser
+          - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
 
       - label: "eck-resources prod helm charts"
         if: build.message == "release eck-resources helm charts"
