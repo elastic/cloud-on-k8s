@@ -17,7 +17,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -52,7 +51,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -104,7 +102,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -125,7 +122,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -146,7 +142,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -329,7 +324,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -394,7 +388,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/tanzu
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -429,7 +422,6 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
           - make set-kubeconfig
-          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"

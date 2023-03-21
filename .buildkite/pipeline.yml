@@ -98,7 +98,7 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - make set-kubeconfig
-          - .buildkite/scripts/common/run-e2e-tests.sh
+          - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:

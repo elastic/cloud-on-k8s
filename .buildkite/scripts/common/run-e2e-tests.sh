@@ -19,6 +19,7 @@ onError() {
 
 main() {
     trap 'onError' ERR
+    make -C .ci get-test-artifacts
     make e2e-run-actual
 }
 
