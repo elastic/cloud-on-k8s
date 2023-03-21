@@ -10,14 +10,12 @@ steps:
           - make run-deployer
 
       - label: "aks"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
           - make set-kubeconfig
-          - make -C .ci TARGET="e2e-run" ci
+          - make -C .ci get-test-artifacts
+          - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
@@ -51,6 +49,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/eks
           - make set-kubeconfig
+          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -102,6 +101,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.21
           - make set-kubeconfig
+          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -122,6 +122,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.22
           - make set-kubeconfig
+          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -142,6 +143,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/gke-k8s-versions 1.23
           - make set-kubeconfig
+          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
@@ -320,14 +322,12 @@ steps:
           - make run-deployer
 
       - label: "ocp 4.11"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
           - make set-kubeconfig
-          - make -C .ci TARGET="e2e-run" ci
+          - make -C .ci get-test-artifacts
+          - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
@@ -387,14 +387,12 @@ steps:
           - make run-deployer
 
       - label: "e2e/tanzu"
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/tanzu
           - make set-kubeconfig
-          - make -C .ci TARGET="e2e-run" ci
+          - make -C .ci get-test-artifacts
+          - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
@@ -428,6 +426,7 @@ steps:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/resilience
           - make set-kubeconfig
+          - make -C .ci get-test-artifacts
           - make e2e-run
         artifact_paths:
           - "eck-diagnostic-*.zip"

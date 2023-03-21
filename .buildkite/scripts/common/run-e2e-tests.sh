@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+ROOT=$(dirname $0)/../../..
+
+source $ROOT/.env
+
 # On any command failures, make sure that diagnostics are copied from bucket to local Buildkite environment
 # to be uploaded as artifacts.
 onError() {
@@ -14,7 +18,7 @@ onError() {
 
 main() {
     trap 'onError' ERR
-    make e2e-run
+    make e2e-run-actual
 }
 
 main

@@ -64,7 +64,9 @@ steps:
           machineType: "n1-standard-16"
         commands:
             - .ci/setenvconfig pr
-            - make -C .ci get-test-artifacts TARGET="run-deployer e2e-run" ci
+            - make run-deployer
+            - make -C .ci get-test-artifacts
+            - .buildkite/scripts/common/run-e2e-tests.sh
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
@@ -98,7 +100,7 @@ steps:
         commands:
           - .ci/setenvconfig e2e/main
           - make set-kubeconfig
-          - .buildkite/scripts/common/run-main-e2e-tests.sh
+          - .buildkite/scripts/common/run-e2e-tests.sh
         artifact_paths:
           - "eck-diagnostic-*.zip"
         depends_on:
