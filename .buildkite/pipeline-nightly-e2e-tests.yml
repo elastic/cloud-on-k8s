@@ -2,26 +2,17 @@ steps:
 
   - group: "aks"
     steps:
-      - label: "aks build cluster"
+
+      - label: "aks"
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-        key: "aks-nightly-e2e-tests-build-cluster"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/aks
-          - make -C .ci TARGET="run-deployer" ci
-
-      - label: "aks"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/aks
-          - make set-kubeconfig
-          - make e2e-run
+          - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
-        depends_on:
-          - "aks-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -312,23 +303,16 @@ steps:
       #   artifact_paths:
       #     - "eck-diagnostic-*.zip"
 
-      - label: "ocp build cluster"
-        key: "ocp-nightly-e2e-tests-build-cluster"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/ocp 4.11.5
-          - make run-deployer
-
       - label: "ocp 4.11"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/ocp 4.11.5
-          - make set-kubeconfig
-          - make e2e-run
+          - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
-        depends_on:
-          - "ocp-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
@@ -376,23 +360,16 @@ steps:
   - group: "tanzu"
     steps:
 
-      - label: "tanzu build cluster"
-        key: "tanzu-nightly-e2e-tests-build-cluster"
-        commands:
-          - .ci/setenvconfig e2e/main
-          - .ci/setenvconfig e2e/tanzu
-          - make run-deployer
-
       - label: "e2e/tanzu"
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         commands:
           - .ci/setenvconfig e2e/main
           - .ci/setenvconfig e2e/tanzu
-          - make set-kubeconfig
-          - make e2e-run
+          - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
           - "eck-diagnostic-*.zip"
-        depends_on:
-          - "tanzu-nightly-e2e-tests-build-cluster"
 
       - wait: ~
         continue_on_failure: true
