@@ -28,7 +28,7 @@ const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
 
 var preStopHookScriptTemplate = template.Must(template.New("pre-stop").Parse(`#!/usr/bin/env bash
 
-set -euo pipefail
+set -uo pipefail
 
 # This script will wait for up to $PRE_STOP_ADDITIONAL_WAIT_SECONDS before allowing termination of the Pod 
 # This slows down the process shutdown and allows to make changes to the pool gracefully, without blackholing traffic when DNS
@@ -109,11 +109,11 @@ function retry() {
 function log() {
    local timestamp
    timestamp=$(date --iso-8601=seconds)
-   echo "{\"@timestamp\": \"${timestamp}\", \"message\": \"$@\", \"ecs.version\": \"1.2.0\", \"event.dataset\": \"elasticsearch.pre-stop-hook\"}" | tee /proc/1/fd/2 2> /dev/null
+   echo "{\"@timestamp\": \"${timestamp}\", \"message\": \"$*\", \"ecs.version\": \"1.2.0\", \"event.dataset\": \"elasticsearch.pre-stop-hook\"}" | tee /proc/1/fd/2 2> /dev/null
 }
 
 function error_exit() {
-  log "$1"
+  log "$@"
   exit 1
 }
 
@@ -165,7 +165,7 @@ ES_URL={{.ServiceURL}}
 
 log "retrieving node ID"
 retry 10 request -X GET "$ES_URL/_cat/nodes?full_id=true&h=id,name" $BASIC_AUTH
-if [ "$?"  -ne 0 ]; then
+if [ "$?" -ne 0 ]; then
 	error_exit "$status"
 fi
 
@@ -186,17 +186,14 @@ retry 10 request -X PUT $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH -H 'Conte
 }
 "
 if [ "$?" -ne 0 ]; then
-   error_exit "Failed to call node shutdown API" "$resp_body"
+   error_exit "Failed to call node shutdown API" "$status"
 fi
 
 while :
 do 
    log "waiting for node shutdown to complete"
    request -X GET $ES_URL/_nodes/"$NODE_ID"/shutdown $BASIC_AUTH
-   if [ "$?" -ne 0 ]; then
-      continue
-   fi
-   if grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"; then
+   if [ "$?" -eq 0 ] && grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"; then
       break
    fi
    sleep 10 
