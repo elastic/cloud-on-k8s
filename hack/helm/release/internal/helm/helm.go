@@ -245,6 +245,10 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
 	err = retry.Do(
 		func() error {
+			log.Printf("attempting to add default helm repositories")
+			if err := addDefaultHelmRepositories(conf.releaseConf); err != nil {
+				return err
+			}
 			log.Printf("attempting to update helm repository for charts with dependencies")
 			if err := updateHelmRepositories(); err != nil {
 				return err
@@ -280,6 +284,19 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	return nil
 }
 
+type helmRepo struct {
+	name, url string
+}
+
+func addDefaultHelmRepositories(conf ReleaseConfig) error {
+	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
+		if err := addHelmRepository(r.name, r.url); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func updateHelmRepositories() error {
 	// simulates helm repo update
 	f, err := repo.LoadFile(cli.New().RepositoryConfig)
@@ -310,16 +327,8 @@ func updateHelmRepositories() error {
 //  5. Run 'Helm package chart' for the Helm Chart to generate a tarball.
 //  6. Copy the tarball to the GCS bucket.
 func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf ReleaseConfig) error {
-	type helmRepo struct {
-		name, url string
-	}
 	if len(charts) == 0 {
 		return nil
-	}
-	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
-		if err := addHelmRepository(r.name, r.url); err != nil {
-			return err
-		}
 	}
 	u, err := url.Parse(conf.ChartsRepoURL)
 	if err != nil {
