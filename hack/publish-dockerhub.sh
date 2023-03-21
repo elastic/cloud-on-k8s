@@ -5,7 +5,7 @@
 # you may not use this file except in compliance with the Elastic License 2.0.
 
 # Script to publish ECK operator image from docker.elastic.co/eck registry to docker.io/elastic registry (aka Docker Hub).
-# By default, the script is executed with DRY_RUN=true and images are published to docker.elastic.co/eck-dev registry.
+# By default, the script is executed with DRY_RUN=true and images are published to docker.elastic.co/eck-ci registry.
 
 set -eu
 
@@ -45,13 +45,15 @@ publish() {
 
 # main
 
+# source of images to copy
 REGISTRY_SRC=docker.elastic.co
 NAMESPACE_SRC=eck
 
+# destination of images to copy
 # default values of dry run
 REGISTRY_DST=docker.elastic.co
 NAMESPACE_DST=eck-ci
-
+# dockerhub values for live execution
 if [[ "${DRY_RUN:-}" == "false" ]]; then
     REGISTRY_DST="docker.io"
     NAMESPACE_DST=elastic
