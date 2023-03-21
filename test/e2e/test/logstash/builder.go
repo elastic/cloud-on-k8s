@@ -152,10 +152,6 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	return &metricsCluster
 }
 
-func (b Builder) GetTypeLabel() string {
-	return lsctl.TypeLabelValue
-}
-
 func (b Builder) NSN() types.NamespacedName {
 	return k8s.ExtractNamespacedName(&b.Logstash)
 }
