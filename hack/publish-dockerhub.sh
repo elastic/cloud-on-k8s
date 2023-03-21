@@ -25,11 +25,11 @@ vault_login() {
 
 registry_login() {
     if [[ "${DRY_RUN:-}" == "false" ]]; then
+        username=$(vault read -field=username secret/release/docker-hub-eck)
+        password=$(vault read -field=token    secret/release/docker-hub-eck)
+    else
         username=$(vault read -field=username secret/devops-ci/cloud-on-k8s/docker-registry-elastic)
         password=$(vault read -field=password secret/devops-ci/cloud-on-k8s/docker-registry-elastic)
-    else
-        username=$(vault read -field=username secret/release/docker-hub-eck)
-        password=$(vault read -field=token secret/release/docker-hub-eck)
     fi
 
     docker login -u "$username" -p "$password" 2> /dev/null
