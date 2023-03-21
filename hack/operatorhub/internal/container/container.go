@@ -263,8 +263,10 @@ func pushImageToRegistry(c PushConfig) error {
 			Password: c.RegistryPassword}),
 	)
 	if err != nil {
+	        log.Println("ⅹ")
 		return fmt.Errorf("while tagging (%s) as 'latest': %w", formattedEckOperatorRedhatReference, err)
 	}
+	log.Println("✓")
 	return nil
 }
 
