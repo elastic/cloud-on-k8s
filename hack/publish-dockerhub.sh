@@ -14,7 +14,7 @@ install_docker_extension() {
 
     DOCKER_BUILDX_VERSION=0.10.4
     mkdir -p ~/.docker/cli-plugins
-    curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-arm64
+    curl -fsSLo ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-amd64
     chmod a+x ~/.docker/cli-plugins/docker-buildx
 }
 
