@@ -311,6 +311,12 @@ func (d *GKEDriver) bindRoles() error {
 }
 
 func (d *GKEDriver) GetCredentials() error {
+	if err := authToGCP(
+		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
+		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
+	); err != nil {
+		return err
+	}
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()
