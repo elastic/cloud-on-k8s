@@ -100,8 +100,7 @@ steps:
 
       - label: ":broom: {{ $test.Name }}"
         depends_on:
-          - step: "e2e-build-cluster-{{ $test.SlugName }}"
-          - step: "e2e-run-{{ $test.SlugName }}"
+          - step: "e2e-{{ $test.SlugName }}"
             allow_failure: true
         env:
           {{- range $key, $val := $test.Env }}
