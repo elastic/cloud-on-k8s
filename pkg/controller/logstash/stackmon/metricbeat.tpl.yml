@@ -1,0 +1,13 @@
+metricbeat.modules:
+  - module: logstash
+    metricsets:
+      - node
+      - node_stats
+    period: 10s
+    hosts: ["{{ .URL }}"]
+    xpack.enabled: true
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated

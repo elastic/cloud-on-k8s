@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -12,6 +14,7 @@ import (
 )
 
 const (
+	LogstashContainerName = "logstash"
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
@@ -56,6 +59,12 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Services []LogstashService `json:"services,omitempty"`
 
+	// Monitoring enables you to collect and ship log and monitoring data of this Logstash.
+	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
+	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
+	// +kubebuilder:validation:Optional
+	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
+
 	// PodTemplate provides customisation options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -99,6 +108,9 @@ type LogstashStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Logstash
 	// controller has not yet processed the changes contained in the Logstash specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
+	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -117,8 +129,9 @@ type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   LogstashSpec   `json:"spec,omitempty"`
-	Status LogstashStatus `json:"status,omitempty"`
+	Spec                 LogstashSpec                                         `json:"spec,omitempty"`
+	Status               LogstashStatus                                       `json:"status,omitempty"`
+	MonitoringAssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true
@@ -146,6 +159,123 @@ func (l *Logstash) IsMarkedForDeletion() bool {
 // GetObservedGeneration will return the observedGeneration from the Elastic Logstash's status.
 func (l *Logstash) GetObservedGeneration() int64 {
 	return l.Status.ObservedGeneration
+}
+
+func (l *Logstash) GetAssociations() []commonv1.Association {
+	var associations []commonv1.Association
+
+	for _, ref := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &LogstashMonitoringAssociation{
+				Logstash: l,
+				ref:      ref.WithDefaultNamespace(l.Namespace),
+			})
+		}
+	}
+	for _, ref := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
+		if ref.IsDefined() {
+			associations = append(associations, &LogstashMonitoringAssociation{
+				Logstash: l,
+				ref:      ref.WithDefaultNamespace(l.Namespace),
+			})
+		}
+	}
+
+	return associations
+}
+
+func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
+	if typ == commonv1.LogstashMonitoringAssociationType {
+		for _, esRef := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return l.Status.MonitoringAssociationStatus
+			}
+		}
+		for _, esRef := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
+			if esRef.IsDefined() {
+				return l.Status.MonitoringAssociationStatus
+			}
+		}
+	}
+
+	return commonv1.AssociationStatusMap{}
+}
+
+func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status commonv1.AssociationStatusMap) error {
+	switch typ {
+	case commonv1.LogstashMonitoringAssociationType:
+		l.Status.MonitoringAssociationStatus = status
+		return nil
+	default:
+		return fmt.Errorf("association type %s not known", typ)
+	}
+}
+
+type LogstashMonitoringAssociation struct {
+	// The associated Logstash
+	*Logstash
+	// ref is the object selector of the monitoring Elasticsearch referenced in the Association
+	ref commonv1.ObjectSelector
+}
+
+var _ commonv1.Association = &LogstashMonitoringAssociation{}
+
+func (lsmon *LogstashMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+
+func (lsmon *LogstashMonitoringAssociation) Associated() commonv1.Associated {
+	if lsmon == nil {
+		return nil
+	}
+	if lsmon.Logstash == nil {
+		lsmon.Logstash = &Logstash{}
+	}
+	return lsmon.Logstash
+}
+
+func (lsmon *LogstashMonitoringAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName(lsmon.ref)
+}
+
+func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.AssociationType {
+	return commonv1.LogstashMonitoringAssociationType
+}
+
+func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+	return lsmon.ref
+}
+
+func (lsmon *LogstashMonitoringAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
+	return commonv1.GetAndSetAssociationConfByRef(lsmon, lsmon.ref, lsmon.MonitoringAssocConfs)
+}
+
+func (lsmon *LogstashMonitoringAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	if lsmon.MonitoringAssocConfs == nil {
+		lsmon.MonitoringAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
+	}
+	if assocConf != nil {
+		lsmon.MonitoringAssocConfs[lsmon.ref] = *assocConf
+	}
+}
+
+func (lsmon *LogstashMonitoringAssociation) AssociationID() string {
+	return lsmon.ref.ToID()
+}
+
+func (l *Logstash) GetMonitoringMetricsRefs() []commonv1.ObjectSelector {
+	return l.Spec.Monitoring.Metrics.ElasticsearchRefs
+}
+
+func (l *Logstash) GetMonitoringLogsRefs() []commonv1.ObjectSelector {
+	return l.Spec.Monitoring.Logs.ElasticsearchRefs
+}
+
+func (l *Logstash) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.Association {
+	return &LogstashMonitoringAssociation{
+		Logstash: l,
+		ref:      esRef.WithDefaultNamespace(l.Namespace),
+	}
 }
 
 func init() {

@@ -330,7 +330,7 @@ func currentVersion(current esv1.Elasticsearch) (version.Version, *field.Error) 
 }
 
 func validMonitoring(es esv1.Elasticsearch) field.ErrorList {
-	return stackmon.Validate(&es, es.Spec.Version)
+	return stackmon.Validate(&es, es.Spec.Version, stackmon.MinStackVersion)
 }
 
 func validAssociations(es esv1.Elasticsearch) field.ErrorList {
