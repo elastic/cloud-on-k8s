@@ -341,6 +341,8 @@ func commonTestEnv(name string, slugName string) (map[string]string, error) {
 		return nil, err
 	}
 
+	// when the variable to build the operator with a specific public license key is used,
+	// it involves using an operator image suffixed with the value of this variable
 	operatorImageSuffix := os.Getenv(EnvVarBuildLicensePubkey)
 	if operatorImageSuffix != "" {
 		operatorImage = fmt.Sprintf("%s-%s", operatorImage, operatorImageSuffix)
