@@ -29,10 +29,12 @@ const (
 
 	// ControllerUserName is the controller user to interact with ES.
 	ControllerUserName = "elastic-internal"
-	// ProbeUserName is used for the Elasticsearch readiness probe.
-	ProbeUserName = "elastic-internal-probe"
 	// MonitoringUserName is used for the Elasticsearch monitoring.
 	MonitoringUserName = "elastic-internal-monitoring"
+	// PreStopUserName is used for API interactions from the pre-stop Pod lifecycle hook
+	PreStopUserName = "elastic-internal-pre-stop"
+	// ProbeUserName is used for the Elasticsearch readiness probe.
+	ProbeUserName = "elastic-internal-probe"
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
@@ -84,6 +86,7 @@ func reconcileInternalUsers(
 		existingFileRealm,
 		users{
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
+			{Name: PreStopUserName, Roles: []string{ClusterManageRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 			{Name: MonitoringUserName, Roles: []string{RemoteMonitoringCollectorBuiltinRole}},
 		},

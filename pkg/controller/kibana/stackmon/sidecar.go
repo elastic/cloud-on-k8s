@@ -45,7 +45,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana) (stackmo
 
 	var username, password string
 	if kb.Spec.ElasticsearchRef.IsExternal() {
-		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, kb.Spec.ElasticsearchRef)
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, kb.Spec.ElasticsearchRef.WithDefaultNamespace(kb.Namespace))
 		if err != nil {
 			return stackmon.BeatSidecar{}, err
 		}

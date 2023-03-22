@@ -7,10 +7,10 @@ package user
 import (
 	"fmt"
 
+	"gopkg.in/yaml.v3"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
-
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -19,6 +19,8 @@ const (
 
 	// SuperUserBuiltinRole is the name of the built-in superuser role.
 	SuperUserBuiltinRole = "superuser"
+	// ClusterManageRole is the name of a custom role to manage the cluster.
+	ClusterManageRole = "elastic-internal_cluster_manage"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
 	// RemoteMonitoringCollectorBuiltinRole is the name of the built-in remote_monitoring_collector role.
@@ -58,7 +60,8 @@ const (
 var (
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
-		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
+		ProbeUserRole:     esclient.Role{Cluster: []string{"monitor"}},
+		ClusterManageRole: esclient.Role{Cluster: []string{"manage"}},
 		ApmUserRoleV6: esclient.Role{
 			Cluster: []string{"monitor", "manage_index_templates"},
 			Indices: []esclient.IndexRole{

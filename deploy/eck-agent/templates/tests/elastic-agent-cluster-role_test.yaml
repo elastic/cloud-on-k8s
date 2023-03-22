@@ -136,7 +136,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-agent
             clusterRole: label
-            helm.sh/chart: eck-agent-0.3.0
+            helm.sh/chart: eck-agent-0.4.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations

@@ -236,7 +236,8 @@ func pushImageToRegistry(c PushConfig) error {
 		log.Println("ⅹ")
 		return fmt.Errorf("while pulling (%s): %w", imageToPull, err)
 	}
-	log.Printf("pushing image (%s) to quay.io registry: ", formattedEckOperatorRedhatReference)
+	log.Println("✓")
+	log.Printf("pushing image (%s) to quay.io registry\n", formattedEckOperatorRedhatReference)
 	err = crane.Push(
 		image,
 		formattedEckOperatorRedhatReference,
@@ -250,6 +251,21 @@ func pushImageToRegistry(c PushConfig) error {
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("while pushing (%s): %w", formattedEckOperatorRedhatReference, err)
+	}
+	log.Println("✓")
+	// Since we only push when dry-run isn't set, go ahead and
+	// tag this image as 'latest' such that it shows up at the
+	// top of the RedHat Catalog.
+	log.Printf("tagging (%s) as 'latest' in quay.io registry\n", formattedEckOperatorRedhatReference)
+	err = crane.Tag(
+		formattedEckOperatorRedhatReference, "latest",
+		crane.WithAuth(&authn.Basic{
+			Username: username,
+			Password: c.RegistryPassword}),
+	)
+	if err != nil {
+		log.Println("ⅹ")
+		return fmt.Errorf("while tagging (%s) as 'latest': %w", formattedEckOperatorRedhatReference, err)
 	}
 	log.Println("✓")
 	return nil

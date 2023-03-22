@@ -36,3 +36,10 @@ spec:
             - name: PRE_STOP_ADDITIONAL_WAIT_SECONDS
               value: "5"
 ----
+
+The pre-stop lifecycle hook also tries to gracefully shut down the Elasticsearch node in case of a termination that is not caused by the ECK operator. Examples of such terminations could be Kubernetes node maintenance or a Kubernetes upgrade. In these cases the script will try to interact with the Elasticsearch API to notify Elasticsearch of the impending termination of the node. The intent is to avoid relocation and recovery of shards while the Elasticsearch node is only temporarily unavailable.
+
+This is done on a best effort basis. In particular requests to an Elasticsearch cluster already in the process of shutting down might fail if the Kubernetes service has already been removed.
+The script allows for `PRE_STOP_MAX_DNS_ERRORS` which default to 2 before giving up.
+
+When using local persistent volumes a different behaviour might be desirable because the Elasticsearch node's associated storage will not be available anymore on the new Kubernetes node. `PRE_STOP_SHUTDOWN_TYPE` allows to override the default shutdown type to one of the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-shutdown.html[possible values]. Please be aware that setting it to anything other than `restart` might mean that the pre-stop hook will run longer than `terminationGracePeriodSeconds` of the Pod while moving data out of the terminating Pod and will not be able to complete unless you also adjust that value in the `podTemplate`.
