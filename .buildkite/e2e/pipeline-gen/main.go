@@ -52,6 +52,8 @@ var (
 	providersInDocker = []string{"kind", "aks", "ocp", "tanzu"}
 	// providersNoCleanup are k8s providers that do not require the cluster to be deleted after use
 	providersNoCleanup = []string{"kind"}
+	// providers are k8s providers for which it is not possible to retrieve the kube config after cluster creation
+	providersNoRemoteConfig = []string{"kind"}
 
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
@@ -208,11 +210,12 @@ type Env map[string]string
 
 // TestsSuiteRun is a run the e2e tests suite
 type TestsSuiteRun struct {
-	Name     string
-	SlugName string
-	Env      Env
-	Dind     bool
-	Cleanup  bool
+	Name             string
+	SlugName         string
+	Env              Env
+	Dind             bool
+	Cleanup          bool
+	RemoteKubeconfig bool
 }
 
 func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestsSuiteRun, error) {
@@ -235,11 +238,12 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 		return TestsSuiteRun{}, err
 	}
 	t := TestsSuiteRun{
-		Name:     name,
-		SlugName: slugName,
-		Dind:     slices.Contains(providersInDocker, provider),
-		Cleanup:  !slices.Contains(providersNoCleanup, provider),
-		Env:      env,
+		Name:             name,
+		SlugName:         slugName,
+		Dind:             slices.Contains(providersInDocker, provider),
+		Cleanup:          !slices.Contains(providersNoCleanup, provider),
+		RemoteKubeconfig: !slices.Contains(providersNoRemoteConfig, provider),
+		Env:              env,
 	}
 
 	// merge fixed and mixed vars

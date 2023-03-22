@@ -6,7 +6,9 @@ steps:
 
 {{- range $test := .Tests }}
 
-  - label: "{{ $test.Name }}"
+  {{- if $test.RemoteKubeconfig }}
+
+  - label: ":k8s: {{ $test.Name }}"
     key: "e2e-cluster-{{ $test.SlugName }}"
 
     env:
@@ -27,17 +29,25 @@ steps:
       - make run-deployer
       {{- end }}
 
-
     {{- if $test.Dind }}
     agents:
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
     {{- end }}
 
-  - label: "{{ $test.Name }}"
-    key: "e2e-run-{{ $test.SlugName }}"
+  {{- end }}
+
+  {{- if $test.RemoteKubeconfig }}
+  - label: ":go: {{ $test.Name }}"
+  {{- else }}
+  - label: ":k8s: :go: {{ $test.Name }}"
+  {{- end }}
+    key: "e2e-{{ $test.SlugName }}"
+
+    {{- if $test.RemoteKubeconfig }}
     depends_on:
       - "e2e-cluster-{{ $test.SlugName }}"
+    {{- end }}
 
     env:
       {{- range $key, $val := $test.Env }}
@@ -51,10 +61,15 @@ steps:
 
       - .buildkite/scripts/test/set-deployer-config.sh
 
+      {{- $deployerCommand := "run-deployer" }}
+      {{- if $test.RemoteKubeconfig }}
+        {{- $deployerCommand = "set-kubeconfig" }}
+      {{- end }}
+
       {{- if $test.Dind }}
-      - make -C .ci TARGET="set-kubeconfig e2e-run e2e-generate-xml" ci
+      - make -C .ci TARGET="{{ $deployerCommand }} e2e-run e2e-generate-xml" ci
       {{- else }}
-      - make set-kubeconfig e2e-run e2e-generate-xml
+      - make {{ $deployerCommand }} e2e-run e2e-generate-xml
       {{- end }}
 
       - mkdir tests-report && mv e2e-tests.xml tests-report/e2e-tests-{{ $test.SlugName }}.xml
@@ -70,7 +85,7 @@ steps:
     artifact_paths:
       - tests-report/*.xml
       - "eck-diagnostic-*.zip"
-    
+
 {{- end }}
 
 {{- if .Cleanup }}
