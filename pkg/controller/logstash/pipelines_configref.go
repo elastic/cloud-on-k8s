@@ -15,20 +15,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
 )
 
-// PipelinesRefWatchName returns the name of the watch registered on the secret referenced in `configRef`.
+// PipelinesRefWatchName returns the name of the watch registered on the secret referenced in `pipelinesRef`.
 func PipelinesRefWatchName(resource types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-pipelinesref", resource.Namespace, resource.Name)
 }
 
-// ParseConfigRef retrieves the content of a secret referenced in `configRef`, sets up dynamic watches for that secret,
+// ParsePipelinesRef retrieves the content of a secret referenced in `pipelinesRef`, sets up dynamic watches for that secret,
 // and parses the secret content into a PipelinesConfig.
-func ParseConfigRef(
+func ParsePipelinesRef(
 	driver driver.Interface,
 	resource runtime.Object,
-	configRef *commonv1.ConfigSource,
+	pipelinesRef *commonv1.ConfigSource,
 	secretKey string, // retrieve config data from that entry in the secret
 ) (*PipelinesConfig, error) {
-	parsed, err := common.ParseConfigRefToConfig(driver, resource, configRef, secretKey, PipelinesRefWatchName, Options)
+	parsed, err := common.ParseConfigRefToConfig(driver, resource, pipelinesRef, secretKey, PipelinesRefWatchName, Options)
 	if err != nil {
 		return nil, err
 	}

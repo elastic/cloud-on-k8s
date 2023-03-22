@@ -68,7 +68,7 @@ func getUserPipeline(params Params) (*PipelinesConfig, error) {
 		}
 		return NewPipelinesConfigFrom(pipelines)
 	}
-	return ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
+	return ParsePipelinesRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
 }
 
 func defaultPipeline() *PipelinesConfig {

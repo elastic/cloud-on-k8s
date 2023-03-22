@@ -40,7 +40,7 @@ func (f fakeDriver) Recorder() record.EventRecorder {
 
 var _ driver.Interface = fakeDriver{}
 
-func TestParseConfigRef(t *testing.T) {
+func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
 	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
@@ -48,7 +48,7 @@ func TestParseConfigRef(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		configRef       *commonv1.ConfigSource
+		pipelinesRef    *commonv1.ConfigSource
 		secretKey       string
 		runtimeObjs     []runtime.Object
 		want            *PipelinesConfig
@@ -58,9 +58,9 @@ func TestParseConfigRef(t *testing.T) {
 		wantEvent       string
 	}{
 		{
-			name:      "happy path",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey: "configFile.yml",
+			name:         "happy path",
+			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -72,9 +72,9 @@ func TestParseConfigRef(t *testing.T) {
 			wantWatches: []string{watchName},
 		},
 		{
-			name:      "happy path, secret already watched",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey: "configFile.yml",
+			name:         "happy path, secret already watched",
+			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -87,9 +87,9 @@ func TestParseConfigRef(t *testing.T) {
 			wantWatches:     []string{watchName},
 		},
 		{
-			name:      "no configRef specified",
-			configRef: nil,
-			secretKey: "configFile.yml",
+			name:         "no pipelinesRef specified",
+			pipelinesRef: nil,
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -101,9 +101,9 @@ func TestParseConfigRef(t *testing.T) {
 			wantWatches: []string{},
 		},
 		{
-			name:      "no configRef specified: clear existing watches",
-			configRef: nil,
-			secretKey: "configFile.yml",
+			name:         "no pipelinesRef specified: clear existing watches",
+			pipelinesRef: nil,
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -116,18 +116,18 @@ func TestParseConfigRef(t *testing.T) {
 			wantWatches:     []string{},
 		},
 		{
-			name:        "secret not found: error out but watch the future secret",
-			configRef:   &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey:   "configFile.yml",
-			runtimeObjs: []runtime.Object{},
-			want:        nil,
-			wantErr:     true,
-			wantWatches: []string{watchName},
+			name:         "secret not found: error out but watch the future secret",
+			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			secretKey:    "configFile.yml",
+			runtimeObjs:  []runtime.Object{},
+			want:         nil,
+			wantErr:      true,
+			wantWatches:  []string{watchName},
 		},
 		{
-			name:      "missing key in the referenced secret: error out, watch the secret and emit an event",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey: "configFile.yml",
+			name:         "missing key in the referenced secret: error out, watch the secret and emit an event",
+			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -137,12 +137,12 @@ func TestParseConfigRef(t *testing.T) {
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configRef secret ns/my-secret: missing key configFile.yml",
+			wantEvent:   "Warning Unexpected unable to parse pipelinesRef secret ns/my-secret: missing key configFile.yml",
 		},
 		{
-			name:      "invalid config the referenced secret: error out, watch the secret and emit an event",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey: "configFile.yml",
+			name:         "invalid config the referenced secret: error out, watch the secret and emit an event",
+			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			secretKey:    "configFile.yml",
 			runtimeObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
@@ -152,7 +152,7 @@ func TestParseConfigRef(t *testing.T) {
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configFile.yml in configRef secret ns/my-secret",
+			wantEvent:   "Warning Unexpected unable to parse configFile.yml in pipelinesRef secret ns/my-secret",
 		},
 	}
 	for _, tt := range tests {
@@ -167,9 +167,9 @@ func TestParseConfigRef(t *testing.T) {
 				watches:  w,
 				recorder: fakeRecorder,
 			}
-			got, err := ParseConfigRef(d, &res, tt.configRef, tt.secretKey)
+			got, err := ParsePipelinesRef(d, &res, tt.pipelinesRef, tt.secretKey)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseConfigRef() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParsePipelinesRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			require.Equal(t, tt.want, got)

@@ -30,12 +30,12 @@ func Test_buildPipeline(t *testing.T) {
 	)
 
 	for _, tt := range []struct {
-		name      string
-		pipelines []commonv1.Config
-		configRef *commonv1.ConfigSource
-		client    k8s.Client
-		want      *PipelinesConfig
-		wantErr   bool
+		name         string
+		pipelines    []commonv1.Config
+		pipelinesRef *commonv1.ConfigSource
+		client       k8s.Client
+		want         *PipelinesConfig
+		wantErr      bool
 	}{
 		{
 			name: "no user pipeline",
@@ -50,7 +50,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "configref populated - no secret",
-			configRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline",
 				},
@@ -61,7 +61,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "configref populated - no secret key",
-			configRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline",
 				},
@@ -76,7 +76,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "configref populated - malformed config",
-			configRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline-2",
 				},
@@ -92,7 +92,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "configref populated",
-			configRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline-2",
 				},
@@ -115,7 +115,7 @@ func Test_buildPipeline(t *testing.T) {
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{
 						Pipelines:    tt.pipelines,
-						PipelinesRef: tt.configRef,
+						PipelinesRef: tt.pipelinesRef,
 					},
 				},
 			}

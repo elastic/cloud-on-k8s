@@ -63,7 +63,7 @@ func buildConfig(params Params) ([]byte, error) {
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
-// `configRef` field.
+// `pipelinesRef` field.
 func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Logstash.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Logstash.Spec.Config.Data)
