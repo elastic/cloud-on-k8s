@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"time"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -55,7 +54,7 @@ var (
 	providersNoCleanup = []string{"kind"}
 
 	semverRE = regexp.MustCompile(`\d*\.\d*\.\d*(-\w*)?`)
-	chars    = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
+	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
 
 	shortcuts = map[string]string{
 		"p": EnvVarProvider,
@@ -76,8 +75,6 @@ func init() {
 	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of colon-separated list)")
 	flag.BoolVar(&envFile, "e", false, "Output in .env file format. Supports only one test.")
 	flag.Parse()
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
