@@ -234,6 +234,10 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: logstashv1alpha1.LogstashSpec{
 				Count: 3,
+				Monitoring: commonv1.Monitoring{
+					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+				},
 				Services: []logstashv1alpha1.LogstashService{
 					{
 						Name: "test1",
@@ -457,8 +461,8 @@ func TestNewReporter(t *testing.T) {
       pod_count: 3
       resource_count: 1
       service_count: 2
-      stack_monitoring_logs_count: 0
-      stack_monitoring_metrics_count: 0
+      stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
     maps:
       pod_count: 1
       resource_count: 1
