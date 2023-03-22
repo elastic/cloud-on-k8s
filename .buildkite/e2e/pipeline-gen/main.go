@@ -64,10 +64,9 @@ var (
 		"t": EnvVarTestsMatch,
 	}
 
-	fixed string
-	mixed string
-
-	output string
+	fixed   string
+	mixed   string
+	envFile bool
 
 	rootDir string
 )
@@ -75,7 +74,7 @@ var (
 func init() {
 	flag.StringVar(&fixed, "f", "", "Fixed variables (comma-separated list)")
 	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of colon-separated list)")
-	flag.StringVar(&output, "o", "buildkite-pipeline", "Type of output: buildkite-pipeline or envfile")
+	flag.BoolVar(&envFile, "e", false, "Output in .env file format. Supports only one test.")
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -135,9 +134,9 @@ func main() {
 		}
 	}
 
-	if output == "envfile" {
+	if envFile {
 		if len(tests) > 1 {
-			handleErr("Not supported with output envfile", errors.New("more than 1 test suite to run"))
+			handleErr("Not supported with output in .env file format", errors.New("more than 1 test suite to run"))
 			return
 		}
 		for k, v := range tests[0].Env {
