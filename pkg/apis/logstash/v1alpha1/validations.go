@@ -8,15 +8,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 var (
+	// MinStackMonVersion is the minimum version of Logstash to enable Stack Monitoring on an Elastic Stack application.
+	// This requirement comes from the fact that we configure Logstash to write logs to disk for Filebeat
+	// via the env var LOG_STYLE available from this version.
+	MinStackMonVersion = version.MustParse("8.7.0-SNAPSHOT")
+
 	defaultChecks = []func(*Logstash) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
 		checkSingleConfigSource,
+		checkMonitoring,
+		checkAssociations,
 	}
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
@@ -24,16 +32,16 @@ var (
 	}
 )
 
-func checkNoUnknownFields(a *Logstash) field.ErrorList {
-	return commonv1.NoUnknownFields(a, a.ObjectMeta)
+func checkNoUnknownFields(l *Logstash) field.ErrorList {
+	return commonv1.NoUnknownFields(l, l.ObjectMeta)
 }
 
-func checkNameLength(a *Logstash) field.ErrorList {
-	return commonv1.CheckNameLength(a)
+func checkNameLength(l *Logstash) field.ErrorList {
+	return commonv1.CheckNameLength(l)
 }
 
-func checkSupportedVersion(a *Logstash) field.ErrorList {
-	return commonv1.CheckSupportedStackVersion(a.Spec.Version, version.SupportedLogstashVersions)
+func checkSupportedVersion(l *Logstash) field.ErrorList {
+	return commonv1.CheckSupportedStackVersion(l.Spec.Version, version.SupportedLogstashVersions)
 }
 
 func checkNoDowngrade(prev, curr *Logstash) field.ErrorList {
@@ -43,8 +51,8 @@ func checkNoDowngrade(prev, curr *Logstash) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 
-func checkSingleConfigSource(a *Logstash) field.ErrorList {
-	if a.Spec.Config != nil && a.Spec.ConfigRef != nil {
+func checkSingleConfigSource(l *Logstash) field.ErrorList {
+	if l.Spec.Config != nil && l.Spec.ConfigRef != nil {
 		msg := "Specify at most one of [`config`, `configRef`], not both"
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("config"), msg),
@@ -53,4 +61,15 @@ func checkSingleConfigSource(a *Logstash) field.ErrorList {
 	}
 
 	return nil
+}
+
+func checkMonitoring(l *Logstash) field.ErrorList {
+	return validations.Validate(l, l.Spec.Version, MinStackMonVersion)
+}
+
+func checkAssociations(l *Logstash) field.ErrorList {
+	monitoringPath := field.NewPath("spec").Child("monitoring")
+	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), l.GetMonitoringMetricsRefs()...)
+	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
+	return append(err1, err2...)
 }

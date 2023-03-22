@@ -37,7 +37,7 @@ const nodePort = int32(32767)
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestESStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}
@@ -68,7 +68,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 		t.SkipNow()
 	}
 	// only execute this test on supported version
-	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}

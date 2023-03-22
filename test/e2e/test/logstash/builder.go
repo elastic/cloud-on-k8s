@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -113,6 +114,40 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 func (b Builder) WithServices(services ...logstashv1alpha1.LogstashService) Builder {
 	b.Logstash.Spec.Services = append(b.Logstash.Spec.Services, services...)
 	return b
+}
+
+func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
+	b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
+	b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+	return b
+}
+
+func (b Builder) GetMetricsIndexPattern() string {
+	return ".monitoring-logstash-8-mb"
+}
+
+func (b Builder) Name() string {
+	return b.Logstash.Name
+}
+
+func (b Builder) Namespace() string {
+	return b.Logstash.Namespace
+}
+
+func (b Builder) GetLogsCluster() *types.NamespacedName {
+	if len(b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	logsCluster := b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
+}
+
+func (b Builder) GetMetricsCluster() *types.NamespacedName {
+	if len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+		return nil
+	}
+	metricsCluster := b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
+	return &metricsCluster
 }
 
 func (b Builder) NSN() types.NamespacedName {

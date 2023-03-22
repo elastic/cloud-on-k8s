@@ -2,38 +2,35 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build kb || e2e
+//go:build logstash || e2e
 
-package kb
+package logstash
 
 import (
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
-// TestKBStackMonitoring tests that when a Kibana is configured with monitoring, its log and metrics are
+// TestLogstashStackMonitoring tests that when Logstash is configured with monitoring, its log and metrics are
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
-func TestKBStackMonitoring(t *testing.T) {
+func TestLogstashStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
-	if err != nil {
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(logstashv1alpha1.MinStackMonVersion) {
 		t.SkipNow()
 	}
 
 	// create 1 monitored and 2 monitoring clusters to collect separately metrics and logs
-	metrics := elasticsearch.NewBuilder("test-kb-mon-metrics").
+	metrics := elasticsearch.NewBuilder("test-ls-mon-metrics").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
+	logs := elasticsearch.NewBuilder("test-ls-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
-	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
-	monitored := kibana.NewBuilder("test-kb-mon-a").
-		WithElasticsearchRef(assocEs.Ref()).
+	monitored := logstash.NewBuilder("test-ls-mon-a").
 		WithNodeCount(1).
 		WithMonitoring(metrics.Ref(), logs.Ref())
 
@@ -42,5 +39,5 @@ func TestKBStackMonitoring(t *testing.T) {
 		return checks.MonitoredSteps(&monitored, k)
 	}
 
-	test.Sequence(nil, steps, metrics, logs, assocEs, monitored).RunSequential(t)
+	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
 }
