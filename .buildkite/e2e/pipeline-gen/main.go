@@ -72,7 +72,7 @@ var (
 
 func init() {
 	flag.StringVar(&fixed, "f", "", "Fixed variables (comma-separated list)")
-	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of colon-separated list)")
+	flag.StringVar(&mixed, "m", "", "Mixed variables (comma-separated list of circumflex-separated list)")
 	flag.BoolVar(&envFile, "e", false, "Output in .env file format. Supports only one test.")
 	flag.Parse()
 
@@ -182,7 +182,7 @@ func stringListToEnvs(str string) ([]Env, error) {
 	mixedsStr := strings.Split(str, ",")
 	for _, mixedStr := range mixedsStr {
 		mixedEnv := Env{}
-		envStr := strings.Split(mixedStr, ":")
+		envStr := strings.Split(mixedStr, "^")
 		for _, kvStr := range envStr {
 			kv := strings.Split(kvStr, "=")
 			if len(kv) != 2 {
