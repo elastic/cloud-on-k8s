@@ -137,7 +137,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse pipelinesRef secret ns/my-secret: missing key configFile.yml",
+			wantEvent:   "Warning Unexpected unable to parse configRef secret ns/my-secret: missing key configFile.yml",
 		},
 		{
 			name:         "invalid config the referenced secret: error out, watch the secret and emit an event",
@@ -152,7 +152,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configFile.yml in pipelinesRef secret ns/my-secret",
+			wantEvent:   "Warning Unexpected unable to parse configFile.yml in configRef secret ns/my-secret",
 		},
 	}
 	for _, tt := range tests {
