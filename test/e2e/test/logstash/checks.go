@@ -97,11 +97,11 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		b.CheckMetricsRequest(k,
 			Request{
 				Name: "default pipeline",
-				Path: "/_node/pipelines/demo",
+				Path: "/_node/pipelines/main",
 			},
 			Want{
 				Status: "green",
-				Match:  map[string]string{"pipelines.demo.workers": "2"},
+				Match:  map[string]string{"pipelines.main.workers": "2"},
 			}),
 	}
 }
