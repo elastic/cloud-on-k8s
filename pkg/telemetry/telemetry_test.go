@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
@@ -227,6 +228,39 @@ func TestNewReporter(t *testing.T) {
 				},
 			},
 		},
+		&logstashv1alpha1.Logstash{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+			},
+			Spec: logstashv1alpha1.LogstashSpec{
+				Count: 3,
+				Services: []logstashv1alpha1.LogstashService{
+					{
+						Name: "test1",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9200},
+								},
+							},
+						},
+					},
+					{
+						Name: "test2",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9201},
+								},
+							},
+						},
+					},
+				},
+			},
+			Status: logstashv1alpha1.LogstashStatus{
+				AvailableNodes: 3,
+			},
+		},
 		&beatv1beta1.Beat{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat1",
@@ -417,6 +451,14 @@ func TestNewReporter(t *testing.T) {
       helm_resource_count: 1
       pod_count: 0
       resource_count: 3
+    logstashes:
+      pipelines_count: 0
+      pipelines_ref_count: 0
+      pod_count: 3
+      resource_count: 1
+      service_count: 2
+      stack_monitoring_logs_count: 0
+      stack_monitoring_metrics_count: 0
     maps:
       pod_count: 1
       resource_count: 1

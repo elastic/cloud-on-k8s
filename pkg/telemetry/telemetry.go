@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -41,7 +42,12 @@ const (
 	podCount                 = "pod_count"
 	helmManagedResourceCount = "helm_resource_count"
 
-	timestampFieldName = "timestamp"
+	timestampFieldName          = "timestamp"
+	stackMonitoringLogsCount    = "stack_monitoring_logs_count"
+	stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
+	serviceCount                = "service_count"
+	pipelinesCount              = "pipelines_count"
+	pipelinesRefCount           = "pipelines_ref_count"
 )
 
 type ECKTelemetry struct {
@@ -123,6 +129,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}
 		agentStats,
 		mapsStats,
 		scpStats,
+		logstashStats,
 	} {
 		key, statsPart, err := f(r.client, r.managedNamespaces)
 		if err != nil {
@@ -396,6 +403,37 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 		}
 	}
 	return "agents", stats, nil
+}
+
+func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	stats := map[string]int32{resourceCount: 0, podCount: 0, stackMonitoringLogsCount: 0,
+		stackMonitoringMetricsCount: 0, serviceCount: 0, pipelinesCount: 0, pipelinesRefCount: 0}
+
+	var logstashList logstashv1alpha1.LogstashList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &logstashList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, ls := range logstashList.Items {
+			stats[resourceCount]++
+			stats[serviceCount] += int32(len(ls.Spec.Services))
+			stats[podCount] += ls.Status.AvailableNodes
+			// TODO: Add when pipelines PR is merged
+			// stats[pipelinesCount] += int32(len(ls.Spec.Pipelines))
+			//if ls.Spec.Pipelines != nil {
+			//	stats[pipelinesRefCount] ++
+			//}
+			// TODO: Add when stack monitoring PR is merged
+			//if monitoring.IsLogsDefined(&ls) {
+			//	stats[stackMonitoringLogsCount]++
+			//}
+			//if monitoring.IsMetricsDefined(&ls) {
+			//	stats[stackMonitoringMetricsCount]++
+			//}
+		}
+	}
+	return "logstashes", stats, nil
 }
 
 func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
