@@ -74,6 +74,18 @@ func IsPodReady(pod corev1.Pod) bool {
 	return conditionsTrue == 2
 }
 
+// TerminatingPods filters pods for Pods that are in the process of (graceful) termination.
+func TerminatingPods(pods []corev1.Pod) []corev1.Pod {
+	var terminating []corev1.Pod //nolint:prealloc
+	for _, p := range pods {
+		if p.DeletionTimestamp.IsZero() {
+			continue
+		}
+		terminating = append(terminating, p)
+	}
+	return terminating
+}
+
 // PodsByName returns a map of pod names to pods
 func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
 	podMap := make(map[string]corev1.Pod, len(pods))

@@ -45,7 +45,7 @@ var (
 func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
 	return defaults.ExtendPodDownwardEnvVars(
 		[]corev1.EnvVar{
-			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.ProbeUserName)},
+			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.PodMountedUsersSecretMountPath, user.ProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.ProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
 			{Name: settings.HeadlessServiceName, Value: headlessServiceName},
