@@ -96,10 +96,10 @@ function retry() {
       error_exit "too many DNS errors, giving up"
     fi
     if [ $count -lt "$retries" ]; then
-      log "Retry $count/$retries exited $exit, retrying in $wait seconds"
+      log "retry $count/$retries exited $exit, retrying in $wait seconds"
       sleep $wait
     else
-      log "Retry $count/$retries exited $exit, no more retries left."
+      log "retry $count/$retries exited $exit, no more retries left"
       return $exit
     fi
   done
