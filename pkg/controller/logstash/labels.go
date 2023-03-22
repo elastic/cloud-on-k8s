@@ -20,7 +20,6 @@ const (
 	NamespaceLabelName = "logstash.k8s.elastic.co/namespace"
 )
 
-
 // NewLabels returns the set of common labels for an Elastic Logstash.
 func NewLabels(logstash logstashv1alpha1.Logstash) map[string]string {
 	return map[string]string{

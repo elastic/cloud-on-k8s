@@ -16,12 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	//commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
-	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
-	//commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -48,7 +44,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, 1, len(logstashContainer.VolumeMounts))
 				assert.Equal(t, container.ImageRepository(container.LogstashImage, "8.6.1"), logstashContainer.Image)
 				assert.NotNil(t, logstashContainer.ReadinessProbe)
-				assert.Equal(t, "", logstashContainer.ReadinessProbe)
 				assert.NotEmpty(t, logstashContainer.Ports)
 			},
 		},
@@ -117,7 +112,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name:     "with user-provided labels",
+			name: "with user-provided labels",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "logstash-name",
@@ -126,8 +121,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
-								"label1":            "value1",
-								"label2":            "value2",
+								"label1":      "value1",
+								"label2":      "value2",
 								NameLabelName: "overridden-logstash-name",
 							},
 						},
@@ -198,9 +193,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params := Params{
-				Context:       context.Background(),
-				Client:        k8s.NewFakeClient(),
-				Logstash:      tt.logstash,
+				Context:  context.Background(),
+				Client:   k8s.NewFakeClient(),
+				Logstash: tt.logstash,
 			}
 			configHash := fnv.New32a()
 			got := buildPodTemplate(params, configHash)
@@ -208,52 +203,3 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		})
 	}
 }
-
-//func Test_getDefaultContainerPorts(t *testing.T) {
-//	tt := []struct {
-//		name string
-//		logstash   logstashv1alpha1.Logstash
-//		want []corev1.ContainerPort
-//	}{
-//		{
-//			name: "http",
-//			logstash: logstashv1alpha1.Logstash{
-//				Spec: logstashv1alpha1.LogstashSpec{
-//					Version: "8.6.1",
-//				},
-//			},
-//			want: []corev1.ContainerPort{
-//				{Name: "http", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
-//			},
-//		},
-//		{
-//			name: "test",
-//			logstash: logstashv1alpha1.Logstash{
-//				Spec: logstashv1alpha1.LogstashSpec{
-//					Services: []logstashv1alpha1.LogstashService{
-//						{
-//							Name: "test",
-//							Service: commonv1.ServiceTemplate{
-//								Spec: corev1.ServiceSpec{
-//									Ports: []corev1.ServicePort{
-//										{Port: 9200},
-//									},
-//								},
-//							},
-//						},
-//					},
-//				},
-//			},
-//			want: []corev1.ContainerPort{
-//				{Name: "http", HostPort: 0, ContainerPort: int32(network.HTTPPort), Protocol: "TCP", HostIP: ""},
-//				{Name: "test", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
-//			},
-//		},
-//	}
-//
-//	for _, tc := range tt {
-//		t.Run(tc.name, func(t *testing.T) {
-//			assert.Equal(t, , tc.want)
-//		})
-//	}
-//}

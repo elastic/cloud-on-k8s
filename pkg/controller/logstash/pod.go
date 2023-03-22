@@ -118,13 +118,6 @@ func getDefaultContainerPorts() []corev1.ContainerPort {
 	}
 }
 
-func getContainerPorts() []corev1.ContainerPort {
-	return []corev1.ContainerPort{
-		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
-	}
-}
-
-
 // readinessProbe is the readiness probe for the Logstash container
 func readinessProbe(useTLS bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
