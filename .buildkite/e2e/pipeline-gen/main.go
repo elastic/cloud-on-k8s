@@ -108,6 +108,13 @@ func main() {
 		}}
 
 	} else {
+		if fixed != "" {
+			handleErr("Failed to read stdin", errors.New("incompatible with the --fixed flag"))
+		}
+		if mixed != "" {
+			handleErr("Failed to read stdin", errors.New("incompatible with the --mixed flag"))
+		}
+
 		in, err := io.ReadAll(os.Stdin)
 		handleErr("Failed to read stdin", err)
 		if len(in) == 0 {
