@@ -11,14 +11,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"path/filepath"
-	"runtime"
-	"sort"
-
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"runtime"
+	"sort"
 	"strings"
 	"time"
 
