@@ -90,7 +90,7 @@ func init() {
 
 func main() {
 	stat, err := os.Stdin.Stat()
-	handlErr("Failed to read stdin", err)
+	handleErr("Failed to read stdin", err)
 
 	var groups []Group
 
@@ -98,10 +98,10 @@ func main() {
 	if stat.Mode()&os.ModeCharDevice != 0 {
 
 		fixedEnv, err := stringListToEnv(fixed)
-		handlErr("Failed to read fixed variables", err)
+		handleErr("Failed to read fixed variables", err)
 
 		mixedEnv, err := stringListToEnvs(mixed)
-		handlErr("Failed to read mixed variables", err)
+		handleErr("Failed to read mixed variables", err)
 
 		groups = []Group{{
 			Fixed: fixedEnv,
@@ -110,13 +110,13 @@ func main() {
 
 	} else {
 		in, err := io.ReadAll(os.Stdin)
-		handlErr("Failed to read stdin", err)
+		handleErr("Failed to read stdin", err)
 		if len(in) == 0 {
-			handlErr("Failed to read stdin", errors.New("nothing on /dev/stdin"))
+			handleErr("Failed to read stdin", errors.New("nothing on /dev/stdin"))
 		}
 
 		err = yaml.Unmarshal(in, &groups)
-		handlErr("Failed to parse stdin", err)
+		handleErr("Failed to parse stdin", err)
 	}
 
 	// build a flat list of the tests to run
@@ -128,7 +128,7 @@ func main() {
 		}
 		for j := range groups[i].Mixed {
 			ts, err := newTestsSuite(groups[i].Label, groups[i].Fixed, len(groups[i].Mixed), groups[i].Mixed[j])
-			handlErr("Failed to create tests suite", err)
+			handleErr("Failed to create tests suite", err)
 
 			tests = append(tests, ts)
 			cleanup = cleanup || ts.Cleanup
@@ -137,7 +137,7 @@ func main() {
 
 	if output == "envfile" {
 		if len(tests) > 1 {
-			handlErr("Not supported with output envfile", errors.New("more than 1 test suite to run"))
+			handleErr("Not supported with output envfile", errors.New("more than 1 test suite to run"))
 			return
 		}
 		for k, v := range tests[0].Env {
@@ -147,13 +147,13 @@ func main() {
 	}
 
 	tpl, err := template.New("pipeline.yaml").Parse(pipelineTemplate)
-	handlErr("Failed to parse template", err)
+	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
 		"Cleanup": cleanup,
 		"Tests":   tests,
 	})
-	handlErr("Failed to generate pipeline", err)
+	handleErr("Failed to generate pipeline", err)
 }
 
 func stringListToEnv(str string) (Env, error) {
@@ -381,7 +381,7 @@ func getMetadata(key string) (string, error) {
 	return strings.Trim(string(out), "\n"), nil
 }
 
-func handlErr(context string, err error) {
+func handleErr(context string, err error) {
 	if err != nil {
 		fmt.Printf("%s: %s\n", context, err)
 		os.Exit(1)
