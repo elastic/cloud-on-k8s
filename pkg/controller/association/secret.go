@@ -100,6 +100,22 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, o commonv1.Ob
 	return &ref, nil
 }
 
+// Version performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
+// from the returned result using the given json path and validates it is a valid semver version.
+func (r UnmanagedAssociationConnectionInfo) Version(path string, jsonPath string) (string, error) {
+	ver, err := r.Request(path, jsonPath)
+	if err != nil {
+		return "", err
+	}
+
+	// validate the version
+	if _, err := version.Parse(ver); err != nil {
+		return "", err
+	}
+
+	return ver, nil
+}
+
 // Request performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
 // from the returned result using the given json path.
 func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string) (string, error) {
@@ -149,14 +165,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, jsonPath string
 	if err := j.Execute(buf, obj); err != nil {
 		return "", err
 	}
-	ver := buf.String()
-
-	// validate the version
-	if _, err := version.Parse(ver); err != nil {
-		return "", err
-	}
-
-	return ver, nil
+	return buf.String(), nil
 }
 
 // filterUnmanagedElasticRef returns those associations that reference using a Kubernetes secret an Elastic resource not managed by ECK.

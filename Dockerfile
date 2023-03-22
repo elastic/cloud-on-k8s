@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.1 as builder
+FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.2 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -10,14 +10,14 @@ WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 COPY ["go.mod", "go.sum", "./"]
-RUN go mod download
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 
 # Copy the go source
 COPY pkg/    pkg/
 COPY cmd/    cmd/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux \
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod CGO_ENABLED=0 GOOS=linux \
       go build \
       -mod readonly \
       -ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \

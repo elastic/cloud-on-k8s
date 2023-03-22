@@ -52,3 +52,16 @@ spec:
   {{- end }}
   nodeSets:
 {{ toYaml .Values.nodeSets | nindent 4 }}
+  {{- if .Values.image }}
+  image: {{ .Values.image }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget }}
+  podDisruptionBudget:
+    {{- toYaml .Values.podDisruptionBudget | nindent 4 }}
+  {{- end }}
+  {{- if .Values.serviceAccountName }}
+  serviceAccountName: {{ .Values.serviceAccountName }}
+  {{- end }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}

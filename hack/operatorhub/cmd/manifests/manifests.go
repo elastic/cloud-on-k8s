@@ -18,7 +18,7 @@ func Command() *cobra.Command {
 		Short: "Generate operator lifecycle manager format files",
 		Long: `Generate operator lifecycle manager format files within 
 'community-operators', 'certified-operators', and 'upstream-community-operators' directories.`,
-		Example:      "operatorhub generate-manifests -c ./config.yaml -y ../../config/crds.yaml -y ./../config/operator.yaml",
+		Example:      "operatorhub generate-manifests -c ./config.yaml -y ../../config/crds.yaml -y ../../config/operator.yaml",
 		SilenceUsage: true,
 		PreRunE:      preRunE,
 		RunE:         doRun,

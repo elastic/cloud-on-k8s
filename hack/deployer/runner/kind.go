@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/kyverno"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
 )
 
 const (
@@ -67,14 +68,20 @@ type KindDriverFactory struct{}
 var _ DriverFactory = &KindDriverFactory{}
 
 func (k KindDriverFactory) Create(plan Plan) (Driver, error) {
+	c, err := vault.NewClient()
+	if err != nil {
+		return nil, err
+	}
 	return &KindDriver{
-		plan: plan,
+		plan:        plan,
+		vaultClient: c,
 	}, nil
 }
 
 type KindDriver struct {
 	plan        Plan
 	clientImage string
+	vaultClient vault.Client
 }
 
 func (k *KindDriver) Execute() error {
@@ -261,7 +268,7 @@ func (k *KindDriver) createTmpStorageClass() (string, error) {
 }
 
 func (k *KindDriver) ensureClientImage() error {
-	image, err := ensureClientImage(KindDriverID, k.plan.ClientVersion, k.plan.ClientBuildDefDir)
+	image, err := ensureClientImage(KindDriverID, k.vaultClient, k.plan.ClientVersion, k.plan.ClientBuildDefDir)
 	if err != nil {
 		return err
 	}

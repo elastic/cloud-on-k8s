@@ -49,13 +49,13 @@ func main() {
 	}
 
 	cmd.Flags().StringVar(&opts.confFile, "conf-file", "conf.yaml", "Path to the file containing test params")
-	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "alpha", "Release to start with (alpha, beta, v101, v112, upcoming)")
+	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v170", "Release to start with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
 	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
 	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")
 	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 15*time.Minute, "Time limit for retries")
 	cmd.Flags().BoolVar(&opts.skipCleanup, "skip-cleanup", false, "Skip cleaning up after test run")
-	cmd.Flags().StringVar(&opts.toRelease, "to-release", "upcoming", "Release to finish with (alpha, beta, v101, v112, upcoming)")
+	cmd.Flags().StringVar(&opts.toRelease, "to-release", "upcoming", "Release to finish with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.upcomingReleaseCRDs, "upcoming-release-crds", "../../config/crds.yaml", "YAML file for installing the CRDs for the upcoming release")
 	cmd.Flags().StringVar(&opts.upcomingReleaseOperator, "upcoming-release-operator", "../../config/operator.yaml", "YAML file for installing the operator for the upcoming release")
 
