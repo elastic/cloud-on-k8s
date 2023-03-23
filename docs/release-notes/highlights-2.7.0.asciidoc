@@ -20,4 +20,4 @@ such as a monitoring Elasticsearch cluster hosted on Elastic Cloud, via the `ela
 === ECK Elasticsearch Helm chart
 
 The eck-elasticsearch Helm chart exposes now all functionality that is available through the ECK Elasticsearch manifest and
-an exhaustive list of the available configuration values has been added for ease of use.
+an exhaustive list of the available configuration values has been added to the documentation.
