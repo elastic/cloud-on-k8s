@@ -177,27 +177,13 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
-	var initContainers []corev1.Container
-	// if volume doesn't container emptydir
-	// add an initContainer that does
-	// initContainers:
-	// - command:
-	// - sh
-	// - -c
-	// - chmod g+w /usr/share/elastic-agent/state && chgrp 1000 /usr/share/elastic-agent/state
-	// image: docker.elastic.co/beats/elastic-agent:8.5.0
-	// imagePullPolicy: IfNotPresent
-	// name: permissions
-	// securityContext:
-	//   runAsUser: 0
-
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
-		WithInitContainers(initContainers...).
+		WithInitContainers(maybeAgentInitContainerForHostpathVolume(spec, v)...).
 		WithEnv(
 			corev1.EnvVar{Name: "NODE_NAME", ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
