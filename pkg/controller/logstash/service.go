@@ -23,15 +23,11 @@ func reconcileServices(params Params) ([]corev1.Service, error) {
 
 	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
 	for _, service := range params.Logstash.Spec.Services {
-		var svc *corev1.Service
 		logstash := params.Logstash
 		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
-			//svc = newAPIService(params.Logstash)
-			svc = newService(service, params.Logstash)
 			createdAPIService = true
-		} else {
-			svc = newService(service, params.Logstash)
 		}
+		svc := newService(service, params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, err
 		}
