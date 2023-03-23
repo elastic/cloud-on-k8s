@@ -75,7 +75,7 @@ func Test_buildPipeline(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "configref populated - malformed config",
+			name: "pipelinesref populated - malformed config",
 			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline-2",
