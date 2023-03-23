@@ -60,7 +60,8 @@ main() {
     if is_tag; then
         REGISTRY_NAMESPACE=eck
         IMG_SUFFIX=""
-        IMG_VERSION="$BUILDKITE_TAG"
+        # remove v prefix from the tag
+        IMG_VERSION="${BUILDKITE_TAG#v}"
 
         set_env SNAPSHOT=false
         set_env PUBLISH_IMAGE_UBI=true
