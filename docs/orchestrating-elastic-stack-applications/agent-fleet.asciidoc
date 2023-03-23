@@ -44,9 +44,6 @@ spec:
         automountServiceAccountToken: true
         securityContext:
           runAsUser: 0
-        volumes:
-        - name: agent-data
-          emptyDir: {} # may not be suited for production, the default value is to use host path volume
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -69,7 +66,7 @@ spec:
           runAsUser: 0
         volumes:
         - name: agent-data
-          emptyDir: {} # may not be suited for production, the default value is to use host path volume
+          emptyDir: {}
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
