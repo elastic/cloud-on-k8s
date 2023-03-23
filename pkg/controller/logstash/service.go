@@ -26,7 +26,8 @@ func reconcileServices(params Params) ([]corev1.Service, error) {
 		var svc *corev1.Service
 		logstash := params.Logstash
 		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
-			svc = newAPIService(params.Logstash)
+			//svc = newAPIService(params.Logstash)
+			svc = newService(service, params.Logstash)
 			createdAPIService = true
 		} else {
 			svc = newService(service, params.Logstash)
@@ -87,7 +88,7 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	labels := NewLabels(logstash)
 	ports := []corev1.ServicePort{
 		{
-			Name:     "metrics",
+			Name:     "api",
 			Protocol: corev1.ProtocolTCP,
 			Port:     network.HTTPPort,
 		},
