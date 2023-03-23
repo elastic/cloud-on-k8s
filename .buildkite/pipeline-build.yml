@@ -16,7 +16,7 @@ steps:
         key: "operator-image-build"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="generate-crds-v1 build-operator-multiarch-image" ci
+          - make -C .ci TARGET="generate-crds-v1 publish-operator-multiarch-image" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set operator-image $$(make print-operator-image)
         agents:
@@ -30,7 +30,7 @@ steps:
         key: "e2e-tests-image-build"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="e2e-docker-multiarch-build" ci
+          - make -C .ci TARGET="publish-e2e-multiarch-image" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set e2e-image $$(make print-e2e-image)
         agents:
@@ -42,13 +42,13 @@ steps:
       - label: ":docker: dev-license operator image"
         if: | 
           ( build.branch == "main" && build.source == "schedule" )
-          || build.message =~ /^buildkite test .*release.*/
+          || build.message =~ /^buildkite test .*dev-build.*/
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="build-operator-multiarch-image" ci
+          - make -C .ci TARGET="publish-operator-multiarch-image" ci
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -63,7 +63,7 @@ steps:
           ENABLE_FIPS: "true"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="build-operator-multiarch-image" ci
+          - make -C .ci TARGET="publish-operator-multiarch-image" ci
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"

@@ -205,8 +205,8 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				// passwords and hashes should be reused
 				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
-				require.Equal(t, []byte("$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS"), u[1].PasswordHash)
+				require.Equal(t, []byte("probeUserPassword"), u[2].Password)
+				require.Equal(t, []byte("$2a$10$8.9my2W7FVDqDnh.E1RwouN5RzkZGulQ3ZMgmoy3CH4xRvr5uYPbS"), u[2].PasswordHash)
 			},
 		},
 		{
@@ -229,9 +229,9 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
 				// password of probe user should be reused, but hash should be re-computed
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
+				require.Equal(t, []byte("probeUserPassword"), u[2].Password)
 				require.NotEmpty(t, u[1].PasswordHash)
-				require.NotEqual(t, "does-not-match-password", u[1].PasswordHash)
+				require.NotEqual(t, "does-not-match-password", u[2].PasswordHash)
 			},
 		},
 		{
@@ -254,8 +254,8 @@ func Test_reconcileInternalUsers(t *testing.T) {
 				require.Equal(t, []byte("controllerUserPassword"), u[0].Password)
 				require.Equal(t, []byte("$2a$10$lUuxZpa.ByS.Tid3PcMII.PrELwGjti3Mx1WRT0itwy.Ajpf.BsEG"), u[0].PasswordHash)
 				// password of probe user should be reused, and hash should be re-computed
-				require.Equal(t, []byte("probeUserPassword"), u[1].Password)
-				require.NotEmpty(t, u[1].PasswordHash)
+				require.Equal(t, []byte("probeUserPassword"), u[2].Password)
+				require.NotEmpty(t, u[2].PasswordHash)
 			},
 		},
 	}
@@ -265,9 +265,9 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			got, err := reconcileInternalUsers(context.Background(), c, es, tt.existingFileRealm, testPasswordHasher)
 			require.NoError(t, err)
 			// check returned users
-			require.Len(t, got, 3)
+			require.Len(t, got, 4)
 			controllerUser := got[0]
-			probeUser := got[1]
+			probeUser := got[2]
 			// names and roles are always the same
 			require.Equal(t, ControllerUserName, controllerUser.Name)
 			require.Equal(t, []string{SuperUserBuiltinRole}, controllerUser.Roles)

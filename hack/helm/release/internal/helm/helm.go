@@ -221,7 +221,6 @@ type uploadChartsConfig struct {
 // 3. Potentially upload Helm charts with dependencies to GCS bucket.
 // 4. Potentially update GCS Bucket Helm index a second time.
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	tempDir, err := os.MkdirTemp(os.TempDir(), "charts")
@@ -242,8 +241,11 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// eck-resources charts, and that new version is just released, then
 	// it will take ~ one hour for it to show up, so we will continue trying
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
-	retry.Do(
+	err = retry.Do(
 		func() error {
+			if err := addDefaultHelmRepositories(conf.releaseConf); err != nil {
+				return err
+			}
 			if err := updateHelmRepositories(); err != nil {
 				return err
 			}
@@ -269,7 +271,23 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 			log.Printf("retry #%d: %s\n", n, err)
 		}),
 	)
+	if err != nil {
+		return fmt.Errorf("while processing charts with dependencies: %w", err)
+	}
 
+	return nil
+}
+
+type helmRepo struct {
+	name, url string
+}
+
+func addDefaultHelmRepositories(conf ReleaseConfig) error {
+	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
+		if err := addHelmRepository(r.name, r.url); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -303,16 +321,8 @@ func updateHelmRepositories() error {
 //  5. Run 'Helm package chart' for the Helm Chart to generate a tarball.
 //  6. Copy the tarball to the GCS bucket.
 func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf ReleaseConfig) error {
-	type helmRepo struct {
-		name, url string
-	}
 	if len(charts) == 0 {
 		return nil
-	}
-	for _, r := range []helmRepo{{name: "stable", url: stableHelmChartsURL}, {name: conf.Bucket, url: conf.ChartsRepoURL}} {
-		if err := addHelmRepository(r.name, r.url); err != nil {
-			return err
-		}
 	}
 	u, err := url.Parse(conf.ChartsRepoURL)
 	if err != nil {
@@ -353,13 +363,40 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 // to the local Helm configuration.
 func addHelmRepository(name, url string) error {
 	settings := cli.New()
+	// Ensure the configuration file's directory path exists
+	err := os.MkdirAll(filepath.Dir(settings.RepositoryConfig), os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
 	log.Printf("Adding (%s) repository.\n", name)
 	// simulates 'helm repo add' command.
-	if _, err := repo.NewChartRepository(&repo.Entry{
+	b, err := ioutil.ReadFile(settings.RepositoryConfig)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	var f repo.File
+	if err := yaml.Unmarshal(b, &f); err != nil {
+		return err
+	}
+
+	// return early if repository already exists
+	if f.Has(name) {
+		log.Printf("Done adding (%s) repository.\n", name)
+		return nil
+	}
+
+	c := repo.Entry{
 		Name: name,
-		URL:  url,
-	}, getter.All(settings)); err != nil {
-		return fmt.Errorf("while adding helm stable charts repository: %w", err)
+		// The index (index.yaml) for both production and dev exist at '/', not '/helm'
+		// which is where the helm data exists so trim the '/helm' suffix.
+		URL: strings.TrimSuffix(url, "/helm"),
+	}
+
+	f.Update(&c)
+
+	if err := f.WriteFile(settings.RepositoryConfig, 0644); err != nil {
+		return err
 	}
 	log.Printf("Done adding (%s) repository.\n", name)
 	return nil

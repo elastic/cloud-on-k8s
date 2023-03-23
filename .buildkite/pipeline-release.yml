@@ -22,9 +22,12 @@ steps:
       # live helm charts release
       - label: ":buildkite:"
         if: |
-          ( build.branch == "main" && build.source != "schedule" )
-          || build.tag != null
-          || build.message =~ /^release eck/
+          build.message !~ /^buildkite test .*release.*/
+          && (
+            ( build.branch == "main" && build.source != "schedule" )
+            || build.tag != null
+            || build.message =~ /^release eck/
+          )
         command: |
           sed "s|DRY_RUN: true|DRY_RUN: false|" .buildkite/pipeline-release-helm.yml | buildkite-agent pipeline upload 
 

@@ -29,7 +29,7 @@ func buildVolumes(
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
-		esvolume.ProbeUserSecretMountPath, []string{user.ProbeUserName},
+		esvolume.PodMountedUsersSecretMountPath, []string{user.ProbeUserName, user.PreStopUserName},
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		certificates.InternalCertsSecretName(esv1.ESNamer, esName),
