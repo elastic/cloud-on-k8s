@@ -3758,11 +3758,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.2.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/automaxprocs
-Version : v1.5.1
-Time    : 2022-04-06T15:21:28Z
+Version : v1.5.2
+Time    : 2023-03-18T02:07:48Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.5.2/LICENSE:
 
 Copyright (c) 2017 Uber Technologies, Inc.
 
