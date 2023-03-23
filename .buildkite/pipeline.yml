@@ -66,7 +66,7 @@ steps:
             - .ci/setenvconfig pr
             - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
@@ -100,7 +100,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"

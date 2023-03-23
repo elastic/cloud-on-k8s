@@ -12,7 +12,7 @@ steps:
           - .ci/setenvconfig e2e/aks
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - wait: ~
         continue_on_failure: true
@@ -44,7 +44,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "eks-nightly-e2e-tests-build-cluster"
 
@@ -66,7 +66,7 @@ steps:
   #         - make run-deployer
   #         - make e2e-run
   #       artifact_paths:
-  #         - "eck-diagnostic-*.zip"
+  #         - "eck-diagnostics-*.zip"
 
   #     - wait: ~
   #       continue_on_failure: true
@@ -95,7 +95,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "gke121-nightly-e2e-tests-build-cluster"
 
@@ -115,7 +115,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "gke122-nightly-e2e-tests-build-cluster"
 
@@ -135,7 +135,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "gke123-nightly-e2e-tests-build-cluster"
 
@@ -170,7 +170,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.20.15@sha256:6f2d011dffe182bad80b85f6c00e8ca9d86b5b8922cdf433d53575c4c5212248 0.14.0 ipv4
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.21"
         agents:
@@ -182,7 +182,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.21.12@sha256:f316b33dd88f8196379f38feb80545ef3ed44d9197dca1bfd48bcb1583210207 0.14.0 ipv4
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.22 ipv4"
         agents:
@@ -194,7 +194,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105 0.14.0 ipv4
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.22 ipv6"
         agents:
@@ -206,7 +206,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.22.9@sha256:8135260b959dfe320206eb36b3aeda9cffcb262f4b44cda6b33f7bb73f453105 0.14.0 ipv6
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.23 ipv4"
         agents:
@@ -218,7 +218,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae 0.14.0 ipv4
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.23 ipv6"
         agents:
@@ -230,7 +230,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae 0.14.0 ipv6
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.24 ipv4"
         agents:
@@ -242,7 +242,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c 0.14.0 ipv4
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - label: "kind 1.24 ipv6"
         agents:
@@ -254,7 +254,7 @@ steps:
           - .ci/setenvconfig e2e/kind-k8s-versions kindest/node:v1.24.1@sha256:11276ce4763d5600379c0104c4cb51bf7420c8c02937708e958ad68d08e0910c 0.14.0 ipv6
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
   - group: "ocp"
     steps:
@@ -268,7 +268,7 @@ steps:
       #     - .ci/setenvconfig e2e/ocp 4.7.49
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
-      #     - "eck-diagnostic-*.zip"
+      #     - "eck-diagnostics-*.zip"
 
       # - label: "ocp 4.8"
       #   agents:
@@ -279,7 +279,7 @@ steps:
       #     - .ci/setenvconfig e2e/ocp 4.8.50
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
-      #     - "eck-diagnostic-*.zip"
+      #     - "eck-diagnostics-*.zip"
 
       # - label: "ocp 4.9"
       #   agents:
@@ -290,7 +290,7 @@ steps:
       #     - .ci/setenvconfig e2e/ocp 4.9.48
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
-      #     - "eck-diagnostic-*.zip"
+      #     - "eck-diagnostics-*.zip"
 
       # - label: "ocp 4.10"
       #   agents:
@@ -301,7 +301,7 @@ steps:
       #     - .ci/setenvconfig e2e/ocp 4.10.34
       #     - make -C .ci TARGET="run-deployer e2e-run" ci
       #   artifact_paths:
-      #     - "eck-diagnostic-*.zip"
+      #     - "eck-diagnostics-*.zip"
 
       - label: "ocp 4.11"
         agents:
@@ -312,7 +312,7 @@ steps:
           - .ci/setenvconfig e2e/ocp 4.11.5
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - wait: ~
         continue_on_failure: true
@@ -369,7 +369,7 @@ steps:
           - .ci/setenvconfig e2e/tanzu
           - make -C .ci TARGET="run-deployer e2e-run" ci
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
 
       - wait: ~
         continue_on_failure: true
@@ -401,7 +401,7 @@ steps:
           - make set-kubeconfig
           - make e2e-run
         artifact_paths:
-          - "eck-diagnostic-*.zip"
+          - "eck-diagnostics-*.zip"
         depends_on:
           - "resilience-nightly-e2e-tests-build-cluster"
 
