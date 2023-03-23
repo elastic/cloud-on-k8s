@@ -49,7 +49,7 @@ func Test_buildPipeline(t *testing.T) {
 			want: MustParsePipelineConfig([]byte(`- "pipeline.id": "main"`)),
 		},
 		{
-			name: "configref populated - no secret",
+			name: "pipelinesref populated - no secret",
 			pipelinesRef: &commonv1.ConfigSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline",
