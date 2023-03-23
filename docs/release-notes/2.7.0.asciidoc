@@ -25,7 +25,7 @@
 === Bug fixes
 
 * Add missing maps webhook, fix inconsistencies {pull}6489[#6489] (issues: {issue}6151[#6151], {issue}6152[#6152])
-* Fix handling of unmanaged esRef in Beats stack monitoring {pull}6482[#6482] (issues: {issue}5880[#5880], {issue}6230[#6230])
+* Fix handling of unmanaged esRef in Beats Stack Monitoring {pull}6482[#6482] (issues: {issue}5880[#5880], {issue}6230[#6230])
 * Fix EnterpriseSearch upgrade with TLS disabled {pull}6224[#6224] (issue: {issue}6185[#6185])
 
 [[docs-2.7.0]]

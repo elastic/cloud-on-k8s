@@ -1,0 +1,9 @@
+[[release-highlights-2.7.0]]
+== 2.7.0 release highlights
+
+[float]
+[id="{p}-270-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.7.0 of {n}. Check <<release-notes-2.7.0>> for the full list of changes.
+
