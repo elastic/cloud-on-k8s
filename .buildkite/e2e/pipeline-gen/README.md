@@ -40,18 +40,24 @@ This will generate a pipeline that runs the deployer and the e2e-tests in 5 envi
 ### single group via flags for triggers from PR comment
 
 ```sh
-pipeline-gen -f E2E_PROVIDER=gke,TESTS_MATCH=kind -m E2E_STACK_VERSION=8.5.0.3,E2E_STACK_VERSION=8.6.0 | tee pipeline.yml
+pipeline-gen -f E2E_PROVIDER=gke,TESTS_MATCH=TestSmoke -m E2E_STACK_VERSION=8.5.0,E2E_STACK_VERSION=8.6.0 | tee pipeline.yml
+```
+
+`^` is the separator for declaring multiple variables per combination in the `--mixed` flag.
+
+```sh
+pipeline-gen -f TESTS_MATCH=TestSmoke -m E2E_PROVIDER=gke^E2E_STACK_VERSION=8.5.0,E2E_PROVIDER=kind^E2E_STACK_VERSION=8.6.0 | tee pipeline.yml
 ```
 
 ### single run and output .env for local execution
 
 ```sh
-pipeline-gen -o envfile -f E2E_PROVIDER=gke,DEPLOYER_K8S_VERSION=1.23,E2E_STACK_VERSION=8.6.0,TESTS_MATCH=TestSmoke | tee ../../../.env
+pipeline-gen -e -f E2E_PROVIDER=gke,DEPLOYER_K8S_VERSION=1.23,E2E_STACK_VERSION=8.6.0,TESTS_MATCH=TestSmoke | tee ../../../.env
 ```
 
 ### 'p'k's't' shortcuts for the most used variables
 
 ```sh
 pipeline-gen -f p=gke,k=1.23,t=TestSmoke -m s=8.5.0,s=8.6.0 | tee pipeline.yml
-pipeline-gen -o envfile -f p=gke,k=1.23,s=8.6.0,t=TestSmoke | tee ../../../.env
+pipeline-gen -e -f p=gke,k=1.23,s=8.6.0,t=TestSmoke | tee ../../../.env
 ```

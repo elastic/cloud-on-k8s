@@ -180,7 +180,7 @@ func stringListToEnvs(str string) ([]Env, error) {
 	if str == "" {
 		return nil, nil
 	}
-	envs := []Env{}
+	var envs []Env
 	mixedsStr := strings.Split(str, ",")
 	for _, mixedStr := range mixedsStr {
 		mixedEnv := Env{}
