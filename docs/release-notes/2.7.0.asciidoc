@@ -14,7 +14,6 @@
 * Expose all fields below spec in eck-elasticsearch Helm chart {pull}6492[#6492] (issue: {issue}6451[#6451])
 * Allow optional SSL client authentication setting {pull}6440[#6440] (issue: {issue}6369[#6369])
 * Allow setting of volumeClaimDeletePolicy in eck-elasticsearch Helm chart {pull}6409[#6409] (issue: {issue}6249[#6249])
-* Adding an exhaustive list of Helm chart values to eck-elasticsearch Helm chart {pull}6336[#6336] (issue: {issue}6187[#6187])
 * Update ECK OperatorHub capability level to L4 {pull}6318[#6318]
 * Support auth for custom users and roles in eck-elasticsearch Helm chart {pull}6306[#6306]
 * Do not overwrite deployment status when reconciling {pull}6302[#6302]
@@ -25,7 +24,7 @@
 === Bug fixes
 
 * Add missing maps webhook, fix inconsistencies {pull}6489[#6489] (issues: {issue}6151[#6151], {issue}6152[#6152])
-* Fix handling of unmanaged esRef in Beats stack monitoring {pull}6482[#6482] (issues: {issue}5880[#5880], {issue}6230[#6230])
+* Fix handling of unmanaged esRef in Beats Stack Monitoring {pull}6482[#6482] (issues: {issue}5880[#5880], {issue}6230[#6230])
 * Fix EnterpriseSearch upgrade with TLS disabled {pull}6224[#6224] (issue: {issue}6185[#6185])
 
 [[docs-2.7.0]]
@@ -33,8 +32,9 @@
 === Documentation improvements
 
 * Document FIPS image and OpenShift default namespace limitation {pull}6428[#6428] (issue: {issue}6332[#6332])
-* Update logstash recipe {pull}6333[#6333] (issues: {issue}6258[#6258], {issue}6328[#6328])
-* Fix yaml kibana example in saml authentication doc {pull}6301[#6301]
+* Adding an exhaustive list of Helm chart values to eck-elasticsearch Helm chart {pull}6336[#6336] (issue: {issue}6187[#6187])
+* Update Logstash recipe {pull}6333[#6333] (issues: {issue}6258[#6258], {issue}6328[#6328])
+* Fix yaml Kibana example in saml authentication doc {pull}6301[#6301]
 * Fix minor typo in upgrading-eck doc {pull}6198[#6198]
 
 [[nogroup-2.7.0]]
