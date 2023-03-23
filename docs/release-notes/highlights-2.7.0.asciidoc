@@ -19,5 +19,5 @@ such as a monitoring Elasticsearch cluster hosted on Elastic Cloud.
 [id="{p}-270-eck-es-helm-chart"]
 === ECK Elasticsearch Helm chart
 
-The eck-elasticsearch Helm chart is now iso functional with what is possible when a raw k8s manifest is used and
+The eck-elasticsearch Helm chart exposes now all functionality that is available through the ECK Elasticsearch manifest and
 an exhaustive list of the available configuration values has been added for ease of use.
