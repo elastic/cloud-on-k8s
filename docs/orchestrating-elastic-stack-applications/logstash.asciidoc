@@ -276,8 +276,6 @@ spec:
 
 The `elasticsearchRefs` element allows ECK to automatically configure Elastic Agent to establish a secured connection to one or more managed Elasticsearch clusters. By default, it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
 
-Check <<{p}-compute-resources-beats-agent>> for more information on how to use the Pod template to adjust the resources given to Elastic Agent.
-
 
 [id="{p}-logstash-configuration-examples"]
 == Configuration examples
@@ -328,7 +326,7 @@ Deploys Logstash with a single pipeline defined in a secret, mounted as a volume
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {logstash_recipes}/stack_monitoring.yaml
+kubectl apply -f {logstash_recipes}/logstash-monitored.yaml
 ----
 
 Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will send it's monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's Kibana
