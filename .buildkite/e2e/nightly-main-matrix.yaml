@@ -35,10 +35,6 @@
 - label: gke
   fixed:
     E2E_PROVIDER: gke
-  mixed:
-    - DEPLOYER_K8S_VERSION: "1.21"
-    - DEPLOYER_K8S_VERSION: "1.22"
-    - DEPLOYER_K8S_VERSION: "1.23"
 
 - label: resilience
   fixed:
