@@ -39,8 +39,8 @@ spec:
   version: 8.6.1
   config:
   elasticsearchRefs:
-    - clusterName: quickstart
-      name: quickstart
+#    - clusterName: quickstart
+#      name: quickstart
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -50,12 +50,7 @@ spec:
           }
         }
         output {
-          elasticsearch {
-            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
-            user => "${QUICKSTART_ES_USER}"
-            password => "${QUICKSTART_ES_PASSWORD}"
-            cacert => "${QUICKSTART_ES_CA_CERTS}"
-          }
+          stdout {}
         }
   services:
     - name: beats
@@ -292,23 +287,42 @@ This section contains manifests that illustrate common use cases, and can be you
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 
-=== Single Pipeline
+=== Single Pipeline defined in CRD
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {logstash_recipes}/single-pipeline.yaml
+kubectl apply -f {logstash_recipes}/logstash-eck.yaml
 ----
 
-Deploys Logstash with a single pipeline
+Deploys Logstash with a single pipeline defined in the CRD
 
-=== Multiple Pipelines
+=== Single Pipeline defined in CRD
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {logstash_recipes}/multiple-pipelines.yaml
+kubectl apply -f {logstash_recipes}/logstash-eck.yaml
 ----
 
-Deploys Logstash with multiple pipelines
+Deploys Logstash with a single pipeline defined in the CRD
+
+=== Single Pipeline defined in secret
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-pipelinesecret.yaml
+----
+
+Deploys Logstash with a single pipeline defined in a secret, referenced by a `pipelineRef`
+
+=== Pipeline configuration in mounted volume
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-pipelinevolume.yaml
+----
+
+Deploys Logstash with a single pipeline defined in a secret, mounted as a volume, and referenced by
+`path.config`
 
 === Elasticsearch and Kibana Stack Monitoring
 
@@ -317,9 +331,7 @@ Deploys Logstash with multiple pipelines
 kubectl apply -f {logstash_recipes}/stack_monitoring.yaml
 ----
 
-Deploys Metricbeat configured for Elasticsearch and Kibana link:https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html[Stack Monitoring] and Filebeat using autodiscover. Deploys one monitored Elasticsearch cluster and one monitoring Elasticsearch cluster. You can access the Stack Monitoring app in the monitoring cluster's Kibana.
-
-NOTE: In this example, TLS verification is disabled when Metricbeat communicates with the monitored cluster, which is not secure and should not be used in production. To solve this, use custom certificates and configure Metricbeat to verify them.
+Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will send it's monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's Kibana
 
 [id="{p}-logstash-on-eck-limitations"]
 == Logstash on ECK Limitations
