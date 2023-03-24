@@ -273,6 +273,14 @@ func podsToUpgrade(
 	return toUpgrade, nil
 }
 
+func terminatingPodNames(client k8s.Client, statefulSets sset.StatefulSetList) ([]string, error) {
+	pods, err := statefulSets.GetActualPods(client)
+	if err != nil {
+		return nil, err
+	}
+	return k8s.PodNames(k8s.TerminatingPods(pods)), nil
+}
+
 func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
 	log := ulog.FromContext(ctx)
 	targetEsVersion, err := version.Parse(es.Spec.Version)
@@ -319,17 +327,31 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 		reason := fmt.Sprintf("Completing node upgrade: %s", reason)
 		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
+
+	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return results.WithError(err)
+	}
+	// Also make sure that when cleaning up node shutdowns we don't remove shutdown records for terminating Pods.
+	// The expectation mechanism covers planned spec changes for Pods. However, Pods might also be deleted due to external factors
+	// like Kubernetes node upgrades or manual admin intervention. We orchestrate node shutdown in these cases via a pre-stop hook
+	// and don't want to interrupt that process until it completes. This a best-effort attempt as observation of shutdown records in
+	// Elasticsearch and Pod deletion might not be in sync due to cache lag.
+	terminating, err := terminatingPodNames(d.Client, statefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
 	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
 	// in Elasticsearch for example for indices with `auto_expand_replicas` setting.
 	if supportsNodeShutdown(esClient.Version()) {
 		// clear all shutdowns of type restart that have completed
-		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies, nodeShutdown.OnlyNodesInCluster))
-	}
-
-	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
-	if err != nil {
-		return results.WithError(err)
+		results = results.WithError(nodeShutdown.Clear(ctx,
+			esclient.ShutdownComplete.Applies,
+			nodeShutdown.OnlyNodesInCluster,
+			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+		))
 	}
 
 	// Make sure all nodes scheduled for upgrade are back into the cluster.
@@ -352,7 +374,10 @@ func (d *defaultDriver) maybeCompleteNodeUpgrades(
 	if supportsNodeShutdown(esClient.Version()) {
 		// clear all shutdowns of type restart that have completed including those where the node is no longer in the cluster
 		// or node state was lost due to an external event
-		results = results.WithError(nodeShutdown.Clear(ctx, esclient.ShutdownComplete.Applies))
+		results = results.WithError(nodeShutdown.Clear(ctx,
+			esclient.ShutdownComplete.Applies,
+			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+		))
 	}
 	return results
 }
@@ -414,7 +439,7 @@ func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	}
 	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
 	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
-	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)))
 }
 
 func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {

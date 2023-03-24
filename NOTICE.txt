@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.13.0
-Time    : 2023-01-20T18:47:56Z
+Version : v0.14.0
+Time    : 2023-03-15T20:00:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.13.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.14.0/LICENSE:
 
 
                                  Apache License
@@ -2037,11 +2037,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/imdario/mergo
-Version : v0.3.13
-Time    : 2022-05-25T20:08:08Z
+Version : v0.3.14
+Time    : 2023-03-15T22:59:33Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.13/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.14/LICENSE:
 
 Copyright (c) 2013 Dario Castañé. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -3758,11 +3758,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.2.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/automaxprocs
-Version : v1.5.1
-Time    : 2022-04-06T15:21:28Z
+Version : v1.5.2
+Time    : 2023-03-18T02:07:48Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.uber.org/automaxprocs@v1.5.2/LICENSE:
 
 Copyright (c) 2017 Uber Technologies, Inc.
 
@@ -3949,11 +3949,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.26.2
-Time    : 2023-03-01T01:15:59Z
+Version : v0.26.3
+Time    : 2023-03-17T20:37:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.26.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.26.3/LICENSE:
 
 
                                  Apache License
@@ -4161,11 +4161,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.26.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.26.2
+Version : v0.26.3
 Time    : 2023-02-15T10:21:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.26.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.26.3/LICENSE:
 
 
                                  Apache License
@@ -4373,11 +4373,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.26.2/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.26.2
-Time    : 2023-03-01T01:34:20Z
+Version : v0.26.3
+Time    : 2023-03-17T21:01:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.26.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.26.3/LICENSE:
 
 
                                  Apache License
@@ -5850,11 +5850,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/containerd/stargz-snapshotter/estargz
-Version : v0.12.1
-Time    : 2022-10-14T10:22:02Z
+Version : v0.14.3
+Time    : 2023-03-08T08:28:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.12.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snapshotter/estargz@v0.14.3/LICENSE:
 
 
                                  Apache License
@@ -6062,11 +6062,11 @@ Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snaps
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v20.10.20+incompatible
-Time    : 2022-10-18T17:43:24Z
+Version : v23.0.1+incompatible
+Time    : 2023-02-09T19:15:59Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v20.10.20+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v23.0.1+incompatible/LICENSE:
 
 
                                  Apache License
@@ -6475,11 +6475,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v20.10.20+incompatible
-Time    : 2022-10-18T17:26:23Z
+Version : v23.0.1+incompatible
+Time    : 2023-02-09T19:11:28Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v20.10.20+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.1+incompatible/LICENSE:
 
 
                                  Apache License
@@ -8669,11 +8669,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : github.com/golang/protobuf
-Version : v1.5.2
-Time    : 2021-03-29T18:20:59Z
+Version : v1.5.3
+Time    : 2021-09-16T00:37:10Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/golang/protobuf@v1.5.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/golang/protobuf@v1.5.3/LICENSE:
 
 Copyright 2010 The Go Authors.  All rights reserved.
 
@@ -12171,11 +12171,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/inconshreveable/mousetrap
-Version : v1.0.1
-Time    : 2022-08-07T15:49:23Z
+Version : v1.1.0
+Time    : 2022-11-27T22:01:53Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/inconshreveable/mousetrap@v1.0.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/inconshreveable/mousetrap@v1.1.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -12686,11 +12686,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.15.11
-Time    : 2022-09-25T16:41:21Z
+Version : v1.16.0
+Time    : 2023-02-26T13:36:42Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.15.11/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.16.0/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -15768,11 +15768,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.8.0
-Time    : 2023-02-02T20:50:06Z
+Version : v0.9.0
+Time    : 2023-02-27T21:59:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.8.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.9.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15842,11 +15842,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.5.0
-Time    : 2023-02-08T21:58:22Z
+Version : v0.6.0
+Time    : 2023-03-05T04:01:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.6.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -16027,11 +16027,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.6.0
-Time    : 2023-02-08T22:43:44Z
+Version : v0.7.0
+Time    : 2023-03-07T14:48:13Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.7.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -16488,11 +16488,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/appengine@v1.6.7
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.28.1
-Time    : 2022-07-28T12:39:19Z
+Version : v1.29.1
+Time    : 2023-03-14T09:20:35Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.29.1/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 

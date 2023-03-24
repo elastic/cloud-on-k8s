@@ -79,13 +79,13 @@ func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
 
 // ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
 // shutdowns.
-func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
+func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	// cancel all ongoing shutdowns for the current shutdown type
 	if len(leavingNodes) == 0 {
-		return ns.Clear(ctx)
+		return ns.Clear(ctx, ns.OnlyNonTerminatingNodes(terminatingNodes))
 	}
 
 	for _, node := range leavingNodes {
@@ -155,6 +155,17 @@ type ClearCondition func(esclient.NodeShutdown) bool
 // OnlyNodesInCluster is a predicate to limit the shutdowns to delete to nodes that are currently in the cluster.
 func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
 	return ns.nodeInCluster(s.NodeID)
+}
+
+// OnlyNonTerminatingNodes is a function to generate a predicate to delete only those shutdowns which don't affect currently terminating Pods/ES nodes.
+func (ns *NodeShutdown) OnlyNonTerminatingNodes(terminatingNodes []string) func(s esclient.NodeShutdown) bool {
+	terminatingNodeIDs := map[string]bool{}
+	for _, n := range terminatingNodes {
+		terminatingNodeIDs[ns.podToNodeID[n]] = true
+	}
+	return func(s esclient.NodeShutdown) bool {
+		return !terminatingNodeIDs[s.NodeID]
+	}
 }
 
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
