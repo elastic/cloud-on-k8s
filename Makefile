@@ -534,7 +534,6 @@ e2e-run-actual:
 		--test-timeout=$(TEST_TIMEOUT) \
 		--pipeline=$(PIPELINE) \
 		--build-number=$(BUILD_NUMBER) \
-		--job-name=$(JOB_NAME) \
 		--provider=$(E2E_PROVIDER) \
 		--clusterName=$(CLUSTER_NAME) \
 		--monitoring-secrets=$(MONITORING_SECRETS) \
