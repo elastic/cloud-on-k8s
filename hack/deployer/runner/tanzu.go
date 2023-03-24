@@ -187,11 +187,7 @@ func (t *TanzuDriver) ensureWorkDir() error {
 	if workDir == "" {
 		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
 		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
-		var err error
-		workDir, err = os.MkdirTemp(os.Getenv("HOME"), t.plan.ClusterName)
-		if err != nil {
-			return err
-		}
+		workDir := filepath.Join(os.Getenv("HOME"), t.plan.ClusterName)
 		log.Printf("Defaulting WorkDir: %s", workDir)
 	}
 
