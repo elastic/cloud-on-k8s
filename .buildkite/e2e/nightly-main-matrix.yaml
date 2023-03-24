@@ -72,10 +72,6 @@
   fixed:
     E2E_PROVIDER: aks
 
-# Disable Tanzu until the install state directory persistence bug is fixed (https://github.com/elastic/cloud-on-k8s/issues/6576)
-# to be able to separate the cluster creation from the tests runner execution. 
-# Otherwise, the tests runner fails because the vault token has expired because the cluster creation takes longer than the token lifetime.
-
-# - label: tanzu
-#   fixed:
-#     E2E_PROVIDER: tanzu
+- label: tanzu
+  fixed:
+    E2E_PROVIDER: tanzu
