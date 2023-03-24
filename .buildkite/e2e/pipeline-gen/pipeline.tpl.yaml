@@ -18,7 +18,7 @@ steps:
 
     commands:
       {{- range $key, $val := $test.Env }}
-      - echo "{{$key}}={{$val}}" >> .env
+      - echo "{{$key}}={{ quotesIfSpaces $val }}" >> .env
       {{- end }}
 
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -59,7 +59,7 @@ steps:
 
     commands:
       {{- range $key, $val := $test.Env }}
-      - echo "{{$key}}={{$val}}" >> .env
+      - echo "{{$key}}={{ quotesIfSpaces $val }}" >> .env
       {{- end }}
 
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -116,7 +116,7 @@ steps:
 
         commands:
           {{- range $key, $val := $test.Env }}
-          - echo "{{$key}}={{$val}}" >> .env
+          - echo "{{$key}}={{ quotesIfSpaces $val }}" >> .env
           {{- end }}
           - .buildkite/scripts/test/set-deployer-config.sh
 

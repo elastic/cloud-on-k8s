@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"html/template"
 	"io"
 	"math/rand"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"text/template"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -153,7 +153,14 @@ func main() {
 		return
 	}
 
-	tpl, err := template.New("pipeline.yaml").Parse(pipelineTemplate)
+	tpl, err := template.New("pipeline.yaml").Funcs(template.FuncMap{
+		"quotesIfSpaces": func(val string) string {
+			if strings.Contains(val, " ") {
+				return fmt.Sprintf(`\"%s\"`, val)
+			}
+			return val
+		},
+	}).Parse(pipelineTemplate)
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
