@@ -1,0 +1,79 @@
+steps:
+
+  - group: "e2e-tests"
+    steps:
+
+      # for commits in all branches (PR, release) except main
+      - label: ":buildkite:"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+        if: |
+            ( build.branch != "main" )
+            && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this/
+            && ( build.message !~ /^buildkite test .*e2e.*/ || build.message !~ /^buildkite test .*release.*/ )
+        command: |
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
+          - label: "kind/TestSmoke"
+            fixed:
+              E2E_PROVIDER: kind
+              TESTS_MATCH: TestSmoke
+          DEF
+
+      # for PR comment
+      - label: ":buildkite:"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+        if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this/
+        command: |
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          args="\$(sed "s|.*this ||" <<< \$GITHUB_PR_TRIGGER_COMMENT)"
+          ./pipeline-gen \$args | buildkite-agent pipeline upload
+
+      # for commits in main
+      - label: ":buildkite: e2e"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+        if: |
+          ( build.branch == "main" && build.source == "webhook" )
+          || build.message =~ /^buildkite test .*e2e\/main.*/
+        command: |
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
+          - label: gke/all
+            fixed:
+              E2E_PROVIDER: gke
+          DEF
+
+      # for tags
+      # TODO: run TestFullStackUpgrade when ready
+      - label: ":buildkite: e2e"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+        if: |
+            build.tag != null
+            || build.message =~ /^buildkite test .*release.*/
+        command: |
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
+          - label: gke/TestSmoke
+            fixed:
+              E2E_PROVIDER: gke
+              TESTS_MATCH: TestSmoke
+          DEF
+
+      # for nightly builds from main
+      - label: ":buildkite: e2e"
+        depends_on:
+          - "operator-image-build"
+          - "e2e-tests-image-build"
+        if: |
+          ( build.branch == "main" && build.source == "schedule" )
+          || build.message =~ /^buildkite test .*e2e\/all.*/
+        command: |
+          cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+          cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
