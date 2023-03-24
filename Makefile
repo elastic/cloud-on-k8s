@@ -517,9 +517,6 @@ e2e-buildah: go-generate buildah-login
 		$(E2E_IMG)
 
 e2e-run: go-generate
-	.buildkite/scripts/common/run-e2e-tests.sh
-
-e2e-run-actual:
 	go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
