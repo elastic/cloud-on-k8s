@@ -25,13 +25,16 @@ var once sync.Once
 // is set (not empty), the google credentials file exists, and the eck-diagnostics binary exists
 // then we should be able to run diagnostics.
 func canRunDiagnostics(ctx Context) bool {
+	// If we don't have credentials to write to bucket, then we can't run diagnostics
+	// after e2e test failures, as we upload the zip file to a bucket.
 	if _, err := os.Stat(ctx.GCPCredentialsPath); err != nil && errors.Is(err, fs.ErrNotExist) {
 		return false
 	} else if err != nil {
 		log.Error(err, "while checking for existence of %s", ctx.GCPCredentialsPath)
 		return false
 	}
-	if ctx.JobName == "" {
+	// If we're not in CI, then don't run diagnostics on e2e test failures.
+	if os.Getenv("CI") == "" {
 		return false
 	}
 	if _, err := exec.LookPath("eck-diagnostics"); err != nil {
@@ -67,6 +70,6 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	fullTestName := fmt.Sprintf("%s-%s-%s", testCtx.ClusterName, testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
-	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostic-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
+	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostics-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
 	run(ctx, "gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://%s/jobs/%s/", testCtx.GSBucketName, testCtx.ClusterName))
 }

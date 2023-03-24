@@ -37,7 +37,6 @@ type runFlags struct {
 	monitoringSecrets      string
 	pipeline               string
 	buildNumber            string
-	jobName                string
 	provider               string
 	clusterName            string
 	operatorReplicas       int
@@ -103,7 +102,6 @@ func Command() *cobra.Command {
 	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 30*time.Minute, "Timeout before failing a test")
 	cmd.Flags().StringVar(&flags.pipeline, "pipeline", "", "E2E test pipeline name")
 	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
-	cmd.Flags().StringVar(&flags.jobName, "job-name", "", "E2E test job name")
 	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
 	cmd.Flags().StringVar(&flags.clusterName, "clusterName", "", "E2E test Kubernetes cluster name")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")

@@ -182,7 +182,6 @@ func (h *helper) initTestContext() error {
 		TestTimeout:           h.testTimeout,
 		Pipeline:              h.pipeline,
 		BuildNumber:           h.buildNumber,
-		JobName:               h.jobName,
 		Provider:              h.provider,
 		ClusterName:           h.clusterName,
 		KubernetesVersion:     getKubernetesVersion(h),
@@ -264,7 +263,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	// Only initialize gcp credentials when running in CI
-	if h.jobName != "" {
+	if os.Getenv("CI") != "" {
 		b, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          "gcp-credentials.json",
 			Path:          "ci-gcp-k8s-operator",
