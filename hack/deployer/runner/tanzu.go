@@ -429,15 +429,16 @@ func (t TanzuDriver) deleteStorageContainer() error {
 func (t *TanzuDriver) persistInstallerState() error {
 	log.Println("Persisting installer state to Azure storage container")
 	return azure.Cmd("storage", "azcopy", "blob", "upload", "--recursive",
-		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount, "-s", t.installerStateDirBasename).
+		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
+		"-s", fmt.Sprintf("'%s/*'", t.installerStateDirBasename)).
 		WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) restoreInstallerState() error {
 	log.Println("Restoring installer state from storage container if any")
-	return azure.Cmd("storage", "azcopy", "blob", "download",
+	return azure.Cmd("storage", "azcopy", "blob", "download", "--recursive",
 		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
-		"-s", "'*'", "-d", t.installerStateDirPath, "--recursive").
+		"-s", "'*'", "-d", t.installerStateDirBasename).
 		WithoutStreaming().Run()
 }
 
