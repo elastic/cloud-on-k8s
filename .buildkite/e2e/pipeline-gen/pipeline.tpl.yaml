@@ -33,6 +33,9 @@ steps:
     agents:
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      {{- if eq $test.Provider "kind" }}
+      machineType: "{{ .KindAgentsMachineType }}"
+      {{- end }}
     {{- end }}
 
   {{- end }}
@@ -78,6 +81,9 @@ steps:
       {{- if $test.Dind }}
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      {{- if eq $test.Provider "kind" }}
+      machineType: "{{ $.KindAgentsMachineType }}"
+      {{- end }}
       {{- else }}
       memory: "4G"
       {{- end }}
