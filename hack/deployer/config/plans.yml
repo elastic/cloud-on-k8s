@@ -3,7 +3,7 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.22
+  kubernetesVersion: 1.25
   machineType: n1-standard-8
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -18,7 +18,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.22
+  kubernetesVersion: 1.25
   machineType: n1-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -156,24 +156,24 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.15.0
+  clientVersion: 0.17.0
   provider: kind
   kubernetesVersion: 1.22.13
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959
+    nodeImage: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.15.0
+  clientVersion: 0.17.0
   provider: kind
   kubernetesVersion: 1.22.13
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.22.13@sha256:4904eda4d6e64b402169797805b8ec01f50133960ad6c19af45173a27eadf959
+    nodeImage: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
     ipFamily: ipv4
 - id: tanzu-ci
   operation: create
