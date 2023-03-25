@@ -42,6 +42,8 @@ const (
 	EnvVarGoTags               = "GO_TAGS"
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
+
+	KindAgentsMachineType = "n1-standard-16"
 )
 
 var (
@@ -155,8 +157,9 @@ func main() {
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"Cleanup": cleanup,
-		"Tests":   tests,
+		"Cleanup":               cleanup,
+		"Tests":                 tests,
+		"KindAgentsMachineType": KindAgentsMachineType,
 	})
 	handleErr("Failed to generate pipeline", err)
 }
@@ -208,9 +211,10 @@ type Group struct {
 // Env corresponds to the environment variables to run an e2e tests suite
 type Env map[string]string
 
-// TestsSuiteRun is a run the e2e tests suite
+// TestsSuiteRun is a run of the e2e tests suite
 type TestsSuiteRun struct {
 	Name             string
+	Provider         string
 	SlugName         string
 	Env              Env
 	Dind             bool
@@ -239,6 +243,7 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 	}
 	t := TestsSuiteRun{
 		Name:             name,
+		Provider:         provider,
 		SlugName:         slugName,
 		Dind:             slices.Contains(providersInDocker, provider),
 		Cleanup:          !slices.Contains(providersNoCleanup, provider),
