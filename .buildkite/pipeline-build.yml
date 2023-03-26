@@ -43,6 +43,7 @@ steps:
         if: | 
           ( build.branch == "main" && build.source == "schedule" )
           || build.message =~ /^buildkite test .*dev-build.*/
+          || build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /s=[0-9\.]*-SNAPSHOT/
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
