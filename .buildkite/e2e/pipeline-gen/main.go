@@ -227,17 +227,18 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 	resolveShortcuts(mixed)
 
 	// find k8s provider
-	provider, ok := fixed[EnvVarProvider]
+	provider, ok := lookupEnv(EnvVarProvider, fixed, mixed)
 	if !ok {
-		provider, ok = mixed[EnvVarProvider]
-		if !ok {
-			return TestsSuiteRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
-		}
+		return TestsSuiteRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
 	}
+
+	// when the variable to build the operator with a specific public license key is used,
+	// it involves using an operator image suffixed with the value of this variable
+	operatorImageSuffix, _ := lookupEnv(EnvVarBuildLicensePubkey, fixed, mixed)
 
 	name := getName(groupLabel, provider, mixedLen, mixed)
 	slugName := getSlugName(name)
-	env, err := commonTestEnv(name, slugName)
+	env, err := commonTestEnv(name, slugName, operatorImageSuffix)
 	if err != nil {
 		return TestsSuiteRun{}, err
 	}
@@ -260,6 +261,18 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 	}
 
 	return t, nil
+}
+
+func lookupEnv(envVarName string, fixed Env, mixed Env) (string, bool) {
+	// start searching in mixed env vars that can override fixed env vars
+	envVar, ok := mixed[envVarName]
+	if !ok {
+		envVar, ok = fixed[envVarName]
+		if !ok {
+			return "", false
+		}
+	}
+	return envVar, true
 }
 
 func resolveShortcuts(e Env) {
@@ -335,7 +348,7 @@ func getSlugName(name string) string {
 	return fmt.Sprintf("%s-%s", name, string(id))
 }
 
-func commonTestEnv(name string, slugName string) (map[string]string, error) {
+func commonTestEnv(name string, slugName string, operatorImageSuffix string) (map[string]string, error) {
 	buildNumber, ok := os.LookupEnv(EnvVarBuildkiteBuildNumber)
 	if !ok {
 		buildNumber = "0"
@@ -345,16 +358,12 @@ func commonTestEnv(name string, slugName string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if operatorImageSuffix != "" {
+		operatorImage = fmt.Sprintf("%s-%s", operatorImage, operatorImageSuffix)
+	}
 	e2eImage, err := getMetadata("e2e-image")
 	if err != nil {
 		return nil, err
-	}
-
-	// when the variable to build the operator with a specific public license key is used,
-	// it involves using an operator image suffixed with the value of this variable
-	operatorImageSuffix := os.Getenv(EnvVarBuildLicensePubkey)
-	if operatorImageSuffix != "" {
-		operatorImage = fmt.Sprintf("%s-%s", operatorImage, operatorImageSuffix)
 	}
 
 	env := map[string]string{
