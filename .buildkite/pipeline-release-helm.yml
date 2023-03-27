@@ -14,6 +14,7 @@ steps:
           || build.message == "release eck-operator helm charts"
         depends_on:
           - "build-helm-releaser-tool"
+          - "operator-image-build"
         key: "eck-operator-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
@@ -28,6 +29,7 @@ steps:
           || build.message == "release eck-resources helm charts"
         depends_on:
           - "build-helm-releaser-tool"
+          - "operator-image-build"
         key: "eck-resources-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
