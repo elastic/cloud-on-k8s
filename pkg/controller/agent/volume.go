@@ -21,12 +21,6 @@ const (
 )
 
 var (
-	hostPathVolumeInitContainerCommand = []string{
-		"/usr/bin/env",
-		"bash",
-		"-c",
-		permissionsScript(),
-	}
 	hostPathVolumeInitContainerResources = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("128Mi"),
@@ -39,11 +33,10 @@ var (
 	}
 )
 
-// if volume doesn't containe emptydir
-// and Version is above 7.15
-// and not running as root....
-// TODO WTF ABOUT OPENSHIFT?
-// add an initContainer that does
+// maybeAgentInitContainerForHostpathVolume if the Elastic Agent spec volume
+// doesn't contain emptyDir and version is above 7.15 and the Agent container
+// is not running as root add an initContainer that ensures that the host
+// volume's permissions are sufficient for the Agent to maintain state.
 func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v semver.Version) (initContainers []corev1.Container) {
 	// Only add initContainer to chown hostpath data volume for Agent > 7.15
 	if !v.GTE(version.MinFor(7, 15, 0)) {
@@ -55,10 +48,10 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 		image = container.ImageRepository(container.AgentImage, spec.Version)
 	}
 
-	if !dataVolumeIsEmptyDir(spec) && !runningAsRoot(spec) {
+	if !dataVolumeEmptyDir(spec) && !runningAsRoot(spec) {
 		initContainers = append(initContainers, corev1.Container{
 			Image:   image,
-			Command: hostPathVolumeInitContainerCommand,
+			Command: hostPathVolumeInitContainerCommand(),
 			Name:    hostPathVolumeInitContainerName,
 			SecurityContext: &corev1.SecurityContext{
 				RunAsUser: pointer.Int64(0),
@@ -76,26 +69,28 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 	return initContainers
 }
 
-func permissionsScript() string {
-	return `#!/usr/bin/env bash
+// hostPathVolumeInitContainerCommand returns the container command
+// for maintaining permissions for Elastic Agent when not running as root.
+func hostPathVolumeInitContainerCommand() []string {
+	return []string{
+		"/usr/bin/env",
+		"bash",
+		"-c",
+		`#!/usr/bin/env bash
 set -e
-find /usr/share/elastic-agent -ls
 if [[ -d /usr/share/elastic-agent/state ]]; then
-  echo "Adjusting g+rw of /usr/share/elastic-agent/state"
   chmod g+rw /usr/share/elastic-agent/state
-  echo "Adjusting group ownership of /usr/share/elastic-agent/state"
   chgrp 1000 /usr/share/elastic-agent/state
   if [ -n "$(ls -A /usr/share/elastic-agent/state 2>/dev/null)" ]; then
-    echo "Adjusting group ownership of /usr/share/elastic-agent/state/*"
     chgrp 1000 /usr/share/elastic-agent/state/*
-    echo "Adjusting g+rw of /usr/share/elastic-agent/state/*"
     chmod g+rw /usr/share/elastic-agent/state/*
   fi
 fi
-`
+`}
 }
 
-// Wonder if this is right in openshift?
+// runningAsRoot will return true if either the Daemonset or Deployment for
+// Elastic Agent has a security context set where the container will run as root.
 func runningAsRoot(spec *agentv1alpha1.AgentSpec) bool {
 	if spec.DaemonSet != nil {
 		templateSpec := spec.DaemonSet.PodTemplate.Spec
@@ -116,6 +111,8 @@ func runningAsRoot(spec *agentv1alpha1.AgentSpec) bool {
 	return false
 }
 
+// containerRunningAsUser0 will return true if the Agent container
+// has its pod security context set to run as root.
 func containerRunningAsUser0(spec corev1.PodSpec) bool {
 	for _, container := range spec.Containers {
 		if container.Name == "agent" {
@@ -131,7 +128,9 @@ func containerRunningAsUser0(spec corev1.PodSpec) bool {
 	return false
 }
 
-func dataVolumeIsEmptyDir(spec *agentv1alpha1.AgentSpec) bool {
+// dataVolumeEmptyDir will return true if either the Daemonset or Deployment for
+// Elastic Agent has it's Agent volume configured for EmptyDir.
+func dataVolumeEmptyDir(spec *agentv1alpha1.AgentSpec) bool {
 	if spec.DaemonSet != nil {
 		return volumeIsEmptyDir(spec.DaemonSet.PodTemplate.Spec.Volumes)
 	}
