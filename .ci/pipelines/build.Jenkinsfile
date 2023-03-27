@@ -85,27 +85,6 @@ pipeline {
     }
 
     post {
-        success {
-            script {
-                def operatorImage = sh(returnStdout: true, script: '.ci/setenvconfig build >/dev/null && make print-operator-image').trim()
-                if (isWeekday()) {
-                    build job: 'cloud-on-k8s-e2e-tests-eks-arm',
-                        parameters: [
-                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                            string(name: 'branch_specifier', value: GIT_COMMIT)
-                        ],
-                        wait: false
-                } else {
-
-                    build job: 'cloud-on-k8s-e2e-tests-ocp-all-but-latest',
-                        parameters: [
-                            string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage),
-                            string(name: 'branch_specifier', value: GIT_COMMIT)
-                        ],
-                        wait: false
-                }
-            }
-        }
         unsuccessful {
             script {
                 slackSend channel: '#eck',
