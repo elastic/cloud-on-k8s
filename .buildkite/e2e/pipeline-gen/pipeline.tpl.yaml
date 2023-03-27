@@ -17,10 +17,6 @@ steps:
       {{- end }}
 
     commands:
-      {{- range $key, $val := $test.Env }}
-      - echo "{{$key}}={{$val}}" >> .env
-      {{- end }}
-
       - .buildkite/scripts/test/set-deployer-config.sh
 
       {{- if $test.Dind }}
@@ -115,9 +111,6 @@ steps:
           DEPLOYER_OPERATION: delete
 
         commands:
-          {{- range $key, $val := $test.Env }}
-          - echo "{{$key}}={{$val}}" >> .env
-          {{- end }}
           - .buildkite/scripts/test/set-deployer-config.sh
 
         {{- if not $test.Dind }}
