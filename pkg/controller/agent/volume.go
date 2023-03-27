@@ -33,10 +33,13 @@ var (
 	}
 )
 
-// maybeAgentInitContainerForHostpathVolume if the Elastic Agent spec volume
-// doesn't contain emptyDir and version is above 7.15 and the Agent container
-// is not running as root add an initContainer that ensures that the host
-// volume's permissions are sufficient for the Agent to maintain state.
+// maybeAgentInitContainerForHostpathVolume will return an init container that ensures that the host
+// volume's permissions are sufficient for the Agent to maintain state if the Elastic Agent
+// has the following attributes:
+//
+// 1. Agent volume is not set to emptyDir.
+// 2. Agent version is above 7.15.
+// 3. Agent spec is not configured to run as root.
 func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v semver.Version) (initContainers []corev1.Container) {
 	// Only add initContainer to chown hostpath data volume for Agent > 7.15
 	if !v.GTE(version.MinFor(7, 15, 0)) {
