@@ -19,7 +19,7 @@ steps:
             fixed:
               E2E_PROVIDER: kind
               TESTS_MATCH: TestSmoke
-              E2E_TAGS: "e2e es kb"
+              E2E_TAGS: "e2e,es,kb"
           DEF
 
       # for PR comment
