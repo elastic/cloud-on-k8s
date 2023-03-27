@@ -1,7 +1,7 @@
 apiVersion: v2
 name: eck-kibana
 description: A Helm chart to deploy Kibana managed by the ECK Operator.
-kubeVersion: ">= 1.22.0-0"
+kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.4.0-SNAPSHOT
 sources:
