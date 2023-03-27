@@ -73,7 +73,7 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 }
 
 // hostPathVolumeInitContainerCommand returns the container command
-// for maintaining permissions for Elastic Agent when not running as root.
+// for maintaining permissions for Elastic Agent.
 func hostPathVolumeInitContainerCommand() []string {
 	return []string{
 		"/usr/bin/env",
