@@ -23,19 +23,29 @@ export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. The script will prompt for any missing environment variables that are required for a given job. See examples below. 
+Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [pipeline-gen](.buildkite/e2e/pipeline-gen) and[set-deployer-config.sh](.buildkite/scripts/test/set-deployer-config.sh). Example:
 
-Test the `cloud-on-k8s-e2e-tests-main` job:
 ```sh
-.ci/setenvconfig e2e/main
-make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci
-```
+> .buildkite/e2e/pipeline-gen/pipeline-gen -f p=gke,s=8.6.2 -e | tee .env
+E2E_JSON=true
+GO_TAGS=release
+export LICENSE_PUBKEY=/Users/krkr/dev/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+E2E_IMG=docker.elastic.co/eck-dev/eck-e2e-tests:2.8.0-SNAPSHOT-f01854af
+OPERATOR_IMAGE=docker.elastic.co/eck-dev/eck-operator-krkr:2.8.0-SNAPSHOT-f01854af
+E2E_PROVIDER=gke
+TEST_OPTS=-race
+TEST_LICENSE=/Users/krkr/dev/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+MONITORING_SECRETS=
+PIPELINE=e2e/gke
+CLUSTER_NAME=eck-e2e-gke-dzau-0
+BUILD_NUMBER=0
+E2E_STACK_VERSION=8.6.2
 
-Test the `cloud-on-k8s-e2e-tests-stack-versions` job:
-```sh
-JKS_PARAM_OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator:1.0.1-SNAPSHOT-2020-02-05-7892889 \
-  .ci/setenvconfig e2e/stack-versions eck-75-dev-e2e 7.5.1
-make -C .ci test-license.json license.key TARGET=ci-e2e ci
+> export $(cat .env | xargs)
+
+> .buildkite/scripts/test/set-deployer-config.sh
+
+> make -C .ci TARGET="run-deployer e2e-run" ci
 ```
 
 The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file. For more details about settings in this file, see [deployer](/hack/deployer/README.md#advanced-usage).
