@@ -17,7 +17,7 @@ Additional resources will be supported in future releases of this Helm Chart.
 
 ## Prerequisites
 
-- Kubernetes 1.20+
+- Kubernetes cluster
 - Elastic ECK Operator
 
 ## Installing the Chart
