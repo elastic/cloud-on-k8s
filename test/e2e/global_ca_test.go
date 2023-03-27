@@ -35,8 +35,9 @@ func TestGlobalCA(t *testing.T) {
 
 	// Skip if it is the resilience pipeline because the ChaosJob can prevent
 	// assert_operator_has_been_restarted_once_more to pass when it deletes an operator Pod
-	// exactly on restart.
-	if test.Ctx().Pipeline == "e2e/resilience" {
+	// exactly on restart. Also skip if running tests locally as the operator
+	// namespace, and the operator configmap is not present.
+	if test.Ctx().Pipeline == "e2e/resilience" || test.Ctx().Local {
 		t.Skip()
 	}
 

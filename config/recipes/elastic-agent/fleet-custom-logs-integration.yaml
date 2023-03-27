@@ -95,8 +95,6 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
-        securityContext:
-          runAsUser: 0
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -114,8 +112,6 @@ spec:
       spec:
         serviceAccountName: elastic-agent
         automountServiceAccountToken: true
-        securityContext:
-          runAsUser: 0
         containers:
         - name: agent
           volumeMounts:

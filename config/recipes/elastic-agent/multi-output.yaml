@@ -14,8 +14,6 @@ spec:
       spec:
         containers:
         - name: agent
-          securityContext:
-            runAsUser: 0
           volumeMounts:
           - mountPath: /var/log
             name: varlog
