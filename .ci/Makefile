@@ -41,7 +41,7 @@ print-ci-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
-ci: get-test-artifacts
+ci:
 	@ $(MAKE) DOCKER_CMD="make $(TARGET)" ci-internal
 
 ci-interactive:
@@ -73,28 +73,6 @@ ci-build-image:
 			$(ROOT_DIR) && \
 		../hack/docker.sh -l -p $(CI_IMAGE) \
 	)
-
-##  Test
-
-# all artifacts needed to run e2e tests
-get-test-artifacts: monitoring-secrets.json test-license.json license.key
-
-ifeq (dev,$(BUILD_LICENSE_PUBKEY))
-       SECRET_FIELD_PREFIX ?= dev-
-get-test-artifacts: dev-private.key
-endif
-
-# read a dev private key used to generate dev licenses against non-production builds
-dev-private.key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  ${VAULT_ROOT_PATH}/license | base64 --decode > dev-private.key
-
-# read some test licenses from Vault for E2E license tests
-test-license.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  ${VAULT_ROOT_PATH}/test-licenses > test-license.json
-
-# read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
-monitoring-secrets.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=data -format=json ${VAULT_ROOT_PATH}/monitoring-cluster > monitoring-secrets.json
 
 ##  Build
 
