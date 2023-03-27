@@ -1,0 +1,23 @@
+[[release-highlights-2.7.0]]
+== 2.7.0 release highlights
+
+[float]
+[id="{p}-270-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.7.0 of {n}. Check <<release-notes-2.7.0>> for the full list of changes.
+
+
+[float]
+[id="{p}-270-beats-external-ref"]
+=== Connect ECK-managed Beats to any Elasticsearch not-managed by ECK
+
+With the improvements made in this and multiple previous releases, ECK-managed Beats can connect to non-ECK-managed Elastisearch,
+such as a monitoring Elasticsearch cluster hosted on Elastic Cloud, via the `elasticsearchRef` mechanism .
+
+[float]
+[id="{p}-270-eck-es-helm-chart"]
+=== ECK Elasticsearch Helm chart
+
+The eck-elasticsearch Helm chart exposes now all functionality that is available through the ECK Elasticsearch manifest and
+an exhaustive list of the available configuration values has been added to the documentation.

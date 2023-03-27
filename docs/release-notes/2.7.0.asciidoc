@@ -1,0 +1,67 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.7.0]]
+== {n} version 2.7.0
+
+
+
+
+[[enhancement-2.7.0]]
+[float]
+=== Enhancements
+
+* Expose all fields below spec in eck-elasticsearch Helm chart {pull}6492[#6492] (issue: {issue}6451[#6451])
+* Allow optional SSL client authentication setting {pull}6440[#6440] (issue: {issue}6369[#6369])
+* Allow setting of volumeClaimDeletePolicy in eck-elasticsearch Helm chart {pull}6409[#6409] (issue: {issue}6249[#6249])
+* Update ECK OperatorHub capability level to L4 {pull}6318[#6318]
+* Support auth for custom users and roles in eck-elasticsearch Helm chart {pull}6306[#6306]
+* Do not overwrite deployment status when reconciling {pull}6302[#6302]
+* Move to vX.X.X tags for easier go module imports {pull}6298[#6298] (issue: {issue}6134[#6134])
+
+[[bug-2.7.0]]
+[float]
+=== Bug fixes
+
+* Add missing maps webhook, fix inconsistencies {pull}6489[#6489] (issues: {issue}6151[#6151], {issue}6152[#6152])
+* Fix handling of unmanaged esRef in Beats Stack Monitoring {pull}6482[#6482] (issues: {issue}5880[#5880], {issue}6230[#6230])
+* Fix EnterpriseSearch upgrade with TLS disabled {pull}6224[#6224] (issue: {issue}6185[#6185])
+
+[[docs-2.7.0]]
+[float]
+=== Documentation improvements
+
+* Add release notes and highlights for 2.7.0 {pull}6566[#6566]
+* Document FIPS image and OpenShift default namespace limitation {pull}6428[#6428] (issue: {issue}6332[#6332])
+* Adding an exhaustive list of Helm chart values to eck-elasticsearch Helm chart {pull}6336[#6336] (issue: {issue}6187[#6187])
+* Update Logstash recipe {pull}6333[#6333] (issues: {issue}6258[#6258], {issue}6328[#6328])
+* Fix yaml Kibana example in saml authentication doc {pull}6301[#6301]
+* Fix minor typo in upgrading-eck doc {pull}6198[#6198]
+
+[[nogroup-2.7.0]]
+[float]
+=== Misc
+
+* Update module github.com/prometheus/common to v0.42.0 {pull}6500[#6500]
+* Update docker.io/library/golang Docker tag to v1.20.2 {pull}6497[#6497]
+* Update module golang.org/x/crypto to v0.7.0 {pull}6486[#6486]
+* Update module golang.org/x/text to v0.8.0 {pull}6484[#6484]
+* Update module sigs.k8s.io/controller-runtime to v0.14.5 {pull}6474[#6474]
+* Update module k8s.io/klog/v2 to v2.90.1 {pull}6473[#6473]
+* Update k8s to v0.26.2 {pull}6466[#6466]
+* Update module github.com/stretchr/testify to v1.8.2 {pull}6456[#6456]
+* Update module github.com/gobuffalo/flect to v1.0.2 {pull}6455[#6455]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.7-1085 {pull}6438[#6438]
+* Update module github.com/hashicorp/vault/api to v1.9.0 {pull}6403[#6403]
+* Update github.com/dgryski/go-lttb digest to f8fc36c {pull}6387[#6387]
+* Make TestRedClusterCanBeModifiedByDisablingPredicate more resilient with retries {pull}6370[#6370] (issue: {issue}6184[#6184])
+* Update module sigs.k8s.io/controller-tools to v0.11.3 {pull}6366[#6366]
+* Update module github.com/google/go-containerregistry to v0.13.0 {pull}6353[#6353]
+* Update module github.com/spf13/viper to v1.15.0 {pull}6343[#6343]
+* Update module gopkg.in/yaml.v2 to v3 {pull}6252[#6252]
+* Update module github.com/hashicorp/golang-lru to v2 {pull}6251[#6251]
+* Update module github.com/go-test/deep to v1.1.0 {pull}6222[#6222]
+* Update module github.com/magiconair/properties to v1.8.7 {pull}6217[#6217]
+* Update module go.uber.org/zap to v1.24.0 {pull}6202[#6202]
+* Update module github.com/Masterminds/sprig/v3 to v3.2.3 {pull}6197[#6197]
+
