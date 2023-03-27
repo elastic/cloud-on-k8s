@@ -55,7 +55,7 @@
   fixed:
     E2E_PROVIDER: eks-arm
     E2E_TEST_ENV_TAGS: arch:arm
-    E2E_TAGS: "es kb apm ent beat agent"
+    E2E_TAGS: "es,kb,apm,ent,beat,agent"
     TEST_LICENSE: "" # disabled b/c https://github.com/elastic/elasticsearch/issues/68083
     MONITORING_SECRETS: "" # disabled b/c beats cannot run on ARM
 

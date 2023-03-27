@@ -22,8 +22,6 @@ set -eu
 
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
-# shellcheck disable=SC1091
-source "$ROOT/.env"
 
 write_stack_version_def() {
     # TODO
