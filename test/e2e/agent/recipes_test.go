@@ -91,7 +91,7 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 8, 0)) && v.GE(version.MinFor(8, 6, 0)) {
+	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 
@@ -140,7 +140,7 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 8, 0)) && v.GE(version.MinFor(8, 6, 0)) {
+	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 
@@ -173,7 +173,7 @@ func TestFleetAPMIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 8, 0)) && v.GE(version.MinFor(8, 6, 0)) {
+	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 

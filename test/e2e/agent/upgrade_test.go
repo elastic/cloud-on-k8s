@@ -26,10 +26,10 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 	dv := version.MustParse(dstVersion)
 
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if sv.LT(version.MinFor(8, 8, 0)) && sv.GE(version.MinFor(8, 6, 0)) {
+	if sv.LT(version.MinFor(8, 7, 0)) && sv.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
-	if dv.LT(version.MinFor(8, 8, 0)) && dv.GE(version.MinFor(8, 6, 0)) {
+	if dv.LT(version.MinFor(8, 7, 0)) && dv.GE(version.MinFor(8, 6, 0)) {
 		t.SkipNow()
 	}
 
