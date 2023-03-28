@@ -188,7 +188,7 @@ func TestBeatConfigRef(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	secretName := "fb-config" // nolint:gosec
+	secretName := "fb-config" //nolint:gosec
 	agentName := "configref-test-agent"
 	config := fmt.Sprintf(`
 name: %s

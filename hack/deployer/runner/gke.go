@@ -24,6 +24,7 @@ const (
 	GKEDriverID                     = "gke"
 	GKEVaultPath                    = "ci-gcp-k8s-operator"
 	GKEServiceAccountVaultFieldName = "service-account"
+	GoogleCloudProjectCtxKey        = "GCloudProject"
 	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
   clusterName: %s-dev-cluster
@@ -76,18 +77,18 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
-			"GCloudProject":     plan.Gke.GCloudProject,
-			"ClusterName":       plan.ClusterName,
-			"PVCPrefix":         pvcPrefix,
-			"PlanId":            plan.Id,
-			"Region":            plan.Gke.Region,
-			"KubernetesVersion": plan.KubernetesVersion,
-			"MachineType":       plan.MachineType,
-			"LocalSsdCount":     plan.Gke.LocalSsdCount,
-			"GcpScopes":         plan.Gke.GcpScopes,
-			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
-			"ClusterIPv4CIDR":   clusterIPv4CIDR,
-			"ServicesIPv4CIDR":  servicesIPv4CIDR,
+			GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
+			"ClusterName":            plan.ClusterName,
+			"PVCPrefix":              pvcPrefix,
+			"PlanId":                 plan.Id,
+			"Region":                 plan.Gke.Region,
+			"KubernetesVersion":      plan.KubernetesVersion,
+			"MachineType":            plan.MachineType,
+			"LocalSsdCount":          plan.Gke.LocalSsdCount,
+			"GcpScopes":              plan.Gke.GcpScopes,
+			"NodeCountPerZone":       plan.Gke.NodeCountPerZone,
+			"ClusterIPv4CIDR":        clusterIPv4CIDR,
+			"ServicesIPv4CIDR":       servicesIPv4CIDR,
 		},
 		vaultClient: c,
 	}, nil
@@ -96,7 +97,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 func (d *GKEDriver) Execute() error {
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
+		d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
 	); err != nil {
 		return err
 	}
@@ -311,11 +312,29 @@ func (d *GKEDriver) bindRoles() error {
 }
 
 func (d *GKEDriver) GetCredentials() error {
-	if err := authToGCP(
-		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, false, d.ctx["GCloudProject"],
-	); err != nil {
-		return err
+	log.Println("Verifying gcloud authentication...")
+	// --verbosity flag here disables warnings, and survey output.
+	out, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)" --verbosity error`).StdoutOnly().OutputList()
+	if err != nil {
+		return fmt.Errorf("while retrieving list of credentialed gcloud accounts: %w", err)
+	}
+	gcloudProjectInt, ok := d.ctx[GoogleCloudProjectCtxKey]
+	if !ok {
+		return fmt.Errorf("while retrieving google cloud project: missing key %s", GoogleCloudProjectCtxKey)
+	}
+	gCloudProject, ok := gcloudProjectInt.(string)
+	if !ok {
+		return fmt.Errorf("while retrieving google cloud project: key %s was not a string, was %T ", GoogleCloudProjectCtxKey, gcloudProjectInt)
+	}
+	// If there's no authenticated user, or the authenticated user doesn't exist in the configured project
+	// then we need to authenticate with what's within vault.
+	if len(out) == 0 || (len(out) > 0 && !strings.Contains(out[0], gCloudProject)) {
+		if err := authToGCP(
+			d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
+			d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
+		); err != nil {
+			return fmt.Errorf("while authenticating to GCP: %w", err)
+		}
 	}
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
@@ -370,9 +389,9 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
 			AsTemplate(map[string]interface{}{
-				"GCloudProject": d.plan.Gke.GCloudProject,
-				"Name":          name,
-				"Zone":          zone,
+				GoogleCloudProjectCtxKey: d.plan.Gke.GCloudProject,
+				"Name":                   name,
+				"Zone":                   zone,
 			}).
 			Run()
 		if err != nil {

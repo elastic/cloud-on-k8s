@@ -86,7 +86,7 @@ steps:
 
     artifact_paths:
       - tests-report/*.xml
-      - "eck-diagnostic-*.zip"
+      - "eck-diagnostic*.zip"
 
 {{- end }}
 
@@ -112,6 +112,7 @@ steps:
 
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
+          - .buildkite/scripts/common/cp-diagnostics.sh
 
         {{- if not $test.Dind }}
           - make run-deployer

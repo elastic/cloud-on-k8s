@@ -73,6 +73,13 @@ rules:
       - "pods/exec"
     verbs:
       - "create"
+  # to allow eck-diagnostics to get pod logs
+  - apiGroups:
+      - ""
+    resources:
+      - "pods/log"
+    verbs:
+      - "get"
   - apiGroups:
       - ""
     resources:
@@ -197,6 +204,19 @@ rules:
     resources:
       - elasticsearchautoscalers
       - elasticsearchautoscalers/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apm.k8s.elastic.co
+    resources:
+      - apmservers
+      - apmservers/status
     verbs:
       - get
       - list

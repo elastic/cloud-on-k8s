@@ -51,6 +51,7 @@ type runFlags struct {
 	deployChaosJob         bool
 	e2eTags                string
 	testEnvTags            []string
+	gsBucketName           string
 }
 
 var log logr.Logger
@@ -108,6 +109,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
 	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
+	cmd.Flags().StringVar(&flags.gsBucketName, "gs-bucket-name", "eck-e2e-buildkite-artifacts", "E2E test Google storage bucket name")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
