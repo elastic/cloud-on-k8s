@@ -161,7 +161,8 @@ if [ -f "{{.PreStopUserPasswordPath}}" ]; then
   PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
   BASIC_AUTH="-u {{.PreStopUserName}}:${PROBE_PASSWORD}"
 else
-  BASIC_AUTH=''
+  log "no API credentials available, will not attempt node shutdown orchestration from pre-stop hook"
+  delayed_exit
 fi
 
 ES_URL={{.ServiceURL}}
