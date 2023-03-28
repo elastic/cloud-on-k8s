@@ -2,15 +2,6 @@ steps:
   - group: build
     steps:
 
-      - label: ":docker: ci image"
-        command: make -C .ci ci-build-image
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-          machineType: "n1-standard-16"
-
-      - wait
-
       # multiarch dockerx build for !PR branch
       - label: ":docker: multiarch operator image"
         key: "operator-image-build"
