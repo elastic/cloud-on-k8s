@@ -219,7 +219,7 @@ func Test_runningAsRoot(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "daemonset with security context runAsUser 0 returns false",
+			name: "daemonset with security context runAsUser 0 returns true",
 			spec: withSecurityContext(agentDaemonsetFixture.Spec, &corev1.PodSecurityContext{
 				RunAsUser: pointer.Int64(0),
 			}),
