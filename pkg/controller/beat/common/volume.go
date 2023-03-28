@@ -109,19 +109,19 @@ if [[ -d %[1]s ]]; then
   chgrp 1000 %[1]s
   if [ -n "$(ls -A %[1]s 2>/dev/null)" ]; then
     # Beat is a bit different than Agent.
-	# It appears to maintain files in the root */data directory
-	# plus files in subdirectories such as
-	# */data/registry/filebeat/meta.json
-	# hence the need for recursive operations.
+    # It appears to maintain files in the root */data directory
+    # plus files in subdirectories such as
+    # */data/registry/filebeat/meta.json
+    # hence the need for recursive operations.
     chgrp -R 1000 %[1]s/*
     chmod -R g+rw %[1]s/*
-	# Beat requires files to be owned by it's UID, or it tries to update them
-	# Exiting: failed to open store 'filebeat': failed to update meta file permissions:
-	# chmod /usr/share/filebeat/data/registry/filebeat/meta.json: operation not permitted
+    # Beat requires files to be owned by it's UID, or it tries to update them
+    # Exiting: failed to open store 'filebeat': failed to update meta file permissions:
+    # chmod /usr/share/filebeat/data/registry/filebeat/meta.json: operation not permitted
     chown -R %[2]d %[1]s/*
-	# Also the keystore can only be read/writable by UID
-	# could not initialize the keystore: file ("/usr/share/filebeat/data/filebeat.keystore")
-	# can only be writable and readable by the owner but the permissions are "-rw-rw----"
+    # Also the keystore can only be read/writable by UID
+    # could not initialize the keystore: file ("/usr/share/filebeat/data/filebeat.keystore")
+    # can only be writable and readable by the owner but the permissions are "-rw-rw----"
     chmod 0600 %[1]s/*.keystore
   fi
 fi
