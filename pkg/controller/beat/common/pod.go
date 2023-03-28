@@ -188,6 +188,8 @@ func buildPodTemplate(
 		sideCars = append(sideCars, sideCar.Container)
 	}
 
+	initContainers = append(initContainers, maybeBeatInitContainerForHostpathVolume(params.Beat)...)
+
 	labels := maps.Merge(params.Beat.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
 
@@ -228,22 +230,35 @@ func removeLogToStderrOption(container *corev1.Container) {
 	}
 }
 
+// runningAsRoot will return true if either the Daemonset or Deployment for
+// Elastic Beat has a security context set where the container will run as root.
 func runningAsRoot(beat beatv1beta1.Beat) bool {
 	if beat.Spec.DaemonSet != nil {
-		for _, container := range beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
-			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
-				if *container.SecurityContext.RunAsUser == 0 {
-					return true
-				}
-			}
+		templateSpec := beat.Spec.DaemonSet.PodTemplate.Spec
+		if templateSpec.SecurityContext != nil &&
+			templateSpec.SecurityContext.RunAsUser != nil && *templateSpec.SecurityContext.RunAsUser == 0 {
+			return true
 		}
+		return containerRunningAsUser0(templateSpec)
 	}
 	if beat.Spec.Deployment != nil {
-		for _, container := range beat.Spec.Deployment.PodTemplate.Spec.Containers {
-			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
-				if *container.SecurityContext.RunAsUser == 0 {
-					return true
-				}
+		templateSpec := beat.Spec.Deployment.PodTemplate.Spec
+		if templateSpec.SecurityContext != nil &&
+			templateSpec.SecurityContext.RunAsUser != nil && *templateSpec.SecurityContext.RunAsUser == 0 {
+			return true
+		}
+		return containerRunningAsUser0(templateSpec)
+	}
+	return false
+}
+
+// containerRunningAsUser0 will return true if the Beat container
+// has its pod security context set to run as root.
+func containerRunningAsUser0(spec corev1.PodSpec) bool {
+	for _, container := range spec.Containers {
+		if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+			if *container.SecurityContext.RunAsUser == 0 {
+				return true
 			}
 		}
 	}
