@@ -66,12 +66,10 @@ steps:
       {{- end }}
 
       {{- if $test.Dind }}
-      - make -C .ci TARGET="{{ $deployerCommand }} e2e-run e2e-generate-xml" ci
+      - make -C .ci TARGET="{{ $deployerCommand }} e2e-run" ci
       {{- else }}
-      - make {{ $deployerCommand }} e2e-run e2e-generate-xml
+      - make {{ $deployerCommand }} e2e-run
       {{- end }}
-
-      - mkdir tests-report && mv e2e-tests.xml tests-report/e2e-tests-{{ $test.SlugName }}.xml
 
     agents:
       {{- if $test.Dind }}
@@ -123,6 +121,17 @@ steps:
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         {{- end }}
 
+
+
     {{- end }}
 {{- end }}
 
+  - wait: ~
+    continue_on_failure: true
+
+  - label: aggregate tests-results
+    commands:
+      - buildkite artifact download tests-reports/*.json
+      - .buildkite/scripts/test/generate-tests-reports.sh
+
+    
