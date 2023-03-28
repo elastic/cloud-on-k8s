@@ -2,11 +2,6 @@
 
 set -euo pipefail
 
-ROOT=$(dirname "$0")/../../..
-
-# shellcheck disable=SC1091
-source "$ROOT/.env"
-
 # Triggered by buildkite in cleanup step, make sure that diagnostics are copied from bucket
 # to local Buildkite agent to be uploaded as artifacts.
 main() {
