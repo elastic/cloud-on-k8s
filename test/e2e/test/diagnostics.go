@@ -63,7 +63,7 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	})
 	otherNS := append([]string{testCtx.E2ENamespace}, testCtx.Operator.ManagedNamespaces...)
 	// The following appends the clustername, test name, and it's sub-test names together with a '-'.
-	// The cluster name is added tot he eck-diagnostics file name to avoid conflicts at the last step
+	// The cluster name is added to the eck-diagnostics file name to avoid conflicts at the last step
 	// of the e2e tests where all diagnostics are downloaded locally to the same directory, and uploaded to buildkite as artifacts.
 	// Example: For TestAutoscalingLegacy/Secrets_should_eventually_be_created in cluster eck-bk-e2e-pr-2373:
 	// testName: TestAutoscalingLegacy, step.Name: Secrets_should_eventually_be_created, clustername: eck-bk-e2e-pr-2373
