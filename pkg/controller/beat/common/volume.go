@@ -104,22 +104,29 @@ func hostPathVolumeInitContainerCommand(mountPath string, euid int64) []string {
 		"-c",
 		fmt.Sprintf(`#!/usr/bin/env bash
 set -e
-find %[1]s -ls
 if [[ -d %[1]s ]]; then
   chmod g+rw %[1]s
   chgrp 1000 %[1]s
   if [ -n "$(ls -A %[1]s 2>/dev/null)" ]; then
+    # Beat is a bit different than Agent.
+	# It appears to maintain files in the root */data directory
+	# plus files in subdirectories such as
+	# */data/registry/filebeat/meta.json
+	# hence the need for recursive operations.
     chgrp -R 1000 %[1]s/*
     chmod -R g+rw %[1]s/*
-	chown -R %[2]d %[1]s/*
-	chmod 0600 %[1]s/*.keystore
+    chown -R %[2]d %[1]s/*
+	# Also the keystore can only be read/writable by UID
+	# could not initialize the keystore: file ("/usr/share/filebeat/data/filebeat.keystore")
+	# can only be writable and readable by the owner but the permissions are "-rw-rw----"
+    chmod 0600 %[1]s/*.keystore
   fi
 fi
 `, mountPath, euid)}
 }
 
 // dataVolumeEmptyDir will return true if either the Daemonset or Deployment for
-// Elastic Beathas it's Beat volume configured for EmptyDir.
+// Elastic Beats has it's Beat volume configured for EmptyDir.
 func dataVolumeEmptyDir(spec beatv1beta1.BeatSpec) bool {
 	if spec.DaemonSet != nil {
 		return volumeIsEmptyDir(spec.DaemonSet.PodTemplate.Spec.Volumes)
