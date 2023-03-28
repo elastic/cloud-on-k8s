@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/blang/semver/v4"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
