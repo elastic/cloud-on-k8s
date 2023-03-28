@@ -35,6 +35,7 @@ if [[ ${BUILD_ID:-} != "" ]]; then
   VAULT_ROOT_PATH="secret/devops-ci/cloud-on-k8s"
 
   # BUILD_NUMBER is set by Jenkins
+  # JOB_NAME is set by Jenkins
   # GCLOUD_PROJECT, VAULT_ROLE_ID and VAULT_SECRET_ID are set in the Jenkins pipeline definitions
 
 # Buildkite
@@ -47,6 +48,7 @@ elif [[ ${BUILDKITE_BUILD_ID:-} != "" ]]; then
   GCLOUD_PROJECT=$(vault read -field=gcloud_project ${VAULT_ROOT_PATH}/k8s)
 
   BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}
+  JOB_NAME=${BUILDKITE_PIPELINE_NAME}
 
   JKS_PARAM_OPERATOR_IMAGE=$(buildkite-agent meta-data get operator-image)
 
@@ -296,6 +298,7 @@ MONITORING_SECRETS=${PROJECT_PATH}/.ci/monitoring-secrets.json
 
 PIPELINE=e2e/main
 BUILD_NUMBER=$BUILD_NUMBER
+JOB_NAME=$JOB_NAME
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 TESTS_MATCH=$TESTS_MATCH

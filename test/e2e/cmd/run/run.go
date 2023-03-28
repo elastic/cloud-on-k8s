@@ -192,6 +192,7 @@ func (h *helper) initTestContext() error {
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
+		GSBucketName:          h.gsBucketName,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -259,6 +260,20 @@ func (h *helper) initTestSecrets() error {
 	c, err := vault.NewClient()
 	if err != nil {
 		return err
+	}
+
+	// Only initialize gcp credentials when running in CI
+	if os.Getenv("CI") == "true" {
+		b, err := vault.ReadFile(c, vault.SecretFile{
+			Name:          "gcp-credentials.json",
+			Path:          "ci-gcp-k8s-operator",
+			FieldResolver: func() string { return "service-account" },
+		})
+		if err != nil {
+			return fmt.Errorf("reading gcp credentials: %w", err)
+		}
+		h.testSecrets["gcp-credentials.json"] = string(b)
+		h.testContext.GCPCredentialsPath = "/var/run/secrets/e2e/gcp-credentials.json"
 	}
 
 	if h.testLicense != "" {
