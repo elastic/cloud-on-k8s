@@ -263,7 +263,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	// Only initialize gcp credentials when running in CI
-	if os.Getenv("CI") != "" {
+	if os.Getenv("CI") == "true" {
 		b, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          "gcp-credentials.json",
 			Path:          "ci-gcp-k8s-operator",
