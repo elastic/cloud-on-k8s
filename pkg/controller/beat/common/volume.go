@@ -115,6 +115,9 @@ if [[ -d %[1]s ]]; then
 	# hence the need for recursive operations.
     chgrp -R 1000 %[1]s/*
     chmod -R g+rw %[1]s/*
+	# Beat requires files to be owned by it's UID, or it tries to update them
+	# Exiting: failed to open store 'filebeat': failed to update meta file permissions:
+	# chmod /usr/share/filebeat/data/registry/filebeat/meta.json: operation not permitted
     chown -R %[2]d %[1]s/*
 	# Also the keystore can only be read/writable by UID
 	# could not initialize the keystore: file ("/usr/share/filebeat/data/filebeat.keystore")
