@@ -34,7 +34,7 @@ func canRunDiagnostics(ctx Context) bool {
 		return false
 	}
 	// If we're not in CI, then don't run diagnostics on e2e test failures.
-	if os.Getenv("CI") == "" {
+	if os.Getenv("CI") != "true" {
 		return false
 	}
 	if _, err := exec.LookPath("eck-diagnostics"); err != nil {
