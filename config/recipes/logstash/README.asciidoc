@@ -8,7 +8,7 @@ endif::[]
 
 = Using Logstash with ECK
 
-These recipes demonstrate how to run the Logstash, Elasticsearch, Kibana and Filebeat deployed via ECK, using the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] as a starting point
+These recipes demonstrate how to run Logstash, Elasticsearch, Kibana and Filebeat deployed via ECK, using the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] as a starting point
 
 ===== Inline Pipeline usage - `logstash-eck.yaml`
 

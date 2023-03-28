@@ -17,6 +17,7 @@ This section describes how to configure and deploy Logstash with ECK.
 ** <<{p}-logstash-configuring-logstash,Configuring Logstash>>
 ** <<{p}-logstash-pipelines,Configuring Pipelines>>
 ** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
+** <<{p}-logstash-expose-services,Exposing Services>>
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
 ** <<{p}-logstash-jvm-options,Setting JVM Options>>
@@ -98,7 +99,7 @@ NAME              READY   STATUS    RESTARTS   AGE
 quickstart-ls-0   1/1     Running   0          91s
 ----
 
-. Access logs for one of the Pods.
+. Access logs for a pod.
 +
 [source,sh]
 ----
@@ -111,7 +112,7 @@ kubectl logs -f quickstart-ls-0
 [id="{p}-logstash-upgrade-specification"]
 === Upgrade the Logstash specification
 
-You can upgrade the Logstash version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of Logstash's Pods.
+You can upgrade the Logstash version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of Logstash Pods.
 
 [id="{p}-logstash-configuring-logstash"]
 === Logstash configuration
@@ -199,7 +200,7 @@ spec:
         }
 ----
 
-Alternatively, it can be provided through a Secret specified in the `spec.pipelinesRef` element. The Secret must have an `logstash.yml` entry with this configuration:
+Alternatively, it can be provided through a Secret specified in the `spec.pipelinesRef` element. The Secret must have a `logstash.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -239,7 +240,7 @@ stringData:
 
 ----
 
-Logstash on ECK supports all options in `pipelines.yml`, including settings to update the number of workers, and
+Logstash on ECK will* support all options present in `pipelines.yml`, including settings to update the number of workers, and
  the size of the batch that the pipeline will process. This also includes using `path.config` to point to volumes
  mounted on the logstash container:
 
@@ -273,7 +274,7 @@ spec:
         }
 ----
 
-NOTE: Persistent Queues and Dead Letter Queues will be supported in a later release, but are not currently suppored.
+NOTE: Persistent Queues and Dead Letter Queues will be supported in a later release, but are not currently supported.
 
 
 [id="{p}-logstash-pipelines-es"]
@@ -335,7 +336,7 @@ spec:
 <3> This refers to an Elasticsearch cluster residing in a different namespace to the logstash instance
 <4> Elasticsearch output definitions - use the environment variables created by the Logstash operator when specifying an `ElasticsearchRef`. Note the use of "normalized" versions of the `clusterName` in the environment variables used to populate the relevant fields
 
-[id="{p}-logstash-expose services"]
+[id="{p}-logstash-expose-services"]
 === Expose Services
 
 By default, the Logstash operator creates a headless service for the metrics endpoint to enable metric collection by the metricbeat sidecar for stack monitoring:
@@ -348,7 +349,6 @@ kubectl get service quickstart-ls-api
 +
 [source,sh,subs="attributes"]
 ----
-NAME              AVAILABLE   EXPECTED   AGE   VERSION
 NAME                TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
 quickstart-ls-api   ClusterIP   None         <none>        9600/TCP   48s
 ----
@@ -372,9 +372,9 @@ services:
 
 [id="{p}-logstash-pod-configuration"]
 === Pod configuration
-You can <<{p}-customize-pods,customize the Logstash Pod>> using a Pod template.
+You can <<{p}-customize-pods,customize the Logstash Pod>> using a Pod template, defined in the `spec.podTemplate` section of the configuration.
 
-The following example demonstrates how to create a Logstash deployment with custom node affinity, increased heap size, and resource limits.
+The following example demonstrates how to create a Logstash deployment with increased heap size, and resource limits.
 
 [source,yaml,subs="attributes"]
 ----
@@ -411,7 +411,7 @@ The name of the container in the Pod template must be `logstash`.
 
 This section contains manifests that illustrate common use cases, and can be your starting point in exploring Logstash deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster and a single Kibana instance.
 
-CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting on Elasticsearch which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 
 === Single Pipeline defined in CRD
@@ -540,6 +540,6 @@ Note that this release is a technical preview, is still under active development
 *** Note: Other filters may require additional manual work to mount volumes for certain configurations
 ** Output Plugins:
 *** The following plugins require manual work to be operational:
-*** logstash-output-s3 - requires a volume mount to store in progress work to avoid data loss.
+**** logstash-output-s3 - requires a volume mount to store in progress work to avoid data loss.
 
 
