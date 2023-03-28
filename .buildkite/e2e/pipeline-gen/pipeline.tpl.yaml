@@ -86,7 +86,7 @@ steps:
 
     artifact_paths:
       - tests-report/*.xml
-      - "eck-diagnostic-*.zip"
+      - "eck-diagnostics-*.zip"
 
 {{- end }}
 
