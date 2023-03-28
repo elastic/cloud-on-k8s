@@ -31,8 +31,7 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
-CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
+CI_IMAGE ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:01671ac6
 
 # volume used to share files between CI container and OCP3 Ansible container
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
@@ -47,7 +46,7 @@ ci:
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal: ci-build-image
+ci-internal:
 	@ # --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
 	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
@@ -61,18 +60,6 @@ ci-internal: ci-build-image
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
 	  docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
-
-# build and push the CI image only if it does not yet exist
-ci-build-image:
-	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
-	( \
-		../hack/retry.sh 5 docker build \
-			-f $(ROOT_DIR)/.ci/Dockerfile \
-			-t $(CI_IMAGE) \
-			--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" \
-			$(ROOT_DIR) && \
-		../hack/docker.sh -l -p $(CI_IMAGE) \
-	)
 
 ##  Build
 
