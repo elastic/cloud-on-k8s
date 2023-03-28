@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/hashicorp/vault/api v1.9.0
-	github.com/imdario/mergo v0.3.13
+	github.com/imdario/mergo v0.3.14
 	github.com/magiconair/properties v1.8.7
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
@@ -32,14 +32,14 @@ require (
 	go.elastic.co/apm/module/apmhttp/v2 v2.2.0
 	go.elastic.co/apm/module/apmzap/v2 v2.2.0
 	go.elastic.co/apm/v2 v2.2.0
-	go.uber.org/automaxprocs v1.5.1
+	go.uber.org/automaxprocs v1.5.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.7.0
 	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v0.26.3
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
 	sigs.k8s.io/controller-runtime v0.14.5

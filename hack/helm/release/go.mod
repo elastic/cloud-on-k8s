@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 go 1.19
 
 require (
-	cloud.google.com/go/storage v1.30.0
+	cloud.google.com/go/storage v1.30.1
 	github.com/avast/retry-go/v4 v4.3.3
 	github.com/elastic/cloud-on-k8s/v2 v2.0.0-00010101000000-000000000000
 	github.com/google/go-cmp v0.5.9
@@ -84,7 +84,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.9.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/imdario/mergo v0.3.14 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -148,19 +148,19 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/genproto v0.0.0-20230320184635-7606e756e683 // indirect
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.29.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/api v0.26.2 // indirect
+	k8s.io/api v0.26.3 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
-	k8s.io/apimachinery v0.26.2 // indirect
+	k8s.io/apimachinery v0.26.3 // indirect
 	k8s.io/apiserver v0.26.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
-	k8s.io/client-go v0.26.2 // indirect
+	k8s.io/client-go v0.26.3 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect

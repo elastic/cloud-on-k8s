@@ -469,18 +469,21 @@ E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_IMG_TAG                ?= $(IMG_VERSION)
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
 E2E_STACK_VERSION          ?= 8.6.1
-export TESTS_MATCH         ?= "^Test" #testing # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+# regexp to filter tests to run
+export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 30m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
-E2E_TAGS                   ?= e2e  # go build constraints potentially restricting the tests to run
-E2E_TEST_ENV_TAGS          ?= ""   # tags conveying information about the test environment to the test runner
+# go build constraints potentially restricting the tests to run
+E2E_TAGS                   ?= e2e
+# tags conveying information about the test environment to the test runner
+E2E_TEST_ENV_TAGS          ?= ""
 
 # combine e2e tags (es, kb, apm etc.)  with go tags (release) to ensure test code that imports generated code works
-# this relies on the deprecated space separated build constraints in Go which makes construction in make easier
-E2E_TAGS += $(GO_TAGS)
-export E2E_TAGS
+ifneq (,$(GO_TAGS))
+E2E_TAGS := $(GO_TAGS),$(E2E_TAGS)
+endif
 
 print-e2e-image:
 	@ echo $(E2E_IMG)
@@ -582,7 +585,7 @@ ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-set-kubeconfig:
+set-kubeconfig: build-deployer
 	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean ci-check build-operator-multiarch-image

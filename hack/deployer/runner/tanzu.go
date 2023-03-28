@@ -187,11 +187,7 @@ func (t *TanzuDriver) ensureWorkDir() error {
 	if workDir == "" {
 		// base work dir in HOME dir otherwise mounting to container won't work without further settings adjustment
 		// in macOS in local mode. In CI mode we need the workdir to be in the volume shared between containers.
-		var err error
-		workDir, err = os.MkdirTemp(os.Getenv("HOME"), t.plan.ClusterName)
-		if err != nil {
-			return err
-		}
+		workDir = filepath.Join(os.Getenv("HOME"), t.plan.ClusterName)
 		log.Printf("Defaulting WorkDir: %s", workDir)
 	}
 
@@ -432,16 +428,17 @@ func (t TanzuDriver) deleteStorageContainer() error {
 
 func (t *TanzuDriver) persistInstallerState() error {
 	log.Println("Persisting installer state to Azure storage container")
-	return azure.Cmd("storage", "azcopy", "blob", "sync",
-		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount, "-s", t.installerStateDirPath).
+	return azure.Cmd("storage", "azcopy", "blob", "upload", "--recursive",
+		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
+		"-s", fmt.Sprintf("'%s/*'", t.installerStateDirBasename)).
 		WithoutStreaming().Run()
 }
 
 func (t *TanzuDriver) restoreInstallerState() error {
 	log.Println("Restoring installer state from storage container if any")
-	return azure.Cmd("storage", "azcopy", "blob", "download",
+	return azure.Cmd("storage", "azcopy", "blob", "download", "--recursive",
 		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
-		"-s", "'*'", "-d", t.installerStateDirPath, "--recursive").
+		"-s", "'*'", "-d", t.installerStateDirBasename).
 		WithoutStreaming().Run()
 }
 

@@ -25,7 +25,7 @@ type NodeShutdownStatus struct {
 type Interface interface {
 	// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
 	// shutdowns.
-	ReconcileShutdowns(ctx context.Context, leavingNodes []string) error
+	ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error
 	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
@@ -48,11 +48,11 @@ type observed struct {
 	observer Observer
 }
 
-func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
+func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
 	if o.observer != nil {
 		o.observer.OnReconcileShutdowns(leavingNodes)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, leavingNodes)
+	return o.Interface.ReconcileShutdowns(ctx, leavingNodes, terminatingNodes)
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {

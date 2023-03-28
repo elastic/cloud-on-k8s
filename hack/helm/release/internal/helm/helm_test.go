@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func Test_separateChartsWithDependencies(t *testing.T) {
@@ -102,6 +103,7 @@ func Test_separateChartsWithDependencies(t *testing.T) {
 func Test_readCharts(t *testing.T) {
 	tests := []struct {
 		name          string
+		existingPath  string
 		chartsToWrite []string
 		excludes      []string
 		want          []chart
@@ -150,8 +152,8 @@ func Test_readCharts(t *testing.T) {
 				t.Errorf("readCharts() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("readCharts() = diff: %s", cmp.Diff(got, tt.want))
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(chart{}, "fullPath")) {
+				t.Errorf("readCharts() = diff: %s", cmp.Diff(got, tt.want, cmpopts.IgnoreFields(chart{}, "fullPath")))
 			}
 		})
 	}
