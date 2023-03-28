@@ -14,7 +14,12 @@ This section describes how to configure and deploy Logstash with ECK.
 
 * <<{p}-logstash-quickstart,Quickstart>>
 * <<{p}-logstash-configuration,Configuration>>
+** <<{p}-logstash-configuring-logstash,Configuring Logstash>>
+** <<{p}-logstash-pipelines,Configuring Pipelines>>
+** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
 * <<{p}-logstash-configuration-examples,Configuration examples>>
+* <<{p}-logstash-advanced-configuration,Advanced Configuration>>
+** <<{p}-logstash-jvm-options,Setting JVM Options>>
 * <<{p}-logstash-technical-preview-limitations,Technical Preview Limitations>>
 
 
@@ -24,9 +29,8 @@ NOTE: Running Logstash on ECK is compatible only with Logstash 8.7+.
 [id="{p}-logstash-quickstart"]
 == Quickstart
 
+Add the following specification to create a minimal logstash deployment that will listen to a beats agent or elastic agent configured to send to logstash on port 5044, create the service and write the output to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
 
-. Apply the following specification to deploy Elastic Agent with the System metrics integration to harvest CPU metrics from the Agent Pods. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in the link:k8s-quickstart.html[Elasticsearch quickstart].
-+
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
@@ -35,12 +39,8 @@ kind: Logstash
 metadata:
   name: quickstart
 spec:
-  count: 3
+  count: 1
   version: 8.6.1
-  config:
-  elasticsearchRefs:
-#    - clusterName: quickstart
-#      name: quickstart
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -50,7 +50,12 @@ spec:
           }
         }
         output {
-          stdout {}
+          elasticsearch {
+            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
+            user => "${QUICKSTART_ES_USER}"
+            password => "${QUICKSTART_ES_PASSWORD}"
+            cacert => "${QUICKSTART_ES_CA_CERTS}"
+          }
         }
   services:
     - name: beats
@@ -67,7 +72,7 @@ EOF
 +
 Check <<{p}-logstash-configuration-examples>> for more ready-to-use manifests.
 
-. Monitor the status of Logstash
+. Check the status of Logstash
 +
 [source,sh]
 ----
@@ -91,8 +96,6 @@ kubectl get pods --selector='logstash.k8s.elastic.co/name=quickstart'
 ----
 NAME              READY   STATUS    RESTARTS   AGE
 quickstart-ls-0   1/1     Running   0          91s
-quickstart-ls-1   1/1     Running   0          91s
-quickstart-ls-2   1/1     Running   0          91s
 ----
 
 . Access logs for one of the Pods.
@@ -102,6 +105,7 @@ quickstart-ls-2   1/1     Running   0          91s
 kubectl logs -f quickstart-ls-0
 ----
 
+[id="{p}-logstash-configuration"]
 == Configuration
 
 [id="{p}-logstash-upgrade-specification"]
@@ -109,10 +113,10 @@ kubectl logs -f quickstart-ls-0
 
 You can upgrade the Logstash version or change settings by editing the YAML specification. ECK applies the changes by performing a rolling restart of Logstash's Pods.
 
-[id="{p}-logstash-custom-configuration"]
-=== Customize the Logstash configuration
+[id="{p}-logstash-configuring-logstash"]
+=== Logstash configuration
 
-The Logstash configuration (equivalent to logstash.yml) is defined in the `config` element:
+The Logstash configuration (equivalent to logstash.yml) is defined in the `spec.config` section:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -122,12 +126,18 @@ metadata:
   name: quickstart
 spec:
   version: {version}
+  count: 1
   elasticsearchRefs:
   - name: quickstart
+    clusterName: quickstart
   config:
+    pipeline.workers: 4  <1>
+    log.level: debug
 ----
+<1> Customize logstash configuration using logstash.yml settings here
 
-Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `logstash.yml` entry with this configuration:
+
+Alternatively, it can be provided through a Secret specified in the `spec.configRef` section. The Secret must have an `logstash.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -136,8 +146,10 @@ metadata:
   name: quickstart
 spec:
   version: {version}
+  count: 1
   elasticsearchRefs:
   - name: quickstart
+    clusterName: quickstart
   configRef:
     secretName: quickstart-config
 ---
@@ -147,13 +159,15 @@ metadata:
   name: quickstart-config
 stringData:
   logstash.yml: |-
+    pipeline.workers: 4
+    log.level: debug
 ----
 
 
 [id="{p}-logstash-pipelines"]
-=== Adding Logstash Pipelines
+=== Configuring Logstash Pipelines
 
-Logstash pipelines (equivalent to pipelines.yml) are defined in the `pipelines` element:
+Logstash pipelines (equivalent to pipelines.yml) are defined in the `spec.pipelines` section:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -163,8 +177,10 @@ metadata:
   name: quickstart
 spec:
   version: {version}
+  count: 1
   elasticsearchRefs:
-  - name: quickstart
+    - clusterName: quickstart
+      name: quickstart
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -183,7 +199,7 @@ spec:
         }
 ----
 
-Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `logstash.yml` entry with this configuration:
+Alternatively, it can be provided through a Secret specified in the `spec.pipelinesRef` element. The Secret must have an `logstash.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -192,8 +208,10 @@ metadata:
   name: quickstart
 spec:
   version: {version}
+  count: 1
   elasticsearchRefs:
-  - name: quickstart
+    - clusterName: quickstart
+      name: quickstart
   pipelinesRef:
     secretName: quickstart-pipeline
 ---
@@ -225,7 +243,7 @@ Logstash on ECK supports all options in `pipelines.yml`, including settings to u
  the size of the batch that the pipeline will process. This also includes using `path.config` to point to volumes
  mounted on the logstash container:
 
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
@@ -234,27 +252,45 @@ metadata:
 spec:
   version: {version}
   count: 1
+  elasticsearchRefs:
+    - clusterName: quickstart
+      name: quickstart
   pipelines:
-    - pipeline.id: external
-      pipeline.workers: 4
-      path.config: /usr/share/logstash/config/pipelines
-  podTemplate:
-    spec:
-      containers:
-        - name: logstash
-          volumeMounts:
-          - mountPath: /usr/share/logstash/config/pipelines
-            name: pipelines
-            readOnly: true
-      volumes:
-      - name: pipelines
-        hostPath:
-          path: /home/logstash-dev/logstash/pipelines
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
+            user => "${QUICKSTART_ES_USER}"
+            password => "${QUICKSTART_ES_PASSWORD}"
+            cacert => "${QUICKSTART_ES_CA_CERTS}"
+          }
+        }
 ----
 
 NOTE: Persistent Queues and Dead Letter Queues will be supported in a later release, but are not currently suppored.
 
-[source,yaml,subs="attributes,+macros"]
+
+[id="{p}-logstash-pipelines-es"]
+=== Using Elasticsearch in Logstash Pipelines
+
+The `spec.elasticsearchRefs` section provides a mechanism to help configure Logstash to estabish a secured connection to one or more managed Elasticsearch clusters. By default, it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+
+In order to use `elasticsearchRefs` in a logstash pipeline, the logstash operator will create the necessary resources from the associated elasticsearch, and provide environment variables to allow these resources to be accessed from pipeline configuration, and will be replaced at runtime with the appropriate values.
+The environment variables have a fixed naming convention:
+`NORMALIZED_CLUSTERNAME_ES_HOSTS`
+`NORMALIZED_CLUSTERNAME_ES_USERNAME`
+`NORMALIZED_CLUSTERNAME_ES_PASSWORD`
+`NORMALIZED_CLUSTERNAME_ES_CA_CERTS`
+
+where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
+
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
@@ -262,19 +298,112 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  elasticsearchRefs:
-  - name: quickstart
-    outputName: default
-  - name: agent-monitoring
-    namespace: elastic-monitoring
-    outputName: monitoring
-...
+  count: 1
+  elasticsearchRefs:        <1>
+    - clusterName: prod-es  <2>
+      name: prod
+    - clusterName: qa-es    <3>
+      name: qa
+      namespace: qa
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        output {
+          elasticsearch {   <4>
+            hosts => [ "${PROD_ES_ES_HOSTS}" ]
+            user => "${PROD_ES_ES_USER}"
+            password => "${PROD_ES_ES_PASSWORD}"
+            cacert => "${PROD_ES_ES_CA_CERTS}"
+          }
+          elasticsearch {   <4>
+            hosts => [ "${QA_ES_ES_HOSTS}" ]
+            user => "${QA_ES_ES_USER}"
+            password => "${QA_ES_ES_PASSWORD}"
+            cacert => "${QA_ES_ES_CA_CERTS}"
+          }
+        }
+
 ----
 
-[id="{p}-logstash-connect-es"]
-=== Customize the connection to an Elasticsearch cluster
+<1> Define Elasticsearch references in the CRD. This will create the appropriate secrets to store certificate details and the rest of the connection information, and create environment variables to allow them to be referred to in Logstash pipeline configurations.
+<2> This refers to an Elasticsearch cluster residing in the same namespace as the logstash instances
+<3> This refers to an Elasticsearch cluster residing in a different namespace to the logstash instance
+<4> Elasticsearch output definitions - use the environment variables created by the Logstash operator when specifying an `ElasticsearchRef`. Note the use of "normalized" versions of the `clusterName` in the environment variables used to populate the relevant fields
 
-The `elasticsearchRefs` element allows ECK to automatically configure Elastic Agent to establish a secured connection to one or more managed Elasticsearch clusters. By default, it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+[id="{p}-logstash-expose services"]
+=== Expose Services
+
+By default, the Logstash operator creates a headless service for the metrics endpoint to enable metric collection by the metricbeat sidecar for stack monitoring:
+
++
+[source,sh]
+----
+kubectl get service quickstart-ls-api
+----
++
+[source,sh,subs="attributes"]
+----
+NAME              AVAILABLE   EXPECTED   AGE   VERSION
+NAME                TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+quickstart-ls-api   ClusterIP   None         <none>        9600/TCP   48s
+----
+
+Additional services can be added by using the `spec.services` section of the resource:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+services:
+  - name: beats
+    service:
+      spec:
+        ports:
+        - port: 5044
+          name: "winlogbeat"
+          protocol: TCP
+        - port: 5045
+          name: "filebeat"
+          protocol: TCP
+----
+
+[id="{p}-logstash-pod-configuration"]
+=== Pod configuration
+You can <<{p}-customize-pods,customize the Logstash Pod>> using a Pod template.
+
+The following example demonstrates how to create a Logstash deployment with custom node affinity, increased heap size, and resource limits.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  podTemplate:
+    spec:
+      containers:
+      - name: logtash
+        env:
+        - name: LS_JAVA_OPTS
+          value: "-Xmx2g -Xms2g"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
+          limits:
+            memory: 4Gi
+            cpu: 2
+----
+
+The name of the container in the Pod template must be `logstash`.
 
 
 [id="{p}-logstash-configuration-examples"]
@@ -331,30 +460,86 @@ kubectl apply -f {logstash_recipes}/logstash-monitored.yaml
 
 Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will send it's monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's Kibana
 
-[id="{p}-logstash-on-eck-limitations"]
-== Logstash on ECK Limitations
+=== Multiple pipelines/multiple es clusters
 
-* When running Logstash on ECK, it is important to understand how data is sent into Logstash when determining replica counts of pods. Pipelines that include plugins that need to store state, or cannot automatically distribute work across pods should be treated with care as data loss and/or duplication can result from incorrectly configured setups
-* To that end, the technical preview should only be run with a limited set of input plugins:
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-multi.yaml
+----
+
+Deploys Elasticsearch and Kibana in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to prod and qa pipelines.
+
+[id="{p}-logstash-advanced-configuration"]
+== Advanced Configuration
+
+[id="{p}-logstash-jvm-options"]
+=== Setting JVM Options
+
+
+Changes to JVM settings should be changed by using the `LS_JAVA_OPTS` environment variable to override default settings in `jvm.options`. This approach ensures that expected settings from `jvm.options` are set, and only options that explicitly need to be overridden are.
+
+To do, this, set the  `LS_JAVA_OPTS` environment variable in the container definition of your Logstash resource:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  containers:
+    - name: logstash
+      env:
+        - name: LS_JAVA_OPTS   <1>
+          value: "-Xmx2g -Xms2g"
+----
+<1> This will change the maximum and minimum heap size of the JVM on each pod to 2GB
+
+[id="{p}-logstash-scaling-logstash"]
+== Scaling Logstash
+
+* The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all logstash deployments can be scaled horizontally by increasing the number of Logstash pods defined in the Logstash resource - depending on the plugins being used, this could result in data loss/duplication of data or pods running idle unable to be utilized.
+* Particular care should be taken with plugins that:
+** Retrieve data from external sources.
+*** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across logstash instances, or the S3 input, which has no way to split which buckets to read across logstash instances.
+*** Plugins that retrieve data from external sources, where work is distributed externally to logstash, but may impose their own limits. These are plugins like the kafka input, or azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra logstash pods may be idle if the number of consumer threads multiplied by the number of pods is greater than the number of partitions.
+** Plugins that require events to be received in order.
+*** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
+* If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 3
+----
+
+
 
 [id="{p}-logstash-technical-preview-limitations"]
 == Technical Preview Limitations
 
-Note that this release is a technical preview, is still under active development and has limited functionality.
-Limitations include, but are not limited to:
 
-* Limited support for plugins -
-** Input plugins: logstash-input-azure_event_hubs, logstash-input-beats, logstash-input-elastic_agent, logstash-input-kafka, logstash-input-tcp, logstash-input-http
-** While most filter plugins are supported, the following plugins are not currently supported:
-*** logstash-filter-jdbc_static, logstash-filter-jdbc_streaming, logstash-filter-aggregate
-*** Other filters may require additional manual work to mount volumes
-** While most output plugins are supported, the following plugins are not currently supported, or may require manual work to be operational:
-*** logstash-output-s3 - requires a volume mount to store in progress work to avoid data loss
-*** logstash-output-jms - requires jar files to be placed on the logstash classpath
-
+Note that this release is a technical preview, is still under active development and has additional limitations:
 
 * No support for persistence
-* `ElasticsearchRef` implementation in plugins in preview mode
+** The operator provides no additional support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state.
+* `ElasticsearchRef` implementation in plugins is still in preview mode
 ** In preview mode, plugins will need to be populated with environment variables populated by the Logstash operator.
-* No `ElasticsearchRef` support for Pipeline Central Management
-** Manual configuration required in `Config`/`ConfigRef`
+
+
+* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the logstash plugin matrix have not been considered for this list:
+** Input plugins:
+*** The following plugins are supported: logstash-input-azure_event_hubs, logstash-input-beats, logstash-input-elastic_agent, logstash-input-kafka, logstash-input-tcp, logstash-input-http, logstash-input-udp
+** Filter Plugins:
+*** The following plugins are *not* supported: logstash-filter-jdbc_static, logstash-filter-jdbc_streaming, logstash-filter-aggregate
+*** Note: Other filters may require additional manual work to mount volumes for certain configurations
+** Output Plugins:
+*** The following plugins require manual work to be operational:
+*** logstash-output-s3 - requires a volume mount to store in progress work to avoid data loss.
+
+
