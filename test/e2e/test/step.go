@@ -5,8 +5,10 @@
 package test
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -32,7 +34,12 @@ func (l StepList) WithStep(testStep Step) StepList {
 	return append(l, testStep)
 }
 
-// RunSequential runs the StepList sequentially, and fails fast on first error.
+// RunSequential runs the StepList sequentially, continuing on any errors.
+// If the tests are running within CI, the following occurs:
+//   - ECK-diagnostics is run after each failure
+//   - The resulting Zip file is uploaded to a GS Bucket
+//   - All Zip files are downloaded to local agent when tests complete and are
+//     added as Buildkite artifacts.
 //
 //nolint:thelper
 func (l StepList) RunSequential(t *testing.T) {
@@ -42,11 +49,18 @@ func (l StepList) RunSequential(t *testing.T) {
 			continue
 		}
 		if !t.Run(ts.Name, ts.Test) {
-			logf.Log.Error(errors.New("test failure"), "stopping early")
+			logf.Log.Error(errors.New("test failure"), "continuing with additional tests")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
 			}
-			t.FailNow()
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+			defer cancel()
+
+			maybeRunECKDiagnostics(ctx, t.Name(), ts)
+			if err := deleteTestResources(ctx); err != nil {
+				log.Error(err, "while deleting elastic resources")
+			}
+			break // we don't want to continue with this particular test
 		}
 	}
 }
