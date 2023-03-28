@@ -1,7 +1,7 @@
 newVersion: 2.8.0-SNAPSHOT
 prevVersion: 2.7.0
 stackVersion: 8.8.0-SNAPSHOT
-minSupportedOpenshiftVersion: v4.7
+minSupportedOpenshiftVersion: v4.8
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
