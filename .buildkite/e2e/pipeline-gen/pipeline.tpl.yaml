@@ -133,5 +133,5 @@ steps:
     commands:
       - buildkite artifact download tests-reports/*.json
       - .buildkite/scripts/test/generate-tests-reports.sh
-
-    
+    artifact_paths:
+      - tests-reports/*.xml

@@ -23,6 +23,24 @@ import (
 
 const sampleFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
+func TestFailA(t *testing.T) {
+	test.StepList{{
+		Name: "failing test a",
+		Test: func(t *testing.T) {
+			t.Error("fake error a")
+		},
+	}}.RunSequential(t)
+}
+
+func TestFailB(t *testing.T) {
+	test.StepList{{
+		Name: "failing test b",
+		Test: func(t *testing.T) {
+			t.Error("fake error b")
+		},
+	}}.RunSequential(t)
+}
+
 // TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
 func TestSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
