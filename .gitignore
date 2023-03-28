@@ -76,4 +76,4 @@ deploy/eck-stack/charts/*
 deploy/eck-stack/Chart.lock
 
 # Ignore binary for buildkite pipeline-gen
-..buildkite/e2e/pipeline-gen/pipeline-gen
+.buildkite/e2e/pipeline-gen/pipeline-gen
