@@ -4,7 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Script to generate e2e tests reports.
+# Script to generate e2e tests reports in JUnit XML format from JSON go test results.
 
 set -eu
 
@@ -33,6 +33,6 @@ gen_junit_report() {
     )
 }
 
-for f in $(ls e2e-reports/*.json); do
-    echo gen_junit_report "$f"
+for f in e2e-tests-*.json; do
+    gen_junit_report "$f"
 done

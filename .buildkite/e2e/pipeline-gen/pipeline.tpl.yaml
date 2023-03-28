@@ -83,7 +83,7 @@ steps:
       {{- end }}
 
     artifact_paths:
-      - tests-report/*.xml
+      - e2e-tests-*.json
       - "eck-diagnostic*.zip"
 
 {{- end }}
@@ -131,7 +131,7 @@ steps:
 
   - label: aggregate tests-results
     commands:
-      - buildkite artifact download tests-reports/*.json
+      - buildkite-agent artifact download e2e-tests-*.json .
       - .buildkite/scripts/test/generate-tests-reports.sh
     artifact_paths:
-      - tests-reports/*.xml
+      - e2e-tests-*.xml
