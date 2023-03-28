@@ -121,6 +121,9 @@ function delayed_exit() {
   local elapsed
   elapsed=$(duration "$script_start")
   local remaining=$((PRE_STOP_ADDITIONAL_WAIT_SECONDS - elapsed))
+  if (( remaining < 0 )); then
+    exit ${1-0}
+  fi
   log "delaying termination for $remaining seconds"
   sleep $remaining
   exit ${1-0}
@@ -158,7 +161,9 @@ if [ -f "{{.PreStopUserPasswordPath}}" ]; then
   PROBE_PASSWORD=$(<{{.PreStopUserPasswordPath}})
   BASIC_AUTH="-u {{.PreStopUserName}}:${PROBE_PASSWORD}"
 else
-  BASIC_AUTH=''
+  # typically the case on upgrades from versions that did not have this script yet and the necessary volume mounts are missing
+  log "no API credentials available, will not attempt node shutdown orchestration from pre-stop hook"
+  delayed_exit
 fi
 
 ES_URL={{.ServiceURL}}
