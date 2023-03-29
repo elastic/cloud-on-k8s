@@ -35,7 +35,11 @@ check() {
     helm dependency update . 1>/dev/null
     
     echo "Running 'helm lint' on $(basename "${TEST_DIR}") chart."
-    helm lint --strict .
+    if [[ -f "lint-values.yaml" ]]; then
+        helm lint --strict -f lint-values.yaml .
+    else
+        helm lint --strict .
+    fi
 
     if [[ -d templates/tests ]]; then
         helm unittest -3 -f 'templates/tests/*.yaml' .
