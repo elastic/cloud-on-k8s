@@ -12,6 +12,7 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-operator helm charts"
+          || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
           - "operator-image-build"
@@ -27,6 +28,7 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-resources helm charts"
+          || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
           - "operator-image-build"
@@ -37,7 +39,10 @@ steps:
           - releaser --env=dev --excludes=eck-operator --dry-run=\$DRY_RUN
 
       - label: "operator prod helm chart"
-        if: build.message == "release eck-operator helm charts"
+        if: |
+          build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+          || build.message == "release eck-operator helm charts"
+          || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
           - "eck-operator-dev-helm"
@@ -47,7 +52,10 @@ steps:
           - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
 
       - label: "eck-resources prod helm charts"
-        if: build.message == "release eck-resources helm charts"
+        if: |
+          build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+          || build.message == "release eck-resources helm charts"
+          || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
           - "eck-resources-dev-helm"
