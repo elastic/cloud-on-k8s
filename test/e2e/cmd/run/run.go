@@ -35,12 +35,12 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
-	kubePollInterval     = 10 * time.Second  // Kube API polling interval
-	testRunLabel         = "test-run"        // name of the label applied to resources
-	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
-	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
+	jobTimeout           = 600 * time.Minute   // time to wait for the test job to finish
+	kubePollInterval     = 10 * time.Second    // Kube API polling interval
+	testRunLabel         = "test-run"          // name of the label applied to resources
+	logStreamLabel       = "stream-logs"       // name of the label enabling log streaming to e2e runner
+	testsLogFilePattern  = "e2e-tests-%s.json" // name of file to keep all test logs in JSON format
+	operatorReadyTimeout = 3 * time.Minute     // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -602,7 +602,7 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
-		jl, err := newJSONLogToFile(testsLogFile)
+		jl, err := newJSONLogToFile(fmt.Sprintf(testsLogFilePattern, h.testContext.ClusterName))
 		if err != nil {
 			log.Error(err, "Failed to create log file for test output")
 			return err
