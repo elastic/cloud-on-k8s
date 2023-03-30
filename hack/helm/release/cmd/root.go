@@ -26,6 +26,7 @@ const (
 	envFlag             = "env"
 	excludesFlag        = "excludes"
 	enableVaultFlag     = "enable-vault"
+	keepTempDirFlag     = "keep-temp-dir"
 	vaultSecretFlag     = "vault-secret"
 
 	// GCS Helm Buckets
@@ -69,6 +70,7 @@ func releaseCmd() *cobra.Command {
 					CredentialsFilePath: viper.GetString(credentialsFileFlag),
 					DryRun:              viper.GetBool(dryRunFlag),
 					Excludes:            viper.GetStringSlice(excludesFlag),
+					KeepTempDir:         viper.GetBool(keepTempDirFlag),
 				})
 		},
 	}
@@ -124,6 +126,13 @@ func releaseCmd() *cobra.Command {
 		"When --enable-vault is set, attempts to read 'credentials-file' data from given vault secret location (HELM_VAULT_SECRET)",
 	)
 	_ = viper.BindPFlag(vaultSecretFlag, flags.Lookup(vaultSecretFlag))
+
+	flags.Bool(
+		keepTempDirFlag,
+		false,
+		"Keep temporary directory after command exits. (env: HELM_KEEP_TEMP_DIR)",
+	)
+	_ = viper.BindPFlag(keepTempDirFlag, flags.Lookup(keepTempDirFlag))
 
 	return releaseCommand
 }

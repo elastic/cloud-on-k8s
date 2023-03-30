@@ -6,9 +6,9 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -53,6 +53,8 @@ type ReleaseConfig struct {
 	DryRun bool
 	// Excludes is a slice of Helm chart names to ignore and not release.
 	Excludes []string
+	// KeepTempDir will retain the temporary directory
+	KeepTempDir bool
 }
 
 // Release will run a Helm release process which consists of
@@ -223,11 +225,15 @@ type uploadChartsConfig struct {
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	tempDir, err := os.MkdirTemp(os.TempDir(), "charts")
+	tempDir, err := os.MkdirTemp(os.TempDir(), "charts_no_deps")
 	if err != nil {
-		return fmt.Errorf("while creating temporary directory for charts: %w", err)
+		return fmt.Errorf("while creating temporary directory for charts without dependencies: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if !conf.releaseConf.KeepTempDir {
+			os.RemoveAll(tempDir)
+		}
+	}()
 	// upload charts without dependencies
 	if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
 		return err
@@ -235,6 +241,16 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	if err := updateIndex(ctx, tempDir, conf); err != nil {
 		return err
 	}
+
+	tempDirWithDeps, err := os.MkdirTemp(os.TempDir(), "charts_with_deps")
+	if err != nil {
+		return fmt.Errorf("while creating temporary directory for charts with dependencies: %w", err)
+	}
+	defer func() {
+		if !conf.releaseConf.KeepTempDir {
+			os.RemoveAll(tempDirWithDeps)
+		}
+	}()
 	// This retry is here because of caching in front of the Helm repository
 	// and the time it takes for a new release to show up in the repository.
 	// If the eck-stack chart depends on new version of any of the other
@@ -250,10 +266,10 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 				return err
 			}
 			// upload charts with dependencies
-			if err := uploadCharts(ctx, tempDir, conf.withDeps, conf.releaseConf); err != nil {
+			if err := uploadCharts(ctx, tempDirWithDeps, conf.withDeps, conf.releaseConf); err != nil {
 				return err
 			}
-			if err := updateIndex(ctx, tempDir, conf); err != nil {
+			if err := updateIndex(ctx, tempDirWithDeps, conf); err != nil {
 				return err
 			}
 
@@ -340,7 +356,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 		if err := runChartDependencyUpdate(chartPath, chart.Name); err != nil {
 			return err
 		}
-		if err := packageHelmChart(chartPath, chart.Name); err != nil {
+		if err := packageHelmChart(chartPath, chart.Name, tempDir); err != nil {
 			return err
 		}
 		source := fmt.Sprintf("%s-*.tgz", chart.Name)
@@ -351,6 +367,7 @@ func uploadCharts(ctx context.Context, tempDir string, charts []chart, conf Rele
 			tempDirectory: tempDir,
 			sourceGlob:    source,
 			dryRun:        conf.DryRun,
+			keepTempDir:   conf.KeepTempDir,
 		}); err != nil {
 			return err
 		}
@@ -370,7 +387,7 @@ func addHelmRepository(name, url string) error {
 	}
 	log.Printf("Adding (%s) repository.\n", name)
 	// simulates 'helm repo add' command.
-	b, err := ioutil.ReadFile(settings.RepositoryConfig)
+	b, err := os.ReadFile(settings.RepositoryConfig)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -444,8 +461,9 @@ func runChartDependencyUpdate(chartPath, chartName string) error {
 }
 
 // packageHelmChart runs 'helm package chart' for a given Helm chart.
-func packageHelmChart(chartPath, chartName string) error {
+func packageHelmChart(chartPath, chartName, tempDir string) error {
 	packageClient := action.NewPackage()
+	packageClient.Destination = tempDir
 	log.Printf("Packaging chart (%s)\n", chartName)
 	if _, err := packageClient.Run(chartPath, map[string]interface{}{}); err != nil {
 		return fmt.Errorf("while packaging helm chart (%s): %w", chartName, err)
@@ -457,13 +475,13 @@ func packageHelmChart(chartPath, chartName string) error {
 // a chart to a GCS bucket.
 type copyChartToBucketConfig struct {
 	bucket, chartName, path, tempDirectory, sourceGlob string
-	dryRun                                             bool
+	dryRun, keepTempDir                                bool
 }
 
 // copyChartToGCSBucket will potentially copy a Helm chart to a GCS bucket.
 // If the object already exists within the bucket, it will not be overwritten.
 func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	storageClient, err := storage.NewClient(ctx)
@@ -472,24 +490,20 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	}
 	defer storageClient.Close()
 
-	files, err := filepath.Glob(config.sourceGlob)
+	files, err := filepath.Glob(filepath.Join(config.tempDirectory, config.sourceGlob))
 	if err != nil {
 		return fmt.Errorf("while search for file glob (%s): %w", config.sourceGlob, err)
 	}
 	if len(files) == 0 {
 		return fmt.Errorf("couldn't file helm package with glob (%s)", config.sourceGlob)
 	}
-	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, files[0])
+	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, filepath.Base(files[0]))
 	log.Printf("Writing chart to bucket path (%s) \n", destination)
 	f, err := os.Open(files[0])
 	if err != nil {
 		return fmt.Errorf("while opening chart (%s): %w", files[0], err)
 	}
 	defer f.Close()
-	defer func() {
-		// intentionally ignoring failure to remove temporary *.tgz file
-		_ = os.Remove(files[0])
-	}()
 
 	if config.dryRun {
 		log.Printf("not uploading (%s) as dry-run is set", files[0])
@@ -511,25 +525,14 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	}
 
 	if err := wc.Close(); err != nil {
-		switch ee := err.(type) {
-		case *googleapi.Error:
-			if ee.Code == http.StatusPreconditionFailed {
+		var e *googleapi.Error
+		if errors.As(err, &e) {
+			if e.Code == http.StatusPreconditionFailed {
 				// The object already exists; this error is expected
-				break
+				return nil
 			}
-			return fmt.Errorf("while writing data to bucket: %w", err)
-		default:
-			return fmt.Errorf("while writing data to bucket: %w", err)
 		}
-	}
-	data, err := ioutil.ReadFile(files[0])
-	if err != nil {
-		return fmt.Errorf("while reading (%s): %w", files[0], err)
-	}
-
-	err = ioutil.WriteFile(filepath.Join(config.tempDirectory, config.chartName, files[0]), data, 0777)
-	if err != nil {
-		return fmt.Errorf("while writing (%s) to temp directory: %w", files[0], err)
+		return fmt.Errorf("while writing data to bucket: %w", err)
 	}
 	return nil
 }
@@ -543,13 +546,14 @@ func copy(source, destination string) error {
 		}
 		if info.IsDir() {
 			return os.Mkdir(filepath.Join(destination, relPath), 0755)
-		} else {
-			var data, err = ioutil.ReadFile(filepath.Join(source, relPath))
-			if err != nil {
-				return err
-			}
-			return ioutil.WriteFile(filepath.Join(destination, relPath), data, 0777)
 		}
+		var data []byte
+		var readErr error
+		data, readErr = os.ReadFile(filepath.Join(source, relPath))
+		if readErr != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destination, relPath), data, 0777)
 	})
 	return err
 }
@@ -560,7 +564,7 @@ func copy(source, destination string) error {
 // repository will be re-written to the given 'repoURL' flag.
 func updateDependencyChartURLs(chartPath string, repoURL *url.URL) error {
 	chartYamlFilePath := filepath.Join(chartPath, "Chart.yaml")
-	data, err := ioutil.ReadFile(chartYamlFilePath)
+	data, err := os.ReadFile(chartYamlFilePath)
 	if err != nil {
 		return fmt.Errorf("while reading file (%s): %w", chartYamlFilePath, err)
 	}
@@ -573,7 +577,7 @@ func updateDependencyChartURLs(chartPath string, repoURL *url.URL) error {
 		fmt.Sprintf(`repository: "%s"`, url),
 	)
 
-	err = ioutil.WriteFile(chartYamlFilePath, []byte(newContents), 0)
+	err = os.WriteFile(chartYamlFilePath, []byte(newContents), 0)
 	if err != nil {
 		return fmt.Errorf("while writing (%s): %w", chartYamlFilePath, err)
 	}
@@ -627,12 +631,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig) e
 	tempIndex.Merge(bucketIndex)
 	tempIndex.SortEntries()
 
-	if conf.releaseConf.DryRun {
-		log.Printf("not uploading index as dry-run is set")
-		return nil
-	}
-
-	log.Printf("Writing new helm index file for %s", conf.releaseConf.ChartsRepoURL)
+	log.Printf("Writing new local helm index file for %s", conf.releaseConf.ChartsRepoURL)
 	if err = tempIndex.WriteFile(filepath.Join(tempDir, "index.yaml"), 0644); err != nil {
 		return fmt.Errorf("while writing new helm index file: %w", err)
 	}
@@ -642,6 +641,12 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig) e
 	}
 	defer f.Close()
 
+	if conf.releaseConf.DryRun {
+		log.Printf("not uploading index as dry-run is set")
+		return nil
+	}
+
+	log.Printf("Writing new remote helm index file to bucket for %s", conf.releaseConf.ChartsRepoURL)
 	writer := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml").NewWriter(ctx)
 
 	if _, err = io.Copy(writer, f); err != nil {
