@@ -30,7 +30,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
   pipeline.workers: 1
   queue.drain: false
   config.string: input { generator {} } filter { sleep { time => 10 } } output { stdout { codec => dots } }
-- pipeline.id: demo
+- pipeline.id: main
   config.string: input { stdin{} } output { stdout{} }`,
 		},
 	}
@@ -106,7 +106,7 @@ func TestPipelineConfigLogstash(t *testing.T) {
 			},
 			{
 				Data: map[string]interface{}{
-					"pipeline.id":   "demo",
+					"pipeline.id":   "main",
 					"config.string": "input { stdin{} } output { stdout{} }",
 				},
 			},
