@@ -53,7 +53,7 @@ type ReleaseConfig struct {
 	DryRun bool
 	// Excludes is a slice of Helm chart names to ignore and not release.
 	Excludes []string
-	// KeepTempDir will retain the temporary directory
+	// KeepTempDir will retain the temporary directories.
 	KeepTempDir bool
 }
 

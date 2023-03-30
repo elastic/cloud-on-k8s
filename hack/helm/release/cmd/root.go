@@ -130,7 +130,7 @@ func releaseCmd() *cobra.Command {
 	flags.Bool(
 		keepTempDirFlag,
 		false,
-		"Keep temporary directory after command exits. (env: HELM_KEEP_TEMP_DIR)",
+		"Keep temporary directories after command exits. (env: HELM_KEEP_TEMP_DIR)",
 	)
 	_ = viper.BindPFlag(keepTempDirFlag, flags.Lookup(keepTempDirFlag))
 
