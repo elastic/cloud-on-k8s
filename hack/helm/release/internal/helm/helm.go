@@ -235,14 +235,6 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 		}
 	}()
 	log.Printf("temporary directory for charts without dependencies (%s)", tempDir)
-	// upload charts without dependencies
-	if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
-		return err
-	}
-	var idx *index
-	if idx, err = updateIndex(ctx, tempDir, conf, nil); err != nil {
-		return err
-	}
 
 	tempDirWithDeps, err := os.MkdirTemp(os.TempDir(), "charts_with_deps")
 	if err != nil {
@@ -253,7 +245,7 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 			os.RemoveAll(tempDirWithDeps)
 		}
 	}()
-	log.Printf("temporary directory for charts without dependencies (%s)", tempDirWithDeps)
+	log.Printf("temporary directory for charts with dependencies (%s)", tempDirWithDeps)
 	// This retry is here because of caching in front of the Helm repository
 	// and the time it takes for a new release to show up in the repository.
 	// If the eck-stack chart depends on new version of any of the other
@@ -262,6 +254,16 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 	// to get all dependencies of the helm charts, and upload them for 1 hour.
 	err = retry.Do(
 		func() error {
+			// upload charts without dependencies
+			if err := uploadCharts(ctx, tempDir, conf.noDeps, conf.releaseConf); err != nil {
+				return err
+			}
+			var idx *index
+			if idx, err = updateIndex(ctx, tempDir, conf, nil); err != nil {
+				return err
+			}
+
+			// upload charts with dependencies
 			if err := addDefaultHelmRepositories(conf.releaseConf); err != nil {
 				return err
 			}
