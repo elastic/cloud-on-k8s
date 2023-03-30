@@ -24,23 +24,23 @@ const (
 	credentialsFileFlag = "credentials-file"
 	dryRunFlag          = "dry-run"
 	envFlag             = "env"
-	excludesFlag        = "excludes"
 	enableVaultFlag     = "enable-vault"
-	vaultSecretFlag     = "vault-secret"
 
 	// GCS Helm Buckets
-	elasticHelmChartsDevBucket  = "elastic-helm-charts-dev"
-	elasticHelmChartsProdBucket = "elastic-helm-charts"
+	devBucket  = "elastic-helm-charts-dev"
+	prodBucket = "elastic-helm-charts"
 
-	// Helm Repositories
-	elasticHelmChartsDevRepoURL  = "https://helm-dev.elastic.co/helm"
-	elasticHelmChartsProdRepoURL = "https://helm.elastic.co/helm"
+	// Helm Repositories URL
+	devRepoURL  = "https://helm-dev.elastic.co/helm"
+	prodRepoURL = "https://helm.elastic.co/helm"
 
 	// Environment flag options
 	devEnvironment  = "dev"
 	prodEnvironment = "prod"
 
-	vaultSecretField = "creds.json"
+	googleCredsVaultSecretPath = "helm-gcs-credentials"
+	googleCredsVaultSecretKey  = "creds.json"
+	googleCredentialsEnvVar    = "GOOGLE_APPLICATION_CREDENTIALS"
 )
 
 var (
@@ -56,7 +56,6 @@ func releaseCmd() *cobra.Command {
 	releaseCommand := &cobra.Command{
 		Use:     "release",
 		Short:   "Release ECK Helm Charts",
-		Long:    `This command will Release ECK Helm Charts to a given Environment.`,
 		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -68,7 +67,6 @@ func releaseCmd() *cobra.Command {
 					ChartsRepoURL:       chartsRepoURL,
 					CredentialsFilePath: viper.GetString(credentialsFileFlag),
 					DryRun:              viper.GetBool(dryRunFlag),
-					Excludes:            viper.GetStringSlice(excludesFlag),
 				})
 		},
 	}
@@ -79,14 +77,14 @@ func releaseCmd() *cobra.Command {
 		dryRunFlag,
 		"d",
 		true,
-		"Do not upload new files to bucket, or update helm index (env: HELM_DRY_RUN)",
+		"Do not upload files to bucket, or update helm index (env: HELM_DRY_RUN)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 
 	flags.String(
 		chartsDirFlag,
 		"./deploy",
-		"Charts directory which contains helm charts (env: HELM_CHARTS_DIR)",
+		"Directory which contains Helm charts (env: HELM_CHARTS_DIR)",
 	)
 	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
@@ -100,30 +98,16 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		envFlag,
 		devEnvironment,
-		"Environment in which to release helm charts (env: HELM_ENV)",
+		"Environment in which to release Helm charts (env: HELM_ENV)",
 	)
 	_ = viper.BindPFlag(envFlag, flags.Lookup(envFlag))
-
-	flags.StringSlice(
-		excludesFlag,
-		[]string{},
-		"Names of helm charts to exclude from release. (env: HELM_EXCLUDES)",
-	)
-	_ = viper.BindPFlag(excludesFlag, flags.Lookup(excludesFlag))
 
 	flags.Bool(
 		enableVaultFlag,
 		true,
-		"Enable vault functionality to try and automatically read 'credentials-file' from given vault key (requires VAULT_ADDR and VAULT-TOKEN and uses HELM_VAULT_* environment variables) (env: HELM_ENABLE_VAULT)",
+		"Read 'credentials-file' from Vault (requires VAULT_ADDR and VAULT_TOKEN) (env: HELM_ENABLE_VAULT)",
 	)
 	_ = viper.BindPFlag(enableVaultFlag, flags.Lookup(enableVaultFlag))
-
-	flags.String(
-		vaultSecretFlag,
-		"helm-gcs-credentials",
-		"When --enable-vault is set, attempts to read 'credentials-file' data from given vault secret location (HELM_VAULT_SECRET)",
-	)
-	_ = viper.BindPFlag(vaultSecretFlag, flags.Lookup(vaultSecretFlag))
 
 	return releaseCommand
 }
@@ -132,39 +116,40 @@ func validate(_ *cobra.Command, _ []string) error {
 	env := viper.GetString(envFlag)
 	switch env {
 	case devEnvironment:
-		bucket = elasticHelmChartsDevBucket
-		chartsRepoURL = elasticHelmChartsDevRepoURL
+		bucket = devBucket
+		chartsRepoURL = devRepoURL
 	case prodEnvironment:
-		bucket = elasticHelmChartsProdBucket
-		chartsRepoURL = elasticHelmChartsProdRepoURL
+		bucket = prodBucket
+		chartsRepoURL = prodRepoURL
 	default:
 		return fmt.Errorf("%s flag can only be on of (%s, %s)", envFlag, devEnvironment, prodEnvironment)
 	}
 
-	credentialsFile := viper.GetString(credentialsFileFlag)
-	if credentialsFile == "" {
-		return fmt.Errorf("%s is a required flag", credentialsFileFlag)
+	credentialsFilePath := viper.GetString(credentialsFileFlag)
+	if credentialsFilePath == "" {
+		return fmt.Errorf("%s is a required flag", credentialsFilePath)
 	}
 
 	if viper.GetBool(enableVaultFlag) {
-		secretPath := viper.GetString(vaultSecretFlag)
-		if secretPath == "" {
-			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
-		}
-
 		c, err := vault.NewClient()
 		if err != nil {
 			return fmt.Errorf("while creating vault client: %w", err)
 		}
 		_, err = vault.ReadFile(c, vault.SecretFile{
-			Name:          credentialsFile,
-			Path:          secretPath,
-			FieldResolver: func() string { return "creds.json" },
+			Name:          credentialsFilePath,
+			Path:          googleCredsVaultSecretPath,
+			FieldResolver: func() string { return googleCredsVaultSecretKey },
 		})
 		if err != nil {
-			return fmt.Errorf("while reading '%s' from vault: %w", secretPath, err)
+			return fmt.Errorf("while reading '%s' from vault: %w", credentialsFilePath, err)
 		}
 	}
+
+	_, err := os.Open(credentialsFilePath)
+	if err != nil {
+		return fmt.Errorf("while reading google credentials file (%s): %w", credentialsFilePath, err)
+	}
+	os.Setenv(googleCredentialsEnvVar, credentialsFilePath)
 
 	return nil
 }

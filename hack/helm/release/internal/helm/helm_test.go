@@ -8,97 +8,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
-
-func Test_separateChartsWithDependencies(t *testing.T) {
-	tests := []struct {
-		name         string
-		charts       []chart
-		wantNoDeps   charts
-		wantWithDeps charts
-	}{
-		{
-			name: "happy path",
-			charts: []chart{
-				{Name: "eck-elasticsearch"},
-				{Name: "eck-kibana"},
-				{Name: "eck-agent"},
-				{Name: "eck-beat"},
-				{Name: "eck-stack", Dependencies: []dependency{
-					{Name: "eck-elasticsearch"},
-					{Name: "eck-kibana"},
-					{Name: "eck-agent"},
-					{Name: "eck-beat"},
-				}},
-			},
-			wantNoDeps: charts{
-				{Name: "eck-elasticsearch"},
-				{Name: "eck-kibana"},
-				{Name: "eck-agent"},
-				{Name: "eck-beat"},
-			},
-			wantWithDeps: charts{
-				{Name: "eck-stack", Dependencies: []dependency{
-					{Name: "eck-elasticsearch"},
-					{Name: "eck-kibana"},
-					{Name: "eck-agent"},
-					{Name: "eck-beat"},
-				}},
-			},
-		},
-		{
-			name: "charts with dependencies that are not direct dependencies, are treated as having no dependencies",
-			charts: []chart{
-				{Name: "eck-elasticsearch"},
-				{Name: "eck-kibana"},
-				{Name: "eck-agent"},
-				{Name: "eck-beat"},
-				{Name: "eck-stack", Dependencies: []dependency{
-					{Name: "eck-elasticsearch"},
-					{Name: "eck-kibana"},
-					{Name: "eck-agent"},
-					{Name: "eck-beat"},
-				}},
-				{Name: "chart-with-indirect-deps", Dependencies: []dependency{
-					{Name: "nginx"},
-				}},
-			},
-			wantNoDeps: charts{
-				{Name: "eck-elasticsearch"},
-				{Name: "eck-kibana"},
-				{Name: "eck-agent"},
-				{Name: "eck-beat"},
-				{Name: "chart-with-indirect-deps", Dependencies: []dependency{
-					{Name: "nginx"},
-				}},
-			},
-			wantWithDeps: charts{
-				{Name: "eck-stack", Dependencies: []dependency{
-					{Name: "eck-elasticsearch"},
-					{Name: "eck-kibana"},
-					{Name: "eck-agent"},
-					{Name: "eck-beat"},
-				}},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotNoDeps, gotWithDeps := separateChartsWithDependencies(tt.charts)
-			if !reflect.DeepEqual(gotNoDeps, tt.wantNoDeps) {
-				t.Errorf("separateChartsWithDependencies() gotNoDeps = %s", cmp.Diff(gotNoDeps, tt.wantNoDeps))
-			}
-			if !reflect.DeepEqual(gotWithDeps, tt.wantWithDeps) {
-				t.Errorf("separateChartsWithDependencies() gotWithDeps = %s", cmp.Diff(gotWithDeps, tt.wantWithDeps))
-			}
-		})
-	}
-}
 
 func Test_readCharts(t *testing.T) {
 	tests := []struct {
@@ -147,7 +61,7 @@ func Test_readCharts(t *testing.T) {
 			for _, ch := range tt.chartsToWrite {
 				mustWriteChart(t, dir, ch)
 			}
-			got, err := readCharts(dir, tt.excludes)
+			got, err := readCharts(dir)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("readCharts() error = %v, wantErr %v", err, tt.wantErr)
 				return
