@@ -8,9 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 
@@ -127,40 +124,51 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) test.Step {
 	return test.Step{
 		Name: fmt.Sprintf("Logstash should respond to %s requests", req.Name),
-		Test: func(t *testing.T) {
-			t.Helper()
-
+		Test: test.Eventually(func() error {
 			// send request and parse to map obj
 			client, err := NewLogstashClient(b.Logstash, k)
-			require.NoError(t, err)
+			if err != nil {
+				return err
+			}
 
 			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path)
-			require.NoError(t, err)
+			if err != nil {
+				return err
+			}
 
 			var response map[string]interface{}
 			err = json.Unmarshal(bytes, &response)
-			require.NoError(t, err)
+			if err != nil {
+				return err
+			}
 
 			// parse response to ucfg.Config for traverse
 			res, err := settings.NewCanonicalConfigFrom(response)
-			require.NoError(t, err)
+			if err != nil {
+				return err
+			}
 
 			// check status
 			status, err := res.String("status")
-			require.NoError(t, err)
+			if err != nil {
+				return err
+			}
 			if status != want.Status {
-				require.NoError(t, fmt.Errorf("expected %s but got %s", want.Status, status))
+				return fmt.Errorf("expected %s but got %s", want.Status, status)
 			}
 
 			// check expected string
 			for k, v := range want.Match {
 				str, err := res.String(k)
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				if str != v {
-					require.NoError(t, fmt.Errorf("expected %s to be %s but got %s", k, v, str))
+					return fmt.Errorf("expected %s to be %s but got %s", k, v, str)
 				}
 			}
-		},
+			return nil
+		}),
 	}
 }
 
