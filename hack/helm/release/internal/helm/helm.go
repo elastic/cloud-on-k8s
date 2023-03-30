@@ -596,8 +596,13 @@ func updateDependencyChartURLs(chartPath string, repoURL *url.URL) error {
 	return nil
 }
 
+// index is used internally to ensure we do not have to read the index from the google bucket
+// multiple times and ensures that we maintain the proper generation/version of the file
+// throughout this whole release process.
 type index struct {
-	path       string
+	// path is the local path to the previous index
+	path string
+	// generation is the generation/version of the previous index
 	generation int64
 }
 
