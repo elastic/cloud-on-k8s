@@ -635,11 +635,12 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig) e
 	if err = tempIndex.WriteFile(filepath.Join(tempDir, "index.yaml"), 0644); err != nil {
 		return fmt.Errorf("while writing new helm index file: %w", err)
 	}
-	f, err = os.Open(filepath.Join(tempDir, "index.yaml"))
+	var updatedIndexFile *os.File
+	updatedIndexFile, err = os.Open(filepath.Join(tempDir, "index.yaml"))
 	if err != nil {
 		return fmt.Errorf("while opening new index.yaml: %w", err)
 	}
-	defer f.Close()
+	defer updatedIndexFile.Close()
 
 	if conf.releaseConf.DryRun {
 		log.Printf("not uploading index as dry-run is set")
@@ -649,7 +650,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig) e
 	log.Printf("Writing new remote helm index file to bucket for %s", conf.releaseConf.ChartsRepoURL)
 	writer := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml").NewWriter(ctx)
 
-	if _, err = io.Copy(writer, f); err != nil {
+	if _, err = io.Copy(writer, updatedIndexFile); err != nil {
 		return fmt.Errorf("while copying new index.yaml to bucket: %w", err)
 	}
 
