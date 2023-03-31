@@ -128,7 +128,7 @@ type Client interface {
 	Version() version.Version
 	// URL returns the Elasticsearch URL configured for this client
 	URL() string
-	// HasProperties checks whether this client has the indicated properties
+	// HasProperties checks whether this client has the indicated properties.
 	HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool
 }
 
