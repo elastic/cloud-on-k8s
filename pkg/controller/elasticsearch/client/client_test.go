@@ -831,3 +831,81 @@ func TestGetClusterHealthWaitForAllEvents(t *testing.T) {
 		})
 	}
 }
+
+func Test_HasProperties(t *testing.T) {
+	defaultVersion := version.MustParse("8.6.1")
+	defaultUser := BasicAuth{Name: "foo", Password: "bar"}
+	defaultURL := "https://foo.bar"
+	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
+	defaultEsClient := NewElasticsearchClient(
+		nil,
+		types.NamespacedName{Namespace: "ns", Name: "es"},
+		defaultURL,
+		defaultUser,
+		defaultVersion,
+		defaultCaCerts,
+		Timeout(context.Background(), esv1.Elasticsearch{}),
+		false,
+	)
+	tests := []struct {
+		name     string
+		esClient Client
+		version  version.Version
+		user     BasicAuth
+		url      string
+		caCerts  []*x509.Certificate
+		want     bool
+	}{
+		{
+			name:     "A new client is created if the version does not match",
+			esClient: defaultEsClient,
+			version:  version.MustParse("8.6.0"),
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the user does not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     BasicAuth{Name: "foo", Password: "changed"},
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the url does not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      "https://foo.com",
+			caCerts:  defaultCaCerts,
+			want:     false,
+		},
+		{
+			name:     "A new client is created if the caCerts do not match",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  []*x509.Certificate{{Raw: []byte("bar")}},
+			want:     false,
+		},
+		{
+			name:     "The client is reused if nothing has changed",
+			esClient: defaultEsClient,
+			version:  defaultVersion,
+			user:     defaultUser,
+			url:      defaultURL,
+			caCerts:  defaultCaCerts,
+			want:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := tt.esClient.HasProperties(tt.version, tt.user, tt.url, tt.caCerts)
+			assert.Equal(t, tt.want, actual)
+		})
+	}
+}

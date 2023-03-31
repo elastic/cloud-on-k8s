@@ -191,3 +191,15 @@ func versioned(b *baseClient, v version.Version) Client {
 func (c *baseClient) URL() string {
 	return c.Endpoint
 }
+
+func (c *baseClient) HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool {
+	if len(c.caCerts) != len(caCerts) {
+		return false
+	}
+	for i := range c.caCerts {
+		if !c.caCerts[i].Equal(caCerts[i]) {
+			return false
+		}
+	}
+	return c.version.Equals(version) && c.User == user && c.Endpoint == url
+}
