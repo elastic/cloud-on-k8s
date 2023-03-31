@@ -650,6 +650,10 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 		if err = f.Close(); err != nil {
 			return nil, fmt.Errorf("while closing index.yaml.old file: %w", err)
 		}
+		// create a new index object from the index just read from bucket
+		// to ensure that the file is the same generation when the write
+		// of the new index occurs in the following block.
+		idx = &index{path: existingIndexFile, generation: reader.Attrs.Generation}
 	}
 
 	// helm repo index --merge index.yaml.old --url chart_repo_url temp_charts_location
