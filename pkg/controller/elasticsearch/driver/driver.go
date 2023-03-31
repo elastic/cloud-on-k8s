@@ -400,7 +400,7 @@ func (d *defaultDriver) elasticsearchClientProvider(
 ) func(existingEsClient esclient.Client) esclient.Client {
 	return func(existingEsClient esclient.Client) esclient.Client {
 		url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-		if isEsClientUpToDate(existingEsClient, v, user, url, caCerts) {
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, url, caCerts) {
 			return existingEsClient
 		}
 		return d.newElasticsearchClient(ctx, state, user, v, caCerts)
@@ -538,19 +538,4 @@ func esReachableConditionMessage(internalService *corev1.Service, isServiceReady
 	default:
 		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
 	}
-}
-
-func isEsClientUpToDate(esClient esclient.Client, version version.Version, user esclient.BasicAuth, url string, caCerts []*x509.Certificate) bool {
-	if esClient == nil {
-		return false
-	}
-	if len(esClient.CaCerts()) != len(caCerts) {
-		return false
-	}
-	for i := range esClient.CaCerts() {
-		if !esClient.CaCerts()[i].Equal(caCerts[i]) {
-			return false
-		}
-	}
-	return esClient.Version().Equals(version) && esClient.BasicAuthUser() == user && esClient.URL() == url
 }

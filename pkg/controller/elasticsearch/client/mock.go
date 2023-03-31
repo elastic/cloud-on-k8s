@@ -5,7 +5,6 @@
 package client
 
 import (
-	"crypto/x509"
 	"io"
 	"net/http"
 	"strings"
@@ -30,18 +29,6 @@ func NewMockClientWithUser(v version.Version, u BasicAuth, fn RoundTripFunc) Cli
 		},
 		Endpoint: "http://example.com",
 		User:     u,
-	}
-	return versioned(baseClient, v)
-}
-
-func NewFullMockClient(v version.Version, u BasicAuth, fn RoundTripFunc, endpoint string, caCerts []*x509.Certificate) Client {
-	baseClient := &baseClient{
-		HTTP: &http.Client{
-			Transport: fn,
-		},
-		Endpoint: endpoint,
-		User:     u,
-		caCerts:  caCerts,
 	}
 	return versioned(baseClient, v)
 }
