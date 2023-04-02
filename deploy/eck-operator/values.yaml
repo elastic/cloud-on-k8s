@@ -236,3 +236,6 @@ global:
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
   kubeVersion: 1.21.0
 
+# When using AWS EKS and an altnerate CNI inconjunction with webhook enabled, hostNetwork needs to enabled to allow for
+# communication with the kube API.
+hostNetwork: false
