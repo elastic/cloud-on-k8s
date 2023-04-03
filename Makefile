@@ -368,8 +368,7 @@ switch-tanzu:
 BUILD_PLATFORM ?= "linux/amd64,linux/arm64"	
 
 publish-operator-multiarch-image:
-	@ docker buildx imagetools inspect $(OPERATOR_IMAGE) 2>&1 >/dev/null \
-	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	@ .buildkite/scripts/build/is_published.sh $(OPERATOR_IMAGE) $(BUILD_PLATFORM) \
 	|| $(MAKE) docker-multiarch-build
 
 docker-multiarch-build: go-generate generate-config-file
@@ -495,8 +494,7 @@ e2e-docker-push:
 	@ hack/docker.sh -l -p $(E2E_IMG)
 
 publish-e2e-multiarch-image:
-	@ docker buildx imagetools inspect $(E2E_IMG) 2>&1 >/dev/null \
-	&& echo "OK: image $(E2E_IMG) already published" \
+	@ .buildkite/scripts/build/is_published.sh $(E2E_IMG) $(BUILD_PLATFORM) \
 	|| $(MAKE) e2e-docker-multiarch-build
 
 e2e-docker-multiarch-build: go-generate
