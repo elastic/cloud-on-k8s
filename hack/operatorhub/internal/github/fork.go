@@ -73,6 +73,9 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	req, err := c.createRequest(ctx, http.MethodGet, fmt.Sprintf(githubRepoForksURLFormat, githubAPIURL, orgRepo), nil)
+	if err != nil {
+		return false, fmt.Errorf("while creating github request to ensure fork exists: %w", err)
+	}
 	var res *http.Response
 	res, err = c.HTTPClient.Do(req)
 	if err != nil {
