@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -150,7 +151,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 		return fmt.Errorf("while checking out (%s) branch (main): %w", orgRepo, err)
 	}
 	err = w.Pull(&git.PullOptions{RemoteName: "origin", ReferenceName: plumbing.NewBranchReferenceName("main")})
-	if err != nil {
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return fmt.Errorf("while merging upstream changes from upstream/main into fork/main: %w", err)
 	}
 	refSpec := "+refs/heads/main:refs/heads/main"
@@ -163,7 +164,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 			config.RefSpec(refSpec),
 		},
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return fmt.Errorf("while pushing merge of fork/main: %w", err)
 	}
 	return nil
