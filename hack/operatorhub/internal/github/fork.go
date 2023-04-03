@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -83,7 +82,7 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
+	bodyBytes, err = io.ReadAll(res.Body)
 	if err != nil {
 		return false, fmt.Errorf("while reading get forks response body: %w", err)
 	}
@@ -125,7 +124,7 @@ func (c *Client) createFork(orgRepo string) error {
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
+	bodyBytes, err = io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("while reading create fork response body: %w", err)
 	}
@@ -199,7 +198,7 @@ func (c *Client) waitOnForkCreation(orgRepo string) error {
 				return nil
 			default:
 				var bodyBytes []byte
-				bodyBytes, err = ioutil.ReadAll(res.Body)
+				bodyBytes, err = io.ReadAll(res.Body)
 				log.Printf("failed to execute request to check if fork exists, body: %s: %s", string(bodyBytes), err)
 			}
 		case <-ctx.Done():

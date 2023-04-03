@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -190,7 +190,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 
 				log.Printf("reading (%s) to replace git tag with container image SHA", fileDst)
-				input, err := ioutil.ReadFile(fileDst)
+				input, err := os.ReadFile(fileDst)
 				if err != nil {
 					return fmt.Errorf("while reading file (%s)", fileDst)
 				}
@@ -206,7 +206,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 				output := strings.Join(lines, "\n")
 				log.Printf("rewriting (%s) with container image SHA", fileDst)
-				err = ioutil.WriteFile(fileDst, []byte(output), 0644)
+				err = os.WriteFile(fileDst, []byte(output), 0644)
 				if err != nil {
 					return fmt.Errorf("while writing updated file (%s)", fileDst)
 				}
@@ -392,7 +392,7 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 	}
 	if res.StatusCode > 299 {
 		log.Println("ⅹ")
-		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return fmt.Errorf("while creating draft pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
 		}
 		return fmt.Errorf("while creating draft pr for (%s), code: %d", repo.repository, res.StatusCode)
