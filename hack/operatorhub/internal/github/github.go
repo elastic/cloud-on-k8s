@@ -145,7 +145,9 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 				return nil
 			},
-			additionalChangedFiles: []string{"elastic-cloud-eck.package.yaml"},
+			additionalChangedFiles: []string{
+				filepath.Join("operators", communityOperatorDirectoryName, "elastic-cloud-eck.package.yaml"),
+			},
 		},
 		{
 			organization:   certifiedOperatorOrganization,
