@@ -109,7 +109,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory for operations: %w", err)
 	}
-	log.Println(fmt.Sprintf("(%s): ✓", tempDir))
+	log.Printf("(%s): ✓\n", tempDir)
 
 	defer func() {
 		if !c.KeepTempFiles {
