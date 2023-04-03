@@ -66,16 +66,9 @@ main() {
         set_env SNAPSHOT=false
         set_env PUBLISH_IMAGE_UBI=true
 
-    elif is_merge_main; then
+    elif is_merge_main || is_nightly_main; then
         REGISTRY_NAMESPACE=eck-snapshots
         IMG_SUFFIX=""
-        IMG_VERSION="$version-$sha1"
-
-        set_env BUILD_PLATFORM=linux/amd64
-   
-    elif is_nightly_main; then
-        REGISTRY_NAMESPACE=eck-ci
-        IMG_SUFFIX="-nightly"
         IMG_VERSION="$version-$sha1"
    
     elif is_pr; then
