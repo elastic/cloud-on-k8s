@@ -65,14 +65,6 @@ type Client struct {
 	Config
 }
 
-type operatorHubConfig struct {
-	NewVersion   string                   `json:"newVersion"`
-	PrevVersion  string                   `json:"prevVersion"`
-	StackVersion string                   `json:"stackVersion"`
-	CRDs         []map[string]interface{} `json:"crds"`
-	Packages     []map[string]interface{} `json:"packages"`
-}
-
 // New returns a new github client, using
 // a default HTTP client with a timeout of 10 seconds
 // if one isn't supplied within the config.
