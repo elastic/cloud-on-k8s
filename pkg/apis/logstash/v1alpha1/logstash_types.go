@@ -87,6 +87,13 @@ type LogstashSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod.
+	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
+	// Items defined here take precedence over any default claims added by the operator with the same name.
+	// +kubebuilder:validation:Optional
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+
 }
 
 type LogstashService struct {

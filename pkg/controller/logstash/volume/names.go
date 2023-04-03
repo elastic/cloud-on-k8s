@@ -6,46 +6,47 @@ package volume
 
 // Default values for the volume name and paths
 const (
-	PodMountedUsersSecretMountPath = "/mnt/elastic-internal/pod-mounted-users" //nolint:gosec
-	ProbeUserVolumeName            = "elastic-internal-probe-user"
+	//PodMountedUsersSecretMountPath = "/mnt/elastic-internal/pod-mounted-users" //nolint:gosec
+	//ProbeUserVolumeName            = "elastic-internal-probe-user"
 
-	ConfigVolumeMountPath               = "/usr/share/elasticsearch/config"
-	NodeTransportCertificatePathSegment = "node-transport-cert"
-	NodeTransportCertificateKeyFile     = "transport.tls.key"
-	NodeTransportCertificateCertFile    = "transport.tls.crt"
+	LogstashVolumeMountPath               = "/usr/share/logstash/config"
+	//NodeTransportCertificatePathSegment = "node-transport-cert"
+	//NodeTransportCertificateKeyFile     = "transport.tls.key"
+	//NodeTransportCertificateCertFile    = "transport.tls.crt"
 
-	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
-	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs" //nolint:gosec
+	//TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
+	//TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs" //nolint:gosec
+	//
+	//RemoteCertificateAuthoritiesSecretVolumeName      = "elastic-internal-remote-certificate-authorities"
+	//RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/" //nolint:gosec
+	//
+	//HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
+	//HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs" //nolint:gosec
+	//
+	//XPackFileRealmVolumeName      = "elastic-internal-xpack-file-realm"
+	//XPackFileRealmVolumeMountPath = "/mnt/elastic-internal/xpack-file-realm"
+	//
+	//UnicastHostsVolumeName      = "elastic-internal-unicast-hosts"
+	//UnicastHostsVolumeMountPath = "/mnt/elastic-internal/unicast-hosts"
+	//UnicastHostsFile            = "unicast_hosts.txt"
 
-	RemoteCertificateAuthoritiesSecretVolumeName      = "elastic-internal-remote-certificate-authorities"
-	RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/" //nolint:gosec
+	LogstashDataVolumeName = "logstash-data"
+	LogstashDataMountPath  = "/usr/share/logstash/data"
 
-	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs" //nolint:gosec
+	LogstashLogsVolumeName = "logstash-logs"
+	LogstashLogsMountPath  = "/usr/share/logstash/logs"
 
-	XPackFileRealmVolumeName      = "elastic-internal-xpack-file-realm"
-	XPackFileRealmVolumeMountPath = "/mnt/elastic-internal/xpack-file-realm"
+	//ScriptsVolumeName      = "elastic-internal-scripts"
+	//ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
+	//
+	//DownwardAPIVolumeName = "downward-api"
+	//DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
+	//LabelsFile            = "labels"
+	//AnnotationsFile       = "annotations"
 
-	UnicastHostsVolumeName      = "elastic-internal-unicast-hosts"
-	UnicastHostsVolumeMountPath = "/mnt/elastic-internal/unicast-hosts"
-	UnicastHostsFile            = "unicast_hosts.txt"
+	//ServiceAccountsFile = "service_tokens"
 
-	ElasticsearchDataVolumeName = "elasticsearch-data"
-	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
+	//FileSettingsVolumeName      = "file-settings"
+	//FileSettingsVolumeMountPath = "/usr/share/elasticsearch/config/operator"
 
-	ElasticsearchLogsVolumeName = "elasticsearch-logs"
-	ElasticsearchLogsMountPath  = "/usr/share/elasticsearch/logs"
-
-	ScriptsVolumeName      = "elastic-internal-scripts"
-	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
-
-	DownwardAPIVolumeName = "downward-api"
-	DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
-	LabelsFile            = "labels"
-	AnnotationsFile       = "annotations"
-
-	ServiceAccountsFile = "service_tokens"
-
-	FileSettingsVolumeName      = "file-settings"
-	FileSettingsVolumeMountPath = "/usr/share/elasticsearch/config/operator"
-)
+	)

@@ -13,11 +13,11 @@ import (
 var (
 	DefaultPersistentVolumeSize = resource.MustParse("1Gi")
 
-	// DefaultDataVolumeClaim is the default data volume claim for Elasticsearch pods.
+	// DefaultDataVolumeClaim is the default data volume claim for Logstash pods.
 	// We default to a 1GB persistent volume, using the default storage class.
 	DefaultDataVolumeClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ElasticsearchDataVolumeName,
+			Name: LogstashDataVolumeName,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -31,31 +31,31 @@ var (
 		},
 	}
 	DefaultDataVolumeMount = corev1.VolumeMount{
-		Name:      ElasticsearchDataVolumeName,
-		MountPath: ElasticsearchDataMountPath,
+		Name:      LogstashDataVolumeName,
+		MountPath: LogstashDataMountPath,
 	}
 
-	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
+	// DefaultVolumeClaimTemplates is the default volume claim templates for Logstash pods
 	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{DefaultDataVolumeClaim}
 
-	// DefaultLogsVolume is the default EmptyDir logs volume for Elasticsearch pods.
+	// DefaultLogsVolume is the default EmptyDir logs volume for Logstash pods.
 	DefaultLogsVolume = corev1.Volume{
-		Name: ElasticsearchLogsVolumeName,
+		Name: LogstashLogsVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
-	// DefaultLogsVolumeMount is the default logs volume mount for the Elasticsearch container.
+	// DefaultLogsVolumeMount is the default logs volume mount for the Logstash container.
 	DefaultLogsVolumeMount = corev1.VolumeMount{
-		Name:      ElasticsearchLogsVolumeName,
-		MountPath: ElasticsearchLogsMountPath,
+		Name:      LogstashLogsVolumeName,
+		MountPath: LogstashLogsMountPath,
 	}
 )
 
 // AppendDefaultDataVolumeMount appends a volume mount for the default data volume if the slice of volumes contains the default data volume.
 func AppendDefaultDataVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.Volume) []corev1.VolumeMount {
 	for _, v := range volumes {
-		if v.Name == ElasticsearchDataVolumeName {
+		if v.Name == LogstashDataVolumeName {
 			return append(mounts, DefaultDataVolumeMount)
 		}
 	}

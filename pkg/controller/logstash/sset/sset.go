@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -25,11 +26,19 @@ type Params struct {
 	Selector             map[string]string
 	Labels               map[string]string
 	PodTemplateSpec      corev1.PodTemplateSpec
+	VolumeClaimTemplates corev1.VolumeClaimTemplateSpec
 	Replicas             int32
 	RevisionHistoryLimit *int32
 }
 
 func New(params Params) appsv1.StatefulSet {
+	// add default PVCs if no user defined PVCs exist
+	claims := defaults.AppendDefaultPVCs(
+		params.VolumeClaimTemplates,
+		params.PodTemplateSpec,
+		lsvolume.DefaultVolumeClaimTemplates...,
+	)
+
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      params.Name,
@@ -52,6 +61,7 @@ func New(params Params) appsv1.StatefulSet {
 
 			Replicas: &params.Replicas,
 			Template: params.PodTemplateSpec,
+			VolumeClaimTemplates: claims,
 		},
 	}
 
