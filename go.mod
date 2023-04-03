@@ -28,10 +28,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.2.0
-	go.elastic.co/apm/module/apmhttp/v2 v2.2.0
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.3.0
+	go.elastic.co/apm/module/apmhttp/v2 v2.3.0
 	go.elastic.co/apm/module/apmzap/v2 v2.2.0
-	go.elastic.co/apm/v2 v2.2.0
+	go.elastic.co/apm/v2 v2.3.0
 	go.uber.org/automaxprocs v1.5.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.7.0
@@ -108,7 +108,6 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
