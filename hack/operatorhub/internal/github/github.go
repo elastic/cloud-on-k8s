@@ -193,10 +193,8 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 
 				find := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator:%s`, c.GitTag)
 				replace := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator@%s`, c.ContainerImageSHA)
-				for _, line := range lines {
-					if strings.Contains(line, find) {
-						line = strings.ReplaceAll(line, find, replace)
-					}
+				for i, line := range lines {
+					lines[i] = strings.ReplaceAll(line, find, replace)
 				}
 				output := strings.Join(lines, "\n")
 				log.Printf("rewriting (%s) with container image SHA", fileDst)
