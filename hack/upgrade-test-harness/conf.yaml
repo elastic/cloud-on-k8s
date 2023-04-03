@@ -2,9 +2,6 @@ testParams:
   - name: v180
     operatorVersion: 1.8.0
     stackVersion: 7.16.3
-  - name: v190
-    operatorVersion: 1.9.0
-    stackVersion: 7.16.0
   - name: v191
     operatorVersion: 1.9.1
     stackVersion: 7.17.8
