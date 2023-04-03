@@ -420,11 +420,7 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 			stats[resourceCount]++
 			stats[serviceCount] += int32(len(ls.Spec.Services))
 			stats[podCount] += ls.Status.AvailableNodes
-			// TODO: Add when pipelines PR is merged
-			// stats[pipelinesCount] += int32(len(ls.Spec.Pipelines))
-			// if ls.Spec.Pipelines != nil {
-			//	stats[pipelinesRefCount] ++
-			//}
+
 			if monitoring.IsLogsDefined(&ls) {
 				stats[stackMonitoringLogsCount]++
 			}
