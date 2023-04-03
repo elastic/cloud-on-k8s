@@ -323,7 +323,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	log.Println("✓")
 
 	log.Printf("Creating git commit ")
-	_, err = w.Commit(fmt.Sprintf(`version %s of eck operator\n\nSigned-off-by: %s <%s>`, c.GitTag, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
+	_, err = w.Commit(fmt.Sprintf("Update ECK to the latest version `%s`\n\nSigned-off-by: %s <%s>", c.GitTag, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  c.GitHubFullName,
 			Email: c.GitHubEmail,
