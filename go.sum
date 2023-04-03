@@ -404,6 +404,8 @@ go.elastic.co/apm/module/apmhttp/v2 v2.3.0 h1:yGZyp26uJXUCfRTwvMmDt1d1jJrHgTBBnc
 go.elastic.co/apm/module/apmhttp/v2 v2.3.0/go.mod h1:JCszLIey4ndJGuUUu5FQjNOiTfaln1dqCqXnRcXVxVc=
 go.elastic.co/apm/module/apmzap/v2 v2.2.0 h1:HOT8HFNcTGYkdqIlgReMsAgOQbPK7MB3ytZeFXbGuWs=
 go.elastic.co/apm/module/apmzap/v2 v2.2.0/go.mod h1:6dMlnZKbCrfCGbxs66jhx1b/I4PrZSvGFXFV36HlpO8=
+go.elastic.co/apm/module/apmzap/v2 v2.3.0 h1:jwxdgAPeH4wRbWVSI3CYymlDNw6j983Up7W2lW3UmaM=
+go.elastic.co/apm/module/apmzap/v2 v2.3.0/go.mod h1:x+2LUqavbVCYGcV7cxBnYsKKbOnbkIQwNpFof/qzS2M=
 go.elastic.co/apm/v2 v2.2.0/go.mod h1:KGQn56LtRmkQjt2qw4+c1Jz8gv9rCBUU/m21uxrqcps=
 go.elastic.co/apm/v2 v2.3.0 h1:jsZQsGWyMyga6xRMcYhKtPvrr5en8wqbmJNmxltST/E=
 go.elastic.co/apm/v2 v2.3.0/go.mod h1:HdwVuAeoJMmoqAZZBNN2YVzj3UVLebtqoRCCydyCP+Q=
