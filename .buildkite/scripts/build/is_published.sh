@@ -17,7 +17,7 @@ is_amd64_build() {
 is_amd64_arm64_build() {
   grep -c "^Name:\s*$image$"        <<< "$inspect_out" >/dev/null && \
   grep -c "Platform:\s*linux/amd64" <<< "$inspect_out" >/dev/null && \
-  grep -c "Platform:\s*linux/amd64" <<< "$inspect_out" >/dev/null
+  grep -c "Platform:\s*linux/arm64" <<< "$inspect_out" >/dev/null
 }
 
 main() {
