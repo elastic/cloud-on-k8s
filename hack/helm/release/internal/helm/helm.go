@@ -223,7 +223,7 @@ type uploadChartsConfig struct {
 // 3. Potentially upload Helm charts with dependencies to GCS bucket.
 // 4. Potentially update GCS Bucket Helm index a second time.
 func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 	tempDir, err := os.MkdirTemp(os.TempDir(), "charts_no_deps")
 	if err != nil {
@@ -294,7 +294,8 @@ func uploadChartsAndUpdateIndex(conf uploadChartsConfig) error {
 			return false
 		}),
 		retry.Attempts(60),
-		retry.Delay(1*time.Minute),
+		retry.MaxJitter(30*time.Second),
+		retry.DelayType(retry.RandomDelay),
 		retry.OnRetry(func(n uint, err error) {
 			log.Printf("retry #%d: %s\n", n, err)
 		}),
@@ -434,6 +435,11 @@ func addHelmRepository(name, url string) error {
 // copyChartToTemporaryDirectory will copy a given Helm chart
 // to a given chartPath temporary directory.
 func copyChartToTemporaryDirectory(ch chart, chartPath string) error {
+	// if the directory already exists in the temp directory
+	// then this is a retry operation and unnecessary.
+	if _, err := os.Stat(chartPath); !os.IsNotExist(err) {
+		return nil
+	}
 	err := os.Mkdir(chartPath, 0755)
 	if err != nil {
 		return fmt.Errorf("while making chart directory inside temporary directory (%s): %w", chartPath, err)
@@ -626,7 +632,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 		if err != nil {
 			return nil, fmt.Errorf("while reading previous index file: %w", err)
 		}
-		err = os.WriteFile(existingIndexFile, b, 0400)
+		err = os.WriteFile(existingIndexFile, b, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("while writing previous index file: %w", err)
 		}
@@ -637,7 +643,12 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 		}
 
 		log.Printf("Attempting to read index.yaml from bucket: %s", conf.releaseConf.Bucket)
-		reader, err := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml").NewReader(ctx)
+		o := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml")
+		attrs, err := o.Attrs(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("reading attributes of index.yaml: %w", err)
+		}
+		reader, err := o.NewReader(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("while creating new reader for index.yaml: %w", err)
 		}
@@ -653,7 +664,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 		// create a new index object from the index just read from bucket
 		// to ensure that the file is the same generation when the write
 		// of the new index occurs in the following block.
-		idx = &index{path: existingIndexFile, generation: reader.Attrs.Generation}
+		idx = &index{path: existingIndexFile, generation: attrs.Generation}
 	}
 
 	// helm repo index --merge index.yaml.old --url chart_repo_url temp_charts_location
@@ -691,7 +702,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 
 	if idx != nil {
 		log.Printf("Ensuring that current index.yaml in bucket is at generation (%d)", idx.generation)
-		o.If(storage.Conditions{GenerationMatch: idx.generation})
+		o = o.If(storage.Conditions{GenerationMatch: idx.generation})
 	}
 
 	log.Printf("Writing new remote helm index file to bucket for %s", conf.releaseConf.ChartsRepoURL)
@@ -702,8 +713,16 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 	}
 
 	if err := writer.Close(); err != nil {
+		var e *googleapi.Error
+		if errors.As(err, &e) {
+			if e.Code == http.StatusPreconditionFailed {
+				return nil, fmt.Errorf("while writing new index.yaml to bucket: %w", err)
+			}
+		}
 		return nil, fmt.Errorf("while writing new index.yaml to bucket: %w", err)
 	}
 
-	return &index{path: filepath.Join(tempDir, "index.yaml"), generation: writer.Attrs().Generation}, nil
+	attrs := writer.Attrs()
+	log.Printf("Wrote new index to bucket at generation: %d", attrs.Generation)
+	return &index{path: filepath.Join(tempDir, "index.yaml"), generation: attrs.Generation}, nil
 }
