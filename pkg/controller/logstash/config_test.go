@@ -76,7 +76,7 @@ log:
 			wantErr: false,
 		},
 		{
-			name: "configRef takes precedence",
+			name: "config takes precedence",
 			args: args{
 				runtimeObjs: []runtime.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{

@@ -142,5 +142,5 @@ func readinessProbe(useTLS bool) corev1.Probe {
 
 // GetLogstashContainer returns the Logstash container from the given podSpec.
 func GetLogstashContainer(podSpec corev1.PodSpec) *corev1.Container {
-	return pod.ContainerByName(podSpec, "logstash")
+	return pod.ContainerByName(podSpec, logstashv1alpha1.LogstashContainerName)
 }
