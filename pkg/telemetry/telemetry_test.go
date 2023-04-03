@@ -265,6 +265,29 @@ func TestNewReporter(t *testing.T) {
 				AvailableNodes: 3,
 			},
 		},
+		&logstashv1alpha1.Logstash{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns2",
+			},
+			Spec: logstashv1alpha1.LogstashSpec{
+				Count: 1,
+				Services: []logstashv1alpha1.LogstashService{
+					{
+						Name: "test1",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9200},
+								},
+							},
+						},
+					},
+				},
+			},
+			Status: logstashv1alpha1.LogstashStatus{
+				AvailableNodes: 1,
+			},
+		},
 		&beatv1beta1.Beat{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat1",
@@ -458,9 +481,9 @@ func TestNewReporter(t *testing.T) {
     logstashes:
       pipelines_count: 0
       pipelines_ref_count: 0
-      pod_count: 3
-      resource_count: 1
-      service_count: 2
+      pod_count: 4
+      resource_count: 2
+      service_count: 3
       stack_monitoring_logs_count: 1
       stack_monitoring_metrics_count: 1
     maps:
