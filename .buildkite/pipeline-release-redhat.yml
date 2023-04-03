@@ -1,3 +1,7 @@
+
+env:
+  DRY_RUN: true
+
 steps:
   - group: redhat-release
     steps:
@@ -27,7 +31,7 @@ steps:
           - buildkite-agent artifact download "bin/operatorhub" /usr/local/
           - chmod u+x /usr/local/bin/operatorhub
           - cd hack/operatorhub
-          - operatorhub container push --dry-run=\${DRY_RUN:-true}
+          - operatorhub container push --dry-run=$${DRY_RUN}
 
       - label: "run container preflight"
         key: "redhat-preflight"
@@ -35,7 +39,7 @@ steps:
         depends_on:
           - "redhat-container-push"
         commands:
-          - .buildkite/scripts/release/operatorhub.sh preflight
+          - .buildkite/scripts/release/redhat-preflight.sh
 
       - label: "run remaining release"
         key: "redhat-release"
@@ -47,4 +51,7 @@ steps:
           - buildkite-agent artifact download "config/*.yaml" .
           - buildkite-agent artifact download "bin/operatorhub" /usr/local/
           - chmod u+x /usr/local/bin/operatorhub
-          - .buildkite/scripts/release/operatorhub.sh release
+          - bin/operatorhub container publish --dry-run="$${DRY_RUN}"
+          - bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
+          - bin/operatorhub bundle generate --dir="$$(pwd)"
+          - bin/operatorhub bundle create-pr --dir="$$(pwd)" --dry-run="$${DRY_RUN}"
