@@ -25,7 +25,7 @@ main() {
   local platform=$2
 
   set +e
-  inspect_out="$(docker buildx imagetools inspect $image)"
+  inspect_out=$(docker buildx imagetools inspect "$image")
   set -e
 
   case "$platform" in
