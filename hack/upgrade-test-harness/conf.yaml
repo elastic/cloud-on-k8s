@@ -1,10 +1,4 @@
 testParams:
-  - name: v170
-    operatorVersion: 1.7.0
-    stackVersion: 7.14.0
-  - name: v171
-    operatorVersion: 1.7.1
-    stackVersion: 7.14.0
   - name: v180
     operatorVersion: 1.8.0
     stackVersion: 7.15.0
