@@ -352,11 +352,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		return fmt.Errorf("while pushing git refspec (%s) to remote: %w", refSpec, err)
 	}
 
-	if !c.DryRun {
-		return c.createPullRequest(repo, branchName)
-	}
-	log.Printf("Not creating pull request for (%s)\n", orgRepo)
-	return nil
+	return c.createPullRequest(repo, branchName)
 }
 
 // createPullRequest will create a draft pull request for the given github repository
