@@ -15,7 +15,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: elasticsearch
 spec:
-  version: 8.6.1
+  version: 8.7.0
   nodeSets:
     - name: default
       count: 3
@@ -32,7 +32,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: kibana
 spec:
-  version: 8.6.1
+  version: 8.7.0
   count: 1
   elasticsearchRef:
     name: qa
@@ -45,7 +45,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: elasticsearch
 spec:
-  version: 8.6.1
+  version: 8.7.0
   nodeSets:
     - name: default
       count: 3
@@ -61,7 +61,7 @@ metadata:
     app.kubernetes.io/name: eck-logstash
     app.kubernetes.io/component: kibana
 spec:
-  version: 8.6.1
+  version: 8.7.0
   count: 1
   elasticsearchRef:
     name: production
@@ -75,7 +75,7 @@ metadata:
     app.kubernetes.io/component: filebeat
 spec:
   type: filebeat
-  version: 8.6.1
+  version: 8.7.0
   config:
     filebeat.inputs:
       - type: log
@@ -121,7 +121,7 @@ metadata:
     app.kubernetes.io/component: logstash
 spec:
   count: 1
-  version: 8.6.1
+  version: 8.7.0
     elasticsearchRefs:
     - clusterName: prod-es
       name: production
@@ -133,66 +133,6 @@ spec:
       elasticsearchRefs:
         - name: elasticsearch-monitoring
   pipelines:
-    - pipeline.id: main
-      config.string: |
-        input {
-          beats {
-            port => 5044
-          }
-        }
-        filter {
-          grok {
-            match => { "message" => "%{HTTPD_COMMONLOG}"}
-          }
-          geoip {
-            source => "[source][address]"
-            target => "[source]"
-          }
-        }
-        output {
-          elasticsearch {
-            hosts => [ "${PROD_ES_ES_HOSTS}" ]
-            user => "${PROD_ES_ES_USER}"
-            password => "${PROD_ES_ES_PASSWORD}"
-            cacert => "${PROD_ES_ES_CA_CERTS}"
-          }
-          elasticsearch {
-            hosts => [ "${QA_ES_ES_HOSTS}" ]
-            user => "${QA_ES_ES_USER}"
-            password => "${QA_ES_ES_PASSWORD}"
-            cacert => "${QA_ES_ES_CA_CERTS}"
-          }
-        }
-        - pipeline.id: main
-          config.string: |
-            input {
-              beats {
-                port => 5044
-              }
-            }
-            filter {
-              grok {
-                match => { "message" => "%{HTTPD_COMMONLOG}"}
-              }
-              geoip {
-                source => "[source][address]"
-                target => "[source]"
-              }
-            }
-            output {
-              elasticsearch {
-                hosts => [ "${PROD_ES_ES_HOSTS}" ]
-                user => "${PROD_ES_ES_USER}"
-                password => "${PROD_ES_ES_PASSWORD}"
-                cacert => "${PROD_ES_ES_CA_CERTS}"
-              }
-              elasticsearch {
-                hosts => [ "${QA_ES_ES_HOSTS}" ]
-                user => "${QA_ES_ES_USER}"
-                password => "${QA_ES_ES_PASSWORD}"
-                cacert => "${QA_ES_ES_CA_CERTS}"
-              }
-            }
     - pipeline.id: main
       config.string: |
         input {
@@ -262,7 +202,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 8.6.1
+  version: 8.7.0
   nodeSets:
     - name: default
       count: 3
@@ -274,7 +214,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 8.6.1
+  version: 8.7.0
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring
