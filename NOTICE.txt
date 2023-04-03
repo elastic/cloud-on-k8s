@@ -3336,11 +3336,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmzap/v2
-Version : v2.2.0
-Time    : 2022-11-01T00:01:43Z
+Version : v2.3.0
+Time    : 2023-03-31T03:30:00Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.3.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

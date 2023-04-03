@@ -349,7 +349,6 @@ github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/ryanuber/go-glob v1.0.0 h1:iQh3xXAumdQ+4Ufa5b25cRpC5TYKlno6hsv6Cb3pkBk=
 github.com/ryanuber/go-glob v1.0.0/go.mod h1:807d1WSdnB0XRJzKNil9Om6lcp/3a0v4qIHxIXzX/Yc=
-github.com/santhosh-tekuri/jsonschema v1.2.4/go.mod h1:TEAUOeZSmIxTTuHatJzrvARHiuO9LYd+cIxzgEHCQI4=
 github.com/sethvargo/go-password v0.2.0 h1:BTDl4CC/gjf/axHMaDQtw507ogrXLci6XRiLc7i/UHI=
 github.com/sethvargo/go-password v0.2.0/go.mod h1:Ym4Mr9JXLBycr02MFuVQ/0JHidNetSgbzutTr3zsYXE=
 github.com/shopspring/decimal v1.2.0 h1:abSATXmQEYyShuxI4/vyW3tV1MrKAJzCZ/0zLUXYbsQ=
@@ -402,9 +401,8 @@ go.elastic.co/apm/module/apmelasticsearch/v2 v2.3.0 h1:n9y7A3yfdQpQKdYFdMVGvWvaF
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.3.0/go.mod h1:k+h3QWoowcH/fzsb++t3rTq11nR2utQTwTRqub4Cwns=
 go.elastic.co/apm/module/apmhttp/v2 v2.3.0 h1:yGZyp26uJXUCfRTwvMmDt1d1jJrHgTBBncZfpYAxR8s=
 go.elastic.co/apm/module/apmhttp/v2 v2.3.0/go.mod h1:JCszLIey4ndJGuUUu5FQjNOiTfaln1dqCqXnRcXVxVc=
-go.elastic.co/apm/module/apmzap/v2 v2.2.0 h1:HOT8HFNcTGYkdqIlgReMsAgOQbPK7MB3ytZeFXbGuWs=
-go.elastic.co/apm/module/apmzap/v2 v2.2.0/go.mod h1:6dMlnZKbCrfCGbxs66jhx1b/I4PrZSvGFXFV36HlpO8=
-go.elastic.co/apm/v2 v2.2.0/go.mod h1:KGQn56LtRmkQjt2qw4+c1Jz8gv9rCBUU/m21uxrqcps=
+go.elastic.co/apm/module/apmzap/v2 v2.3.0 h1:jwxdgAPeH4wRbWVSI3CYymlDNw6j983Up7W2lW3UmaM=
+go.elastic.co/apm/module/apmzap/v2 v2.3.0/go.mod h1:x+2LUqavbVCYGcV7cxBnYsKKbOnbkIQwNpFof/qzS2M=
 go.elastic.co/apm/v2 v2.3.0 h1:jsZQsGWyMyga6xRMcYhKtPvrr5en8wqbmJNmxltST/E=
 go.elastic.co/apm/v2 v2.3.0/go.mod h1:HdwVuAeoJMmoqAZZBNN2YVzj3UVLebtqoRCCydyCP+Q=
 go.elastic.co/fastjson v1.1.0 h1:3MrGBWWVIxe/xvsbpghtkFoPciPhOCmjsR/HfwEeQR4=
