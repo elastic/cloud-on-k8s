@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret
 func TestPipelineConfigRefLogstash(t *testing.T) {
 	secretName := "ls-generator-pipeline"
 
@@ -70,6 +71,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 	test.Sequence(before, steps, b).RunSequential(t)
 }
 
+// TestPipelineConfigLogstash Pipeline should be able to pass to Logstash via VolumeMount
 func TestPipelineConfigLogstash(t *testing.T) {
 	secretName := "ls-split-pipe"
 
@@ -134,7 +136,7 @@ func TestPipelineConfigLogstash(t *testing.T) {
 				},
 				logstash.Want{
 					Status: "green",
-					Match:  map[string]string{"pipelines.split.workers": "2"},
+					Match:  map[string]string{"pipelines.split.batch_size": "125"},
 				}),
 		}
 	})

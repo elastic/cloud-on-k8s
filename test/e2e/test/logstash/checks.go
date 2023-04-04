@@ -116,7 +116,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			},
 			Want{
 				Status: "green",
-				Match:  map[string]string{"pipelines.main.workers": "2"},
+				Match:  map[string]string{"pipelines.main.batch_size": "125"},
 			}),
 	}
 }
