@@ -12,7 +12,7 @@ metadata:
 {{- end }}
 webhooks:
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -43,7 +43,7 @@ webhooks:
     resources:
     - agents
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -74,7 +74,7 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -105,7 +105,7 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -136,7 +136,7 @@ webhooks:
     resources:
     - beats
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -167,7 +167,7 @@ webhooks:
     resources:
     - enterprisesearches
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -198,7 +198,7 @@ webhooks:
     resources:
     - enterprisesearches
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -229,7 +229,7 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -260,7 +260,7 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -291,7 +291,7 @@ webhooks:
       resources:
         - mapsservers
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -322,7 +322,7 @@ webhooks:
     resources:
     - kibanas
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -353,7 +353,7 @@ webhooks:
     resources:
     - kibanas
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
@@ -384,7 +384,7 @@ webhooks:
       resources:
       - elasticsearchautoscalers
 - clientConfig:
-    {{- if not .Values.webhook.manageCerts }}
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
     {{- end }}
     service:
