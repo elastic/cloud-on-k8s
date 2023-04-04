@@ -48,7 +48,7 @@ type LogstashSpec struct {
 	Pipelines []commonv1.Config `json:"pipelines,omitempty"`
 
 	// PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
-	// Logstash pipelines must be specified as yaml, under a single "pipeline.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
+	// Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
 	// can be specified.
 	// +kubebuilder:validation:Optional
 	PipelinesRef *commonv1.ConfigSource `json:"pipelinesRef,omitempty"`
