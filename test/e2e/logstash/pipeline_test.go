@@ -134,6 +134,7 @@ func TestPipelineConfigLogstash(t *testing.T) {
 				},
 				logstash.Want{
 					Status: "green",
+					Match:  map[string]string{"pipelines.split.workers": "2"},
 				}),
 		}
 	})
