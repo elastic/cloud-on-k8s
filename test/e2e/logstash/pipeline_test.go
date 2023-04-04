@@ -65,6 +65,12 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 					Status: "green",
 					Match:  map[string]string{"pipelines.generator.workers": "1"},
 				}),
+			test.Step{
+				Name: "Delete pipeline secret",
+				Test: test.Eventually(func() error {
+					return k.DeleteSecrets(pipelineSecret)
+				}),
+			},
 		}
 	})
 
@@ -138,6 +144,12 @@ func TestPipelineConfigLogstash(t *testing.T) {
 					Status: "green",
 					Match:  map[string]string{"pipelines.split.batch_size": "125"},
 				}),
+			test.Step{
+				Name: "Delete pipeline secret",
+				Test: test.Eventually(func() error {
+					return k.DeleteSecrets(pipelineSecret)
+				}),
+			},
 		}
 	})
 
