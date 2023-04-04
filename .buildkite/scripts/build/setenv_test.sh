@@ -40,7 +40,7 @@ assert_image "docker.elastic.co/eck-ci/eck-operator-pr:4242-${current_sha1}"
 echo "test trigger_nightly_main"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" $setenv > /dev/null
 assert_image "docker.elastic.co/eck-snapshots/eck-operator:${current_version}-${current_sha1}"
 
-echo "test trigger_nightly_main-dev"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" BUILD_LICENSE_PUBKEY=dev $setenv > /dev/null
+echo "test trigger_nightly_main-dev"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" OPERATOR_VERSION_SUFFIX=dev $setenv > /dev/null
 assert_image "docker.elastic.co/eck-snapshots/eck-operator:${current_version}-${current_sha1}-dev"
 
 echo "test trigger_merge_main"; BUILDKITE_BRANCH="main" $setenv > /dev/null
