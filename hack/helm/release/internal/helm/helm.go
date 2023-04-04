@@ -625,7 +625,7 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 	}
 	defer storageClient.Close()
 
-	existingIndexFile := filepath.Join(tempDir, "index.yaml.old")
+	existingIndexFile := filepath.Join(tempDir, oldIndexFileName)
 	if idx != nil {
 		log.Printf("Reading previous index at generation (%d) from path (%s)", idx.generation, idx.path)
 		b, err := os.ReadFile(idx.path)
@@ -637,38 +637,42 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 			return nil, fmt.Errorf("while writing previous index file: %w", err)
 		}
 	} else {
-		f, err := os.Create(existingIndexFile)
+		idx, err = readIndexFromBucket(ctx, readIndexConfig{
+			client:    storageClient,
+			indexFile: existingIndexFile,
+			bucket:    conf.releaseConf.Bucket,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("while creating empty index.yaml: %w", err)
+			return nil, err
 		}
-
-		log.Printf("Attempting to read index.yaml from bucket: %s", conf.releaseConf.Bucket)
-		o := storageClient.Bucket(conf.releaseConf.Bucket).Object("index.yaml")
-		attrs, err := o.Attrs(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("reading attributes of index.yaml: %w", err)
-		}
-		reader, err := o.NewReader(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("while creating new reader for index.yaml: %w", err)
-		}
-		defer reader.Close()
-
-		if _, err := io.Copy(f, reader); err != nil {
-			return nil, fmt.Errorf("while writing index.yaml.old: %w", err)
-		}
-
-		if err = f.Close(); err != nil {
-			return nil, fmt.Errorf("while closing index.yaml.old file: %w", err)
-		}
-		// create a new index object from the index just read from bucket
-		// to ensure that the file is the same generation when the write
-		// of the new index occurs in the following block.
-		idx = &index{path: existingIndexFile, generation: attrs.Generation}
 	}
 
+	updatedIndexFile, err := indexTempDirAndMergeWithOldIndex(tempDir, conf.releaseConf.ChartsRepoURL, existingIndexFile)
+	if err != nil {
+		return nil, fmt.Errorf("while opening new %s: %w", indexFileName, err)
+	}
+	defer updatedIndexFile.Close()
+
+	if conf.releaseConf.DryRun {
+		log.Printf("not uploading index as dry-run is set")
+		return nil, nil
+	}
+
+	return writeIndexToBucket(ctx, writeIndexConfig{
+		client:          storageClient,
+		bucketFileName:  indexFileName,
+		bucket:          conf.releaseConf.Bucket,
+		chartsRepoURL:   conf.releaseConf.ChartsRepoURL,
+		existingIndex:   idx,
+		indexFileHandle: updatedIndexFile,
+	})
+}
+
+// indexTempDirAndMergeWithOldIndex will index the given tempdir, merge with the old existingIndexFile
+// and write a new index file, returning the file handle and any errors encountered.
+func indexTempDirAndMergeWithOldIndex(tempDir, chartsRepoURL, existingIndexFile string) (*os.File, error) {
 	// helm repo index --merge index.yaml.old --url chart_repo_url temp_charts_location
-	tempIndex, err := repo.IndexDirectory(tempDir, conf.releaseConf.ChartsRepoURL)
+	tempIndex, err := repo.IndexDirectory(tempDir, chartsRepoURL)
 	if err != nil {
 		return nil, fmt.Errorf("while indexing helm charts in temporary directory: %w", err)
 	}
@@ -681,48 +685,9 @@ func updateIndex(ctx context.Context, tempDir string, conf uploadChartsConfig, i
 	tempIndex.Merge(bucketIndex)
 	tempIndex.SortEntries()
 
-	log.Printf("Writing new local helm index file for %s", conf.releaseConf.ChartsRepoURL)
-	if err = tempIndex.WriteFile(filepath.Join(tempDir, "index.yaml"), 0644); err != nil {
+	log.Printf("Writing new local helm index file for %s", chartsRepoURL)
+	if err = tempIndex.WriteFile(filepath.Join(tempDir, indexFileName), 0644); err != nil {
 		return nil, fmt.Errorf("while writing new helm index file: %w", err)
 	}
-	var updatedIndexFile *os.File
-	updatedIndexFile, err = os.Open(filepath.Join(tempDir, "index.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("while opening new index.yaml: %w", err)
-	}
-	defer updatedIndexFile.Close()
-
-	if conf.releaseConf.DryRun {
-		log.Printf("not uploading index as dry-run is set")
-		return nil, nil
-	}
-
-	bkt := storageClient.Bucket(conf.releaseConf.Bucket)
-	o := bkt.Object("index.yaml")
-
-	if idx != nil {
-		log.Printf("Ensuring that current index.yaml in bucket is at generation (%d)", idx.generation)
-		o = o.If(storage.Conditions{GenerationMatch: idx.generation})
-	}
-
-	log.Printf("Writing new remote helm index file to bucket for %s", conf.releaseConf.ChartsRepoURL)
-	writer := o.NewWriter(ctx)
-
-	if _, err = io.Copy(writer, updatedIndexFile); err != nil {
-		return nil, fmt.Errorf("while copying new index.yaml to bucket: %w", err)
-	}
-
-	if err := writer.Close(); err != nil {
-		var e *googleapi.Error
-		if errors.As(err, &e) {
-			if e.Code == http.StatusPreconditionFailed {
-				return nil, fmt.Errorf("while writing new index.yaml to bucket: %w", err)
-			}
-		}
-		return nil, fmt.Errorf("while writing new index.yaml to bucket: %w", err)
-	}
-
-	attrs := writer.Attrs()
-	log.Printf("Wrote new index to bucket at generation: %d", attrs.Generation)
-	return &index{path: filepath.Join(tempDir, "index.yaml"), generation: attrs.Generation}, nil
+	return os.Open(filepath.Join(tempDir, indexFileName))
 }

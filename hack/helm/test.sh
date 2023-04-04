@@ -50,3 +50,7 @@ check() {
 for i in $(list_chart_dirs); do
     check "${i}"
 done
+
+# run unit tests for helm release tool
+echo "Running unit tests for hack/helm/release tool"
+make -C ${SCRIPT_DIR}/release test

@@ -4,3 +4,6 @@
 
 build:
 	go build -o bin/releaser main.go
+
+test:
+	@go test ./...
