@@ -54,7 +54,7 @@ func buildPipeline(params Params) ([]byte, error) {
 		return userProvidedCfg.Render()
 	}
 
-	cfg := defaultPipeline()
+	cfg := defaultPipeline
 	return cfg.Render()
 }
 

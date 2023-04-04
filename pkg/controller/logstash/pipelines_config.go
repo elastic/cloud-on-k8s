@@ -5,9 +5,6 @@
 package logstash
 
 import (
-	"fmt"
-	"reflect"
-
 	"github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"gopkg.in/yaml.v3"
@@ -76,53 +73,6 @@ func (c *PipelinesConfig) Render() ([]byte, error) {
 		return []byte{}, err
 	}
 	return yaml.Marshal(out)
-}
-
-// Diff returns true if the key/value or the sequence of two PipelinesConfig are different
-// Use for testing only.
-func (c *PipelinesConfig) Diff(c2 *PipelinesConfig) (bool, error) {
-	if c == c2 {
-		return false, nil
-	}
-	if c == nil && c2 != nil {
-		return true, fmt.Errorf("empty lhs config %s", c2.asUCfg().FlattenedKeys(Options...))
-	}
-	if c != nil && c2 == nil {
-		return true, fmt.Errorf("empty rhs config %s", c.asUCfg().FlattenedKeys(Options...))
-	}
-
-	var s []map[string]interface{}
-	var s2 []map[string]interface{}
-	err := c.asUCfg().Unpack(&s, Options...)
-	if err != nil {
-		return true, err
-	}
-	err = c2.asUCfg().Unpack(&s2, Options...)
-	if err != nil {
-		return true, err
-	}
-
-	return diffSlice(s, s2)
-}
-
-// diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different
-func diffSlice(s1, s2 []map[string]interface{}) (bool, error) {
-	if len(s1) != len(s2) {
-		return true, fmt.Errorf("array size doesn't match %d, %d", len(s1), len(s2))
-	}
-	var diff []string
-	for i, m := range s1 {
-		m2 := s2[i]
-		if eq := reflect.DeepEqual(m, m2); !eq {
-			diff = append(diff, fmt.Sprintf("%s vs %s, ", m, m2))
-		}
-	}
-
-	if len(diff) > 0 {
-		return true, fmt.Errorf("there are %d differences. %s", len(diff), diff)
-	}
-
-	return false, nil
 }
 
 func (c *PipelinesConfig) asUCfg() *ucfg.Config {
