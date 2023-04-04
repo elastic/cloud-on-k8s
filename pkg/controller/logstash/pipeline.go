@@ -71,13 +71,11 @@ func getUserPipeline(params Params) (*PipelinesConfig, error) {
 	return ParsePipelinesRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
 }
 
-func defaultPipeline() *PipelinesConfig {
-	pipelines := []map[string]string{
+var (
+	defaultPipeline = MustPipelinesConfig([]map[string]string{
 		{
 			"pipeline.id": "main",
 			"path.config": "/usr/share/logstash/pipeline",
 		},
-	}
-
-	return MustPipelinesConfig(pipelines)
-}
+	})
+)
