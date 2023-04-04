@@ -62,7 +62,7 @@ func buildPipeline(params Params) ([]byte, error) {
 // `pipelineRef` field.
 func getUserPipeline(params Params) (*PipelinesConfig, error) {
 	if params.Logstash.Spec.Pipelines != nil {
-		var pipelines []map[string]interface{}
+		pipelines := make([]map[string]interface{}, 0, len(params.Logstash.Spec.Pipelines))
 		for _, p := range params.Logstash.Spec.Pipelines {
 			pipelines = append(pipelines, p.Data)
 		}
