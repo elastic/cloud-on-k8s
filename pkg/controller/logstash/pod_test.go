@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -39,6 +42,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Len(t, pod.Spec.Containers, 1)
 				assert.Len(t, pod.Spec.InitContainers, 0)
 				assert.Len(t, pod.Spec.Volumes, 1)
+				assert.NotEmpty(t, pod.Annotations[ConfigHashAnnotationName])
 				logstashContainer := GetLogstashContainer(pod.Spec)
 				require.NotNil(t, logstashContainer)
 				assert.Equal(t, 1, len(logstashContainer.VolumeMounts))
@@ -159,6 +163,77 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, GetLogstashContainer(pod.Spec).Env, 1)
+			},
+		},
+		{
+			name: "with multiple services, readiness probe hits the correct port",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+					Services: []logstashv1alpha1.LogstashService{{
+						Name: "api",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Name: "api", Protocol: "TCP", Port: 9200},
+								},
+							},
+						}}, {
+						Name: "notapi",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Name: "notapi", Protocol: "TCP", Port: 9600},
+								},
+							},
+						}},
+					},
+				},
+			},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, 9200, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
+			},
+		},
+		{
+			name: "with api service customized, readiness probe hits the correct port",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+					Services: []logstashv1alpha1.LogstashService{
+						{
+							Name: "api",
+							Service: commonv1.ServiceTemplate{
+								Spec: corev1.ServiceSpec{
+									Ports: []corev1.ServicePort{
+										{Name: "api", Protocol: "TCP", Port: 9200},
+									},
+								},
+							}},
+					},
+				}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, 9200, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
+			},
+		},
+		{
+			name: "with default service, readiness probe hits the correct port",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+				}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, 9600, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
+			},
+		},
+
+		{
+			name: "with custom annotation",
+			logstash: logstashv1alpha1.Logstash{Spec: logstashv1alpha1.LogstashSpec{
+				Image:   "my-custom-image:1.0.0",
+				Version: "8.6.1",
+			}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, "my-custom-image:1.0.0", GetLogstashContainer(pod.Spec).Image)
 			},
 		},
 		{

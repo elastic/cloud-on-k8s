@@ -20,6 +20,7 @@ spec:
   config:
     log.level: info
     api.http.host: "0.0.0.0"
+    api.http.port: 9601
     queue.type: memory
   services:
     - name: api
@@ -27,10 +28,10 @@ spec:
         spec:
           type: ClusterIP
           ports:
-            - port: 9600
+            - port: 9601
               name: "api"
               protocol: TCP
-              targetPort: 9600
+              targetPort: 9601
     - name: beats
       service:
         spec:
