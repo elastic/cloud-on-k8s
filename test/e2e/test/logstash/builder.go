@@ -140,12 +140,14 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 				VolumeMounts: mounts,
 			},
 		}
-	} else {
-		if b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts == nil {
-			b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
-		}
-		b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, mounts...)
+		return b
 	}
+
+	if b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts == nil {
+		b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+	}
+	b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, mounts...)
+
 	return b
 }
 
