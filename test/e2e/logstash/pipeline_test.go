@@ -62,6 +62,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 				},
 				logstash.Want{
 					Status: "green",
+					Match:  map[string]string{"pipelines.generator.workers": "1"},
 				}),
 		}
 	})
