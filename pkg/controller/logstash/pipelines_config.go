@@ -27,8 +27,8 @@ func NewPipelinesConfig() *PipelinesConfig {
 }
 
 // NewPipelinesConfigFrom creates a new pipeline from spec.
-func NewPipelinesConfigFrom(data []map[string]interface{}) (*PipelinesConfig, error) {
-	config, err := ucfg.NewFrom(data, Options...)
+func NewPipelinesConfigFrom(cfg interface{}) (*PipelinesConfig, error) {
+	config, err := ucfg.NewFrom(cfg, Options...)
 	if err != nil {
 		return nil, err
 	}
@@ -38,11 +38,11 @@ func NewPipelinesConfigFrom(data []map[string]interface{}) (*PipelinesConfig, er
 // MustPipelinesConfig creates a new pipeline and panics on errors.
 // Use for testing only.
 func MustPipelinesConfig(cfg interface{}) *PipelinesConfig {
-	config, err := ucfg.NewFrom(cfg, Options...)
+	config, err := NewPipelinesConfigFrom(cfg)
 	if err != nil {
 		panic(err)
 	}
-	return fromConfig(config)
+	return config
 }
 
 // ParsePipelinesConfig parses the given pipeline content into a PipelinesConfig.
