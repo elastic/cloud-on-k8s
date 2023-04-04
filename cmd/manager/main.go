@@ -181,6 +181,11 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
+		operator.ContainerRepositoryFlag,
+		"",
+		"Container repository to use when downloading Elastic Stack container images",
+	)
+	cmd.Flags().String(
 		operator.ContainerSuffixFlag,
 		"",
 		fmt.Sprintf("Suffix to be appended to container images by default. Cannot be combined with %s", operator.UBIOnlyFlag),
@@ -470,6 +475,13 @@ func startOperator(ctx context.Context) error {
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
+
+	// set the default container repository
+	containerRepository := viper.GetString(operator.ContainerRepositoryFlag)
+	if containerRepository != "" {
+		log.Info("Setting default container repository", "container_repository", containerRepository)
+		container.SetContainerRepository(containerRepository)
+	}
 
 	// allow users to specify a container suffix unless --ubi-only mode is active
 	suffix := viper.GetString(operator.ContainerSuffixFlag)

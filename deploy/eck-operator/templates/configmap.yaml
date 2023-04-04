@@ -14,6 +14,9 @@ data:
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}
     {{- end }}
+    {{- with .Values.config.containerRepository }}
+    container-repository: {{ . }}
+    {{- end }}
     max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
     {{- with .Values.config.passwordHashCacheSize }}
     password-hash-cache-size: {{ int . }}
