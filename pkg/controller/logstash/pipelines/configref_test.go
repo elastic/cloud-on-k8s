@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package logstash
+package pipelines
 
 import (
 	"testing"
@@ -44,14 +44,14 @@ func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
 	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
-	watchName := PipelinesRefWatchName(resNsn)
+	watchName := ConfigRefWatchName(resNsn)
 
 	tests := []struct {
 		name            string
 		pipelinesRef    *commonv1.ConfigSource
 		secretKey       string
 		runtimeObjs     []runtime.Object
-		want            *PipelinesConfig
+		want            *Config
 		wantErr         bool
 		existingWatches []string
 		wantWatches     []string
@@ -68,7 +68,7 @@ func TestParsePipelinesRef(t *testing.T) {
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:        MustParsePipelineConfig([]byte(`- "pipeline.id": "main"`)),
+			want:        MustParse([]byte(`- "pipeline.id": "main"`)),
 			wantWatches: []string{watchName},
 		},
 		{
@@ -82,7 +82,7 @@ func TestParsePipelinesRef(t *testing.T) {
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:            MustParsePipelineConfig([]byte(`- "pipeline.id": "main"`)),
+			want:            MustParse([]byte(`- "pipeline.id": "main"`)),
 			existingWatches: []string{watchName},
 			wantWatches:     []string{watchName},
 		},
@@ -167,9 +167,9 @@ func TestParsePipelinesRef(t *testing.T) {
 				watches:  w,
 				recorder: fakeRecorder,
 			}
-			got, err := ParsePipelinesRef(d, &res, tt.pipelinesRef, tt.secretKey)
+			got, err := ParseConfigRef(d, &res, tt.pipelinesRef, tt.secretKey)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParsePipelinesRef() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseConfigRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			require.Equal(t, tt.want, got)

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 )
 
 func reconcilePipeline(params Params, configHash hash.Hash) error {
@@ -60,19 +61,20 @@ func buildPipeline(params Params) ([]byte, error) {
 
 // getUserPipeline extracts the pipeline either from the spec `pipeline` field or from the Secret referenced by spec
 // `pipelineRef` field.
-func getUserPipeline(params Params) (*PipelinesConfig, error) {
+func getUserPipeline(params Params) (*pipelines.Config, error) {
 	if params.Logstash.Spec.Pipelines != nil {
-		pipelines := make([]map[string]interface{}, 0, len(params.Logstash.Spec.Pipelines))
+		pipes := make([]map[string]interface{}, 0, len(params.Logstash.Spec.Pipelines))
 		for _, p := range params.Logstash.Spec.Pipelines {
-			pipelines = append(pipelines, p.Data)
+			pipes = append(pipes, p.Data)
 		}
-		return NewPipelinesConfigFrom(pipelines)
+
+		return pipelines.FromSpec(pipes)
 	}
-	return ParsePipelinesRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
+	return pipelines.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
 }
 
 var (
-	defaultPipeline = MustPipelinesConfig([]map[string]string{
+	defaultPipeline = pipelines.MustFromSpec([]map[string]string{
 		{
 			"pipeline.id": "main",
 			"path.config": "/usr/share/logstash/pipeline",
