@@ -119,6 +119,9 @@ webhook:
   # objectSelector corresponds to the objectSelector property of the webhook.
   # Setting this restricts the webhook to act only on objects that match the selector.
   objectSelector: {}
+  # HostNetwork allows a Pod to use the Node network namespace.
+  # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
+  hostNetwork: false
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.
@@ -235,8 +238,3 @@ global:
   createOperatorNamespace: true
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
   kubeVersion: 1.21.0
-
-# HostNetwork allows a Pod to use the Node network namespace.
-# This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
-# communication with the kube API.
-hostNetwork: false
