@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"reflect"
 
-	ucfg "github.com/elastic/go-ucfg"
+	"github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // PipelinesConfig contains configuration for Logstash pipeline ("pipelines.yml"),
