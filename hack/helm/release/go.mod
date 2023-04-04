@@ -7,7 +7,7 @@ require (
 	github.com/avast/retry-go/v4 v4.3.3
 	github.com/elastic/cloud-on-k8s/v2 v2.7.0
 	github.com/google/go-cmp v0.5.9
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
 	google.golang.org/api v0.114.0
