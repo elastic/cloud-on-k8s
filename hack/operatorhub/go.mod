@@ -11,7 +11,7 @@ require (
 	github.com/operator-framework/operator-registry v1.26.5
 	github.com/otiai10/copy v1.9.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	k8s.io/api v0.26.1
 	k8s.io/apiextensions-apiserver v0.26.1
