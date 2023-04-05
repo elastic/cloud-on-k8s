@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"html/template"
 	"io"
 	"math/rand"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"text/template"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
