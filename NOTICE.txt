@@ -6475,11 +6475,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v23.0.1+incompatible
-Time    : 2023-02-09T19:11:28Z
+Version : v23.0.3+incompatible
+Time    : 2023-04-04T18:03:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.1+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.3+incompatible/LICENSE:
 
 
                                  Apache License
