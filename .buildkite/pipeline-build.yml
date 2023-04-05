@@ -61,13 +61,6 @@ steps:
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
 
-      - label: ":go: operatorhub tool"
-        key: "build-operatorhub-tool"
-        commands:
-          - cd hack/operatorhub
-          - make build
-          - buildkite-agent artifact upload bin/operatorhub
-
       - label: ":go: helm releaser tool"
         key: "build-helm-releaser-tool"
         commands:
