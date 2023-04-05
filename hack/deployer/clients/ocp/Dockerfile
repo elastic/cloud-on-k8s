@@ -12,6 +12,6 @@ RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${CLIE
     mv oc /usr/local/bin/oc && \
     rm openshift-client-linux-${CLIENT_VERSION}.tar.gz
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1085.1679482090
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1107
 COPY --from=builder /usr/local/bin/openshift-install .
 COPY --from=builder /usr/local/bin/oc .
