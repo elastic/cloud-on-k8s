@@ -149,5 +149,30 @@ steps:
 
         cat report.md | buildkite-agent annotate --style "$$style"
 
+        if [[ $$style == "error" ]]; then
+
+        notif_message() {
+          # yolo
+          grep "<summary>" report.md | sed -r "s@.*<code>([^/]*).*</code> ~ (.*)</summary>@\1 \2@g" | sed "s/^/            /"
+        }
+
+        cat <<- YAML | tee notify.yml
+        steps:
+          - label: ""
+            if: build.branch == "main"
+            command: true
+            notify:
+              - slack:
+                  channels:
+                    - "#eck"
+                  message: |
+        $$(notif_message)
+        YAML
+
+        buildkite-agent pipeline upload notify.yml
+
+        fi
+
     artifact_paths:
       - ".buildkite/e2e/reporter/report.md"
+      - ".buildkite/e2e/reporter/notify.yml"
