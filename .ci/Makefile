@@ -31,7 +31,7 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_IMAGE ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:01671ac6
+CI_IMAGE ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5827bee6
 
 # volume used to share files between CI container and containers launched by deployer
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
