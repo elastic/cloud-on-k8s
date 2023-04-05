@@ -7,6 +7,7 @@ package logstash
 import (
 	"fmt"
 	"hash"
+	"path"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"

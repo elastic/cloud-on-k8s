@@ -336,9 +336,10 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 
 func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 	type args struct {
-		typ          esclient.ShutdownType
-		podToNodeID  map[string]string
-		leavingNodes []string
+		typ              esclient.ShutdownType
+		podToNodeID      map[string]string
+		leavingNodes     []string
+		terminatingNodes []string
 	}
 	tests := []struct {
 		name        string
@@ -350,9 +351,10 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 		{
 			name: "no node leaving",
 			args: args{
-				typ:          esclient.Remove,
-				podToNodeID:  nil,
-				leavingNodes: nil,
+				typ:              esclient.Remove,
+				podToNodeID:      nil,
+				leavingNodes:     nil,
+				terminatingNodes: nil,
 			},
 			fixtures: []string{
 				noShutdownFixture,
@@ -367,7 +369,8 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				podToNodeID: map[string]string{
 					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
 				},
-				leavingNodes: []string{"pod-1"},
+				leavingNodes:     []string{"pod-1"},
+				terminatingNodes: nil,
 			},
 			fixtures: []string{
 				noShutdownFixture,
@@ -426,6 +429,40 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			wantErr:     true,
 			wantMethods: []string{"GET"},
 		},
+		{
+			name: "should clean up shutdowns",
+			args: args{
+				typ: esclient.Restart,
+				podToNodeID: map[string]string{
+					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				},
+				leavingNodes:     nil,
+				terminatingNodes: nil,
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+				ackFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET", "DELETE"},
+		},
+		{
+
+			name: "should not clean up shutdowns on terminating nodes",
+			args: args{
+				typ: esclient.Restart,
+				podToNodeID: map[string]string{
+					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				},
+				leavingNodes:     nil,
+				terminatingNodes: []string{"pod-1"},
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -449,7 +486,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				podToNodeID: tt.args.podToNodeID,
 				log:         log.Log.WithName("test"),
 			}
-			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes); (err != nil) != tt.wantErr {
+			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes, tt.args.terminatingNodes); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileShutdowns() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(methodsCalled, tt.wantMethods) {

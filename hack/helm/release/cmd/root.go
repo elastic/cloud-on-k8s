@@ -152,13 +152,17 @@ func validate(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("%s is required when %s is set", vaultSecretFlag, enableVaultFlag)
 		}
 
-		_, err := vault.SecretFile{
+		c, err := vault.NewClient()
+		if err != nil {
+			return fmt.Errorf("while creating vault client: %w", err)
+		}
+		_, err = vault.ReadFile(c, vault.SecretFile{
 			Name:          credentialsFile,
 			Path:          secretPath,
 			FieldResolver: func() string { return "creds.json" },
-		}.Read()
+		})
 		if err != nil {
-			return err
+			return fmt.Errorf("while reading '%s' from vault: %w", secretPath, err)
 		}
 	}
 

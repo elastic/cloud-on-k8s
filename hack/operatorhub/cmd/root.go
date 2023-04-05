@@ -37,12 +37,12 @@ and potentially creating pull requests to community/certified operator repositor
 func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-	Cmd.Flags().StringVarP(
+	Cmd.PersistentFlags().StringVarP(
 		&flags.ConfigPath,
 		flags.ConfFlag,
 		"c",
 		"./config.yaml",
-		"Path to configiguration file (OHUB_CONF)",
+		"Path to configuration file (OHUB_CONF)",
 	)
 
 	Cmd.PersistentFlags().StringVarP(
@@ -179,7 +179,7 @@ func setVariablesFromConfigurationFile() error {
 	if err != nil {
 		return fmt.Errorf("while reading configuration file %s: %w", confFilePath, err)
 	}
-	err = gyaml.Unmarshal(b, flags.Conf)
+	err = gyaml.Unmarshal(b, &flags.Conf)
 	if err != nil {
 		return fmt.Errorf("while unmarshaling config file into configuration struct: %w", err)
 	}

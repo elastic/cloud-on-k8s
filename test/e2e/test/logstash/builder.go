@@ -5,9 +5,6 @@
 package logstash
 
 import (
-	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -125,21 +122,8 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
-func (b Builder) WithCommand(command []string) Builder {
-	b.Logstash.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "logstash", Command: command}}
-	return b
-}
-
 func (b Builder) GetMetricsIndexPattern() string {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.GTE(version.MinFor(8, 3, 0)) {
-		return ".monitoring-logstash-8-mb"
-	}
-	if v.GTE(version.MinFor(8, 0, 0)) {
-		return fmt.Sprintf("metricbeat-%d.%d.%d*", v.Major, v.Minor, v.Patch)
-	}
-
-	return ".monitoring-logstash-*"
+	return ".monitoring-logstash-8-mb"
 }
 
 func (b Builder) Name() string {

@@ -80,8 +80,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	configHash := fnv.New32a()
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	err = stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash)
-	if err != nil {
+	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash); err != nil {
 		return results.WithError(err), params.Status
 	}
 

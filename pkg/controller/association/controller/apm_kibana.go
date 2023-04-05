@@ -79,7 +79,7 @@ func referencedKibanaStatusVersion(c k8s.Client, kbRef commonv1.ObjectSelector) 
 		if err != nil {
 			return "", err
 		}
-		ver, err := info.Request("/api/status", "{ .version.number }")
+		ver, err := info.Version("/api/status", "{ .version.number }")
 		if err != nil {
 			return "", err
 		}
