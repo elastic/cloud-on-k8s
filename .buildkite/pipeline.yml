@@ -3,62 +3,52 @@ agents:
   cpu: "4"
   memory: "2G"
 
+env:
+  VAULT_ROOT_PATH: secret/ci/elastic-cloud-on-k8s
+
 steps:
 
-  - label: "mock e2e-tests.json upload"
-    commands:
-      - cd .buildkite/e2e-tests-json
-      - buildkite-agent artifact upload "*.json"
-      - exit 42
-    artifact_paths: ""
+  - group: checks
+    steps:
 
-  - wait: ~
-    continue_on_failure: true
+      - label: ":go: lint"
+        command: "make lint check-local-changes"
+        agents:
+          cpu: "6"
+          memory: "6G"
 
-  - label: aggregate tests-results
-    commands:
-      - |
-        cd .buildkite/e2e/reporter
+      - label: ":go: generate"
+        command: "make generate check-local-changes"
 
-        mkdir reports/
-        buildkite-agent artifact download "*.json" reports/
+      - label: ":go: checks"
+        commands:
+          - "make check-license-header check-predicates shellcheck reattach-pv"
+          - env -i .buildkite/scripts/build/setenv_test.sh
 
-        set +e
-        for f in reports/e2e-tests-*.json; do
-          ../../scripts/test/convert-e2e-tests-json-to-xml.sh "$$f"
-        done
+  - group: tests
+    steps:
 
-        go run main.go reports/ > report.md
+      - label: ":go: unit-tests"
+        command: "make unit-xml"
+        agents:
+          memory: "4G"
 
-        [ $$? -ne 0 ] && style=error || style=success
-        set -e
+      - label: ":go: integration-tests"
+        command: "make integration-xml"
+        agents:
+          memory: "4G"
 
-        cat report.md | buildkite-agent annotate --style "$$style"
+      - label: ":go: manifest-gen-tests"
+        command: "make manifest-gen-test"
 
-        if [[ $$style == "error" ]]; then
+      - label: ":go: helm-tests"
+        command: "make helm-test"
 
-        notif_message() {
-          # yolo
-          grep "<summary>" report.md | sed -r "s@.*<code>([^/]*).*</code> ~ (.*)</summary>@\1 \2@g" | sed "s/^/            /"
-        }
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
 
-        cat <<- YAML | tee notify.yml
-        steps:
-          - label: ""
-            if: build.branch != "main"
-            command: false
-            notify:
-              - slack:
-                  channels:
-                    - "#test-notify"
-                  message: |
-        $$(notif_message)
-        YAML
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
 
-        buildkite-agent pipeline upload notify.yml
-
-        fi
-
-    artifact_paths:
-      - ".buildkite/e2e/reporter/report.md"
-      - ".buildkite/e2e/reporter/notify.yml"
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
