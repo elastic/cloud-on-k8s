@@ -44,7 +44,7 @@ func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
 	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
-	watchName := PipelinesRefWatchName(resNsn)
+	watchName := RefWatchName(resNsn)
 
 	tests := []struct {
 		name            string
