@@ -70,7 +70,7 @@ func getUserPipeline(params Params) (*pipelines.Config, error) {
 
 		return pipelines.FromSpec(pipes)
 	}
-	return pipelines.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
+	return pipelines.ParsePipelinesRef(params, &params.Logstash, params.Logstash.Spec.PipelinesRef, PipelineFileName)
 }
 
 var (

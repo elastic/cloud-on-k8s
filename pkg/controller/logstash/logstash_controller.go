@@ -197,6 +197,6 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.ConfigRefWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.PipelinesRefWatchName(obj))
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, logstashv1alpha1.Kind)
 }

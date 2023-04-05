@@ -44,7 +44,7 @@ func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
 	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
-	watchName := ConfigRefWatchName(resNsn)
+	watchName := PipelinesRefWatchName(resNsn)
 
 	tests := []struct {
 		name            string
@@ -167,9 +167,9 @@ func TestParsePipelinesRef(t *testing.T) {
 				watches:  w,
 				recorder: fakeRecorder,
 			}
-			got, err := ParseConfigRef(d, &res, tt.pipelinesRef, tt.secretKey)
+			got, err := ParsePipelinesRef(d, &res, tt.pipelinesRef, tt.secretKey)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseConfigRef() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParsePipelinesRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			require.Equal(t, tt.want, got)

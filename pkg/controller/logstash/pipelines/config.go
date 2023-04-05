@@ -57,6 +57,7 @@ func Parse(yml []byte) (*Config, error) {
 
 // MustParse parses the given pipeline content into a Pipelines.
 // Expects content to be in YAML format. Panics on error.
+// Use for testing only.
 func MustParse(yml []byte) *Config {
 	config, err := uyaml.NewConfig(yml, Options...)
 	if err != nil {
