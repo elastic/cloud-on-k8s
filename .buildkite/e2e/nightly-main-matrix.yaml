@@ -14,8 +14,6 @@
     - E2E_STACK_VERSION: "8.5.3"
     - E2E_STACK_VERSION: "8.6.2"
     - E2E_STACK_VERSION: "8.8.0-SNAPSHOT"
-      BUILD_LICENSE_PUBKEY: dev
-      TEST_LICENSE_PKEY_PATH: "in-memory"
 
 - label: kind
   fixed:

@@ -33,7 +33,7 @@ endif
 
 CI_IMAGE ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:01671ac6
 
-# volume used to share files between CI container and OCP3 Ansible container
+# volume used to share files between CI container and containers launched by deployer
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
 
 print-ci-image:

@@ -30,7 +30,6 @@ type Plan struct {
 	Gke                     *GKESettings   `yaml:"gke,omitempty"`
 	Aks                     *AKSSettings   `yaml:"aks,omitempty"`
 	Ocp                     *OCPSettings   `yaml:"ocp,omitempty"`
-	Ocp3                    *OCP3Settings  `yaml:"ocp3,omitempty"`
 	Eks                     *EKSSettings   `yaml:"eks,omitempty"`
 	Kind                    *KindSettings  `yaml:"kind,omitempty"`
 	Tanzu                   *TanzuSettings `yaml:"tanzu,omitempty"`
@@ -71,12 +70,6 @@ type OCPSettings struct {
 	PullSecret    string `yaml:"pullSecret"`
 	LocalSsdCount int    `yaml:"localSsdCount"`
 	NodeCount     int    `yaml:"nodeCount"`
-}
-
-// OCP3Settings encapsulates settings specific to Ocp3 on GCloud
-type OCP3Settings struct {
-	GCloudProject string `yaml:"gCloudProject"`
-	WorkerCount   int    `yaml:"workerCount"`
 }
 
 // EKSSettings are specific to Amazon EKS.
