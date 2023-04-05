@@ -153,14 +153,14 @@ steps:
 
         notif_message() {
           # yolo
-          grep "<summary>" report.md | sed -r "s@.*<code>([^/]*).*</code> ~ (.*)</summary>@\1 \2@g" | sed "s/^/            /"
+          grep "<summary>" report.md | sed -r 's@.*<code>([^/]*).*</code> ~ (.*)</summary>@🐞 `\1` \2@g' | sed "s/^/            /"
         }
 
         cat <<- YAML | tee notify.yml
         steps:
           - label: ""
             if: build.branch == "main"
-            command: true
+            command: false
             notify:
               - slack:
                   channels:
