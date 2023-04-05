@@ -6,6 +6,8 @@ package logstash
 
 import (
 	"fmt"
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
@@ -59,10 +61,16 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	//envs, err := buildEnv(params)
-	//if err != nil {
-	//	return corev1.PodTemplateSpec{}, err
-	//}
+	esAssociations := getEsAssociations(params)
+	err = writeEsAssocToConfigHash(params, esAssociations, configHash)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	envs, err := buildEnv(params, esAssociations)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 
 	labels := maps.Merge(params.Logstash.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
@@ -81,7 +89,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
-		WithVolumeLikes(vols...) //.WithEnv(envs...)
+		WithVolumeLikes(vols...).
+		WithEnv(envs...)
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {
@@ -125,4 +134,27 @@ func readinessProbe(useTLS bool) corev1.Probe {
 			},
 		},
 	}
+}
+
+func getEsAssociations(params Params) []commonv1.Association {
+	var esAssociations []commonv1.Association
+
+	for _, assoc := range params.Logstash.GetAssociations() {
+		if assoc.AssociationType() == commonv1.ElasticsearchAssociationType {
+			esAssociations = append(esAssociations, assoc)
+		}
+	}
+	return esAssociations
+}
+
+func writeEsAssocToConfigHash(params Params, esAssociations []commonv1.Association, configHash hash.Hash) error {
+	if esAssociations == nil {
+		return nil
+	}
+
+	return commonassociation.WriteAssocsToConfigHash(
+		params.Client,
+		esAssociations,
+		configHash,
+	)
 }
