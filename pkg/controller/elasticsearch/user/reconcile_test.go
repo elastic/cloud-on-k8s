@@ -96,6 +96,6 @@ func Test_aggregateRoles(t *testing.T) {
 	c := k8s.NewFakeClient(sampleUserProvidedRolesSecret...)
 	roles, err := aggregateRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
-	require.Len(t, roles, 53)
+	require.Len(t, roles, 54)
 	require.Contains(t, roles, ProbeUserRole, ClusterManageRole, "role1", "role2")
 }
