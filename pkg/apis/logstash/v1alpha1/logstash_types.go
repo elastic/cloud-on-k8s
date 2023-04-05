@@ -146,9 +146,8 @@ type LogstashList struct {
 
 func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
 	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
-	for i, selector := range l.Spec.ElasticsearchRefs {
-		refs[i] = selector
-	}
+	copy(refs, l.Spec.ElasticsearchRefs)
+
 	return refs
 }
 func (l *Logstash) ServiceAccountName() string {
@@ -170,7 +169,7 @@ func (l *Logstash) GetObservedGeneration() int64 {
 }
 
 func (l *Logstash) GetAssociations() []commonv1.Association {
-	var associations []commonv1.Association
+	associations := make([]commonv1.Association, 0)
 
 	for _, ref := range l.Spec.ElasticsearchRefs {
 		associations = append(associations, &LogstashESAssociation{
