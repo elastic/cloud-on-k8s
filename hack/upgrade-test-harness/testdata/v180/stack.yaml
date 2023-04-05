@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 7.15.0
+  version: 7.16.3
   nodeSets:
   - name: default
     count: 3
@@ -24,7 +24,7 @@ kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 7.15.0
+  version: 7.16.3
   count: 1
   elasticsearchRef:
     name: es
@@ -34,7 +34,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 7.15.0
+  version: 7.16.3
   count: 1
   elasticsearchRef:
     name: es
@@ -44,7 +44,7 @@ kind: EnterpriseSearch
 metadata:
   name: ent
 spec:
-  version: 7.15.0
+  version: 7.16.3
   count: 1
   elasticsearchRef:
     name: es
@@ -57,7 +57,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 7.15.0
+  version: 7.16.3
   elasticsearchRef:
     name: es
   config:

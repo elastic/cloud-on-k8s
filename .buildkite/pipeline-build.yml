@@ -38,6 +38,7 @@ steps:
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
+          OPERATOR_VERSION_SUFFIX: "dev"
         commands:
           - .buildkite/scripts/build/setenv.sh
           - make -C .ci TARGET="publish-operator-multiarch-image" ci

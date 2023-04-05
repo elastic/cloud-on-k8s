@@ -187,7 +187,6 @@ func (h *helper) initTestContext() error {
 		KubernetesVersion:     getKubernetesVersion(h),
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
-		Ocp3Cluster:           isOcp3Cluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
@@ -244,13 +243,6 @@ func getKubernetesVersion(h *helper) version.Version {
 
 func isOcpCluster(h *helper) bool {
 	_, _, err := h.kubectl("get", "clusterversion")
-	isOCP4 := err == nil
-	isOCP3 := isOcp3Cluster(h)
-	return isOCP4 || isOCP3
-}
-
-func isOcp3Cluster(h *helper) bool {
-	_, _, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
 	return err == nil
 }
 
@@ -439,17 +431,6 @@ func (h *helper) createManagedNamespaces() error {
 		_, err = h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
 	} else {
 		err = h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
-	}
-
-	// Reset the node selector for all managed namespaces to override any possible OCP project node selector that might
-	// prevent scheduling daemonset pods on some nodes.
-	if h.testContext.Ocp3Cluster {
-		log.Info("Resetting namespace node selector")
-		for _, ns := range h.testContext.Operator.ManagedNamespaces {
-			if err := exec.Command("kubectl", "annotate", "--overwrite", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
-				return err
-			}
-		}
 	}
 
 	return err

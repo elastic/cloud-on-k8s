@@ -10,8 +10,7 @@
       "build_on_comment": true,
       "trigger_comment_regex": "^(?:(?:buildkite\\s+)?(?:build|test)\\s+(?:this|it))\\s*(?<args>.*)",
       "always_trigger_comment_regex": "^(?:(?:buildkite\\s+)?(?:build|test)\\s+(?:this|it))\\s*(?<args>.*)",
-      "skip_ci_labels": ["skip-ci"],
-      "skip_ci_on_only_changed": ["\\.asciidoc$"]
+      "skip_ci_labels": ["skip-ci"]
     }
   ]
 }
