@@ -238,6 +238,9 @@ func TestNewReporter(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 				},
+				Pipelines: []commonv1.Config{
+					{Data: map[string]interface{}{"pipeline.id": "main"}},
+				},
 				Services: []logstashv1alpha1.LogstashService{
 					{
 						Name: "test1",
@@ -479,7 +482,7 @@ func TestNewReporter(t *testing.T) {
       pod_count: 0
       resource_count: 3
     logstashes:
-      pipelines_count: 0
+      pipelines_count: 1
       pipelines_ref_count: 0
       pod_count: 4
       resource_count: 2
