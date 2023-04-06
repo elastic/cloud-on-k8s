@@ -12,7 +12,7 @@ container-push:
 	bin/operatorhub container push --dry-run=$(DRY_RUN)
 
 preflight:
-	../../.buildkite/scripts/release/operatorhub.sh preflight $(TAG)
+	../../.buildkite/scripts/release/redhat-preflight.sh $(TAG)
 
 container-publish:
 	bin/operatorhub container publish --dry-run="$(DRY_RUN)"
