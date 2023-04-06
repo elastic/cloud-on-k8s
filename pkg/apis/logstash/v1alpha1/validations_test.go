@@ -178,3 +178,93 @@ func Test_checkSupportedVersion(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkEsRefsAssociations(t *testing.T) {
+	type args struct {
+		b *Logstash
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Logstash{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "mix secret named and named refs: OK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								SecretName: "bla",
+							},
+							{
+								Name:      "bla",
+								Namespace: "blub",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "secret named ref with a name: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								SecretName: "bla",
+								Name:       "bla",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with namespace: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								Namespace: "blub",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with serviceName: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []commonv1.ObjectSelector{
+							{
+								ServiceName: "ble",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAssociations(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}

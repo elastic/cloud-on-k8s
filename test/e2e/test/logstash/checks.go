@@ -37,6 +37,39 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 				},
 			},
 		}
+
+		// check ES association user/ secret
+		nn := k8s.ExtractNamespacedName(&b.Logstash)
+		lsName := nn.Name
+		lsNamespace := nn.Namespace
+
+		for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+			esNamespace := ref.WithDefaultNamespace(lsNamespace).Namespace
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: fmt.Sprintf("%s-logstash-es-%s-%s-ca", lsName, esNamespace, ref.Name),
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/cluster-name":      ref.Name,
+						"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
+						"logstashassociation.k8s.elastic.co/name":        lsName,
+						"logstashassociation.k8s.elastic.co/namespace":   lsNamespace,
+					},
+				},
+			)
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: fmt.Sprintf("%s-%s-%s-%s-logstash-user", lsNamespace, lsName, esNamespace, ref.Name),
+					Keys: []string{"name", "passwordHash", "userRoles"},
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/cluster-name":      ref.Name,
+						"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
+						"logstashassociation.k8s.elastic.co/name":        lsName,
+						"logstashassociation.k8s.elastic.co/namespace":   lsNamespace,
+					},
+				},
+			)
+		}
 		return expected
 	})
 }
@@ -74,6 +107,18 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			for a, s := range logstash.Status.MonitoringAssociationStatus {
 				if s != v1.AssociationEstablished {
 					return fmt.Errorf("monitoring association %s has status %s ", a, s)
+				}
+			}
+
+			// elasticsearch status
+			expectedEsRefsInStatus := len(logstash.Spec.ElasticsearchRefs)
+			actualEsRefsInStatus := len(logstash.Status.ElasticsearchAssociationsStatus)
+			if expectedEsRefsInStatus != actualEsRefsInStatus {
+				return fmt.Errorf("expected %d elasticsearch associations in status but got %d", expectedEsRefsInStatus, actualEsRefsInStatus)
+			}
+			for a, s := range logstash.Status.ElasticsearchAssociationsStatus {
+				if s != v1.AssociationEstablished {
+					return fmt.Errorf("elasticsearch association %s has status %s ", a, s)
 				}
 			}
 

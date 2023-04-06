@@ -83,8 +83,14 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
 		case logstash.Builder:
+			esRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+				esRefs = append(esRefs, tweakServiceRef(ref, suffix))
+			}
+
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
+				WithElasticsearchRefs(esRefs...).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
