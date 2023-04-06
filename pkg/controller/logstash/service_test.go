@@ -107,7 +107,7 @@ func TestReconcileServices(t *testing.T) {
 						"common.k8s.elastic.co/type":   "logstash",
 						"logstash.k8s.elastic.co/name": "logstash",
 					},
-					ClusterIP: "None",
+					ClusterIP: "",
 					Ports: []corev1.ServicePort{
 						{Name: "api", Protocol: "TCP", Port: 9200},
 					},
@@ -198,8 +198,7 @@ func TestReconcileServices(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			defaultSvc := defaultServiceFromOwner(&tc.logstash)
-			client := k8s.NewFakeClient(&tc.logstash, defaultSvc)
+			client := k8s.NewFakeClient()
 			params := Params{
 				Context:  context.Background(),
 				Client:   client,
@@ -213,38 +212,5 @@ func TestReconcileServices(t *testing.T) {
 				comparison.AssertEqual(t, &tc.wantSvc[i], &haveSvc[i])
 			}
 		})
-	}
-}
-
-func defaultServiceFromOwner(owner *logstashv1alpha1.Logstash) *corev1.Service {
-	trueVal := true
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "logstash-ls-api",
-			Namespace: "test",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":   "logstash",
-				"logstash.k8s.elastic.co/name": "logstash",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-					Kind:               "Logstash",
-					Name:               owner.Name,
-					Controller:         &trueVal,
-					BlockOwnerDeletion: &trueVal,
-				},
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"common.k8s.elastic.co/type":   "logstash",
-				"logstash.k8s.elastic.co/name": "logstash",
-			},
-			ClusterIP: "None",
-			Ports: []corev1.ServicePort{
-				{Name: "api", Protocol: "TCP", Port: 9600},
-			},
-		},
 	}
 }

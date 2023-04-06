@@ -13,8 +13,8 @@ import (
 	"net/url"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	ls "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
