@@ -87,7 +87,7 @@ func fromConfig(in *ucfg.Config) *Config {
 	return (*Config)(in)
 }
 
-// Diff returns true if the key/value or the sequence of two PipelinesConfig are different
+// Diff returns true if the key/value or the sequence of two PipelinesConfig are different.
 // Use for testing only.
 func (c *Config) Diff(c2 *Config) (bool, error) {
 	if c == c2 {
