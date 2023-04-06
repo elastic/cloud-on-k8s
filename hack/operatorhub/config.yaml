@@ -1,4 +1,4 @@
-newVersion: 2.8.0-SNAPSHOT
+newVersion: 2.7.0
 prevVersion: 2.7.0
 stackVersion: 8.8.0-SNAPSHOT
 minSupportedOpenshiftVersion: v4.8
