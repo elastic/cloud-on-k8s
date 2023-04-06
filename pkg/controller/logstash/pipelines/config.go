@@ -15,7 +15,7 @@ import (
 
 // Config contains configuration for Logstash pipeline ("pipelines.yml"),
 // `.` in between the key, pipeline.id, is treated as string
-// pipelines.yml is expected an array of pipeline definition
+// pipelines.yml is expected an array of pipeline definition.
 type Config ucfg.Config
 
 // Options are config options for the YAML file.
