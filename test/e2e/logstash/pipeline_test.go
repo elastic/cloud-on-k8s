@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret
+// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret.
 func TestPipelineConfigRefLogstash(t *testing.T) {
 	secretName := "ls-generator-pipeline"
 
