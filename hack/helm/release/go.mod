@@ -11,7 +11,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
 	golang.org/x/oauth2 v0.6.0
-	google.golang.org/api v0.115.0
+	google.golang.org/api v0.116.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.11.2
 )
