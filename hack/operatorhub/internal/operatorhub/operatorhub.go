@@ -92,14 +92,23 @@ func Generate(config GenerateConfig) error {
 		log.Println("ⅹ")
 		return err
 	}
-	log.Println("✓")
-
 	defer close()
-
 	extracts, err := extractYAMLParts(manifestStream)
 	if err != nil {
 		log.Println("ⅹ")
 		return err
+	}
+	if len(extracts.crds) == 0 {
+		log.Println("ⅹ")
+		return errors.New("no crds found")
+	}
+	if len(extracts.operatorRBAC) == 0 {
+		log.Println("ⅹ")
+		return errors.New("no operator RBAC found")
+	}
+	if len(extracts.operatorWebhooks) == 0 {
+		log.Println("ⅹ")
+		return errors.New("no operator webhooks found")
 	}
 	log.Println("✓")
 
