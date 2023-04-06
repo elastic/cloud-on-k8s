@@ -77,7 +77,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 	test.Sequence(before, steps, b).RunSequential(t)
 }
 
-// TestPipelineConfigLogstash Pipeline should be able to pass to Logstash via VolumeMount
+// TestPipelineConfigLogstash Pipeline should be able to pass to Logstash via VolumeMount.
 func TestPipelineConfigLogstash(t *testing.T) {
 	secretName := "ls-split-pipe"
 
