@@ -5,6 +5,7 @@
 package logstash
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -113,6 +114,40 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 
 func (b Builder) WithServices(services ...logstashv1alpha1.LogstashService) Builder {
 	b.Logstash.Spec.Services = append(b.Logstash.Spec.Services, services...)
+	return b
+}
+
+func (b Builder) WithPipelines(pipelines []commonv1.Config) Builder {
+	b.Logstash.Spec.Pipelines = pipelines
+	return b
+}
+
+func (b Builder) WithPipelinesConfigRef(ref commonv1.ConfigSource) Builder {
+	b.Logstash.Spec.PipelinesRef = &ref
+	return b
+}
+
+func (b Builder) WithVolumes(vols ...corev1.Volume) Builder {
+	b.Logstash.Spec.PodTemplate.Spec.Volumes = append(b.Logstash.Spec.PodTemplate.Spec.Volumes, vols...)
+	return b
+}
+
+func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
+	if b.Logstash.Spec.PodTemplate.Spec.Containers == nil {
+		b.Logstash.Spec.PodTemplate.Spec.Containers = []corev1.Container{
+			{
+				Name:         "logstash",
+				VolumeMounts: mounts,
+			},
+		}
+		return b
+	}
+
+	if b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts == nil {
+		b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+	}
+	b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, mounts...)
+
 	return b
 }
 

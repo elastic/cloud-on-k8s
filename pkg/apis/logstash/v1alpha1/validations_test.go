@@ -145,6 +145,57 @@ func Test_checkSingleConfigSource(t *testing.T) {
 	}
 }
 
+func Test_checkSinglePipelineSource(t *testing.T) {
+	tests := []struct {
+		name     string
+		logstash Logstash
+		wantErr  bool
+	}{
+		{
+			name: "pipelinesRef absent, pipelines present",
+			logstash: Logstash{
+				Spec: LogstashSpec{
+					Pipelines: []commonv1.Config{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "pipelines absent, pipelinesRef present",
+			logstash: Logstash{
+				Spec: LogstashSpec{
+					PipelinesRef: &commonv1.ConfigSource{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "neither present",
+			logstash: Logstash{
+				Spec: LogstashSpec{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both present",
+			logstash: Logstash{
+				Spec: LogstashSpec{
+					Pipelines:    []commonv1.Config{},
+					PipelinesRef: &commonv1.ConfigSource{},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkSinglePipelineSource(&tc.logstash)
+			assert.Equal(t, tc.wantErr, len(got) > 0)
+		})
+	}
+}
+
 func Test_checkSupportedVersion(t *testing.T) {
 	for _, tt := range []struct {
 		name    string

@@ -25,6 +25,7 @@ var (
 		checkSingleConfigSource,
 		checkMonitoring,
 		checkAssociations,
+		checkSinglePipelineSource,
 	}
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
@@ -73,4 +74,16 @@ func checkAssociations(l *Logstash) field.ErrorList {
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
 	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
 	return append(append(err1, err2...), err3...)
+}
+
+func checkSinglePipelineSource(a *Logstash) field.ErrorList {
+	if a.Spec.Pipelines != nil && a.Spec.PipelinesRef != nil {
+		msg := "Specify at most one of [`pipelines`, `pipelinesRef`], not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("pipelines"), msg),
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef"), msg),
+		}
+	}
+
+	return nil
 }

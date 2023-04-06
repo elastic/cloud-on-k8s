@@ -32,6 +32,9 @@ const (
 	LogstashConfigVolumeName = "logstash"
 	LogstashConfigFileName   = "logstash.yml"
 
+	PipelineVolumeName = "pipeline"
+	PipelineFileName   = "pipelines.yml"
+
 	// ConfigHashAnnotationName is an annotation used to store the Logstash config hash.
 	ConfigHashAnnotationName = "logstash.k8s.elastic.co/config-hash"
 
