@@ -1,6 +1,0 @@
-# Values required for `helm lint` to succeed
-# Currently no default is set in values.yaml
-# until https://github.com/helm/helm/pull/11440
-# is merged
-spec:
-  daemonSet: {}
