@@ -12,15 +12,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -41,11 +41,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
 				assert.Len(t, pod.Spec.InitContainers, 0)
-				assert.Len(t, pod.Spec.Volumes, 1)
+				assert.Len(t, pod.Spec.Volumes, 2)
 				assert.NotEmpty(t, pod.Annotations[ConfigHashAnnotationName])
 				logstashContainer := GetLogstashContainer(pod.Spec)
 				require.NotNil(t, logstashContainer)
-				assert.Equal(t, 1, len(logstashContainer.VolumeMounts))
+				assert.Equal(t, 2, len(logstashContainer.VolumeMounts))
 				assert.Equal(t, container.ImageRepository(container.LogstashImage, "8.6.1"), logstashContainer.Image)
 				assert.NotNil(t, logstashContainer.ReadinessProbe)
 				assert.NotEmpty(t, logstashContainer.Ports)
@@ -171,7 +171,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 					Services: []logstashv1alpha1.LogstashService{{
-						Name: "api",
+						Name: LogstashAPIServiceName,
 						Service: commonv1.ServiceTemplate{
 							Spec: corev1.ServiceSpec{
 								Ports: []corev1.ServicePort{
@@ -201,7 +201,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Version: "8.6.1",
 					Services: []logstashv1alpha1.LogstashService{
 						{
-							Name: "api",
+							Name: LogstashAPIServiceName,
 							Service: commonv1.ServiceTemplate{
 								Spec: corev1.ServiceSpec{
 									Ports: []corev1.ServicePort{
@@ -260,8 +260,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.Volumes, 2)
-				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 2)
+				assert.Len(t, pod.Spec.Volumes, 3)
+				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 3)
 			},
 		},
 	}
@@ -277,4 +277,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			tt.assertions(got)
 		})
 	}
+}
+
+// GetLogstashContainer returns the Logstash container from the given podSpec.
+func GetLogstashContainer(podSpec corev1.PodSpec) *corev1.Container {
+	return pod.ContainerByName(podSpec, logstashv1alpha1.LogstashContainerName)
 }

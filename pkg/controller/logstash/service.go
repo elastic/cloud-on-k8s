@@ -14,6 +14,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 )
 
+const (
+	LogstashAPIServiceName = "api"
+)
+
 // reconcileServices reconcile Services defined in spec
 //
 // When a service is defined that matches the API service name, then that service is used to define
@@ -84,7 +88,7 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	labels := NewLabels(logstash)
 	ports := []corev1.ServicePort{
 		{
-			Name:     "api",
+			Name:     LogstashAPIServiceName,
 			Protocol: corev1.ProtocolTCP,
 			Port:     network.HTTPPort,
 		},

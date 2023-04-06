@@ -17,7 +17,6 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
@@ -123,7 +122,7 @@ func readinessProbe(logstash logstashv1alpha1.Logstash) corev1.Probe {
 	var scheme = corev1.URISchemeHTTP
 	var port = network.HTTPPort
 	for _, service := range logstash.Spec.Services {
-		if service.Name == "api" {
+		if service.Name == LogstashAPIServiceName {
 			port = int(service.Service.Spec.Ports[0].Port)
 		}
 	}
@@ -142,9 +141,4 @@ func readinessProbe(logstash logstashv1alpha1.Logstash) corev1.Probe {
 		},
 	}
 	return probe
-}
-
-// GetLogstashContainer returns the Logstash container from the given podSpec.
-func GetLogstashContainer(podSpec corev1.PodSpec) *corev1.Container {
-	return pod.ContainerByName(podSpec, logstashv1alpha1.LogstashContainerName)
 }

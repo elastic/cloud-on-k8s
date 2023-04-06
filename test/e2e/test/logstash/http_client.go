@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
+	ls "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
@@ -35,7 +36,7 @@ func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path str
 	var scheme = "http"
 	var port = network.HTTPPort
 	for _, service := range logstash.Spec.Services {
-		if service.Name == "api" {
+		if service.Name == ls.LogstashAPIServiceName {
 			port = int(service.Service.Spec.Ports[0].Port)
 		}
 	}

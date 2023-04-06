@@ -73,11 +73,11 @@ func TestReconcileServices(t *testing.T) {
 				},
 				Spec: logstashv1alpha1.LogstashSpec{
 					Services: []logstashv1alpha1.LogstashService{{
-						Name: "api",
+						Name: LogstashAPIServiceName,
 						Service: commonv1.ServiceTemplate{
 							Spec: corev1.ServiceSpec{
 								Ports: []corev1.ServicePort{
-									{Name: "api", Protocol: "TCP", Port: 9200},
+									{Name: LogstashAPIServiceName, Protocol: "TCP", Port: 9200},
 								},
 							},
 						},
