@@ -363,6 +363,15 @@ func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
+func (k *K8sClient) DeleteSecrets(secrets ...corev1.Secret) error {
+	for i := range secrets {
+		if err := k.Client.Delete(context.Background(), &secrets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified

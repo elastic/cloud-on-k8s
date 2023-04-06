@@ -9277,6 +9277,23 @@ spec:
                         type: array
                     type: object
                 type: object
+              pipelines:
+                description: Pipelines holds the Logstash Pipelines. At most one of
+                  [`Pipelines`, `PipelinesRef`] can be specified.
+                items:
+                  type: object
+                type: array
+                x-kubernetes-preserve-unknown-fields: true
+              pipelinesRef:
+                description: PipelinesRef contains a reference to an existing Kubernetes
+                  Secret holding the Logstash Pipelines. Logstash pipelines must be
+                  specified as yaml, under a single "pipelines.yml" entry. At most
+                  one of [`Pipelines`, `PipelinesRef`] can be specified.
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                type: object
               podTemplate:
                 description: PodTemplate provides customisation options for the Logstash
                   pods.
