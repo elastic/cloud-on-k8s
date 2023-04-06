@@ -31,23 +31,22 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
-CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
+CI_IMAGE ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5827bee6
 
-# volume used to share files between CI container and OCP3 Ansible container
+# volume used to share files between CI container and containers launched by deployer
 ECK_CI_VOLUME := eck-ci-home-$(shell date '+%N')
 
 print-ci-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
-ci: get-test-artifacts
+ci:
 	@ $(MAKE) DOCKER_CMD="make $(TARGET)" ci-internal
 
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal: ci-build-image
+ci-internal:
 	@ # --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	@ docker volume create --name $(ECK_CI_VOLUME) > /dev/null && \
 	  docker run --userns=host --rm -t $(DOCKER_OPTS) \
@@ -61,40 +60,6 @@ ci-internal: ci-build-image
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)" ; exit=$$?; \
 	  docker volume rm $(ECK_CI_VOLUME) > /dev/null; exit $$exit
-
-# build and push the CI image only if it does not yet exist
-ci-build-image:
-	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
-	( \
-		../hack/retry.sh 5 docker build \
-			-f $(ROOT_DIR)/.ci/Dockerfile \
-			-t $(CI_IMAGE) \
-			--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" \
-			$(ROOT_DIR) && \
-		../hack/docker.sh -l -p $(CI_IMAGE) \
-	)
-
-##  Test
-
-# all artifacts needed to run e2e tests
-get-test-artifacts: monitoring-secrets.json test-license.json license.key
-
-ifeq (dev,$(BUILD_LICENSE_PUBKEY))
-       SECRET_FIELD_PREFIX ?= dev-
-get-test-artifacts: dev-private.key
-endif
-
-# read a dev private key used to generate dev licenses against non-production builds
-dev-private.key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  ${VAULT_ROOT_PATH}/license | base64 --decode > dev-private.key
-
-# read some test licenses from Vault for E2E license tests
-test-license.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  ${VAULT_ROOT_PATH}/test-licenses > test-license.json
-
-# read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
-monitoring-secrets.json:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=data -format=json ${VAULT_ROOT_PATH}/monitoring-cluster > monitoring-secrets.json
 
 ##  Build
 

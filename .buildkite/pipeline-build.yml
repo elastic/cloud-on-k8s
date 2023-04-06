@@ -2,15 +2,6 @@ steps:
   - group: build
     steps:
 
-      - label: ":docker: ci image"
-        command: make -C .ci ci-build-image
-        agents:
-          provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-          machineType: "n1-standard-16"
-
-      - wait
-
       # multiarch dockerx build for !PR branch
       - label: ":docker: multiarch operator image"
         key: "operator-image-build"
@@ -43,9 +34,11 @@ steps:
         if: | 
           ( build.branch == "main" && build.source == "schedule" )
           || build.message =~ /^buildkite test .*dev-build.*/
+          || build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /s=[0-9\.]*-SNAPSHOT/
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
+          OPERATOR_VERSION_SUFFIX: "dev"
         commands:
           - .buildkite/scripts/build/setenv.sh
           - make -C .ci TARGET="publish-operator-multiarch-image" ci
@@ -68,13 +61,6 @@ steps:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
-
-      - label: ":go: operatorhub tool"
-        key: "build-operatorhub-tool"
-        commands:
-          - cd hack/operatorhub
-          - make build
-          - buildkite-agent artifact upload bin/operatorhub
 
       - label: ":go: helm releaser tool"
         key: "build-helm-releaser-tool"

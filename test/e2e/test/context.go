@@ -115,15 +115,16 @@ type Context struct {
 	Local                 bool               `json:"local"`
 	IgnoreWebhookFailures bool               `json:"ignore_webhook_failures"`
 	OcpCluster            bool               `json:"ocp_cluster"`
-	Ocp3Cluster           bool               `json:"ocp3_cluster"`
 	Pipeline              string             `json:"pipeline"`
 	BuildNumber           string             `json:"build_number"`
 	Provider              string             `json:"provider"`
 	ClusterName           string             `json:"clusterName"`
 	KubernetesVersion     version.Version    `json:"kubernetes_version"`
+	GCPCredentialsPath    string             `json:"gcp_credentials_path"`
 	TestEnvTags           []string           `json:"test_tags"`
 	E2ETags               string             `json:"e2e_tags"`
 	LogToFile             bool               `json:"log_to_file"`
+	GSBucketName          string             `json:"gs_bucket_name"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

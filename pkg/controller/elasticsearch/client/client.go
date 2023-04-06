@@ -37,8 +37,9 @@ type BasicAuth struct {
 }
 
 type IndexRole struct {
-	Names      []string `json:"names,omitempty"`
-	Privileges []string `json:",omitempty"`
+	Names                  []string `json:"names,omitempty"`
+	Privileges             []string `json:",omitempty"`
+	AllowRestrictedIndices *bool    `json:"allow_restricted_indices,omitempty" yaml:"allow_restricted_indices,omitempty"`
 }
 
 type ApplicationRole struct {
@@ -128,6 +129,8 @@ type Client interface {
 	Version() version.Version
 	// URL returns the Elasticsearch URL configured for this client
 	URL() string
+	// HasProperties checks whether this client has the indicated properties.
+	HasProperties(version version.Version, user BasicAuth, url string, caCerts []*x509.Certificate) bool
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.

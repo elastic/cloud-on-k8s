@@ -4,8 +4,7 @@ name: eck-operator
 
 icon: https://helm.elastic.co/icons/eck.png
 
-description: |-
-  A Helm chart for deploying the Elastic Cloud on Kubernetes (ECK) operator: the official Kubernetes operator for orchestrating Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats.
+description: Elastic Cloud on Kubernetes (ECK) operator
 
 home: https://github.com/elastic/cloud-on-k8s
 

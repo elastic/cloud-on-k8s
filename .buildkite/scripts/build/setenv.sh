@@ -60,21 +60,15 @@ main() {
     if is_tag; then
         REGISTRY_NAMESPACE=eck
         IMG_SUFFIX=""
-        IMG_VERSION="$BUILDKITE_TAG"
+        # remove v prefix from the tag
+        IMG_VERSION="${BUILDKITE_TAG#v}"
 
         set_env SNAPSHOT=false
         set_env PUBLISH_IMAGE_UBI=true
 
-    elif is_merge_main; then
+    elif is_merge_main || is_nightly_main; then
         REGISTRY_NAMESPACE=eck-snapshots
         IMG_SUFFIX=""
-        IMG_VERSION="$version-$sha1"
-
-        set_env BUILD_PLATFORM=linux/amd64
-   
-    elif is_nightly_main; then
-        REGISTRY_NAMESPACE=eck-ci
-        IMG_SUFFIX="-nightly"
         IMG_VERSION="$version-$sha1"
    
     elif is_pr; then
@@ -92,11 +86,7 @@ main() {
 
     set_env "REGISTRY_NAMESPACE=$REGISTRY_NAMESPACE"
     set_env "IMG_SUFFIX=$IMG_SUFFIX"
-    image_version_suffix="${BUILD_LICENSE_PUBKEY:+-$BUILD_LICENSE_PUBKEY}"
-    set_env "IMG_VERSION=$IMG_VERSION$image_version_suffix"
-    # force old schema as long as setenvconfig is used to run e2e tests
-    # to be removed once pipeline-gen is used
-    set_env "E2E_IMG_TAG=$version-$sha1"
+    set_env "IMG_VERSION=$IMG_VERSION${OPERATOR_VERSION_SUFFIX:+-$OPERATOR_VERSION_SUFFIX}"
 }
 
 main "$@"

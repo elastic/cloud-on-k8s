@@ -68,6 +68,7 @@ func Cmd(args ...string) *exec.Command {
 	cmd := exec.NewCommand(`docker run --rm \
 		-v {{.SharedVolume}}:/home \
 		-e HOME=/home \
+		-w /home \
 		{{.ClientImage}} \
 		az {{Join .Args " "}}`)
 	return cmd.AsTemplate(params)
