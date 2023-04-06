@@ -172,7 +172,7 @@ With and without vault
 
 | Parameter                        | Description                                                                                                                               | Environment Variable                | Default           |
 |----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
-| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`              |
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `"./"`            |
 | `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
 
 ### Create-PR sub-command
@@ -201,7 +201,7 @@ OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-git
 
 | Parameter                        | Description                                                                                                                               | Environment Variable                | Default           |
 |----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
-| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `""`              |
+| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `"./"`            |
 | `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
 | `--github-token`                 | User's Github API token.                                                                                                                  | `OHUB_GITHUB_TOKEN`                 | `""`              |
 | `--github-username`              | User's Github username.                                                                                                                   | `OHUB_GITHUB_USERNAME`              | `""`              |
