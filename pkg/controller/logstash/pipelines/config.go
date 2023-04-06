@@ -114,7 +114,7 @@ func (c *Config) Diff(c2 *Config) (bool, error) {
 	return diffSlice(s, s2)
 }
 
-// diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different
+// diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different.
 func diffSlice(s1, s2 []map[string]interface{}) (bool, error) {
 	if len(s1) != len(s2) {
 		return true, fmt.Errorf("array size doesn't match %d, %d", len(s1), len(s2))
