@@ -67,7 +67,7 @@ func MustParse(yml []byte) *Config {
 }
 
 // Render returns the content of the configuration file,
-// with fields sorted alphabetically
+// with fields sorted alphabetically.
 func (c *Config) Render() ([]byte, error) {
 	if c == nil {
 		return []byte{}, nil
