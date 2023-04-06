@@ -540,9 +540,8 @@ func renderTemplate(params *RenderParams, templatePath, outPath string) error {
 	// as we use the 'v' prefix in the `name:` field, but the `version:` field
 	// cannnot have the 'v' prefix, as the certified operator automation
 	// refused to accept this field with a 'v' prefix.
-	if strings.HasPrefix(params.NewVersion, "v") {
-		params.NewVersion = strings.TrimPrefix(params.NewVersion, "v")
-	}
+	params.NewVersion = strings.TrimPrefix(params.NewVersion, "v")
+
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("while parsing template at %s: %w", templatePath, err)
