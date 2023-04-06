@@ -24,10 +24,10 @@ type Request struct {
 }
 
 type Want struct {
-	Status string
 	// Key is field path of ucfg.Config. Value is the expected string
 	// example, pipelines.demo.batch_size : 2
-	Match map[string]string
+	Match     map[string]string
+	MatchFunc map[string]func(string) bool
 }
 
 // CheckSecrets checks that expected secrets have been created.
@@ -151,7 +151,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				Path: "/",
 			},
 			Want{
-				Status: "green",
+				Match: map[string]string{"status": "green"},
 			}),
 		b.CheckMetricsRequest(k,
 			Request{
@@ -159,8 +159,10 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				Path: "/_node/pipelines/main",
 			},
 			Want{
-				Status: "green",
-				Match:  map[string]string{"pipelines.main.batch_size": "125"},
+				Match: map[string]string{
+					"pipelines.main.batch_size": "125",
+					"status":                    "green",
+				},
 			}),
 	}
 }
@@ -192,15 +194,6 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			// check status
-			status, err := res.String("status")
-			if err != nil {
-				return err
-			}
-			if status != want.Status {
-				return fmt.Errorf("expected %s but got %s", want.Status, status)
-			}
-
 			// check expected string
 			for k, v := range want.Match {
 				str, err := res.String(k)
@@ -211,6 +204,18 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 					return fmt.Errorf("expected %s to be %s but got %s", k, v, str)
 				}
 			}
+
+			// check expected expression
+			for k, f := range want.MatchFunc {
+				str, err := res.String(k)
+				if err != nil {
+					return err
+				}
+				if !f(str) {
+					return fmt.Errorf("expression failed: %s got %s", k, str)
+				}
+			}
+
 			return nil
 		}),
 	}

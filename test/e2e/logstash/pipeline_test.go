@@ -7,13 +7,15 @@
 package logstash
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret.
@@ -62,8 +64,10 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 					Path: "/_node/pipelines/generator",
 				},
 				logstash.Want{
-					Status: "green",
-					Match:  map[string]string{"pipelines.generator.workers": "1"},
+					Match: map[string]string{
+						"pipelines.generator.workers": "1",
+						"status":                      "green",
+					},
 				}),
 			test.Step{
 				Name: "Delete pipeline secret",
@@ -141,8 +145,10 @@ func TestPipelineConfigLogstash(t *testing.T) {
 					Path: "/_node/pipelines/split",
 				},
 				logstash.Want{
-					Status: "green",
-					Match:  map[string]string{"pipelines.split.batch_size": "125"},
+					Match: map[string]string{
+						"pipelines.split.batch_size": "125",
+						"status":                     "green",
+					},
 				}),
 			test.Step{
 				Name: "Delete pipeline secret",

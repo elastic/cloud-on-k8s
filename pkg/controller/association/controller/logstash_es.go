@@ -5,8 +5,6 @@
 package controller
 
 import (
-	"strings"
-
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -31,10 +29,6 @@ const (
 	// LogstashAssociationLabelType marks resources created for an association originating from Logstash
 	// with the target resource type (e.g. "elasticsearch").
 	LogstashAssociationLabelType = "logstashassociation.k8s.elastic.co/type"
-	// LogstashSystemUserBuiltinRole is the name of the built-in role for the Logstash system user.
-	LogstashSystemUserBuiltinRole = "logstash_system"
-	// LogstashAdminUserBuiltinRole is the name of the built-in role for the Logstash admin user.
-	LogstashAdminUserBuiltinRole = "logstash_admin"
 )
 
 func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -64,7 +58,7 @@ func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			},
 			UserSecretSuffix: "logstash-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
-				return strings.Join([]string{LogstashAdminUserBuiltinRole, LogstashSystemUserBuiltinRole}, ","), nil
+				return "superuser", nil
 			},
 		},
 	})
