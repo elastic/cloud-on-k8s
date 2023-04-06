@@ -321,9 +321,15 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b
 		case *logstashv1alpha1.Logstash:
 			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
+
+			esRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+				esRefs = append(esRefs, tweakServiceRef(ref, suffix))
+			}
+
 			b = b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRefs(b.Logstash.Spec.ElasticsearchRefs...).
+				WithElasticsearchRefs(esRefs...).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
 

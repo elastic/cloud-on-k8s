@@ -23,6 +23,18 @@ func Test_getEnvVars(t *testing.T) {
 		Data:       map[string][]byte{"default-logstash-sample-default-elasticsearch-sample-logstash-user": []byte("1234567890")},
 	}
 
+	params := Params{
+		Logstash: logstashv1alpha1.Logstash{
+			Spec: logstashv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []commonv1.ObjectSelector{
+					{Name: "elasticsearch-sample", Namespace: "default"},
+				},
+			},
+		},
+		Client:  k8s.NewFakeClient(&fakeLogstashUserSecret),
+		Context: context.Background(),
+	}
+
 	for _, tt := range []struct {
 		name          string
 		params        Params
@@ -30,18 +42,20 @@ func Test_getEnvVars(t *testing.T) {
 		wantEnvs      []corev1.EnvVar
 	}{
 		{
-			name: "es refs",
+			name: "no es ref",
 			params: Params{
 				Logstash: logstashv1alpha1.Logstash{
-					Spec: logstashv1alpha1.LogstashSpec{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{Name: "elasticsearch-sample", Namespace: "default"},
-						},
-					},
+					Spec: logstashv1alpha1.LogstashSpec{},
 				},
-				Client:  k8s.NewFakeClient(&fakeLogstashUserSecret),
+				Client:  k8s.NewFakeClient(),
 				Context: context.Background(),
 			},
+			setAssocConfs: func(assocs []commonv1.Association) {},
+			wantEnvs:      []corev1.EnvVar(nil),
+		},
+		{
+			name:   "es ref",
+			params: params,
 			setAssocConfs: func(assocs []commonv1.Association) {
 				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
 					AuthSecretName: "logstash-sample-default-elasticsearch-sample-logstash-user",
@@ -58,6 +72,26 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD", Value: "1234567890"},
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
+			},
+		},
+		{
+			name:   "es ref without tls",
+			params: params,
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName: "logstash-sample-default-elasticsearch-sample-logstash-user",
+					AuthSecretKey:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+					CACertProvided: false,
+					CASecretName:   "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
+					URL:            "http://elasticsearch-sample-es-http.default.svc:9200",
+					Version:        "8.7.0",
+				})
+				assocs[0].SetNamespace("default")
+			},
+			wantEnvs: []corev1.EnvVar{
+				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_HOSTS", Value: "http://elasticsearch-sample-es-http.default.svc:9200"},
+				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
+				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD", Value: "1234567890"},
 			},
 		},
 	} {
