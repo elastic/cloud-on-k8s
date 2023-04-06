@@ -23,6 +23,13 @@ func buildVolumes(params Params) ([]volume.VolumeLike, error) {
 			path.Join(ConfigMountPath, LogstashConfigFileName),
 			LogstashConfigFileName,
 			0644),
+		// volume with logstash pipeline file
+		volume.NewSecretVolume(
+			logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
+			PipelineVolumeName,
+			path.Join(ConfigMountPath, PipelineFileName),
+			PipelineFileName,
+			0644),
 	}
 
 	// all volumes with CAs of direct associations
