@@ -5,6 +5,8 @@
 package agent
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -18,6 +20,20 @@ import (
 
 const (
 	hostPathVolumeInitContainerName = "permissions"
+	chconCmd                        = "chcon -Rt svirt_sandbox_file_t /usr/share/elastic-agent/state"
+	permissionsCmdFmt               = `#!/usr/bin/env bash
+	set -e
+	find /usr/share/elastic-agent -ls
+	if [[ -d /usr/share/elastic-agent/state ]]; then
+	  %s
+	  chmod g+rw /usr/share/elastic-agent/state
+	  chgrp 1000 /usr/share/elastic-agent/state
+	  if [ -n "$(ls -A /usr/share/elastic-agent/state 2>/dev/null)" ]; then
+		chgrp 1000 /usr/share/elastic-agent/state/*
+		chmod g+rw /usr/share/elastic-agent/state/*
+	  fi
+	fi
+	`
 )
 
 var (
@@ -40,11 +56,13 @@ var (
 // 1. Agent volume is not set to emptyDir.
 // 2. Agent version is above 7.15.
 // 3. Agent spec is not configured to run as root.
-func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v semver.Version) (initContainers []corev1.Container) {
+func maybeAgentInitContainerForHostpathVolume(params Params, v semver.Version) (initContainers []corev1.Container) {
 	// Only add initContainer to chown hostpath data volume for Agent > 7.15
 	if !v.GTE(version.MinFor(7, 15, 0)) {
 		return nil
 	}
+
+	spec := &params.Agent.Spec
 
 	image := spec.Image
 	if image == "" {
@@ -52,9 +70,9 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 	}
 
 	if !dataVolumeEmptyDir(spec) && !runningAsRoot(spec) {
-		initContainers = append(initContainers, corev1.Container{
+		container := corev1.Container{
 			Image:   image,
-			Command: hostPathVolumeInitContainerCommand(),
+			Command: hostPathVolumeInitContainerCommand(params.OperatorParams.IsOpenshift),
 			Name:    hostPathVolumeInitContainerName,
 			SecurityContext: &corev1.SecurityContext{
 				RunAsUser: pointer.Int64(0),
@@ -66,7 +84,11 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 					MountPath: DataMountPath,
 				},
 			},
-		})
+		}
+		if params.OperatorParams.IsOpenshift {
+			container.SecurityContext.Privileged = pointer.Bool(true)
+		}
+		initContainers = append(initContainers, container)
 	}
 
 	return initContainers
@@ -74,22 +96,14 @@ func maybeAgentInitContainerForHostpathVolume(spec *agentv1alpha1.AgentSpec, v s
 
 // hostPathVolumeInitContainerCommand returns the container command
 // for maintaining permissions for Elastic Agent.
-func hostPathVolumeInitContainerCommand() []string {
-	return []string{
-		"/usr/bin/env",
-		"bash",
-		"-c",
-		`#!/usr/bin/env bash
-set -e
-if [[ -d /usr/share/elastic-agent/state ]]; then
-  chmod g+rw /usr/share/elastic-agent/state
-  chgrp 1000 /usr/share/elastic-agent/state
-  if [ -n "$(ls -A /usr/share/elastic-agent/state 2>/dev/null)" ]; then
-    chgrp 1000 /usr/share/elastic-agent/state/*
-    chmod g+rw /usr/share/elastic-agent/state/*
-  fi
-fi
-`}
+func hostPathVolumeInitContainerCommand(isOpenshift bool) []string {
+	command := []string{"/usr/bin/env", "bash", "-c"}
+	if isOpenshift {
+		command = append(command, fmt.Sprintf(permissionsCmdFmt, chconCmd))
+		return command
+	}
+	command = append(command, fmt.Sprintf(permissionsCmdFmt, ""))
+	return command
 }
 
 // runningAsRoot will return true if either the Daemonset or Deployment for

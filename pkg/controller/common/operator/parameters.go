@@ -49,4 +49,7 @@ type Parameters struct {
 	ValidateStorageClass bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
+	// IsOpenshift determines whether the operator is running within an Openshift
+	// environment in order to make configuration decisions.
+	IsOpenshift bool
 }

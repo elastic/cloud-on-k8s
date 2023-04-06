@@ -616,7 +616,13 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), clientset)
+	openshift, err := isOpenShift(clientset)
+	if err != nil {
+		log.Error(err, "failed to determine whether the operator is running within openshift")
+		return err
+	}
+
+	setDefaultSecurityContext, err := determineSetDefaultSecurityContext(viper.GetString(operator.SetDefaultSecurityContextFlag), openshift)
 	if err != nil {
 		log.Error(err, "failed to determine how to set default security context")
 		return err
@@ -654,6 +660,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		IsOpenshift:               openshift,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -788,10 +795,9 @@ func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFami
 //  2. use OpenShift detection to determine whether or not we are running within an OpenShift cluster.
 //     If we determine we are on an OpenShift cluster, and since OpenShift automatically sets security context, return false,
 //     otherwise, return true as we'll need to set this security context on non-OpenShift clusters.
-func determineSetDefaultSecurityContext(setDefaultSecurityContext string, clientset kubernetes.Interface) (bool, error) {
+func determineSetDefaultSecurityContext(setDefaultSecurityContext string, openshift bool) (bool, error) {
 	if setDefaultSecurityContext == "auto-detect" {
-		openshift, err := isOpenShift(clientset)
-		return !openshift, err
+		return !openshift, nil
 	}
 	return strconv.ParseBool(setDefaultSecurityContext)
 }
@@ -827,7 +833,7 @@ func isOpenShift(clientset kubernetes.Interface) (bool, error) {
 	}
 
 	// We could not determine that we are running on an OpenShift cluster,
-	// so we will behave as if "setDefaultSecurityContext" was set to true.
+	// so return false.
 	return false, nil
 }
 

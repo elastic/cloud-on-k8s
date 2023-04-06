@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
@@ -248,16 +249,16 @@ func withSecurityContext(spec agentv1alpha1.AgentSpec, sec *corev1.PodSecurityCo
 	return agentSpec
 }
 
-func withVersion(spec agentv1alpha1.AgentSpec, version string) *agentv1alpha1.AgentSpec {
+func withVersion(spec agentv1alpha1.AgentSpec, version string) agentv1alpha1.AgentSpec {
 	agentSpec := spec.DeepCopy()
 	agentSpec.Version = version
-	return agentSpec
+	return *agentSpec
 }
 
 func Test_maybeAgentInitContainerForHostpathVolume(t *testing.T) {
 	type args struct {
-		spec *agentv1alpha1.AgentSpec
-		v    semver.Version
+		params Params
+		v      semver.Version
 	}
 	tests := []struct {
 		name               string
@@ -267,21 +268,29 @@ func Test_maybeAgentInitContainerForHostpathVolume(t *testing.T) {
 		{
 			name: "version 7.14 does not add init container",
 			args: args{
-				spec: withVersion(agentDaemonsetFixture.Spec, "7.14.0"),
-				v:    semver.MustParse("7.14.0"),
+				params: Params{
+					Agent: agentv1alpha1.Agent{
+						Spec: withVersion(agentDaemonsetFixture.Spec, "7.14.0"),
+					},
+				},
+				v: semver.MustParse("7.14.0"),
 			},
 			wantInitContainers: nil,
 		},
 		{
 			name: "version 8.5.0 adds init container",
 			args: args{
-				spec: withVersion(agentDaemonsetFixture.Spec, "8.5.0"),
-				v:    semver.MustParse("8.5.0"),
+				params: Params{
+					Agent: agentv1alpha1.Agent{
+						Spec: withVersion(agentDaemonsetFixture.Spec, "8.5.0"),
+					},
+				},
+				v: semver.MustParse("8.5.0"),
 			},
 			wantInitContainers: []corev1.Container{
 				{
 					Image:           "docker.elastic.co/beats/elastic-agent:8.5.0",
-					Command:         hostPathVolumeInitContainerCommand(),
+					Command:         hostPathVolumeInitContainerCommand(false),
 					Name:            hostPathVolumeInitContainerName,
 					SecurityContext: &corev1.SecurityContext{RunAsUser: pointer.Int64(0)},
 					Resources:       hostPathVolumeInitContainerResources,
@@ -295,16 +304,49 @@ func Test_maybeAgentInitContainerForHostpathVolume(t *testing.T) {
 			},
 		},
 		{
+			name: "version 8.5.0 on openshift adds init container with privileged: true",
+			args: args{
+				params: Params{
+					Agent: agentv1alpha1.Agent{
+						Spec: withVersion(agentDaemonsetFixture.Spec, "8.5.0"),
+					},
+					OperatorParams: operator.Parameters{
+						IsOpenshift: true,
+					},
+				},
+				v: semver.MustParse("8.5.0"),
+			},
+			wantInitContainers: []corev1.Container{
+				{
+					Image:           "docker.elastic.co/beats/elastic-agent:8.5.0",
+					Command:         hostPathVolumeInitContainerCommand(true),
+					Name:            hostPathVolumeInitContainerName,
+					SecurityContext: &corev1.SecurityContext{RunAsUser: pointer.Int64(0), Privileged: pointer.Bool(true)},
+					Resources:       hostPathVolumeInitContainerResources,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      DataVolumeName,
+							MountPath: DataMountPath,
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "version 8.5.0 with Emptydir Volume adds no init container",
 			args: args{
-				spec: &agentv1alpha1.AgentSpec{
-					DaemonSet: &agentv1alpha1.DaemonSetSpec{
-						PodTemplate: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								Volumes: []corev1.Volume{
-									{
-										Name:         DataVolumeName,
-										VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				params: Params{
+					Agent: agentv1alpha1.Agent{
+						Spec: agentv1alpha1.AgentSpec{
+							DaemonSet: &agentv1alpha1.DaemonSetSpec{
+								PodTemplate: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										Volumes: []corev1.Volume{
+											{
+												Name:         DataVolumeName,
+												VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+											},
+										},
 									},
 								},
 							},
@@ -318,12 +360,16 @@ func Test_maybeAgentInitContainerForHostpathVolume(t *testing.T) {
 		{
 			name: "version 8.5.0 running as root adds no init container",
 			args: args{
-				spec: &agentv1alpha1.AgentSpec{
-					DaemonSet: &agentv1alpha1.DaemonSetSpec{
-						PodTemplate: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								SecurityContext: &corev1.PodSecurityContext{
-									RunAsUser: pointer.Int64(0),
+				params: Params{
+					Agent: agentv1alpha1.Agent{
+						Spec: agentv1alpha1.AgentSpec{
+							DaemonSet: &agentv1alpha1.DaemonSetSpec{
+								PodTemplate: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										SecurityContext: &corev1.PodSecurityContext{
+											RunAsUser: pointer.Int64(0),
+										},
+									},
 								},
 							},
 						},
@@ -336,7 +382,7 @@ func Test_maybeAgentInitContainerForHostpathVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotInitContainers := maybeAgentInitContainerForHostpathVolume(tt.args.spec, tt.args.v); !cmp.Equal(gotInitContainers, tt.wantInitContainers) {
+			if gotInitContainers := maybeAgentInitContainerForHostpathVolume(tt.args.params, tt.args.v); !cmp.Equal(gotInitContainers, tt.wantInitContainers) {
 				t.Errorf("maybeAgentInitContainerForHostpathVolume() diff: %s", cmp.Diff(gotInitContainers, tt.wantInitContainers))
 			}
 		})

@@ -197,104 +197,63 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	}
 }
 
-func Test_determineSetDefaultSecurityContext(t *testing.T) {
-	type args struct {
-		setDefaultSecurityContext string
-		clientset                 kubernetes.Interface
-	}
+func Test_isOpenShift(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
+		name      string
+		clientset kubernetes.Interface
+		want      bool
+		wantErr   bool
 	}{
 		{
-			"auto-detect on OpenShift cluster does not set security context",
-			args{
-				"auto-detect",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{
-					{
-						GroupVersion: schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}.String(),
-						APIResources: []metav1.APIResource{
-							{
-								Name: "securitycontextconstraints",
-							},
+			name: "on OpenShift cluster is detected properly",
+			clientset: newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{
+				{
+					GroupVersion: schema.GroupVersion{Group: "security.openshift.io", Version: "v1"}.String(),
+					APIResources: []metav1.APIResource{
+						{
+							Name: "securitycontextconstraints",
 						},
 					},
-				}, nil),
-			},
-			false,
-			false,
+				},
+			}, nil),
+			want:    true,
+			wantErr: false,
 		},
 		{
-			"auto-detect on OpenShift cluster, returning group discovery failed error for OpenShift security group+version, does not set security context",
-			args{
-				"auto-detect",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, &discovery.ErrGroupDiscoveryFailed{
-					Groups: map[schema.GroupVersion]error{
-						{Group: "security.openshift.io", Version: "v1"}: nil,
-					},
-				}),
-			},
-			false,
-			false,
+			name: "on OpenShift cluster, returning group discovery failed error for OpenShift security group+version returns true",
+			clientset: newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, &discovery.ErrGroupDiscoveryFailed{
+				Groups: map[schema.GroupVersion]error{
+					{Group: "security.openshift.io", Version: "v1"}: nil,
+				},
+			}),
+			want:    true,
+			wantErr: false,
 		},
 		{
-			"auto-detect on non-OpenShift cluster, returning not found error, sets security context",
-			args{
-				"auto-detect",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, apierrors.NewNotFound(schema.GroupResource{
-					Group:    "security.openshift.io",
-					Resource: "none",
-				}, "fake")),
-			},
-			true,
-			false,
+			name: "not on non-OpenShift cluster, returning not found error returns false",
+			clientset: newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, apierrors.NewNotFound(schema.GroupResource{
+				Group:    "security.openshift.io",
+				Resource: "none",
+			}, "fake")),
+			want:    false,
+			wantErr: false,
 		},
 		{
-			"auto-detect on non-OpenShift cluster, returning random error, returns error",
-			args{
-				"auto-detect",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, fmt.Errorf("random error")),
-			},
-			true,
-			true,
-		},
-		{
-			"true set, returning no error, will set security context",
-			args{
-				"true",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
-			},
-			true,
-			false,
-		}, {
-			"false set, returning no error, will not set security context",
-			args{
-				"false",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
-			},
-			false,
-			false,
-		}, {
-			"invalid bool set, returns error",
-			args{
-				"invalid",
-				newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, nil),
-			},
-			false,
-			true,
+			name:      "random error defaults to false and returns error",
+			clientset: newFakeK8sClientsetWithDiscovery([]*metav1.APIResourceList{}, fmt.Errorf("random error")),
+			want:      false,
+			wantErr:   true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := determineSetDefaultSecurityContext(tt.args.setDefaultSecurityContext, tt.args.clientset)
+			got, err := isOpenShift(tt.clientset)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("determineSetDefaultSecurityContext() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("isOpenShift() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("determineSetDefaultSecurityContext() = %v, want %v", got, tt.want)
+				t.Errorf("isOpenShift() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -336,4 +295,75 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 		discovery: discoveryClient,
 	}
 	return client
+}
+
+func Test_determineSetDefaultSecurityContext(t *testing.T) {
+	type args struct {
+		setDefaultSecurityContext string
+		openshift                 bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "on openshift with auto-detect set return false",
+			args: args{
+				setDefaultSecurityContext: "auto-detect",
+				openshift:                 true,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "not on openshift with auto-detect set return true",
+			args: args{
+				setDefaultSecurityContext: "auto-detect",
+				openshift:                 false,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "not on openshift with set-default-security-context set to true returns true",
+			args: args{
+				setDefaultSecurityContext: "true",
+				openshift:                 false,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "on openshift with set-default-security-context set to true returns true",
+			args: args{
+				setDefaultSecurityContext: "true",
+				openshift:                 false,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "invalid bool for set-default-security-context returns false and error",
+			args: args{
+				setDefaultSecurityContext: "invalid",
+				openshift:                 false,
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := determineSetDefaultSecurityContext(tt.args.setDefaultSecurityContext, tt.args.openshift)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("determineSetDefaultSecurityContext() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("determineSetDefaultSecurityContext() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
