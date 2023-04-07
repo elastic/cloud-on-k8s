@@ -7,7 +7,7 @@ package logstash
 import (
 	"fmt"
 	"hash"
-	"path"
+	//"path"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -39,6 +39,16 @@ const (
 
 	// VersionLabelName is a label used to track the version of a Logstash Pod.
 	VersionLabelName = "logstash.k8s.elastic.co/version"
+
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
+
+
+	// InternalConfigVolumeName is a volume which contains the generated configuration.
+	InternalConfigVolumeName      = "elastic-internal-logstash-config"
+	InternalConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config"
+	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
+	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
+
 )
 
 var (
@@ -52,28 +62,95 @@ var (
 			corev1.ResourceCPU:    resource.MustParse("1000m"),
 		},
 	}
+	// ConfigVolume is used to propagate the keystore file from the init container to
+	// Logstash main container.
+	//ConfigVolume = volume.NewEmptyDirVolume(ConfigVolumeName, ConfigMountPath)
+
 )
+
+// SecretName is the name of the secret that holds the Logstash config for the given Logstash resource.
+func SecretName(ls logstashv1alpha1.Logstash) string {
+	return ls.Name + "-ls-config"
+}
+
+// SecretName is the name of the secret that holds the Logstash pipeline for the given Logstash resource.
+func PipelineSecretName(ls logstashv1alpha1.Logstash) string {
+	return ls.Name + "-ls-pipeline"
+}
+
+var (
+	// ConfigSharedVolume contains the Logstash config/ directory, it contains the contents of config from the docker container
+	ConfigSharedVolume = volume.SharedVolume{
+		VolumeName:             ConfigVolumeName,
+		InitContainerMountPath: InitContainerConfigVolumeMountPath,
+		ContainerMountPath:     ConfigMountPath,
+	}
+)
+
+// ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
+func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		SecretName(ls),
+		InternalConfigVolumeName,
+		InternalConfigVolumeMountPath,
+	)
+}
+
+// PipelineVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
+func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		PipelineSecretName(ls),
+		InternalPipelineVolumeName,
+		InternalPipelineVolumeMountPath,
+	)
+}
+
 
 func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateSpec {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
-	vols := []volume.VolumeLike{
-		// volume with logstash configuration file
-		volume.NewSecretVolume(
-			logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-			LogstashConfigVolumeName,
-			path.Join(ConfigMountPath, LogstashConfigFileName),
-			LogstashConfigFileName,
-			0644),
-		// volume with logstash pipeline file
-		volume.NewSecretVolume(
-			logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
-			PipelineVolumeName,
-			path.Join(ConfigMountPath, PipelineFileName),
-			PipelineFileName,
-			0644),
-	}
+	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(params.Logstash), PipelineVolume(params.Logstash)}
+
+
+	//vols := []volume.VolumeLike{
+	//	ConfigVolume,
+	//	// volume with logstash configuration file
+	//	volume.NewSecretVolume(
+	//		logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+	//		LogstashConfigVolumeName,
+	//		path.Join(ConfigMountPath, LogstashConfigFileName),
+	//		LogstashConfigFileName,
+	//		0644),
+	//	// volume with logstash pipeline file
+	//	volume.NewSecretVolume(
+	//		logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
+	//		PipelineVolumeName,
+	//		path.Join(ConfigMountPath, PipelineFileName),
+	//		PipelineFileName,
+	//		0644),
+	//}
+
+	// secretName, name, mountPath string, projectedSecrets []string
+
+	//projectedSecrets :=
+
+	//vols := []volume.VolumeLike{
+	//	ConfigVolume,
+	//	// volume with logstash configuration file
+	//	volume.NewSecretVolumeWithMountPath(
+	//		logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+	//		LogstashConfigVolumeName,
+	//		ConfigMountPath),
+	//	//// volume with logstash pipeline file
+	//	volume.NewSecretVolumeWithMountPath(
+	//		logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
+	//		PipelineVolumeName,
+	//		ConfigMountPath),
+	//		//path.Join(ConfigMountPath, PipelineFileName),
+	//		////PipelineFileName,
+	//		//0644),
+	//}
 
 	labels := maps.Merge(params.Logstash.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
@@ -92,7 +169,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
-		WithVolumeLikes(vols...)
+		WithVolumeLikes(vols...).
+		WithInitContainers(initConfigContainer(params.Logstash))
 
 	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {

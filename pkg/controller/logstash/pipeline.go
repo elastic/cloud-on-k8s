@@ -40,7 +40,7 @@ func reconcilePipeline(params Params, configHash hash.Hash) error {
 		return err
 	}
 
-	_, _ = configHash.Write(cfgBytes)
+	//_, _ = configHash.Write(cfgBytes)
 
 	return nil
 }

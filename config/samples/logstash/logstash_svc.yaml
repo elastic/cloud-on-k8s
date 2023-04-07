@@ -18,9 +18,12 @@ spec:
   count: 2
   version: 8.6.1
   config:
-    log.level: info
+    log.level: debug
     api.http.host: "0.0.0.0"
     queue.type: memory
+  pipelines:
+    - pipeline.id: one
+      config.string: "input { beats { port => 5045}} output { stdout {}}"
   services:
     - name: api
       service:
