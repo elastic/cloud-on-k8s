@@ -68,6 +68,12 @@ tolerations: []
 # affinity defines the node affinity rules for the operator pod.
 affinity: {}
 
+# Only one of minAvailable or maxUnavailable can be set
+podDisruptionBudget:
+  enabled: false
+  # minAvailable: 1
+  # maxUnavailable: 3
+
 # additional environment variables for the operator container.
 env: []
 
@@ -235,4 +241,3 @@ global:
   createOperatorNamespace: true
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
   kubeVersion: 1.21.0
-
