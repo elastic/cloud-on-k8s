@@ -2,7 +2,16 @@ suite: test elastic-agent
 templates:
   - templates/elastic-agent.yaml
 tests:
-  - it: should render default daemonset properly
+  - it: should render daemonset properly when set
+    set:
+      spec:
+        daemonSet:
+          podTemplate:
+            spec:
+              containers:
+              - name: agent
+                securityContext:
+                  runAsUser: 0
     release:
       name: quickstart
     asserts:
@@ -29,6 +38,8 @@ tests:
         test: label
       annotations:
         test: annotation
+      spec:
+        daemonSet: {}
     release:
       name: quickstart
     asserts:
