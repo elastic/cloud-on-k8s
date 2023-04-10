@@ -40,10 +40,21 @@ type Repository struct {
 	// Repository is the repository name.
 	Repository string `json:"repository"`
 	// Tags are any tags applied to this image/repository combination.
-	Tags []Tag `json:"tags"`
+	Tags Tags `json:"tags"`
 }
+
+type Tags []Tag
 
 // Tag represents a tag of a container image.
 type Tag struct {
 	Name string `json:"name"`
+}
+
+func (t Tags) containsName(name string) bool {
+	for _, tag := range t {
+		if tag.Name == name {
+			return true
+		}
+	}
+	return false
 }
