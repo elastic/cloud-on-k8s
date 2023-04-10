@@ -40,7 +40,6 @@ var (
 		ContainerMountPath:     esvolume.ConfigVolumeMountPath,
 	}
 
-
 	// EsPluginsSharedVolume contains the ES plugins/ directory
 	EsPluginsSharedVolume = volume.SharedVolume{
 		VolumeName:             "elastic-internal-elasticsearch-plugins-local",
@@ -75,9 +74,6 @@ var (
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
 				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", settings.ConfigFileName),
 			},
-
-
-
 			{
 				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
 				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.UnicastHostsFile),

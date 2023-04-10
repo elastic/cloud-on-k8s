@@ -40,7 +40,8 @@ func reconcilePipeline(params Params, configHash hash.Hash) error {
 		return err
 	}
 
-	//_, _ = configHash.Write(cfgBytes)
+	// We DO NOT write changes to configHash here - this is to ensure that a pipeline change does not trigger a restart
+	// of the pod, but allows the automatic reload of pipelines to take place
 
 	return nil
 }
