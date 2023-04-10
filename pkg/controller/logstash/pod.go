@@ -90,7 +90,7 @@ var (
 // ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
 func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		SecretName(ls),
+		logstashv1alpha1.ConfigSecretName(ls.Name),
 		InternalConfigVolumeName,
 		InternalConfigVolumeMountPath,
 	)
@@ -99,7 +99,7 @@ func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
 // PipelineVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
 func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		PipelineSecretName(ls),
+		logstashv1alpha1.PipelineSecretName(ls.Name),
 		InternalPipelineVolumeName,
 		InternalPipelineVolumeMountPath,
 	)
@@ -111,6 +111,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(params.Logstash), PipelineVolume(params.Logstash)}
+
 
 
 	//vols := []volume.VolumeLike{
