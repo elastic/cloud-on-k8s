@@ -41,13 +41,11 @@ const (
 
 	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
 
-
 	// InternalConfigVolumeName is a volume which contains the generated configuration.
-	InternalConfigVolumeName      = "elastic-internal-logstash-config"
-	InternalConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config"
+	InternalConfigVolumeName        = "elastic-internal-logstash-config"
+	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
 	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
 	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
-
 )
 
 var (
@@ -90,7 +88,6 @@ func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
 	)
 }
 
-
 func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateSpec {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
@@ -115,7 +112,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(false)).
 		WithVolumeLikes(vols...).
-		WithInitContainers(initConfigContainer(params.Logstash))
+		WithInitContainers(initConfigContainer(params.Logstash)).
+		WithInitContainerDefaults()
 
 	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {

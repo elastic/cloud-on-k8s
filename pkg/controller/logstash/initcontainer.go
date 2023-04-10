@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	InitConfigContainerName            = "logstash-internal-init-config"
+	InitConfigContainerName = "logstash-internal-init-config"
 
 	// InitConfigScript is a small bash script to prepare the logstash configuration directory
 	InitConfigScript = `#!/usr/bin/env bash
@@ -36,14 +36,13 @@ for f in /usr/share/logstash/config/*.*; do
 	fi
 done
 
-ln -sf `+ InternalConfigVolumeMountPath + `/logstash.yml  $mount_path
-ln -sf `+ InternalPipelineVolumeMountPath + `/pipelines.yml  $mount_path
+ln -sf ` + InternalConfigVolumeMountPath + `/logstash.yml  $mount_path
+ln -sf ` + InternalPipelineVolumeMountPath + `/pipelines.yml  $mount_path
 
 touch "${init_config_initialized_flag}"
 echo "Logstash configuration successfully prepared."
 `
 )
-
 
 // initConfigContainer returns an init container that executes a bash script to prepare the logstash config directory.
 // This copies files from the `config` folder of the docker image, and creates symlinks for the operator created
@@ -54,7 +53,6 @@ func initConfigContainer(ls logstashv1alpha1.Logstash) corev1.Container {
 
 	return corev1.Container{
 		// Image will be inherited from pod template defaults
-		Image: "docker.elastic.co/logstash/logstash:8.6.1",
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            InitConfigContainerName,
 		SecurityContext: &corev1.SecurityContext{
