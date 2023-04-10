@@ -88,7 +88,10 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 
-	if err := reconcilePipeline(params, configHash); err != nil {
+	// We intenetionally DO NOT pass the configHash here. We don't want to consider the pipeline definitions in the
+	// hash of the config to ensure that a pipeline change does not automatically trigger a restart
+	// of the pod, but allows Logstash's automatic reload of pipelines to take place
+	if err := reconcilePipeline(params); err != nil {
 		return results.WithError(err), params.Status
 	}
 

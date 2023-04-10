@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 )
 
-func reconcilePipeline(params Params, configHash hash.Hash) error {
+func reconcilePipeline(params Params) error {
 	defer tracing.Span(&params.Context)()
 
 	cfgBytes, err := buildPipeline(params)
@@ -39,9 +39,6 @@ func reconcilePipeline(params Params, configHash hash.Hash) error {
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
 		return err
 	}
-
-	// We DO NOT write changes to configHash here - this is to ensure that a pipeline change does not trigger a restart
-	// of the pod, but allows the automatic reload of pipelines to take place
 
 	return nil
 }
