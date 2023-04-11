@@ -72,7 +72,7 @@ affinity: {}
 # set to either an integer (e.g. 1) or a percentage value (e.g. 25%).
 podDisruptionBudget:
   enabled: false
-  # minAvailable: 1
+  minAvailable: 1
   # maxUnavailable: 3
 
 # additional environment variables for the operator container.
