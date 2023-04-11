@@ -87,7 +87,7 @@ func PushImage(c CommonConfig, newTag Tag, force bool) error {
 // if the image has completed the scan process.  It will wait up to
 // 'ImageScanTimeout' for image to have completed the scan before failing.
 func PublishImage(c CommonConfig, newTag Tag, imageScanTimeout time.Duration) error {
-	return publishImageInProject(c, newTag, imageScanTimeout, c.DryRun)
+	return publishImageInProject(c, newTag, imageScanTimeout)
 }
 
 // imageExistsInProject will determine whether an image with the given tag exists in the certification api.
@@ -283,7 +283,7 @@ func syncImagesTaggedAsLatest(c CommonConfig, newTag Tag) error {
 // publishImageInProject will wait until the image with the given tag is scanned, and then attempt to publish
 // the image within the Red Hat certification API.  If imageScanTimeout is reached waiting for the image to
 // be set as scanned within the API and error will be returned.
-func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Duration, dryRun bool) error {
+func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Duration) error {
 	ticker := time.NewTicker(5 * time.Minute)
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
 	defer cancel()
@@ -294,7 +294,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 		return err
 	}
 	if done {
-		if dryRun {
+		if c.DryRun {
 			log.Printf("not publishing image as dry-run is set")
 			return nil
 		}
@@ -311,7 +311,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 			if !done {
 				continue
 			}
-			if dryRun {
+			if c.DryRun {
 				log.Printf("not publishing image as dry-run is set")
 				return nil
 			}
