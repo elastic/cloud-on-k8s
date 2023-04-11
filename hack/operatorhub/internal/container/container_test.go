@@ -37,7 +37,7 @@ func (s *syncTestManager) createHTTPHandler(getImagesResponse []byte) http.Handl
 			return
 		}
 		if r.Method == http.MethodPost && r.URL.Path == "/api/containers/v1/projects/certification/id/fake/requests/images" {
-			s.actualSyncCalls += 1
+			s.actualSyncCalls++
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -49,18 +49,18 @@ func (s *syncTestManager) createHTTPHandler(getImagesResponse []byte) http.Handl
 func Test_syncImagesTaggedAsLatest(t *testing.T) {
 	tests := []struct {
 		name    string
-		p       CommonConfig
+		config  CommonConfig
+		newTag  Tag
 		mgr     *syncTestManager
 		wantErr bool
 	}{
 		{
 			name: "Publishing 2.7.0 with existing 2.6.0 and 2.7.0 tagged as latest calls sync for 2.6.0",
-			p: CommonConfig{
-				HTTPClient:          http.DefaultClient,
+			config: CommonConfig{
 				ProjectID:           "fake",
 				RedhatCatalogAPIKey: "fake",
-				Tag:                 "2.7.0",
 			},
+			newTag: Tag{Name: "2.7.0"},
 			mgr: &syncTestManager{
 				expectedSyncCalls: 1,
 				getImagesReponse: []Image{
@@ -102,12 +102,11 @@ func Test_syncImagesTaggedAsLatest(t *testing.T) {
 		},
 		{
 			name: "Publishing 2.7.0 with only 2.7.0 tagged as latest does not call sync operation",
-			p: CommonConfig{
-				HTTPClient:          http.DefaultClient,
+			config: CommonConfig{
 				ProjectID:           "fake",
 				RedhatCatalogAPIKey: "fake",
-				Tag:                 "2.7.0",
 			},
+			newTag: Tag{Name: "2.7.0"},
 			mgr: &syncTestManager{
 				expectedSyncCalls: 0,
 				getImagesReponse: []Image{
@@ -136,8 +135,8 @@ func Test_syncImagesTaggedAsLatest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mgr.server = httptest.NewServer(tt.mgr.createHTTPHandler(getImagesResponse(t, tt.mgr.getImagesReponse)))
 			defer tt.mgr.server.Close()
-			tt.p.APIURL = fmt.Sprintf("%s/%s", tt.mgr.server.URL, "api/containers/v1")
-			if err := syncImagesTaggedAsLatest(tt.p); (err != nil) != tt.wantErr {
+			catalogAPIURL = fmt.Sprintf("%s/%s", tt.mgr.server.URL, "api/containers/v1")
+			if err := syncImagesTaggedAsLatest(tt.config, tt.newTag); (err != nil) != tt.wantErr {
 				t.Errorf("syncImagesTaggedAsLatest() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.mgr.expectedSyncCalls != tt.mgr.actualSyncCalls {

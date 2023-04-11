@@ -30,7 +30,6 @@ const (
 	getImagesFilter                = "repositories.tags.name==%s"
 	publishOperation               = "publish"
 	syncTagsOperation              = "sync-tags"
-	latestTag                      = "latest"
 )
 
 var (
@@ -40,67 +39,43 @@ var (
 	getCatalogImagesURL          = "%s/projects/certification/id/%s/images"
 	registryUserFormat           = "redhat-isv-containers+%s-robot"
 	imagePublishURL              = "%s/projects/certification/id/%s/requests/images"
+	latestTag                    = Tag{Name: "latest"}
 )
 
 // CommonConfig are common configuration options between
 // the push and publish commands.
 type CommonConfig struct {
 	DryRun              bool
-	HTTPClient          *http.Client
 	ProjectID           string
 	RedhatCatalogAPIKey string
-	APIURL              string
 	RegistryPassword    string
-	Tag                 string
-}
-
-// PushConfig is the configuration required for the push image command.
-type PushConfig struct {
-	CommonConfig
-	Force bool
-}
-
-// PublishConfig is the configuration required for the publish command.
-type PublishConfig struct {
-	CommonConfig
-	ImageScanTimeout time.Duration
 }
 
 // PushImage will push an image to the Quay.io registry if it is determined
 // that the image doesn't already exist.  If 'Force' option is used, the
 // image will be pushed regardless if it already exists.
-func PushImage(c PushConfig) error {
-	if c.HTTPClient == nil {
-		c.HTTPClient = defaultHTTPClient()
-	}
-
-	commonConfig := CommonConfig{
-		APIURL:              catalogAPIURL,
-		HTTPClient:          c.HTTPClient,
-		RedhatCatalogAPIKey: c.RedhatCatalogAPIKey,
-		ProjectID:           c.ProjectID,
-		Tag:                 c.Tag}
-	log.Printf("Determining if image already exists within project with tag: %s", c.Tag)
-	exists, err := ImageExistsInProject(commonConfig)
+func PushImage(c CommonConfig, newTag Tag, force bool) error {
+	log.Printf("Determining if image already exists within project with tag: %s", newTag.Name)
+	exists, err := imageExistsInProject(c, newTag)
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed to determine if image exists: %w", err)
 	}
-	if exists && !c.Force {
+	if exists && !force {
 		log.Println("✓")
 		log.Println("not continuing as image was already found within redhat project")
 		return nil
 	}
-	if c.Force {
+	if force {
 		log.Println("pushing image as force was set")
 	}
 
-	if err = pushImageToRegistry(c); err != nil {
+	if err = pushImageToRegistry(c, newTag.Name); err != nil {
 		log.Println("x")
 		return fmt.Errorf("while pushing image: %w", err)
 	}
 	log.Println("✓")
-	if err = syncImagesTaggedAsLatest(commonConfig); err != nil {
+	if err = syncImagesTaggedAsLatest(c, newTag); err != nil {
 		log.Println("x")
 		return fmt.Errorf("while syncing images tagged as latest: %w", err)
 	}
@@ -111,22 +86,13 @@ func PushImage(c PushConfig) error {
 // PublishImage will publish an existing image in the redhat catalog,
 // if the image has completed the scan process.  It will wait up to
 // 'ImageScanTimeout' for image to have completed the scan before failing.
-func PublishImage(c PublishConfig) error {
-	if c.HTTPClient == nil {
-		c.HTTPClient = defaultHTTPClient()
-	}
-
-	return publishImageInProject(CommonConfig{
-		HTTPClient:          c.HTTPClient,
-		RedhatCatalogAPIKey: c.RedhatCatalogAPIKey,
-		ProjectID:           c.ProjectID,
-		Tag:                 c.Tag,
-	}, c.ImageScanTimeout, c.DryRun)
+func PublishImage(c CommonConfig, newTag Tag, imageScanTimeout time.Duration) error {
+	return publishImageInProject(c, newTag, imageScanTimeout, c.DryRun)
 }
 
-// ImageExistsInProject will determine whether an image with the given tag exists in the certification api.
-func ImageExistsInProject(c CommonConfig) (bool, error) {
-	images, err := getImages(c)
+// imageExistsInProject will determine whether an image with the given tag exists in the certification api.
+func imageExistsInProject(c CommonConfig, tag Tag) (bool, error) {
+	images, err := getImagesByTag(c, tag.Name)
 	if err != nil && errors.Is(err, errImageNotFound) {
 		return false, nil
 	}
@@ -145,12 +111,9 @@ func ImageExistsInProject(c CommonConfig) (bool, error) {
 
 // GetImageSHA will query the Red Hat certification API, returning a list of images for a given
 // tag, and return the SHA of the image to be used in the manifests.
-func GetImageSHA(c CommonConfig) (string, error) {
-	if c.HTTPClient == nil {
-		c.HTTPClient = defaultHTTPClient()
-	}
+func GetImageSHA(c CommonConfig, tag string) (string, error) {
 	var imageSHA string
-	images, err := getImages(c)
+	images, err := getImagesByTag(c, tag)
 	if err != nil && errors.Is(err, errImageNotFound) {
 		return imageSHA, nil
 	}
@@ -162,7 +125,7 @@ func GetImageSHA(c CommonConfig) (string, error) {
 	}
 	image := getFirstUndeletedImage(images)
 	if image == nil {
-		return imageSHA, fmt.Errorf("couldn't find image with tag: %s", c.Tag)
+		return imageSHA, fmt.Errorf("couldn't find image with tag: %s", tag)
 	}
 	return image.DockerImageDigest, nil
 }
@@ -179,23 +142,23 @@ func defaultHTTPClient() *http.Client {
 
 // getImages will return a slice of Images from the Red Hat Certification API
 // while filtering using the given tag, returning any errors it encounters.
-func getImages(c CommonConfig) ([]Image, error) {
+func getImagesByTag(c CommonConfig, tag string) ([]Image, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	url := fmt.Sprintf(getCatalogImagesURL, c.APIURL, c.ProjectID)
+	url := fmt.Sprintf(getCatalogImagesURL, catalogAPIURL, c.ProjectID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request for url (%s): %w", url, err)
 	}
 
 	q := req.URL.Query()
-	q.Add("filter", fmt.Sprintf(getImagesFilter, c.Tag))
+	q.Add("filter", fmt.Sprintf(getImagesFilter, tag))
 	req.URL.RawQuery = q.Encode()
 
 	addHeaders(req, c.RedhatCatalogAPIKey)
 
 	var res *http.Response
-	if res, err = c.HTTPClient.Do(req); err != nil {
+	if res, err = defaultHTTPClient().Do(req); err != nil {
 		return nil, fmt.Errorf("failed to request whether image exists: %w", err)
 	}
 	defer res.Body.Close()
@@ -239,15 +202,15 @@ func getFirstUndeletedImage(images []Image) *Image {
 // pushImageToRegistry will use the crane tool to pull the ECK operator
 // container image locally, and push it to Quay.io registry using the
 // provided credentials.
-func pushImageToRegistry(c PushConfig) error {
+func pushImageToRegistry(c CommonConfig, tag string) error {
 	if c.DryRun {
 		log.Printf("not pushing image as dry-run is set.")
 		return nil
 	}
 
 	username := fmt.Sprintf(registryUserFormat, c.ProjectID)
-	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.ProjectID, c.Tag)
-	imageToPull := fmt.Sprintf(eckOperatorFormat, c.Tag)
+	formattedEckOperatorRedhatReference := fmt.Sprintf(eckOperatorRegistryReference, registryURL, c.ProjectID, tag)
+	imageToPull := fmt.Sprintf(eckOperatorFormat, tag)
 
 	log.Printf("pulling image (%s) in preparation to push (%s) to quay.io registry: ", imageToPull, formattedEckOperatorRedhatReference)
 	// default credentials are used here, as the operator image which we use as a source is public.
@@ -278,7 +241,7 @@ func pushImageToRegistry(c PushConfig) error {
 	// top of the RedHat Catalog.
 	log.Printf("tagging (%s) as 'latest' in quay.io registry\n", formattedEckOperatorRedhatReference)
 	err = crane.Tag(
-		formattedEckOperatorRedhatReference, latestTag,
+		formattedEckOperatorRedhatReference, latestTag.Name,
 		crane.WithAuth(&authn.Basic{
 			Username: username,
 			Password: c.RegistryPassword}),
@@ -294,22 +257,20 @@ func pushImageToRegistry(c PushConfig) error {
 // syncImagesTaggedAsLatest will get all images tagged as "latest",
 // and for any that are not the current tag, we run a "sync-tags"
 // operation to remove the "latest" tag from the api cache.
-func syncImagesTaggedAsLatest(c CommonConfig) error {
+func syncImagesTaggedAsLatest(c CommonConfig, newTag Tag) error {
 	if c.DryRun {
 		return nil
 	}
 
-	tag := c.Tag
-	c.Tag = latestTag
-	images, err := getImages(c)
+	images, err := getImagesByTag(c, newTag.Name)
 	if err != nil {
 		return fmt.Errorf("while syncing tags for images marked as 'latest': %w", err)
 	}
 	for _, image := range images {
 		for _, repo := range image.Repositories {
-			if repo.Tags.containsName(latestTag) && !repo.Tags.containsName(tag) {
+			if repo.Tags.contains(latestTag) && !repo.Tags.contains(newTag) {
 				img := image
-				if err := doOperationForImage(&img, c, syncTagsOperation); err != nil {
+				if err := doOperationForImage(&img, c, newTag.Name, syncTagsOperation); err != nil {
 					return fmt.Errorf("while syncing tags for image %s: %w", image.ID, err)
 				}
 				continue
@@ -322,13 +283,13 @@ func syncImagesTaggedAsLatest(c CommonConfig) error {
 // publishImageInProject will wait until the image with the given tag is scanned, and then attempt to publish
 // the image within the Red Hat certification API.  If imageScanTimeout is reached waiting for the image to
 // be set as scanned within the API and error will be returned.
-func publishImageInProject(c CommonConfig, imageScanTimeout time.Duration, dryRun bool) error {
+func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Duration, dryRun bool) error {
 	ticker := time.NewTicker(5 * time.Minute)
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
 	defer cancel()
 
 	log.Printf("waiting for image to complete scan process... ")
-	image, done, err := isImageScanned(c)
+	image, done, err := isImageScanned(c, newTag.Name)
 	if err != nil {
 		return err
 	}
@@ -337,13 +298,13 @@ func publishImageInProject(c CommonConfig, imageScanTimeout time.Duration, dryRu
 			log.Printf("not publishing image as dry-run is set")
 			return nil
 		}
-		return doPublish(image, c)
+		return doPublish(image, c, newTag.Name)
 	}
 
 	for {
 		select {
 		case <-ticker.C:
-			image, done, err := isImageScanned(c)
+			image, done, err := isImageScanned(c, newTag.Name)
 			if err != nil {
 				return err
 			}
@@ -354,7 +315,7 @@ func publishImageInProject(c CommonConfig, imageScanTimeout time.Duration, dryRu
 				log.Printf("not publishing image as dry-run is set")
 				return nil
 			}
-			return doPublish(image, c)
+			return doPublish(image, c, newTag.Name)
 
 		case <-ctx.Done():
 			return fmt.Errorf("image scan not completed within timeout of %s", imageScanTimeout)
@@ -364,8 +325,8 @@ func publishImageInProject(c CommonConfig, imageScanTimeout time.Duration, dryRu
 
 // isImageScanned will get the first valid image tag within the Red Hat certification API
 // and ensure that the scan status is set to "passed", returning the image.
-func isImageScanned(c CommonConfig) (image *Image, done bool, err error) {
-	images, err := getImages(c)
+func isImageScanned(c CommonConfig, tag string) (image *Image, done bool, err error) {
+	images, err := getImagesByTag(c, tag)
 	if err != nil {
 		log.Printf("failed to find image in redhat catlog api, retrying: %s", err)
 		return nil, false, nil
@@ -390,16 +351,16 @@ func isImageScanned(c CommonConfig) (image *Image, done bool, err error) {
 	return nil, false, nil
 }
 
-func doPublish(image *Image, c CommonConfig) error {
-	return doOperationForImage(image, c, publishOperation)
+func doPublish(image *Image, c CommonConfig, tag string) error {
+	return doOperationForImage(image, c, tag, publishOperation)
 }
 
 // doPublish will publish an image with the given tag in the Red Hat certification API.
-func doOperationForImage(image *Image, c CommonConfig, operation string) error {
+func doOperationForImage(image *Image, c CommonConfig, newTag string, operation string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	log.Printf("publishing image (%s), tag %s: ", image.ID, c.Tag)
-	url := fmt.Sprintf(imagePublishURL, c.APIURL, c.ProjectID)
+	log.Printf("operation %s for image (%s), tag %s: ", operation, image.ID, newTag)
+	url := fmt.Sprintf(imagePublishURL, catalogAPIURL, c.ProjectID)
 	var body = []byte(fmt.Sprintf(`{"image_id": "%s", "operation": "%s"}`, operation, image.ID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
@@ -409,7 +370,7 @@ func doOperationForImage(image *Image, c CommonConfig, operation string) error {
 
 	addHeaders(req, c.RedhatCatalogAPIKey)
 
-	res, err := c.HTTPClient.Do(req)
+	res, err := defaultHTTPClient().Do(req)
 	if err != nil {
 		log.Println("ⅹ")
 		return fmt.Errorf("failed request to publish image: %w", err)

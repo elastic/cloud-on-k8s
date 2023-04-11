@@ -50,9 +50,9 @@ type Tag struct {
 	Name string `json:"name"`
 }
 
-func (t Tags) containsName(name string) bool {
-	for _, tag := range t {
-		if tag.Name == name {
+func (ts Tags) contains(tag Tag) bool {
+	for _, t := range ts {
+		if tag.Name == t.Name {
 			return true
 		}
 	}
