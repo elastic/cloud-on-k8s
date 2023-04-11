@@ -9,7 +9,7 @@ build:
 	go build -o bin/operatorhub main.go
 
 container-push:
-	bin/operatorhub container push --dry-run=$(DRY_RUN)
+	bin/operatorhub container push --dry-run="$(DRY_RUN)"
 
 preflight:
 	../../.buildkite/scripts/release/redhat-preflight.sh $(TAG)
@@ -21,8 +21,8 @@ generate-manifests:
 	bin/operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
 
 bundle-generate:
-	bin/operatorhub bundle generate --dir="$$(pwd)"
+	echo bin/operatorhub bundle generate --dir="$(shell pwd)"
 
 create-pr:
-	@ bin/operatorhub bundle create-pr --enable-vault=false --dir="$$(pwd)" --dry-run="$(DRY_RUN)" -D=false \
-		-f ""$(GITHUB_FULLNAME)"" -e "$(GITHUB_EMAIL)" -u "$(GITHUB_USERNAME)" -g "$(GITHUB_TOKEN)"
+	@ bin/operatorhub bundle create-pr --enable-vault=false --dir="$(shell pwd)" --dry-run="$(DRY_RUN)" -D=false \
+		-f "$(GITHUB_FULLNAME)" -e "$(GITHUB_EMAIL)" -u "$(GITHUB_USERNAME)" -g "$(GITHUB_TOKEN)"

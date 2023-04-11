@@ -55,7 +55,6 @@ steps:
       - buildkite-agent artifact download "bin/operatorhub" /usr/local/ && chmod u+x /usr/local/bin/operatorhub
       - |
         cd hack/operatorhub
-        #operatorhub generate-manifests --yaml-manifest=../../config/crds.yaml --yaml-manifest=../../config/operator.yaml
         operatorhub generate-manifests
         operatorhub bundle generate
         operatorhub bundle create-pr
