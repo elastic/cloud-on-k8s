@@ -298,7 +298,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 			log.Printf("not publishing image as dry-run is set")
 			return nil
 		}
-		return doPublish(image, c, newTag.Name)
+		return doOperationForImage(image, c, newTag.Name, publishOperation)
 	}
 
 	for {
@@ -315,7 +315,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 				log.Printf("not publishing image as dry-run is set")
 				return nil
 			}
-			return doPublish(image, c, newTag.Name)
+			return doOperationForImage(image, c, newTag.Name, publishOperation)
 
 		case <-ctx.Done():
 			return fmt.Errorf("image scan not completed within timeout of %s", imageScanTimeout)
@@ -351,11 +351,11 @@ func isImageScanned(c CommonConfig, tag string) (image *Image, done bool, err er
 	return nil, false, nil
 }
 
-func doPublish(image *Image, c CommonConfig, tag string) error {
-	return doOperationForImage(image, c, tag, publishOperation)
-}
-
-// doPublish will publish an image with the given tag in the Red Hat certification API.
+// doOperationForImage will perform a given operation on an image with the given tag in the Red Hat certification API.
+//
+// Utilized operations:
+// 1) publish
+// 2) sync-tags
 func doOperationForImage(image *Image, c CommonConfig, newTag string, operation string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
