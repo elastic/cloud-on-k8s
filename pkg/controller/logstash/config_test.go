@@ -40,6 +40,9 @@ func Test_newConfig(t *testing.T) {
 			want: `api:
     http:
         host: 0.0.0.0
+config:
+    reload:
+        automatic: true
 `,
 			wantErr: false,
 		},
@@ -56,6 +59,9 @@ func Test_newConfig(t *testing.T) {
 			want: `api:
     http:
         host: 0.0.0.0
+config:
+    reload:
+        automatic: true
 log:
     level: debug
 `,
@@ -70,6 +76,9 @@ log:
 			want: `api:
     http:
         host: 0.0.0.0
+config:
+    reload:
+        automatic: true
 log:
     level: debug
 `,
@@ -86,6 +95,9 @@ log:
 			want: `api:
     http:
         host: 0.0.0.0
+config:
+    reload:
+        automatic: true
 log:
     level: warn
 `,

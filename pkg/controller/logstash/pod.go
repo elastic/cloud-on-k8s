@@ -110,14 +110,9 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
-<<<<<<< HEAD
-		WithReadinessProbe(readinessProbe(false)).
-		WithVolumeLikes(vols...).
-		WithInitContainers(initConfigContainer(params.Logstash)).
-=======
 		WithReadinessProbe(readinessProbe(params.Logstash)).
 		WithVolumeLikes(vols...).
->>>>>>> upstream/feature/logstash
+		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithInitContainerDefaults()
 
 	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
