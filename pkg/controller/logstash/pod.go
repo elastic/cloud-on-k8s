@@ -122,7 +122,7 @@ func readinessProbe(logstash logstashv1alpha1.Logstash) corev1.Probe {
 	var scheme = corev1.URISchemeHTTP
 	var port = network.HTTPPort
 	for _, service := range logstash.Spec.Services {
-		if service.Name == LogstashAPIServiceName {
+		if service.Name == LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
 			port = int(service.Service.Spec.Ports[0].Port)
 		}
 	}

@@ -318,6 +318,104 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "Logstash with a service with no port creates secrets and service",
+			objs: []runtime.Object{
+				&logstashv1alpha1.Logstash{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "testLogstash",
+						Namespace:  "test",
+						Generation: 2,
+					},
+					Spec: logstashv1alpha1.LogstashSpec{
+						Version: "8.6.1",
+						Count:   1,
+						Services: []logstashv1alpha1.LogstashService{{
+							Name: "api",
+							Service: commonv1.ServiceTemplate{
+								Spec: corev1.ServiceSpec{
+									Ports: nil,
+								},
+							},
+						}},
+					},
+					Status: logstashv1alpha1.LogstashStatus{
+						ObservedGeneration: 1,
+					},
+				},
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testLogstash-ls",
+						Namespace: "test",
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
+					},
+					Status: appsv1.StatefulSetStatus{
+						AvailableReplicas: 1,
+						Replicas:          1,
+						ReadyReplicas:     1,
+					},
+				},
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "testLogstash-ls",
+						Namespace:  "test",
+						Generation: 2,
+						Labels:     map[string]string{NameLabelName: "testLogstash", VersionLabelName: "8.6.1"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+					},
+				},
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test",
+					Name:      "testLogstash",
+				},
+			},
+			want: reconcile.Result{},
+			expectedObjects: []expectedObject{
+				{
+					t:    &corev1.Service{},
+					name: types.NamespacedName{Namespace: "test", Name: "testLogstash-ls-api"},
+				},
+				{
+					t:    &corev1.Secret{},
+					name: types.NamespacedName{Namespace: "test", Name: "testLogstash-ls-config"},
+				},
+				{
+					t:    &corev1.Secret{},
+					name: types.NamespacedName{Namespace: "test", Name: "testLogstash-ls-pipeline"},
+				},
+			},
+
+			expected: logstashv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
+				},
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+					Count:   1,
+					Services: []logstashv1alpha1.LogstashService{{
+						Name: "api",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: nil,
+							},
+						},
+					}},
+				},
+				Status: logstashv1alpha1.LogstashStatus{
+					Version:            "8.6.1",
+					ExpectedNodes:      1,
+					AvailableNodes:     1,
+					ObservedGeneration: 2,
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
