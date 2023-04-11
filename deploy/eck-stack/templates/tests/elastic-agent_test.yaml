@@ -4,7 +4,10 @@ templates:
 tests:
   - it: should render quickstart properly
     set:
-      eck-agent.enabled: true
+      eck-agent:
+        enabled: true
+        spec:
+          deployment: {}
     release:
       name: quickstart
     asserts:
