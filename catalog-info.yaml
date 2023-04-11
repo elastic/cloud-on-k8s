@@ -107,7 +107,7 @@ spec:
       repository: elastic/cloud-on-k8s
       pipeline_file: .buildkite/pipeline-release-redhat.yml
       provider_settings:
-        trigger_mode: none
+        build_tags: true
       teams:
         cloud-k8s-operator: {}
         everyone:

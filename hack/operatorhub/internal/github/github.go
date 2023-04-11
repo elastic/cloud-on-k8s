@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -65,14 +65,6 @@ type Client struct {
 	Config
 }
 
-type operatorHubConfig struct {
-	NewVersion   string                   `json:"newVersion"`
-	PrevVersion  string                   `json:"prevVersion"`
-	StackVersion string                   `json:"stackVersion"`
-	CRDs         []map[string]interface{} `json:"crds"`
-	Packages     []map[string]interface{} `json:"packages"`
-}
-
 // New returns a new github client, using
 // a default HTTP client with a timeout of 10 seconds
 // if one isn't supplied within the config.
@@ -117,7 +109,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory for operations: %w", err)
 	}
-	log.Println(fmt.Sprintf("(%s): ✓", tempDir))
+	log.Printf("(%s): ✓\n", tempDir)
 
 	defer func() {
 		if !c.KeepTempFiles {
@@ -153,7 +145,9 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 				return nil
 			},
-			additionalChangedFiles: []string{"elastic-cloud-eck.package.yaml"},
+			additionalChangedFiles: []string{
+				filepath.Join("operators", communityOperatorDirectoryName, "elastic-cloud-eck.package.yaml"),
+			},
 		},
 		{
 			organization:   certifiedOperatorOrganization,
@@ -190,7 +184,7 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 				}
 
 				log.Printf("reading (%s) to replace git tag with container image SHA", fileDst)
-				input, err := ioutil.ReadFile(fileDst)
+				input, err := os.ReadFile(fileDst)
 				if err != nil {
 					return fmt.Errorf("while reading file (%s)", fileDst)
 				}
@@ -199,14 +193,12 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 
 				find := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator:%s`, c.GitTag)
 				replace := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator@%s`, c.ContainerImageSHA)
-				for _, line := range lines {
-					if strings.Contains(line, find) {
-						line = strings.ReplaceAll(line, find, replace)
-					}
+				for i, line := range lines {
+					lines[i] = strings.ReplaceAll(line, find, replace)
 				}
 				output := strings.Join(lines, "\n")
 				log.Printf("rewriting (%s) with container image SHA", fileDst)
-				err = ioutil.WriteFile(fileDst, []byte(output), 0644)
+				err = os.WriteFile(fileDst, []byte(output), 0644)
 				if err != nil {
 					return fmt.Errorf("while writing updated file (%s)", fileDst)
 				}
@@ -331,7 +323,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 	log.Println("✓")
 
 	log.Printf("Creating git commit ")
-	_, err = w.Commit(fmt.Sprintf(`version %s of eck operator\n\nSigned-off-by: %s <%s>`, c.GitTag, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
+	_, err = w.Commit(fmt.Sprintf("Update ECK to the latest version `%s`\n\nSigned-off-by: %s <%s>", c.GitTag, c.GitHubFullName, c.GitHubEmail), &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  c.GitHubFullName,
 			Email: c.GitHubEmail,
@@ -360,11 +352,7 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		return fmt.Errorf("while pushing git refspec (%s) to remote: %w", refSpec, err)
 	}
 
-	if !c.DryRun {
-		return c.createPullRequest(repo, branchName)
-	}
-	log.Printf("Not creating pull request for (%s)\n", orgRepo)
-	return nil
+	return c.createPullRequest(repo, branchName)
 }
 
 // createPullRequest will create a draft pull request for the given github repository
@@ -375,9 +363,11 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 		return nil
 	}
 	log.Printf("Creating draft pull request for (%s) ", repo.repository)
+
+	prBody := fmt.Sprintf("Update the ECK operator to the latest version `%s`.", c.GitTag)
 	var body = []byte(
-		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true}`,
-			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName))
+		fmt.Sprintf(`{"title": "operator %s (%s)", "head": "%s:%s", "base": "%s", "draft": true, "body": "%s"}`,
+			repo.directoryName, c.GitTag, c.GitHubUsername, branchName, repo.mainBranchName, prBody))
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	req, err := c.createRequest(ctx, http.MethodPost, fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPIURL, repo.organization, repo.repository), bytes.NewBuffer(body))
@@ -390,9 +380,9 @@ func (c *Client) createPullRequest(repo githubRepository, branchName string) err
 		log.Println("ⅹ")
 		return fmt.Errorf("while creating draft pr for (%s): %w", repo.repository, err)
 	}
-	if res.StatusCode > 299 {
+	if res.StatusCode < 200 || res.StatusCode > 299 {
 		log.Println("ⅹ")
-		if bodyBytes, err := ioutil.ReadAll(res.Body); err != nil {
+		if bodyBytes, err := io.ReadAll(res.Body); err != nil {
 			return fmt.Errorf("while creating draft pr for (%s), body: %s, code: %d", repo.repository, string(bodyBytes), res.StatusCode)
 		}
 		return fmt.Errorf("while creating draft pr for (%s), code: %d", repo.repository, res.StatusCode)
