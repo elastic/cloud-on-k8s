@@ -153,10 +153,17 @@ var (
 			},
 		},
 		LogstashUserRole: esclient.Role{
-			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
+			Cluster: []string{
+				"monitor",
+				"manage_ilm",
+				"read_ilm",
+				"manage_logstash_pipelines",
+				"manage_index_templates",
+				"cluster:admin/ingest/pipeline/get",
+			},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"logstash-*"},
+					Names:      []string{"logstash-*", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 			},

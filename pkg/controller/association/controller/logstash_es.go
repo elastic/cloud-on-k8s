@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
@@ -58,7 +59,7 @@ func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			},
 			UserSecretSuffix: "logstash-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
-				return "superuser", nil
+				return user.LogstashUserRole, nil
 			},
 		},
 	})
