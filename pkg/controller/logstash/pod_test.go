@@ -6,9 +6,8 @@ package logstash
 
 import (
 	"context"
-	"testing"
-
 	"hash/fnv"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -273,7 +272,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Logstash: tt.logstash,
 			}
 			configHash := fnv.New32a()
-			got := buildPodTemplate(params, configHash)
+			got, err := buildPodTemplate(params, configHash)
+
+			require.NoError(t, err)
 			tt.assertions(got)
 		})
 	}
