@@ -1,6 +1,6 @@
 steps:
   - label: ""
-    if: build.branch == "main"
+    if: build.branch != "main"
     {{- if eq .FailuresCount 0 }}
     command: echo "no failures to notify"
     {{- else }}
@@ -8,7 +8,7 @@ steps:
     notify:
       - slack:
           channels:
-            - "#eck"
+            - "#test-notify"
           message: |
           {{- range $envName, $sortedTests := .Tests }}
             {{- range $test := $sortedTests.Failed }}
