@@ -29,10 +29,7 @@ func main() {
 		if err != nil {
 			exitWith(err)
 		}
-		if info.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(xmlReportPath, ".xml") {
+		if info.IsDir() || !strings.HasSuffix(xmlReportPath, ".xml") {
 			return nil
 		}
 
@@ -76,9 +73,6 @@ func sortTests(suites []junit.Suite) ([]junit.Test, []junit.Test) {
 
 	// traverse all suites to find failed and passed tests
 	for _, suite := range suites {
-		if len(suite.Tests) == 0 {
-			continue
-		}
 		for _, test := range suite.Tests {
 			if test.Error != nil {
 				// on test failure
