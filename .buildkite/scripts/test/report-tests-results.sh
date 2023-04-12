@@ -6,7 +6,7 @@
 
 # Script to annotate and notify about e2e tests failures.
 
-set -u
+set -eu
 
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
@@ -37,6 +37,8 @@ main() {
     for f in reports/*.json; do
         convert "$f"
     done
+
+    set +e
 
     go run main.go -d reports -o annotate-success  > success.md
     if [[ -s success.md ]]; then
