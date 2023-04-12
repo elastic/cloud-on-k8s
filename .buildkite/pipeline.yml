@@ -3,20 +3,52 @@ agents:
   cpu: "4"
   memory: "2G"
 
+env:
+  VAULT_ROOT_PATH: secret/ci/elastic-cloud-on-k8s
+
 steps:
 
-  - label: "mock e2e-tests.json upload"
-    commands:
-      - cd .buildkite/e2e-tests-json
-      - buildkite-agent artifact upload "*.json"
-      - exit 42
-    artifact_paths: ""
+  - group: checks
+    steps:
 
-  - wait: ~
-    continue_on_failure: true
+      - label: ":go: lint"
+        command: "make lint check-local-changes"
+        agents:
+          cpu: "6"
+          memory: "6G"
 
-  - label: "aggregate tests-results"
-    command: .buildkite/scripts/test/report-tests-results.sh
-    artifact_paths:
-      - ".buildkite/e2e/reporter/*.md"
-      - ".buildkite/e2e/reporter/*.yml"
+      - label: ":go: generate"
+        command: "make generate check-local-changes"
+
+      - label: ":go: checks"
+        commands:
+          - "make check-license-header check-predicates shellcheck reattach-pv"
+          - env -i .buildkite/scripts/build/setenv_test.sh
+
+  - group: tests
+    steps:
+
+      - label: ":go: unit-tests"
+        command: "make unit-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: integration-tests"
+        command: "make integration-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: manifest-gen-tests"
+        command: "make manifest-gen-test"
+
+      - label: ":go: helm-tests"
+        command: "make helm-test"
+
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
+
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
+
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
