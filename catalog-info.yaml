@@ -108,6 +108,9 @@ spec:
       pipeline_file: .buildkite/pipeline-release-redhat.yml
       provider_settings:
         build_tags: true
+        build_pull_requests: false
+        build_branches: false
+        publish_commit_status: false
       teams:
         cloud-k8s-operator: {}
         everyone:
