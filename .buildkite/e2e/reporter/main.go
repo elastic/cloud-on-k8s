@@ -1,35 +1,64 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/joshdk/go-junit"
 )
 
-var (
-	// extractSlugNameRe is a regexp to extract the name of the test environment.
-	// It is set by the pipeline generator via EnvVarClusterName.
-	extractSlugNameRe = regexp.MustCompile("e2e-tests-eck-e2e-(.*)-[a-z]*-[0-9]*.xml")
+const (
+	annotateSuccess  = "annotate-success"
+	annotateFailures = "annotate-failures"
+	notifyFailures   = "notify-failures"
 )
 
-func main() {
-	if len(os.Args) != 2 {
-		exitWith(errors.New("argument 'directory' required"))
-	}
+var (
+	xmlDir       string
+	outputFormat string
 
-	failures := 0
+	//go:embed templates/annotate-success.tpl.md
+	annotationSuccessTpl string
+	//go:embed templates/annotate-failures.tpl.md
+	annotationFailuresTpl string
+	//go:embed templates/notify-failures.tpl.yml
+	notifyFailuresTpl string
+
+	// extractSlugNameRe is a regexp to extract the name of the test environment from the cluster name
+	// set by the pipeline generator via EnvVarClusterName.
+	extractSlugNameRe = regexp.MustCompile("e2e-tests-eck-e2e-(.*)-[a-z]*-[0-9]*.xml")
+
+	tplMap = map[string]string{
+		annotateSuccess:  annotationSuccessTpl,
+		annotateFailures: annotationFailuresTpl,
+		notifyFailures:   notifyFailuresTpl,
+	}
+)
+
+func init() {
+	flag.StringVar(&xmlDir, "d", "./reports", "Directory containing JUnit XML reports to process")
+	flag.StringVar(&outputFormat, "o", "", "Output format. One of: (annotate-success, annotate-failures, notify-failures)")
+	flag.Parse()
+}
+
+func main() {
+	tests := map[string]sortedTests{}
+	failuresCount := 0
 
 	// process all xml report in the given diretory
-	err := filepath.Walk(os.Args[1], func(xmlReportPath string, info os.FileInfo, err error) error {
+	err := filepath.Walk(xmlDir, func(xmlReportPath string, info os.FileInfo, err error) error {
 		if err != nil {
-			exitWith(err)
+			return err
 		}
 		if info.IsDir() || !strings.HasSuffix(xmlReportPath, ".xml") {
+			// skip
 			return nil
 		}
 
@@ -51,9 +80,9 @@ func main() {
 			return err
 		}
 
-		failedTests, passedTests := sortTests(suites)
+		tests[slugName] = sortTests(suites)
 
-		failures += printFinalReport(slugName, failedTests, passedTests)
+		failuresCount += len(tests[slugName].Failed)
 
 		return nil
 	})
@@ -61,12 +90,38 @@ func main() {
 		exitWith(err)
 	}
 
-	if failures > 0 {
+	srcTpl, ok := tplMap[outputFormat]
+	if !ok {
+		exitWith(fmt.Errorf("output format not supported"))
+	}
+
+	tpl, err := template.New("report").Funcs(template.FuncMap{
+		"splitTestName": func(testName string) string {
+			return strings.Split(testName, "/")[0]
+		},
+	}).Parse(srcTpl)
+	if err != nil {
+		exitWith(err)
+	}
+	err = tpl.Execute(os.Stdout, map[string]interface{}{
+		"FailuresCount": failuresCount,
+		"Tests":         tests,
+	})
+	if err != nil {
+		exitWith(err)
+	}
+
+	if failuresCount > 0 {
 		os.Exit(1)
 	}
 }
 
-func sortTests(suites []junit.Suite) ([]junit.Test, []junit.Test) {
+type sortedTests struct {
+	Failed []junit.Test
+	Passed []junit.Test
+}
+
+func sortTests(suites []junit.Suite) sortedTests {
 	failedTests := []junit.Test{}
 	passedTests := []junit.Test{}
 	failedTestsMap := map[string]junit.Test{}
@@ -103,34 +158,15 @@ func sortTests(suites []junit.Suite) ([]junit.Test, []junit.Test) {
 		failedTests = append(failedTests, test)
 	}
 
-	return failedTests, passedTests
-}
-
-func printFinalReport(envName string, failedTests, passedTests []junit.Test) int {
-	// success
-	if len(failedTests) == 0 && len(passedTests) > 0 {
-		return 0
+	// add a failure if no failed or passed test was found
+	if len(failedTests) == 0 && len(passedTests) == 0 {
+		failedTests = []junit.Test{{Name: "NoTestRun", Error: errors.New("see job log")}}
 	}
 
-	// fail if no failed or passed test was found
-	if (len(failedTests) + len(passedTests)) == 0 {
-		fmt.Println("<details>")
-		fmt.Printf("<summary>🐞 <code>%s</code> ~ %s</summary>\n", "NoTestRun", envName)
-		fmt.Printf("\n```\n%s\n```\n", "See job log.")
-		fmt.Println("</details>")
-		fmt.Println("<br>")
-		return 1
+	return sortedTests{
+		Failed: failedTests,
+		Passed: passedTests,
 	}
-
-	// failures
-	for _, test := range failedTests {
-		fmt.Println("<details>")
-		fmt.Printf("<summary>🐞 <code>%s</code> ~ %s</summary>\n", test.Name, envName)
-		fmt.Printf("\n```\n%s```\n", test.Error.Error())
-		fmt.Println("</details>")
-		fmt.Println("<br>")
-	}
-	return len(failedTests)
 }
 
 func exitWith(err error) {

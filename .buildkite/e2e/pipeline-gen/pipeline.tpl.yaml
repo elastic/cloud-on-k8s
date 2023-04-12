@@ -129,50 +129,8 @@ steps:
   - wait: ~
     continue_on_failure: true
 
-  - label: aggregate tests-results
-    commands:
-      - |
-        cd .buildkite/e2e/reporter
-
-        mkdir reports/
-        buildkite-agent artifact download "*.json" reports/
-
-        set +e
-        for f in reports/e2e-tests-*.json; do
-          ../../scripts/test/convert-e2e-tests-json-to-xml.sh "$$f"
-        done
-
-        go run main.go reports/ > report.md
-
-        [ $$? -ne 0 ] && style=error || style=success
-        set -e
-
-        if [[ $$style == "error" ]]; then
-
-          cat report.md | buildkite-agent annotate --style "$$style"
-
-          notif_message() {
-            # yolo
-            grep "<summary>" report.md | sed -r 's@.*<code>([^/]*).*</code> ~ (.*)</summary>@🐞 `\1` \2@g' | sed "s/^/            /"
-          }
-
-        cat <<- YAML | tee notify.yml
-        steps:
-          - label: ""
-            if: build.branch == "main"
-            command: false
-            notify:
-              - slack:
-                  channels:
-                    - "#eck"
-                  message: |
-        $$(notif_message)
-        YAML
-
-          buildkite-agent pipeline upload notify.yml
-
-        fi
-
+  - label: "aggregate tests-results"
+    command: .buildkite/scripts/test/report-tests-results.sh
     artifact_paths:
-      - ".buildkite/e2e/reporter/report.md"
-      - ".buildkite/e2e/reporter/notify.yml"
+      - ".buildkite/e2e/reporter/*.md"
+      - ".buildkite/e2e/reporter/*.yml"
