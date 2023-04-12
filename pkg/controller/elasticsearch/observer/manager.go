@@ -48,10 +48,10 @@ func NewManager(defaultInterval time.Duration, tracer *apm.Tracer) *Manager {
 func (m *Manager) ObservedStateResolver(
 	ctx context.Context,
 	cluster esv1.Elasticsearch,
-	esClient client.Client,
+	esClientProvider func(client.Client) client.Client,
 	isServiceReady bool,
 ) func() esv1.ElasticsearchHealth {
-	observer := m.Observe(ctx, cluster, esClient, isServiceReady)
+	observer := m.Observe(ctx, cluster, esClientProvider, isServiceReady)
 	return func() esv1.ElasticsearchHealth {
 		return observer.LastHealth()
 	}
@@ -67,12 +67,19 @@ func (m *Manager) getObserver(key types.NamespacedName) (*Observer, bool) {
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClient client.Client, isServiceReady bool) *Observer {
+func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esClientProvider func(client.Client) client.Client, isServiceReady bool) *Observer {
 	defer tracing.Span(&ctx)()
 	nsName := k8s.ExtractNamespacedName(&cluster)
 	settings := m.extractObserverSettings(ctx, cluster)
 
 	observer, exists := m.getObserver(nsName)
+
+	var esClient client.Client
+	if exists {
+		esClient = esClientProvider(observer.esClient)
+	} else {
+		esClient = esClientProvider(nil)
+	}
 
 	switch {
 	case !exists:
@@ -85,8 +92,7 @@ func (m *Manager) Observe(ctx context.Context, cluster esv1.Elasticsearch, esCli
 		// in case asynchronous observation has been disabled ensure at least one observation at reconciliation time.
 		return m.getAndObserveSynchronously(ctx, nsName)
 	default:
-		// No change, close the provided Client and return the existing observer.
-		esClient.Close()
+		// No change, return the existing observer.
 		return observer
 	}
 

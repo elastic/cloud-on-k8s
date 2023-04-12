@@ -191,7 +191,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		ctx,
 		d.ES,
-		d.newElasticsearchClient(
+		d.elasticsearchClientProvider(
 			ctx,
 			resourcesState,
 			controllerUser,
@@ -389,6 +389,22 @@ func (d *defaultDriver) newElasticsearchClient(
 		esclient.Timeout(ctx, d.ES),
 		dev.Enabled,
 	)
+}
+
+func (d *defaultDriver) elasticsearchClientProvider(
+	ctx context.Context,
+	state *reconcile.ResourcesState,
+	user esclient.BasicAuth,
+	v version.Version,
+	caCerts []*x509.Certificate,
+) func(existingEsClient esclient.Client) esclient.Client {
+	return func(existingEsClient esclient.Client) esclient.Client {
+		url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
+		if existingEsClient != nil && existingEsClient.HasProperties(v, user, url, caCerts) {
+			return existingEsClient
+		}
+		return d.newElasticsearchClient(ctx, state, user, v, caCerts)
+	}
 }
 
 // maybeSetServiceAccountsOrchestrationHint attempts to update an orchestration hint to let the association controllers

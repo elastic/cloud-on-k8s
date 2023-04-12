@@ -1,0 +1,137 @@
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
+
+steps:
+
+{{- range $test := .Tests }}
+
+  {{- if $test.RemoteKubeconfig }}
+
+  - label: ":k8s: {{ $test.Name }}"
+    key: "e2e-cluster-{{ $test.SlugName }}"
+
+    env:
+      {{- range $key, $val := $test.Env }}
+      {{$key}}: "{{$val}}"
+      {{- end }}
+
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+
+      {{- if $test.Dind }}
+      - make -C .ci TARGET="run-deployer" ci
+      {{- else }}
+      - make run-deployer
+      {{- end }}
+
+    {{- if $test.Dind }}
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      {{- if eq $test.Provider "kind" }}
+      machineType: "{{ .KindAgentsMachineType }}"
+      {{- end }}
+    {{- end }}
+
+  {{- end }}
+
+  {{- if $test.RemoteKubeconfig }}
+  - label: ":go: {{ $test.Name }}"
+  {{- else }}
+  - label: ":k8s: :go: {{ $test.Name }}"
+  {{- end }}
+    key: "e2e-{{ $test.SlugName }}"
+
+    {{- if $test.RemoteKubeconfig }}
+    depends_on:
+      - "e2e-cluster-{{ $test.SlugName }}"
+    {{- end }}
+
+    env:
+      {{- range $key, $val := $test.Env }}
+      {{$key}}: "{{$val}}"
+      {{- end }}
+
+    commands:
+      {{- range $key, $val := $test.Env }}
+      - echo "{{$key}}={{$val}}" >> .env
+      {{- end }}
+
+      - .buildkite/scripts/test/set-deployer-config.sh
+
+      {{- $deployerCommand := "run-deployer" }}
+      {{- if $test.RemoteKubeconfig }}
+        {{- $deployerCommand = "set-kubeconfig" }}
+      {{- end }}
+
+      {{- if $test.Dind }}
+      - make -C .ci TARGET="{{ $deployerCommand }} e2e-run" ci
+      {{- else }}
+      - make {{ $deployerCommand }} e2e-run
+      {{- end }}
+
+    agents:
+      {{- if $test.Dind }}
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      {{- if eq $test.Provider "kind" }}
+      machineType: "{{ $.KindAgentsMachineType }}"
+      {{- end }}
+      {{- else }}
+      memory: "4G"
+      {{- end }}
+
+    artifact_paths:
+      - e2e-tests-*.json
+      - "eck-diagnostic*.zip"
+
+{{- end }}
+
+{{- if .Cleanup }}
+
+  - group: ":broom:"
+    steps:
+
+{{- end }}
+
+{{- range $test := .Tests }}
+    {{- if $test.Cleanup }}
+
+      - label: ":broom: {{ $test.Name }}"
+        depends_on:
+          - step: "e2e-{{ $test.SlugName }}"
+            allow_failure: true
+        env:
+          {{- range $key, $val := $test.Env }}
+          {{$key}}: "{{$val}}"
+          {{- end }}
+          DEPLOYER_OPERATION: delete
+
+        commands:
+          - .buildkite/scripts/test/set-deployer-config.sh
+          - .buildkite/scripts/common/cp-diagnostics.sh
+
+        {{- if not $test.Dind }}
+          - make run-deployer
+        {{- else }}
+          - make -C .ci TARGET="run-deployer" ci
+        agents:
+          provider: "gcp"
+          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+        {{- end }}
+
+
+
+    {{- end }}
+{{- end }}
+
+  - wait: ~
+    continue_on_failure: true
+
+  - label: aggregate tests-results
+    commands:
+      - buildkite-agent artifact download e2e-tests-*.json .
+      - .buildkite/scripts/test/generate-tests-reports.sh
+    artifact_paths:
+      - e2e-tests-*.xml

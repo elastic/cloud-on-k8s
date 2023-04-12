@@ -38,22 +38,22 @@ echo "test trigger_pr"; BUILDKITE_PULL_REQUEST="4242" $setenv > /dev/null
 assert_image "docker.elastic.co/eck-ci/eck-operator-pr:4242-${current_sha1}"
 
 echo "test trigger_nightly_main"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" $setenv > /dev/null
-assert_image "docker.elastic.co/eck-ci/eck-operator-nightly:${current_version}-${current_sha1}"
+assert_image "docker.elastic.co/eck-snapshots/eck-operator:${current_version}-${current_sha1}"
 
-echo "test trigger_nightly_main-dev"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" BUILD_LICENSE_PUBKEY=dev $setenv > /dev/null
-assert_image "docker.elastic.co/eck-ci/eck-operator-nightly:${current_version}-${current_sha1}-dev"
+echo "test trigger_nightly_main-dev"; BUILDKITE_BRANCH="main" BUILDKITE_SOURCE="schedule" OPERATOR_VERSION_SUFFIX=dev $setenv > /dev/null
+assert_image "docker.elastic.co/eck-snapshots/eck-operator:${current_version}-${current_sha1}-dev"
 
 echo "test trigger_merge_main"; BUILDKITE_BRANCH="main" $setenv > /dev/null
 assert_image "docker.elastic.co/eck-snapshots/eck-operator:${current_version}-${current_sha1}"
 
 echo "test trigger_tag"; BUILDKITE_TAG="v1.2.3" $setenv build > /dev/null
-assert_image "docker.elastic.co/eck/eck-operator:v1.2.3"
+assert_image "docker.elastic.co/eck/eck-operator:1.2.3"
 
 echo "test trigger_vtag"; BUILDKITE_TAG="v1.2.3" $setenv build > /dev/null
-assert_image "docker.elastic.co/eck/eck-operator:v1.2.3"
+assert_image "docker.elastic.co/eck/eck-operator:1.2.3"
 
 echo "test trigger_vtagbc"; BUILDKITE_TAG="v1.2.3-bc1" $setenv build > /dev/null
-assert_image "docker.elastic.co/eck/eck-operator:v1.2.3-bc1"
+assert_image "docker.elastic.co/eck/eck-operator:1.2.3-bc1"
 
 echo "test trigger_branch"; BUILDKITE_BRANCH="4.2" BUILDKITE_PULL_REQUEST="false" $setenv > /dev/null
 assert_image "docker.elastic.co/eck-ci/eck-operator-branch:${current_version}-${current_sha1}"

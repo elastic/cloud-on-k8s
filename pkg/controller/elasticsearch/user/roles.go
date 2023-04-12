@@ -34,6 +34,8 @@ const (
 	ApmUserRoleV75 = "eck_apm_user_role_v75"
 	// ApmUserRoleV80 is the name of the role used by APMServer instances to connect to Elasticsearch from version 8.0
 	ApmUserRoleV80 = "eck_apm_user_role_v80"
+	// ApmUserRoleV87 is the name of the role used by APMServer instances to connect to Elasticsearch from version 8.7
+	ApmUserRoleV87 = "eck_apm_user_role_v87"
 
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
@@ -101,6 +103,27 @@ var (
 				{
 					Names:      []string{"traces-apm.sampled-*"},
 					Privileges: []string{"maintenance", "monitor", "read"},
+				},
+			},
+		},
+		ApmUserRoleV87: esclient.Role{
+			Cluster: []string{"cluster:monitor/main", "manage_index_templates"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"traces-apm*", "metrics-apm*", "logs-apm*"},
+					Privileges: []string{"auto_configure", "create_doc"},
+				},
+				{
+					Names:      []string{"traces-apm.sampled-*"},
+					Privileges: []string{"maintenance", "monitor", "read"},
+				},
+				{
+					Names:      []string{".apm-agent-configuration", ".apm-source-map"},
+					Privileges: []string{"read"},
+					AllowRestrictedIndices: func() *bool {
+						allow := true
+						return &allow
+					}(),
 				},
 			},
 		},

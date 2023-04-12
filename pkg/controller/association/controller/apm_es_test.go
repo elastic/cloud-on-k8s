@@ -75,6 +75,24 @@ func Test_getAPMElasticsearchRoles(t *testing.T) {
 			},
 			want: "eck_apm_user_role_v75,ingest_admin,apm_system",
 		},
+		{
+			name: "Test roles for APM Server v8.6.99",
+			args: args{
+				associated: &apmv1.ApmServer{
+					Spec: apmv1.ApmServerSpec{Version: "8.6.99"},
+				},
+			},
+			want: "eck_apm_user_role_v80,apm_system",
+		},
+		{
+			name: "Test roles for APM Server v8.7.0",
+			args: args{
+				associated: &apmv1.ApmServer{
+					Spec: apmv1.ApmServerSpec{Version: "8.7.0"},
+				},
+			},
+			want: "eck_apm_user_role_v87,apm_system",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

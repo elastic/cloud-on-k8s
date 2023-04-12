@@ -1,0 +1,69 @@
+
+- label: stack
+  fixed:
+    E2E_PROVIDER: gke
+  mixed:
+    - E2E_STACK_VERSION: "6.8.23"
+    - E2E_STACK_VERSION: "7.16.3"
+    - E2E_STACK_VERSION: "7.17.8"
+    - E2E_STACK_VERSION: "8.0.1"
+    - E2E_STACK_VERSION: "8.1.3"
+    - E2E_STACK_VERSION: "8.2.3"
+    - E2E_STACK_VERSION: "8.3.3"
+    - E2E_STACK_VERSION: "8.4.3"
+    - E2E_STACK_VERSION: "8.5.3"
+    - E2E_STACK_VERSION: "8.6.2"
+    - E2E_STACK_VERSION: "8.8.0-SNAPSHOT"
+
+- label: kind
+  fixed:
+    E2E_PROVIDER: kind
+  mixed:
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.20.15@sha256:a32bf55309294120616886b5338f95dd98a2f7231519c7dedcec32ba29699394
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.21.14@sha256:9d9eb5fb26b4fbc0c6d95fa8c790414f9750dd583f5d7cee45d92e8c26670aa1
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.22.15@sha256:7d9708c4b0873f0fe2e171e2b1b7f45ae89482617778c1c875f1053d4cef2e41
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.23.13@sha256:ef453bb7c79f0e3caba88d2067d4196f427794086a7d0df8df4f019d5e336b61 
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.24.7@sha256:577c630ce8e509131eab1aea12c022190978dd2f745aac5eb1fe65c0807eb315
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.26.0@sha256:691e24bd2417609db7e589e1a479b902d2e209892a10ce375fab60a8407c7352
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.26.0@sha256:691e24bd2417609db7e589e1a479b902d2e209892a10ce375fab60a8407c7352
+      DEPLOYER_KIND_IP_FAMILY: ipv6
+
+- label: gke
+  fixed:
+    E2E_PROVIDER: gke
+
+- label: resilience
+  fixed:
+    E2E_PROVIDER: gke
+    E2E_DEPLOY_CHAOS_JOB: true
+
+- label: ocp
+  fixed:
+    E2E_PROVIDER: ocp
+  mixed:
+    #- DEPLOYER_CLIENT_VERSION: "4.8.57"
+    #- DEPLOYER_CLIENT_VERSION: "4.9.58"
+    #- DEPLOYER_CLIENT_VERSION: "4.10.55"
+    #- DEPLOYER_CLIENT_VERSION: "4.11.33"
+    - DEPLOYER_CLIENT_VERSION: "4.12.9"
+
+- label: eks-arm
+  fixed:
+    E2E_PROVIDER: eks-arm
+    E2E_TEST_ENV_TAGS: arch:arm
+    E2E_TAGS: "es,kb,apm,ent,beat,agent"
+    TEST_LICENSE: "" # disabled b/c https://github.com/elastic/elasticsearch/issues/68083
+    MONITORING_SECRETS: "" # disabled b/c beats cannot run on ARM
+
+- label: eks
+  fixed:
+    E2E_PROVIDER: eks
+
+- label: aks
+  fixed:
+    E2E_PROVIDER: aks
+
+- label: tanzu
+  fixed:
+    E2E_PROVIDER: tanzu

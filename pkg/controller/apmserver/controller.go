@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/blang/semver/v4"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -263,8 +262,6 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results, state // will eventually retry
 	}
 
-	r.warnIfDeprecated(asVersion, as)
-
 	state, err = r.reconcileApmServerDeployment(ctx, state, as)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -280,18 +277,6 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	_, err = results.WithError(err).Aggregate()
 	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return results, state
-}
-
-func (r *ReconcileApmServer) warnIfDeprecated(version semver.Version, as *apmv1.ApmServer) {
-	if version.GTE(semver.MustParse("8.0.0")) {
-		message := "The standalone APM Server binary is deprecated as of version 8.0.0 and will be removed in a future release. Consider using Elastic Agent in Fleet-managed mode."
-		log.Info(
-			message,
-			"namespace", as.Namespace,
-			"as_name", as.Name,
-		)
-		r.Recorder().Eventf(as, corev1.EventTypeWarning, events.EventReasonValidation, message)
-	}
 }
 
 func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) error {

@@ -14,6 +14,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 )
 
+const (
+	LogstashAPIServiceName = "api"
+)
+
 // reconcileServices reconcile Services defined in spec
 //
 // When a service is defined that matches the API service name, then that service is used to define
@@ -23,14 +27,11 @@ func reconcileServices(params Params) ([]corev1.Service, error) {
 
 	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
 	for _, service := range params.Logstash.Spec.Services {
-		var svc *corev1.Service
 		logstash := params.Logstash
 		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
-			svc = newAPIService(params.Logstash)
 			createdAPIService = true
-		} else {
-			svc = newService(service, params.Logstash)
 		}
+		svc := newService(service, params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
 			return []corev1.Service{}, err
 		}
@@ -87,7 +88,7 @@ func newAPIService(logstash logstashv1alpha1.Logstash) *corev1.Service {
 	labels := NewLabels(logstash)
 	ports := []corev1.ServicePort{
 		{
-			Name:     "metrics",
+			Name:     LogstashAPIServiceName,
 			Protocol: corev1.ProtocolTCP,
 			Port:     network.HTTPPort,
 		},

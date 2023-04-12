@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,11 +54,19 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		fullTestName := "TestSamples-" + testName
 		switch b := builder.(type) {
 		case elasticsearch.Builder:
-			return b.WithNamespace(namespace).
+			b = b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
+			// for EKS, we set our e2e storage class to use local volumes instead of depending on the default storage class that uses
+			// network storage because from k8s 1.23 network storage requires the installation of the Amazon EBS CSI driver and the
+			// deployer does not yet support this. See https://github.com/elastic/cloud-on-k8s/issues/6515.
+			if strings.HasPrefix(test.Ctx().Provider, "eks") {
+				b = b.WithDefaultPersistentVolumes()
+			}
+			return b
+
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).

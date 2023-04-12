@@ -4,8 +4,7 @@ name: eck-operator-crds
 
 icon: https://helm.elastic.co/icons/eck.png
 
-description: |-
-  A Helm chart for installing the ECK operator Custom Resource Definitions (CRD). 
+description: ECK operator Custom Resource Definitions
 
 type: application
 

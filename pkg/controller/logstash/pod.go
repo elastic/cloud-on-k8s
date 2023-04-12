@@ -92,9 +92,10 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, spec.Version)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
-		WithReadinessProbe(readinessProbe(false)).
+		WithReadinessProbe(readinessProbe(params.Logstash)).
 		WithVolumeLikes(vols...).
-		WithEnv(envs...)
+		WithEnv(envs...).
+		WithInitContainerDefaults()
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {
@@ -119,12 +120,15 @@ func getDefaultContainerPorts() []corev1.ContainerPort {
 }
 
 // readinessProbe is the readiness probe for the Logstash container
-func readinessProbe(useTLS bool) corev1.Probe {
-	scheme := corev1.URISchemeHTTP
-	if useTLS {
-		scheme = corev1.URISchemeHTTPS
+func readinessProbe(logstash logstashv1alpha1.Logstash) corev1.Probe {
+	var scheme = corev1.URISchemeHTTP
+	var port = network.HTTPPort
+	for _, service := range logstash.Spec.Services {
+		if service.Name == LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
+			port = int(service.Service.Spec.Ports[0].Port)
+		}
 	}
-	return corev1.Probe{
+	probe := corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 30,
 		PeriodSeconds:       10,
@@ -132,12 +136,13 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		TimeoutSeconds:      5,
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(network.HTTPPort),
+				Port:   intstr.FromInt(port),
 				Path:   "/",
 				Scheme: scheme,
 			},
 		},
 	}
+	return probe
 }
 
 func getEsAssociations(params Params) []commonv1.Association {
