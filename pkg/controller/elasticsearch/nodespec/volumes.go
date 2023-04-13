@@ -60,6 +60,10 @@ func buildVolumes(
 		esvolume.FileSettingsVolumeName,
 		esvolume.FileSettingsVolumeMountPath,
 	)
+	tmpVolume := volume.NewEmptyDirVolume(
+		"tmp-volume",
+		"/tmp",
+	)
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))
 	for _, claimTemplate := range nodeSpec.VolumeClaimTemplates {
@@ -89,6 +93,7 @@ func buildVolumes(
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
 			downwardAPIVolume.Volume(),
+			tmpVolume.Volume(),
 		)...)
 	if keystoreResources != nil {
 		volumes = append(volumes, keystoreResources.Volume)
@@ -106,6 +111,7 @@ func buildVolumes(
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),
 		downwardAPIVolume.VolumeMount(),
+		tmpVolume.VolumeMount(),
 	)
 
 	// version gate for the file-based settings volume and volumeMounts

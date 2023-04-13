@@ -13,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"k8s.io/utils/pointer"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -28,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
@@ -125,6 +126,13 @@ func BuildPodTemplateSpec(
 	if ver.LT(version.From(7, 2, 0)) {
 		// mitigate CVE-2021-44228
 		enableLog4JFormatMsgNoLookups(builder)
+	}
+
+	mainContainer := builder.MainContainer()
+	if mainContainer != nil {
+		mainContainer.SecurityContext = &corev1.SecurityContext{
+			ReadOnlyRootFilesystem: pointer.Bool(true),
+		}
 	}
 
 	return builder.PodTemplate, nil
