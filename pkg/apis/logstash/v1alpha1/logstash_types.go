@@ -18,10 +18,6 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
-
-	// TODO review service account
-	// LogstashServiceAccount is the Elasticsearch service account to be used to authenticate.
-	LogstashServiceAccount commonv1.ServiceAccountName = "logstash"
 )
 
 // LogstashSpec defines the desired state of Logstash
@@ -180,7 +176,7 @@ func (l *Logstash) GetObservedGeneration() int64 {
 }
 
 func (l *Logstash) GetAssociations() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
+	var associations []commonv1.Association //nolint:prealloc
 
 	for _, ref := range l.Spec.ElasticsearchRefs {
 		associations = append(associations, &LogstashESAssociation{

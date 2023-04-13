@@ -29,7 +29,7 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 			return nil, err
 		}
 
-		esRefName := normalizedNamespacedName(getEsRefNamespacedName(assoc))
+		esRefName := normalize(getEsRefNamespacedName(assoc))
 		envs = append(envs, createEnvVar(esRefName+"_ES_HOSTS", assocConf.GetURL()))
 		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", credentials.Username))
 		envs = append(envs, createEnvVar(esRefName+"_ES_PASSWORD", credentials.Password))
@@ -48,7 +48,7 @@ func getEsRefNamespacedName(assoc commonv1.Association) string {
 	return fmt.Sprintf("%s_%s", ref.Namespace, ref.Name)
 }
 
-func normalizedNamespacedName(nn string) string {
+func normalize(nn string) string {
 	return strings.ToUpper(strings.ReplaceAll(nn, "-", "_"))
 }
 
