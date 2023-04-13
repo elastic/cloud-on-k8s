@@ -61,8 +61,8 @@ func buildVolumes(
 		esvolume.FileSettingsVolumeMountPath,
 	)
 	tmpVolume := volume.NewEmptyDirVolume(
-		"tmp-volume",
-		"/tmp",
+		esvolume.TempVolumeName,
+		esvolume.TempVolumeMountPath,
 	)
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))

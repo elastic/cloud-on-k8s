@@ -128,6 +128,7 @@ func BuildPodTemplateSpec(
 		enableLog4JFormatMsgNoLookups(builder)
 	}
 
+	// default to running the "elasticsearch" container as "readOnlyRootFilesystem: true"
 	mainContainer := builder.MainContainer()
 	if mainContainer != nil {
 		mainContainer.SecurityContext = &corev1.SecurityContext{
