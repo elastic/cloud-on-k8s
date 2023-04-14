@@ -145,7 +145,11 @@ func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{},
 	}
 	switch snapshotRepository["type"] {
 	case "azure", "gcs", "s3":
-		settings["base_path"] = fmt.Sprintf("snapshots/%s", suffix)
+		basePath, ok := settings["base_path"].(string)
+		if !ok {
+			basePath = "snapshots"
+		}
+		settings["base_path"] = filepath.Join(basePath, suffix)
 	case "fs":
 		location, ok := settings["location"].(string)
 		if !ok {
