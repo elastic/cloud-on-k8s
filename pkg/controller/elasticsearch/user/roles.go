@@ -186,8 +186,8 @@ var (
 			},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"logstash-*", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*"},
-					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
+					Names:      []string{"logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*"},
+					Privileges: []string{"manage", "write", "create_index", "read", "view_index_metadata"},
 				},
 			},
 		},
