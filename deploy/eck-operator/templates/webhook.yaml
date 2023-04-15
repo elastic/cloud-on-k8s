@@ -400,7 +400,7 @@ spec:
   ports:
     - name: https
       port: 443
-      targetPort: 9443
+      targetPort: {{ .Values.webhook.webhookPort }}
   selector:
     {{- include "eck-operator.selectorLabels" . | nindent 4 }}
 {{- if .Values.webhook.manageCerts }}

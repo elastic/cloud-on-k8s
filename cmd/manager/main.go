@@ -318,6 +318,11 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
+	cmd.Flags().Int(
+		operator.WebhookPortFlag,
+		WebhookPort,
+		"Port to bind the webhook to. Used primarily in-conjunction with hostNetworking",
+	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
 		"auto-detect",

@@ -123,6 +123,8 @@ webhook:
   # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
   # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
   hostNetwork: false
+  # Used in conjunction with HostNetwork to prevent port clashes.
+  webhookPort: 9443
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.

@@ -44,7 +44,7 @@ spec:
   ingress:
 {{- if .Values.webhook.enabled }}
     - ports:
-        - port: 9443
+        - port: {{ .Values.webhook.webhookPort }}
       from:
         - ipBlock:
             cidr: "{{ $kubeAPIServerIP }}/32"
