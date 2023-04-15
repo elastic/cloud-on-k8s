@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -73,6 +73,9 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	req, err := c.createRequest(ctx, http.MethodGet, fmt.Sprintf(githubRepoForksURLFormat, githubAPIURL, orgRepo), nil)
+	if err != nil {
+		return false, fmt.Errorf("while creating github request to ensure fork exists: %w", err)
+	}
 	var res *http.Response
 	res, err = c.HTTPClient.Do(req)
 	if err != nil {
@@ -80,7 +83,7 @@ func (c *Client) forkExists(orgRepo string) (bool, error) {
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
+	bodyBytes, err = io.ReadAll(res.Body)
 	if err != nil {
 		return false, fmt.Errorf("while reading get forks response body: %w", err)
 	}
@@ -122,7 +125,7 @@ func (c *Client) createFork(orgRepo string) error {
 	}
 	defer res.Body.Close()
 	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(res.Body)
+	bodyBytes, err = io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("while reading create fork response body: %w", err)
 	}
@@ -148,7 +151,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 		return fmt.Errorf("while checking out (%s) branch (main): %w", orgRepo, err)
 	}
 	err = w.Pull(&git.PullOptions{RemoteName: "origin", ReferenceName: plumbing.NewBranchReferenceName("main")})
-	if err != nil {
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return fmt.Errorf("while merging upstream changes from upstream/main into fork/main: %w", err)
 	}
 	refSpec := "+refs/heads/main:refs/heads/main"
@@ -161,7 +164,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 			config.RefSpec(refSpec),
 		},
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return fmt.Errorf("while pushing merge of fork/main: %w", err)
 	}
 	return nil
@@ -196,7 +199,7 @@ func (c *Client) waitOnForkCreation(orgRepo string) error {
 				return nil
 			default:
 				var bodyBytes []byte
-				bodyBytes, err = ioutil.ReadAll(res.Body)
+				bodyBytes, err = io.ReadAll(res.Body)
 				log.Printf("failed to execute request to check if fork exists, body: %s: %s", string(bodyBytes), err)
 			}
 		case <-ctx.Done():

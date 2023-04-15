@@ -61,10 +61,23 @@ spec:
 
   # Daemonset, or Deployment specification for the type of Beat specified.
   # At least one is required of [daemonSet, deployment].
+  # No default is currently set until https://github.com/helm/helm/pull/11440 is merged.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-chose-the-deployment-model
   #
-  daemonSet: {}
-  # deployment: {}
+  # deployment:
+  #   podTemplate:
+  #     spec:
+  #       containers:
+  #       - name: agent
+  #         securityContext:
+  #           runAsUser: 0
+  # daemonSet:
+  #   podTemplate:
+  #     spec:
+  #       containers:
+  #       - name: agent
+  #         securityContext:
+  #           runAsUser: 0
 
   # Configuration of Beat, which is dependent on the `type` of Beat specified.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-deploy-elastic-beat

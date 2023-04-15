@@ -1,6 +1,6 @@
 apiVersion: v2
 name: eck-agent
-description: A Helm chart to deploy Elastic Agent managed by the ECK Operator.
+description: Elastic Agent managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.4.0-SNAPSHOT

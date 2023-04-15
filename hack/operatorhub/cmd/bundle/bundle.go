@@ -50,7 +50,7 @@ certified-operators and community-operators repositories.`,
 		&flags.Dir,
 		flags.DirFlag,
 		"d",
-		"",
+		"./",
 		"directory containing output from 'operatorhub command' which contains 'certified-operators', and 'community-operators' subdirectories. (OHUB_DIR)",
 	)
 

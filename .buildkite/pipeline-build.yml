@@ -38,6 +38,7 @@ steps:
         key: "dev-operator-image-build"
         env:
           BUILD_LICENSE_PUBKEY: "dev"
+          OPERATOR_VERSION_SUFFIX: "dev"
         commands:
           - .buildkite/scripts/build/setenv.sh
           - make -C .ci TARGET="publish-operator-multiarch-image" ci
@@ -60,13 +61,6 @@ steps:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
-
-      - label: ":go: operatorhub tool"
-        key: "build-operatorhub-tool"
-        commands:
-          - cd hack/operatorhub
-          - make build
-          - buildkite-agent artifact upload bin/operatorhub
 
       - label: ":go: helm releaser tool"
         key: "build-helm-releaser-tool"

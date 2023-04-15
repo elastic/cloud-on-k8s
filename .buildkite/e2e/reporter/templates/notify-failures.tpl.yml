@@ -1,0 +1,18 @@
+steps:
+  - label: ""
+    if: build.branch == "main"
+    {{- if eq .FailuresCount 0 }}
+    command: echo "no failures to notify"
+    {{- else }}
+    command: echo "{{ .FailuresCount }} failures to notify"; exit 1
+    notify:
+      - slack:
+          channels:
+            - "#eck"
+          message: |
+          {{- range $envName, $sortedTests := .Tests }}
+            {{- range $test := $sortedTests.Failed }}
+            🐞 `{{ splitTestName $test.Name }}` {{ $envName }}
+            {{- end }}
+          {{- end }}
+      {{- end }}

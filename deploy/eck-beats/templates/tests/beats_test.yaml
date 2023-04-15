@@ -2,11 +2,13 @@ suite: test beats
 templates:
   - templates/beats.yaml
 tests:
-  - it: should render filebeat properly, when type is set
+  - it: should render filebeat properly, when type and deployment is set
     release:
       name: quickstart
     set:
-      spec.type: "filebeat"
+      spec:
+        type: "filebeat"
+        deployment: {}
     asserts:
       - isKind:
           of: Beat

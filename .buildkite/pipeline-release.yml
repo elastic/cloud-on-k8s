@@ -35,4 +35,7 @@ steps:
         if: |
           build.message =~ /^buildkite test .*operatorhub.*/
           || build.message =~ /^release eck .*operatorhub.*/
-        command: buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
+        trigger: cloud-on-k8s-operator-redhat-release
+        build:
+          env:
+            DRY_RUN: "${DRY_RUN:-true}"

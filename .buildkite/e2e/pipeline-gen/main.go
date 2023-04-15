@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"html/template"
 	"io"
 	"math/rand"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"text/template"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -34,6 +34,7 @@ const (
 	EnvVarClusterName          = "CLUSTER_NAME"
 	EnvVarTestOpts             = "TEST_OPTS"
 	EnvVarTestsMatch           = "TESTS_MATCH"
+	EnvVarTestLicensePKeyPath  = "TEST_LICENSE_PKEY_PATH"
 	EnvVarBuildLicensePubkey   = "BUILD_LICENSE_PUBKEY"
 	EnvVarLicensePubKey        = "export LICENSE_PUBKEY"
 	EnvVarTestLicense          = "TEST_LICENSE"
@@ -232,16 +233,15 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 		return TestsSuiteRun{}, fmt.Errorf("%s not defined", EnvVarProvider)
 	}
 
-	// when the variable to build the operator with a specific public license key is used,
-	// it involves using an operator image suffixed with the value of this variable
-	operatorImageSuffix, _ := lookupEnv(EnvVarBuildLicensePubkey, fixed, mixed)
+	stackVersion, _ := lookupEnv(EnvVarStackVersion, fixed, mixed)
 
 	name := getName(groupLabel, provider, mixedLen, mixed)
 	slugName := getSlugName(name)
-	env, err := commonTestEnv(name, slugName, operatorImageSuffix)
+	env, err := commonTestEnv(name, slugName, stackVersion)
 	if err != nil {
 		return TestsSuiteRun{}, err
 	}
+
 	t := TestsSuiteRun{
 		Name:             name,
 		Provider:         provider,
@@ -348,7 +348,7 @@ func getSlugName(name string) string {
 	return fmt.Sprintf("%s-%s", name, string(id))
 }
 
-func commonTestEnv(name string, slugName string, operatorImageSuffix string) (map[string]string, error) {
+func commonTestEnv(name string, slugName string, stackVersion string) (map[string]string, error) {
 	buildNumber, ok := os.LookupEnv(EnvVarBuildkiteBuildNumber)
 	if !ok {
 		buildNumber = "0"
@@ -357,9 +357,6 @@ func commonTestEnv(name string, slugName string, operatorImageSuffix string) (ma
 	operatorImage, err := getMetadata("operator-image")
 	if err != nil {
 		return nil, err
-	}
-	if operatorImageSuffix != "" {
-		operatorImage = fmt.Sprintf("%s-%s", operatorImage, operatorImageSuffix)
 	}
 	e2eImage, err := getMetadata("e2e-image")
 	if err != nil {
@@ -378,6 +375,16 @@ func commonTestEnv(name string, slugName string, operatorImageSuffix string) (ma
 		EnvVarMonitoringSecrets: "in-memory",
 		EnvVarOperatorImage:     operatorImage,
 		EnvVarE2EImage:          e2eImage,
+	}
+
+	// automatically add special vars to test snapshot stack versions
+	if strings.HasSuffix(stackVersion, "-SNAPSHOT") {
+		// dev operator image build
+		env[EnvVarOperatorImage] = fmt.Sprintf("%s-%s", env[EnvVarOperatorImage], "dev")
+		// dev public key to verify test licenses
+		env[EnvVarBuildLicensePubkey] = "dev"
+		// dev private key to generate test licenses
+		env[EnvVarTestLicensePKeyPath] = "in-memory"
 	}
 
 	// dev mode

@@ -12,7 +12,9 @@ metadata:
 {{- end }}
 webhooks:
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -41,7 +43,9 @@ webhooks:
     resources:
     - agents
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -70,7 +74,9 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -99,7 +105,9 @@ webhooks:
     resources:
     - apmservers
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -128,7 +136,9 @@ webhooks:
     resources:
     - beats
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -157,7 +167,9 @@ webhooks:
     resources:
     - enterprisesearches
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -186,7 +198,9 @@ webhooks:
     resources:
     - enterprisesearches
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -215,7 +229,9 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -244,7 +260,9 @@ webhooks:
     resources:
     - elasticsearches
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -273,7 +291,9 @@ webhooks:
       resources:
         - mapsservers
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -302,7 +322,9 @@ webhooks:
     resources:
     - kibanas
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -331,7 +353,9 @@ webhooks:
     resources:
     - kibanas
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}
@@ -360,7 +384,9 @@ webhooks:
       resources:
       - elasticsearchautoscalers
 - clientConfig:
+    {{- if and (not .Values.webhook.manageCerts) (not .Values.webhook.certManagerCert) }}
     caBundle: {{ .Values.webhook.caBundle }}
+    {{- end }}
     service:
       name: {{ include "eck-operator.webhookServiceName" . }}
       namespace: {{ .Release.Namespace }}

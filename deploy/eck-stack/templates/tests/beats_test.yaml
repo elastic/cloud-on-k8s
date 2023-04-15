@@ -4,8 +4,11 @@ templates:
 tests:
   - it: should render specified beat properly
     set:
-      eck-beats.enabled: true
-      eck-beats.spec.type: metricbeat
+      eck-beats:
+        enabled: true
+        spec:
+          type: "metricbeat"
+          deployment: {}
     release:
       name: quickstart
     asserts:
@@ -19,7 +22,7 @@ tests:
           value: 8.8.0-SNAPSHOT
   - it: should render custom metricbeat example properly
     values:
-      - ../../examples/metricbeat_hosts.yaml
+      - ../../examples/beats/metricbeat_hosts.yaml
     release:
       name: quickstart
     asserts:
