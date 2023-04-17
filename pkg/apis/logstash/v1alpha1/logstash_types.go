@@ -31,7 +31,7 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
-	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+	// ElasticsearchRefs are references to Elasticsearch clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
 
