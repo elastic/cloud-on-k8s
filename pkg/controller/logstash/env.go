@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 )
 
-func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
+func buildEnv(esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 	var envs []corev1.EnvVar //nolint:prealloc
 	for _, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
@@ -24,15 +24,20 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 			return nil, err
 		}
 
-		credentials, err := association.ElasticsearchAuthSettings(params.Context, params.Client, assoc)
-		if err != nil {
-			return nil, err
-		}
-
 		esRefName := normalize(getEsRefNamespacedName(assoc))
 		envs = append(envs, createEnvVar(esRefName+"_ES_HOSTS", assocConf.GetURL()))
-		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", credentials.Username))
-		envs = append(envs, createEnvVar(esRefName+"_ES_PASSWORD", credentials.Password))
+		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", assocConf.AuthSecretName))
+		envs = append(envs, corev1.EnvVar{
+			Name: esRefName + "_ES_PASSWORD",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: assocConf.AuthSecretName,
+					},
+					Key: assocConf.AuthSecretKey,
+				},
+			},
+		})
 
 		if assocConf.GetCACertProvided() {
 			caPath := filepath.Join(certificatesDir(assoc), certificates.CAFileName)
