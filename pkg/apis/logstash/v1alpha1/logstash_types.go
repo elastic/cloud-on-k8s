@@ -176,7 +176,11 @@ func (l *Logstash) GetObservedGeneration() int64 {
 }
 
 func (l *Logstash) GetAssociations() []commonv1.Association {
-	var associations []commonv1.Association //nolint:prealloc
+	associations := make(
+		[]commonv1.Association,
+		0,
+		len(l.Spec.ElasticsearchRefs)+len(l.Spec.Monitoring.Metrics.ElasticsearchRefs)+len(l.Spec.Monitoring.Logs.ElasticsearchRefs),
+	)
 
 	for _, ref := range l.Spec.ElasticsearchRefs {
 		associations = append(associations, &LogstashESAssociation{
