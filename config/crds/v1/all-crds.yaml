@@ -9120,7 +9120,7 @@ spec:
                 format: int32
                 type: integer
               elasticsearchRefs:
-                description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                description: ElasticsearchRefs are references to Elasticsearch clusters
                   running in the same Kubernetes cluster.
                 items:
                   description: ObjectSelector defines a reference to a Kubernetes
