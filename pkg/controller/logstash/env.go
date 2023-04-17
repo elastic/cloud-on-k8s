@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 )
 
@@ -26,7 +25,7 @@ func buildEnv(esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 
 		esRefName := normalize(getEsRefNamespacedName(assoc))
 		envs = append(envs, createEnvVar(esRefName+"_ES_HOSTS", assocConf.GetURL()))
-		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", assocConf.AuthSecretName))
+		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", assocConf.AuthSecretKey))
 		envs = append(envs, corev1.EnvVar{
 			Name: esRefName + "_ES_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{

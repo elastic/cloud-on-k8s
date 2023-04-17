@@ -70,7 +70,16 @@ func Test_getEnvVars(t *testing.T) {
 			wantEnvs: []corev1.EnvVar{
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
-				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD", Value: "1234567890"},
+				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							},
+							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+						},
+					},
+				},
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
 			},
 		},
@@ -82,7 +91,6 @@ func Test_getEnvVars(t *testing.T) {
 					AuthSecretName: "logstash-sample-default-elasticsearch-sample-logstash-user",
 					AuthSecretKey:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 					CACertProvided: false,
-					CASecretName:   "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
 					URL:            "http://elasticsearch-sample-es-http.default.svc:9200",
 					Version:        "8.7.0",
 				})
@@ -91,14 +99,23 @@ func Test_getEnvVars(t *testing.T) {
 			wantEnvs: []corev1.EnvVar{
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_HOSTS", Value: "http://elasticsearch-sample-es-http.default.svc:9200"},
 				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
-				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD", Value: "1234567890"},
+				{Name: "DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							},
+							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+						},
+					},
+				},
 			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			assocs := tt.params.Logstash.GetAssociations()
 			tt.setAssocConfs(assocs)
-			envs, err := buildEnv(tt.params, assocs)
+			envs, err := buildEnv(assocs)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantEnvs, envs)
 		})

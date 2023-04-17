@@ -71,7 +71,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	envs, err := buildEnv(params, esAssociations)
+	envs, err := buildEnv(esAssociations)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
