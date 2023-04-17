@@ -126,10 +126,10 @@ func (s *Settings) updateState(es types.NamespacedName, policy policyv1alpha1.St
 }
 
 // mutateSnapshotRepositorySettings ensures that a snapshot repository can be used across multiple ES clusters.
-// The Elasticsearch cluster name is injected in the repository settings depending on the type of the repository:
-// - "azure", "gcs", "s3": the `base_path` property is added is set to the cluster name
-// - "fs": the cluster name is appended to the `location` property
-// - "hdfs": the cluster name is appended to the `path` property
+// The namespace and the Elasticsearch cluster name are injected in the repository settings depending on the type of the repository:
+// - "azure", "gcs", "s3": if not provided, the `base_path` property is set to `snapshots/<namespace>-<esName>`
+// - "fs": `<namespace>-<esName>` is appended to the `location` property
+// - "hdfs": `<namespace>-<esName>` is appended to the `path` property
 // - "url": nothing is done, the repository is read-only
 // - "source": nothing is done, the repository is an indirection to another repository
 func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{}, esNs string, esName string) (map[string]interface{}, error) {
@@ -138,30 +138,34 @@ func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{},
 		untypedSettings = map[string]interface{}{}
 	}
 
-	suffix := fmt.Sprintf("%s-%s", esNs, esName)
+	uniqSuffix := fmt.Sprintf("%s-%s", esNs, esName)
 	settings, ok := untypedSettings.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("invalid type (%T) for snapshot repository settings", untypedSettings)
 	}
 	switch snapshotRepository["type"] {
+
 	case "azure", "gcs", "s3":
 		basePath, ok := settings["base_path"].(string)
 		if !ok {
-			basePath = "snapshots"
+			// not provided, set a default `base_path` with a uniq suffix
+			basePath = filepath.Join("snapshots", uniqSuffix)
 		}
-		settings["base_path"] = filepath.Join(basePath, suffix)
+		settings["base_path"] = basePath
 	case "fs":
 		location, ok := settings["location"].(string)
 		if !ok {
 			return nil, fmt.Errorf("invalid type (%T) for snapshot repository location", settings["location"])
 		}
-		settings["location"] = filepath.Join(location, suffix)
+		// always append an uniq suffix
+		settings["location"] = filepath.Join(location, uniqSuffix)
 	case "hdfs":
 		path, ok := settings["path"].(string)
 		if !ok {
 			return nil, fmt.Errorf("invalid type (%T) for snapshot repository path", settings["path"])
 		}
-		settings["path"] = filepath.Join(path, suffix)
+		// always append an uniq suffix
+		settings["path"] = filepath.Join(path, uniqSuffix)
 	}
 	snapshotRepository["settings"] = settings
 

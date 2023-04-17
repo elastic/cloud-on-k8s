@@ -212,7 +212,7 @@ func Test_updateState(t *testing.T) {
 						"type": "gcs",
 						"settings": map[string]any{
 							"bucket":    "bucket",
-							"base_path": "es-snapshots",
+							"base_path": "snapshots/es",
 						},
 					},
 					"repo-azure": map[string]any{
@@ -226,7 +226,7 @@ func Test_updateState(t *testing.T) {
 						"type": "s3",
 						"settings": map[string]any{
 							"bucket":    "bucket",
-							"base_path": "es-snapshots",
+							"base_path": "a/b/c",
 						},
 					},
 				}},
@@ -238,21 +238,21 @@ func Test_updateState(t *testing.T) {
 						"type": "gcs",
 						"settings": map[string]any{
 							"bucket":    "bucket",
-							"base_path": "es-snapshots/esNs-esName",
+							"base_path": "snapshots/es",
 						},
 					},
 					"repo-azure": map[string]any{
 						"type": "azure",
 						"settings": map[string]any{
 							"bucket":    "bucket",
-							"base_path": "es-snapshots/esNs-esName",
+							"base_path": "es-snapshots",
 						},
 					},
 					"repo-s3": map[string]any{
 						"type": "s3",
 						"settings": map[string]any{
 							"bucket":    "bucket",
-							"base_path": "es-snapshots/esNs-esName",
+							"base_path": "a/b/c",
 						},
 					},
 				}},
