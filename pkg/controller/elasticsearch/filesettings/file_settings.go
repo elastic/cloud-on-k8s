@@ -144,7 +144,6 @@ func mutateSnapshotRepositorySettings(snapshotRepository map[string]interface{},
 		return nil, fmt.Errorf("invalid type (%T) for snapshot repository settings", untypedSettings)
 	}
 	switch snapshotRepository["type"] {
-
 	case "azure", "gcs", "s3":
 		basePath, ok := settings["base_path"].(string)
 		if !ok {
