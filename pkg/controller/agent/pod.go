@@ -357,13 +357,19 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		certificatesDir(esAssociation),
 	))
 
-	// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
-	// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
-	// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
-	// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
-	// before starting Elastic Agent.
-	cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
-	return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
+	v, err := version.Parse(agent.Spec.Version)
+	if err != nil {
+		return nil, err // error unlikely and should have been caught during validation
+	}
+
+	// Agent prior to 7.14.0 did not respect the FLEET_CA environment variable and as such
+	// the Agent is going to update Pod-wide CA store before starting Elastic Agent.
+	// (https://github.com/elastic/beats/pull/26529)
+	if v.LT(version.MinFor(7, 14, 0)) {
+		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
+		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
+	}
+	return builder, nil
 }
 
 func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association, configHash hash.Hash) error {
