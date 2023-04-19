@@ -525,7 +525,7 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 [id="{p}-elastic-agent-fleet-known-limitations"]
 == Known limitations
 
-=== Running as root and within a single namespace
+=== Running as root and within a single namespace (ECK < 2.8.0 and Agent < 7.14.0)
 Elastic Agent in Fleet mode has to run as root prior to version 7.14.0, and in the same namespace as the Elasticsearch cluster it connects to. Both the Fleet Server and the Elastic Agent are not required to run as root but there are some known issues when <<{p}_storing_local_state_in_host_path_volume>> that must be noted.
 
 Due to current configuration limitations on Fleet/Elastic Agent side prior to version 7.14.0, ECK prior to version 2.8.0 needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
@@ -540,22 +540,130 @@ When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during
 Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 
 === Storing local state in host path volume
-Elastic Agent when managed by ECK stores local state in a host path volume. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change.
-Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. If local state storage in host path volumes is not desired this can be turned off by configuring an `emptyDir` volume instead:
+Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
+
+1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
+2. If local state storage is still desired but running the Agent container as root is not allowed, then you can can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*.
 
 [source,yaml]
 ----
+# Using an emptyDir instead of a hostPath volume.
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
   name: fleet-server
 spec:
   deployment:
-    replicas: 3
     podTemplate:
       spec:
+        securityContext:
+          # Gid 1000 is the default group at which the Agent container runs.
+          # Adjust as necessary if `runAsGroup` has been modified.
+          fsGroup: 1000
+        # runAsUser: 0 can be disabled when running with an `emptyDir`
+        # as opposed to a `hostPath` volume.
+        # securityContext:
+          # runAsUser: 0
         volumes:
         - name: agent-data
           emptyDir: {}
 ...
+----
+
+
+[source,yaml]
+----
+# Using a DaemonSet to manage permissions for Elastic Agent using hostPath volume.
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+  namespace: elastic-apps
+spec:
+  deployment: {}
+...
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+  namespace: elastic-apps
+spec:
+  daemonSet: {}
+...
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: manage-agent-hostpath-permissions
+  namespace: elastic-apps
+spec:
+  selector:
+    matchLabels:
+      name: manage-agent-hostpath-permissions
+  template:
+    metadata:
+      labels:
+        name: manage-agent-hostpath-permissions
+    spec:
+      # This is only required when running in an selinux-enabled/Openshift environment.
+      # Ensure this user has been added to the privileged scc in the correct namespace.
+      # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
+      # serviceAccountName: elastic-agent
+      volumes:
+        - hostPath:
+            path: /var/lib/elastic-agent
+            type: DirectoryOrCreate
+          name: "agent-data"
+      initContainers:
+        - name: manage-agent-hostpath-permissions
+          # fedora is only required when needing the `chcon` binary when running
+          # in an senlinux-enabled/Openshift environment. If that
+          # is not required then the following smaller image can be used instead:
+          # image: fedora:39
+          image: docker.io/bash:5.2.15
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          securityContext:
+            # privileged is only required when running in an selinux-enabled/Openshift environment.
+            # privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /var/lib/elastic-agent
+              name: agent-data
+          command:
+          - 'bash'
+          - '-e'
+          - '-c'
+          - |-
+            # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
+            # Multiple directories are supported for the fleet-server + agent use case.
+            dirs=(
+              "/var/lib/elastic-agent/default/elastic-agent/state"
+              "/var/lib/elastic-agent/default/fleet-server/state"
+              )
+            for dir in ${dirs[@]}; do
+              if [[ ! -d "${dir}" ]]
+              then
+                echo "creating ${dir} directory"
+                mkdir -p "${dir}"
+              fi
+              # chcon is only required when running an an selinux-enabled/Openshift environment.
+              # chcon -Rt svirt_sandbox_file_t "${dir}"
+              chmod g+rw "${dir}"
+              # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
+              chgrp 1000 "${dir}"
+              if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
+              then
+                # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
+                chgrp 1000 "${dir}"/*
+                chmod g+rw "${dir}"/*
+              fi
+            done
+      containers:
+        - name: sleep
+          image: docker.io/bash:5.2.15
+          command: ['sleep', 'infinity']
 ----
