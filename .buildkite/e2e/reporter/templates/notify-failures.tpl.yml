@@ -11,8 +11,8 @@ steps:
             - "#eck"
           message: |
           {{- range $envName, $sortedTests := .Tests }}
-            {{- range $test := $sortedTests.Failed }}
-            🐞 `{{ splitTestName $test.Name }}` {{ $envName }}
+            {{- range $test := $sortedTests.ShortFailed }}
+            🐞 `{{ $test.Name }}` {{ $envName }}
             {{- end }}
           {{- end }}
       {{- end }}
