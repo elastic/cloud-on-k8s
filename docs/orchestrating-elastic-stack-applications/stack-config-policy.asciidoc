@@ -35,7 +35,7 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 * `name` is a unique name used to identify the policy.
 * `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
   ** `clusterSettings` are the settings that go into the elasticsearch.yml file.
-  ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots (check <<{p}-{page_id}-specifics-snap-repo,specifics>>).
+  ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots. Check <<{p}-{page_id}-specifics-snap-repo>> for more information.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
   ** `securityRoleMappings` are role mappings, to define which roles are assigned to each user by identifying them through rules.
   ** `ingestPipelines` are ingest pipelines, to perform common transformations on your data before indexing.
@@ -239,7 +239,8 @@ Important events are also reported through Kubernetes events, such as when two c
 [id="{p}-{page_id}-specifics-snap-repo"]
 == Specifics for snapshot repositories
 
-In order to avoid a conflict between multiple Elasticsearch clusters writing their snapshot to the same location, ECK automatically:
-- sets the `base_path` to `snapshots/<namespace><esName>` when it is not provided, for Azure, GCS and S3 repositories
-- appends `<namespace><esName>` to `location` for a FS repository
-- appends `<namespace><esName>` to `path` for an `HDFS` repository
+In order to avoid a conflict between multiple Elasticsearch clusters writing their snapshots to the same location, ECK automatically:
+
+- sets the `base_path` to `snapshots/<namespace>-<esName>` when it is not provided, for Azure, GCS and S3 repositories
+- appends `<namespace>-<esName>` to `location` for a FS repository
+- appends `<namespace>-<esName>` to `path` for an HDFS repository
