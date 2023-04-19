@@ -343,6 +343,22 @@ func (b *PodTemplateBuilder) WithPodSecurityContext(securityContext corev1.PodSe
 	return b
 }
 
+// WithContainersSecurityContext sets Containers and InitContainers SecurityContext.
+// Must be called once all the Containers and InitContainers have been set.
+func (b *PodTemplateBuilder) WithContainersSecurityContext(securityContext corev1.SecurityContext) *PodTemplateBuilder {
+	for i := range b.PodTemplate.Spec.Containers {
+		if b.PodTemplate.Spec.Containers[i].SecurityContext == nil {
+			b.PodTemplate.Spec.Containers[i].SecurityContext = securityContext.DeepCopy()
+		}
+	}
+	for i := range b.PodTemplate.Spec.InitContainers {
+		if b.PodTemplate.Spec.InitContainers[i].SecurityContext == nil {
+			b.PodTemplate.Spec.InitContainers[i].SecurityContext = securityContext.DeepCopy()
+		}
+	}
+	return b
+}
+
 func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuilder {
 	if b.PodTemplate.Spec.AutomountServiceAccountToken == nil {
 		t := true

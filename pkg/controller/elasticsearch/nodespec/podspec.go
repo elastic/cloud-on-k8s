@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	ptr "k8s.io/utils/pointer"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,15 @@ const (
 // is forbidden: the user can either set `--set-default-security-context=false`, or override the
 // podTemplate securityContext to an empty value.
 var minDefaultSecurityContextVersion = version.MinFor(8, 0, 0)
+
+var defaultContainerSecurityContext = corev1.SecurityContext{
+	Capabilities: &corev1.Capabilities{
+		Drop: []corev1.Capability{"ALL"},
+	},
+	Privileged:               ptr.Bool(false),
+	ReadOnlyRootFilesystem:   ptr.Bool(true),
+	AllowPrivilegeEscalation: ptr.Bool(false),
+}
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
@@ -115,6 +125,8 @@ func BuildPodTemplateSpec(
 		WithInitContainers(initContainers...).
 		// inherit all env vars from main containers to allow Elasticsearch tools that read ES config to work in initContainers
 		WithInitContainerDefaults(builder.MainContainer().Env...).
+		// set a default security context for both the Containers and the InitContainers
+		WithContainersSecurityContext(defaultContainerSecurityContext).
 		WithPreStopHook(*NewPreStopHook())
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
