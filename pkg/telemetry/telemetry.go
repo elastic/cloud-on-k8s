@@ -422,7 +422,7 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 			stats[podCount] += ls.Status.AvailableNodes
 			stats[pipelinesCount] += int32(len(ls.Spec.Pipelines))
 			if ls.Spec.PipelinesRef != nil {
-				stats[pipelinesRefCount] ++
+				stats[pipelinesRefCount]++
 			}
 			if monitoring.IsLogsDefined(&ls) {
 				stats[stackMonitoringLogsCount]++
