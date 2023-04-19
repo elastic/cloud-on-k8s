@@ -182,7 +182,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	}
 
-	runAgentRecipe(t, "fleet-kubernetes-integration-nonroot.yaml", customize)
+	runAgentRecipe(t, "fleet-kubernetes-integration-noroot.yaml", customize)
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
