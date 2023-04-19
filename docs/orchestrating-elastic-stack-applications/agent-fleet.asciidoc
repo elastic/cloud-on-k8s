@@ -43,7 +43,7 @@ spec:
         serviceAccountName: elastic-agent
         automountServiceAccountToken: true
         securityContext:
-          runAsUser: 0
+          runAsUser: 0 <1>
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -63,7 +63,7 @@ spec:
         serviceAccountName: elastic-agent
         automountServiceAccountToken: true
         securityContext:
-          runAsUser: 0
+          runAsUser: 0 <1>
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
@@ -168,6 +168,8 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EOF
 ----
++
+<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 +
 Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 

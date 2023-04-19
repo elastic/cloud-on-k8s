@@ -531,23 +531,28 @@ spec:
           - '-c'
           - |-
             # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
-            DIRECTORY="/var/lib/elastic-agent/elastic-apps/elastic-agent/state"
-            if [[ ! -d "${DIRECTORY}" ]]
-            then
-              echo "creating ${DIRECTORY} directory"
-              mkdir -p "${DIRECTORY}"
-            fi
-            # chcon is only required when running an an selinux-enabled/Openshift environment.
-            chcon -Rt svirt_sandbox_file_t "${DIRECTORY}"
-            chmod g+rw "${DIRECTORY}"
-            # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
-            chgrp 1000 "${DIRECTORY}"
-            if [ -n "$(ls -A ${DIRECTORY} 2>/dev/null)" ]
-            then
+            # Multiple directories are supported for the fleet-server + agent use case.
+            dirs=(
+              "/var/lib/elastic-agent/default/elastic-agent/state"
+              )
+            for dir in ${dirs[@]}; do
+              if [[ ! -d "${dir}" ]]
+              then
+                echo "creating ${dir} directory"
+                mkdir -p "${dir}"
+              fi
+              # chcon is only required when running an an selinux-enabled/Openshift environment.
+              # chcon -Rt svirt_sandbox_file_t "${dir}"
+              chmod g+rw "${dir}"
               # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
-              chgrp 1000 "${DIRECTORY}"/*
-              chmod g+rw "${DIRECTORY}"/*
-            fi
+              chgrp 1000 "${dir}"
+              if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
+              then
+                # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
+                chgrp 1000 "${dir}"/*
+                chmod g+rw "${dir}"/*
+              fi
+            done
       containers:
         - name: sleep
           image: docker.io/bash:5.2.15
