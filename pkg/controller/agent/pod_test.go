@@ -707,14 +707,14 @@ fi
 			wantErr:     false,
 		},
 		{
-			name: "fleet server disabled, same namespace",
+			name: "fleet server disabled, same namespace, version < 7.14",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "agent",
 					Namespace: agentNs,
 				},
 				Spec: agentv1alpha1.AgentSpec{
-					Version:            "7.16.2",
+					Version:            "7.13.2",
 					FleetServerEnabled: false,
 				},
 			},
@@ -728,7 +728,7 @@ fi
 			}),
 		},
 		{
-			name: "fleet server enabled 8x",
+			name: "fleet server enabled 8x has volumes and volumeMount but no ca-init command",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "agent",
@@ -744,7 +744,7 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expectedCmd
+				ps.Containers[0].Command = nil
 				return ps
 			}),
 		},
