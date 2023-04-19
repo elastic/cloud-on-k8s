@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	ptr "k8s.io/utils/pointer"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ptr "k8s.io/utils/pointer"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
