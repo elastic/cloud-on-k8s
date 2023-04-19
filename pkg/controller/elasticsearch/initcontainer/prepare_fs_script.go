@@ -96,20 +96,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	echo "Starting init script"
 
 	######################
-	#  Config linking    #
-	######################
-
-	# Link individual files from their mount location into the config dir
-	# to a volume, to be used by the ES container
-	ln_start=$(date +%s)
-	{{range .LinkedFiles.Array}}
-		echo "Linking {{.Source}} to {{.Target}}"
-		ln -sf {{.Source}} {{.Target}}
-	{{end}}
-	echo "File linking duration: $(duration $ln_start) sec."
-
-
-	######################
 	#  Files persistence #
 	######################
 
@@ -126,6 +112,19 @@ var scriptTemplate = template.Must(template.New("").Parse(
 		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."
+
+	######################
+	#  Config linking    #
+	######################
+
+	# Link individual files from their mount location into the config dir
+	# to a volume, to be used by the ES container
+	ln_start=$(date +%s)
+	{{range .LinkedFiles.Array}}
+		echo "Linking {{.Source}} to {{.Target}}"
+		ln -sf {{.Source}} {{.Target}}
+	{{end}}
+	echo "File linking duration: $(duration $ln_start) sec."
 
 	######################
 	#  Volumes chown     #
