@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/avast/retry-go/v4"
 	"golang.org/x/exp/slices"
-	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -496,31 +494,13 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 		return nil
 	}
 
-	bkt := storageClient.Bucket(config.bucket)
-
-	o := bkt.Object(destination)
-
-	// For an object that does not yet exist, set the DoesNotExist precondition,
-	// to fail with an http error code '412' if the object already exists.
-	o = o.If(storage.Conditions{DoesNotExist: true})
-
-	// Upload an object with storage.Writer.
-	wc := o.NewWriter(ctx)
+	wc := storageClient.Bucket(config.bucket).Object(destination).NewWriter(ctx)
 	if _, err = io.Copy(wc, f); err != nil {
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
 
 	if err := wc.Close(); err != nil {
-		switch ee := err.(type) {
-		case *googleapi.Error:
-			if ee.Code == http.StatusPreconditionFailed {
-				// The object already exists; this error is expected
-				break
-			}
-			return fmt.Errorf("while writing data to bucket: %w", err)
-		default:
-			return fmt.Errorf("while writing data to bucket: %w", err)
-		}
+		return fmt.Errorf("while writing data to bucket: %w", err)
 	}
 	data, err := ioutil.ReadFile(files[0])
 	if err != nil {
