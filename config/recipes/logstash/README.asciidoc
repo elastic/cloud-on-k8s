@@ -26,5 +26,9 @@ Deploys Logstash with the pipeline details defined in the CRD, and the pipeline 
 
 Deploys Logstash and a dedicated Elasticsearch and Kibana monitoring cluster, and sends Logstash monitoring data to that cluster.
 
+===== Logstash and Elasticsearch with custom role - `logstash-es-role.yaml`
+
+Deploys Logstash and Elasticsearch and a Secret to customize Elasticsearch role `eck_logstash_user_role`. The role is essential for Logstash to have privileges to write document to custom index "my-index".
 
 CAUTION: These recipes use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch cluster and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
