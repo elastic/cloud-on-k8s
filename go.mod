@@ -16,7 +16,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.2
-	github.com/hashicorp/vault/api v1.9.0
+	github.com/hashicorp/vault/api v1.9.1
 	github.com/imdario/mergo v0.3.15
 	github.com/magiconair/properties v1.8.7
 	github.com/pkg/errors v0.9.1
