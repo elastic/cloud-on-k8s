@@ -12,7 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ptr "k8s.io/utils/pointer"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
@@ -25,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
@@ -47,15 +47,6 @@ const (
 // is forbidden: the user can either set `--set-default-security-context=false`, or override the
 // podTemplate securityContext to an empty value.
 var minDefaultSecurityContextVersion = version.MinFor(8, 0, 0)
-
-var defaultContainerSecurityContext = corev1.SecurityContext{
-	Capabilities: &corev1.Capabilities{
-		Drop: []corev1.Capability{"ALL"},
-	},
-	Privileged:               ptr.Bool(false),
-	ReadOnlyRootFilesystem:   ptr.Bool(true),
-	AllowPrivilegeEscalation: ptr.Bool(false),
-}
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
@@ -126,7 +117,7 @@ func BuildPodTemplateSpec(
 		// inherit all env vars from main containers to allow Elasticsearch tools that read ES config to work in initContainers
 		WithInitContainerDefaults(builder.MainContainer().Env...).
 		// set a default security context for both the Containers and the InitContainers
-		WithContainersSecurityContext(defaultContainerSecurityContext).
+		WithContainersSecurityContext(securitycontext.For(ver)).
 		WithPreStopHook(*NewPreStopHook())
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)

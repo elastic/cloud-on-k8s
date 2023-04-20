@@ -42,6 +42,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/remotecluster"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
@@ -322,6 +323,10 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	}
 
+	keystoreParams := initcontainer.KeystoreParams
+	keystoreSecurityContext := securitycontext.For(d.Version)
+	keystoreParams.SecurityContext = &keystoreSecurityContext
+
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.ReconcileResources(
 		ctx,
@@ -329,7 +334,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		&d.ES,
 		esv1.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
-		initcontainer.KeystoreParams,
+		keystoreParams,
 	)
 	if err != nil {
 		return results.WithError(err)
