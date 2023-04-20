@@ -482,16 +482,6 @@ kubectl apply -f {beats_url}/auditbeat_hosts.yaml
 
 Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
 
-=== Journalbeat
-
-[source,sh,subs="attributes"]
-----
-kubectl apply -f {beats_url}/journalbeat_hosts.yaml
-----
-
-Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
-
-
 === Packetbeat monitoring DNS and HTTP traffic
 
 [source,sh,subs="attributes"]

@@ -38,10 +38,6 @@ Deploys Heartbeat as a single Pod deployment that monitors the health of Elastic
 
 Deploys Auditbeat as a DaemonSet that checks file integrity and audits file operations on the host system.
 
-==== Journalbeat - `journalbeat_hosts.yaml`
-
-Deploys Journalbeat as a DaemonSet that ships data from systemd journals.
-
 ==== OpenShift Stack Monitoring - `openshift_monitoring.yaml`
 
 Deploys Metricbeat configured for OpenShift monitoring and Filebeat using autodiscover. Deploys a monitoring Elasticsearch cluster to centralize the data.

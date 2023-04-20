@@ -222,20 +222,6 @@ func TestPacketbeatDnsHttpRecipe(t *testing.T) {
 	runBeatRecipe(t, "packetbeat_dns_http.yaml", customize)
 }
 
-func TestJournalbeatHostsRecipe(t *testing.T) {
-	if test.Ctx().Provider == "kind" {
-		// Journalbeat does not generate events on latest Kind node images.
-		// Since Journalbeat is no longer maintained and developed we skip this test on Kind.
-		t.SkipNow()
-	}
-
-	customize := func(builder beat.Builder) beat.Builder {
-		return builder
-	}
-
-	runBeatRecipe(t, "journalbeat_hosts.yaml", customize)
-}
-
 func runBeatRecipe(
 	t *testing.T,
 	fileName string,
