@@ -6,15 +6,18 @@ package helper
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -165,6 +168,35 @@ func RunFile(
 	test.BeforeAfterSequence(creates, deletes, builders...).RunSequential(t)
 }
 
+func RunTemplatedFile(
+	t *testing.T,
+	filePath, namespace, suffix string,
+	additionalObjects []client.Object,
+	transformations ...BuilderTransform) {
+	t.Helper()
+	tpl, err := template.New(path.Base(filePath)).ParseFiles(filePath)
+	require.NoError(t, err, "Failed to parse file %s", filePath)
+
+	var tplb bytes.Buffer
+
+	err = tpl.Execute(&tplb, map[string]interface{}{
+		"Namespace": namespace,
+		"Suffix":    suffix,
+	})
+	require.NoError(t, err, "Failed to execute template %s", filePath)
+
+	builders, objects, err := decodeCastAndTransform(t, bufio.NewReader(bytes.NewReader(tplb.Bytes())), namespace, suffix, MkTestName(t, filePath), transformations...)
+	if err != nil {
+		panic(err)
+	}
+
+	objects = append(objects, additionalObjects...)
+
+	creates, deletes := makeObjectSteps(t, objects)
+
+	test.BeforeAfterSequence(creates, deletes, builders...).RunSequential(t)
+}
+
 func extractFromFile(
 	t *testing.T,
 	filePath, namespace, suffix, fullTestName string,
@@ -175,8 +207,17 @@ func extractFromFile(
 	require.NoError(t, err, "Failed to open file %s", filePath)
 	defer f.Close()
 
+	return decodeCastAndTransform(t, bufio.NewReader(f), namespace, suffix, fullTestName, transformations...)
+}
+
+func decodeCastAndTransform(
+	t *testing.T,
+	reader *bufio.Reader,
+	namespace, suffix, fullTestName string,
+	transformations ...BuilderTransform,
+) ([]test.Builder, []client.Object, error) {
 	decoder := NewYAMLDecoder()
-	objects, err := decoder.ToObjects(bufio.NewReader(f))
+	objects, err := decoder.ToObjects(reader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -328,6 +369,12 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *corev1.Service:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
+		case *appsv1.DaemonSet:
+			name := decodedObj.Name + "-" + suffix
+			decodedObj.Namespace = namespace
+			decodedObj.Name = name
+			decodedObj.Spec.Selector.MatchLabels["name"] = name
+			decodedObj.Spec.Template.ObjectMeta.Labels["name"] = name
 		}
 
 		if builder != nil {

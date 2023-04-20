@@ -362,6 +362,11 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return nil, err // error unlikely and should have been caught during validation
 	}
 
+	builder = builder.WithEnv(corev1.EnvVar{
+		Name:  "ELASTICSEARCH_CA",
+		Value: path.Join(certificatesDir(esAssociation), CAFileName),
+	})
+
 	// Agent prior to 7.14.0 did not respect the FLEET_CA environment variable and as such
 	// the Agent is going to update Pod-wide CA store before starting Elastic Agent.
 	// (https://github.com/elastic/beats/pull/26529)

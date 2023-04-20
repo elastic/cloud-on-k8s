@@ -79,6 +79,21 @@ func buildConfig(params Params) ([]byte, error) {
 		return nil, err
 	}
 
+	esAssociation, err := getRelatedEsAssoc(params)
+	if err != nil {
+		return nil, err
+	}
+	canonConfig, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
+		"ssl.certificate_authorities": []string{path.Join(certificatesDir(esAssociation), CAFileName)},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfg.MergeWith(canonConfig); err != nil {
+		return nil, err
+	}
+
 	return cfg.Render()
 }
 

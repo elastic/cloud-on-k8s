@@ -182,7 +182,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	}
 
-	runAgentRecipe(t, "fleet-kubernetes-integration-noroot.yaml", customize)
+	runAgentRecipe(t, "fleet-kubernetes-integration-noroot.yaml.tpl", customize)
 }
 
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
@@ -285,6 +285,10 @@ func runAgentRecipe(
 		return agentBuilder
 	}
 
+	if strings.HasSuffix(filePath, "tpl") {
+		helper.RunTemplatedFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
+		return
+	}
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
 }
 
