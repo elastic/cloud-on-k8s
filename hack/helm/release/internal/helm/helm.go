@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/avast/retry-go/v4"
 	"golang.org/x/exp/slices"
+	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -477,6 +479,8 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	if len(files) == 0 {
 		return fmt.Errorf("couldn't file helm package with glob (%s)", config.sourceGlob)
 	}
+	isSnapshot := strings.Contains(files[0], "SNAPSHOT")
+
 	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, files[0])
 	log.Printf("Writing chart to bucket path (%s) \n", destination)
 	f, err := os.Open(files[0])
@@ -494,13 +498,35 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 		return nil
 	}
 
-	wc := storageClient.Bucket(config.bucket).Object(destination).NewWriter(ctx)
+	bkt := storageClient.Bucket(config.bucket)
+
+	o := bkt.Object(destination)
+
+	// If this chart is not a snapshot build, do not allow files that already exist
+	// to be overwritten.
+	if !isSnapshot {
+		// For an object that does not yet exist, set the DoesNotExist precondition,
+		// to fail with an http error code '412' if the object already exists.
+		o = o.If(storage.Conditions{DoesNotExist: true})
+	}
+
+	// Upload an object with storage.Writer.
+	wc := o.NewWriter(ctx)
+
 	if _, err = io.Copy(wc, f); err != nil {
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
 
 	if err := wc.Close(); err != nil {
-		return fmt.Errorf("while writing data to bucket: %w", err)
+		switch ee := err.(type) {
+		case *googleapi.Error:
+			if ee.Code == http.StatusPreconditionFailed && !isSnapshot {
+				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed.", files[0])
+			}
+			return fmt.Errorf("while writing data to bucket: %w", err)
+		default:
+			return fmt.Errorf("while writing data to bucket: %w", err)
+		}
 	}
 	data, err := ioutil.ReadFile(files[0])
 	if err != nil {
