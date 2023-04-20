@@ -324,7 +324,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	keystoreParams := initcontainer.KeystoreParams
-	keystoreSecurityContext := securitycontext.For(d.Version)
+	keystoreSecurityContext := securitycontext.For(d.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
 
 	// setup a keystore with secure settings in an init container, if specified by the user

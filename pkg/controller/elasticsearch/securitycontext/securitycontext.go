@@ -16,13 +16,13 @@ var (
 	MinStackVersion = version.MustParse("8.8.0-SNAPSHOT")
 )
 
-func For(ver version.Version) corev1.SecurityContext {
+func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.SecurityContext {
 	sc := corev1.SecurityContext{
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
 		Privileged:               ptr.Bool(false),
-		ReadOnlyRootFilesystem:   ptr.Bool(true),
+		ReadOnlyRootFilesystem:   ptr.Bool(enableReadOnlyRootFilesystem),
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
 	if ver.LT(MinStackVersion) {

@@ -100,6 +100,15 @@ func BuildPodTemplateSpec(
 	}
 	annotations := buildAnnotations(es, cfg, keystoreResources, esScripts.ResourceVersion)
 
+	// Attempt to detect if the data directory is mounted in a volume, we need to disable ReadOnlyRootFilesystem if not the case
+	enableReadOnlyRootFilesystem := false
+	for _, volumeMount := range volumeMounts {
+		if volumeMount.Name == esvolume.ElasticsearchDataVolumeName {
+			enableReadOnlyRootFilesystem = true
+			break
+		}
+	}
+
 	// build the podTemplate until we have the effective resources configured
 	builder = builder.
 		WithLabels(labels).
@@ -117,7 +126,7 @@ func BuildPodTemplateSpec(
 		// inherit all env vars from main containers to allow Elasticsearch tools that read ES config to work in initContainers
 		WithInitContainerDefaults(builder.MainContainer().Env...).
 		// set a default security context for both the Containers and the InitContainers
-		WithContainersSecurityContext(securitycontext.For(ver)).
+		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, es)
