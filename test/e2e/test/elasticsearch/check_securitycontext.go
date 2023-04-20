@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	ptr "k8s.io/utils/pointer"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
-	"github.com/stretchr/testify/require"
 )
 
 func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
