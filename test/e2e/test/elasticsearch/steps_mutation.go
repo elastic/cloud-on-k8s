@@ -106,16 +106,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	steps := test.StepList{
 		test.Step{
-			Name: "Set up a data integrity check",
+			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
 				dataIntegrityCheck = NewDataIntegrityCheck(k, b)
+				test.Eventually(func() error {
+					return dataIntegrityCheck.Init()
+				})(t)
 			},
-		},
-		test.Step{
-			Name: "Add some data to the cluster before starting the mutation",
-			Test: test.Eventually(func() error {
-				return dataIntegrityCheck.Init()
-			}),
 		},
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
