@@ -482,8 +482,8 @@ func TestNewReporter(t *testing.T) {
       pod_count: 0
       resource_count: 3
     logstashes:
-      pipelines_count: 1
-      pipelines_ref_count: 0
+      pipeline_count: 1
+      pipeline_ref_count: 0
       pod_count: 4
       resource_count: 2
       service_count: 3

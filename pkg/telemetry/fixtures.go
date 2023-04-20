@@ -90,8 +90,8 @@ const expectedTelemetryTemplate = `eck:
       pod_count: 0
       resource_count: 1
     logstashes:
-      pipelines_count: 0
-      pipelines_ref_count: 0
+      pipeline_count: 0
+      pipeline_ref_count: 0
       pod_count: 0
       resource_count: 0
       service_count: 0

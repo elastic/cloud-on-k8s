@@ -41,13 +41,7 @@ const (
 	resourceCount            = "resource_count"
 	podCount                 = "pod_count"
 	helmManagedResourceCount = "helm_resource_count"
-
-	timestampFieldName          = "timestamp"
-	stackMonitoringLogsCount    = "stack_monitoring_logs_count"
-	stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
-	serviceCount                = "service_count"
-	pipelinesCount              = "pipelines_count"
-	pipelinesRefCount           = "pipelines_ref_count"
+	timestampFieldName       = "timestamp"
 )
 
 type ECKTelemetry struct {
@@ -406,8 +400,15 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 }
 
 func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+	const (
+		pipelineCount               = "pipeline_count"
+		pipelineRefCount            = "pipeline_ref_count"
+		serviceCount                = "service_count"
+		stackMonitoringLogsCount    = "stack_monitoring_logs_count"
+		stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
+	)
 	stats := map[string]int32{resourceCount: 0, podCount: 0, stackMonitoringLogsCount: 0,
-		stackMonitoringMetricsCount: 0, serviceCount: 0, pipelinesCount: 0, pipelinesRefCount: 0}
+		stackMonitoringMetricsCount: 0, serviceCount: 0, pipelineCount: 0, pipelineRefCount: 0}
 
 	var logstashList logstashv1alpha1.LogstashList
 	for _, ns := range managedNamespaces {
@@ -420,9 +421,9 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 			stats[resourceCount]++
 			stats[serviceCount] += int32(len(ls.Spec.Services))
 			stats[podCount] += ls.Status.AvailableNodes
-			stats[pipelinesCount] += int32(len(ls.Spec.Pipelines))
+			stats[pipelineCount] += int32(len(ls.Spec.Pipelines))
 			if ls.Spec.PipelinesRef != nil {
-				stats[pipelinesRefCount]++
+				stats[pipelineRefCount]++
 			}
 			if monitoring.IsLogsDefined(&ls) {
 				stats[stackMonitoringLogsCount]++
