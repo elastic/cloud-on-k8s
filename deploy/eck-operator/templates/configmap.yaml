@@ -11,7 +11,9 @@ data:
     log-verbosity: {{ int .Values.config.logVerbosity }}
     metrics-port: {{ int .Values.config.metricsPort }}
     container-registry: {{ .Values.config.containerRegistry }}
-    container-suffix: {{ .Values.config.containerSuffix }}
+    {{- with .Values.config.containerSuffix }}
+    container-suffix: {{ . }}
+    {{- end }}
     max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
     {{- if .Values.config.passwordHashCacheSize }}
     password-hash-cache-size: {{ int .Values.config.passwordHashCacheSize }}
