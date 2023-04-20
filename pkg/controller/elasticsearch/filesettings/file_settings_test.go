@@ -146,7 +146,7 @@ func Test_updateState(t *testing.T) {
 			want: newEmptySettingsState(),
 		},
 		{
-			name: "gcs, azure and s3 snapshot repository settings: adding a base_path",
+			name: "gcs, azure and s3 snapshot repository settings: default base_path",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 					"repo-gcs": map[string]any{
@@ -191,6 +191,68 @@ func Test_updateState(t *testing.T) {
 						"settings": map[string]any{
 							"bucket":    "bucket",
 							"base_path": "snapshots/esNs-esName",
+						},
+					},
+				}},
+				SLM:                    &commonv1.Config{Data: map[string]any{}},
+				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
+				},
+			},
+		},
+		{
+			name: "gcs, azure and s3 snapshot repository settings: set base_path",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+					"repo-gcs": map[string]any{
+						"type": "gcs",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "snapshots/es",
+						},
+					},
+					"repo-azure": map[string]any{
+						"type": "azure",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "es-snapshots",
+						},
+					},
+					"repo-s3": map[string]any{
+						"type": "s3",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "a/b/c",
+						},
+					},
+				}},
+			}}}},
+			want: SettingsState{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{}},
+				SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+					"repo-gcs": map[string]any{
+						"type": "gcs",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "snapshots/es",
+						},
+					},
+					"repo-azure": map[string]any{
+						"type": "azure",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "es-snapshots",
+						},
+					},
+					"repo-s3": map[string]any{
+						"type": "s3",
+						"settings": map[string]any{
+							"bucket":    "bucket",
+							"base_path": "a/b/c",
 						},
 					},
 				}},
