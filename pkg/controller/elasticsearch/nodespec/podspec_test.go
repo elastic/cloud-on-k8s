@@ -267,7 +267,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				Drop: []corev1.Capability{"ALL"},
 			},
 			Privileged:               ptr.Bool(false),
-			ReadOnlyRootFilesystem:   ptr.Bool(true),
+			ReadOnlyRootFilesystem:   ptr.Bool(false),
 			AllowPrivilegeEscalation: ptr.Bool(false),
 		}
 	}
@@ -317,8 +317,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{"ALL"},
 					},
-					Privileged:               ptr.Bool(false),
-					ReadOnlyRootFilesystem:   ptr.Bool(true),
+					Privileged: ptr.Bool(false),
+					// ReadOnlyRootFilesystem is expected to be false in this test because there is no data volume.
+					ReadOnlyRootFilesystem:   ptr.Bool(false),
 					AllowPrivilegeEscalation: ptr.Bool(false),
 				},
 			}),
@@ -330,7 +331,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 							Drop: []corev1.Capability{"ALL"},
 						},
 						Privileged:               ptr.Bool(false),
-						ReadOnlyRootFilesystem:   ptr.Bool(true),
+						ReadOnlyRootFilesystem:   ptr.Bool(false),
 						AllowPrivilegeEscalation: ptr.Bool(false),
 					},
 				},
@@ -355,7 +356,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 							Drop: []corev1.Capability{"ALL"},
 						},
 						Privileged:               ptr.Bool(false),
-						ReadOnlyRootFilesystem:   ptr.Bool(true),
+						ReadOnlyRootFilesystem:   ptr.Bool(false),
 						AllowPrivilegeEscalation: ptr.Bool(false),
 					},
 				},
