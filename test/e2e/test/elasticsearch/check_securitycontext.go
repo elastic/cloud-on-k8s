@@ -20,7 +20,7 @@ import (
 func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
 	//nolint:thelper
 	return test.Step{
-		Name: "Elasticsearch data volumes should be of the specified type",
+		Name: "Elasticsearch containers SecurityContext should be set",
 		Test: func(t *testing.T) {
 			usesEmptyDir := usesEmptyDir(es)
 			if usesEmptyDir {
