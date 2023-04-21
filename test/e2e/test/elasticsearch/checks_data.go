@@ -91,8 +91,8 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	// delete the index but ignore errors (e.g. if it did not exist yet)
-	resp, err := esClient.Request(context.Background(), indexDeletion)
-	if err == nil {
+	resp, _ := esClient.Request(context.Background(), indexDeletion)
+	if resp != nil {
 		resp.Body.Close()
 	}
 
