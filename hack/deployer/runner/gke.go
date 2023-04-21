@@ -252,7 +252,7 @@ func (d *GKEDriver) create() error {
 
 	opts := []string{}
 
-	if d.plan.Gke.NetworkPolicy {
+	if d.plan.Gke.NetworkPolicy && !d.plan.Gke.Autopilot {
 		opts = append(opts, "--enable-network-policy")
 	}
 
@@ -268,14 +268,27 @@ func (d *GKEDriver) create() error {
 	}
 	labels = fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels)
 
-	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+	createGKEClusterCommand := `gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		strings.Join(opts, " ")).
+		strings.Join(opts, " ")
+	createAutopilotClusterCommand := `gcloud beta container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
+		`--region {{.Region}} --cluster-version {{.KubernetesVersion}} ` +
+		`--scopes {{.GcpScopes}} --network projects/{{.GCloudProject}}/global/networks/default ` +
+		strings.Join(opts, " ")
+
+	clusterCreateCommand := createGKEClusterCommand
+
+	if d.plan.Gke.Autopilot {
+		log.Println("autopilot cluster enabled")
+		clusterCreateCommand = createAutopilotClusterCommand
+	}
+
+	return exec.NewCommand(clusterCreateCommand).
 		AsTemplate(d.ctx).
 		Run()
 }

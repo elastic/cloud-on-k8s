@@ -192,6 +192,7 @@ func (h *helper) initTestContext() error {
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
 		GSBucketName:          h.gsBucketName,
+		AutopilotCluster:      isAutopilotCluster(h),
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -243,6 +244,13 @@ func getKubernetesVersion(h *helper) version.Version {
 
 func isOcpCluster(h *helper) bool {
 	_, _, err := h.kubectl("get", "clusterversion")
+	return err == nil
+}
+
+// isAutopilotCluster will detect whether we are running within an autopilot cluster
+// by using the `allowlistedv2workloads` resource.
+func isAutopilotCluster(h *helper) bool {
+	_, _, err := h.kubectl("get", "allowlistedv2workloads")
 	return err == nil
 }
 

@@ -14,6 +14,20 @@ plans:
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-ci-autopilot
+  operation: create
+  clusterName: ci-autopilot
+  provider: gke
+  kubernetesVersion: 1.25
+  serviceAccount: true
+  enforceSecurityPolicies: true
+  # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  gke:
+    autopilot: true
+    region: europe-west6
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+-
 - id: gke-dev
   operation: create
   clusterName: dev
@@ -28,6 +42,29 @@ plans:
     nodeCountPerZone: 1
     # Uncomment option below to enable network policy enforcement in GKE.
     # networkPolicy: true
+    # Uncomment option below to create a private GKE cluster.
+    # Note that when a cluster is private you must:
+    #   1. Create a firewall rule so that the webhook can be accessed from the API server (see https://github.com/elastic/cloud-on-k8s/issues/1673#issuecomment-528449682)
+    #   2. Create a VM to access the subnet and authorize the VM to access the master, see https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#private_master
+    # private: true
+    # gke creates a secondary IP range for all Pods of a cluster
+    # gke defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
+    # /20 allows 4094 subnets, with up to 4094 IPs (Pods) per subnet
+    # more clusters can therefore be created in the same VPC network.
+    # we set a default of /20 that can be overridden here
+    # clusterIpv4Cidr: /20
+    # servicesIpv4Cidr: /20
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-dev-autopilot
+  operation: create
+  clusterName: dev-autopilot
+  provider: gke
+  kubernetesVersion: 1.25
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  gke:
+    autopilot: true
+    region: europe-west1
     # Uncomment option below to create a private GKE cluster.
     # Note that when a cluster is private you must:
     #   1. Create a firewall rule so that the webhook can be accessed from the API server (see https://github.com/elastic/cloud-on-k8s/issues/1673#issuecomment-528449682)
