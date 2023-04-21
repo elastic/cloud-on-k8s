@@ -64,8 +64,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	}
 
 	esAssociations := getEsAssociations(params)
-	err = writeEsAssocToConfigHash(params, esAssociations, configHash)
-	if err != nil {
+	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
