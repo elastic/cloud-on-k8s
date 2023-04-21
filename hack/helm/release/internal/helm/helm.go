@@ -461,7 +461,8 @@ type copyChartToBucketConfig struct {
 }
 
 // copyChartToGCSBucket will potentially copy a Helm chart to a GCS bucket.
-// If the object already exists within the bucket, it will not be overwritten.
+// If the object already exists within the bucket, it will only be overwritten
+// if the file is a SNAPSHOT release, otherwise an error will be returned.
 func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
