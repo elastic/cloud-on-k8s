@@ -81,8 +81,16 @@ spec:
   elasticsearchRef:
     name: elasticsearch
   config:
-    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-{{ .Suffix }}-es-http.e2e-mercury.svc:9200"]
+    # xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-{{ .Suffix }}-es-http.e2e-mercury.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-{{ .Suffix }}-agent-http.e2e-mercury.svc:8220"]
+    xpack.fleet.outputs:
+    - id: eck-fleet-agent-output-elasticsearch
+      is_default: true
+      name: eck-elasticsearch
+      type: elasticsearch
+      hosts: ["https://elasticsearch-{{ .Suffix }}-es-http.e2e-mercury.svc:9200"]
+      ssl:
+        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/{{ .Namespace }}/elasticsearch-{{ .Suffix }}/certs/ca.crt"]
     xpack.fleet.packages:
     - name: system
       version: latest
