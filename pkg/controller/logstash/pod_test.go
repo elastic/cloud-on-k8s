@@ -39,12 +39,12 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
-				assert.Len(t, pod.Spec.InitContainers, 0)
-				assert.Len(t, pod.Spec.Volumes, 2)
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.Volumes, 3)
 				assert.NotEmpty(t, pod.Annotations[ConfigHashAnnotationName])
 				logstashContainer := GetLogstashContainer(pod.Spec)
 				require.NotNil(t, logstashContainer)
-				assert.Equal(t, 2, len(logstashContainer.VolumeMounts))
+				assert.Equal(t, 3, len(logstashContainer.VolumeMounts))
 				assert.Equal(t, container.ImageRepository(container.LogstashImage, "8.6.1"), logstashContainer.Image)
 				assert.NotNil(t, logstashContainer.ReadinessProbe)
 				assert.NotEmpty(t, logstashContainer.Ports)
@@ -110,7 +110,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
 			},
 		},
@@ -259,8 +259,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.Volumes, 3)
-				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 3)
+				assert.Len(t, pod.Spec.Volumes, 4)
+				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 4)
 			},
 		},
 	}

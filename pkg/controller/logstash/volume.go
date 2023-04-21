@@ -6,30 +6,51 @@ package logstash
 
 import (
 	"fmt"
-	"path"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
 
-func buildVolumes(params Params) ([]volume.VolumeLike, error) {
-	vols := []volume.VolumeLike{
-		// volume with logstash configuration file
-		volume.NewSecretVolume(
-			logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-			LogstashConfigVolumeName,
-			path.Join(ConfigMountPath, LogstashConfigFileName),
-			LogstashConfigFileName,
-			0644),
-		// volume with logstash pipeline file
-		volume.NewSecretVolume(
-			logstashv1alpha1.PipelineSecretName(params.Logstash.Name),
-			PipelineVolumeName,
-			path.Join(ConfigMountPath, PipelineFileName),
-			PipelineFileName,
-			0644),
+const (
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
+
+	// InternalConfigVolumeName is a volume which contains the generated configuration.
+	InternalConfigVolumeName        = "elastic-internal-logstash-config"
+	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
+	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
+	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
+)
+
+var (
+	// ConfigSharedVolume contains the Logstash config/ directory, it contains the contents of config from the docker container
+	ConfigSharedVolume = volume.SharedVolume{
+		VolumeName:             ConfigVolumeName,
+		InitContainerMountPath: InitContainerConfigVolumeMountPath,
+		ContainerMountPath:     ConfigMountPath,
 	}
+)
+
+// ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
+func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		logstashv1alpha1.ConfigSecretName(ls.Name),
+		InternalConfigVolumeName,
+		InternalConfigVolumeMountPath,
+	)
+}
+
+// PipelineVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
+func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		logstashv1alpha1.PipelineSecretName(ls.Name),
+		InternalPipelineVolumeName,
+		InternalPipelineVolumeMountPath,
+	)
+}
+
+func buildVolumes(params Params) ([]volume.VolumeLike, error) {
+	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(params.Logstash), PipelineVolume(params.Logstash)}
 
 	// all volumes with CAs of direct associations
 	caAssocVols, err := getVolumesFromAssociations(params.Logstash.GetAssociations())

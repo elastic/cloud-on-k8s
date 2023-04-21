@@ -160,3 +160,61 @@ func TestPipelineConfigLogstash(t *testing.T) {
 
 	test.Sequence(before, steps, b).RunSequential(t)
 }
+
+// Verify that pipelines will reload when the Pipeline definition changes.
+func TestLogstashPipelineReload(t *testing.T) {
+	name := "test-ls-reload"
+
+	logstashFirstPipeline := logstash.NewBuilder(name).WithNodeCount(1).
+		WithPipelines([]commonv1.Config{
+			{
+				Data: map[string]interface{}{
+					"pipeline.id":      "main",
+					"pipeline.workers": 1,
+					"config.string":    "input { beats{ port => 5044}} output { stdout{} }",
+				},
+			},
+		})
+
+	logstashSecondPipeline := logstash.Builder{Logstash: *logstashFirstPipeline.Logstash.DeepCopy()}.
+		WithPipelines([]commonv1.Config{
+			{
+				Data: map[string]interface{}{
+					"pipeline.id":      "main",
+					"pipeline.workers": 2,
+					"config.string":    "input { beats{ port => 5044} } output { stdout{} }",
+				},
+			},
+		}).
+		WithMutatedFrom(&logstashFirstPipeline)
+
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.
+			WithSteps(logstashFirstPipeline.CheckK8sTestSteps(k)).
+			WithStep(
+				logstashFirstPipeline.CheckMetricsRequest(k,
+					logstash.Request{
+						Name: "pipeline [main]",
+						Path: "/_node/pipelines/main",
+					},
+					logstash.Want{
+						Status: "green",
+						Match:  map[string]string{"pipelines.main.workers": "1"},
+					}),
+			).
+			WithSteps(logstashSecondPipeline.MutationTestSteps(k)).
+			WithStep(
+				logstashSecondPipeline.CheckMetricsRequest(k,
+					logstash.Request{
+						Name: "pipeline [main]",
+						Path: "/_node/pipelines/main",
+					},
+					logstash.Want{
+						Status: "green",
+						Match:  map[string]string{"pipelines.main.workers": "2"},
+					}),
+			)
+	}
+
+	test.Sequence(nil, stepsFn, logstashFirstPipeline).RunSequential(t)
+}

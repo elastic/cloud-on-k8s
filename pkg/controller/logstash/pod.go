@@ -91,6 +91,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).
 		WithVolumeLikes(vols...).
+		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithEnv(envs...).
 		WithInitContainerDefaults()
 
