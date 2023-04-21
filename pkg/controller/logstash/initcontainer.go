@@ -16,7 +16,7 @@ const (
 
 	// InitConfigScript is a small bash script to prepare the logstash configuration directory
 	InitConfigScript = `#!/usr/bin/env bash
-set -eux
+set -eu
 
 init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
