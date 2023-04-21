@@ -480,7 +480,7 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	if len(files) == 0 {
 		return fmt.Errorf("couldn't file helm package with glob (%s)", config.sourceGlob)
 	}
-	isSnapshot := strings.Contains(files[0], "SNAPSHOT")
+	isSnapshot := strings.HasSuffix(files[0], "-SNAPSHOT.tgz")
 
 	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, files[0])
 	log.Printf("Writing chart to bucket path (%s) \n", destination)
