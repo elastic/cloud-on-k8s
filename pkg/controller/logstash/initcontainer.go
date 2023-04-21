@@ -22,19 +22,14 @@ init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-
 
 if [[ -f "${init_config_initialized_flag}" ]]; then
     echo "Logstash configuration already initialized."
-	exit 0
+    exit 0
 fi
 
 echo "Setup Logstash configuration"
 
 mount_path=` + InitContainerConfigVolumeMountPath + `
 
-for f in /usr/share/logstash/config/*.*; do
-	filename=$(basename $f)
-	if [[ ! -f "$mount_path/$filename" ]]; then
-		cp $f $mount_path
-	fi
-done
+cp -f /usr/share/logstash/config/*.* "$mount_path"
 
 ln -sf ` + InternalConfigVolumeMountPath + `/logstash.yml  $mount_path
 ln -sf ` + InternalPipelineVolumeMountPath + `/pipelines.yml  $mount_path
@@ -45,9 +40,9 @@ echo "Logstash configuration successfully prepared."
 )
 
 // initConfigContainer returns an init container that executes a bash script to prepare the logstash config directory.
-// This copies files from the `config` folder of the docker image, and creates symlinks for the operator created
-// `logstash.yml` and `pipelines.yml` file into a shared config folder to use by the main logstash container. This
-// enables dynamic reloads for `pipelines.yml`
+// This copies files from the `config` folder of the docker image, and creates symlinks for the `logstash.yml` and
+// `pipelines.yml` files created by the operator into a shared config folder to be used by the main logstash container.
+// This enables dynamic reloads for `pipelines.yml`.
 func initConfigContainer(ls logstashv1alpha1.Logstash) corev1.Container {
 	privileged := false
 
