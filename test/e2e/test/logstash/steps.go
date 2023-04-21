@@ -106,16 +106,14 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	var entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation int64
+	var logstashGenerationBeforeMutation, logstashObservedGenerationBeforeMutation int64
 	isMutated := b.MutatedFrom != nil
-
 	return test.StepList{
-		generation.RetrieveGenerationsStep(&b.Logstash, k, &entSearchGenerationBeforeMutation, &entSearchObservedGenerationBeforeMutation),
-	}.WithSteps(test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k)).
-		WithSteps(b.UpgradeTestSteps(k)).
+		generation.RetrieveGenerationsStep(&b.Logstash, k, &logstashGenerationBeforeMutation, &logstashObservedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
-		WithStep(generation.CompareObjectGenerationsStep(&b.Logstash, k, isMutated, entSearchGenerationBeforeMutation, entSearchObservedGenerationBeforeMutation))
+		WithStep(generation.CompareObjectGenerationsStep(&b.Logstash, k, isMutated, logstashGenerationBeforeMutation, logstashObservedGenerationBeforeMutation))
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

@@ -75,6 +75,8 @@ func defaultConfig() *settings.CanonicalConfig {
 	settingsMap := map[string]interface{}{
 		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
+		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default
+		"config.reload.automatic": true,
 	}
 
 	return settings.MustCanonicalConfig(settingsMap)

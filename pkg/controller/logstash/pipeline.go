@@ -5,19 +5,20 @@
 package logstash
 
 import (
-	"hash"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 )
 
-func reconcilePipeline(params Params, configHash hash.Hash) error {
+func reconcilePipeline(params Params) error {
 	defer tracing.Span(&params.Context)()
 
 	cfgBytes, err := buildPipeline(params)
@@ -36,12 +37,16 @@ func reconcilePipeline(params Params, configHash hash.Hash) error {
 		},
 	}
 
-	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
+	if _, err := reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash,
+		reconciler.WithPostUpdate(func() {
+			annotation.MarkPodsAsUpdated(params.Context, params.Client,
+				client.InNamespace(params.Logstash.Namespace),
+				NewLabelSelectorForLogstash(params.Logstash),
+			)
+		}),
+	); err != nil {
 		return err
 	}
-
-	_, _ = configHash.Write(cfgBytes)
-
 	return nil
 }
 
