@@ -32,6 +32,15 @@ func TestMetricBeat(t *testing.T) {
 		Name:  "metricbeat",
 		Image: "docker.elastic.co/beats/metricbeat:8.2.3",
 		Args:  []string{"-c", "/etc/metricbeat-config/metricbeat.yml", "-e"},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+			Privileged:               pointer.Bool(false),
+			RunAsNonRoot:             pointer.Bool(true),
+			ReadOnlyRootFilesystem:   pointer.Bool(true),
+			AllowPrivilegeEscalation: pointer.Bool(false),
+		},
 		Env: []corev1.EnvVar{
 			{
 				Name: "POD_IP",
@@ -75,6 +84,11 @@ func TestMetricBeat(t *testing.T) {
 				Name:      "beat-metricbeat-config",
 				ReadOnly:  true,
 				MountPath: "/etc/metricbeat-config",
+			},
+			{
+				Name:      "metricbeat-data",
+				ReadOnly:  false,
+				MountPath: "/usr/share/metricbeat/data",
 			},
 			{
 				Name:      "shared-data",
@@ -128,6 +142,10 @@ output:
 				{
 					Name:         "beat-metricbeat-config",
 					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
+				},
+				{
+					Name:         "metricbeat-data",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				{
 					Name:         "shared-data",

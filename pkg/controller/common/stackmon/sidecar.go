@@ -9,6 +9,7 @@ import (
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
+	ptr "k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -47,12 +48,17 @@ func NewMetricBeatSidecar(
 		return BeatSidecar{}, err
 	}
 	image := container.ImageRepository(container.MetricbeatImage, version)
-	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume)
+
+	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
+	emptyDir := volume.NewEmptyDirVolume("metricbeat-data", "/usr/share/metricbeat/data")
+	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume, emptyDir)
 }
 
 func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
 	image := container.ImageRepository(container.FilebeatImage, version)
-	return NewBeatSidecar(ctx, client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume)
+	// EmptyDir volume so that FileBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
+	emptyDir := volume.NewEmptyDirVolume("filebeat-data", "/usr/share/filebeat/data")
+	return NewBeatSidecar(ctx, client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume, emptyDir)
 }
 
 // BeatSidecar helps with building a beat sidecar container to monitor an Elastic Stack application. It focuses on
@@ -65,7 +71,7 @@ type BeatSidecar struct {
 }
 
 func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, image string, resource monitoring.HasMonitoring,
-	associations []commonv1.Association, baseConfig string, additionalVolume volume.VolumeLike,
+	associations []commonv1.Association, baseConfig string, additionalVolumes ...volume.VolumeLike,
 ) (BeatSidecar, error) {
 	// build the beat config
 	config, err := newBeatConfig(ctx, client, beatName, resource, associations, baseConfig)
@@ -75,8 +81,10 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 
 	// add additional volume (ex: CA volume of the monitored ES for Metricbeat)
 	volumes := config.volumes
-	if additionalVolume != nil {
-		volumes = append(volumes, additionalVolume)
+	for _, additionalVolume := range additionalVolumes {
+		if additionalVolume != nil {
+			volumes = append(volumes, additionalVolume)
+		}
 	}
 
 	// prepare the volume mounts for the beat container from all provided volumes
@@ -98,6 +106,15 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 			Args:         []string{"-c", config.filepath, "-e"},
 			Env:          defaults.PodDownwardEnvVars(),
 			VolumeMounts: volumeMounts,
+			SecurityContext: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{"ALL"},
+				},
+				Privileged:               ptr.Bool(false),
+				RunAsNonRoot:             ptr.Bool(true),
+				ReadOnlyRootFilesystem:   ptr.Bool(true),
+				AllowPrivilegeEscalation: ptr.Bool(false),
+			},
 		},
 		ConfigHash:   config.hash,
 		ConfigSecret: config.secret,

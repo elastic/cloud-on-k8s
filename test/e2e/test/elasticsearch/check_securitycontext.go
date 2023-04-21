@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -32,23 +33,23 @@ func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) tes
 			ver := version.MustParse(es.Spec.Version)
 			for _, p := range pods {
 				for _, c := range p.Spec.Containers {
-					asserSecurityContext(t, ver, c.SecurityContext)
+					asserSecurityContext(t, ver, c.SecurityContext, c.Image)
 				}
 				for _, c := range p.Spec.InitContainers {
-					asserSecurityContext(t, ver, c.SecurityContext)
+					asserSecurityContext(t, ver, c.SecurityContext, c.Image)
 				}
 			}
 		},
 	}
 }
 
-func asserSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext) {
+func asserSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext, image string) {
 	t.Helper()
 	require.NotNil(t, securityContext)
-	if ver.LT(securitycontext.MinStackVersion) {
-		require.Nil(t, securityContext.RunAsNonRoot)
+	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.MinStackVersion) {
+		require.Nilf(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
 	} else {
-		require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot)
+		require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
 	}
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)
