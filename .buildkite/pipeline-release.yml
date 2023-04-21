@@ -35,4 +35,4 @@ steps:
         if: |
           build.message =~ /^buildkite test .*operatorhub.*/
           || build.message =~ /^release eck .*operatorhub.*/
-        command: buildkite-agent pipeline upload .buildkite/pipeline-release-operatorhub.yml
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-redhat.yml

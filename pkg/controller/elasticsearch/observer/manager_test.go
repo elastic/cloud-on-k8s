@@ -112,7 +112,8 @@ func TestManager_Observe(t *testing.T) {
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), tt.clusterToObserveClient, true)
+			esClientProvider := func(existingClient client.Client) client.Client { return tt.clusterToObserveClient }
+			observer := m.Observe(context.Background(), esObject(tt.clusterToObserve), esClientProvider, true)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -180,9 +181,10 @@ func TestManager_ObserveSync(t *testing.T) {
 			esClient := flappingEsClient()
 			name := cluster("es1")
 			cluster := esObject(name)
+			esClientProvider := func(existingClient client.Client) client.Client { return esClient }
 			results := []esv1.ElasticsearchHealth{
-				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient, true)(),
-				tt.manager.ObservedStateResolver(context.Background(), cluster, esClient, true)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClientProvider, true)(),
+				tt.manager.ObservedStateResolver(context.Background(), cluster, esClientProvider, true)(),
 			}
 			require.Equal(t, tt.expectedHealth, results)
 			tt.manager.StopObserving(name) // let's clean up the go-routines
@@ -276,10 +278,11 @@ func TestManager_AddObservationListener(t *testing.T) {
 		<-eventsCluster2
 		close(doneCh)
 	}()
+	esClientProvider := func(existingClient client.Client) client.Client { return fakeEsClient200(client.BasicAuth{}) }
 	// observe 2 clusters
-	obs1 := m.Observe(ctx, cluster1, fakeEsClient200(client.BasicAuth{}), true)
+	obs1 := m.Observe(ctx, cluster1, esClientProvider, true)
 	defer obs1.Stop()
-	obs2 := m.Observe(ctx, cluster2, fakeEsClient200(client.BasicAuth{}), true)
+	obs2 := m.Observe(ctx, cluster2, esClientProvider, true)
 	defer obs2.Stop()
 	<-doneCh
 }

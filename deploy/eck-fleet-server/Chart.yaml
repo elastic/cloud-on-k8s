@@ -1,6 +1,6 @@
 apiVersion: v2
 name: eck-fleet-server
-description: A Helm chart to deploy Elastic Fleet Server as an Agent managed by the ECK Operator.
+description: Elastic Fleet Server as an Agent managed by the ECK operator
 kubeVersion: ">= 1.21.0-0"
 type: application
 version: 0.4.0-SNAPSHOT

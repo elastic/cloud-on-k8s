@@ -30,7 +30,8 @@ var _ test.Builder = Builder{}
 var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
-	return false
+	// APM doesn't work in 8.5.3, see https://github.com/elastic/apm-server/issues/10089.
+	return test.Ctx().ElasticStackVersion == "8.5.3"
 }
 
 func NewBuilder(name string) Builder {

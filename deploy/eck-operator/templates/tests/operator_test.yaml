@@ -1,0 +1,49 @@
+suite: test operator webhook
+templates:
+  - templates/webhook.yaml
+tests:
+  - it: should render clientConfig.caBundle when certs are managed by the user
+    set:
+      webhook:
+        manageCerts: false
+        caBundle: Y2VydGlmaWNhdGU=
+    asserts:
+      - documentIndex: 0
+        isKind:
+          of: ValidatingWebhookConfiguration
+      - documentIndex: 0
+        equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: Y2VydGlmaWNhdGU=
+      - documentIndex: 0
+        equal:
+          path: webhooks[12].clientConfig.caBundle
+          value: Y2VydGlmaWNhdGU=
+  - it: should NOT render clientConfig.caBundle when certs are managed by the operator
+    set:
+      webhook:
+        manageCerts: true
+        caBundle: Cg==
+    asserts:
+      - documentIndex: 0
+        isKind:
+          of: ValidatingWebhookConfiguration
+      - documentIndex: 0
+        equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: null
+
+  - it: should NOT render webhook clientConfig.caBundle when certs are managed by the cert manager
+    set:
+      webhook:
+        manageCerts: false
+        certManagerCert: "cert-manager-cert"
+        caBundle: Cg==
+    asserts:
+      - documentIndex: 0
+        isKind:
+          of: ValidatingWebhookConfiguration
+      - documentIndex: 0
+        equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: null

@@ -13,6 +13,8 @@ import (
 	"net/url"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	ls "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
@@ -31,9 +33,16 @@ func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Cli
 }
 
 func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path string) ([]byte, error) {
-	scheme := "http"
+	var scheme = "http"
+	var port = network.HTTPPort
+	for _, service := range logstash.Spec.Services {
+		if service.Name == ls.LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
+			port = int(service.Service.Spec.Ports[0].Port)
+		}
+	}
 
-	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:9600%s", scheme, v1alpha1.APIServiceName(logstash.Name), logstash.Namespace, path))
+	url, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:%d%s", scheme, v1alpha1.APIServiceName(logstash.Name), logstash.Namespace, port, path))
+
 	if err != nil {
 		return nil, fmt.Errorf("while parsing URL: %w", err)
 	}

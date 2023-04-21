@@ -8,10 +8,9 @@
       "allowed_list": ["renovate[bot]"],
       "build_on_commit": true,
       "build_on_comment": true,
-      "trigger_comment_regex": "^(?:(?:buildkite\\W+)?(?:build|test)\\W+(?:this|it))",
-      "always_trigger_comment_regex": "^(?:(?:buildkite\\W+)?(?:build|test)\\W+(?:this|it))",
-      "skip_ci_labels": ["skip-ci"],
-      "skip_ci_on_only_changed": ["\\.asciidoc$"]
+      "trigger_comment_regex": "^(?:(?:buildkite\\s+)?(?:build|test)\\s+(?:this|it))\\s*(?<args>.*)",
+      "always_trigger_comment_regex": "^(?:(?:buildkite\\s+)?(?:build|test)\\s+(?:this|it))\\s*(?<args>.*)",
+      "skip_ci_labels": ["skip-ci"]
     }
   ]
 }

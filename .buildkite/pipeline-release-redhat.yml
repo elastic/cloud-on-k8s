@@ -2,6 +2,13 @@ steps:
   - group: redhat-release
     steps:
 
+      - label: ":go: operatorhub tool"
+        key: "build-operatorhub-tool"
+        commands:
+          - cd hack/operatorhub
+          - make build
+          - buildkite-agent artifact upload bin/operatorhub
+
       - label: "generate crds"
         key: "generate-crds"
         depends_on:

@@ -35,12 +35,12 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
-	kubePollInterval     = 10 * time.Second  // Kube API polling interval
-	testRunLabel         = "test-run"        // name of the label applied to resources
-	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
-	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
+	jobTimeout           = 600 * time.Minute   // time to wait for the test job to finish
+	kubePollInterval     = 10 * time.Second    // Kube API polling interval
+	testRunLabel         = "test-run"          // name of the label applied to resources
+	logStreamLabel       = "stream-logs"       // name of the label enabling log streaming to e2e runner
+	testsLogFilePattern  = "e2e-tests-%s.json" // name of file to keep all test logs in JSON format
+	operatorReadyTimeout = 3 * time.Minute     // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -187,11 +187,11 @@ func (h *helper) initTestContext() error {
 		KubernetesVersion:     getKubernetesVersion(h),
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            isOcpCluster(h),
-		Ocp3Cluster:           isOcp3Cluster(h),
 		DeployChaosJob:        h.deployChaosJob,
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
+		GSBucketName:          h.gsBucketName,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -243,13 +243,6 @@ func getKubernetesVersion(h *helper) version.Version {
 
 func isOcpCluster(h *helper) bool {
 	_, _, err := h.kubectl("get", "clusterversion")
-	isOCP4 := err == nil
-	isOCP3 := isOcp3Cluster(h)
-	return isOCP4 || isOCP3
-}
-
-func isOcp3Cluster(h *helper) bool {
-	_, _, err := h.kubectl("get", "-n", "openshift-template-service-broker", "svc", "apiserver")
 	return err == nil
 }
 
@@ -259,6 +252,20 @@ func (h *helper) initTestSecrets() error {
 	c, err := vault.NewClient()
 	if err != nil {
 		return err
+	}
+
+	// Only initialize gcp credentials when running in CI
+	if os.Getenv("CI") == "true" {
+		b, err := vault.ReadFile(c, vault.SecretFile{
+			Name:          "gcp-credentials.json",
+			Path:          "ci-gcp-k8s-operator",
+			FieldResolver: func() string { return "service-account" },
+		})
+		if err != nil {
+			return fmt.Errorf("reading gcp credentials: %w", err)
+		}
+		h.testSecrets["gcp-credentials.json"] = string(b)
+		h.testContext.GCPCredentialsPath = "/var/run/secrets/e2e/gcp-credentials.json"
 	}
 
 	if h.testLicense != "" {
@@ -426,17 +433,6 @@ func (h *helper) createManagedNamespaces() error {
 		err = h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
 	}
 
-	// Reset the node selector for all managed namespaces to override any possible OCP project node selector that might
-	// prevent scheduling daemonset pods on some nodes.
-	if h.testContext.Ocp3Cluster {
-		log.Info("Resetting namespace node selector")
-		for _, ns := range h.testContext.Operator.ManagedNamespaces {
-			if err := exec.Command("kubectl", "annotate", "--overwrite", "namespace", ns, "openshift.io/node-selector=").Run(); err != nil {
-				return err
-			}
-		}
-	}
-
 	return err
 }
 
@@ -587,7 +583,7 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 
 	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
-		jl, err := newJSONLogToFile(testsLogFile)
+		jl, err := newJSONLogToFile(fmt.Sprintf(testsLogFilePattern, h.testContext.ClusterName))
 		if err != nil {
 			log.Error(err, "Failed to create log file for test output")
 			return err

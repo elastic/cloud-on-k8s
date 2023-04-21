@@ -168,6 +168,9 @@ func (d *AKSDriver) create() error {
 }
 
 func (d *AKSDriver) GetCredentials() error {
+	if err := d.auth(); err != nil {
+		return err
+	}
 	log.Print("Getting credentials...")
 	return azure.Cmd("aks",
 		"get-credentials", "--overwrite-existing",
