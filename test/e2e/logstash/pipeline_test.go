@@ -198,8 +198,10 @@ func TestLogstashPipelineReload(t *testing.T) {
 						Path: "/_node/pipelines/main",
 					},
 					logstash.Want{
-						Status: "green",
-						Match:  map[string]string{"pipelines.main.workers": "1"},
+						Match: map[string]string{
+							"pipelines.main.workers": "1",
+							"status":                 "green",
+						},
 					}),
 			).
 			WithSteps(logstashSecondPipeline.MutationTestSteps(k)).
@@ -210,8 +212,10 @@ func TestLogstashPipelineReload(t *testing.T) {
 						Path: "/_node/pipelines/main",
 					},
 					logstash.Want{
-						Status: "green",
-						Match:  map[string]string{"pipelines.main.workers": "2"},
+						Match: map[string]string{
+							"pipelines.main.workers": "2",
+							"status":                 "green",
+						},
 					}),
 			)
 	}
