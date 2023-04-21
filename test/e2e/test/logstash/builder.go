@@ -161,6 +161,14 @@ func (b Builder) GetMetricsIndexPattern() string {
 	return ".monitoring-logstash-8-mb"
 }
 
+func (b Builder) WithConfig(config map[string]interface{}) Builder {
+	b.Logstash.Spec.Config = &commonv1.Config{
+		Data: config,
+	}
+
+	return b
+}
+
 func (b Builder) Name() string {
 	return b.Logstash.Name
 }
