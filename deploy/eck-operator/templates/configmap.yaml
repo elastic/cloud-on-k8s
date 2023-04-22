@@ -15,26 +15,26 @@ data:
     container-suffix: {{ . }}
     {{- end }}
     max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
-    {{- if .Values.config.passwordHashCacheSize }}
-    password-hash-cache-size: {{ int .Values.config.passwordHashCacheSize }}
+    {{- with .Values.config.passwordHashCacheSize }}
+    password-hash-cache-size: {{ int . }}
     {{- end }}
     ca-cert-validity: {{ .Values.config.caValidity }}
     ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
-    {{- if .Values.config.exposedNodeLabels }}
-    exposed-node-labels: [{{ join "," .Values.config.exposedNodeLabels  }}]
+    {{- with .Values.config.exposedNodeLabels }}
+    exposed-node-labels: [{{ join "," .  }}]
     {{- end }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
-    {{- if .Values.config.kubeClientQPS }}
-    kube-client-qps: {{ int .Values.config.kubeClientQPS }}
+    {{- with .Values.config.kubeClientQPS }}
+    kube-client-qps: {{ int . }}
     {{- end }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
     distribution-channel: {{ .Values.telemetry.distributionChannel }}
-    {{- if .Values.telemetry.interval }}
-    telemetry-interval: {{ .Values.telemetry.interval }}
+    {{- with .Values.telemetry.interval }}
+    telemetry-interval: {{ . }}
     {{- end }}
     validate-storage-class: {{ .Values.config.validateStorageClass }}
     {{- if .Values.tracing.enabled }}
@@ -51,8 +51,8 @@ data:
     webhook-cert-dir: {{ .Values.webhook.certsDir }}
       {{- end }}
     {{- end }}
-    {{- if .Values.managedNamespaces }}
-    namespaces: [{{ join "," .Values.managedNamespaces  }}]
+    {{- with .Values.managedNamespaces }}
+    namespaces: [{{ join "," . }}]
     {{- end }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}
     elasticsearch-observation-interval: {{ .Values.config.elasticsearchObservationInterval }}
