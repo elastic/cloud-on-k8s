@@ -26,9 +26,15 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			params: Params{
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{Name: "elasticsearch"},
-							{Name: "elasticsearch2"},
+						ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+								ClusterName:    "production",
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"},
+								ClusterName:    "production2",
+							},
 						},
 					},
 				},
@@ -48,9 +54,15 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			params: Params{
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{
-						ElasticsearchRefs: []commonv1.ObjectSelector{
-							{Name: "uat"},
-							{Name: "production"},
+						ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "uat"},
+								ClusterName:    "uat",
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "production"},
+								ClusterName:    "production",
+							},
 						},
 					},
 				},

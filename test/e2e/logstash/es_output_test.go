@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
@@ -33,18 +34,23 @@ func TestLogstashEsOutput(t *testing.T) {
 input { exec { command => 'uptime' interval => 10 } } 
 output { 
   elasticsearch {
-	hosts => [ "${E2E_MERCURY_TEST_ES_ES_HOSTS}" ]
+	hosts => [ "${PRODUCTION_ES_HOSTS}" ]
 	ssl => true
-	cacert => "${E2E_MERCURY_TEST_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
-	user => "${E2E_MERCURY_TEST_ES_ES_USERNAME}"
-	password => "${E2E_MERCURY_TEST_ES_ES_PASSWORD}"
+	cacert => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+	user => "${PRODUCTION_ES_USERNAME}"
+	password => "${PRODUCTION_ES_PASSWORD}"
   } 
 }
 `,
 				},
 			},
 		}).
-		WithElasticsearchRefs(es.Ref())
+		WithElasticsearchRefs(
+			logstashv1alpha1.ElasticsearchCluster{
+				ObjectSelector: es.Ref(),
+				ClusterName:    "production",
+			},
+		)
 
 	steps := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{

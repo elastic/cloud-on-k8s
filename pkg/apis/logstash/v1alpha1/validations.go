@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -23,6 +25,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkSingleConfigSource,
+		checkESRefsNamed,
 		checkMonitoring,
 		checkAssociations,
 		checkSinglePipelineSource,
@@ -85,5 +88,21 @@ func checkSinglePipelineSource(a *Logstash) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkESRefsNamed(l *Logstash) field.ErrorList {
+	var notNamed []string
+	for _, o := range l.Spec.ElasticsearchRefs {
+		if o.ClusterName == "" {
+			notNamed = append(notNamed, o.NamespacedName().String())
+		}
+	}
+	if len(notNamed) > 0 {
+		msg := fmt.Sprintf("when declaring multiple refs all have to be named, missing clusterName on %v", notNamed)
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
+		}
+	}
 	return nil
 }

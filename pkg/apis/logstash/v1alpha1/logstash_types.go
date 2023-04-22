@@ -33,7 +33,7 @@ type LogstashSpec struct {
 
 	// ElasticsearchRefs are references to Elasticsearch clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	ElasticsearchRefs []commonv1.ObjectSelector `json:"elasticsearchRefs,omitempty"`
+	ElasticsearchRefs []ElasticsearchCluster `json:"elasticsearchRefs,omitempty"`
 
 	// Config holds the Logstash configuration. At most one of [`Config`, `ConfigRef`] can be specified.
 	// +kubebuilder:validation:Optional
@@ -96,6 +96,12 @@ type LogstashService struct {
 	TLS commonv1.TLSOptions `json:"tls,omitempty"`
 }
 
+// ElasticsearchCluster definition of type to define an Elasticsearch Cluster to be referred to in Logstash pipeline
+type ElasticsearchCluster struct {
+	commonv1.ObjectSelector `json:",omitempty,inline"`
+	ClusterName             string `json:"clusterName,omitempty"`
+}
+
 // LogstashStatus defines the observed state of Logstash
 type LogstashStatus struct {
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
@@ -153,8 +159,9 @@ type LogstashList struct {
 
 func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
 	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
-	copy(refs, l.Spec.ElasticsearchRefs)
-
+	for i, r := range l.Spec.ElasticsearchRefs {
+		refs[i] = r.ObjectSelector
+	}
 	return refs
 }
 func (l *Logstash) ServiceAccountName() string {
@@ -185,7 +192,10 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 	for _, ref := range l.Spec.ElasticsearchRefs {
 		associations = append(associations, &LogstashESAssociation{
 			Logstash: l,
-			ref:      ref.WithDefaultNamespace(l.Namespace),
+			ElasticsearchCluster: ElasticsearchCluster{
+				ObjectSelector: ref.WithDefaultNamespace(l.Namespace),
+				ClusterName:    ref.ClusterName,
+			},
 		})
 	}
 
@@ -247,8 +257,7 @@ func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status 
 type LogstashESAssociation struct {
 	// The associated Logstash
 	*Logstash
-	// ref is the object selector of the Elasticsearch used in Association
-	ref commonv1.ObjectSelector
+	ElasticsearchCluster
 }
 
 var _ commonv1.Association = &LogstashESAssociation{}
@@ -272,15 +281,15 @@ func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (lses *LogstashESAssociation) AssociationRef() commonv1.ObjectSelector {
-	return lses.ref
+	return lses.ElasticsearchCluster.ObjectSelector
 }
 
 func (lses *LogstashESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName(lses.ref)
+	return commonv1.ElasticsearchConfigAnnotationName(lses.ElasticsearchCluster.ObjectSelector)
 }
 
 func (lses *LogstashESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
-	return commonv1.GetAndSetAssociationConfByRef(lses, lses.ref, lses.EsAssocConfs)
+	return commonv1.GetAndSetAssociationConfByRef(lses, lses.ElasticsearchCluster.ObjectSelector, lses.EsAssocConfs)
 }
 
 func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
@@ -288,12 +297,12 @@ func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.Association
 		lses.EsAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if conf != nil {
-		lses.EsAssocConfs[lses.ref] = *conf
+		lses.EsAssocConfs[lses.ElasticsearchCluster.ObjectSelector] = *conf
 	}
 }
 
 func (lses *LogstashESAssociation) AssociationID() string {
-	return fmt.Sprintf("%s-%s", lses.ref.Namespace, lses.ref.NameOrSecretName())
+	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())
 }
 
 type LogstashMonitoringAssociation struct {

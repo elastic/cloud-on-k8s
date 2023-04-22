@@ -9177,11 +9177,11 @@ spec:
                 description: ElasticsearchRefs are references to Elasticsearch clusters
                   running in the same Kubernetes cluster.
                 items:
-                  description: ObjectSelector defines a reference to a Kubernetes
-                    object which can be an Elastic resource managed by the operator
-                    or a Secret describing an external Elastic resource not managed
-                    by the operator.
+                  description: ElasticsearchCluster definition of type to define an
+                    Elasticsearch Cluster to be referred to in Logstash pipeline
                   properties:
+                    clusterName:
+                      type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
                         to an Elastic resource managed by ECK.

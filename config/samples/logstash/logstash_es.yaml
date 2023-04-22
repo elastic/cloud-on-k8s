@@ -18,18 +18,20 @@ spec:
   count: 1
   version: 8.7.0
   elasticsearchRefs:
-    - name: elasticsearch-sample
+    - clusterName: production
+      name: elasticsearch-sample
+#      secretName: external-cloud-es-ref
   pipelines:
     - pipeline.id: main
       config.string: |
         input { exec { command => 'uptime' interval => 10 } } 
         output { 
           elasticsearch {
-            hosts => [ "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_HOSTS}" ]
+            hosts => [ "${PRODUCTION_ES_HOSTS}" ]
             ssl => true
-            cacert => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY}"
-            user => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME}"
-            password => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD}"
+            cacert => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${PRODUCTION_ES_USERNAME}"
+            password => "${PRODUCTION_ES_PASSWORD}"
           } 
         }
 ---

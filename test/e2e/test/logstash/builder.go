@@ -151,7 +151,7 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 	return b
 }
 
-func (b Builder) WithElasticsearchRefs(refs ...commonv1.ObjectSelector) Builder {
+func (b Builder) WithElasticsearchRefs(refs ...logstashv1alpha1.ElasticsearchCluster) Builder {
 	b.Logstash.Spec.ElasticsearchRefs = refs
 	return b
 }

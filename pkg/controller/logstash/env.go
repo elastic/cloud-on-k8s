@@ -5,17 +5,19 @@
 package logstash
 
 import (
-	"fmt"
+	"errors"
 	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 )
 
-func buildEnv(esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
+func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 	var envs []corev1.EnvVar //nolint:prealloc
 	for _, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
@@ -23,11 +25,22 @@ func buildEnv(esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 			return nil, err
 		}
 
-		esRefName := normalize(getEsRefNamespacedName(assoc))
-		envs = append(envs, createEnvVar(esRefName+"_ES_HOSTS", assocConf.GetURL()))
-		envs = append(envs, createEnvVar(esRefName+"_ES_USERNAME", assocConf.AuthSecretKey))
+		credentials, err := association.ElasticsearchAuthSettings(params.Context, params.Client, assoc)
+		if err != nil {
+			return nil, err
+		}
+
+		clusterName, err := getClusterName(assoc)
+		if err != nil {
+			return nil, err
+		}
+
+		normalizedClusterName := normalize(clusterName)
+
+		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_HOSTS", assocConf.GetURL()))
+		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USERNAME", credentials.Username))
 		envs = append(envs, corev1.EnvVar{
-			Name: esRefName + "_ES_PASSWORD",
+			Name: normalizedClusterName + "_ES_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -40,16 +53,19 @@ func buildEnv(esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
 
 		if assocConf.GetCACertProvided() {
 			caPath := filepath.Join(certificatesDir(assoc), certificates.CAFileName)
-			envs = append(envs, createEnvVar(esRefName+"_ES_SSL_CERTIFICATE_AUTHORITY", caPath))
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE_AUTHORITY", caPath))
 		}
 	}
 
 	return envs, nil
 }
 
-func getEsRefNamespacedName(assoc commonv1.Association) string {
-	ref := assoc.AssociationRef()
-	return fmt.Sprintf("%s_%s", ref.Namespace, ref.Name)
+func getClusterName(assoc commonv1.Association) (string, error) {
+	lses, ok := assoc.(*v1alpha1.LogstashESAssociation)
+	if !ok {
+		return "", errors.New("cannot cast association to LogstashESAssociation")
+	}
+	return lses.ClusterName, nil
 }
 
 func normalize(nn string) string {
