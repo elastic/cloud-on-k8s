@@ -10,6 +10,7 @@ import (
 	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -49,11 +50,33 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
+	metricbeat.Container.SecurityContext = &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		Privileged:               pointer.Bool(false),
+		RunAsNonRoot:             pointer.Bool(true),
+		ReadOnlyRootFilesystem:   pointer.Bool(true),
+		AllowPrivilegeEscalation: pointer.Bool(false),
+	}
 	return metricbeat, nil
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	return stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
+	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	fileBeat.Container.SecurityContext = &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		Privileged:               pointer.Bool(false),
+		RunAsNonRoot:             pointer.Bool(true),
+		ReadOnlyRootFilesystem:   pointer.Bool(true),
+		AllowPrivilegeEscalation: pointer.Bool(false),
+	}
+	return fileBeat, nil
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers

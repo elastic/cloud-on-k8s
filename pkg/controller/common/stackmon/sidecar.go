@@ -9,7 +9,6 @@ import (
 	"hash"
 
 	corev1 "k8s.io/api/core/v1"
-	ptr "k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
@@ -106,15 +105,6 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 			Args:         []string{"-c", config.filepath, "-e"},
 			Env:          defaults.PodDownwardEnvVars(),
 			VolumeMounts: volumeMounts,
-			SecurityContext: &corev1.SecurityContext{
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{"ALL"},
-				},
-				Privileged:               ptr.Bool(false),
-				RunAsNonRoot:             ptr.Bool(true),
-				ReadOnlyRootFilesystem:   ptr.Bool(true),
-				AllowPrivilegeEscalation: ptr.Bool(false),
-			},
 		},
 		ConfigHash:   config.hash,
 		ConfigSecret: config.secret,

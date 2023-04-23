@@ -32,15 +32,6 @@ func TestMetricBeat(t *testing.T) {
 		Name:  "metricbeat",
 		Image: "docker.elastic.co/beats/metricbeat:8.2.3",
 		Args:  []string{"-c", "/etc/metricbeat-config/metricbeat.yml", "-e"},
-		SecurityContext: &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-			Privileged:               pointer.Bool(false),
-			RunAsNonRoot:             pointer.Bool(true),
-			ReadOnlyRootFilesystem:   pointer.Bool(true),
-			AllowPrivilegeEscalation: pointer.Bool(false),
-		},
 		Env: []corev1.EnvVar{
 			{
 				Name: "POD_IP",
