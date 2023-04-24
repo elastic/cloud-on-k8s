@@ -99,7 +99,7 @@ func checkESRefsNamed(l *Logstash) field.ErrorList {
 		}
 	}
 	if len(notNamed) > 0 {
-		msg := fmt.Sprintf("when declaring multiple refs all have to be named, missing clusterName on %v", notNamed)
+		msg := fmt.Sprintf("clusterName is a mandatory field - missing on %v", notNamed)
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
 		}
