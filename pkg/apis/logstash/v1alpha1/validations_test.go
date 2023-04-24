@@ -355,7 +355,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "multiple named refs: OK",
+			name: "multiple refs, each with clusterName: OK",
 			args: args{
 				b: &Logstash{
 					Spec: LogstashSpec{
