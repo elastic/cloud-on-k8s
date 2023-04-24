@@ -34,17 +34,18 @@ spec:
   version: 8.7.0
   elasticsearchRefs:
     - name: elasticsearch-sample
+      clusterName: sample
   pipelines:
     - pipeline.id: main
       config.string: |
         input { exec { command => "uptime" interval => 10 } } 
         output { 
           elasticsearch {
-            hosts => [ "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_HOSTS}" ]
+            hosts => [ "${SAMPLE_ES_HOSTS}" ]
             ssl => true
-            cacert => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY}"
-            user => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_USERNAME}"
-            password => "${DEFAULT_ELASTICSEARCH_SAMPLE_ES_PASSWORD}"
+            cacert => "${SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${SAMPLE_ES_USERNAME}"
+            password => "${SAMPLE_ES_PASSWORD}"
             index => "my-index"
             data_stream => false
             ilm_enabled => false

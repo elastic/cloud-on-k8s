@@ -41,7 +41,10 @@ metadata:
   name: quickstart
 spec:
   count: 1
-  version: 8.6.1
+  elasticsearchRefs:
+    - name: quickstart
+      clusterName: quickstart
+  version: {version}
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -291,6 +294,8 @@ The environment variables have a fixed naming convention:
 
 where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
 
+NOTE: The `clusterName` value should be unique across namespaces.
+
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -385,8 +390,9 @@ metadata:
 spec:
   version: {version}
   count: 1
-  elasticsearchRef:
-    name: "elasticsearch-sample"
+  elasticsearchRefs:
+    - name: "elasticsearch-sample"
+      clusterName: "sample"
   podTemplate:
     spec:
       containers:
@@ -526,10 +532,10 @@ spec:
 
 Note that this release is a technical preview, is still under active development and has additional limitations:
 
-* No support for persistence
-** The operator provides no additional support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state.
-* `ElasticsearchRef` implementation in plugins is still in preview mode
-** In preview mode, plugins will need to be populated with environment variables populated by the Logstash operator.
+* No integrated support for persistence
+** The operator provides no integrated support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state - any persistence should be added manually.
+* `ElasticsearchRef` implementation in plugins is in preview mode
+** Adding elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the logstash operator.
 
 
 * Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the logstash plugin matrix have not been considered for this list:
