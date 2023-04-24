@@ -296,6 +296,18 @@ where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of 
 
 NOTE: The `clusterName` value should be unique across namespaces.
 
+NOTE: The logstash ECK operator will create a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
+```
+  "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
+  "indices": [
+    {
+      "names": [ "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ],
+      "privileges": ["manage", "write", "create_index", "read", "view_index_metadata"]
+    }
+
+```
+The permissions for this user <<{p}-users-and-roles,can be updated>> to include more indices if the elasticsearch plugin is expected to use indices other than the default. See <<{p}-logstash-configuration-examples, logstash configuration examples>> for a sample configuration that creates a user to write to a custom index.
+
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -340,6 +352,8 @@ spec:
 <2> This refers to an Elasticsearch cluster residing in the same namespace as the logstash instances
 <3> This refers to an Elasticsearch cluster residing in a different namespace to the logstash instance
 <4> Elasticsearch output definitions - use the environment variables created by the Logstash operator when specifying an `ElasticsearchRef`. Note the use of "normalized" versions of the `clusterName` in the environment variables used to populate the relevant fields
+
+
 
 [id="{p}-logstash-expose-services"]
 === Expose Services
@@ -456,6 +470,16 @@ kubectl apply -f {logstash_recipes}/logstash-pipelinevolume.yaml
 
 Deploys Logstash with a single pipeline defined in a secret, mounted as a volume, and referenced by
 `path.config`
+
+=== Writing to a custom elasticsearch index
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-es-role.yaml
+----
+
+Deploys Logstash and Elasticsearch, and creates an updated version of the `eck_logstash_user_role` to write to a user specified index.
+
 
 === Elasticsearch and Kibana Stack Monitoring
 
