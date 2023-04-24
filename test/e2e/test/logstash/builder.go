@@ -165,7 +165,6 @@ func (b Builder) WithConfig(config map[string]interface{}) Builder {
 	b.Logstash.Spec.Config = &commonv1.Config{
 		Data: config,
 	}
-
 	return b
 }
 
