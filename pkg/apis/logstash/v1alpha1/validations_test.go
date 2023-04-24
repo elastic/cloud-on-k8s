@@ -375,7 +375,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "unamed within multiple: NOK",
+			name: "multiple refs, one missing clusterName: NOK",
 			args: args{
 				b: &Logstash{
 					Spec: LogstashSpec{
