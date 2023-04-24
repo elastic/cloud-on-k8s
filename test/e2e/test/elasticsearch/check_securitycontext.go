@@ -47,13 +47,22 @@ func asserSecurityContext(t *testing.T, ver version.Version, securityContext *co
 	t.Helper()
 	require.NotNil(t, securityContext)
 	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.MinStackVersion) {
-		require.Nilf(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
+		require.Nil(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
 	} else {
 		require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
 	}
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)
-	require.Equal(t, securityContext.Capabilities, &corev1.Capabilities{
-		Drop: []corev1.Capability{"ALL"},
-	})
+
+	// OpenShift may add others Capabilities. We only check that ALL is included in "Drop".
+	require.NotNil(t, securityContext.Capabilities)
+	droppedCapabilities := securityContext.Capabilities.Drop
+	hasDropAllCapability := false
+	for _, capability := range droppedCapabilities {
+		if capability == "ALL" {
+			hasDropAllCapability = true
+			break
+		}
+	}
+	require.True(t, hasDropAllCapability, "ALL capability not found in securityContext.Capabilities.Drop")
 }
