@@ -43,7 +43,7 @@ spec:
   count: 1
   elasticsearchRefs:
     - name: quickstart
-      clusterName: quickstart
+      clusterName: qs
   version: {version}
   pipelines:
     - pipeline.id: main
@@ -55,17 +55,17 @@ spec:
         }
         output {
           elasticsearch {
-            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
-            user => "${QUICKSTART_ES_USER}"
-            password => "${QUICKSTART_ES_PASSWORD}"
-            cacert => "${QUICKSTART_ES_CA_CERTS}"
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USERNAME}"
+            password => "${QS_ES_PASSWORD}"
+            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
   services:
     - name: beats
       service:
         spec:
-          type: ClusterIP
+          type: NodePort
           ports:
             - port: 5044
               name: "filebeat"
@@ -133,7 +133,7 @@ spec:
   count: 1
   elasticsearchRefs:
   - name: quickstart
-    clusterName: quickstart
+    clusterName: qs
   config:
     pipeline.workers: 4  <1>
     log.level: debug
@@ -153,7 +153,7 @@ spec:
   count: 1
   elasticsearchRefs:
   - name: quickstart
-    clusterName: quickstart
+    clusterName: qs
   configRef:
     secretName: quickstart-config
 ---
@@ -183,7 +183,7 @@ spec:
   version: {version}
   count: 1
   elasticsearchRefs:
-    - clusterName: quickstart
+    - clusterName: qs
       name: quickstart
   pipelines:
     - pipeline.id: main
@@ -195,10 +195,10 @@ spec:
         }
         output {
           elasticsearch {
-            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
-            user => "${QUICKSTART_ES_USER}"
-            password => "${QUICKSTART_ES_PASSWORD}"
-            cacert => "${QUICKSTART_ES_CA_CERTS}"
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USERNAME}"
+            password => "${QS_ES_PASSWORD}"
+            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 ----
@@ -214,7 +214,7 @@ spec:
   version: {version}
   count: 1
   elasticsearchRefs:
-    - clusterName: quickstart
+    - clusterName: qs
       name: quickstart
   pipelinesRef:
     secretName: quickstart-pipeline
@@ -234,10 +234,10 @@ stringData:
         }
         output {
           elasticsearch {
-            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
-            user => "${QUICKSTART_ES_USER}"
-            password => "${QUICKSTART_ES_PASSWORD}"
-            cacert => "${QUICKSTART_ES_CA_CERTS}"
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USERNAME}"
+            password => "${QS_ES_PASSWORD}"
+            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 
@@ -257,7 +257,7 @@ spec:
   version: {version}
   count: 1
   elasticsearchRefs:
-    - clusterName: quickstart
+    - clusterName: qs
       name: quickstart
   pipelines:
     - pipeline.id: main
@@ -269,10 +269,10 @@ spec:
         }
         output {
           elasticsearch {
-            hosts => [ "${QUICKSTART_ES_HOSTS}" ]
-            user => "${QUICKSTART_ES_USER}"
-            password => "${QUICKSTART_ES_PASSWORD}"
-            cacert => "${QUICKSTART_ES_CA_CERTS}"
+            hosts => [ "${QS_ES_HOSTS}" ]
+            user => "${QS_ES_USERNAME}"
+            password => "${QS_ES_PASSWORD}"
+            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 ----
@@ -290,7 +290,7 @@ The environment variables have a fixed naming convention:
 `NORMALIZED_CLUSTERNAME_ES_HOSTS`
 `NORMALIZED_CLUSTERNAME_ES_USERNAME`
 `NORMALIZED_CLUSTERNAME_ES_PASSWORD`
-`NORMALIZED_CLUSTERNAME_ES_CA_CERTS`
+`NORMALIZED_CLUSTERNAME_ES_SSL_CERTIFICATE_AUTHORITY}`
 
 where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
 
@@ -334,15 +334,15 @@ spec:
         output {
           elasticsearch {   <4>
             hosts => [ "${PROD_ES_ES_HOSTS}" ]
-            user => "${PROD_ES_ES_USER}"
+            user => "${PROD_ES_ES_USERNAME}"
             password => "${PROD_ES_ES_PASSWORD}"
-            cacert => "${PROD_ES_ES_CA_CERTS}"
+            cacert => "${PROD_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
           elasticsearch {   <4>
             hosts => [ "${QA_ES_ES_HOSTS}" ]
-            user => "${QA_ES_ES_USER}"
+            user => "${QA_ES_ES_USERNAME}"
             password => "${QA_ES_ES_PASSWORD}"
-            cacert => "${QA_ES_ES_CA_CERTS}"
+            cacert => "${QA_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 
