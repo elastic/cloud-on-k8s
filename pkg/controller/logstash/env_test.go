@@ -81,7 +81,7 @@ func Test_getEnvVars(t *testing.T) {
 			},
 			wantEnvs: []corev1.EnvVar{
 				{Name: "PRODUCTION_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
-				{Name: "PRODUCTION_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
+				{Name: "PRODUCTION_ES_USER", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
@@ -110,7 +110,7 @@ func Test_getEnvVars(t *testing.T) {
 			},
 			wantEnvs: []corev1.EnvVar{
 				{Name: "PRODUCTION_ES_HOSTS", Value: "http://elasticsearch-sample-es-http.default.svc:9200"},
-				{Name: "PRODUCTION_ES_USERNAME", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
+				{Name: "PRODUCTION_ES_USER", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
@@ -139,7 +139,7 @@ func Test_getEnvVars(t *testing.T) {
 			},
 			wantEnvs: []corev1.EnvVar{
 				{Name: "PRODUCTION_ES_HOSTS", Value: "https://some.gcp.cloud.es.io"},
-				{Name: "PRODUCTION_ES_USERNAME", Value: "fake_user"},
+				{Name: "PRODUCTION_ES_USER", Value: "fake_user"},
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
