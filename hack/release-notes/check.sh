@@ -33,12 +33,10 @@ list-release-notes-pr-commits() {
 count-release-notes-pr-without-merged-commit() {
     local nextVersion=$1
     local prevVersion=$2
-    local grepOpts=${3:-}
-    # shellcheck disable=SC2086
     diff \
         <(list-merged-commits "$nextVersion" "$prevVersion") \
         <(list-release-notes-pr-commits "$nextVersion") \
-        | grep $grepOpts '>'
+        | grep '>'
 }
 
 main() {
@@ -47,8 +45,8 @@ main() {
 
     echo "Compare 'merged PR from $prevVersion to $nextVersion' with 'release-notes/$nextVersion'"
     
-    count=$(count-release-notes-pr-without-merged-commit "$nextVersion" "$prevVersion" -c)
-    if [[ "$count" -eq 0 ]]; then
+    prs=$(count-release-notes-pr-without-merged-commit "$nextVersion" "$prevVersion")
+    if [[ -z "$prs" ]]; then
         echo "✅ LGTM"
     else
         echo "❌ Error: no commit found for the following issues:"
