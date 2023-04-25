@@ -33,6 +33,7 @@ func NewMergedESConfig(
 	ipFamily corev1.IPFamily,
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
+	additionalTransportCAs bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -40,7 +41,7 @@ func NewMergedESConfig(
 	}
 	config := baseConfig(clusterName, ver, ipFamily).CanonicalConfig
 	err = config.MergeWith(
-		xpackConfig(ver, httpConfig).CanonicalConfig,
+		xpackConfig(ver, httpConfig, additionalTransportCAs).CanonicalConfig,
 		userCfg,
 	)
 	if err != nil {
@@ -84,7 +85,7 @@ func baseConfig(clusterName string, ver version.Version, ipFamily corev1.IPFamil
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, withAdditionalTransportCAs bool) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -114,6 +115,11 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalCon
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
 		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
+	}
+
+	if withAdditionalTransportCAs {
+		cfg[esv1.XPackSecurityTransportSslCertificateAuthorities] = append(cfg[esv1.XPackSecurityTransportSslCertificateAuthorities].([]string),
+			path.Join(volume.TransportCertificatesConfigMapVolumeMountPath, certificates.CAFileName))
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first

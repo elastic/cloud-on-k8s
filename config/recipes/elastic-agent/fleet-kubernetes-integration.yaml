@@ -7,6 +7,10 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
   config:
     xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]

@@ -74,7 +74,8 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg)
+		withAdditionalTransportCAs := es.Spec.Transport.TLS.CertificateAuthorities.IsDefined()
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, withAdditionalTransportCAs)
 		if err != nil {
 			return nil, err
 		}

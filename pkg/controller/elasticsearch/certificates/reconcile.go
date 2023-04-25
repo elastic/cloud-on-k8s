@@ -100,6 +100,13 @@ func ReconcileTransport(
 	// label certificates secrets with the cluster name
 	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
+	// Validate user defined additional trusted CAs config map exists and contains the right things.
+	// It will be mounted directly to the Pods and watched by Elasticsearch so not further reconciliation is needed.
+	if err := transport.ValidateAdditionalTrust(ctx, driver.K8sClient(), es); err != nil {
+		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+		return results.WithError(err)
+	}
+
 	// reconcile transport CA and certs
 	transportCA, err := transport.ReconcileOrRetrieveCA(
 		ctx,

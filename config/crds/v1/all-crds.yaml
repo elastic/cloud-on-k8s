@@ -5178,6 +5178,15 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: CertificateAuthorities is a references to a config
+                          map that contains one or more x509 certificates for trusted
+                          authorities in PEM format. The certificates need to be in
+                          a file called `ca.crt`.
+                        properties:
+                          configMapName:
+                            type: string
+                        type: object
                       otherNameSuffix:
                         description: 'OtherNameSuffix when defined will be prefixed
                           with the Pod name and used as the common name, and the first
