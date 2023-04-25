@@ -7,6 +7,8 @@
 # Script that helps identifying changes that have been labeled as belonging to certain release version
 # where the corresponding commits are not in the release branch.
 # Its main purpose is to discover missing backports.
+#
+# Usage: check.sh TAG
 
 set -uo pipefail
 
