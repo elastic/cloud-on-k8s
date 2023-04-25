@@ -25,7 +25,6 @@ func buildVolumes(
 	nodeSpec esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
-	transportCfg esv1.TransportTLSOptions,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
@@ -116,13 +115,6 @@ func buildVolumes(
 	}
 
 	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
-
-	if transportCfg.CertificateAuthorities.IsDefined() {
-		cm := volume.NewConfigMapVolume(transportCfg.CertificateAuthorities.ConfigMapName,
-			esvolume.TransportCertificatesConfigMapVolumeName, esvolume.TransportCertificatesConfigMapVolumeMountPath)
-		volumes = append(volumes, cm.Volume())
-		volumeMounts = append(volumeMounts, cm.VolumeMount())
-	}
 
 	return volumes, volumeMounts
 }

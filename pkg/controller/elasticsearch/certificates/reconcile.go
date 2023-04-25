@@ -102,7 +102,8 @@ func ReconcileTransport(
 
 	// Validate user defined additional trusted CAs config map exists and contains the right things.
 	// It will be mounted directly to the Pods and watched by Elasticsearch so not further reconciliation is needed.
-	if err := transport.ValidateAdditionalTrust(ctx, driver.K8sClient(), es); err != nil {
+	additionalCAs, err := transport.MaybeRetrieveAdditionalCAs(ctx, driver.K8sClient(), es)
+	if err != nil {
 		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 		return results.WithError(err)
 	}
@@ -127,7 +128,7 @@ func ReconcileTransport(
 	)
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, additionalCAs); err != nil {
 		return results.WithError(err)
 	}
 
@@ -136,6 +137,7 @@ func ReconcileTransport(
 		ctx,
 		driver.K8sClient(),
 		transportCA,
+		additionalCAs,
 		es,
 		certRotation,
 	)

@@ -34,24 +34,14 @@ func TestNewMergedESConfig(t *testing.T) {
 		Network struct {
 			PublishHost string `yaml:"publish_host"`
 		} `yaml:"network"`
-		XPack struct {
-			Security struct {
-				Transport struct {
-					SSL struct {
-						CertificateAuthorities []string `yaml:"certificate_authorities"`
-					} `yaml:"ssl"`
-				} `yaml:"transport"`
-			} `yaml:"security"`
-		} `yaml:"xpack"`
 	}
 
 	tests := []struct {
-		name                   string
-		version                string
-		ipFamily               corev1.IPFamily
-		cfgData                map[string]interface{}
-		additionalTransportCAs bool
-		assert                 func(cfg CanonicalConfig)
+		name     string
+		version  string
+		ipFamily corev1.IPFamily
+		cfgData  map[string]interface{}
+		assert   func(cfg CanonicalConfig)
 	}{
 		{
 			name:     "in 6.x, empty config should have the default file and native realm settings configured",
@@ -219,26 +209,12 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, "[${POD_IP}]", esCfg.Network.PublishHost)
 			},
 		},
-		{
-			name:                   "user-provided additional transport CAs",
-			version:                "8.7.1",
-			ipFamily:               corev1.IPv4Protocol,
-			cfgData:                nil,
-			additionalTransportCAs: true,
-			assert: func(cfg CanonicalConfig) {
-				cfgBytes, err := cfg.Render()
-				require.NoError(t, err)
-				esCfg := &elasticsearchCfg{}
-				require.NoError(t, yaml.Unmarshal(cfgBytes, &esCfg))
-				require.Contains(t, esCfg.XPack.Security.Transport.SSL.CertificateAuthorities, "/usr/share/elasticsearch/config/transport-trust/ca.crt")
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.additionalTransportCAs)
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData})
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})
