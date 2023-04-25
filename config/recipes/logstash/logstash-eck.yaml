@@ -85,7 +85,7 @@ spec:
   count: 1
   version: 8.7.0
   elasticsearchRefs:
-    - clusterName: default
+    - clusterName: eck
       name: elasticsearch
   pipelines:
     - pipeline.id: main
@@ -106,10 +106,11 @@ spec:
         }
         output {
           elasticsearch {
-          hosts => [ "${DEFAULT_ELASTICSEARCH_HOSTS}" ]
-          user => "${DEFAULT_ELASTICSEARCH_USER}"
-          password => "${DEFAULT_ELASTICSEARCH_PASSWORD}"
-          cacert => "${DEFAULT_ELASTICSEARCH_CA_CERTS}"
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
         }
   services:
     - name: beats

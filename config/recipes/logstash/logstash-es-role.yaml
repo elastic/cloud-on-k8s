@@ -13,7 +13,7 @@ stringData:
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: elasticsearch-sample
+  name: elasticsearch
 spec:
   version: 8.7.0
   auth:
@@ -28,24 +28,24 @@ spec:
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
-  name: logstash-sample
+  name: logstash
 spec:
   count: 1
   version: 8.7.0
   elasticsearchRefs:
-    - name: elasticsearch-sample
-      clusterName: sample
+    - name: elasticsearch
+      clusterName: eck
   pipelines:
     - pipeline.id: main
       config.string: |
         input { exec { command => "uptime" interval => 10 } } 
         output { 
           elasticsearch {
-            hosts => [ "${SAMPLE_ES_HOSTS}" ]
+            hosts => [ "${ECK_ES_HOSTS}" ]
             ssl => true
-            cacert => "${SAMPLE_ES_SSL_CERTIFICATE_AUTHORITY}"
-            user => "${SAMPLE_ES_USERNAME}"
-            password => "${SAMPLE_ES_PASSWORD}"
+            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
             index => "my-index"
             data_stream => false
             ilm_enabled => false

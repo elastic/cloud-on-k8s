@@ -56,7 +56,7 @@ spec:
         output {
           elasticsearch {
             hosts => [ "${QS_ES_HOSTS}" ]
-            user => "${QS_ES_USERNAME}"
+            user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
             cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
@@ -196,7 +196,7 @@ spec:
         output {
           elasticsearch {
             hosts => [ "${QS_ES_HOSTS}" ]
-            user => "${QS_ES_USERNAME}"
+            user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
             cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
@@ -235,7 +235,7 @@ stringData:
         output {
           elasticsearch {
             hosts => [ "${QS_ES_HOSTS}" ]
-            user => "${QS_ES_USERNAME}"
+            user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
             cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
@@ -270,7 +270,7 @@ spec:
         output {
           elasticsearch {
             hosts => [ "${QS_ES_HOSTS}" ]
-            user => "${QS_ES_USERNAME}"
+            user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
             cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
@@ -288,7 +288,7 @@ The `spec.elasticsearchRefs` section provides a mechanism to help configure Logs
 In order to use `elasticsearchRefs` in a logstash pipeline, the logstash operator will create the necessary resources from the associated elasticsearch, and provide environment variables to allow these resources to be accessed from pipeline configuration, and will be replaced at runtime with the appropriate values.
 The environment variables have a fixed naming convention:
 `NORMALIZED_CLUSTERNAME_ES_HOSTS`
-`NORMALIZED_CLUSTERNAME_ES_USERNAME`
+`NORMALIZED_CLUSTERNAME_ES_USER`
 `NORMALIZED_CLUSTERNAME_ES_PASSWORD`
 `NORMALIZED_CLUSTERNAME_ES_SSL_CERTIFICATE_AUTHORITY}`
 
@@ -334,13 +334,13 @@ spec:
         output {
           elasticsearch {   <4>
             hosts => [ "${PROD_ES_ES_HOSTS}" ]
-            user => "${PROD_ES_ES_USERNAME}"
+            user => "${PROD_ES_ES_USER}"
             password => "${PROD_ES_ES_PASSWORD}"
             cacert => "${PROD_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
           elasticsearch {   <4>
             hosts => [ "${QA_ES_ES_HOSTS}" ]
-            user => "${QA_ES_ES_USERNAME}"
+            user => "${QA_ES_ES_USER}"
             password => "${QA_ES_ES_PASSWORD}"
             cacert => "${QA_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }

@@ -84,9 +84,9 @@ metadata:
 spec:
   count: 1
   version: 8.7.0
-  #  elasticsearchRefs:
-  #    - clusterName: eck
-  #      name: elasticsearch
+  elasticsearchRefs:
+    - clusterName: eck
+      name: elasticsearch
   monitoring:
     metrics:
       elasticsearchRefs:
@@ -109,7 +109,12 @@ spec:
           }
         }
         output {
-          stdout { codec => rubydebug }
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
         }
   services:
     - name: beats

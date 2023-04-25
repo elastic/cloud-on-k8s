@@ -84,9 +84,9 @@ metadata:
 spec:
   count: 1
   version: 8.7.0
-#  elasticsearchRefs:
-#    - clusterName: eck
-#      name: elasticsearch
+  elasticsearchRefs:
+    - clusterName: eck
+      name: elasticsearch
   pipelines:
     - pipeline.id: main
       path.config: /usr/share/logstash/config/pipelines
@@ -137,6 +137,11 @@ stringData:
           }
         }
   output.conf: |-
-        output {
-          stdout { codec => rubydebug }
-        }
+    output {
+      elasticsearch {
+        hosts => [ "${ECK_ES_HOSTS}" ]
+        user => "${ECK_ES_USER}"
+        password => "${ECK_ES_PASSWORD}"
+        cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+      }
+    }
