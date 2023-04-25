@@ -114,7 +114,7 @@ func buildVolumes(
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
 
-	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
+	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, append(volumes, nodeSpec.PodTemplate.Spec.Volumes...))
 
 	return volumes, volumeMounts
 }
