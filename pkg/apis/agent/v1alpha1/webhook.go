@@ -30,6 +30,16 @@ var (
 
 var _ webhook.Validator = &Agent{}
 
+func (a *Agent) GetWarnings() []string {
+	if a == nil {
+		return nil
+	}
+	if len(a.Spec.PolicyID) == 0 {
+		return []string{"spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"}
+	}
+	return nil
+}
+
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
 func (a *Agent) ValidateCreate() error {
