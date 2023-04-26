@@ -17,13 +17,14 @@ import (
 )
 
 func MaybeRetrieveAdditionalCAs(ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch) ([]byte, error) {
-	if !elasticsearch.Spec.Transport.TLS.CertificateAuthorities.IsDefined() {
+	additionalTrust := elasticsearch.Spec.Transport.TLS.CertificateAuthorities
+	if !additionalTrust.IsDefined() {
 		return nil, nil
 	}
+
 	var configMap corev1.ConfigMap
-	nsn := types.NamespacedName{Namespace: elasticsearch.Namespace, Name: elasticsearch.Spec.Transport.TLS.CertificateAuthorities.ConfigMapName}
-	err := client.Get(ctx, nsn, &configMap)
-	if err != nil {
+	nsn := types.NamespacedName{Namespace: elasticsearch.Namespace, Name: additionalTrust.ConfigMapName}
+	if err := client.Get(ctx, nsn, &configMap); err != nil {
 		return nil, fmt.Errorf("could not retrieve config map %s specified in spec.transport.tls.certificateAuthorities: %w", nsn, err)
 	}
 	bytes, exists := configMap.Data[certificates.CAFileName]
