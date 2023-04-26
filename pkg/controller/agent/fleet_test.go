@@ -8,21 +8,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
-	"github.com/stretchr/testify/assert"
 	"io"
-	"k8s.io/client-go/tools/record"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 var (
