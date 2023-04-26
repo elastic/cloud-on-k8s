@@ -94,7 +94,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.Allowed("").WithWarnings("spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"),
+			want: admission.Allowed("").WithWarnings("Agent elastic/testAgent: spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"),
 		},
 		{
 			name: "create agent is denied because of invalid version, and returns denied.",
