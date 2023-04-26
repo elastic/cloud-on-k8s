@@ -229,3 +229,176 @@ func Test_checkSupportedVersion(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkEsRefsAssociations(t *testing.T) {
+	type args struct {
+		b *Logstash
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Logstash{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "mix secret named and named refs: OK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
+								ClusterName:    "test",
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ClusterName:    "test2",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "secret named ref with a name: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+								ClusterName:    "test",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with namespace: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"},
+								ClusterName:    "test",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no name or secret name with serviceName: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"},
+								ClusterName:    "test",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAssociations(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkESRefsNamed(t *testing.T) {
+	type args struct {
+		b *Logstash
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "no ref: OK",
+			args: args{
+				b: &Logstash{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "one ref, missing clusterName: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "multiple refs, each with clusterName: OK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ClusterName:    "bla",
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ClusterName:    "blub",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple refs, one missing clusterName: NOK",
+			args: args{
+				b: &Logstash{
+					Spec: LogstashSpec{
+						ElasticsearchRefs: []ElasticsearchCluster{
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ClusterName:    "",
+							},
+							{
+								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ClusterName:    "default",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkESRefsNamed(tt.args.b)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}

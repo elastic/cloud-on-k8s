@@ -1,0 +1,37 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: 8.7.0
+  nodeSets:
+    - name: default
+      count: 2
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  version: 8.7.0
+  elasticsearchRefs:
+    - clusterName: production
+      name: elasticsearch-sample
+#      secretName: external-cloud-es-ref
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input { exec { command => 'uptime' interval => 10 } } 
+        output { 
+          elasticsearch {
+            hosts => [ "${PRODUCTION_ES_HOSTS}" ]
+            ssl => true
+            cacert => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${PRODUCTION_ES_USER}"
+            password => "${PRODUCTION_ES_PASSWORD}"
+          } 
+        }
+---

@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -23,6 +25,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkSingleConfigSource,
+		checkESRefsNamed,
 		checkMonitoring,
 		checkAssociations,
 		checkSinglePipelineSource,
@@ -72,7 +75,8 @@ func checkAssociations(l *Logstash) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), l.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
-	return append(err1, err2...)
+	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
+	return append(append(err1, err2...), err3...)
 }
 
 func checkSinglePipelineSource(a *Logstash) field.ErrorList {
@@ -85,4 +89,19 @@ func checkSinglePipelineSource(a *Logstash) field.ErrorList {
 	}
 
 	return nil
+}
+
+func checkESRefsNamed(l *Logstash) field.ErrorList {
+	var errorList field.ErrorList
+	for i, esRef := range l.Spec.ElasticsearchRefs {
+		if esRef.ClusterName == "" {
+			errorList = append(
+				errorList,
+				field.Required(
+					field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("clusterName"),
+					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.NamespacedName())),
+			)
+		}
+	}
+	return errorList
 }

@@ -10,14 +10,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	commonassociation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -38,14 +38,6 @@ const (
 
 	// VersionLabelName is a label used to track the version of a Logstash Pod.
 	VersionLabelName = "logstash.k8s.elastic.co/version"
-
-	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
-
-	// InternalConfigVolumeName is a volume which contains the generated configuration.
-	InternalConfigVolumeName        = "elastic-internal-logstash-config"
-	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
-	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
-	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
 )
 
 var (
@@ -61,38 +53,25 @@ var (
 	}
 )
 
-var (
-	// ConfigSharedVolume contains the Logstash config/ directory, it contains the contents of config from the docker container
-	ConfigSharedVolume = volume.SharedVolume{
-		VolumeName:             ConfigVolumeName,
-		InitContainerMountPath: InitContainerConfigVolumeMountPath,
-		ContainerMountPath:     ConfigMountPath,
-	}
-)
-
-// ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
-func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
-	return volume.NewSecretVolumeWithMountPath(
-		logstashv1alpha1.ConfigSecretName(ls.Name),
-		InternalConfigVolumeName,
-		InternalConfigVolumeMountPath,
-	)
-}
-
-// PipelineVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
-func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
-	return volume.NewSecretVolumeWithMountPath(
-		logstashv1alpha1.PipelineSecretName(ls.Name),
-		InternalPipelineVolumeName,
-		InternalPipelineVolumeMountPath,
-	)
-}
-
-func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateSpec {
+func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
-	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(params.Logstash), PipelineVolume(params.Logstash)}
+
+	vols, err := buildVolumes(params)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	esAssociations := getEsAssociations(params)
+	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	envs, err := buildEnv(params, esAssociations)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 
 	labels := maps.Merge(params.Logstash.GetIdentityLabels(), map[string]string{
 		VersionLabelName: spec.Version})
@@ -113,11 +92,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 		WithReadinessProbe(readinessProbe(params.Logstash)).
 		WithVolumeLikes(vols...).
 		WithInitContainers(initConfigContainer(params.Logstash)).
+		WithEnv(envs...).
 		WithInitContainerDefaults()
 
-	builder, err := stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {
-		return corev1.PodTemplateSpec{}
+		return corev1.PodTemplateSpec{}, err
 	}
 
 	//  TODO integrate with api.ssl.enabled
@@ -128,7 +108,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) corev1.PodTemplateS
 	//		WithVolumeMounts(httpVol.VolumeMount())
 	//  }
 
-	return builder.PodTemplate
+	return builder.PodTemplate, nil
 }
 
 func getDefaultContainerPorts() []corev1.ContainerPort {
@@ -161,4 +141,27 @@ func readinessProbe(logstash logstashv1alpha1.Logstash) corev1.Probe {
 		},
 	}
 	return probe
+}
+
+func getEsAssociations(params Params) []commonv1.Association {
+	var esAssociations []commonv1.Association
+
+	for _, assoc := range params.Logstash.GetAssociations() {
+		if assoc.AssociationType() == commonv1.ElasticsearchAssociationType {
+			esAssociations = append(esAssociations, assoc)
+		}
+	}
+	return esAssociations
+}
+
+func writeEsAssocToConfigHash(params Params, esAssociations []commonv1.Association, configHash hash.Hash) error {
+	if esAssociations == nil {
+		return nil
+	}
+
+	return commonassociation.WriteAssocsToConfigHash(
+		params.Client,
+		esAssociations,
+		configHash,
+	)
 }

@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
@@ -92,8 +93,17 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
 		case logstash.Builder:
+			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
+					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
+					ClusterName:    ref.ClusterName,
+				})
+			}
+
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
+				WithElasticsearchRefs(esRefs...).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)

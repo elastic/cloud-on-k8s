@@ -7,8 +7,6 @@ package logstash
 import (
 	"context"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
@@ -164,6 +164,14 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 	defer tracing.Span(&ctx)()
 	results := reconciler.NewResult(ctx)
 	status := newStatus(logstash)
+
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, logstash.GetAssociations(), r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !areAssocsConfigured {
+		return results, status
+	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
 	if err := r.validate(ctx, logstash); err != nil {

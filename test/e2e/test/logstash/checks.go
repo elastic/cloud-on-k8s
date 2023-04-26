@@ -24,10 +24,10 @@ type Request struct {
 }
 
 type Want struct {
-	Status string
 	// Key is field path of ucfg.Config. Value is the expected string
 	// example, pipelines.demo.batch_size : 2
-	Match map[string]string
+	Match     map[string]string
+	MatchFunc map[string]func(string) bool
 }
 
 // CheckSecrets checks that expected secrets have been created.
@@ -52,6 +52,39 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					"logstash.k8s.elastic.co/name":   logstashName,
 				},
 			},
+		}
+
+		// check ES association user/ secret
+		nn := k8s.ExtractNamespacedName(&b.Logstash)
+		lsName := nn.Name
+		lsNamespace := nn.Namespace
+
+		for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+			esNamespace := ref.WithDefaultNamespace(lsNamespace).Namespace
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: fmt.Sprintf("%s-logstash-es-%s-%s-ca", lsName, esNamespace, ref.Name),
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/cluster-name":      ref.Name,
+						"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
+						"logstashassociation.k8s.elastic.co/name":        lsName,
+						"logstashassociation.k8s.elastic.co/namespace":   lsNamespace,
+					},
+				},
+			)
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: fmt.Sprintf("%s-%s-%s-%s-logstash-user", lsNamespace, lsName, esNamespace, ref.Name),
+					Keys: []string{"name", "passwordHash", "userRoles"},
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/cluster-name":      ref.Name,
+						"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
+						"logstashassociation.k8s.elastic.co/name":        lsName,
+						"logstashassociation.k8s.elastic.co/namespace":   lsNamespace,
+					},
+				},
+			)
 		}
 		return expected
 	})
@@ -93,6 +126,18 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				}
 			}
 
+			// elasticsearch status
+			expectedEsRefsInStatus := len(logstash.Spec.ElasticsearchRefs)
+			actualEsRefsInStatus := len(logstash.Status.ElasticsearchAssociationsStatus)
+			if expectedEsRefsInStatus != actualEsRefsInStatus {
+				return fmt.Errorf("expected %d elasticsearch associations in status but got %d", expectedEsRefsInStatus, actualEsRefsInStatus)
+			}
+			for a, s := range logstash.Status.ElasticsearchAssociationsStatus {
+				if s != v1.AssociationEstablished {
+					return fmt.Errorf("elasticsearch association %s has status %s ", a, s)
+				}
+			}
+
 			return nil
 		}),
 	}
@@ -106,7 +151,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				Path: "/",
 			},
 			Want{
-				Status: "green",
+				Match: map[string]string{"status": "green"},
 			}),
 		b.CheckMetricsRequest(k,
 			Request{
@@ -114,8 +159,10 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				Path: "/_node/pipelines/main",
 			},
 			Want{
-				Status: "green",
-				Match:  map[string]string{"pipelines.main.batch_size": "125"},
+				Match: map[string]string{
+					"pipelines.main.batch_size": "125",
+					"status":                    "green",
+				},
 			}),
 	}
 }
@@ -147,15 +194,6 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			// check status
-			status, err := res.String("status")
-			if err != nil {
-				return err
-			}
-			if status != want.Status {
-				return fmt.Errorf("expected %s but got %s", want.Status, status)
-			}
-
 			// check expected string
 			for k, v := range want.Match {
 				str, err := res.String(k)
@@ -166,6 +204,18 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 					return fmt.Errorf("expected %s to be %s but got %s", k, v, str)
 				}
 			}
+
+			// check expected expression
+			for k, f := range want.MatchFunc {
+				str, err := res.String(k)
+				if err != nil {
+					return err
+				}
+				if !f(str) {
+					return fmt.Errorf("expression failed: %s got %s", k, str)
+				}
+			}
+
 			return nil
 		}),
 	}

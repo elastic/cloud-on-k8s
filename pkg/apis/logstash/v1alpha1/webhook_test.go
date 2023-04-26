@@ -25,10 +25,10 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
-				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.7.0"
-				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
-				return serialize(t, ent)
+				ls := mkLogstash(uid)
+				ls.Spec.Version = "8.7.0"
+				ls.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
+				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -37,13 +37,13 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
-				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.7.0"
-				ent.Spec.Monitoring = commonv1.Monitoring{
+				ls := mkLogstash(uid)
+				ls.Spec.Version = "8.7.0"
+				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
-				return serialize(t, ent)
+				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -52,10 +52,10 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
-				ent := mkLogstash(uid)
-				ent.Spec.Version = "7.13.0"
-				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
-				return serialize(t, ent)
+				ls := mkLogstash(uid)
+				ls.Spec.Version = "7.13.0"
+				ls.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
+				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "7.13.0": Unsupported version for Stack Monitoring. Required >= 8.7.0`,
@@ -66,13 +66,13 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
-				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.7.0"
-				ent.Spec.Monitoring = commonv1.Monitoring{
+				ls := mkLogstash(uid)
+				ls.Spec.Version = "8.7.0"
+				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname", Name: "xx"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
-				return serialize(t, ent)
+				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.monitoring.metrics: Forbidden: Invalid association reference: specify name or secretName, not both`,
@@ -83,13 +83,13 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
-				ent := mkLogstash(uid)
-				ent.Spec.Version = "8.7.0"
-				ent.Spec.Monitoring = commonv1.Monitoring{
+				ls := mkLogstash(uid)
+				ls.Spec.Version = "8.7.0"
+				ls.Spec.Monitoring = commonv1.Monitoring{
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es1monname"}}},
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
 				}
-				return serialize(t, ent)
+				return serialize(t, ls)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.monitoring.logs: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
