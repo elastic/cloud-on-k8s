@@ -1,9 +1,10 @@
 package test
 
 import (
-	"k8s.io/client-go/tools/record"
 	"testing"
 	"time"
+
+	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -13,6 +14,7 @@ const (
 
 // ReadAtMostEvents attempts to read at most minEventCount from a FakeRecorder.
 func ReadAtMostEvents(t *testing.T, minEventCount int, recorder *record.FakeRecorder) []string {
+	t.Helper()
 	if minEventCount == 0 {
 		return nil
 	}
