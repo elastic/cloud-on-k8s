@@ -290,7 +290,7 @@ func reconcileEnrollmentToken(params Params, api fleetAPI) (EnrollmentAPIKey, er
 		}
 	}
 	// what policy should we enroll this agent in?
-	policyID, err := reconcilePolicyID(ctx, params.EventRecorder, agent, api)
+	policyID, err := findPolicyID(ctx, params.EventRecorder, agent, api)
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
@@ -335,11 +335,12 @@ FindOrCreate:
 	return key, nil
 }
 
-func reconcilePolicyID(ctx context.Context, recorder record.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
+func findPolicyID(ctx context.Context, recorder record.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
 	if agent.Spec.PolicyID != "" {
 		return agent.Spec.PolicyID, nil
 	}
 	recorder.Event(&agent, corev1.EventTypeWarning, events.EventReasonValidation, agentv1alpha1.MissingPolicyIDMessage)
+	ulog.FromContext(ctx).Info(agentv1alpha1.MissingPolicyIDMessage)
 	if agent.Spec.FleetServerEnabled {
 		return api.defaultFleetServerPolicyID(ctx)
 	}
