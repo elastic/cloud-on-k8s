@@ -99,6 +99,8 @@ type LogstashService struct {
 // ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 type ElasticsearchCluster struct {
 	commonv1.ObjectSelector `json:",omitempty,inline"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	ClusterName             string `json:"clusterName,omitempty"`
 }
 
