@@ -79,14 +79,14 @@ NOTE: CA certificates are automatically rotated after one year by default. You c
 
 If `cluster-two` is also managed by an ECK instance, proceed as follows:
 
-. Create a secret with the CA certificate you just extracted:
+. Create a config map with the CA certificate you just extracted:
 +
 [source,sh]
 ----
-kubectl create secret generic remote-certs --from-file=remote.ca.crt
+kubectl create configmap remote-certs --from-file=ca.crt=remote.ca.crt
 ----
 
-. Use this secret to configure `cluster-one`'s CA as a trusted CA in `cluster-two`:
+. Use this config map to configure `cluster-one`'s CA as a trusted CA in `cluster-two`:
 +
 [source,yaml,subs="attributes"]
 ----
