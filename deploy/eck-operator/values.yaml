@@ -68,6 +68,13 @@ tolerations: []
 # affinity defines the node affinity rules for the operator pod.
 affinity: {}
 
+# podDisruptionBudget configures the minimum or the maxium available pods for voluntary disruptions,
+# set to either an integer (e.g. 1) or a percentage value (e.g. 25%).
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 3
+
 # additional environment variables for the operator container.
 env: []
 
@@ -119,6 +126,10 @@ webhook:
   # objectSelector corresponds to the objectSelector property of the webhook.
   # Setting this restricts the webhook to act only on objects that match the selector.
   objectSelector: {}
+  # HostNetwork allows a Pod to use the Node network namespace.
+  # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
+  # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
+  hostNetwork: false
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.
@@ -235,4 +246,3 @@ global:
   createOperatorNamespace: true
   # kubeVersion is the effective Kubernetes version we target when generating the all-in-one.yaml.
   kubeVersion: 1.21.0
-

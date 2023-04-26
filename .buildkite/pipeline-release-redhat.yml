@@ -1,50 +1,60 @@
+
+agents:
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5827bee6
+  memory: 2G
+
+env:
+  OHUB_DRY_RUN: true
+
 steps:
-  - group: redhat-release
-    steps:
 
-      - label: ":go: operatorhub tool"
-        key: "build-operatorhub-tool"
-        commands:
-          - cd hack/operatorhub
-          - make build
-          - buildkite-agent artifact upload bin/operatorhub
+  - label: ":go: build operatorhub tool"
+    key: "build-operatorhub-tool"
+    commands:
+      - cd hack/operatorhub
+      - make build
+      - buildkite-agent artifact upload bin/operatorhub
 
-      - label: "generate crds"
-        key: "generate-crds"
-        depends_on:
-          - "build-operatorhub-tool"
-        commands:
-          - make generate-crds-v1
-        artifact_paths:
-        - "config/*.yaml"
+  - label: ":docker: push container"
+    key: "redhat-container-push"
+    depends_on:
+      - "build-operatorhub-tool"
+    commands:
+      - buildkite-agent artifact download "bin/operatorhub" /usr/local/ && chmod u+x /usr/local/bin/operatorhub
+      - |
+        cd hack/operatorhub
+        operatorhub container push
 
-      - label: "run container push"
-        key: "redhat-container-push"
-        depends_on:
-          - "generate-crds"
-          - "build-operatorhub-tool"
-        commands:
-          - buildkite-agent artifact download "bin/operatorhub" /usr/local/
-          - chmod u+x /usr/local/bin/operatorhub
-          - cd hack/operatorhub
-          - operatorhub container push --dry-run=\${DRY_RUN:-true}
+  - label: ":docker: preflight container check"
+    key: "redhat-preflight"
+    if: build.env("OHUB_DISABLE_PREFLIGHT") != "true"
+    depends_on:
+      - "build-operatorhub-tool"
+      - "redhat-container-push"
+    commands:
+      - .buildkite/scripts/release/redhat-preflight.sh $$BUILDKITE_TAG
 
-      - label: "run container preflight"
-        key: "redhat-preflight"
-        if: build.env("DRY_RUN") == "false"
-        depends_on:
-          - "redhat-container-push"
-        commands:
-          - .buildkite/scripts/release/operatorhub.sh preflight
+  - label: ":docker: publish container"
+    key: "redhat-publish"
+    depends_on:
+      - "build-operatorhub-tool"
+      - "redhat-container-push"
+      - "redhat-preflight"
+    commands:
+      - buildkite-agent artifact download "bin/operatorhub" /usr/local/ && chmod u+x /usr/local/bin/operatorhub
+      - |
+        cd hack/operatorhub
+        operatorhub container publish
 
-      - label: "run remaining release"
-        key: "redhat-release"
-        depends_on:
-          - "build-operatorhub-tool"
-          - "redhat-container-push"
-          - "redhat-preflight"
-        commands:
-          - buildkite-agent artifact download "config/*.yaml" .
-          - buildkite-agent artifact download "bin/operatorhub" /usr/local/
-          - chmod u+x /usr/local/bin/operatorhub
-          - .buildkite/scripts/release/operatorhub.sh release
+  - label: ":redhat: generate and create-pr"
+    key: "redhat-release"
+    depends_on:
+      - "build-operatorhub-tool"
+      - "redhat-publish"
+    commands:
+      - buildkite-agent artifact download "bin/operatorhub" /usr/local/ && chmod u+x /usr/local/bin/operatorhub
+      - |
+        cd hack/operatorhub
+        operatorhub generate-manifests
+        operatorhub bundle generate
+        operatorhub bundle create-pr

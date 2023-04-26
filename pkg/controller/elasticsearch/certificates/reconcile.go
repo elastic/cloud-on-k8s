@@ -75,7 +75,7 @@ func ReconcileHTTP(
 		return nil, results
 	}
 
-	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertChain())
 	if err != nil {
 		return nil, results.WithError(err)
 	}

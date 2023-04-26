@@ -102,7 +102,7 @@ const (
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
 
-	LeaderElectionConfigMapName = "elastic-operator-leader"
+	LeaderElectionLeaseName = "elastic-operator-leader"
 
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
@@ -530,8 +530,8 @@ func startOperator(ctx context.Context) error {
 		Scheme:                     clientgoscheme.Scheme,
 		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
-		LeaderElectionResourceLock: resourcelock.ConfigMapsLeasesResourceLock, // TODO: use 'lease' after operator is released with 'configmapsleases'
-		LeaderElectionID:           LeaderElectionConfigMapName,
+		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		LeaderElectionID:           LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
 	}

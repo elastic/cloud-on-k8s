@@ -24,18 +24,22 @@ func Command() *cobra.Command {
 	}
 
 	publishCmd := &cobra.Command{
-		Use:          "publish",
-		Short:        "publish existing eck operator container image within quay.io",
-		Long:         "Publish existing eck operator container image within quay.io using the Redhat certification API.",
-		RunE:         doPublish,
+		Use:   "publish",
+		Short: "publish existing eck operator container image within quay.io",
+		Long:  "Publish existing eck operator container image within quay.io using the Redhat certification API.",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return container.PublishImage(commonConfig(), container.Tag{Name: flags.Conf.NewVersion}, flags.ScanTimeout)
+		},
 		PreRunE:      preRunE,
 		SilenceUsage: true,
 	}
 
 	pushCmd := &cobra.Command{
-		Use:          "push",
-		Short:        "push eck operator container image to quay.io",
-		RunE:         doPush,
+		Use:   "push",
+		Short: "push eck operator container image to quay.io",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return container.PushImage(commonConfig(), container.Tag{Name: flags.Conf.NewVersion}, flags.Force)
+		},
 		PreRunE:      preRunE,
 		SilenceUsage: true,
 	}
@@ -94,30 +98,11 @@ func preRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// doPublish will publish an existing image within the redhat catalog.
-func doPublish(_ *cobra.Command, _ []string) error {
-	return container.PublishImage(container.PublishConfig{
-		CommonConfig: container.CommonConfig{
-			DryRun:              flags.DryRun,
-			ProjectID:           flags.ProjectID,
-			RedhatCatalogAPIKey: flags.APIKey,
-			RegistryPassword:    flags.RegistryPassword,
-			Tag:                 flags.Conf.NewVersion,
-		},
-		ImageScanTimeout: flags.ScanTimeout,
-	})
-}
-
-// doPush will push an image to the redhat registry for scanning.
-func doPush(_ *cobra.Command, _ []string) error {
-	return container.PushImage(container.PushConfig{
-		CommonConfig: container.CommonConfig{
-			DryRun:              flags.DryRun,
-			ProjectID:           flags.ProjectID,
-			RedhatCatalogAPIKey: flags.APIKey,
-			RegistryPassword:    flags.RegistryPassword,
-			Tag:                 flags.Conf.NewVersion,
-		},
-		Force: flags.Force,
-	})
+func commonConfig() container.CommonConfig {
+	return container.CommonConfig{
+		DryRun:              flags.DryRun,
+		ProjectID:           flags.ProjectID,
+		RedhatCatalogAPIKey: flags.APIKey,
+		RegistryPassword:    flags.RegistryPassword,
+	}
 }

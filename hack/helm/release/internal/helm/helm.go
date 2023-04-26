@@ -461,7 +461,8 @@ type copyChartToBucketConfig struct {
 }
 
 // copyChartToGCSBucket will potentially copy a Helm chart to a GCS bucket.
-// If the object already exists within the bucket, it will not be overwritten.
+// If the object already exists within the bucket, it will only be overwritten
+// if the file is a SNAPSHOT release, otherwise an error will be returned.
 func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -479,6 +480,8 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	if len(files) == 0 {
 		return fmt.Errorf("couldn't file helm package with glob (%s)", config.sourceGlob)
 	}
+	isSnapshot := strings.HasSuffix(files[0], "-SNAPSHOT.tgz")
+
 	destination := fmt.Sprintf("%s/%s/%s", strings.TrimPrefix(config.path, "/"), config.chartName, files[0])
 	log.Printf("Writing chart to bucket path (%s) \n", destination)
 	f, err := os.Open(files[0])
@@ -500,12 +503,17 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 
 	o := bkt.Object(destination)
 
-	// For an object that does not yet exist, set the DoesNotExist precondition,
-	// to fail with an http error code '412' if the object already exists.
-	o = o.If(storage.Conditions{DoesNotExist: true})
+	// If this chart is not a snapshot build, do not allow files that already exist
+	// to be overwritten.
+	if !isSnapshot {
+		// For an object that does not yet exist, set the DoesNotExist precondition,
+		// to fail with an http error code '412' if the object already exists.
+		o = o.If(storage.Conditions{DoesNotExist: true})
+	}
 
 	// Upload an object with storage.Writer.
 	wc := o.NewWriter(ctx)
+
 	if _, err = io.Copy(wc, f); err != nil {
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
@@ -513,9 +521,8 @@ func copyChartToGCSBucket(ctx context.Context, config copyChartToBucketConfig) e
 	if err := wc.Close(); err != nil {
 		switch ee := err.(type) {
 		case *googleapi.Error:
-			if ee.Code == http.StatusPreconditionFailed {
-				// The object already exists; this error is expected
-				break
+			if ee.Code == http.StatusPreconditionFailed && !isSnapshot {
+				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed.", files[0])
 			}
 			return fmt.Errorf("while writing data to bucket: %w", err)
 		default:

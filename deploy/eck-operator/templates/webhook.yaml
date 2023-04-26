@@ -6,9 +6,9 @@ metadata:
   name: {{ include "eck-operator.webhookName" . }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
-{{- if .Values.webhook.certManagerCert }}
+{{- with .Values.webhook.certManagerCert }}
   annotations:
-    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Values.webhook.certManagerCert }}"
+    cert-manager.io/inject-ca-from: "{{ $.Release.Namespace }}/{{ . }}"
 {{- end }}
 webhooks:
 - clientConfig:
