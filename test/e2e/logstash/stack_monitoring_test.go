@@ -32,7 +32,8 @@ func TestLogstashStackMonitoring(t *testing.T) {
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	monitored := logstash.NewBuilder("test-ls-mon-a").
 		WithNodeCount(1).
-		WithMonitoring(metrics.Ref(), logs.Ref())
+		WithMetricsMonitoring(metrics.Ref()).
+		WithLogsMonitoring(logs.Ref())
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {

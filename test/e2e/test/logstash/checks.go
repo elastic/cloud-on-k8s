@@ -114,8 +114,8 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				return fmt.Errorf("expected status %+v but got %+v", expected, logstash.Status)
 			}
 
+			expectedMonitoringInStatus := uniqueAssociationCount(logstash.Spec.Monitoring.Metrics.ElasticsearchRefs, logstash.Spec.Monitoring.Logs.ElasticsearchRefs)
 			// monitoring status
-			expectedMonitoringInStatus := len(logstash.Spec.Monitoring.Metrics.ElasticsearchRefs) + len(logstash.Spec.Monitoring.Metrics.ElasticsearchRefs)
 			actualMonitoringInStatus := len(logstash.Status.MonitoringAssociationStatus)
 			if expectedMonitoringInStatus != actualMonitoringInStatus {
 				return fmt.Errorf("expected %d monitoring associations in status but got %d", expectedMonitoringInStatus, actualMonitoringInStatus)
@@ -141,6 +141,20 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+func uniqueAssociationCount(refs, otherRefs []v1.ObjectSelector) int {
+	uniqueAssociations := make(map[v1.ObjectSelector]bool)
+
+	for _, val := range refs {
+		uniqueAssociations[val] = true
+	}
+
+	for _, val := range otherRefs {
+		uniqueAssociations[val] = true
+	}
+
+	return len(uniqueAssociations)
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
