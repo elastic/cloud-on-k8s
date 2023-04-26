@@ -1845,7 +1845,7 @@ Package v1alpha1 contains API Schema definitions for the logstash v1alpha1 API g
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-elasticsearchcluster"]
 === ElasticsearchCluster 
 
-ElasticsearchCluster definition of type to define an Elasticsearch Cluster to be referred to in Logstash pipeline
+ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 
 .Appears In:
 ****

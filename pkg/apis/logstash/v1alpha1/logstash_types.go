@@ -101,7 +101,7 @@ type ElasticsearchCluster struct {
 	commonv1.ObjectSelector `json:",omitempty,inline"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
-	ClusterName             string `json:"clusterName,omitempty"`
+	ClusterName string `json:"clusterName,omitempty"`
 }
 
 // LogstashStatus defines the observed state of Logstash
