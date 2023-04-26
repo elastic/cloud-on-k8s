@@ -17,9 +17,6 @@ const (
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs" //nolint:gosec
 
-	TransportCertificatesConfigMapVolumeName      = "user-provided-transport-trust"
-	TransportCertificatesConfigMapVolumeMountPath = "/usr/share/elasticsearch/config/transport-trust" //nolint:gosec
-
 	RemoteCertificateAuthoritiesSecretVolumeName      = "elastic-internal-remote-certificate-authorities"
 	RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/" //nolint:gosec
 

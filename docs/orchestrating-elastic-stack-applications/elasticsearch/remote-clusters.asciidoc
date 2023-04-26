@@ -95,23 +95,13 @@ kind: Elasticsearch
 metadata:
   name: cluster-two
 spec:
+  transport:
+    tls:
+      certificateAuthorities:
+        configMapName: remote-certs
   nodeSets:
-  - config:
-      xpack.security.transport.ssl.certificate_authorities:
-      - /usr/share/elasticsearch/config/other/remote.ca.crt
-    count: 3
+  - count: 3
     name: default
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          volumeMounts:
-          - mountPath: /usr/share/elasticsearch/config/other
-            name: remote-certs
-        volumes:
-        - name: remote-certs
-          secret:
-            secretName: remote-certs
   version: {version}
 ----
 

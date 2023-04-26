@@ -68,3 +68,93 @@ spec:
   - name: default
     count: 3
 ----
+
+== Issue node transport certificates with third-party tools
+
+When following the instructions in <<{p}-transport-ca>> the issuance of certificates is orchestrated by the ECK operator and the operator needs access to the CAs private key.
+If this is undesirable it is also possible to configure node transport certificates without involving the ECK operator. The following two pre-requisites apply:
+
+1. the tooling used must be able to issue individual certificates for each Elasticsearch node and dynamically add or remove certificates as the cluster scales up and down.
+2. the ECK operator must be configured to trust the CA in use.
+
+The following example configuration using link:https://cert-manager.io/docs/projects/csi-driver/[cert-manager csi-driver] and link:https://cert-manager.io/docs/projects/trust-manager/[trust-manager] meets these two requirements:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: es
+spec:
+  version: {version}
+  transport:
+    tls:
+      certificateAuthorities:
+        configMapName: trust
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/cert-manager-certs/tls.key
+      xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/cert-manager-certs/tls.crt
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          volumeMounts:
+          - name: transport-certs
+            mountPath: /usr/share/elasticsearch/config/cert-manager-certs
+        volumes:
+        - name: transport-certs
+          csi:
+            driver: csi.cert-manager.io
+            readOnly: true
+            volumeAttributes:
+              csi.cert-manager.io/issuer-name: ca-cluster-issuer
+              csi.cert-manager.io/issuer-kind: ClusterIssuer
+              csi.cert-manager.io/dns-names: "${POD_NAME}.${POD_NAMESPACE}.svc.cluster.local"
+----
+
+The example assumes that a `ClusterIssuer` by the name of `ca-cluster-issuer` exists and that a trust bundle containing the PEM encoded CA certificate is available in a file called `ca.crt` in a ConfigMap called `trust` in the same namespace as the Elasticsearch resource. The following section is only provided to illustrate how these certificates can be configured in principle:
+
+[source,yaml]
+----
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: trust
+spec:
+  sources:
+  - secret:
+      name: "root-ca-secret"
+      key: "tls.crt"
+  target:
+    configMap:
+      key: "ca.crt"
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: selfsigned-ca
+  secretName: root-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-cluster-issuer
+spec:
+  ca:
+    secretName: root-ca-secret
+...
+----
