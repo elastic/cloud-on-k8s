@@ -92,17 +92,16 @@ func checkSinglePipelineSource(a *Logstash) field.ErrorList {
 }
 
 func checkESRefsNamed(l *Logstash) field.ErrorList {
-	var notNamed []string
-	for _, o := range l.Spec.ElasticsearchRefs {
-		if o.ClusterName == "" {
-			notNamed = append(notNamed, o.NamespacedName().String())
+	var errorList field.ErrorList
+	for i, esRef := range l.Spec.ElasticsearchRefs {
+		if esRef.ClusterName == "" {
+			errorList = append(
+				errorList,
+				field.Required(
+					field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("clusterName"),
+					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.NamespacedName())),
+			)
 		}
 	}
-	if len(notNamed) > 0 {
-		msg := fmt.Sprintf("clusterName is a mandatory field - missing on %v", notNamed)
-		return field.ErrorList{
-			field.Forbidden(field.NewPath("spec").Child("elasticsearchRefs"), msg),
-		}
-	}
-	return nil
+	return errorList
 }
