@@ -24,6 +24,10 @@ const (
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
 
+var (
+	MandatoryPolicyIDVersion = version.MustParse("9.0.0-SNAPSHOT")
+)
+
 // AgentSpec defines the desired state of the Agent
 type AgentSpec struct {
 	// Version of the Agent.
