@@ -7,61 +7,61 @@ metadata:
     {{- include "elasticsearch.labels" . | nindent 4 }}
   annotations:
     eck.k8s.elastic.co/license: enterprise
-    {{- if .Values.annotations }}
-    {{- toYaml .Values.annotations | nindent 4 }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{- if .Values.auth }}
+  {{- with .Values.auth }}
   auth:
-    {{- toYaml .Values.auth | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if .Values.updateStrategy }}
+  {{- with .Values.updateStrategy }}
   updateStrategy:
-    {{- toYaml .Values.updateStrategy | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if .Values.secureSettings }}
+  {{- with .Values.secureSettings }}
   secureSettings:
-    {{- toYaml .Values.secureSettings | nindent 2 }}
+    {{- toYaml . | nindent 2 }}
   {{- end }}
-  {{- if .Values.transport }}
+  {{- with .Values.transport }}
   transport:
-    {{- toYaml .Values.transport | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if .Values.http }}
+  {{- with .Values.http }}
   http:
-    {{- toYaml .Values.http | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   version: {{ required "An Elasticsearch version is required" .Values.version }}
-  {{- if .Values.monitoring }}
+  {{- with .Values.monitoring }}
   monitoring:
-    {{- toYaml .Values.monitoring | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if .Values.remoteClusters }}
+  {{- with .Values.remoteClusters }}
   remoteClusters:
-    {{- toYaml .Values.remoteClusters | nindent 2 }}
+    {{- toYaml . | nindent 2 }}
   {{- end }}
-  {{- if .Values.volumeClaimDeletePolicy }}
+  {{- with .Values.volumeClaimDeletePolicy }}
   volumeClaimDeletePolicy:
-    {{- if and (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownOnly")) (not (eq .Values.volumeClaimDeletePolicy "DeleteOnScaledownAndClusterDeletion")) }}
+    {{- if and (not (eq . "DeleteOnScaledownOnly")) (not (eq . "DeleteOnScaledownAndClusterDeletion")) }}
     {{ fail "volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'" }}
     {{- end }}
-    {{- toYaml .Values.volumeClaimDeletePolicy | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- if eq (len .Values.nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}
   nodeSets:
 {{ toYaml .Values.nodeSets | nindent 4 }}
-  {{- if .Values.image }}
-  image: {{ .Values.image }}
+  {{- with .Values.image }}
+  image: {{ . }}
   {{- end }}
-  {{- if .Values.podDisruptionBudget }}
+  {{- with .Values.podDisruptionBudget }}
   podDisruptionBudget:
-    {{- toYaml .Values.podDisruptionBudget | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if .Values.serviceAccountName }}
-  serviceAccountName: {{ .Values.serviceAccountName }}
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
   {{- end }}
-  {{- if .Values.revisionHistoryLimit }}
-  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
   {{- end }}

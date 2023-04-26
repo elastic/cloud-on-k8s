@@ -31,8 +31,8 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
       {{- end }}
       {{- with .Values.podSecurityContext }}
       securityContext:
