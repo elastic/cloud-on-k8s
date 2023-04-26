@@ -96,7 +96,7 @@ type LogstashService struct {
 	TLS commonv1.TLSOptions `json:"tls,omitempty"`
 }
 
-// ElasticsearchCluster definition of type to define an Elasticsearch Cluster to be referred to in Logstash pipeline
+// ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 type ElasticsearchCluster struct {
 	commonv1.ObjectSelector `json:",omitempty,inline"`
 	ClusterName             string `json:"clusterName,omitempty"`
