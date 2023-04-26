@@ -5,7 +5,7 @@ kind: ClusterRole
 metadata:
   name: {{ .name }}
   labels:
-    {{- include "fleet-server.labels" . | nindent 4 }}
+    {{- include "fleet-server.labels" $ | nindent 4 }}
     {{- with .labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
