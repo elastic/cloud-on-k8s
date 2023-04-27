@@ -77,6 +77,11 @@ func TestMetricBeat(t *testing.T) {
 				MountPath: "/etc/metricbeat-config",
 			},
 			{
+				Name:      "metricbeat-data",
+				ReadOnly:  false,
+				MountPath: "/usr/share/metricbeat/data",
+			},
+			{
 				Name:      "shared-data",
 				ReadOnly:  false,
 				MountPath: "/var/shared",
@@ -128,6 +133,10 @@ output:
 				{
 					Name:         "beat-metricbeat-config",
 					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: pointer.Bool(false)}},
+				},
+				{
+					Name:         "metricbeat-data",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				{
 					Name:         "shared-data",
