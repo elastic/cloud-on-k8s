@@ -118,13 +118,6 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 			return fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
 		}
 
-		if err := rewriteDependencyChartURLs(conf.ChartsRepoURL, tempChartDirPath); err != nil {
-			return err
-		}
-		if err := copyChartDependencyPackage(chart, tempChartDirPath); err != nil {
-			return err
-		}
-
 		// package the chart into a chart archive
 		chartPackage := action.NewPackage()
 		chartPackage.Destination = filepath.Join(tempDir, chart.Name)
@@ -158,59 +151,6 @@ func copy(source, destination string) error {
 		}
 	})
 	return err
-}
-
-// rewriteDependencyChartURLs rewrites the URL of Helm chart's dependencies with the given repository URL.
-// This is useful when charts are published to the dev Helm repo.
-func rewriteDependencyChartURLs(repoURL string, chartPath string) error {
-	chartYamlFilePath := filepath.Join(chartPath, "Chart.yaml")
-	data, err := ioutil.ReadFile(chartYamlFilePath)
-	if err != nil {
-		return fmt.Errorf("while reading file (%s): %w", chartYamlFilePath, err)
-	}
-
-	// validate URL
-	u, err := url.Parse(repoURL)
-	if err != nil {
-		return fmt.Errorf("while parsing url (%s): %w", repoURL, err)
-	}
-	// strip potential trailing path
-	rootURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-
-	udpatedChartYaml := strings.ReplaceAll(
-		string(data),
-		fmt.Sprintf(`repository: "%s"`, defaultElasticHelmRepo),
-		fmt.Sprintf(`repository: "%s"`, rootURL),
-	)
-
-	err = ioutil.WriteFile(chartYamlFilePath, []byte(udpatedChartYaml), 0)
-	if err != nil {
-		return fmt.Errorf("while writing (%s): %w", chartYamlFilePath, err)
-	}
-	return nil
-}
-
-// copyChartDependencies copies the package of each chart dependency of the given chart into its charts/ directory.
-// This is the equivalent of 'helm dependency update chart'.
-func copyChartDependencyPackage(chart chart, chartPath string) error {
-	log.Printf("Copying dependencies for chart (%s)\n", chart.Name)
-	for _, dep := range chart.Dependencies {
-		if dep.Repository != "" {
-			packageName := fmt.Sprintf("%s-%s.tgz", dep.Name, dep.Version)
-			srcFile := filepath.Join(chartPath, "..", dep.Name, packageName)
-			dstFile := filepath.Join(chartPath, "charts", packageName)
-			fmt.Printf("cp %s %s\n", srcFile, dstFile)
-			bytes, err := ioutil.ReadFile(srcFile)
-			if err != nil {
-				return err
-			}
-			err = ioutil.WriteFile(dstFile, bytes, 0644)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // copyChartToGCSBucket copies a given chart archive to the GCS bucket.
