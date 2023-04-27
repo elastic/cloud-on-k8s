@@ -404,6 +404,8 @@ go.elastic.co/apm/module/apmzap/v2 v2.3.0 h1:jwxdgAPeH4wRbWVSI3CYymlDNw6j983Up7W
 go.elastic.co/apm/module/apmzap/v2 v2.3.0/go.mod h1:x+2LUqavbVCYGcV7cxBnYsKKbOnbkIQwNpFof/qzS2M=
 go.elastic.co/apm/v2 v2.3.0 h1:jsZQsGWyMyga6xRMcYhKtPvrr5en8wqbmJNmxltST/E=
 go.elastic.co/apm/v2 v2.3.0/go.mod h1:HdwVuAeoJMmoqAZZBNN2YVzj3UVLebtqoRCCydyCP+Q=
+go.elastic.co/apm/v2 v2.4.1 h1:tMxAtHh5TXTYdFG0pTmmUOn/PTI3k/1T1ptb+3O+hYI=
+go.elastic.co/apm/v2 v2.4.1/go.mod h1:HdwVuAeoJMmoqAZZBNN2YVzj3UVLebtqoRCCydyCP+Q=
 go.elastic.co/fastjson v1.1.0 h1:3MrGBWWVIxe/xvsbpghtkFoPciPhOCmjsR/HfwEeQR4=
 go.elastic.co/fastjson v1.1.0/go.mod h1:boNGISWMjQsUPy/t6yqt2/1Wx4YNPSe+mZjlyw9vKKI=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
