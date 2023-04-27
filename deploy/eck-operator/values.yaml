@@ -127,7 +127,7 @@ webhook:
   # Setting this restricts the webhook to act only on objects that match the selector.
   objectSelector: {}
   # Set the port that the validating webhook binds too.
-  webhookPort: 9443
+  port: 9443
 
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
