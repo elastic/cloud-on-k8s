@@ -13,6 +13,8 @@ import (
 
 var (
 	// MinStackVersion is the minimum Stack version to use RunAsNonRoot with the Elasticsearch image.
+	// Before 8.8.0 Elasticsearch image runs has non-numeric user.
+	// Refer to https://github.com/elastic/elasticsearch/pull/95390 for more information.
 	MinStackVersion = version.MustParse("8.8.0-SNAPSHOT")
 )
 
