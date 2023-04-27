@@ -87,7 +87,7 @@ spec:
               protocol: TCP
             {{- end }}
             {{- if .Values.webhook.enabled }}
-            - containerPort: {{ .Values.webhook.webhookPort }}
+            - containerPort: {{ .Values.webhook.port }}
               name: https-webhook
               protocol: TCP
             {{- end }}  

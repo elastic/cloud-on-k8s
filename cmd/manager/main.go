@@ -562,7 +562,7 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = WebhookPort
+	opts.Port = viper.GetInt(operator.WebhookPortFlag)
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
