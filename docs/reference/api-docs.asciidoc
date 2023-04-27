@@ -1400,7 +1400,7 @@ TransportConfig holds the transport layer settings for Elasticsearch.
 | *`subjectAltNames`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-subjectalternativename[$$SubjectAlternativeName$$] array__ | SubjectAlternativeNames is a list of SANs to include in the generated node transport TLS certificates.
 | *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the CA certificate and private key for generating node certificates. The referenced secret should contain the following: 
  - `ca.crt`: The CA certificate in PEM format. - `ca.key`: The private key for the CA certificate in PEM format.
-| *`certificateAuthorities`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configmapref[$$ConfigMapRef$$]__ | CertificateAuthorities is a references to a config map that contains one or more x509 certificates for trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
+| *`certificateAuthorities`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configmapref[$$ConfigMapRef$$]__ | CertificateAuthorities is a reference to a config map that contains one or more x509 certificates for trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
 |===
 
 

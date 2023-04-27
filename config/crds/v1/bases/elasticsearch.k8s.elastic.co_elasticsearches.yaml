@@ -9601,7 +9601,7 @@ spec:
                             type: string
                         type: object
                       certificateAuthorities:
-                        description: CertificateAuthorities is a references to a config
+                        description: CertificateAuthorities is a reference to a config
                           map that contains one or more x509 certificates for trusted
                           authorities in PEM format. The certificates need to be in
                           a file called `ca.crt`.

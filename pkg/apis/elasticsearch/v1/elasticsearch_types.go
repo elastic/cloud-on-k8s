@@ -172,7 +172,7 @@ type TransportTLSOptions struct {
 	// - `ca.crt`: The CA certificate in PEM format.
 	// - `ca.key`: The private key for the CA certificate in PEM format.
 	Certificate commonv1.SecretRef `json:"certificate,omitempty"`
-	// CertificateAuthorities is a references to a config map that contains one or more x509 certificates for
+	// CertificateAuthorities is a reference to a config map that contains one or more x509 certificates for
 	// trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
 	CertificateAuthorities commonv1.ConfigMapRef `json:"certificateAuthorities,omitempty"`
 }
