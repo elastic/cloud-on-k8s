@@ -80,6 +80,15 @@ func NewCertificatesSecret(secret v1.Secret) (*CertificatesSecret, error) {
 	return &result, nil
 }
 
+// HasCA returns true if this secret has a CA certificate.
+func (s *CertificatesSecret) HasCA() bool {
+	if s == nil {
+		return false
+	}
+	bytes, exists := s.Data[CAFileName]
+	return exists && len(bytes) > 0
+}
+
 // CAPem returns the certificate of the certificate authority.
 func (s *CertificatesSecret) CAPem() []byte {
 	return s.Data[CAFileName]

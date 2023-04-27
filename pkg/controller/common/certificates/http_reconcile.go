@@ -103,27 +103,9 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 
 	// by default let's assume that the CA is provided, either by the ECK internal certificate authority or by the user
 	caCertProvided := true
-	//nolint:nestif
-	if customCertificates.HasLeafCertificate() {
-		expectedSecretData := make(map[string][]byte)
-		expectedSecretData[CertFileName] = customCertificates.CertPem()
-		expectedSecretData[KeyFileName] = customCertificates.KeyPem()
-		if caPem := customCertificates.CAPem(); len(caPem) > 0 {
-			expectedSecretData[CAFileName] = caPem
-		} else {
-			// Ensure that the CA certificate is never empty, otherwise Elasticsearch is not able to reload the certificates.
-			// Default to our self-signed (useless) CA if none is provided by the user.
-			// See https://github.com/elastic/cloud-on-k8s/issues/2243
-			expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
-			// The CA has been set in the internal HTTP secret but it's only for convenience, in order to circumvent the
-			// aforementioned issue. We need to remove it later from the result.
-			caCertProvided = false
-		}
 
-		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
-			needsUpdate = true
-			secret.Data = expectedSecretData
-		}
+	if customCertificates.HasLeafCertificate() {
+		caCertProvided, needsUpdate = r.populateFromCustomCertificateContents(&secret, customCertificates, ca)
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
 			ctx, &secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
@@ -156,6 +138,32 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 
 	internalCerts := CertificatesSecret{Secret: secret}
 	return &internalCerts, nil
+}
+
+func (r Reconciler) populateFromCustomCertificateContents(secret *corev1.Secret, customCertificates *CertificatesSecret, ca *CA) (bool, bool) {
+	caCertProvided := true
+	expectedSecretData := make(map[string][]byte)
+	expectedSecretData[CertFileName] = customCertificates.CertPem()
+	expectedSecretData[KeyFileName] = customCertificates.KeyPem()
+	switch {
+	case customCertificates.HasCA():
+		expectedSecretData[CAFileName] = customCertificates.CAPem()
+	case r.DisableInternalCADefaulting:
+		// NOOP
+	default:
+		// Ensure that the CA certificate is never empty, otherwise Elasticsearch is not able to reload the certificates.
+		// Default to our self-signed (useless) CA if none is provided by the user.
+		// See https://github.com/elastic/cloud-on-k8s/issues/2243
+		expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
+		// The CA has been set in the internal HTTP secret but it's only for convenience, in order to circumvent the
+		// aforementioned issue. We need to remove it later from the result.
+		caCertProvided = false
+	}
+	if !reflect.DeepEqual(secret.Data, expectedSecretData) {
+		secret.Data = expectedSecretData
+		return caCertProvided, true
+	}
+	return caCertProvided, false
 }
 
 // ensureInternalSelfSignedCertificateSecretContents ensures that contents of a secret containing self-signed
