@@ -56,7 +56,7 @@ func releaseCmd() *cobra.Command {
 	releaseCommand := &cobra.Command{
 		Use:     "release",
 		Short:   "Release ECK Helm Charts",
-		Example: fmt.Sprintf("  %s", "release --charts-dir=./deploy --dry-run=false"),
+		Example: fmt.Sprintf("  %s", "release --env=prod --charts-dir=./deploy --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString(chartsDirFlag), bucket, chartsRepoURL)
@@ -84,7 +84,7 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		chartsDirFlag,
 		"./deploy",
-		"Directory which contains Helm charts (env: HELM_CHARTS_DIR)",
+		"Directory which contains Helm charts to release (env: HELM_CHARTS_DIR)",
 	)
 	_ = viper.BindPFlag(chartsDirFlag, flags.Lookup(chartsDirFlag))
 
@@ -98,7 +98,7 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		envFlag,
 		devEnvironment,
-		"Environment in which to release Helm charts (env: HELM_ENV)",
+		"Environment in which to release Helm charts ('dev' or 'prod') (env: HELM_ENV)",
 	)
 	_ = viper.BindPFlag(envFlag, flags.Lookup(envFlag))
 

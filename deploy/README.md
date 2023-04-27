@@ -6,20 +6,27 @@ This directory contains the Helm chart for deploying the ECK operator, and chart
 
 ## ECK Operator Helm Chart Usage
 
+Add the Elastic Helm repository.
+
+```sh
+helm repo add elastic https://helm.elastic.co
+helm repo update
+```
+
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
 ```sh
-helm install elastic-operator eck-operator -n elastic-system --create-namespace 
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace 
 ```
 
 Install the operator restricted to a single namespace. 
 
 ```sh
 # This step must be done by a cluster administrator to install the CRDs -- which are global resources.
-helm install elastic-operator-crds ./eck-operator/charts/eck-operator-crds
+helm install elastic-operator-crds elastic/eck-operator-crds
 
 # This step can be done by any user with full access to the my-namespace namespace.
-helm install elastic-operator eck-operator -n my-namespace --create-namespace \
+helm install elastic-operator elastic/eck-operator -n my-namespace --create-namespace \
   --set=installCRDs=false \
   --set=managedNamespaces='{my-namespace}' \
   --set=createClusterScopedResources=false \
@@ -29,7 +36,7 @@ helm install elastic-operator eck-operator -n my-namespace --create-namespace \
 View the available settings for customizing the installation.
 
 ```sh
-helm show values eck-operator
+helm show values elastic/eck-operator
 ```
 
 ## ECK Stack Helm Chart Usage
@@ -40,7 +47,7 @@ Install a quickstart Elasticsearch and Kibana resource in a cluster controlled b
 helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 ```
 
-To see all resources installed by the helm chart
+To see all resources installed by the helm chart:
 
 ```sh
 kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack

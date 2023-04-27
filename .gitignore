@@ -71,3 +71,7 @@ hack/pipeline-validator/validator
 
 # ignore binary for buildkite pipeline-gen
 .buildkite/e2e/pipeline-gen/pipeline-gen
+
+# ignore Helm lock file
+Chart.lock
+
