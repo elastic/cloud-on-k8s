@@ -321,7 +321,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Int(
 		operator.WebhookPortFlag,
 		WebhookPort,
-		"Port to bind the webhook to. Used primarily in-conjunction with hostNetworking",
+		"Port is the port that the webhook server serves at.",
 	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
