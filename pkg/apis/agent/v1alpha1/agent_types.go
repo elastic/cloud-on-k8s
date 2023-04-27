@@ -24,6 +24,10 @@ const (
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
 
+var (
+	MandatoryPolicyIDVersion = version.MustParse("9.0.0-SNAPSHOT")
+)
+
 // AgentSpec defines the desired state of the Agent
 type AgentSpec struct {
 	// Version of the Agent.
@@ -87,8 +91,8 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	FleetServerEnabled bool `json:"fleetServerEnabled,omitempty"`
 
-	// PolicyID optionally determines into which Agent Policy this Agent will be enrolled. If left empty the default
-	// policy will be used.
+	// PolicyID determines into which Agent Policy this Agent will be enrolled.
+	// This field will become mandatory in a future release, default policies are deprecated since 8.1.0.
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
 

@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	"errors"
+	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,6 +20,8 @@ import (
 const (
 	// webhookPath is the HTTP path for the Elastic Agent validating webhook.
 	webhookPath = "/validate-agent-k8s-elastic-co-v1alpha1-agent"
+
+	MissingPolicyIDMessage = "spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"
 )
 
 var (
@@ -29,6 +32,16 @@ var (
 // +kubebuilder:webhook:path=/validate-agent-k8s-elastic-co-v1alpha1-agent,mutating=false,failurePolicy=ignore,groups=agent.k8s.elastic.co,resources=agents,verbs=create;update,versions=v1alpha1,name=elastic-agent-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1;v1beta1,matchPolicy=Exact
 
 var _ webhook.Validator = &Agent{}
+
+func (a *Agent) GetWarnings() []string {
+	if a == nil {
+		return nil
+	}
+	if len(a.Spec.PolicyID) == 0 {
+		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, a.Namespace, a.Name, MissingPolicyIDMessage)}
+	}
+	return nil
+}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.

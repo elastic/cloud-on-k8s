@@ -14,12 +14,15 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/test"
 )
 
 var (
@@ -44,10 +47,11 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 		api    *mockFleetAPI
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    EnrollmentAPIKey
-		wantErr bool
+		name       string
+		args       args
+		want       EnrollmentAPIKey
+		wantErr    bool
+		wantEvents []string
 	}{
 		{
 			name: "Agent annotated and fixed policy",
@@ -64,8 +68,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    asObject(enrollmentKeySample),
-			wantErr: false,
+			want:       asObject(enrollmentKeySample),
+			wantEvents: nil, // PolicyID is provided.
+			wantErr:    false,
 		},
 		{
 			name: "Agent annotated but default policy",
@@ -89,8 +94,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    asObject(enrollmentKeySample),
-			wantErr: false,
+			want:       asObject(enrollmentKeySample),
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    false,
 		},
 		{
 			name: "Agent annotated but token does not exist",
@@ -111,8 +117,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys"}:                  {code: 200, body: enrollmentKeyListSample},
 				}),
 			},
-			want:    asObject(enrollmentKeySample),
-			wantErr: false,
+			want:       asObject(enrollmentKeySample),
+			wantEvents: nil, // PolicyID is provided.
+			wantErr:    false,
 		},
 		{
 			name: "Agent annotated but token is invalid",
@@ -133,8 +140,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}:                 {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    asObject(enrollmentKeySample),
-			wantErr: false,
+			want:       asObject(enrollmentKeySample),
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    false,
 		},
 		{
 			name: "Agent not annotated yet",
@@ -152,8 +160,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: enrollmentKeySample},
 				}),
 			},
-			want:    asObject(enrollmentKeySample),
-			wantErr: false,
+			want:       asObject(enrollmentKeySample),
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    false,
 		},
 		{
 			name: "Error in Fleet API",
@@ -170,8 +179,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys"}: {code: 500}, // could also be a timeout etc
 				}),
 			},
-			want:    EnrollmentAPIKey{},
-			wantErr: true,
+			want:       EnrollmentAPIKey{},
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    true,
 		},
 		{
 			name: "Fleet Server policy and key",
@@ -193,8 +203,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: fleetServerKeySample},
 				}),
 			},
-			want:    asObject(fleetServerKeySample),
-			wantErr: false,
+			want:       asObject(fleetServerKeySample),
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    false,
 		},
 		{
 			name: "Error in Kubernetes API",
@@ -220,8 +231,9 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 					{"POST", "/api/fleet/enrollment_api_keys"}: {code: 200, body: fleetServerKeySample},
 				}),
 			},
-			want:    EnrollmentAPIKey{},
-			wantErr: true,
+			want:       EnrollmentAPIKey{},
+			wantEvents: []string{"Warning Validation spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"},
+			wantErr:    true,
 		},
 	}
 	for _, tt := range tests {
@@ -230,7 +242,14 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 			if tt.args.client != nil {
 				client = *tt.args.client
 			}
-			got, err := reconcileEnrollmentToken(context.Background(), tt.args.agent, client, tt.args.api.fleetAPI)
+			fakeRecorder := record.NewFakeRecorder(10)
+			params := Params{
+				Context:       context.Background(),
+				Client:        client,
+				EventRecorder: fakeRecorder,
+				Agent:         tt.args.agent,
+			}
+			got, err := reconcileEnrollmentToken(params, tt.args.api.fleetAPI)
 			require.Empty(t, tt.args.api.missingRequests())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEnrollmentToken() error = %v, wantErr %v", err, tt.wantErr)
@@ -239,6 +258,8 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("reconcileEnrollmentToken() got = %v, want %v", got, tt.want)
 			}
+			gotEvents := test.ReadAtMostEvents(t, len(tt.wantEvents), fakeRecorder)
+			assert.Equal(t, tt.wantEvents, gotEvents)
 		})
 	}
 }

@@ -4,6 +4,8 @@
 version: 8.8.0-SNAPSHOT
 
 spec:
+  # This must match the name of an Agent policy.
+  policyID: eck-agent
   # This must match the name of the fleet server installed from eck-fleet-server chart.
   fleetServerRef:
     name: eck-fleet-server

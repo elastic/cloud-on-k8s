@@ -27,7 +27,6 @@ spec:
       - logs
       - metrics
       unenroll_timeout: 900
-      is_default_fleet_server: true
       package_policies:
       - name: fleet_server-1
         id: fleet_server-1
@@ -39,8 +38,7 @@ spec:
       monitoring_enabled:
       - logs
       - metrics
-      unenroll_timeout: 900  
-      is_default: true
+      unenroll_timeout: 900
       package_policies:
       - name: system-1
         id: system-1
@@ -89,6 +87,7 @@ spec:
   - name: elasticsearch
   mode: fleet
   fleetServerEnabled: true
+  policyID: eck-fleet-server
   deployment:
     replicas: 1
     podTemplate:
@@ -109,6 +108,7 @@ spec:
   fleetServerRef: 
     name: fleet-server
   mode: fleet
+  policyID: eck-agent
   daemonSet:
     podTemplate:
       spec:

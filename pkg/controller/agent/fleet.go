@@ -17,12 +17,15 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/module/apmhttp/v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -252,7 +255,7 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	}
 
 	token, err := reconcileEnrollmentToken(
-		params.Context, params.Agent, params.Client,
+		params,
 		newFleetAPI(
 			params.OperatorParams.Dialer,
 			kbConnectionSettings,
@@ -274,8 +277,10 @@ func isKibanaReachable(ctx context.Context, client k8s.Client, kibanaNSN types.N
 	return true, nil
 }
 
-func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, api fleetAPI) (EnrollmentAPIKey, error) {
+func reconcileEnrollmentToken(params Params, api fleetAPI) (EnrollmentAPIKey, error) {
 	defer api.client.CloseIdleConnections()
+	agent := params.Agent
+	ctx := params.Context
 	// do we have an existing token that we have rolled out previously?
 	tokenName, exists := agent.Annotations[FleetTokenAnnotation]
 	if !exists {
@@ -285,7 +290,7 @@ func reconcileEnrollmentToken(ctx context.Context, agent agentv1alpha1.Agent, cl
 		}
 	}
 	// what policy should we enroll this agent in?
-	policyID, err := reconcilePolicyID(ctx, agent, api)
+	policyID, err := findPolicyID(ctx, params.EventRecorder, agent, api)
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
@@ -323,17 +328,19 @@ FindOrCreate:
 		agent.Annotations = map[string]string{}
 	}
 	agent.Annotations[FleetTokenAnnotation] = key.ID
-	err = client.Update(ctx, &agent)
+	err = params.Client.Update(ctx, &agent)
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
 	return key, nil
 }
 
-func reconcilePolicyID(ctx context.Context, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
+func findPolicyID(ctx context.Context, recorder record.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
 	if agent.Spec.PolicyID != "" {
 		return agent.Spec.PolicyID, nil
 	}
+	recorder.Event(&agent, corev1.EventTypeWarning, events.EventReasonValidation, agentv1alpha1.MissingPolicyIDMessage)
+	ulog.FromContext(ctx).Info(agentv1alpha1.MissingPolicyIDMessage)
 	if agent.Spec.FleetServerEnabled {
 		return api.defaultFleetServerPolicyID(ctx)
 	}
