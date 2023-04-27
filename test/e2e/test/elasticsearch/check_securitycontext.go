@@ -33,17 +33,17 @@ func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) tes
 			ver := version.MustParse(es.Spec.Version)
 			for _, p := range pods {
 				for _, c := range p.Spec.Containers {
-					asserSecurityContext(t, ver, c.SecurityContext, c.Image)
+					assertSecurityContext(t, ver, c.SecurityContext, c.Image)
 				}
 				for _, c := range p.Spec.InitContainers {
-					asserSecurityContext(t, ver, c.SecurityContext, c.Image)
+					assertSecurityContext(t, ver, c.SecurityContext, c.Image)
 				}
 			}
 		},
 	}
 }
 
-func asserSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext, image string) {
+func assertSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext, image string) {
 	t.Helper()
 	require.NotNil(t, securityContext)
 	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.MinStackVersion) {
