@@ -25,19 +25,16 @@ import (
 )
 
 const (
-	defaultElasticHelmRepo = "https://helm.elastic.co"
-
 	timeout = 5 * time.Minute
 )
 
-// ReleaseConfig is the configuration needed to
-// release all charts in a given directory.
+// ReleaseConfig is the configuration needed to release all charts in a given directory.
 type ReleaseConfig struct {
-	// ChartsDir is the directory from which to release all Helm charts.
+	// ChartsDir is the directory from which to release Helm charts.
 	ChartsDir string
-	// Bucket is the GCS bucket to which to release all Helm charts.
+	// Bucket is the GCS bucket to which to release Helm charts.
 	Bucket string
-	// ChartsRepoURL is the Helm charts repository URL to which to release all Helm charts.
+	// ChartsRepoURL is the Helm charts repository URL to which to release Helm charts.
 	ChartsRepoURL string
 	// CredentialsFilePath is the path to the Google credentials JSON file.
 	CredentialsFilePath string
@@ -45,7 +42,7 @@ type ReleaseConfig struct {
 	DryRun bool
 }
 
-// Release runs the Helm release.
+// Release runs the Helm charts release.
 func Release(conf ReleaseConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -54,15 +51,17 @@ func Release(conf ReleaseConfig) error {
 	if err != nil {
 		return fmt.Errorf("while creating temp dir: %w", err)
 	}
-	//defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir)
 
 	charts, err := readCharts(conf.ChartsDir)
 	if err != nil {
 		return fmt.Errorf("while reading charts: %w", err)
 	}
+
 	if err := uploadCharts(ctx, conf, tempDir, charts); err != nil {
 		return fmt.Errorf("while uploading charts: %w", err)
 	}
+
 	if err := updateIndex(ctx, conf, tempDir); err != nil {
 		return fmt.Errorf("while updating index: %w", err)
 	}
@@ -104,27 +103,16 @@ func readCharts(dir string) ([]chart, error) {
 	return charts, nil
 }
 
-// uploadCharts
-//  2. For each Helm chart, copy the chart to a temporary directory
-//  3. For each Helm chart's dependency, if the dependency's repository
-//     is set to 'https://helm.elastic.co', and the flag 'charts-repo-url'
-//     is set to another repository (such as a dev helm repo), the dependency's
-//     repository will be re-written to the given 'charts-repo-url' flag.
-//  5. Run 'Helm package chart' for the Helm Chart to generate a tarball.
-//  6. Copy the tarball to the GCS bucket.
+// uploadCharts packages a chart into a chart archive and upload it to the GCS bucket.
 func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, charts []chart) error {
-	if len(charts) == 0 {
-		return nil
-	}
-
 	for _, chart := range charts {
-		// prepare a temporary directory for the chart
+		// prepare a temp directory for the chart sources
 		tempChartDirPath := filepath.Join(tempDir, chart.Name)
 		err := os.Mkdir(tempChartDirPath, 0755)
 		if err != nil {
 			return err
 		}
-		// copy the chart into this temporary directory
+		// copy the chart sources into this temp directory
 		err = copy(chart.srcPath, tempChartDirPath)
 		if err != nil {
 			return fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
@@ -137,24 +125,22 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 			return err
 		}
 
-		// generate the chart .tgz package
+		// package the chart into a chart archive
 		chartPackage := action.NewPackage()
 		chartPackage.Destination = filepath.Join(tempDir, chart.Name)
 		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]interface{}{})
 		if err != nil {
 			return fmt.Errorf("while packaging helm chart (%s): %w", chart.Name, err)
 		}
-
-		// upload the chart to the bucket
-		if err := copyChartToGCSBucket(ctx, conf, chart.Name, chartPackagePath); err != nil {
+		// upload the chart archive to the bucket
+		if err := copyChartToGCSBucket(ctx, conf, chart, chartPackagePath); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// copy will recursively copy a given source, to a given destination.
+// copy copies a given source to a given destination.
 func copy(source, destination string) error {
 	var err error = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		var relPath string = strings.Replace(path, source, "", 1)
@@ -227,24 +213,25 @@ func copyChartDependencyPackage(chart chart, chartPath string) error {
 	return nil
 }
 
-// copyChartToGCSBucket copies a given Helm chart package to the GCS bucket.
-// If the object already exists within the bucket, it is only overwritten
-// if the chart is a SNAPSHOT release, otherwise an error is returned.
-func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chartName, chartPackagePath string) error {
+// copyChartToGCSBucket copies a given chart archive to the GCS bucket.
+// Only SNAPSHOT charts can be overwritten, otherwise an error is returned.
+func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, chartPackagePath string) error {
 	repoURL, err := url.Parse(conf.ChartsRepoURL)
 	if err != nil {
 		return fmt.Errorf("while parsing url (%s): %w", conf.ChartsRepoURL, err)
 	}
 
-	// read the file to copy
+	// read the file to copy on disk
 	chartPackageFile, err := os.Open(chartPackagePath)
 	if err != nil {
 		return fmt.Errorf("while opening chart (%s): %w", chartPackagePath, err)
 	}
 	defer chartPackageFile.Close()
 
-	destination := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chartName, filepath.Base(chartPackagePath))
-	log.Printf("Writing chart to bucket path (%s)\n", destination)
+	// trail the first / from the repo url path
+	chartArchiveDest := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chart.Name, filepath.Base(chartPackagePath))
+
+	log.Printf("Writing chart archive to bucket path (%s)\n", chartArchiveDest)
 
 	// create gcs client
 	gcsClient, err := storage.NewClient(ctx)
@@ -252,25 +239,25 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chartName, ch
 		return fmt.Errorf("while creating gcs storage client: %w", err)
 	}
 	defer gcsClient.Close()
-	gcsBucket := gcsClient.Bucket(conf.Bucket).Object(destination)
+	chartArchiveObj := gcsClient.Bucket(conf.Bucket).Object(chartArchiveDest)
 
-	// allow overwrite only SNAPSHOT charts
-	isSnapshot := strings.HasSuffix(chartPackagePath, "-SNAPSHOT.tgz")
+	// specify that the object must not exist for non-SNAPSHOT chart
+	isSnapshot := strings.HasSuffix(chart.Version, "-SNAPSHOT")
 	if !isSnapshot {
-		gcsBucket = gcsBucket.If(storage.Conditions{DoesNotExist: true})
+		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
 	if conf.DryRun {
-		log.Printf("not uploading (%s) to %s as dry-run is set", chartPackagePath, destination)
+		log.Printf("Not uploading (%s) to %s as dry-run is set", chartPackagePath, chartArchiveDest)
 		return nil
 	}
 
 	// upload the file to the bucket
-	gcsBucketWriter := gcsBucket.NewWriter(ctx)
-	if _, err = io.Copy(gcsBucketWriter, chartPackageFile); err != nil {
+	chartArchiveWriter := chartArchiveObj.NewWriter(ctx)
+	if _, err = io.Copy(chartArchiveWriter, chartPackageFile); err != nil {
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
-	if err := gcsBucketWriter.Close(); err != nil {
+	if err := chartArchiveWriter.Close(); err != nil {
 		switch errType := err.(type) {
 		case *googleapi.Error:
 			if errType.Code == http.StatusPreconditionFailed && !isSnapshot {
@@ -286,7 +273,8 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chartName, ch
 }
 
 // updateIndex updates the Helm repo index by merging the existing index in the bucket
-// with a new version created with the released charts.
+// with a new version created with the released charts. A 'GenerationMatch' precondition
+// is used when writing to avoid a race condition with another concurrent write.
 func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error {
 	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
@@ -344,7 +332,7 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 	defer newIndexFile.Close()
 
 	if conf.DryRun {
-		log.Printf("not uploading index as dry-run is set")
+		log.Printf("Not uploading index.yaml as dry-run is set")
 		return nil
 	}
 
