@@ -21,9 +21,6 @@ import (
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -133,10 +130,10 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 			return fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
 		}
 
-		if err := rewriteDependencyChartURLs(tempChartDirPath, conf.ChartsRepoURL); err != nil {
+		if err := rewriteDependencyChartURLs(conf.ChartsRepoURL, tempChartDirPath); err != nil {
 			return err
 		}
-		if err := runChartDependencyUpdate(tempChartDirPath, chart.Name); err != nil {
+		if err := copyChartDependencyPackage(chart, tempChartDirPath); err != nil {
 			return err
 		}
 
@@ -179,7 +176,7 @@ func copy(source, destination string) error {
 
 // rewriteDependencyChartURLs rewrites the URL of Helm chart's dependencies with the given repository URL.
 // This is useful when charts are published to the dev Helm repo.
-func rewriteDependencyChartURLs(chartPath string, repoURL string) error {
+func rewriteDependencyChartURLs(repoURL string, chartPath string) error {
 	chartYamlFilePath := filepath.Join(chartPath, "Chart.yaml")
 	data, err := ioutil.ReadFile(chartYamlFilePath)
 	if err != nil {
@@ -207,29 +204,25 @@ func rewriteDependencyChartURLs(chartPath string, repoURL string) error {
 	return nil
 }
 
-// runChartDependencyUpdate runs 'helm dependency update chart' for a given Helm chart.
-func runChartDependencyUpdate(chartPath, chartName string) error {
-	settings := cli.New()
-	client := action.NewDependency()
-	cfg := action.Configuration{}
-	man := &downloader.Manager{
-		Out:              os.Stdout,
-		ChartPath:        chartPath,
-		Keyring:          client.Keyring,
-		SkipUpdate:       client.SkipRefresh,
-		Getters:          getter.All(settings),
-		RegistryClient:   cfg.RegistryClient,
-		RepositoryConfig: settings.RepositoryConfig,
-		RepositoryCache:  settings.RepositoryCache,
-		Debug:            settings.Debug,
-		Verify:           downloader.VerifyNever,
-	}
-	if client.Verify {
-		man.Verify = downloader.VerifyAlways
-	}
-	log.Printf("Updating dependencies for chart (%s)\n", chartName)
-	if err := man.Update(); err != nil {
-		return fmt.Errorf("while updating dependencies for helm chart (%s): %w", chartName, err)
+// copyChartDependencies copies the package of each chart dependency of the given chart into its charts/ directory.
+// This is the equivalent of 'helm dependency update chart'.
+func copyChartDependencyPackage(chart chart, chartPath string) error {
+	log.Printf("Copying dependencies for chart (%s)\n", chart.Name)
+	for _, dep := range chart.Dependencies {
+		if dep.Repository != "" {
+			packageName := fmt.Sprintf("%s-%s.tgz", dep.Name, dep.Version)
+			srcFile := filepath.Join(chartPath, "..", dep.Name, packageName)
+			dstFile := filepath.Join(chartPath, "charts", packageName)
+			fmt.Printf("cp %s %s\n", srcFile, dstFile)
+			bytes, err := ioutil.ReadFile(srcFile)
+			if err != nil {
+				return err
+			}
+			err = ioutil.WriteFile(dstFile, bytes, 0644)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
