@@ -243,7 +243,7 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chartName, ch
 	}
 	defer chartPackageFile.Close()
 
-	destination := filepath.Join(repoURL.Path, chartName, filepath.Base(chartPackagePath))
+	destination := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chartName, filepath.Base(chartPackagePath))
 	log.Printf("Writing chart to bucket path (%s)\n", destination)
 
 	// create gcs client
@@ -301,13 +301,18 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 		return fmt.Errorf("while creating empty index.yaml.old: %w", err)
 	}
 	defer oldIndexFile.Close()
-	gcsReader, err := gcsClient.Bucket(conf.Bucket).Object("index.yaml").NewReader(ctx)
+	oldIndexObj := gcsClient.Bucket(conf.Bucket).Object("index.yaml")
+	oldIndexAttrs, err := oldIndexObj.Attrs(ctx)
 	if err != nil {
-		return fmt.Errorf("while creating new reader for index.yaml<xx: %w", err)
+		return fmt.Errorf("reading attributes of index.yaml: %w", err)
 	}
-	defer gcsReader.Close()
+	oldIndexObjReader, err := oldIndexObj.NewReader(ctx)
+	if err != nil {
+		return fmt.Errorf("while creating new reader for index.yaml: %w", err)
+	}
+	defer oldIndexObjReader.Close()
 
-	if _, err := io.Copy(oldIndexFile, gcsReader); err != nil {
+	if _, err := io.Copy(oldIndexFile, oldIndexObjReader); err != nil {
 		return fmt.Errorf("while writing index.yaml.old: %w", err)
 	}
 
@@ -344,11 +349,14 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 	}
 
 	// upload updated index file to the bucket
-	gcsWriter := gcsClient.Bucket(conf.Bucket).Object("index.yaml").NewWriter(ctx)
-	if _, err = io.Copy(gcsWriter, newIndexFile); err != nil {
+	newIndexObj := gcsClient.Bucket(conf.Bucket).Object("index.yaml")
+	// prevent race condition where the file is overwritten by another concurrent release
+	newIndexObj = newIndexObj.If(storage.Conditions{GenerationMatch: oldIndexAttrs.Generation})
+	newIndexObjWriter := newIndexObj.NewWriter(ctx)
+	if _, err = io.Copy(newIndexObjWriter, newIndexFile); err != nil {
 		return fmt.Errorf("while copying new index.yaml to bucket: %w", err)
 	}
-	defer gcsWriter.Close()
+	defer newIndexObjWriter.Close()
 
 	return nil
 }
