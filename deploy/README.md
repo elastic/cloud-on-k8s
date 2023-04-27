@@ -74,8 +74,8 @@ The Helm unit tests can be manually invoked for any of the charts with the follo
 
 ```
 cd deploy/eck-stack
-helm unittest -3 -f 'templates/tests/*.yaml' .
-``````
+helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
+```
 
 ## Licensing
 

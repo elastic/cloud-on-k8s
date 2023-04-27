@@ -42,7 +42,7 @@ check() {
     fi
 
     if [[ -d templates/tests ]]; then
-        helm unittest -3 -f 'templates/tests/*.yaml' .
+        helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
     fi
 
     # restore changes to Chart.yaml
