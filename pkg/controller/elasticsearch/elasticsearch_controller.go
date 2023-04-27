@@ -110,6 +110,11 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
+	// Watch config maps for dynamic watches (currently used for additional CAs trust)
+	if err := c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, r.dynamicWatches.ConfigMaps); err != nil {
+		return err
+	}
+
 	// Watch owned and soft-owned secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
@@ -362,5 +367,6 @@ func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.Namespac
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

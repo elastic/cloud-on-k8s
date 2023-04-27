@@ -13,12 +13,33 @@ import (
 
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func MaybeRetrieveAdditionalCAs(ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch) ([]byte, error) {
+// AdditionalCAWatchKey for config maps holding additional CAs for the transport layer.
+func AdditionalCAWatchKey(name types.NamespacedName) string {
+	return fmt.Sprintf("%s-transport-ca-trust", name)
+}
+
+func caWatchHandlerFor(name string, watched string, owner types.NamespacedName) watches.NamedWatch {
+	return watches.NamedWatch{
+		Name: name,
+		Watched: []types.NamespacedName{{
+			Namespace: owner.Namespace,
+			Name:      watched,
+		}},
+		Watcher: owner,
+	}
+}
+
+// ReconcileAdditionalCAs retrieves additional trust from an optional config map if configured and reconciles a watch for the config map.
+func ReconcileAdditionalCAs(ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch, watches watches.DynamicWatches) ([]byte, error) {
+	esName := k8s.ExtractNamespacedName(&elasticsearch)
+	watchKey := AdditionalCAWatchKey(esName)
 	additionalTrust := elasticsearch.Spec.Transport.TLS.CertificateAuthorities
 	if !additionalTrust.IsDefined() {
+		watches.ConfigMaps.RemoveHandlerForKey(watchKey)
 		return nil, nil
 	}
 
@@ -31,6 +52,5 @@ func MaybeRetrieveAdditionalCAs(ctx context.Context, client k8s.Client, elastics
 	if !exists {
 		return nil, fmt.Errorf("config map %s specified in spec.transport.tls.certificateAuthorities must contain ca.crt file", nsn)
 	}
-
-	return []byte(bytes), nil
+	return []byte(bytes), watches.ConfigMaps.AddHandler(caWatchHandlerFor(watchKey, additionalTrust.ConfigMapName, esName))
 }

@@ -102,7 +102,7 @@ func ReconcileTransport(
 
 	// Maybe retrieve user defined additional trusted CAs from a config map.
 	// They will be concatenated with the ECK issued CA and distributed through the same transport secrets.
-	additionalCAs, err := transport.MaybeRetrieveAdditionalCAs(ctx, driver.K8sClient(), es)
+	additionalCAs, err := transport.ReconcileAdditionalCAs(ctx, driver.K8sClient(), es, driver.DynamicWatches())
 	if err != nil {
 		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 		return results.WithError(err)

@@ -7,6 +7,7 @@ package watches
 // NewDynamicWatches creates an initialized DynamicWatches container.
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
+		ConfigMaps:          NewDynamicEnqueueRequest(),
 		Secrets:             NewDynamicEnqueueRequest(),
 		Services:            NewDynamicEnqueueRequest(),
 		Pods:                NewDynamicEnqueueRequest(),
@@ -17,6 +18,7 @@ func NewDynamicWatches() DynamicWatches {
 // DynamicWatches contains stateful dynamic watches. Intended as facility to pass around stateful dynamic watches and
 // give each of them an identity.
 type DynamicWatches struct {
+	ConfigMaps          *DynamicEnqueueRequest
 	Secrets             *DynamicEnqueueRequest
 	Services            *DynamicEnqueueRequest
 	Pods                *DynamicEnqueueRequest

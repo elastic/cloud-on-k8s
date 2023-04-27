@@ -15,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -84,11 +85,11 @@ func TestMaybeRetrieveAdditionalCAs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MaybeRetrieveAdditionalCAs(context.Background(), tt.args.client, tt.args.elasticsearch)
-			if !tt.wantErr(t, err, fmt.Sprintf("MaybeRetrieveAdditionalCAs(%v, %v)", tt.args.client, tt.args.elasticsearch)) {
+			got, err := ReconcileAdditionalCAs(context.Background(), tt.args.client, tt.args.elasticsearch, watches.NewDynamicWatches())
+			if !tt.wantErr(t, err, fmt.Sprintf("ReconcileAdditionalCAs(%v, %v)", tt.args.client, tt.args.elasticsearch)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "MaybeRetrieveAdditionalCAs(%v, %v)", tt.args.client, tt.args.elasticsearch)
+			assert.Equalf(t, tt.want, got, "ReconcileAdditionalCAs(%v, %v)", tt.args.client, tt.args.elasticsearch)
 		})
 	}
 }
