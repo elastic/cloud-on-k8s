@@ -156,9 +156,13 @@ func (b Builder) WithElasticsearchRefs(refs ...logstashv1alpha1.ElasticsearchClu
 	return b
 }
 
-func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef commonv1.ObjectSelector) Builder {
-	b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs = []commonv1.ObjectSelector{metricsESRef}
-	b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs = []commonv1.ObjectSelector{logsESRef}
+func (b Builder) WithMetricsMonitoring(metricsESRef ...commonv1.ObjectSelector) Builder {
+	b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs = metricsESRef
+	return b
+}
+
+func (b Builder) WithLogsMonitoring(logsESRef ...commonv1.ObjectSelector) Builder {
+	b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs = logsESRef
 	return b
 }
 

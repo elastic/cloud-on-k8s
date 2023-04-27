@@ -23,7 +23,7 @@ spec:
     api.http.port: 9601
     queue.type: memory
   pipelines:
-    - pipeline.id: one
+    - pipeline.id: main
       pipeline.workers: 2
       config.string: "input { beats { port => 5044 }} output { stdout {}}"
   services:

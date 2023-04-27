@@ -100,10 +100,20 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 					ClusterName:    ref.ClusterName,
 				})
 			}
+			metricsRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs {
+				metricsRefs = append(metricsRefs, tweakServiceRef(ref, suffix))
+			}
+			logRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs {
+				logRefs = append(logRefs, tweakServiceRef(ref, suffix))
+			}
 
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRefs(esRefs...).
+				WithMetricsMonitoring(metricsRefs...).
+				WithLogsMonitoring(logRefs...).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
