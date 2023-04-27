@@ -33,3 +33,15 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 	sc.RunAsNonRoot = ptr.Bool(true)
 	return sc
 }
+
+func DefaultBeatSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		Privileged:               ptr.Bool(false),
+		RunAsNonRoot:             ptr.Bool(true),
+		ReadOnlyRootFilesystem:   ptr.Bool(true),
+		AllowPrivilegeEscalation: ptr.Bool(false),
+	}
+}

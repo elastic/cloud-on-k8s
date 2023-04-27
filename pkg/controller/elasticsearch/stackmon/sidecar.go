@@ -10,7 +10,6 @@ import (
 	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -18,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -50,15 +50,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	metricbeat.Container.SecurityContext = &corev1.SecurityContext{
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
-		Privileged:               pointer.Bool(false),
-		RunAsNonRoot:             pointer.Bool(true),
-		ReadOnlyRootFilesystem:   pointer.Bool(true),
-		AllowPrivilegeEscalation: pointer.Bool(false),
-	}
+	metricbeat.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext()
 	return metricbeat, nil
 }
 
@@ -67,15 +59,7 @@ func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (st
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	fileBeat.Container.SecurityContext = &corev1.SecurityContext{
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
-		Privileged:               pointer.Bool(false),
-		RunAsNonRoot:             pointer.Bool(true),
-		ReadOnlyRootFilesystem:   pointer.Bool(true),
-		AllowPrivilegeEscalation: pointer.Bool(false),
-	}
+	fileBeat.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext()
 	return fileBeat, nil
 }
 

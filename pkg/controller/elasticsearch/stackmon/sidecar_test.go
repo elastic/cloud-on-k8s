@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ptr "k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -152,6 +154,7 @@ func TestWithMonitoring(t *testing.T) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
+						assertSecurityContext(t, c.SecurityContext)
 					}
 				}
 			}
@@ -159,9 +162,28 @@ func TestWithMonitoring(t *testing.T) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
+						assertSecurityContext(t, c.SecurityContext)
 					}
 				}
 			}
 		})
 	}
+}
+
+func assertSecurityContext(t *testing.T, securityContext *corev1.SecurityContext) {
+	t.Helper()
+	require.NotNil(t, securityContext)
+	require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
+	require.NotNil(t, securityContext.Privileged)
+	require.False(t, *securityContext.Privileged)
+	require.NotNil(t, securityContext.Capabilities)
+	droppedCapabilities := securityContext.Capabilities.Drop
+	hasDropAllCapability := false
+	for _, capability := range droppedCapabilities {
+		if capability == "ALL" {
+			hasDropAllCapability = true
+			break
+		}
+	}
+	require.True(t, hasDropAllCapability, "ALL capability not found in securityContext.Capabilities.Drop")
 }
