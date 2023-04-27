@@ -100,7 +100,9 @@ func BuildPodTemplateSpec(
 	}
 	annotations := buildAnnotations(es, cfg, keystoreResources, esScripts.ResourceVersion)
 
-	// Attempt to detect if the data directory is mounted in a volume, we need to disable ReadOnlyRootFilesystem if not the case
+	// Attempt to detect if the default data directory is mounted in a volume.
+	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
+	// explicitly set ReadOnlyRootFilesystem to true.
 	enableReadOnlyRootFilesystem := false
 	for _, volumeMount := range volumeMounts {
 		if volumeMount.Name == esvolume.ElasticsearchDataVolumeName {
