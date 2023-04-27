@@ -74,8 +74,8 @@ spec:
 When following the instructions in <<{p}-transport-ca>> the issuance of certificates is orchestrated by the ECK operator and the operator needs access to the CAs private key.
 If this is undesirable it is also possible to configure node transport certificates without involving the ECK operator. The following two pre-requisites apply:
 
-1. the tooling used must be able to issue individual certificates for each Elasticsearch node and dynamically add or remove certificates as the cluster scales up and down.
-2. the ECK operator must be configured to trust the CA in use.
+1. The tooling used must be able to issue individual certificates for each Elasticsearch node and dynamically add or remove certificates as the cluster scales up and down.
+2. The ECK operator must be configured to be aware of the CA in use for the <<{p}-remote-clusters-connect-external,remote cluster>> support to work.
 
 The following example configuration using link:https://cert-manager.io/docs/projects/csi-driver/[cert-manager csi-driver] and link:https://cert-manager.io/docs/projects/trust-manager/[trust-manager] meets these two requirements:
 
@@ -115,7 +115,9 @@ spec:
               csi.cert-manager.io/dns-names: "${POD_NAME}.${POD_NAMESPACE}.svc.cluster.local"
 ----
 
-The example assumes that a `ClusterIssuer` by the name of `ca-cluster-issuer` exists and that a trust bundle containing the PEM encoded CA certificate is available in a file called `ca.crt` in a ConfigMap called `trust` in the same namespace as the Elasticsearch resource. The following section is only provided to illustrate how these certificates can be configured in principle:
+The example assumes that a `ClusterIssuer` by the name of `ca-cluster-issuer` exists and a PEM encoded version of the CA certificate is available in a ConfigMap (in the example named `trust`).  The CA certificate must be in a file called  `ca.crt` inside the ConfigMap in the same namespace as the Elasticsearch resource.
+
+The following manifest is only provided to illustrate how these certificates can be configured in principle, using the trust-manager Bundle resource and cert-manager provisioned certificates:
 
 [source,yaml]
 ----
