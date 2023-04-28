@@ -39,7 +39,7 @@ To make use of your mirrored images you can either set the image for each applic
 
 When creating custom resources ({eck_resources_list}), the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you can configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. Check <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
 
-The operator expects container images to be located at specific repositories in the default container registry. Make sure that your container images are stored at the right repositories and are tagged correctly with the Stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from Stack version {version}, the following image names should exist:
+The operator expects container images to be located at specific repositories in the default container registry. Make sure that your container images are stored in the right repositories and are tagged correctly with the Stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from Stack version {version}, the following image names should exist:
 
 * +my.registry/elasticsearch/elasticsearch:{version}+
 * +my.registry/kibana/kibana:{version}+
