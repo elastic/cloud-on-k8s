@@ -99,8 +99,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:          2,
 			esEnvVarsLength:           0,
-			podVolumesLength:          2,
-			metricsVolumeMountsLength: 2,
+			podVolumesLength:          3,
+			metricsVolumeMountsLength: 3,
 		},
 		{
 			name: "with logs monitoring",
@@ -112,8 +112,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:      2,
 			esEnvVarsLength:       1,
-			podVolumesLength:      3,
-			logVolumeMountsLength: 3,
+			podVolumesLength:      4,
+			logVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -126,9 +126,9 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:          3,
 			esEnvVarsLength:           1,
-			podVolumesLength:          4,
-			metricsVolumeMountsLength: 2,
-			logVolumeMountsLength:     3,
+			podVolumesLength:          6,
+			metricsVolumeMountsLength: 3,
+			logVolumeMountsLength:     4,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -141,9 +141,9 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:          3,
 			esEnvVarsLength:           1,
-			podVolumesLength:          5,
-			metricsVolumeMountsLength: 2,
-			logVolumeMountsLength:     3,
+			podVolumesLength:          7,
+			metricsVolumeMountsLength: 3,
+			logVolumeMountsLength:     4,
 		},
 	}
 
