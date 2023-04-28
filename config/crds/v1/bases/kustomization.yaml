@@ -8,3 +8,4 @@ resources:
   - agent.k8s.elastic.co_agents.yaml
   - maps.k8s.elastic.co_elasticmapsservers.yaml
   - stackconfigpolicy.k8s.elastic.co_stackconfigpolicies.yaml
+  - logstash.k8s.elastic.co_logstashes.yaml

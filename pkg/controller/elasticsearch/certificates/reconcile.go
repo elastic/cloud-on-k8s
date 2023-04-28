@@ -71,7 +71,7 @@ func ReconcileHTTP(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.EmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return nil, results
 	}
 

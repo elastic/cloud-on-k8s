@@ -310,6 +310,19 @@ updating docs/operating-eck/eck-permissions.asciidoc file.
   - create
   - update
   - patch
+- apiGroups:
+  - logstash.k8s.elastic.co
+  resources:
+  - logstashes
+  - logstashes/status
+  - logstashes/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
 {{- end -}}
 
 {{/*

@@ -1,0 +1,51 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: 8.6.1
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 2
+  version: 8.6.1
+  config:
+    log.level: info
+    api.http.host: "0.0.0.0"
+    api.http.port: 9601
+    queue.type: memory
+  pipelines:
+    - pipeline.id: main
+      pipeline.workers: 2
+      config.string: "input { beats { port => 5044 }} output { stdout {}}"
+  services:
+    - name: api
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 9601
+              name: "api"
+              protocol: TCP
+              targetPort: 9601
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044
+            - port: 5045
+              name: "winlogbeat"
+              protocol: TCP
+              targetPort: 5045
