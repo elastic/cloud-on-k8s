@@ -38,7 +38,7 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=dev --excludes=eck-operator --dry-run=\$DRY_RUN
+          - releaser --env=dev --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
 
       - wait
 
@@ -68,4 +68,4 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=prod --excludes=eck-operator --dry-run=\$DRY_RUN
+          - releaser --env=prod --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
