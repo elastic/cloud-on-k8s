@@ -22,6 +22,8 @@ steps:
           - chmod u+x /usr/local/bin/releaser
           - releaser --env=dev --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
 
+      - wait
+
       - label: "eck-resources dev helm charts"
         if: |
           ( build.branch == "main" && build.source != "schedule" )
@@ -38,6 +40,8 @@ steps:
           - chmod u+x /usr/local/bin/releaser
           - releaser --env=dev --excludes=eck-operator --dry-run=\$DRY_RUN
 
+      - wait
+
       - label: "operator prod helm chart"
         if: |
           build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
@@ -50,6 +54,8 @@ steps:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
           - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+
+      - wait
 
       - label: "eck-resources prod helm charts"
         if: |
