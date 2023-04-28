@@ -20,7 +20,6 @@ spec:
   elasticsearchRefs:
     - clusterName: production
       name: elasticsearch-sample
-#      secretName: external-cloud-es-ref
   pipelines:
     - pipeline.id: main
       config.string: |

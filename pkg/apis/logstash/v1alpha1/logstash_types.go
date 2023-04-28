@@ -101,6 +101,8 @@ type ElasticsearchCluster struct {
 	commonv1.ObjectSelector `json:",omitempty,inline"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
+	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
+	// configuration files, and will be used to identify "named clusters" in Logstash
 	ClusterName string `json:"clusterName,omitempty"`
 }
 
