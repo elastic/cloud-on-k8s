@@ -114,6 +114,7 @@ func buildVolumes(
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
 
+	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
 	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, append(volumes, nodeSpec.PodTemplate.Spec.Volumes...))
 
 	return volumes, volumeMounts
