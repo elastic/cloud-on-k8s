@@ -73,7 +73,7 @@ spec:
               targetPort: 5044
 EOF
 ----
-+
+
 Check <<{p}-logstash-configuration-examples>> for more ready-to-use manifests.
 
 . Check the status of Logstash
@@ -103,7 +103,7 @@ quickstart-ls-0   1/1     Running   0          91s
 ----
 
 . Access logs for a Pod.
-+
+
 [source,sh]
 ----
 kubectl logs -f quickstart-ls-0
@@ -243,7 +243,7 @@ stringData:
 
 ----
 
-Logstash on ECK will* support all options present in `pipelines.yml`, including settings to update the number of workers, and
+Logstash on ECK will support all options present in `pipelines.yml`, including settings to update the number of workers, and
  the size of the batch that the pipeline will process. This also includes using `path.config` to point to volumes
  mounted on the Logstash container:
 
@@ -294,7 +294,7 @@ The environment variables have a fixed naming convention:
 
 where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
 
-NOTE: The `clusterName` value should be unique across namespaces.
+NOTE: The `clusterName` value should be unique across all referenced Elasticsearches in the same Logstash spec.
 
 NOTE: The Logstash ECK operator will create a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
 ```
@@ -363,12 +363,12 @@ spec:
 
 By default, the Logstash operator creates a headless Service for the metrics endpoint to enable metric collection by the Metricbeat sidecar for Stack Monitoring:
 
-+
+
 [source,sh]
 ----
 kubectl get service quickstart-ls-api
 ----
-+
+
 [source,sh,subs="attributes"]
 ----
 NAME                TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
@@ -522,14 +522,16 @@ spec:
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
 
-* The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all Logstash deployments can be scaled horizontally by increasing the number of Logstash Pods defined in the Logstash resource - depending on the plugins being used, this could result in data loss/duplication of data or Pods running idle unable to be utilized.
-* Particular care should be taken with plugins that:
-** Retrieve data from external sources.
-*** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
-*** Plugins that retrieve data from external sources, where work is distributed externally to Logstash, but may impose their own limits. These are plugins like the Kafka input, or Azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra Logstash Pods may be idle if the number of consumer threads multiplied by the number of Pods is greater than the number of partitions.
-** Plugins that require events to be received in order.
-*** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
-* If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
+The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all Logstash deployments can be scaled horizontally by increasing the number of Logstash Pods defined in the Logstash resource - depending on the plugins being used, this could result in data loss/duplication of data or Pods running idle unable to be utilized.
+
+Particular care should be taken with plugins that:
+
+* Retrieve data from external sources.
+** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
+** Plugins that retrieve data from external sources, where work is distributed externally to Logstash, but may impose their own limits. These are plugins like the Kafka input, or Azure event hubs, where the parallelism is limited by the number of partitions vs the number of consumers. In cases like this, extra Logstash Pods may be idle if the number of consumer threads multiplied by the number of Pods is greater than the number of partitions.
+* Plugins that require events to be received in order.
+** Certain plugins, such as the aggregate filter, expect events to be received in strict order to run without error or data loss. Any plugin that requires the number of pipeline workers to be `1` will also have issues when horizontal scaling is used.
+ If the pipeline does not contain any such plugin, the number of Logstash instances can be increased by setting the `count` property in the Logstash resource:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
