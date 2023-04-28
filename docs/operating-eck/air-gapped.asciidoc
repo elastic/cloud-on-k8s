@@ -49,7 +49,7 @@ The operator expects container images to be located at specific repositories in 
 [id="{p}-container-repository-override"]
 == Use a global container repository
 
-If you cannot follow the default Elastic image repositories, you can configure the operator to use a different container repository by starting the operator with the `--container-repository` command-line flag.
+If you cannot follow the default Elastic image repositories naming scheme, you can configure the operator to use a different container repository by starting the operator with the `--container-repository` command-line flag.
 Check <<{p}-operator-config>> for more information on how to configure the operator using command-line flags and environment variables.
 
 For example, if your private registry is `my.registry` and all Elastic images are located under the `elastic` repository, the following image names should exist:
