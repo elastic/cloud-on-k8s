@@ -446,7 +446,7 @@ kubectl apply -f {logstash_recipes}/logstash-eck.yaml
 
 Deploys Logstash with a single pipeline defined in the CRD
 
-=== Single Pipeline defined in secret
+=== Single Pipeline defined in Secret
 
 [source,sh,subs="attributes"]
 ----

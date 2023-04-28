@@ -14,7 +14,7 @@ These recipes demonstrate how to run Logstash, Elasticsearch, Kibana and Filebea
 
 Deploys Logstash with the pipeline defined inline in the CRD.
 
-===== Pipeline as secret - `logstash-pipeline-as-secret.yaml`
+===== Pipeline as Secret - `logstash-pipeline-as-secret.yaml`
 
 Deploys Logstash with the pipeline defined in a Secret and referred to via `pipelinesRef`.
 
