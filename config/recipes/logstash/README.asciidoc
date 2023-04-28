@@ -8,19 +8,19 @@ endif::[]
 
 = Using Logstash with ECK
 
-These recipes demonstrate how to run Logstash, Elasticsearch, Kibana and Filebeat deployed via ECK, using the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] as a starting point
+These recipes demonstrate how to run Logstash, Elasticsearch, Kibana and Filebeat deployed via ECK, using the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] as a starting point.
 
 ===== Inline Pipeline usage - `logstash-eck.yaml`
 
-Deploys Logstash with the pipeline defined inline in the CRD
+Deploys Logstash with the pipeline defined inline in the CRD.
 
 ===== Pipeline as secret - `logstash-pipelinesecret.yaml`
 
-Deploys Logstash with the pipeline defined in a secret and referred to via `pipelinesRef`
+Deploys Logstash with the pipeline defined in a Secret and referred to via `pipelinesRef`.
 
 ===== Pipeline as mounted volume - `logstash-pipelinevolume.yaml`
 
-Deploys Logstash with the pipeline details defined in the CRD, and the pipeline itself mounted as a volume
+Deploys Logstash with the pipeline details defined in the CRD, and the pipeline itself mounted as a volume.
 
 ===== Logstash with Stack Monitoring - `logstash-monitored.yaml`
 

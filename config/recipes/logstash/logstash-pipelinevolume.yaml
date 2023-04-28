@@ -121,21 +121,21 @@ metadata:
     app.kubernetes.io/name: eck-logstash
 stringData:
   input.conf: |-
-        input {
-          beats {
-            port => 5044
-          }
-        }
+    input {
+      beats {
+        port => 5044
+      }
+    }
   filters.conf: |-
-        filter {
-          grok {
-            match => { "message" => "%{HTTPD_COMMONLOG}"}
-          }
-          geoip {
-            source => "[source][address]"
-            target => "[source]"
-          }
-        }
+    filter {
+      grok {
+        match => { "message" => "%{HTTPD_COMMONLOG}"}
+      }
+      geoip {
+        source => "[source][address]"
+        target => "[source]"
+      }
+    }
   output.conf: |-
     output {
       elasticsearch {
