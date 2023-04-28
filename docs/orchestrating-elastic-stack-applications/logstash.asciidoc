@@ -450,7 +450,7 @@ Deploys Logstash with a single pipeline defined in the CRD
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {logstash_recipes}/logstash-pipelinesecret.yaml
+kubectl apply -f {logstash_recipes}/logstash-pipeline-as-secret.yaml
 ----
 
 Deploys Logstash with a single pipeline defined in a secret, referenced by a `pipelineRef`
@@ -459,7 +459,7 @@ Deploys Logstash with a single pipeline defined in a secret, referenced by a `pi
 
 [source,sh,subs="attributes"]
 ----
-kubectl apply -f {logstash_recipes}/logstash-pipelinevolume.yaml
+kubectl apply -f {logstash_recipes}/logstash-pipeline-as-volume.yaml
 ----
 
 Deploys Logstash with a single pipeline defined in a secret, mounted as a volume, and referenced by
