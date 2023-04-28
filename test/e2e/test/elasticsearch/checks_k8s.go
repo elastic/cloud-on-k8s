@@ -51,6 +51,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckClusterHealth(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
+		CheckContainerSecurityContext(b.Elasticsearch, k),
 		CheckClusterUUIDAnnotation(b.Elasticsearch, k),
 	}
 }

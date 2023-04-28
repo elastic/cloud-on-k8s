@@ -757,9 +757,9 @@ spec:
                 - fleet
                 type: string
               policyID:
-                description: PolicyID optionally determines into which Agent Policy
-                  this Agent will be enrolled. If left empty the default policy will
-                  be used.
+                description: PolicyID determines into which Agent Policy this Agent
+                  will be enrolled. This field will become mandatory in a future release,
+                  default policies are deprecated since 8.1.0.
                 type: string
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
