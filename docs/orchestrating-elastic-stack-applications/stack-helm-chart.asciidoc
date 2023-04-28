@@ -39,10 +39,12 @@ There are example Helm values files for installing and managing a more advanced 
 
 To use one or more of these example configurations, use the `--values` Helm option, as seen in the following section.
 
-[source,sh]
+[source,sh,subs="attributes"]
 ----
 # Install an eck-managed Elasticsearch and Kibana using the Elasticsearch node roles example with hot, warm, and cold data tiers, and the Kibana example customizing the http service.
-helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/elasticsearch/hot-warm-cold.yaml --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/kibana/http-configuration.yaml
+helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace \
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/elasticsearch/hot-warm-cold.yaml \
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/kibana/http-configuration.yaml
 ----
 
 [float]
@@ -51,10 +53,11 @@ helm install es-quickstart elastic/eck-stack -n elastic-stack --create-namespace
 
 The following section builds upon the previous section, and allows installing Fleet Server, and Fleet-managed Elastic Agents along with Elasticsearch and Kibana.
 
-[source,sh]
+[source,sh,subs="attributes"]
 ----
 # Install an eck-managed Elasticsearch, Kibana, Fleet Server, and managed Elastic Agents using custom values.
-helm install eck-stack-with-fleet elastic/eck-stack --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/agent/fleet-agents.yaml -n elastic-stack
+helm install eck-stack-with-fleet elastic/eck-stack \
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/agent/fleet-agents.yaml -n elastic-stack
 ----
 
 [float]
