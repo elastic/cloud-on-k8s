@@ -59,7 +59,7 @@ type LogstashSpec struct {
 
 	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
 	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
-	// be opened up for other services: beats, TCP, UDP, etc, inputs
+	// be opened up for other services: Beats, TCP, UDP, etc, inputs.
 	// +kubebuilder:validation:Optional
 	Services []LogstashService `json:"services,omitempty"`
 
