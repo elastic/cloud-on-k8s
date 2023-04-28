@@ -9172,6 +9172,9 @@ spec:
                     cluster which can be used in a Logstash pipeline.
                   properties:
                     clusterName:
+                      description: ClusterName is an alias for the cluster to be used
+                        to refer to the Elasticsearch cluster in Logstash configuration
+                        files, and will be used to identify "named clusters" in Logstash
                       minLength: 1
                       type: string
                     name:
@@ -9384,7 +9387,7 @@ spec:
                   should expose - similar to the HTTP layer configuration for the
                   rest of the stack, but also applicable for more use cases than the
                   metrics API, as logstash may need to be opened up for other services:
-                  beats, TCP, UDP, etc, inputs'
+                  Beats, TCP, UDP, etc, inputs.'
                 items:
                   properties:
                     name:
