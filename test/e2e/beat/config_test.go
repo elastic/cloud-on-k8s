@@ -66,7 +66,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// only execute this test on supported versions when stack monitoring is enabled
-			err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+			err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
 			if tt.withStackMonitoring && err != nil {
 				t.SkipNow()
 			}

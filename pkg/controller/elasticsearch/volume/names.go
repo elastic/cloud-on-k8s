@@ -48,4 +48,7 @@ const (
 
 	FileSettingsVolumeName      = "file-settings"
 	FileSettingsVolumeMountPath = "/usr/share/elasticsearch/config/operator"
+
+	TempVolumeName      = "tmp-volume"
+	TempVolumeMountPath = "/tmp"
 )

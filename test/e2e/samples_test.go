@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/apmserver"
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
 func TestSamples(t *testing.T) {
@@ -87,6 +89,31 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
+		case logstash.Builder:
+			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
+				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
+					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
+					ClusterName:    ref.ClusterName,
+				})
+			}
+			metricsRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs {
+				metricsRefs = append(metricsRefs, tweakServiceRef(ref, suffix))
+			}
+			logRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs))
+			for _, ref := range b.Logstash.Spec.Monitoring.Logs.ElasticsearchRefs {
+				logRefs = append(logRefs, tweakServiceRef(ref, suffix))
+			}
+
+			return b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithElasticsearchRefs(esRefs...).
+				WithMetricsMonitoring(metricsRefs...).
+				WithLogsMonitoring(logRefs...).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)

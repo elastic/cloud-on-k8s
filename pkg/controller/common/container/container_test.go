@@ -13,11 +13,12 @@ import (
 func TestImageRepository(t *testing.T) {
 	testRegistry := "my.docker.registry.com:8080"
 	testCases := []struct {
-		name    string
-		image   Image
-		suffix  string
-		version string
-		want    string
+		name       string
+		image      Image
+		repository string
+		suffix     string
+		version    string
+		want       string
 	}{
 		{
 			name:    "APM server image",
@@ -50,6 +51,21 @@ func TestImageRepository(t *testing.T) {
 			suffix:  "-ubi8",
 			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.12.0",
 		},
+		{
+			name:       "Elasticsearch image with custom repository",
+			image:      ElasticsearchImage,
+			version:    "42.0.0",
+			repository: "elastic",
+			want:       testRegistry + "/elastic/elasticsearch:42.0.0",
+		},
+		{
+			name:       "Elasticsearch image with custom repository and suffix",
+			image:      ElasticsearchImage,
+			version:    "42.0.0",
+			repository: "elastic",
+			suffix:     "-obi1",
+			want:       testRegistry + "/elastic/elasticsearch-obi1:42.0.0",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -63,7 +79,9 @@ func TestImageRepository(t *testing.T) {
 			}()
 
 			SetContainerRegistry(testRegistry)
+			SetContainerRepository(tc.repository)
 			SetContainerSuffix(tc.suffix)
+
 			have := ImageRepository(tc.image, tc.version)
 			assert.Equal(t, tc.want, have)
 		})

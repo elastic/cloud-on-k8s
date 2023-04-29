@@ -32,6 +32,8 @@ type InitContainerParameters struct {
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
 	// to true if the keystore can be forcibly recreated.
 	SkipInitializedFlag bool
+	// SecurityContext is the security context applied to the keystore container.
+	SecurityContext *corev1.SecurityContext
 }
 
 // script is a small bash script to create an Elastic Stack keystore,
@@ -84,7 +86,7 @@ func initContainer(
 		return corev1.Container{}, err
 	}
 
-	return corev1.Container{
+	container := corev1.Container{
 		// Image will be inherited from pod template defaults
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            InitContainerName,
@@ -97,5 +99,11 @@ func initContainer(
 			secureSettingsSecret.VolumeMount(),
 		},
 		Resources: parameters.Resources,
-	}, nil
+	}
+
+	if parameters.SecurityContext != nil {
+		container.SecurityContext = parameters.SecurityContext
+	}
+
+	return container, nil
 }
