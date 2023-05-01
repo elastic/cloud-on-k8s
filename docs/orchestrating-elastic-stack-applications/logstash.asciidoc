@@ -310,6 +310,7 @@ The Logstash ECK operator creates a user called `eck_logstash_user_role` when an
 
 ```
 You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See <<{p}-logstash-configuration-examples, Logstash configuration examples>> for a sample configuration that creates a user that can write to a custom index.
+--
 
 This example demonstrates how to create a Logstash deployment that connects to
 different Elasticsearch instances, one of which is in a separate namespace:
