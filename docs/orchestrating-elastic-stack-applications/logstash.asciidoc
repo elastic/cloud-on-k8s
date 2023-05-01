@@ -309,7 +309,7 @@ The Logstash ECK operator creates a user called `eck_logstash_user_role` when an
     }
 
 ```
-You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See <<{p}-logstash-configuration-examples, Logstash configuration examples>> for a sample configuration that creates a user that can write to a custom index.
+You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See the <<{p}-logstash-configuration-custom-index, Logstash configuration with a custom index>> sample configuration that creates a user that writes to a custom index.
 --
 
 This example demonstrates how to create a Logstash deployment that connects to
@@ -441,6 +441,7 @@ This section contains manifests that illustrate common use cases, and can be you
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting on Elasticsearch which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 
+[id="{p}-logstash-configuration-single-pipeline-crd"]
 === Single pipeline defined in CRD
 
 [source,sh,subs="attributes"]
@@ -450,6 +451,7 @@ kubectl apply -f {logstash_recipes}/logstash-eck.yaml
 
 Deploys Logstash with a single pipeline defined in the CRD
 
+[id="{p}-logstash-configuration-single-pipeline-secret"]
 === Single Pipeline defined in Secret
 
 [source,sh,subs="attributes"]
@@ -459,6 +461,7 @@ kubectl apply -f {logstash_recipes}/logstash-pipeline-as-secret.yaml
 
 Deploys Logstash with a single pipeline defined in a secret, referenced by a `pipelineRef`
 
+[id="{p}-logstash-configuration-pipeline-volume"]
 === Pipeline configuration in mounted volume
 
 [source,sh,subs="attributes"]
@@ -469,6 +472,7 @@ kubectl apply -f {logstash_recipes}/logstash-pipeline-as-volume.yaml
 Deploys Logstash with a single pipeline defined in a secret, mounted as a volume, and referenced by
 `path.config`
 
+[id="{p}-logstash-configuration-custom-index"]
 === Writing to a custom Elasticsearch index
 
 [source,sh,subs="attributes"]
@@ -479,6 +483,7 @@ kubectl apply -f {logstash_recipes}/logstash-es-role.yaml
 Deploys Logstash and Elasticsearch, and creates an updated version of the `eck_logstash_user_role` to write to a user specified index.
 
 
+[id="{p}-logstash-configuration-stack-monitoring"]
 === Elasticsearch and Kibana Stack Monitoring
 
 [source,sh,subs="attributes"]
@@ -488,6 +493,7 @@ kubectl apply -f {logstash_recipes}/logstash-monitored.yaml
 
 Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will send its monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's Kibana
 
+[id="{p}-logstash-configuration-multiple-pipelines"]
 === Multiple pipelines/multiple es clusters
 
 [source,sh,subs="attributes"]
