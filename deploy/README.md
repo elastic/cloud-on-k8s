@@ -19,7 +19,7 @@ Install the operator restricted to a single namespace.
 helm install elastic-operator-crds ./eck-operator/charts/eck-operator-crds
 
 # This step can be done by any user with full access to the my-namespace namespace.
-helm install elastic-operator eck-operator -n my-namespace --create-namespace \
+helm install elastic-operator elastic/eck-operator -n my-namespace --create-namespace \
   --set=installCRDs=false \
   --set=managedNamespaces='{my-namespace}' \
   --set=createClusterScopedResources=false \
