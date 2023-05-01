@@ -288,9 +288,21 @@ func (d *GKEDriver) create() error {
 		clusterCreateCommand = createAutopilotClusterCommand
 	}
 
-	return exec.NewCommand(clusterCreateCommand).
+	err = exec.NewCommand(clusterCreateCommand).
 		AsTemplate(d.ctx).
 		Run()
+
+	if err != nil {
+		return err
+	}
+
+	// Since gcloud doesn't support labels at creation time for autopilot clusters, update the labels after creation.
+	if d.plan.Gke.Autopilot {
+		return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
+			AsTemplate(d.ctx).
+			Run()
+	}
+	return nil
 }
 
 // username attempts to extract the username from the current account.
