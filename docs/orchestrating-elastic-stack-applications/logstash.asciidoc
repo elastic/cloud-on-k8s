@@ -287,16 +287,19 @@ The `spec.elasticsearchRefs` section provides a mechanism to help configure Logs
 
 To use `elasticsearchRefs` in a Logstash pipeline, the Logstash operator will create the necessary resources from the associated Elasticsearch, and provides environment variables to allow these resources to be accessed from the pipeline configuration, and will be replaced at runtime with the appropriate values.
 The environment variables have a fixed naming convention:
-`NORMALIZED_CLUSTERNAME_ES_HOSTS`
-`NORMALIZED_CLUSTERNAME_ES_USER`
-`NORMALIZED_CLUSTERNAME_ES_PASSWORD`
-`NORMALIZED_CLUSTERNAME_ES_SSL_CERTIFICATE_AUTHORITY}`
+
+* `NORMALIZED_CLUSTERNAME_ES_HOSTS`
+* `NORMALIZED_CLUSTERNAME_ES_USER`
+* `NORMALIZED_CLUSTERNAME_ES_PASSWORD`
+* `NORMALIZED_CLUSTERNAME_ES_SSL_CERTIFICATE_AUTHORITY`
 
 where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of the `elasticsearchRef` property, capitalized, and `-` transformed to `_` - eg, prod-es, would becomed PROD_ES.
 
 NOTE: The `clusterName` value should be unique across all referenced Elasticsearches in the same Logstash spec.
 
-NOTE: The Logstash ECK operator creates a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
+[NOTE]
+--
+The Logstash ECK operator creates a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
 ```
   "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
   "indices": [
@@ -559,14 +562,16 @@ Note that this release is a technical preview, is still under active development
 ** Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
 
 
-* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the https://www.elastic.co/support/matrix#logstash_plugins[Logstash plugin matrix] have not been considered for this list:
-** Input plugins:
-*** The following plugins are supported: logstash-input-azure_event_hubs, logstash-input-beats, logstash-input-elastic_agent, logstash-input-kafka, logstash-input-tcp, logstash-input-http, logstash-input-udp
-** Filter Plugins:
-*** The following plugins are *not* supported: logstash-filter-jdbc_static, logstash-filter-jdbc_streaming, logstash-filter-aggregate
-*** Note: Other filters may require additional manual work to mount volumes for certain configurations
-** Output Plugins:
-*** The following plugins require manual work to be operational:
-**** logstash-output-s3 - requires a volume mount to store in progress work to avoid data loss.
-
-
+* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the Logstash plugin matrix have not been considered for this list.
+* The following input plugins have been tested and are supported:
+** logstash-input-beats
+** logstash-input-elastic_agent
+** logstash-input-kafka
+** logstash-input-tcp
+** logstash-input-http
+** logstash-input-udp
+* Most filter and output plugins are supported with the exception of:
+** logstash-filter-jdbc_static
+** logstash-filter-jdbc_streaming
+** logstash-filter-aggregate
+** Note: Other filters and output may require additional manual work to mount volumes for certain configurations. This includes logstash-output-s3, which will a volume mount to store in progress work to avoid data loss.
