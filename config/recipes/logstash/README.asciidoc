@@ -22,6 +22,10 @@ Deploys Logstash with the pipeline defined in a Secret and referred to via `pipe
 
 Deploys Logstash with the pipeline details defined in the CRD, and the pipeline itself mounted as a volume.
 
+===== Logstash with multiple pipelines and multiple elasticsearchRefs - `logstash-multi.yaml`
+
+Deploys Logstash with multiple pipelines, each of which sends to a separate Elasticsearch cluster, and sends metrics to a third, dedicated monitoring cluster.
+
 ===== Logstash with Stack Monitoring - `logstash-monitored.yaml`
 
 Deploys Logstash and a dedicated Elasticsearch and Kibana monitoring cluster, and sends Logstash monitoring data to that cluster.
