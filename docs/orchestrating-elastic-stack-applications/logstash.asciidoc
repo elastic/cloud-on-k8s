@@ -120,7 +120,7 @@ You can upgrade the Logstash version or change settings by editing the YAML spec
 [id="{p}-logstash-configuring-logstash"]
 === Logstash configuration
 
-The Logstash configuration (equivalent to `logstash.yml`) is defined in the `spec.config` section:
+Define the Logstash configuration (the ECK equivalent to `logstash.yml`) in the `spec.config` section:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -141,7 +141,7 @@ spec:
 <1> Customize Logstash configuration using `logstash.yml` settings here
 
 
-Alternatively, it can be provided through a Secret specified in the `spec.configRef` section. The Secret must have an `logstash.yml` entry with this configuration:
+Alternatively, you can provide the configuration through a Secret specified in the `spec.configRef` section. The Secret must have an `logstash.yml` entry with these settings:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -169,9 +169,9 @@ stringData:
 
 
 [id="{p}-logstash-pipelines"]
-=== Configuring Logstash Pipelines
+=== Configuring Logstash pipelines
 
-Logstash pipelines (equivalent to `pipelines.yml`) are defined in the `spec.pipelines` section:
+Define Logstash pipelines in the `spec.pipelines` section (the ECK equivalent to `pipelines.yml`):
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -203,7 +203,7 @@ spec:
         }
 ----
 
-Alternatively, it can be provided through a Secret specified in the `spec.pipelinesRef` element. The Secret must have a `logstash.yml` entry with this configuration:
+Alternatively, you can provide the pipeline configuration through a Secret specified in the `spec.pipelinesRef` element. The Secret must have a `logstash.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
@@ -243,7 +243,7 @@ stringData:
 
 ----
 
-Logstash on ECK will support all options present in `pipelines.yml`, including settings to update the number of workers, and
+Logstash on ECK supports all options present in `pipelines.yml`, including settings to update the number of workers, and
  the size of the batch that the pipeline will process. This also includes using `path.config` to point to volumes
  mounted on the Logstash container:
 
@@ -277,11 +277,11 @@ spec:
         }
 ----
 
-NOTE: Persistent Queues and Dead Letter Queues are not currently supported.
+NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not currently supported.
 
 
 [id="{p}-logstash-pipelines-es"]
-=== Using Elasticsearch in Logstash Pipelines
+=== Using Elasticsearch in Logstash pipelines
 
 The `spec.elasticsearchRefs` section provides a mechanism to help configure Logstash to estabish a secured connection to one or more managed Elasticsearch clusters. By default, it targets all nodes in your cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
 
@@ -296,7 +296,7 @@ where NORMALIZED_CLUSTERNAME is the value taken from the `clusterName` field of 
 
 NOTE: The `clusterName` value should be unique across all referenced Elasticsearches in the same Logstash spec.
 
-NOTE: The Logstash ECK operator will create a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
+NOTE: The Logstash ECK operator creates a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
 ```
   "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
   "indices": [
@@ -306,9 +306,9 @@ NOTE: The Logstash ECK operator will create a user called `eck_logstash_user_rol
     }
 
 ```
-The permissions for this user <<{p}-users-and-roles,can be updated>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See <<{p}-logstash-configuration-examples, Logstash configuration examples>> for a sample configuration that creates a user to write to a custom index.
+You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See <<{p}-logstash-configuration-examples, Logstash configuration examples>> for a sample configuration that creates a user that can write to a custom index.
 
-The following example demonstrates how to create a Logstash deployment that connects to
+This example demonstrates how to create a Logstash deployment that connects to
 different Elasticsearch instances, one of which is in a separate namespace:
 
 [source,yaml,subs="attributes,+macros,callouts"]
@@ -359,7 +359,7 @@ spec:
 
 
 [id="{p}-logstash-expose-services"]
-=== Expose Services
+=== Expose services
 
 By default, the Logstash operator creates a headless Service for the metrics endpoint to enable metric collection by the Metricbeat sidecar for Stack Monitoring:
 
@@ -396,7 +396,7 @@ services:
 === Pod configuration
 You can <<{p}-customize-pods,customize the Logstash Pod>> using a Pod template, defined in the `spec.podTemplate` section of the configuration.
 
-The following example demonstrates how to create a Logstash deployment with increased heap size, and resource limits.
+This example demonstrates how to create a Logstash deployment with increased heap size and resource limits.
 
 [source,yaml,subs="attributes"]
 ----
@@ -437,7 +437,7 @@ This section contains manifests that illustrate common use cases, and can be you
 CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting on Elasticsearch which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
 
 
-=== Single Pipeline defined in CRD
+=== Single pipeline defined in CRD
 
 [source,sh,subs="attributes"]
 ----
@@ -494,13 +494,13 @@ kubectl apply -f {logstash_recipes}/logstash-multi.yaml
 Deploys Elasticsearch and Kibana in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to prod and qa pipelines.
 
 [id="{p}-logstash-advanced-configuration"]
-== Advanced Configuration
+== Advanced configuration
 
 [id="{p}-logstash-jvm-options"]
-=== Setting JVM Options
+=== Setting JVM options
 
 
-Changes to JVM settings should be changed by using the `LS_JAVA_OPTS` environment variable to override default settings in `jvm.options`. This approach ensures that expected settings from `jvm.options` are set, and only options that explicitly need to be overridden are.
+You can change JVM settings by using the `LS_JAVA_OPTS` environment variable to override default settings in `jvm.options`. This approach ensures that expected settings from `jvm.options` are set, and only options that explicitly need to be overridden are.
 
 To do, this, set the  `LS_JAVA_OPTS` environment variable in the container definition of your Logstash resource:
 
@@ -522,9 +522,10 @@ spec:
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
 
-The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all Logstash deployments can be scaled horizontally by increasing the number of Logstash Pods defined in the Logstash resource - depending on the plugins being used, this could result in data loss/duplication of data or Pods running idle unable to be utilized.
+The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all Logstash deployments can be scaled horizontally by increasing the number of Logstash Pods defined in the Logstash resource.
+Increasing the number of Pods can cause data loss/duplication, or Pods running idle because they are unable to be utilized.
 
-Particular care should be taken with plugins that:
+These risks are especially likely with plugins that:
 
 * Retrieve data from external sources.
 ** Plugins that retrieve data from external sources, and require some level of coordination between nodes to split up work, are not good candidates for scaling horizontally, and would likely produce some data duplication. These are plugins such as the JDBC input plugin, which has no automatic way to split queries across Logstash instances, or the S3 input, which has no way to split which buckets to read across Logstash instances.
@@ -547,7 +548,7 @@ spec:
 
 
 [id="{p}-logstash-technical-preview-limitations"]
-== Technical Preview Limitations
+== Technical Preview limitations
 
 
 Note that this release is a technical preview, is still under active development and has additional limitations:
@@ -558,7 +559,7 @@ Note that this release is a technical preview, is still under active development
 ** Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
 
 
-* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the Logstash plugin matrix have not been considered for this list:
+* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the https://www.elastic.co/support/matrix#logstash_plugins[Logstash plugin matrix] have not been considered for this list:
 ** Input plugins:
 *** The following plugins are supported: logstash-input-azure_event_hubs, logstash-input-beats, logstash-input-elastic_agent, logstash-input-kafka, logstash-input-tcp, logstash-input-http, logstash-input-udp
 ** Filter Plugins:
