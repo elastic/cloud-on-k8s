@@ -61,7 +61,7 @@ There are 4 test suites:
 
   A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
 
-- **Helm chart tests** - allows us to test helm charts. To run helm chart tests, you can use `make helm-test` command. This will run test script.
+- **Helm chart tests** - allows us to test helm charts. To run helm chart tests, you can use `make helm-test` command.
 
 #### Pull Request validation
 
