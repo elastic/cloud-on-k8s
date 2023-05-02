@@ -53,6 +53,7 @@ data:
     manage-webhook-certs: false
     webhook-cert-dir: {{ .Values.webhook.certsDir }}
       {{- end }}
+    webhook-port: {{ .Values.webhook.port }}
     {{- end }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
