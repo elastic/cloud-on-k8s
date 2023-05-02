@@ -24,7 +24,7 @@ Deploys Logstash with the pipeline details defined in the CRD, and the pipeline 
 
 ===== Logstash with multiple pipelines and multiple elasticsearchRefs - `logstash-multi.yaml`
 
-Deploys Logstash with multiple pipelines, each of which sends to a separate Elasticsearch cluster, and sends metrics to a third, dedicated monitoring cluster.
+Deploys Logstash with multiple pipelines, each of which sends to a separate Elasticsearch cluster.
 
 ===== Logstash with Stack Monitoring - `logstash-monitored.yaml`
 

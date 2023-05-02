@@ -501,7 +501,7 @@ Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will
 kubectl apply -f {logstash_recipes}/logstash-multi.yaml
 ----
 
-Deploys Elasticsearch and Kibana in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to prod and qa pipelines.
+Deploys Elasticsearch in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to prod and qa pipelines.
 
 [id="{p}-logstash-advanced-configuration"]
 == Advanced configuration

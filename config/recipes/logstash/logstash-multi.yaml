@@ -20,17 +20,6 @@ spec:
         # This setting has performance implications. See the README for more details.
         node.store.allow_mmap: false
 ---
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: qa
-  namespace: qa
-spec:
-  version: 8.7.0
-  count: 1
-  elasticsearchRef:
-    name: qa
----
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
@@ -43,16 +32,6 @@ spec:
       config:
         # This setting has performance implications. See the README for more details.
         node.store.allow_mmap: false
----
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: production
-spec:
-  version: 8.7.0
-  count: 1
-  elasticsearchRef:
-    name: production
 ---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
@@ -106,10 +85,6 @@ spec:
   - clusterName: qa-es
     name: qa
     namespace: qa
-  monitoring:
-    metrics:
-      elasticsearchRefs:
-        - name: elasticsearch-monitoring
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -176,24 +151,3 @@ spec:
               protocol: TCP
               targetPort: 5044
 ---
-apiVersion: elasticsearch.k8s.elastic.co/v1
-kind: Elasticsearch
-metadata:
-  name: elasticsearch-monitoring
-spec:
-  version: 8.7.0
-  nodeSets:
-    - name: default
-      count: 3
-      config:
-        node.store.allow_mmap: false
----
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kibana-monitoring
-spec:
-  version: 8.7.0
-  count: 1
-  elasticsearchRef:
-    name: elasticsearch-monitoring
