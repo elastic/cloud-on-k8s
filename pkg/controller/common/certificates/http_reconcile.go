@@ -140,6 +140,9 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	return &internalCerts, nil
 }
 
+// populateFromCustomCertificateContents populates the secret passed as a parameter from the contents of customCertificates. Returns two
+// booleans: whether a CA certificate has been provided through the custom certificate secret and secondly whether data in the resulting secret
+// has been updated.
 func (r Reconciler) populateFromCustomCertificateContents(secret *corev1.Secret, customCertificates *CertificatesSecret, ca *CA) (bool, bool) {
 	caCertProvided := true
 	expectedSecretData := make(map[string][]byte)

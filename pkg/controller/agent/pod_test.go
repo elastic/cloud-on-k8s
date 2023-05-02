@@ -159,7 +159,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			}),
 		},
 		{
-			name: "running elastic agent, with fleet server, without es/kb association with well known CA",
+			name: "running elastic agent, with fleet server, without es/kb association, with well known CA",
 			params: Params{
 				Agent: agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
