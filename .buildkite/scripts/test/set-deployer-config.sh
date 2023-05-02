@@ -51,7 +51,7 @@ write_deployer_config() {
     w '  kubernetesVersion: "'"${DEPLOYER_K8S_VERSION}"'"'
     fi
 
-    case "$E2E_PROVIDER" in gke|ocp)
+    case "$E2E_PROVIDER" in gke|ocp|gke-autopilot)
     w "  $E2E_PROVIDER:"
     w "    gCloudProject: elastic-cloud-dev"
     ;; esac
