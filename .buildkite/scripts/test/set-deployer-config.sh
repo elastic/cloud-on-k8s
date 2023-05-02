@@ -52,7 +52,7 @@ write_deployer_config() {
     fi
 
     case "$E2E_PROVIDER" in gke|ocp|gke-autopilot)
-    w "  $E2E_PROVIDER:"
+    w "  ${E2E_PROVIDER%"-autopilot"}:"
     w "    gCloudProject: elastic-cloud-dev"
     ;; esac
 
