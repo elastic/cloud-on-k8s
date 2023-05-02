@@ -536,10 +536,10 @@ spec:
 
 [float]
 [id="{p}-{page_id}-logstash-isolation"]
-== Isolating {logstash}
+== Isolating {ls}
 
 
-NOTE: {logstash} may require additional access rules than those listed here, depending on plugin usage.
+NOTE: {ls} may require additional access rules than those listed here, depending on plugin usage.
 
 
 [cols="h,1"]
