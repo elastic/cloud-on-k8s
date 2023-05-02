@@ -117,7 +117,7 @@ spec:
         {{- with .Values.volumes }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- if .Values.webhook.hostNetwork }}
+      {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       {{- end }}
