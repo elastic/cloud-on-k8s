@@ -21,8 +21,8 @@ plans:
   kubernetesVersion: 1.25
   serviceAccount: true
   enforceSecurityPolicies: true
-  # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
-  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
+  # diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
     autopilot: true
     region: europe-west6
