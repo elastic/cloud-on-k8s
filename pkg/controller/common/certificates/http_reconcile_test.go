@@ -253,12 +253,22 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	testPrivateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
 	assert.NoError(t, err, "Failed to encode private key")
 
+	customCertFixture := CertificatesSecret{
+		Secret: corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
+			Data: map[string][]byte{
+				CertFileName: tls,
+				KeyFileName:  key,
+			},
+		},
+	}
 	type args struct {
-		es             esv1.Elasticsearch
-		ca             *CA
-		custCerts      *CertificatesSecret
-		services       []corev1.Service
-		initialObjects []runtime.Object
+		es                          esv1.Elasticsearch
+		ca                          *CA
+		custCerts                   *CertificatesSecret
+		disableInternalCADefaulting bool
+		services                    []corev1.Service
+		initialObjects              []runtime.Object
 	}
 	tests := []struct {
 		name    string
@@ -334,16 +344,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 						},
 					},
 				},
-				ca: testCA,
-				custCerts: &CertificatesSecret{
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-						Data: map[string][]byte{
-							CertFileName: tls,
-							KeyFileName:  key,
-						},
-					},
-				},
+				ca:        testCA,
+				custCerts: &customCertFixture,
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				t.Helper()
@@ -360,6 +362,41 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				// We are still expecting a CA cert to exist in this Secret
 				assert.True(t, len(internalSecret.Data[CAFileName]) > 0)
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
+			},
+		},
+		{
+			name: "should NOT default to internal CA if so requested",
+			args: args{
+				es: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+					Spec: esv1.ElasticsearchSpec{
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								Certificate: commonv1.SecretRef{
+									SecretName: "my-cert",
+								},
+							},
+						},
+					},
+				},
+				ca:                          testCA,
+				disableInternalCADefaulting: true,
+				custCerts:                   &customCertFixture,
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				assert.Equal(t, cs.Data[KeyFileName], key)
+				assert.Equal(t, cs.Data[CertFileName], tls)
+
+				// We do not expect the CA to be present in the result since none has been provided by the user
+				_, hasCaCert := cs.Data[CAFileName]
+				assert.False(t, hasCaCert, "No CA cert in certificates secret struct expected")
+
+				// Retrieve the Secret that contains the data for the internal HTTP certificate
+				internalSecret := &corev1.Secret{}
+				assert.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(cs), internalSecret))
+				// We are also not expecting a CA cert to exist in this internal Secret
+				assert.Empty(t, internalSecret.Data[CAFileName], "no CA in internal secret expected")
 			},
 		},
 		{
@@ -420,6 +457,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					Validity:     DefaultCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},
+				DisableInternalCADefaulting: tt.args.disableInternalCADefaulting,
 			}.ReconcileInternalHTTPCerts(context.Background(), tt.args.ca, tt.args.custCerts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileInternalHTTPCerts() error = %v, wantErr %v", err, tt.wantErr)

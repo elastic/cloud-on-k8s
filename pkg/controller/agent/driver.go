@@ -111,18 +111,19 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	if params.Agent.Spec.FleetServerEnabled && params.Agent.Spec.HTTP.TLS.Enabled() {
 		var caResults *reconciler.Results
 		fleetCerts, caResults = certificates.Reconciler{
-			K8sClient:             params.Client,
-			DynamicWatches:        params.Watches,
-			Owner:                 &params.Agent,
-			TLSOptions:            params.Agent.Spec.HTTP.TLS,
-			Namer:                 Namer,
-			Labels:                params.Agent.GetIdentityLabels(),
-			Services:              []corev1.Service{*svc},
-			GlobalCA:              params.OperatorParams.GlobalCA,
-			CACertRotation:        params.OperatorParams.CACertRotation,
-			CertRotation:          params.OperatorParams.CertRotation,
-			GarbageCollectSecrets: true,
-			ExtraHTTPSANs:         []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("*.%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
+			K8sClient:                   params.Client,
+			DynamicWatches:              params.Watches,
+			Owner:                       &params.Agent,
+			TLSOptions:                  params.Agent.Spec.HTTP.TLS,
+			Namer:                       Namer,
+			Labels:                      params.Agent.GetIdentityLabels(),
+			Services:                    []corev1.Service{*svc},
+			GlobalCA:                    params.OperatorParams.GlobalCA,
+			CACertRotation:              params.OperatorParams.CACertRotation,
+			CertRotation:                params.OperatorParams.CertRotation,
+			GarbageCollectSecrets:       true,
+			DisableInternalCADefaulting: true, // we do not want placeholder CAs in the internal certificates secret as FLEET_CA replaces otherwise all well known CAs
+			ExtraHTTPSANs:               []commonv1.SubjectAlternativeName{{DNS: fmt.Sprintf("*.%s.%s.svc", HTTPServiceName(params.Agent.Name), params.Agent.Namespace)}},
 		}.ReconcileCAAndHTTPCerts(params.Context)
 		if caResults.HasError() {
 			return results.WithResults(caResults), params.Status
