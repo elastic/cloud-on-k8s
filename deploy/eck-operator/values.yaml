@@ -126,7 +126,7 @@ webhook:
   # objectSelector corresponds to the objectSelector property of the webhook.
   # Setting this restricts the webhook to act only on objects that match the selector.
   objectSelector: {}
-  # Set the port that the validating webhook binds too.
+  # port is the port that the validating webhook binds to.
   port: 9443
 
 # hostNetwork allows a Pod to use the Node network namespace.
