@@ -17,7 +17,7 @@ steps:
       {{- end }}
 
     commands:
-      - .buildkite/scripts/test/set-deployer-config.sh
+      - .buildkite/scripts/test/set-deployer-config.sh && cat deployer-config.yml
 
       {{- if $test.Dind }}
       - make -C .ci TARGET="run-deployer" ci
