@@ -44,15 +44,18 @@ func authToGCP(
 		}
 
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
+		log.Printf("about to set gcloud to project: %+v", gCloudProject)
 		if err := exec.NewCommand(fmt.Sprintf("gcloud config set project %s", gCloudProject)).Run(); err != nil {
 			return err
 		}
 
+		log.Println("activating service account")
 		if err := exec.NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run(); err != nil {
 			return err
 		}
 
 		if configureDocker {
+			log.Println("configuring docker via gcloud")
 			return exec.NewCommand("gcloud auth configure-docker").Run()
 		}
 
