@@ -40,9 +40,6 @@ spec:
               - name: varlibdockercontainers
                 mountPath: /var/lib/docker/containers
                 readOnly: true
-{{ else }}
-              - name: agent-data
-                emptyDir: {}
 {{ end }}
               - name: varlog
                 mountPath: /var/log
@@ -58,6 +55,9 @@ spec:
           - name: varlibdockercontainers
             hostPath:
               path: /var/lib/docker/containers
+{{ else }}
+          - name: agent-data
+            emptyDir: {}
 {{ end }}
           - name: varlog
             hostPath:
