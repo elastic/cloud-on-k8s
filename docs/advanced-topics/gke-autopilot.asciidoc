@@ -1,0 +1,145 @@
+:page_id: autopilot 
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Deploy ECK on GKE Autopilot
+
+This page shows how to run ECK on GKE Autopilot.
+
+* <<{p}-autopilot-before-you-begin>>
+* <<{p}-autopilot-deploy-the-operator>>
+* <<{p}-autopilot-deploy-elasticsearch>>
+* <<{p}-autopilot-deploy-kibana>>
+
+[float]
+[id="{p}-autopilot-before-you-begin"]
+== Before you begin
+
+. Ensure you are running a compatible version of Kubernetes within Autopilot if running a production worload.
++
+Setting the kernel setting `vm.max_map_count` is critical for production workloads as described in the <<{p}-virtual-memory>> section. If you are intending to set `vm.max_map_count` you must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
+
+[id="{p}-autopilot-deploy-the-operator"]
+== Deploy the operator
+. Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart section].
++
+[source,shell,subs="attributes"]
+----
+kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
+----
+
+. As an alternative, you can use the Helm chart to install ECK as described in the link:k8s-install-helm.html[installation docs].
++
+[source,shell,subs="attributes"]
+----
+helm repo add elastic https://helm.elastic.co && helm repo update
+helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace --version {eck_version}
+----
+
+. Create a namespace to hold the Elastic resources ({eck_resources_list}):
++
+[source,shell]
+----
+kubectl create namespace elastic
+----
+
+[id="{p}-autopilot-deploy-elasticsearch"]
+== Deploy an Elasticsearch instance
+
+. [Optional] Install a Daemonset to apply recommended virtual memory kernel settings on all Kubernetes nodes (see <<{p}-virtual-memory>> for details). 
++
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -n elastic -f -
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: max-map-count-setter
+  labels:
+    k8s-app: max-map-count-setter
+spec:
+  selector:
+    matchLabels:
+      name: max-map-count-setter
+  template:
+    metadata:
+      labels:
+        name: max-map-count-setter
+    spec:
+      initContainers:
+        - name: max-map-count-setter
+          image: docker.io/bash:5.2.15
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 262144 > /proc/sys/vm/max_map_count']
+      containers:
+        - name: sleep
+          image: docker.io/bash:5.2.15
+          command: ['sleep', 'infinity']
+EOF
+----
+
+. Create an Elasticsearch cluster.
++
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -n elastic -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 1
+    # Only uncomment the below section if you are not using the previous Daemonset to set max_map_count.
+    # config:
+    #  node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        # This init container ensures that the `max_map_count` setting has been applied before starting Elasticsearch.
+        # This is not required, but is encouraged when using the previous Daemonset to set max_map_count.
+        # Do not use this if setting config.node.store.allow_mmap: false
+        initContainers:
+        - name: max-map-count-check
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+EOF
+----
+
+[id="{p}-autopilot-deploy-kibana"]
+== Deploy a Kibana instance
+
+Use the following code to create a Kibana instance:
+
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -n elastic -f -
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 1
+EOF
+----
