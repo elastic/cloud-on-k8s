@@ -277,7 +277,7 @@ spec:
         }
 ----
 
-NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not currently supported.
+NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not currently managed by the Logstash operator, and using them will require you to create and manage your own Volumes and VolumeMounts
 
 
 [id="{p}-logstash-pipelines-es"]

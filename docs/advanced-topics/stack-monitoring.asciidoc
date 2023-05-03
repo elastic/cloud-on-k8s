@@ -46,7 +46,7 @@ spec:
   version: {version}
   elasticsearchRef:
     name: monitored-sample
-    namespace: production <2>
+    namespace: production <1>
   monitoring:
     metrics:
       elasticsearchRefs:
@@ -69,11 +69,11 @@ spec:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <3>
+        namespace: observability <1>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <3>
+        namespace: observability <1>
 ---
 apiVersion: logstash.k8s.elastic.co/v1beta1
 kind: Logstash
@@ -85,11 +85,11 @@ spec:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <4>
+        namespace: observability <1>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <4>
+        namespace: observability <1>
 ----
 
 <1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elastic Stack resource are running in the same namespace.
