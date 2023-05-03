@@ -263,9 +263,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 		initContainers[i].Resources = DefaultResources
 		initContainers[i].SecurityContext = &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
 			Privileged:               ptr.Bool(false),
 			ReadOnlyRootFilesystem:   ptr.Bool(false),
 			AllowPrivilegeEscalation: ptr.Bool(false),
@@ -314,9 +311,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				VolumeMounts: volumeMounts,
 				Resources:    DefaultResources, // inherited from main container
 				SecurityContext: &corev1.SecurityContext{
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{"ALL"},
-					},
 					Privileged: ptr.Bool(false),
 					// ReadOnlyRootFilesystem is expected to be false in this test because there is no data volume.
 					ReadOnlyRootFilesystem:   ptr.Bool(false),
@@ -327,9 +321,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				{
 					Name: "additional-container",
 					SecurityContext: &corev1.SecurityContext{
-						Capabilities: &corev1.Capabilities{
-							Drop: []corev1.Capability{"ALL"},
-						},
 						Privileged:               ptr.Bool(false),
 						ReadOnlyRootFilesystem:   ptr.Bool(false),
 						AllowPrivilegeEscalation: ptr.Bool(false),
@@ -352,9 +343,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						PreStop: NewPreStopHook(),
 					},
 					SecurityContext: &corev1.SecurityContext{
-						Capabilities: &corev1.Capabilities{
-							Drop: []corev1.Capability{"ALL"},
-						},
 						Privileged:               ptr.Bool(false),
 						ReadOnlyRootFilesystem:   ptr.Bool(false),
 						AllowPrivilegeEscalation: ptr.Bool(false),
