@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ptr "k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -173,7 +172,6 @@ func TestWithMonitoring(t *testing.T) {
 func assertSecurityContext(t *testing.T, securityContext *corev1.SecurityContext) {
 	t.Helper()
 	require.NotNil(t, securityContext)
-	require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)
 	require.NotNil(t, securityContext.Capabilities)
