@@ -40,7 +40,8 @@ func DefaultBeatSecurityContext() *corev1.SecurityContext {
 			Drop: []corev1.Capability{"ALL"},
 		},
 		Privileged:               ptr.Bool(false),
-		RunAsNonRoot:             ptr.Bool(false), // Update to true when https://github.com/elastic/beats/pull/35272 is merged.
+		// Update to true when https://github.com/elastic/beats/pull/35272 is merged.
+		RunAsNonRoot:             ptr.Bool(false),
 		ReadOnlyRootFilesystem:   ptr.Bool(true),
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
