@@ -30,25 +30,28 @@ spec:
                   fieldRef:
                     fieldPath: spec.nodeName
             volumeMounts:
+{{ if not .AutopilotCluster }}
               - name: proc
                 mountPath: /hostfs/proc
                 readOnly: true
-{{ if not .AutopilotCluster }}
               - name: cgroup
                 mountPath: /hostfs/sys/fs/cgroup
                 readOnly: true
               - name: varlibdockercontainers
                 mountPath: /var/lib/docker/containers
                 readOnly: true
+{{ else }}
+              - name: agent-data
+                emptyDir: {}
 {{ end }}
               - name: varlog
                 mountPath: /var/log
                 readOnly: true
         volumes:
+{{ if not .AutopilotCluster }}
           - name: proc
             hostPath:
               path: /proc
-{{ if not .AutopilotCluster }}
           - name: cgroup
             hostPath:
               path: /sys/fs/cgroup
