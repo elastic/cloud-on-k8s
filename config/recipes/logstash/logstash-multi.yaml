@@ -46,7 +46,7 @@ spec:
         paths:
           - /data/logstash-tutorial.log
     output.logstash:
-      hosts: ["logstash-ls-api.default.svc:5044"]
+      hosts: ["logstash-ls-beats:5044"]
   deployment:
     podTemplate:
       spec:
