@@ -12,22 +12,30 @@ import (
 )
 
 var (
-	// MinStackVersion is the minimum Stack version to use RunAsNonRoot with the Elasticsearch image.
+	// RunAsNonRootMinStackVersion is the minimum Stack version to use RunAsNonRoot with the Elasticsearch image.
 	// Before 8.8.0 Elasticsearch image runs has non-numeric user.
 	// Refer to https://github.com/elastic/elasticsearch/pull/95390 for more information.
-	MinStackVersion = version.MustParse("8.8.0-SNAPSHOT")
+	RunAsNonRootMinStackVersion = version.MustParse("8.8.0-SNAPSHOT")
+
+	// DropCapabilitiesMinStackVersion is the minimum Stack version to Drop all the capabilities.
+	// Before 8.0.0 Elasticsearch image may run as root and require capabilities to change ownership
+	// of copied files in initContainer and use chroot in "elasticsearch" container.
+	DropCapabilitiesMinStackVersion = version.MustParse("8.0.0-SNAPSHOT")
 )
 
 func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.SecurityContext {
 	sc := corev1.SecurityContext{
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{"ALL"},
-		},
 		Privileged:               ptr.Bool(false),
 		ReadOnlyRootFilesystem:   ptr.Bool(enableReadOnlyRootFilesystem),
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
-	if ver.LT(MinStackVersion) {
+	if ver.LT(DropCapabilitiesMinStackVersion) {
+		return sc
+	}
+	sc.Capabilities = &corev1.Capabilities{
+		Drop: []corev1.Capability{"ALL"},
+	}
+	if ver.LT(RunAsNonRootMinStackVersion) {
 		return sc
 	}
 	sc.RunAsNonRoot = ptr.Bool(true)
