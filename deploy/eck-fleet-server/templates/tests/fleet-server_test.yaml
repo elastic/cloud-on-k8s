@@ -13,7 +13,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 8.8.0-SNAPSHOT
+          value: 8.9.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: eck-kibana
