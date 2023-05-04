@@ -8,9 +8,9 @@ description: ECK operator Custom Resource Definitions
 
 type: application
 
-version: 2.8.0-SNAPSHOT
+version: 2.8.0
 
-appVersion: 2.8.0-SNAPSHOT
+appVersion: 2.8.0
 
 home: https://github.com/elastic/cloud-on-k8s
 
