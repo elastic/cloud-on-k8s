@@ -45,7 +45,7 @@ func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) tes
 func assertSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext, image string) {
 	t.Helper()
 	require.NotNil(t, securityContext)
-	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.MinStackVersion) {
+	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.RunAsNonRootMinStackVersion) {
 		require.Nil(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
 	}
 	require.NotNil(t, securityContext.Privileged)
