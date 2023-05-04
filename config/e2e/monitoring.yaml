@@ -64,7 +64,7 @@ spec:
                   storageClassName: "e2e-default"
                   resources:
                     requests:
-                      storage: 10Gb
+                      storage: 10Gi
           - name: agent-data
             csi:
               # Use ephemeral storage driver in Autopilot

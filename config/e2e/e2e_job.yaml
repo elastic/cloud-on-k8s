@@ -76,7 +76,7 @@ spec:
                 storageClassName: "e2e-default"
                 resources:
                   requests:
-                    storage: 10Gb
+                    storage: 10Gi
 {{ end }}
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test
