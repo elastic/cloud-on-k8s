@@ -57,7 +57,9 @@ spec:
               path: /var/lib/docker/containers
 {{ else }}
           - name: agent-data
-            emptyDir: {}
+            csi:
+              # Use ephemeral storage driver in Autopilot
+              driver: inline.storage.kubernetes.io
 {{ end }}
           - name: varlog
             hostPath:
