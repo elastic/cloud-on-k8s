@@ -3,40 +3,40 @@ name: eck-stack
 description: Elastic Stack managed by the ECK Operator
 kubeVersion: ">= 1.21.0-0"
 type: application
-version: 0.5.0-SNAPSHOT
+version: 0.6.0-SNAPSHOT
 
 dependencies:
   - name: eck-elasticsearch
     condition: eck-elasticsearch.enabled
-    version: "0.4.0-SNAPSHOT"
+    version: "0.5.0-SNAPSHOT"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-elasticsearch"
     repository: "https://helm.elastic.co"
   - name: eck-kibana
     condition: eck-kibana.enabled
-    version: "0.4.0-SNAPSHOT"
+    version: "0.5.0-SNAPSHOT"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-kibana"
     repository: "https://helm.elastic.co"
   - name: eck-agent
     condition: eck-agent.enabled
-    version: "0.4.0-SNAPSHOT"
+    version: "0.5.0-SNAPSHOT"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-agent"
     repository: "https://helm.elastic.co"
   - name: eck-fleet-server
     condition: eck-fleet-server.enabled
-    version: "0.4.0-SNAPSHOT"
+    version: "0.5.0-SNAPSHOT"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-fleet-server"
     repository: "https://helm.elastic.co"
   - name: eck-beats
     condition: eck-beats.enabled
-    version: "0.3.0-SNAPSHOT"
+    version: "0.4.0-SNAPSHOT"
     # uncomment for local testing, and comment
     # the helm.elastic.co repository.
     # repository: "file://../eck-beats"
