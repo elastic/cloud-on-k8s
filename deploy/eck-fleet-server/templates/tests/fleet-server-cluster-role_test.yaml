@@ -62,7 +62,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
             clusterRole: label
-            helm.sh/chart: eck-fleet-server-0.4.0-SNAPSHOT
+            helm.sh/chart: eck-fleet-server-0.5.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
