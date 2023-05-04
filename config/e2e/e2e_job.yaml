@@ -48,6 +48,16 @@ spec:
 {{ if .Context.AutopilotCluster }}
             - name: tmp
               mountPath: /tmp
+          # If resources aren't assigned in autopilot
+          # it will assign a tiny amount of cpu
+          # which causes e2e tests to be very slow.
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: "2"
+              memory: 2Gi
 {{ end }}
           securityContext:
             allowPrivilegeEscalation: false
