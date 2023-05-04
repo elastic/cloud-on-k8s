@@ -57,6 +57,15 @@ spec:
               path: /var/lib/docker/containers
 {{ else }}
           - name: agent-data
+            ephemeral:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: [ "ReadWriteOnce" ]
+                  storageClassName: "e2e-default"
+                  resources:
+                    requests:
+                      storage: 10Gb
+          - name: agent-data
             csi:
               # Use ephemeral storage driver in Autopilot
               driver: inline.storage.kubernetes.io
