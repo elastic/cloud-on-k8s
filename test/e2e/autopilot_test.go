@@ -24,5 +24,5 @@ func TestAutopilot(t *testing.T) {
 	randSuffix := rand.String(4)
 	ns := test.Ctx().ManagedNamespace(0)
 
-	helper.RunFile(t, sampleFile, ns, randSuffix, nil)
+	helper.RunFile(t, recipesFile, ns, randSuffix, nil)
 }
