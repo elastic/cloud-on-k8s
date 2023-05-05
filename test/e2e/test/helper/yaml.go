@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -324,6 +325,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *rbacv1.ClusterRole:
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		case *corev1.Service:
+			decodedObj.Namespace = namespace
+			decodedObj.Name = decodedObj.Name + "-" + suffix
+		case *appsv1.DaemonSet:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		}
