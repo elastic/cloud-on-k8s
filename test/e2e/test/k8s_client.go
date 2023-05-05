@@ -74,6 +74,9 @@ func CreateClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := appsv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
 	if err := esv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
