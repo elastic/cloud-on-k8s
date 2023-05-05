@@ -18,7 +18,7 @@ This page shows how to run ECK on GKE Autopilot.
 [id="{p}-autopilot-before-you-begin"]
 == Before you begin
 
-. Ensure you are running a compatible version of Kubernetes within Autopilot if running a production worload.
+. Ensure you are running a supported version of Kubernetes within Autopilot.
 +
 Setting the kernel setting `vm.max_map_count` is critical for production workloads as described in the <<{p}-virtual-memory>> section. If you are intending to set `vm.max_map_count` you must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
 
