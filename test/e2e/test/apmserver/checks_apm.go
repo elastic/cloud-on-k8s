@@ -176,7 +176,7 @@ func (c *apmClusterChecks) CheckAPMSecretTokenConfiguration(apm apmv1.ApmServer,
 			defer cancel()
 			_, err = client.IntakeV2Events(ctx, false, []byte(sampleEventBody))
 			if !commonhttp.IsUnauthorized(err) {
-				return fmt.Errorf("expected error 401 but was %v", err)
+				return fmt.Errorf("expected error 401 but was %w", err)
 			}
 			return nil
 		}),
