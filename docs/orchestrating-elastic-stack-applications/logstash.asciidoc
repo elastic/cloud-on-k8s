@@ -494,14 +494,14 @@ kubectl apply -f {logstash_recipes}/logstash-monitored.yaml
 Deploys an Elasticsearch and Kibana monitoring cluster, and a Logstash that will send its monitoring information to this cluster. You can view the stack monitoring information in the monitoring cluster's Kibana
 
 [id="{p}-logstash-configuration-multiple-pipelines"]
-=== Multiple pipelines/multiple es clusters
+=== Multiple pipelines/multiple Elasticsearch clusters
 
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f {logstash_recipes}/logstash-multi.yaml
 ----
 
-Deploys Elasticsearch in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to prod and qa pipelines.
+Deploys Elasticsearch in prod and qa configurations, running in separate namespaces. Logstash is configured with a multiple pipeline->pipeline configuration, with a source pipeline routing to `prod` and `qa` pipelines.
 
 [id="{p}-logstash-advanced-configuration"]
 == Advanced configuration
@@ -560,25 +560,46 @@ spec:
 [id="{p}-logstash-technical-preview-limitations"]
 == Technical Preview limitations
 
+Note that this release is a technical preview. It is still under active development and has additional limitations:
 
-Note that this release is a technical preview, is still under active development and has additional limitations:
+[id="{p}-logstash-technical-preview-persistence"]
+=== No integrated support for persistence
+The operator provides no integrated support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state - any persistence should be added manually.
 
-* No integrated support for persistence
-** The operator provides no integrated support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state - any persistence should be added manually.
-* `ElasticsearchRef` implementation in plugins is in preview mode
-** Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
+[id="{p}-logstash-technical-preview-elasticsearchref"]
+=== `ElasticsearchRef` implementation in plugins is in preview mode
+Adding Elasticsearch to plugin definitions requires the use of environment variables populated by the Logstash operator, which may change in future versions of the Logstash operator.
+
+[id="{p}-logstash-technical-preview-limted-plugins"]
+=== Limited support for plugins
+
+Not all {ls} plugins are supported for this technical preview. 
+Note that this is not an exhaustive list, and plugins outside of the https://www.elastic.co/support/matrix#logstash_plugins[Logstash plugin matrix] have not been considered for this list.
+
+**Supported plugins**
+
+These plugins have been tested and are supported:
+
+* logstash-input-beats
+* logstash-input-elastic_agent
+* logstash-input-kafka
+* logstash-input-tcp
+* logstash-input-http
+* logstash-input-udp
+
+Most filter and output plugins are supported, with some exceptions noted in the next section. 
+
+**Plugins not supported at technical preview**
+
+These plugins are not supported: 
+
+* logstash-filter-jdbc_static
+* logstash-filter-jdbc_streaming
+* logstash-filter-aggregate
+
+**Plugins that may require additional manual work** 
+
+Other {ls} filter and output plugins work, but require additional manual steps to mount volumes for certain configurations. 
+For example, logstash-output-s3 requires mounting a volume to store in-progress work to avoid data loss.
 
 
-* Limited support for plugins. Note that this is not an exhaustive list, and plugins outside of the Logstash plugin matrix have not been considered for this list.
-* The following input plugins have been tested and are supported:
-** logstash-input-beats
-** logstash-input-elastic_agent
-** logstash-input-kafka
-** logstash-input-tcp
-** logstash-input-http
-** logstash-input-udp
-* Most filter and output plugins are supported with the exception of:
-** logstash-filter-jdbc_static
-** logstash-filter-jdbc_streaming
-** logstash-filter-aggregate
-** Note: Other filters and output may require additional manual work to mount volumes for certain configurations. This includes logstash-output-s3, which will a volume mount to store in progress work to avoid data loss.
