@@ -6,8 +6,8 @@ metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ ternary .Values.podMonitor.namespace .Release.Namespace (not (empty .Values.podMonitor.namespace)) }}
   labels: {{- include "eck-operator.labels" . | nindent 4 }}
-  {{- if .Values.podMonitor.labels }}
-    {{- toYaml .Values.podMonitor.labels | nindent 4 }}
+  {{- with .Values.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.podMonitor.annotations }}
   annotations: {{- toYaml . | nindent 4 }}
@@ -19,14 +19,14 @@ spec:
   podMetricsEndpoints:
     - port: metrics
       path: /metrics
-      {{- if .Values.podMonitor.interval }}
-      interval: {{ .Values.podMonitor.interval }}
+      {{- with .Values.podMonitor.interval }}
+      interval: {{ . }}
       {{- end }}
-      {{- if .Values.podMonitor.scrapeTimeout }}
-      scrapeTimeout: {{ .Values.podMonitor.scrapeTimeout }}
+      {{- with .Values.podMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
       {{- end }}
-      {{- if .Values.podMonitor.podMetricsEndpointConfig }}
-        {{- toYaml .Values.podMonitor.podMetricsEndpointConfig | nindent 6 }}
+      {{- with .Values.podMonitor.podMetricsEndpointConfig }}
+        {{- toYaml . | nindent 6 }}
       {{- end }}
   namespaceSelector:
     matchNames:

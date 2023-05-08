@@ -102,8 +102,8 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleKb
 			},
 			containersLength:       2,
-			podVolumesLength:       3,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       4,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with logs monitoring",
@@ -114,8 +114,8 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleKb
 			},
 			containersLength:       2,
-			podVolumesLength:       3,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       4,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -127,8 +127,8 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleKb
 			},
 			containersLength:       3,
-			podVolumesLength:       5,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       7,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -140,8 +140,8 @@ func TestWithMonitoring(t *testing.T) {
 				return sampleKb
 			},
 			containersLength:       3,
-			podVolumesLength:       6,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       8,
+			beatVolumeMountsLength: 4,
 		},
 	}
 

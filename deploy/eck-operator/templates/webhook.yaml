@@ -6,9 +6,9 @@ metadata:
   name: {{ include "eck-operator.webhookName" . }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
-{{- if .Values.webhook.certManagerCert }}
+{{- with .Values.webhook.certManagerCert }}
   annotations:
-    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Values.webhook.certManagerCert }}"
+    cert-manager.io/inject-ca-from: "{{ $.Release.Namespace }}/{{ . }}"
 {{- end }}
 webhooks:
 - clientConfig:
@@ -426,7 +426,7 @@ spec:
   ports:
     - name: https
       port: 443
-      targetPort: 9443
+      targetPort: {{ .Values.webhook.port }}
   selector:
     {{- include "eck-operator.selectorLabels" . | nindent 4 }}
 {{- if .Values.webhook.manageCerts }}

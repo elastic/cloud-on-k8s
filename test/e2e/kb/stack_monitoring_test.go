@@ -20,7 +20,7 @@ import (
 // correctly delivered to the referenced monitoring Elasticsearch clusters.
 func TestKBStackMonitoring(t *testing.T) {
 	// only execute this test on supported version
-	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion)
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
 	if err != nil {
 		t.SkipNow()
 	}

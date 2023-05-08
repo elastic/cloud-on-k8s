@@ -50,6 +50,9 @@ rules:
   - apiGroups: ["stackconfigpolicy.k8s.elastic.co"]
     resources: ["stackconfigpolicies"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["logstash.k8s.elastic.co"]
+    resources: ["logstashes"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -86,5 +89,8 @@ rules:
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
   - apiGroups: ["stackconfigpolicy.k8s.elastic.co"]
     resources: ["stackconfigpolicies"]
+    verbs: ["create", "delete", "deletecollection", "patch", "update"]
+  - apiGroups: ["logstash.k8s.elastic.co"]
+    resources: ["logstashes"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
 {{- end -}}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -91,8 +92,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:       2,
 			esEnvVarsLength:        0,
-			podVolumesLength:       3,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       4,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with logs monitoring",
@@ -104,8 +105,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:       2,
 			esEnvVarsLength:        1,
-			podVolumesLength:       2,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       3,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring",
@@ -118,8 +119,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:       3,
 			esEnvVarsLength:        1,
-			podVolumesLength:       4,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       6,
+			beatVolumeMountsLength: 4,
 		},
 		{
 			name: "with metrics and logs monitoring with different es ref",
@@ -132,8 +133,8 @@ func TestWithMonitoring(t *testing.T) {
 			},
 			containersLength:       3,
 			esEnvVarsLength:        1,
-			podVolumesLength:       5,
-			beatVolumeMountsLength: 3,
+			podVolumesLength:       7,
+			beatVolumeMountsLength: 4,
 		},
 	}
 
@@ -152,6 +153,7 @@ func TestWithMonitoring(t *testing.T) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "metricbeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
+						assertSecurityContext(t, c.SecurityContext)
 					}
 				}
 			}
@@ -159,9 +161,27 @@ func TestWithMonitoring(t *testing.T) {
 				for _, c := range builder.PodTemplate.Spec.Containers {
 					if c.Name == "filebeat" {
 						assert.Equal(t, tc.beatVolumeMountsLength, len(c.VolumeMounts))
+						assertSecurityContext(t, c.SecurityContext)
 					}
 				}
 			}
 		})
 	}
+}
+
+func assertSecurityContext(t *testing.T, securityContext *corev1.SecurityContext) {
+	t.Helper()
+	require.NotNil(t, securityContext)
+	require.NotNil(t, securityContext.Privileged)
+	require.False(t, *securityContext.Privileged)
+	require.NotNil(t, securityContext.Capabilities)
+	droppedCapabilities := securityContext.Capabilities.Drop
+	hasDropAllCapability := false
+	for _, capability := range droppedCapabilities {
+		if capability == "ALL" {
+			hasDropAllCapability = true
+			break
+		}
+	}
+	require.True(t, hasDropAllCapability, "ALL capability not found in securityContext.Capabilities.Drop")
 }

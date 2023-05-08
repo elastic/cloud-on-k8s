@@ -326,6 +326,19 @@ rules:
       - update
       - patch
       - delete
+  - apiGroups :
+      - logstash.k8s.elastic.co
+    resources:
+      - logstashes
+      - logstashes/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
       - deletecollection
   - apiGroups:
       - storage.k8s.io

@@ -18,7 +18,7 @@
 
 # Version of Elastic Agent.
 #
-version: 8.8.0-SNAPSHOT
+version: 8.9.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Agent.
 #
@@ -29,6 +29,9 @@ labels: {}
 annotations: {}
 
 spec:
+  # policyID determines into which Agent Policy this Agent will be enrolled.
+  # policyID: eck-agent
+
   # Referenced resources are below and depending on the setup, at least one is required for a functional Agent.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-fleet-configuration-setting-referenced-resources
   #

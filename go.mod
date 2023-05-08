@@ -28,10 +28,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
-	go.elastic.co/apm/module/apmelasticsearch/v2 v2.3.0
-	go.elastic.co/apm/module/apmhttp/v2 v2.3.0
-	go.elastic.co/apm/module/apmzap/v2 v2.3.0
-	go.elastic.co/apm/v2 v2.3.0
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.1
+	go.elastic.co/apm/module/apmhttp/v2 v2.4.1
+	go.elastic.co/apm/module/apmzap/v2 v2.4.1
+	go.elastic.co/apm/v2 v2.4.1
 	go.uber.org/automaxprocs v1.5.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.8.0
@@ -40,7 +40,7 @@ require (
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
 	k8s.io/client-go v0.26.3
-	k8s.io/klog/v2 v2.90.1
+	k8s.io/klog/v2 v2.100.1
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/controller-tools v0.11.4

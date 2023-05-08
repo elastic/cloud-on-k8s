@@ -126,10 +126,13 @@ webhook:
   # objectSelector corresponds to the objectSelector property of the webhook.
   # Setting this restricts the webhook to act only on objects that match the selector.
   objectSelector: {}
-  # HostNetwork allows a Pod to use the Node network namespace.
-  # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
-  # CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
-  hostNetwork: false
+  # port is the port that the validating webhook binds to.
+  port: 9443
+
+# hostNetwork allows a Pod to use the Node network namespace.
+# This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
+# CAUTION: Proceed at your own risk. This setting has security concerns such as allowing malicious users to access workloads running on the host.
+hostNetwork: false
 
 softMultiTenancy:
   # enabled determines whether the operator is installed with soft multi-tenancy extensions.
@@ -159,6 +162,9 @@ config:
 
   # containerRegistry to use for pulling Elasticsearch and other application container images.
   containerRegistry: docker.elastic.co
+
+  # containerRepository to use for pulling Elasticsearch and other application container images.
+  # containerRepository: ""
 
   # containerSuffix suffix to be appended to container images by default. Cannot be combined with -ubiOnly flag
   # containerSuffix: ""

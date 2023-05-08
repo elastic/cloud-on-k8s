@@ -31,8 +31,8 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: {{ include "eck-operator.serviceAccountName" . }}
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
       {{- end }}
       {{- with .Values.podSecurityContext }}
       securityContext:
@@ -87,7 +87,7 @@ spec:
               protocol: TCP
             {{- end }}
             {{- if .Values.webhook.enabled }}
-            - containerPort: 9443
+            - containerPort: {{ .Values.webhook.port }}
               name: https-webhook
               protocol: TCP
             {{- end }}  
@@ -117,7 +117,7 @@ spec:
         {{- with .Values.volumes }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- if .Values.webhook.hostNetwork }}
+      {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       {{- end }}

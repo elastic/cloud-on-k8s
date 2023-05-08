@@ -52,13 +52,13 @@ type stackMonitoringChecks struct {
 
 func (c stackMonitoringChecks) Steps() test.StepList {
 	return test.StepList{
-		c.CheckBeatSidecars(),
+		c.CheckBeatSidecarsInElasticsearch(),
 		c.CheckMonitoringMetricsIndex(),
 		c.CheckFilebeatIndex(),
 	}
 }
 
-func (c stackMonitoringChecks) CheckBeatSidecars() test.Step {
+func (c stackMonitoringChecks) CheckBeatSidecarsInElasticsearch() test.Step {
 	return test.Step{
 		Name: "Check that beat sidecars are running",
 		Test: test.Eventually(func() error {

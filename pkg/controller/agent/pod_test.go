@@ -25,12 +25,39 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
+var (
+	fleetCertsFixture = &certificates.CertificatesSecret{
+		Secret: corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "fleet-certs-secret-name",
+			},
+			Data: map[string][]byte{
+				"ca.crt":  []byte("a CA cert"),
+				"tls.key": []byte("a private key"),
+				"tls.crt": []byte("the server cert"),
+			},
+		},
+	}
+	wellKnownCACertsFixture = &certificates.CertificatesSecret{
+		Secret: corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "fleet-certs-secret-name",
+			},
+			Data: map[string][]byte{
+				"tls.key": []byte("a private key"),
+				"tls.crt": []byte("the server cert"),
+			},
+		},
+	}
+)
+
 func Test_amendBuilderForFleetMode(t *testing.T) {
 	optional := false
 
 	for _, tt := range []struct {
 		name        string
 		params      Params
+		fleetCerts  *certificates.CertificatesSecret
 		wantPodSpec corev1.PodSpec
 	}{
 		{
@@ -60,6 +87,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 				}),
 			},
+			fleetCerts: fleetCertsFixture,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = []corev1.Volume{
 					{
@@ -131,6 +159,100 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			}),
 		},
 		{
+			name: "running elastic agent, with fleet server, without es/kb association, with well known CA",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "default",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+					},
+				},
+				Client: k8s.NewFakeClient(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent-agent-http",
+						Namespace: "default",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name: "https",
+								Port: 8220,
+							},
+						},
+					},
+				}),
+			},
+			fleetCerts: wellKnownCACertsFixture,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = []corev1.Volume{
+					{
+						Name: "fleet-certs",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "fleet-certs-secret-name",
+								Optional:   &optional,
+							},
+						},
+					},
+				}
+
+				ps.Containers[0].VolumeMounts = []corev1.VolumeMount{
+					{
+						Name:      "fleet-certs",
+						ReadOnly:  true,
+						MountPath: "/usr/share/fleet-server/config/http-certs",
+					},
+				}
+
+				ps.Containers[0].Ports = []corev1.ContainerPort{
+					{
+						Name:          "https",
+						ContainerPort: 8220,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				}
+
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{
+						Name:  "FLEET_SERVER_CERT",
+						Value: "/usr/share/fleet-server/config/http-certs/tls.crt",
+					},
+					{
+						Name:  "FLEET_SERVER_CERT_KEY",
+						Value: "/usr/share/fleet-server/config/http-certs/tls.key",
+					},
+					{
+						Name:  "FLEET_SERVER_ENABLE",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_URL",
+						Value: "https://agent-agent-http.default.svc:8220",
+					},
+					{
+						Name:  "CONFIG_PATH",
+						Value: "/usr/share/elastic-agent",
+					},
+				}
+
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+
+				return ps
+			}),
+		},
+		{
 			name: "running elastic agent, without running fleet server without kb association",
 			params: Params{
 				Agent: agentv1alpha1.Agent{
@@ -143,6 +265,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				},
 				Client: k8s.NewFakeClient(),
 			},
+			fleetCerts: fleetCertsFixture,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Containers[0].Env = []corev1.EnvVar{
 					{
@@ -199,6 +322,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 				}),
 			},
+			fleetCerts: fleetCertsFixture,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = nil
 
@@ -255,17 +379,10 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			fleetCerts := &certificates.CertificatesSecret{
-				Secret: corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "fleet-certs-secret-name",
-					},
-				},
-			}
 			builder := generateBuilder()
 			hash := sha256.New224()
 
-			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, fleetCerts, EnrollmentAPIKey{}, builder, hash)
+			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, tt.fleetCerts, EnrollmentAPIKey{}, builder, hash)
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
@@ -329,6 +446,7 @@ func Test_applyEnvVars(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
 		params             Params
+		fleetCerts         *certificates.CertificatesSecret
 		fleetToken         EnrollmentAPIKey
 		podTemplateBuilder *defaults.PodTemplateBuilder
 		wantContainer      corev1.Container
@@ -341,6 +459,7 @@ func Test_applyEnvVars(t *testing.T) {
 				Agent:   agent,
 				Client:  k8s.NewFakeClient(),
 			},
+			fleetCerts:         fleetCertsFixture,
 			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
 			wantContainer: corev1.Container{
@@ -367,6 +486,7 @@ func Test_applyEnvVars(t *testing.T) {
 				Agent:   agent,
 				Client:  k8s.NewFakeClient(),
 			},
+			fleetCerts:         fleetCertsFixture,
 			fleetToken:         testToken,
 			podTemplateBuilder: podTemplateBuilderWithFleetTokenSet,
 			wantContainer: corev1.Container{
@@ -405,6 +525,7 @@ func Test_applyEnvVars(t *testing.T) {
 					},
 				),
 			},
+			fleetCerts:         fleetCertsFixture,
 			fleetToken:         testToken,
 			podTemplateBuilder: generateBuilder(),
 			wantContainer: corev1.Container{
@@ -441,9 +562,70 @@ func Test_applyEnvVars(t *testing.T) {
 				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": []byte("es-password"),
 			},
 		},
+		{
+			name: "elastic agent, with fleet server, with kibana ref with well-known CA",
+			params: Params{
+				Context: context.Background(),
+				Agent:   agent2,
+				Client: k8s.NewFakeClient(
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{Name: "agent-agent-http", Namespace: "default"},
+						Spec: corev1.ServiceSpec{
+							Ports: []corev1.ServicePort{
+								{
+									Name: "https",
+									Port: 8220,
+								},
+							},
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "default"},
+						Data: map[string][]byte{
+							"es-user": []byte("es-password"),
+						},
+					},
+				),
+			},
+			fleetCerts:         wellKnownCACertsFixture,
+			fleetToken:         testToken,
+			podTemplateBuilder: generateBuilder(),
+			wantContainer: corev1.Container{
+				Name: "agent",
+				Env: []corev1.EnvVar{
+					{Name: "FLEET_ENROLL", Value: "true"},
+					{Name: "FLEET_ENROLLMENT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_ENROLLMENT_TOKEN",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_CERT", Value: "/usr/share/fleet-server/config/http-certs/tls.crt"},
+					{Name: "FLEET_SERVER_CERT_KEY", Value: "/usr/share/fleet-server/config/http-certs/tls.key"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_HOST", Value: "es-url"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_SERVER_ELASTICSEARCH_PASSWORD",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_USERNAME", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_SERVER_ELASTICSEARCH_USERNAME",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_ENABLE", Value: "true"},
+					{Name: "FLEET_SERVER_POLICY_ID", Value: "policy-id"},
+					{Name: "FLEET_URL", Value: "https://agent-agent-http.default.svc:8220"},
+				},
+			},
+			wantSecretData: map[string][]byte{
+				"FLEET_ENROLLMENT_TOKEN":              []byte("test-token"),
+				"FLEET_SERVER_ELASTICSEARCH_USERNAME": []byte("es-user"),
+				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": []byte("es-password"),
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuilder, err := applyEnvVars(tt.params, tt.fleetToken, tt.podTemplateBuilder)
+			gotBuilder, err := applyEnvVars(tt.params, tt.fleetToken, tt.fleetCerts, tt.podTemplateBuilder)
 
 			require.NoError(t, err)
 
@@ -906,7 +1088,7 @@ func Test_getFleetSetupKibanaEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupKibanaEnvVars(context.Background(), tt.agent, k8s.NewFakeClient(), tt.fleetToken)
+			gotEnvVars, gotErr := getFleetSetupKibanaEnvVars(tt.fleetToken)(tt.agent)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -982,6 +1164,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
 		agent       agentv1alpha1.Agent
+		fleetCerts  *certificates.CertificatesSecret
 		wantErr     bool
 		wantEnvVars map[string]string
 		client      k8s.Client
@@ -1001,10 +1184,49 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			fleetCerts: fleetCertsFixture,
+			wantErr:    false,
 			wantEnvVars: map[string]string{
 				"FLEET_ENROLL": "true",
 				"FLEET_CA":     "/usr/share/fleet-server/config/http-certs/ca.crt",
+				"FLEET_URL":    "https://agent-agent-http.ns.svc:8220",
+			},
+			client: k8s.NewFakeClient(&corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "agent-agent-http",
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:        "https",
+							Protocol:    "",
+							AppProtocol: nil,
+							Port:        8220,
+						},
+					},
+				},
+			}),
+		},
+		{
+			name: "fleet server enabled, kibana ref, well known CA",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: "ns",
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					KibanaRef: commonv1.ObjectSelector{
+						Name:      "kibana",
+						Namespace: "ns",
+					},
+				},
+			},
+			fleetCerts: wellKnownCACertsFixture,
+			wantErr:    false,
+			wantEnvVars: map[string]string{
+				"FLEET_ENROLL": "true",
 				"FLEET_URL":    "https://agent-agent-http.ns.svc:8220",
 			},
 			client: k8s.NewFakeClient(&corev1.Service{
@@ -1035,7 +1257,8 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 					FleetServerEnabled: true,
 				},
 			},
-			wantErr: false,
+			fleetCerts: fleetCertsFixture,
+			wantErr:    false,
 			wantEnvVars: map[string]string{
 				"FLEET_CA":  "/usr/share/fleet-server/config/http-certs/ca.crt",
 				"FLEET_URL": "https://agent-agent-http.ns.svc:8220",
@@ -1109,7 +1332,7 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(context.Background(), tt.agent, tt.client, EnrollmentAPIKey{})
+			gotEnvVars, gotErr := getFleetSetupFleetEnvVars(tt.client, EnrollmentAPIKey{}, tt.fleetCerts)(tt.agent)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -1229,7 +1452,7 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.agent, tt.client, EnrollmentAPIKey{})
+			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.client)(tt.agent)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)

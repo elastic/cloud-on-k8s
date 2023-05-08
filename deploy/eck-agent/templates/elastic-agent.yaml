@@ -4,11 +4,11 @@ kind: Agent
 metadata:
   name: {{ include "elasticagent.fullname" . }}
   labels:
-    {{- include "elasticagent.labels" . | nindent 4 }}
+    {{- include "elasticagent.labels" $ | nindent 4 }}
   annotations:
     eck.k8s.elastic.co/license: enterprise
-    {{- if .Values.annotations }}
-    {{- toYaml .Values.annotations | nindent 4 }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   version: {{ required "An Elastic Agent version is required" .Values.version }}

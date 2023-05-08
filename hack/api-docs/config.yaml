@@ -1,6 +1,6 @@
 processor:
   ignoreTypes:
-    - "(Elasticsearch|ElasticsearchAutoscaler|Kibana|ApmServer|EnterpriseSearch|Beat|Agent|StackConfigPolicy)List$"
+    - "(Elasticsearch|ElasticsearchAutoscaler|Kibana|ApmServer|EnterpriseSearch|Beat|Agent|StackConfigPolicy|Logstash)List$"
     - "(Kibana|ApmServer|EnterpriseSearch|Beat|Agent|StackConfigPolicy)Health$"
     - "(ElasticsearchAutoscaler|Kibana|ApmServer|Reconciler|EnterpriseSearch|Beat|Agent|Maps|Policy)Status$"
     - "ElasticsearchSettings$"

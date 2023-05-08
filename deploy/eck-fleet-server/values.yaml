@@ -18,7 +18,7 @@
 
 # Version of Elastic Fleet Server.
 #
-version: 8.8.0-SNAPSHOT
+version: 8.9.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Fleet Server.
 #
@@ -29,6 +29,9 @@ labels: {}
 annotations: {}
 
 spec:
+  # policyID determines into which Agent Policy this Fleet Server will be enrolled.
+  policyID: eck-fleet-server
+
   # Referenced resources are below and both elasticsearchRefs and kibanaRef are required for a functional Fleet Server.
   # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es
   #

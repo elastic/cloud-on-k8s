@@ -36,6 +36,7 @@ func ReconcileTransportCertificatesSecrets(
 	ctx context.Context,
 	c k8s.Client,
 	ca *certificates.CA,
+	additionalCAs []byte,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
 ) *reconciler.Results {
@@ -54,7 +55,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	for ssetName := range ssets {
-		if err := reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, es, ssetName, rotationParams); err != nil {
+		if err := reconcileNodeSetTransportCertificatesSecrets(ctx, c, ca, additionalCAs, es, ssetName, rotationParams); err != nil {
 			results.WithError(err)
 		}
 	}
@@ -84,6 +85,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 	ctx context.Context,
 	c k8s.Client,
 	ca *certificates.CA,
+	additionalCAs []byte,
 	es esv1.Elasticsearch,
 	ssetName string,
 	rotationParams certificates.RotationParams,
@@ -151,7 +153,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		}
 	}
 
-	caBytes := certificates.EncodePEMCert(ca.Cert.Raw)
+	caBytes := bytes.Join([][]byte{certificates.EncodePEMCert(ca.Cert.Raw), additionalCAs}, nil)
 
 	// compare with current trusted CA certs.
 	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
