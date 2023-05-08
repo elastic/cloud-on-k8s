@@ -65,7 +65,6 @@ spec:
                   resources:
                     requests:
                       storage: 10Gi
-          - name: agent-data
             csi:
               # Use ephemeral storage driver in Autopilot
               driver: inline.storage.kubernetes.io

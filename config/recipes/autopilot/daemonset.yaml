@@ -126,6 +126,16 @@ spec:
     replicas: 1
     podTemplate:
       spec:
+        volumes:
+        - name: "agent-data"
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "e2e-default"
+                resources:
+                  requests:
+                    storage: 10Gi
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
         securityContext:
@@ -145,6 +155,16 @@ spec:
   daemonSet:
     podTemplate:
       spec:
+        volumes:
+        - name: "agent-data"
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "e2e-default"
+                resources:
+                  requests:
+                    storage: 10Gi
         containers:
           - name: agent
             resources:
