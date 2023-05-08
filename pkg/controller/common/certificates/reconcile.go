@@ -40,6 +40,10 @@ type Reconciler struct {
 	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
 
 	GarbageCollectSecrets bool // if true, delete secrets if TLS is disabled
+
+	// if true the internally used secret will not default the CA certificate if it is not provided.
+	// This should only be necessary for Elasticsearch but has been used across all apps. See https://github.com/elastic/cloud-on-k8s/issues/2243
+	DisableInternalCADefaulting bool
 }
 
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
