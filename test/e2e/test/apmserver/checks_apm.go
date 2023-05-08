@@ -21,6 +21,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -29,6 +30,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
 )
+
+const sampleEventBody = `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
+{ "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
+{ "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
 
 type apmClusterChecks struct {
 	apmClient        *ApmClient
@@ -43,6 +48,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.BuildApmServerClient(b.ApmServer, k),
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
+		a.CheckAPMSecretTokenConfiguration(b.ApmServer, k),
 		a.CheckAPMEventCanBeIndexedInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
 	}.WithSteps(a.CheckAgentConfiguration(b.ApmServer, k))
@@ -147,10 +153,38 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 	}
 }
 
+func (c *apmClusterChecks) CheckAPMSecretTokenConfiguration(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "APMServer should reject events with incorrect token setup",
+		Test: test.Eventually(func() error {
+			// All APM Server tests do not have an Elasticsearch reference.
+			if !apm.Spec.ElasticsearchRef.IsDefined() {
+				return nil
+			}
+
+			// as above for the functioning client: fetch the latest APM Server resource from the API because we need to
+			// get resources that are provided by the controller apm part of the status section
+			var updatedApmServer apmv1.ApmServer
+			if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+				return err
+			}
+			client, err := NewAPMServerClientWithSecretToken(updatedApmServer, k, "not-a-valid-token")
+			if err != nil {
+				return err
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+			defer cancel()
+			_, err = client.IntakeV2Events(ctx, false, []byte(sampleEventBody))
+			if !commonhttp.IsUnauthorized(err) {
+				return fmt.Errorf("expected error 401 but was %v", err)
+			}
+			return nil
+		}),
+	}
+}
+
 func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
-	sampleBody := `{"metadata": { "service": {"name": "1234_service-12a3", "language": {"name": "ecmascript"}, "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
-{ "error": {"id": "abcdef0123456789", "timestamp": 1533827045999000,"log": {"level": "custom log level","message": "Cannot read property 'baz' of undefined"}}}
-{ "metricset": { "samples": { "go.memstats.heap.sys.bytes": { "value": 61235 } }, "timestamp": 1496170422281000 }}`
+
 	// before sending event, get the document count in the metric, and error index
 	// and save, as it is used to calculate how many docs should be in the index after
 	// the event is sent through APM Server.
@@ -176,7 +210,7 @@ func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 	defer cancel()
-	eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
+	eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleEventBody))
 	if err != nil {
 		return err
 	}
@@ -189,15 +223,24 @@ func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
 	return nil
 }
 
+func assertHTTP403(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+	if !commonhttp.IsForbidden(err) {
+		return assert.Fail(t, fmt.Sprintf("expected HTTP 403 but was %+v", err), msgAndArgs)
+	}
+	return true
+}
+
 func (c *apmClusterChecks) CheckRUMEventsAPI(rumEnabled bool) test.Step {
 	sampleBody := `{"metadata":{"service":{"name":"apm-agent-js","version":"1.0.0","agent":{"name":"rum-js","version":"0.0.0"}}}}
 {"transaction":{"id":"611f4fa950f04631","type":"page-load","duration":643,"context":{"page":{"referer":"http://localhost:8000/test/e2e/","url":"http://localhost:8000/test/e2e/general-usecase/"}},"trace_id":"611f4fa950f04631aaaaaaaaaaaaaaaa","span_count":{"started":1}}}`
 
 	should := "forbidden"
-	assertError := assert.NotNil
+	assertApplicationError := assert.NotNil
+	assertRequestError := assertHTTP403
 	if rumEnabled {
 		should = "accepted"
-		assertError = assert.Nil
+		assertApplicationError = assert.Nil
+		assertRequestError = assert.NoError
 	}
 	//nolint:thelper
 	return test.Step{
@@ -206,9 +249,8 @@ func (c *apmClusterChecks) CheckRUMEventsAPI(rumEnabled bool) test.Step {
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 			defer cancel()
 			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, true, []byte(sampleBody))
-			require.NoError(t, err)
-
-			assertError(t, eventsErrorResponse)
+			assertRequestError(t, err)
+			assertApplicationError(t, eventsErrorResponse)
 		},
 	}
 }

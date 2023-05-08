@@ -20,6 +20,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
+	commonhttp "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -45,6 +46,15 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	if err := k.Client.Get(context.Background(), secretTokenNamespacedName, &secretTokenSecret); err != nil {
 		return nil, err
 	}
+	secretToken, ok := secretTokenSecret.Data[apmserver.SecretTokenKey]
+	if !ok {
+		return nil, fmt.Errorf("secret token not found in secret: %s", as.Status.SecretTokenSecretName)
+	}
+
+	return NewAPMServerClientWithSecretToken(as, k, string(secretToken))
+}
+
+func NewAPMServerClientWithSecretToken(as apmv1.ApmServer, k *test.K8sClient, secretToken string) (*ApmClient, error) {
 
 	scheme := "http"
 	var caCerts []*x509.Certificate
@@ -62,11 +72,6 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	)
 
 	client := test.NewHTTPClient(caCerts)
-
-	secretToken, ok := secretTokenSecret.Data[apmserver.SecretTokenKey]
-	if !ok {
-		return nil, fmt.Errorf("secret token not found in secret: %s", as.Status.SecretTokenSecretName)
-	}
 
 	return &ApmClient{
 		client:                   client,
@@ -220,7 +225,7 @@ func (c *ApmClient) IntakeV2Events(ctx context.Context, rum bool, payload []byte
 		return nil, err
 	}
 
-	return &eventsErrorResponse, err
+	return &eventsErrorResponse, commonhttp.MaybeAPIError(resp)
 }
 
 // AgentConfig describes an agent configuration
