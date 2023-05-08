@@ -338,6 +338,10 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 func (b Builder) WithoutAllowMMAP() Builder {
 	builderCopy := b.DeepCopy()
 	for i := range builderCopy.Elasticsearch.Spec.NodeSets {
+		if builderCopy.Elasticsearch.Spec.NodeSets[i].Config == nil {
+			builderCopy.Elasticsearch.Spec.NodeSets[i].Config = &commonv1.Config{}
+			continue
+		}
 		delete(builderCopy.Elasticsearch.Spec.NodeSets[i].Config.Data, "node.store.allow_mmap")
 	}
 	return *builderCopy
