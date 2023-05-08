@@ -62,10 +62,10 @@ spec:
           command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
           resources:
             requests:
-              memory: 10Mi
+              memory: 16Mi
               cpu: 10m
             limits:
-              memory: 10Mi
+              memory: 16Mi
               cpu: 10m
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -153,14 +153,19 @@ spec:
         containers:
           - name: agent
             resources:
+              # These requests come from
+              # docs/manifests/elastic-agent-managed-gke-autopilot.yaml
+              # in https://github.com/elastic/elastic-agents
               requests:
                 cpu: 100m
                 memory: 700Mi
               limits:
                 cpu: 100m
                 memory: 700Mi
-              ephemeral-storage: "500Mi"
+                ephemeral-storage: "500Mi"
         volumes:
+        # This is required to prevent:
+        # "hostPath volume agent-data in container agent is accessed in write mode; disallowed in Autopilot"
         - name: "agent-data"
           ephemeral:
             volumeClaimTemplate:
@@ -203,6 +208,9 @@ spec:
                     storage: 10Gi
         containers:
           - name: agent
+            # These requests come from
+            # docs/manifests/elastic-agent-managed-gke-autopilot.yaml
+            # in https://github.com/elastic/elastic-agents
             resources:
               requests:
                 cpu: 100m
@@ -210,7 +218,7 @@ spec:
               limits:
                 cpu: 100m
                 memory: 700Mi
-              ephemeral-storage: "500Mi"
+                ephemeral-storage: "500Mi"
         serviceAccountName: elastic-agent
         automountServiceAccountToken: true
         securityContext:
