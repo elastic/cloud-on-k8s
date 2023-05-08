@@ -21,8 +21,8 @@ spec:
           image: docker.io/bash:5.2.15
           resources:
             limits:
-              cpu: 100m
-              memory: 32Mi
+              cpu: 10m
+              memory: 16Mi
           securityContext:
             privileged: true
             runAsUser: 0
@@ -114,7 +114,7 @@ spec:
         resources:
           limits:
             memory: 1Gi
-            cpu: 1
+            cpu: 500m
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -178,6 +178,7 @@ spec:
         containers:
           - name: agent
             resources:
+              cpu: 100m
               memory: 700Mi
               ephemeral-storage: "500Mi"
         serviceAccountName: elastic-agent
