@@ -184,7 +184,6 @@ func (c *apmClusterChecks) CheckAPMSecretTokenConfiguration(apm apmv1.ApmServer,
 }
 
 func (c *apmClusterChecks) checkEventsAPI(apm apmv1.ApmServer) error {
-
 	// before sending event, get the document count in the metric, and error index
 	// and save, as it is used to calculate how many docs should be in the index after
 	// the event is sent through APM Server.

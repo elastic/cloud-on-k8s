@@ -55,7 +55,6 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 }
 
 func NewAPMServerClientWithSecretToken(as apmv1.ApmServer, k *test.K8sClient, secretToken string) (*ApmClient, error) {
-
 	scheme := "http"
 	var caCerts []*x509.Certificate
 	if as.Spec.HTTP.TLS.Enabled() {
