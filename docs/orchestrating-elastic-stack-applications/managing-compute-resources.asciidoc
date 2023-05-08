@@ -109,7 +109,7 @@ A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes is
 
 [float]
 [id="{p}-compute-resources-kibana-and-apm"]
-=== Set compute resources for Kibana, Enterprise Search, Elastic Maps Server and APM Server
+=== Set compute resources for Kibana, Enterprise Search, Elastic Maps Server, APM Server and Logstash
 
 .Kibana
 [source,yaml,subs="attributes"]
@@ -205,6 +205,30 @@ spec:
         - name: JAVA_OPTS
           value: -Xms3500m -Xmx3500m
 ----
+.Logstash
+[source,yaml,subs="attributes"]
+----
+apiVersion: logstash.k8s.elastic.co/{eck_crd_version}
+kind: logstash
+metadata:
+  name: logstash-quickstart
+spec:
+  version: {version}
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 1
+          limits:
+            memory: 4Gi
+            cpu: 2
+        env:
+        - name: LS_JAVA_OPTS
+          value: -Xms2000m -Xmx2000m
+----
 
 For the container name, use `apm-server`, `maps`,  `kibana` or `enterprise-search`, respectively.
 
@@ -282,6 +306,7 @@ If `resources` is not defined in the specification of an object, then the operat
 |Elastic Agent |350Mi |350Mi
 |Elastic Maps Server |200Mi |200Mi
 |Enterprise Search |4Gi |4Gi
+|Logstash |2Gi |2Gi
 |===
 
 If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.
