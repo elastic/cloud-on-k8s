@@ -152,6 +152,7 @@ rules:
       - watch
       - update
       - delete
+      - create
     # to create resources defined in recipes
   - apiGroups:
     - "extensions"
