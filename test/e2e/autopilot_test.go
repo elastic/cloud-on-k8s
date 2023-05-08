@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/helper"
 )
 
-const recipesFile = "../../config/recipes/autopilot/daemonset.yaml"
+const recipesFile = "../../config/recipes/autopilot/fleet-kubernetes-integration.yaml"
 
 // TestAutopilot runs a test suite only if running within a GKE Autopilot
 // cluster with a daemonset to set vm.max_map_count and an Elasticsearch

@@ -33,6 +33,11 @@
   fixed:
     E2E_PROVIDER: gke
 
+- label: gke-autopilot
+  fixed:
+    E2E_PROVIDER: gke-autopilot
+    TESTS_MATCH: TestAutopilot
+
 - label: resilience
   fixed:
     E2E_PROVIDER: gke
