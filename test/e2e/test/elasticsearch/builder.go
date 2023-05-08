@@ -347,15 +347,6 @@ func (b Builder) WithoutAllowMMAP() Builder {
 	return *builderCopy
 }
 
-func (b Builder) WithInitContainer(c corev1.Container) Builder {
-	builderCopy := b.DeepCopy()
-	for i := range builderCopy.Elasticsearch.Spec.NodeSets {
-		builderCopy.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.InitContainers = append(
-			builderCopy.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.InitContainers, c)
-	}
-	return *builderCopy
-}
-
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 	refs := make([]commonv1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
