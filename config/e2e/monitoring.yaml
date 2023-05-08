@@ -65,9 +65,6 @@ spec:
                   resources:
                     requests:
                       storage: 10Gi
-            csi:
-              # Use ephemeral storage driver in Autopilot
-              driver: inline.storage.kubernetes.io
 {{ end }}
           - name: varlog
             hostPath:
