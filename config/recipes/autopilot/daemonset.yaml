@@ -50,10 +50,14 @@ spec:
           resources:
             limits:
               memory: 1Gi
-              cpu: 1
+              cpu: 500m
         initContainers:
         - name: max-map-count-check
           command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+          resources:
+            limits:
+              memory: 10Mi
+              cpu: 10m
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
