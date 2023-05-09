@@ -51,6 +51,12 @@ func assertSecurityContext(t *testing.T, ver version.Version, securityContext *c
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)
 
+	if ver.LT(version.MinFor(8, 0, 0)) {
+		// We are not expecting Capabilities to be changed by the operator before 8.x
+		// Also refer to https://github.com/elastic/cloud-on-k8s/pull/6755
+		return
+	}
+
 	// OpenShift may add others Capabilities. We only check that ALL is included in "Drop".
 	require.NotNil(t, securityContext.Capabilities)
 	droppedCapabilities := securityContext.Capabilities.Drop
