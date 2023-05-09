@@ -147,7 +147,7 @@ func copy(source, destination string) error {
 			if err != nil {
 				return err
 			}
-			return ioutil.WriteFile(filepath.Join(destination, relPath), data, 0777)
+			return os.WriteFile(filepath.Join(destination, relPath), data, 0777)
 		}
 	})
 	return err
