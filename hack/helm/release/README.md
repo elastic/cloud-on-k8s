@@ -18,6 +18,24 @@ Flags:
   -h, --help                      help for release
 ```
 
-### Limitations
+### Structure
 
-Only supports publishing parent charts that have local dependencies in the `charts/` directory.
+ECK Helm charts are grouped under 2 parents charts: `eck-operator` and `eck-stack`.
+
+```
+.
+├── eck-operator
+│   └── charts
+│       └── eck-operator-crds
+│
+├── eck-stack
+│   ├── charts
+│   │   ├── eck-agent
+│   │   ├── eck-beats
+│   │   ├── eck-elasticsearch
+│   │   ├── eck-fleet-server
+│   │   └── eck-kibana
+```
+
+All subcharts are managed locally through their parent's `charts/` directory.
+They are released and therefore usable independently of their parent.
