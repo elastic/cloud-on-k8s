@@ -143,7 +143,7 @@ func copy(source, destination string) error {
 		if info.IsDir() {
 			return os.Mkdir(filepath.Join(destination, relPath), 0755)
 		} else {
-			var data, err = ioutil.ReadFile(filepath.Join(source, relPath))
+			var data, err = os.ReadFile(filepath.Join(source, relPath))
 			if err != nil {
 				return err
 			}
