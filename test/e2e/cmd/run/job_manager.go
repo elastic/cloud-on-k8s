@@ -98,7 +98,8 @@ func (jm *JobsManager) Start() {
 	defer func() {
 		jm.cancelFunc()
 		if deadline, _ := jm.Deadline(); deadline.Before(time.Now()) {
-			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
+			jm.err = errors.Errorf("Test job timeout exceeded (%s)", jobTimeout)
+			log.Error(jm.err, "Pod aborted")
 		}
 		runtime.HandleCrash()
 	}()
