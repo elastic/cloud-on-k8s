@@ -24,9 +24,7 @@ The following Elasticsearch settings are managed by ECK:
 * `xpack.security.http.ssl.certificate`
 * `xpack.security.http.ssl.enabled`
 * `xpack.security.http.ssl.key`
-* `xpack.security.transport.ssl.certificate`
 * `xpack.security.transport.ssl.enabled`
-* `xpack.security.transport.ssl.key`
 * `xpack.security.transport.ssl.verification_mode`
 
 The following Elasticsearch settings are not supported by ECK:

@@ -73,13 +73,13 @@ func newDriver(
 ) (*driver, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
+		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return nil, err
 	}
 
 	if !ver.GTE(minSupportedVersion) {
 		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
+		k8s.MaybeEmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func (d *driver) Reconcile(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.EmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(d.Recorder(), err, kb, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return results
 	}
 

@@ -13,6 +13,7 @@ const (
 	CertValidityFlag                     = "cert-validity"
 	ConfigFlag                           = "config"
 	ContainerRegistryFlag                = "container-registry"
+	ContainerRepositoryFlag              = "container-repository"
 	ContainerSuffixFlag                  = "container-suffix"
 	DebugHTTPListenFlag                  = "debug-http-listen"
 	DisableConfigWatch                   = "disable-config-watch"
@@ -41,4 +42,5 @@ const (
 	WebhookCertDirFlag                   = "webhook-cert-dir"
 	WebhookNameFlag                      = "webhook-name"
 	WebhookSecretFlag                    = "webhook-secret"
+	WebhookPortFlag                      = "webhook-port"
 )

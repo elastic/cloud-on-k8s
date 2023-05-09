@@ -71,7 +71,7 @@ func ReconcileHTTP(
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.EmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEvent(driver.Recorder(), err, &es, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return nil, results
 	}
 
@@ -100,6 +100,14 @@ func ReconcileTransport(
 	// label certificates secrets with the cluster name
 	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
+	// Maybe retrieve user defined additional trusted CAs from a config map.
+	// They will be concatenated with the ECK issued CA and distributed through the same transport secrets.
+	additionalCAs, err := transport.ReconcileAdditionalCAs(ctx, driver.K8sClient(), es, driver.DynamicWatches())
+	if err != nil {
+		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+		return results.WithError(err)
+	}
+
 	// reconcile transport CA and certs
 	transportCA, err := transport.ReconcileOrRetrieveCA(
 		ctx,
@@ -120,7 +128,7 @@ func ReconcileTransport(
 	)
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, additionalCAs); err != nil {
 		return results.WithError(err)
 	}
 
@@ -129,6 +137,7 @@ func ReconcileTransport(
 		ctx,
 		driver.K8sClient(),
 		transportCA,
+		additionalCAs,
 		es,
 		certRotation,
 	)

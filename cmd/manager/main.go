@@ -16,6 +16,9 @@ import (
 	"strings"
 	"time"
 
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
+
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -181,6 +184,11 @@ func Command() *cobra.Command {
 		"Container registry to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
+		operator.ContainerRepositoryFlag,
+		"",
+		"Container repository to use when downloading Elastic Stack container images",
+	)
+	cmd.Flags().String(
 		operator.ContainerSuffixFlag,
 		"",
 		fmt.Sprintf("Suffix to be appended to container images by default. Cannot be combined with %s", operator.UBIOnlyFlag),
@@ -317,6 +325,11 @@ func Command() *cobra.Command {
 		operator.WebhookNameFlag,
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
+	)
+	cmd.Flags().Int(
+		operator.WebhookPortFlag,
+		WebhookPort,
+		"Port is the port that the webhook server serves at.",
 	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
@@ -471,6 +484,13 @@ func startOperator(ctx context.Context) error {
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
+	// set the default container repository
+	containerRepository := viper.GetString(operator.ContainerRepositoryFlag)
+	if containerRepository != "" {
+		log.Info("Setting default container repository", "container_repository", containerRepository)
+		container.SetContainerRepository(containerRepository)
+	}
+
 	// allow users to specify a container suffix unless --ubi-only mode is active
 	suffix := viper.GetString(operator.ContainerSuffixFlag)
 	if len(suffix) > 0 {
@@ -557,7 +577,7 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = WebhookPort
+	opts.Port = viper.GetInt(operator.WebhookPortFlag)
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
@@ -847,6 +867,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
+		{name: "Logstash", registerFunc: logstash.Add},
 	}
 
 	for _, c := range controllers {
@@ -872,9 +893,11 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "AGENT-KB", registerFunc: associationctl.AddAgentKibana},
 		{name: "AGENT-FS", registerFunc: associationctl.AddAgentFleetServer},
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
+		{name: "LOGSTASH-ES", registerFunc: associationctl.AddLogstashES},
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
 		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},
+		{name: "LOGSTASH-MONITORING", registerFunc: associationctl.AddLogstashMonitoring},
 	}
 
 	for _, c := range assocControllers {
@@ -913,6 +936,7 @@ func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespace
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		For(&emsv1alpha1.ElasticMapsServerList{}, associationctl.MapsESAssociationLabelNamespace, associationctl.MapsESAssociationLabelName).
+		For(&logstashv1alpha1.LogstashList{}, associationctl.LogstashAssociationLabelNamespace, associationctl.LogstashAssociationLabelName).
 		DoGarbageCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("user garbage collector failed: %w", err)
@@ -925,14 +949,15 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 	defer span.End()
 
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(ctx, k8sClient, map[string]client.Object{
-		esv1.Kind:           &esv1.Elasticsearch{},
-		apmv1.Kind:          &apmv1.ApmServer{},
-		kbv1.Kind:           &kbv1.Kibana{},
-		entv1.Kind:          &entv1.EnterpriseSearch{},
-		beatv1beta1.Kind:    &beatv1beta1.Beat{},
-		agentv1alpha1.Kind:  &agentv1alpha1.Agent{},
-		emsv1alpha1.Kind:    &emsv1alpha1.ElasticMapsServer{},
-		policyv1alpha1.Kind: &policyv1alpha1.StackConfigPolicy{},
+		esv1.Kind:             &esv1.Elasticsearch{},
+		apmv1.Kind:            &apmv1.ApmServer{},
+		kbv1.Kind:             &kbv1.Kibana{},
+		entv1.Kind:            &entv1.EnterpriseSearch{},
+		beatv1beta1.Kind:      &beatv1beta1.Beat{},
+		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
+		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
+		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
@@ -973,6 +998,7 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&logstashv1alpha1.Logstash{},
 	}
 	for _, obj := range webhookObjects {
 		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{

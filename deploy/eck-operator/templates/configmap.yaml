@@ -14,6 +14,9 @@ data:
     {{- with .Values.config.containerSuffix }}
     container-suffix: {{ . }}
     {{- end }}
+    {{- with .Values.config.containerRepository }}
+    container-repository: {{ . }}
+    {{- end }}
     max-concurrent-reconciles: {{ int .Values.config.maxConcurrentReconciles }}
     {{- with .Values.config.passwordHashCacheSize }}
     password-hash-cache-size: {{ int . }}
@@ -50,6 +53,7 @@ data:
     manage-webhook-certs: false
     webhook-cert-dir: {{ .Values.webhook.certsDir }}
       {{- end }}
+    webhook-port: {{ .Values.webhook.port }}
     {{- end }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]

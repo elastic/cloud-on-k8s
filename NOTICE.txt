@@ -677,11 +677,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.14.0
-Time    : 2023-03-15T20:00:09Z
+Version : v0.15.1
+Time    : 2023-05-05T16:53:54Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.14.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.15.1/LICENSE:
 
 
                                  Apache License
@@ -2179,11 +2179,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.15.0
-Time    : 2023-04-13T10:51:09Z
+Version : v1.15.1
+Time    : 2023-05-03T09:48:04Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.15.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.15.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2914,11 +2914,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch/v2
-Version : v2.3.0
-Time    : 2023-03-31T03:30:00Z
+Version : v2.4.1
+Time    : 2023-04-27T13:39:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.4.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3125,11 +3125,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasti
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp/v2
-Version : v2.3.0
-Time    : 2023-03-31T03:30:00Z
+Version : v2.4.1
+Time    : 2023-04-27T13:39:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.4.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3336,11 +3336,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmzap/v2
-Version : v2.3.0
-Time    : 2023-03-31T03:30:00Z
+Version : v2.4.1
+Time    : 2023-04-27T13:39:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.4.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3547,11 +3547,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/v2
-Version : v2.3.0
-Time    : 2023-03-31T03:30:00Z
+Version : v2.4.1
+Time    : 2023-04-27T13:39:08Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.4.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -4585,11 +4585,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.26.3/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog/v2
-Version : v2.90.1
-Time    : 2023-03-01T14:21:18Z
+Version : v2.100.1
+Time    : 2023-04-28T22:22:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.90.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog/v2@v2.100.1/LICENSE:
 
 Apache License
 Version 2.0, January 2004
@@ -6062,11 +6062,11 @@ Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snaps
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v23.0.1+incompatible
-Time    : 2023-02-09T19:15:59Z
+Version : v23.0.5+incompatible
+Time    : 2023-04-26T14:46:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v23.0.1+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v23.0.5+incompatible/LICENSE:
 
 
                                  Apache License
@@ -6475,11 +6475,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v23.0.3+incompatible
-Time    : 2023-04-04T18:03:51Z
+Version : v23.0.5+incompatible
+Time    : 2023-04-26T15:29:05Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.3+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.5+incompatible/LICENSE:
 
 
                                  Apache License
@@ -12686,11 +12686,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.16.0
-Time    : 2023-02-26T13:36:42Z
+Version : v1.16.5
+Time    : 2023-04-13T08:02:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.16.5/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -14458,11 +14458,11 @@ Contents of probable licence file $GOMODCACHE/github.com/opencontainers/go-diges
 
 --------------------------------------------------------------------------------
 Module  : github.com/opencontainers/image-spec
-Version : v1.1.0-rc2
-Time    : 2022-09-26T15:24:16Z
+Version : v1.1.0-rc3
+Time    : 2023-04-19T15:08:57Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/opencontainers/image-spec@v1.1.0-rc2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/opencontainers/image-spec@v1.1.0-rc3/LICENSE:
 
 
                                  Apache License
@@ -15572,11 +15572,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/vbatts/tar-split
-Version : v0.11.2
-Time    : 2021-08-23T10:18:35Z
+Version : v0.11.3
+Time    : 2023-03-26T02:25:25Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/vbatts/tar-split@v0.11.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/vbatts/tar-split@v0.11.3/LICENSE:
 
 Copyright (c) 2015 Vincent Batts, Raleigh, NC, USA
 
@@ -15732,11 +15732,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/mod
-Version : v0.9.0
-Time    : 2023-02-27T21:59:11Z
+Version : v0.10.0
+Time    : 2023-03-09T18:38:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/mod@v0.10.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15806,11 +15806,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.6.0
-Time    : 2023-03-05T04:01:11Z
+Version : v0.7.0
+Time    : 2023-04-06T17:54:20Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.7.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15991,11 +15991,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.7.0
-Time    : 2023-03-07T14:48:13Z
+Version : v0.8.0
+Time    : 2023-04-06T18:59:31Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.8.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 

@@ -121,5 +121,5 @@ func checkAssociations(b *Beat) field.ErrorList {
 }
 
 func checkMonitoring(b *Beat) field.ErrorList {
-	return validations.Validate(b, b.Spec.Version)
+	return validations.Validate(b, b.Spec.Version, validations.MinStackVersion)
 }
