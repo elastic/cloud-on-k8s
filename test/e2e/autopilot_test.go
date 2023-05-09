@@ -22,6 +22,9 @@ const recipesFile = "../../config/recipes/autopilot/fleet-kubernetes-integration
 // cluster with a daemonset to set vm.max_map_count and an Elasticsearch
 // and Kibana instance.
 func TestAutopilot(t *testing.T) {
+	if !test.Ctx().AutopilotCluster {
+		return
+	}
 	randSuffix := rand.String(4)
 	ns := test.Ctx().ManagedNamespace(0)
 

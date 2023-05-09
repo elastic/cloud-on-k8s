@@ -1,10 +1,10 @@
 = GKE Autopilot Configuration Examples
 
-This directory contains a yaml manifest with an example configurations for running Elasticsearch, Kibana, Fleet Server and Elastic Agent on GKE Autopilot. These manifests are self-contained and work out-of-the-box on any GKE Autopilot cluster with a version greater than 1.25.
+This directory contains a yaml manifest with an example configuration for running Elasticsearch, Kibana, Fleet Server and Elastic Agent on GKE Autopilot. These manifests are self-contained and work out-of-the-box on any GKE Autopilot cluster with a version greater than 1.25.
 
 IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
 
-NOTE: This example uses a Daemonset to set to ensure that `/proc/sys/vm/max_map_count` is set on all of the underlying Kubernetes Nodes for optimal performance. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+NOTE: This example uses a Daemonset to set to ensure that `/proc/sys/vm/max_map_count` is set on all of the underlying Kubernetes nodes for optimal performance. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
 
 ==== Elasticsearch, Kibana and Elastic Agent in Fleet mode
 
