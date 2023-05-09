@@ -19,27 +19,12 @@ func Test_readCharts(t *testing.T) {
 		name          string
 		existingPath  string
 		chartsToWrite []string
-		excludes      []string
 		want          []chart
 		wantErr       bool
 	}{
 		{
-			name:          "no excludes reads all charts",
+			name:          "reads all charts",
 			chartsToWrite: []string{"chart1"},
-			excludes:      []string{},
-			want: []chart{
-				{
-					Name:         "chart1",
-					Version:      "0.1.0",
-					Dependencies: []dependency{},
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name:          "excluded charts is ignored",
-			chartsToWrite: []string{"chart1", "excludedChart"},
-			excludes:      []string{"excludedChart"},
 			want: []chart{
 				{
 					Name:         "chart1",

@@ -20,7 +20,6 @@ import (
 const (
 	// viper flags
 	chartsDirFlag       = "charts-dir"
-	chartsRepoURLFlag   = "charts-repo-url"
 	credentialsFileFlag = "credentials-file"
 	dryRunFlag          = "dry-run"
 	envFlag             = "env"
@@ -91,7 +90,7 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		credentialsFileFlag,
 		"/tmp/credentials.json",
-		"Path to google credentials json file (env: HELM_CREDENTIALS_FILE)",
+		"Path to GCS credentials JSON file (env: HELM_CREDENTIALS_FILE)",
 	)
 	_ = viper.BindPFlag(credentialsFileFlag, flags.Lookup(credentialsFileFlag))
 
