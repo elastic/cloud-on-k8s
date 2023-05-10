@@ -29,10 +29,11 @@ steps:
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
 
-      # dev-license build for main nightly builds
+      # dev-license build for main nightly builds and tags (used in release build candidates)
       - label: ":docker: dev-license operator image"
-        if: | 
-          ( build.branch == "main" && build.source == "schedule" )
+        if: |
+          build.tag != null
+          || ( build.branch == "main" && build.source == "schedule" )
           || build.message =~ /^buildkite test .*dev-build.*/
           || build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /s=[0-9\.]*-SNAPSHOT/
         key: "dev-operator-image-build"
