@@ -17,6 +17,7 @@ endif::[]
 - <<{p}-maps>>
 - <<{p}-enterprise-search>>
 - <<{p}-beat>>
+- <<{p}-logstash>>
 - <<{p}-stack-helm-chart>>
 - <<{p}-recipes>>
 - <<{p}-securing-stack>>
@@ -37,6 +38,7 @@ include::agent-fleet.asciidoc[leveloffset=+1]
 include::maps.asciidoc[leveloffset=+1]
 include::enterprise-search.asciidoc[leveloffset=+1]
 include::beat.asciidoc[leveloffset=+1]
+include::logstash.asciidoc[leveloffset=+1]
 include::stack-helm-chart.asciidoc[leveloffset=+1]
 include::recipes.asciidoc[leveloffset=+1]
 include::securing-stack.asciidoc[leveloffset=+1]
