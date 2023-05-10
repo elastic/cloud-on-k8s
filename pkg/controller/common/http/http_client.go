@@ -100,6 +100,16 @@ func IsNotFound(err error) bool {
 	return isHTTPError(err, http.StatusNotFound)
 }
 
+// IsUnauthorized checks whether the error was an HTTP 401 error.
+func IsUnauthorized(err error) bool {
+	return isHTTPError(err, http.StatusUnauthorized)
+}
+
+// IsForbidden checks whether the error was an HTTP 403 error.
+func IsForbidden(err error) bool {
+	return isHTTPError(err, http.StatusForbidden)
+}
+
 func isHTTPError(err error, statusCode int) bool {
 	apiErr := new(APIError)
 	if errors.As(err, &apiErr) {
