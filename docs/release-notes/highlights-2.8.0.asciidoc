@@ -1,0 +1,33 @@
+[[release-highlights-2.8.0]]
+== 2.8.0 release highlights
+
+[float]
+[id="{p}-280-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.8.0 of {n}. Check <<release-notes-2.8.0>> for the full list of changes.
+
+WARNING: This release includes a hardened default security context for Elasticsearch containers. It is highly recommended to test against a staging environment before deploying to production.
+
+[float]
+[id="{p}-280-logstash"]
+=== Logstash support
+
+[float]
+[id="{p}-280-hardened-es-security-context"]
+=== Hardened Security Context for Elasticsearch container
+
+[source,yaml]
+----
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+----
+
+[float]
+[id="{p}-280-using-custom-transport-certificates"]
+=== Using custom certificates on the transport layer
+
