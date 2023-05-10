@@ -76,7 +76,7 @@ func releaseCmd() *cobra.Command {
 		dryRunFlag,
 		"d",
 		true,
-		"Do not upload files to bucket, or update helm index (env: HELM_DRY_RUN)",
+		"Do not upload files to bucket, or update Helm index (env: HELM_DRY_RUN)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 
