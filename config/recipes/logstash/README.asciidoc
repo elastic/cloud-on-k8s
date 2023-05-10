@@ -8,7 +8,31 @@ endif::[]
 
 = Using Logstash with ECK
 
-This recipe demonstrates how to run the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] on Kubernetes with Elasticsearch, Kibana and Filebeat deployed via ECK.
+These recipes demonstrate how to run Logstash, Elasticsearch, Kibana and Filebeat deployed via ECK, using the link:https://www.elastic.co/guide/en/logstash/current/advanced-pipeline.html[Logstash log parsing example] as a starting point.
 
+===== Inline Pipeline usage - `logstash-eck.yaml`
 
-CAUTION: This recipe uses the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch cluster and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+Deploys Logstash with the pipeline defined inline in the CRD.
+
+===== Pipeline as Secret - `logstash-pipeline-as-secret.yaml`
+
+Deploys Logstash with the pipeline defined in a Secret and referred to via `pipelinesRef`.
+
+===== Pipeline as mounted volume - `logstash-pipeline-as-volume.yaml`
+
+Deploys Logstash with the pipeline details defined in the CRD, and the pipeline itself mounted as a volume.
+
+===== Logstash with multiple pipelines and multiple elasticsearchRefs - `logstash-multi.yaml`
+
+Deploys Logstash with multiple pipelines, each of which sends to a separate Elasticsearch cluster.
+
+===== Logstash with Stack Monitoring - `logstash-monitored.yaml`
+
+Deploys Logstash and a dedicated Elasticsearch and Kibana monitoring cluster, and sends Logstash monitoring data to that cluster.
+
+===== Logstash and Elasticsearch with custom role - `logstash-es-role.yaml`
+
+Deploys Logstash and Elasticsearch and a Secret to customize Elasticsearch role `eck_logstash_user_role`. The role is essential for Logstash to have privileges to write document to custom index "my-index".
+
+CAUTION: These recipes use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch cluster and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+

@@ -533,3 +533,48 @@ spec:
     matchLabels:
       common.k8s.elastic.co/type: agent
 ----
+
+[float]
+[id="{p}-{page_id}-logstash-isolation"]
+== Isolating {ls}
+
+
+NOTE: {ls} may require additional access rules than those listed here, depending on plugin usage.
+
+
+[cols="h,1"]
+|===
+| Egress (outgoing)  a|
+
+* TCP port {es_http_port} to {es} nodes in the namespace.
+* UDP port {dns_port} for DNS lookup.
+
+|===
+
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eck-logstash
+  namespace: team-a
+spec:
+  egress:
+  - ports:
+    - port: {es_http_port}
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          eck.k8s.elastic.co/tenant: team-a
+      podSelector:
+        matchLabels:
+          common.k8s.elastic.co/type: elasticsearch
+  - ports:
+    - port: {dns_port}
+      protocol: UDP
+  podSelector:
+    matchLabels:
+      common.k8s.elastic.co/type: logstash
+----
