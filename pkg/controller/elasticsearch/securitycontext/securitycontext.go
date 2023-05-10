@@ -42,15 +42,18 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 	return sc
 }
 
-func DefaultBeatSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
+func DefaultBeatSecurityContext(ver version.Version) *corev1.SecurityContext {
+	sc := &corev1.SecurityContext{
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
-		Privileged: ptr.Bool(false),
-		// Update to true when https://github.com/elastic/beats/pull/35272 is merged.
-		// RunAsNonRoot:             ptr.Bool(true),
+		Privileged:               ptr.Bool(false),
 		ReadOnlyRootFilesystem:   ptr.Bool(true),
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
+	if ver.LT(RunAsNonRootMinStackVersion) {
+		return sc
+	}
+	sc.RunAsNonRoot = ptr.Bool(true)
+	return sc
 }
