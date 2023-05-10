@@ -1,0 +1,79 @@
+steps:
+  - label: ""
+    #if: build.branch == "main"
+    command: echo "70 failures to notify"; exit 1
+    notify:
+      - slack:
+          channels:
+            - "#test-notify"
+          message: |
+            🐞 `3000AgentConfigRef` eks
+            🐞 `TestFleetAPMIntegrationRecipe` eks
+            🐞 `TestFleetCustomLogsIntegrationRecipe` eks
+            🐞 `TestFleetKubernetesIntegrationRecipe` eks
+            🐞 `TestFleetMode` eks
+            🐞 `TestGlobalCA` eks
+            🐞 `TestKubernetesIntegrationRecipe` eks
+            🐞 `TestMultiOutputRecipe` eks
+            🐞 `TestMultipleOutputConfig` eks
+            🐞 `TestNameValidation` eks
+            🐞 `TestSamples` eks
+            🐞 `TestSmoke` eks
+            🐞 `TestSystemIntegrationConfig` eks
+            🐞 `TestSystemIntegrationRecipe` eks
+            🐞 `TestAPMAssociationWhenReferencedESDisappears` eks-arm
+            🐞 `TestAPMKibanaAssociation` eks-arm
+            🐞 `TestAgentConfigRef` eks-arm
+            🐞 `TestBeatSecureSettings` eks-arm
+            🐞 `TestCrossNSAssociation` eks-arm
+            🐞 `TestFilebeatDefaultConfig` eks-arm
+            🐞 `TestFleetAPMIntegrationRecipe` eks-arm
+            🐞 `TestFleetAgentWithoutTLS` eks-arm
+            🐞 `TestFleetCustomLogsIntegrationRecipe` eks-arm
+            🐞 `TestFleetKubernetesIntegrationRecipe` eks-arm
+            🐞 `TestFleetMode` eks-arm
+            🐞 `TestHeartbeatConfig` eks-arm
+            🐞 `TestKubernetesIntegrationRecipe` eks-arm
+            🐞 `TestMetricbeatDefaultConfig` eks-arm
+            🐞 `TestMultiOutputRecipe` eks-arm
+            🐞 `TestMultipleOutputConfig` eks-arm
+            🐞 `TestSystemIntegrationConfig` eks-arm
+            🐞 `TestSystemIntegrationRecipe` eks-arm
+            🐞 `TestUpdateConfiguration` eks-arm
+            🐞 `TestAPMAssociationWhenReferencedESDisappears` stack-6-8-23
+            🐞 `TestCrossNSAssociation` stack-6-8-23
+            🐞 `TestCustomHTTPCA` stack-6-8-23
+            🐞 `TestCustomTransportCA` stack-6-8-23
+            🐞 `TestDeleteCACert` stack-6-8-23
+            🐞 `TestDeleteElasticUserSecret` stack-6-8-23
+            🐞 `TestDeleteServices` stack-6-8-23
+            🐞 `TestESUserProvidedAuth` stack-6-8-23
+            🐞 `TestEnterpriseLicenseSingle` stack-6-8-23
+            🐞 `TestEnterpriseTrialLicense` stack-6-8-23
+            🐞 `TestForceUpgradeBootloopingPods` stack-6-8-23
+            🐞 `TestForceUpgradePendingPods` stack-6-8-23
+            🐞 `TestForceUpgradePendingPodsInOneStatefulSet` stack-6-8-23
+            🐞 `TestHTTPWithoutTLS` stack-6-8-23
+            🐞 `TestKibanaAssociationWhenReferencedESDisappears` stack-6-8-23
+            🐞 `TestKillKibanaDeployment` stack-6-8-23
+            🐞 `TestKillKibanaPod` stack-6-8-23
+            🐞 `TestKillOneDataNode` stack-6-8-23
+            🐞 `TestKillOneMasterNode` stack-6-8-23
+            🐞 `TestKillSingleNodeReusePV` stack-6-8-23
+            🐞 `TestMutationHTTPSToHTTP` stack-6-8-23
+            🐞 `TestMutationHTTPToHTTPS` stack-6-8-23
+            🐞 `TestMutationMdiToDedicated` stack-6-8-23
+            🐞 `TestMutationMoreNodes` stack-6-8-23
+            🐞 `TestNameValidation` stack-6-8-23
+            🐞 `TestRedClusterCanBeModifiedByDisablingPredicate` stack-6-8-23
+            🐞 `TestUpdateConfiguration` stack-6-8-23
+            🐞 `TestUpdateESSecureSettings` stack-6-8-23
+            🐞 `TestUpdateHTTPCertSAN` stack-6-8-23
+            🐞 `TestUpdateKibanaResources` stack-6-8-23
+            🐞 `TestUpdateKibanaSecureSettings` stack-6-8-23
+            🐞 `TestAPMAssociationWhenReferencedESDisappears` stack-7-16-3
+            🐞 `TestAPMKibanaAssociation` stack-7-16-3
+            🐞 `TestAPMStandalone` stack-7-16-3
+            🐞 `TestAPMStandaloneNoTLS` stack-7-16-3
+            🐞 `TestAPMStandaloneWithRUM` stack-7-16-3
+            🐞 `TestAgentConfigRef` stack-7-16-3xxxx
