@@ -13,9 +13,13 @@ WARNING: This release includes a hardened default security context for Elasticse
 [id="{p}-280-logstash"]
 === Logstash support
 
+Logstash is now
+
 [float]
 [id="{p}-280-hardened-es-security-context"]
 === Hardened Security Context for Elasticsearch container
+
+
 
 [source,yaml]
 ----
@@ -31,3 +35,4 @@ WARNING: This release includes a hardened default security context for Elasticse
 [id="{p}-280-using-custom-transport-certificates"]
 === Using custom certificates on the transport layer
 
+It is now possible to fully delegate the generation of the transport certificate generation for Elasticsearch. <<{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configmapref>>
