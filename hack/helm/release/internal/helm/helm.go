@@ -180,9 +180,10 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	defer gcsClient.Close()
 	chartArchiveObj := gcsClient.Bucket(conf.Bucket).Object(chartArchiveDest)
 
-	// specify that the object must not exist for non-SNAPSHOT chart
-	isSnapshot := strings.HasSuffix(chart.Version, "-SNAPSHOT")
-	if !isSnapshot {
+	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
+	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
+	isProdHelmRepo := !strings.HasSuffix(conf.Bucket, "-dev")
+	if isNonSnapshot && isProdHelmRepo {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
@@ -199,7 +200,7 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 	if err := chartArchiveWriter.Close(); err != nil {
 		switch errType := err.(type) {
 		case *googleapi.Error:
-			if errType.Code == http.StatusPreconditionFailed && !isSnapshot {
+			if errType.Code == http.StatusPreconditionFailed && isNonSnapshot && isProdHelmRepo {
 				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
 			}
 			return fmt.Errorf("while writing data to bucket: %w", err)
