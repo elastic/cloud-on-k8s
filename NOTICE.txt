@@ -2390,11 +2390,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.42.0
-Time    : 2023-03-08T10:23:31Z
+Version : v0.43.0
+Time    : 2023-05-04T10:18:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.42.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.43.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14721,11 +14721,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.3.0
-Time    : 2022-10-18T14:52:39Z
+Version : v0.4.0
+Time    : 2023-05-02T14:20:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.4.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15143,11 +15143,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.9.
 
 --------------------------------------------------------------------------------
 Module  : github.com/rogpeppe/go-internal
-Version : v1.6.1
-Time    : 2020-07-31T15:24:24Z
+Version : v1.10.0
+Time    : 2023-03-27T09:34:06Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.6.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.10.0/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
