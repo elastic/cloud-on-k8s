@@ -4,6 +4,8 @@
 
 This directory contains the Helm chart for deploying the ECK operator, and charts for deploying any resource in the Elastic Stack individually, or as a group.
 
+The instructions below are intended to deploy the Helm charts from a local copy of this repository. Refer to https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html to install the charts from the official repository.
+
 ## ECK Operator Helm Chart Usage
 
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
@@ -12,14 +14,14 @@ Install the CRDs and deploy the operator with cluster-wide permissions to manage
 helm install elastic-operator eck-operator -n elastic-system --create-namespace 
 ```
 
-Install the operator restricted to a single namespace. 
+Install the operator restricted to a single namespace.q
 
 ```sh
 # This step must be done by a cluster administrator to install the CRDs -- which are global resources.
 helm install elastic-operator-crds ./eck-operator/charts/eck-operator-crds
 
 # This step can be done by any user with full access to the my-namespace namespace.
-helm install elastic-operator elastic/eck-operator -n my-namespace --create-namespace \
+helm install elastic-operator ./eck-operator -n my-namespace --create-namespace \
   --set=installCRDs=false \
   --set=managedNamespaces='{my-namespace}' \
   --set=createClusterScopedResources=false \
