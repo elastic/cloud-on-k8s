@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	_ "embed"
 	"encoding/pem"
 	"fmt"
 
@@ -30,6 +31,9 @@ const (
 
 // fixtures
 var (
+
+	//go:embed testdata/ca.crt
+	extraCA []byte
 
 	// RSA related fixtures
 	testRSACA            *certificates.CA

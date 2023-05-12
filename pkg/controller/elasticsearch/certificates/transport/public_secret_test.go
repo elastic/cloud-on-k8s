@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -64,6 +65,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	tests := []struct {
 		name       string
 		client     func(*testing.T, ...runtime.Object) k8s.Client
+		extraCA    []byte
 		wantSecret func(*testing.T) *corev1.Secret
 		wantErr    bool
 	}{
@@ -81,6 +83,18 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 				return mkClient(t, s)
 			},
 			wantSecret: mkWantedSecret,
+		},
+		{
+			name:    "concatenates multiple CAs",
+			client:  mkClient,
+			extraCA: extraCA,
+			wantSecret: func(t *testing.T) *corev1.Secret {
+				t.Helper()
+				s := mkWantedSecret(t)
+				s.Data[certificates.CAFileName] = bytes.Join([][]byte{s.Data[certificates.CAFileName], extraCA}, nil)
+				return s
+			},
+			wantErr: false,
 		},
 		{
 			name: "removes extraneous keys",
@@ -131,7 +145,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileTransportCertsPublicSecret(context.Background(), client, *owner, ca)
+			err := ReconcileTransportCertsPublicSecret(context.Background(), client, *owner, ca, tt.extraCA)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

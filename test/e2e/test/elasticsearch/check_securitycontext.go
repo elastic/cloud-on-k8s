@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	ptr "k8s.io/utils/pointer"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -46,13 +45,17 @@ func CheckContainerSecurityContext(es esv1.Elasticsearch, k *test.K8sClient) tes
 func assertSecurityContext(t *testing.T, ver version.Version, securityContext *corev1.SecurityContext, image string) {
 	t.Helper()
 	require.NotNil(t, securityContext)
-	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.MinStackVersion) {
+	if strings.HasPrefix(image, "docker.elastic.co/elasticsearch/elasticsearch") && ver.LT(securitycontext.RunAsNonRootMinStackVersion) {
 		require.Nil(t, securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be nil")
-	} else {
-		require.Equal(t, ptr.Bool(true), securityContext.RunAsNonRoot, "RunAsNonRoot was expected to be true")
 	}
 	require.NotNil(t, securityContext.Privileged)
 	require.False(t, *securityContext.Privileged)
+
+	if ver.LT(version.MinFor(8, 0, 0)) {
+		// We are not expecting Capabilities to be changed by the operator before 8.x
+		// Also refer to https://github.com/elastic/cloud-on-k8s/pull/6755
+		return
+	}
 
 	// OpenShift may add others Capabilities. We only check that ALL is included in "Drop".
 	require.NotNil(t, securityContext.Capabilities)

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -26,8 +27,9 @@ const (
 	// DefaultHTTPPort is the (default) port used by ApmServer
 	DefaultHTTPPort = 8200
 
-	APMServerHost        = "apm-server.host"
-	APMServerSecretToken = "apm-server.secret_token" //nolint:gosec
+	APMServerHost              = "apm-server.host"
+	APMServerLegacySecretToken = "apm-server.secret_token"      //nolint:gosec
+	APMServerSecretToken       = "apm-server.auth.secret_token" //nolint:gosec
 
 	APMServerSSLEnabled     = "apm-server.ssl.enabled"
 	APMServerSSLKey         = "apm-server.ssl.key"
@@ -40,11 +42,18 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 	return fmt.Sprintf("config/%s-certs", associationType)
 }
 
+func apmServerSecretTokenKeyFor(v version.Version) string {
+	if v.GTE(version.MinFor(8, 0, 0)) {
+		return APMServerSecretToken
+	}
+	return APMServerLegacySecretToken
+}
+
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.ApmServer, version version.Version) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
-	cfg, err := newConfigFromSpec(ctx, client, as)
+	cfg, err := newConfigFromSpec(ctx, client, as, version)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -68,10 +77,10 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 	return reconciler.ReconcileSecret(ctx, client, expectedConfigSecret, as)
 }
 
-func newConfigFromSpec(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
+func newConfigFromSpec(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, version version.Version) (*settings.CanonicalConfig, error) {
 	cfg := settings.MustCanonicalConfig(map[string]interface{}{
-		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
-		APMServerSecretToken: "${SECRET_TOKEN}",
+		APMServerHost:                       fmt.Sprintf(":%d", DefaultHTTPPort),
+		apmServerSecretTokenKeyFor(version): "${SECRET_TOKEN}",
 	})
 
 	esConfig, err := newElasticsearchConfigFromSpec(ctx, c, apmv1.ApmEsAssociation{ApmServer: as})

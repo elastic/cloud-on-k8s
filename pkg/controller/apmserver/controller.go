@@ -262,7 +262,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results, state // will eventually retry
 	}
 
-	state, err = r.reconcileApmServerDeployment(ctx, state, as)
+	state, err = r.reconcileApmServerDeployment(ctx, state, as, asVersion)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")

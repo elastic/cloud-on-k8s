@@ -11,10 +11,10 @@ The instructions below are intended to deploy the Helm charts from a local copy 
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
 ```sh
-helm install elastic-operator eck-operator -n elastic-system --create-namespace 
+helm install elastic-operator ./eck-operator -n elastic-system --create-namespace
 ```
 
-Install the operator restricted to a single namespace.q
+Install the operator restricted to a single namespace.
 
 ```sh
 # This step must be done by a cluster administrator to install the CRDs -- which are global resources.
@@ -31,7 +31,7 @@ helm install elastic-operator ./eck-operator -n my-namespace --create-namespace 
 View the available settings for customizing the installation.
 
 ```sh
-helm show values eck-operator
+helm show values ./eck-operator
 ```
 
 ## ECK Stack Helm Chart Usage
@@ -39,10 +39,10 @@ helm show values eck-operator
 Install a quickstart Elasticsearch and Kibana resource in a cluster controlled by the ECK Operator.
 
 ```sh
-helm install es-kb-quickstart elastic/eck-stack -n elastic-stack --create-namespace
+helm install es-kb-quickstart ./eck-stack -n elastic-stack --create-namespace
 ```
 
-To see all resources installed by the helm chart
+To see all resources installed by the helm chart:
 
 ```sh
 kubectl get elastic -l "app.kubernetes.io/instance"=es-kb-quickstart -n elastic-stack
@@ -76,8 +76,8 @@ The Helm unit tests can be manually invoked for any of the charts with the follo
 
 ```
 cd deploy/eck-stack
-helm unittest -3 -f 'templates/tests/*.yaml' .
-``````
+helm unittest -3 -f 'templates/tests/*.yaml' --with-subchart=false .
+```
 
 ## Licensing
 

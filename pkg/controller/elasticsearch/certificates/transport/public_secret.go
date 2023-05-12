@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +25,7 @@ func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	ca *certificates.CA,
+	additionalCAs []byte,
 ) error {
 	esNSN := k8s.ExtractNamespacedName(&es)
 	meta := k8s.ToObjectMeta(PublicCertsSecretRef(esNSN))
@@ -32,7 +34,7 @@ func ReconcileTransportCertsPublicSecret(
 	expected := corev1.Secret{
 		ObjectMeta: meta,
 		Data: map[string][]byte{
-			certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
+			certificates.CAFileName: bytes.Join([][]byte{certificates.EncodePEMCert(ca.Cert.Raw), additionalCAs}, nil),
 		},
 	}
 

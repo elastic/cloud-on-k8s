@@ -65,8 +65,6 @@ var UnsupportedSettings = []string{
 	XPackSecurityHttpSslCertificate,
 	XPackSecurityHttpSslEnabled,
 	XPackSecurityHttpSslKey,
-	XPackSecurityTransportSslCertificate,
 	XPackSecurityTransportSslEnabled,
-	XPackSecurityTransportSslKey,
 	XPackSecurityTransportSslVerificationMode,
 }

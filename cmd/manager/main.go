@@ -326,6 +326,11 @@ func Command() *cobra.Command {
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
 	)
+	cmd.Flags().Int(
+		operator.WebhookPortFlag,
+		WebhookPort,
+		"Port is the port that the webhook server serves at.",
+	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
 		"auto-detect",
@@ -572,7 +577,7 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = WebhookPort
+	opts.Port = viper.GetInt(operator.WebhookPortFlag)
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")

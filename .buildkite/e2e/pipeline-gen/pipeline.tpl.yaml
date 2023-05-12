@@ -120,6 +120,9 @@ steps:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         {{- end }}
+        retry:
+          automatic:
+            - limit: 5
 
 
 

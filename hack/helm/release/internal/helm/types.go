@@ -9,7 +9,7 @@ type chart struct {
 	Name         string       `json:"name"`
 	Version      string       `json:"version"`
 	Dependencies []dependency `json:"dependencies"`
-	fullPath     string
+	srcPath      string
 }
 
 // dependency is a dependency of a Helm chart.

@@ -34,9 +34,9 @@ Check requirements and steps in this [guide](dev-setup.md).
 
 1. Run `make lint` to make sure there are no lint warnings.
 2. Make sure you only have, at maximum, 3 groups in your imports:
-    - a group for packages from the standard library
-    - (optionally) a group for third parties
-    - (optionally) a group for 'local' imports (local being 'github.com/elastic/cloud-on-k8s')
+   - a group for packages from the standard library
+   - (optionally) a group for third parties
+   - (optionally) a group for 'local' imports (local being 'github.com/elastic/cloud-on-k8s')
 
 ### Scripts
 
@@ -48,19 +48,21 @@ Your contributions should pass the existing tests. You must provide new tests to
 
 #### Test suites
 
-There are 3 test suites:
+There are 4 test suites:
 
 - **Unit tests** - use standard `go test` and [github.com/stretchr/testify/assert](https://github.com/stretchr/testify) assertions. Keep them small, fast and reliable.
-  
+
   A good practice is to have some [table-driven tests](https://github.com/golang/go/wiki/TableDrivenTests), you can use [gotests](https://github.com/cweill/gotests) to quickly generate them from your code.
-  
+
 - **Integration tests** - some tests are flagged as integration as they can take more than a few milliseconds to complete. It's usually recommended to separate them from the rest of the unit tests that run fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
 
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
-      They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit and is very close to how it will run in CI.
+  They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios. To run a specific e2e test, you can use something similar to `make TESTS_MATCH=TestMetricbeatStackMonitoringRecipe clean docker-build docker-push e2e-docker-build e2e-docker-push e2e-run`. This will run the e2e test with your latest commit and is very close to how it will run in CI.
 
   A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
-  
+
+- **Helm chart tests** - allows us to test helm charts. To run helm chart tests, you can use `make helm-test` command.
+
 #### Pull Request validation
 
 For security reasons, an Elastic engineer will trigger continuous integration to run these tests and report any failures in the pull request.
@@ -116,11 +118,7 @@ New PRs should target the `main` branch, then be backported as necessary. The or
 ```json
 {
   "upstream": "elastic/cloud-on-k8s",
-  "targetBranchChoices": [
-    { "name": "1.2", "checked": true },
-    "1.1",
-    "1.0"
-  ],
+  "targetBranchChoices": [{ "name": "1.2", "checked": true }, "1.1", "1.0"],
   "targetPRLabels": ["backport"]
 }
 ```
@@ -129,16 +127,18 @@ New PRs should target the `main` branch, then be backported as necessary. The or
 
 Whether it’s a new or existing feature, make sure you document it.
 Before you start, pull the latest files from these repos:
-* [elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
-* [elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
+
+- [elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
+- [elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
 
 To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs) repo and make your change.
 
 To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/main/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/main/docs/index.asciidoc).
 
 NOTE: For searchability purposes, the file name should match the first top-level section ID of the document. For example:
- * File name: `apm-server.asciidoc`
- * Section ID: `[id="{p}-apm-server"]`
+
+- File name: `apm-server.asciidoc`
+- Section ID: `[id="{p}-apm-server"]`
 
 Test the doc build locally:
 
@@ -146,9 +146,8 @@ Test the doc build locally:
 1. Run the following command:
 
    `./build_docs --asciidoctor --doc $GOPATH/src/github.com/elastic/cloud-on-k8s/docs/index.asciidoc --chunk 1 --open`
-   
-Push a PR for review and add the label `>docs`.
 
+Push a PR for review and add the label `>docs`.
 
 ## Design documents
 
