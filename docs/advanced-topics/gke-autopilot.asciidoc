@@ -9,44 +9,23 @@ endif::[]
 
 This page shows how to run ECK on GKE Autopilot.
 
-* <<{p}-autopilot-before-you-begin>>
 * <<{p}-autopilot-deploy-the-operator>>
 * <<{p}-autopilot-deploy-elasticsearch>>
 * <<{p}-autopilot-deploy-kibana>>
+* <<{p}-autopilot-deploy-agent>>
 
 [float]
-[id="{p}-autopilot-before-you-begin"]
-== Before you begin
-
-. Ensure you are running a supported version of Kubernetes within Autopilot.
-+
-Setting the kernel setting `vm.max_map_count` is critical for production workloads as described in the <<{p}-virtual-memory>> section. If you are intending to set `vm.max_map_count` you must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
-
 [id="{p}-autopilot-setting-virtual-memory"]
 == Ensuring virtual memory kernel settings
 
-If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The only way to set this kernal setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section.
+If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The only way to set this kernal setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
 
 CAUTION: Only use the provided `Daemonset` exactly as specified or it could be rejected by the Autopilot control plane.
 
 [id="{p}-autopilot-deploy-the-operator"]
 == Deploying the ECK Operator
 
-. Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart section].
-+
-[source,shell,subs="attributes"]
-----
-kubectl create -f https://download.elastic.co/downloads/eck/{eck_version}/crds.yaml
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/operator.yaml
-----
-
-. As an alternative, you can use the Helm chart to install ECK as described in the link:k8s-install-helm.html[installation docs].
-+
-[source,shell,subs="attributes"]
-----
-helm repo add elastic https://helm.elastic.co && helm repo update
-helm install elastic-operator elastic/eck-operator -n elastic-system --create-namespace --version {eck_version}
-----
+. Refer to <<{p}-installing-eck>> for more information on installation options.
 
 . Create a namespace to hold the Elastic resources ({eck_resources_list}):
 +
@@ -146,8 +125,7 @@ spec:
         containers:
           - name: agent
             # These requests come from
-            # docs/manifests/elastic-agent-managed-gke-autopilot.yaml
-            # in https://github.com/elastic/elastic-agent
+            # github.com/elastic/elastic-agent/docs/manifests/elastic-agent-managed-gke-autopilot.yaml
             resources:
               requests:
                 # cpu: 200m # Keep this commented. We dont set the cpu limit to avoid scheduling problems of agent in autopilot scenarios

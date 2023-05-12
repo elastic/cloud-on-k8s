@@ -7,6 +7,7 @@
 set -euo pipefail
 
 chaos=${CHAOS:-"false"}
+E2E_TAGS=${E2E_TAGS:-"e2e"}
 
 run_e2e_tests() {
   if [ "${E2E_JSON}" == "true" ]
