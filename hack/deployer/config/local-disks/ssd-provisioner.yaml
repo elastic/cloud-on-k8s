@@ -104,7 +104,7 @@ spec:
       serviceAccountName: local-storage-admin
       initContainers:
       - name: disk-format
-        image: debian:stretch-slim
+        image: debian:stable-slim
         securityContext:
           privileged: true
         command:
