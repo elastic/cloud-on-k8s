@@ -31,7 +31,7 @@ securityContext:
   readOnlyRootFilesystem: true
 ----
 
-For Elasticsearch version above `8.0.0` the containers `SecurityContext` also include the following capabilities settings:
+For Elasticsearch versions above `8.0.0` the container's `SecurityContext` also include the following capabilities settings:
 
 [source,yaml]
 ----
@@ -44,7 +44,7 @@ securityContext:
   readOnlyRootFilesystem: true
 ----
 
-Starting with Elasticsearch `8.8.0`, `runAsNonRoot` is also enforced to `true`:
+Starting with Elasticsearch `8.8.0`, `runAsNonRoot` is also set to `true`:
 
 [source,yaml]
 ----
