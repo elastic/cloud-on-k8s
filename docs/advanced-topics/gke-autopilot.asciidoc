@@ -15,7 +15,6 @@ This page shows how to run ECK on GKE Autopilot.
 * <<{p}-autopilot-deploy-kibana>>
 * <<{p}-autopilot-deploy-agent>>
 
-[float]
 [id="{p}-autopilot-setting-virtual-memory"]
 == Ensuring virtual memory kernel settings
 
