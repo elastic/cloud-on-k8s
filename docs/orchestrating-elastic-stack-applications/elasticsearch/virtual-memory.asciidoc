@@ -46,7 +46,7 @@ Note that this requires the ability to run privileged containers, which is likel
 
 == Using a Daemonset to set virtual memory
 
-To use a Daemonset that changes the host kernel setting on all nodes in your cluster and run an Elasticsearch instance that waits for the kernel setting to be in place:
+To use a Daemonset that changes the host kernel setting on all nodes:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -82,8 +82,6 @@ spec:
           image: docker.io/bash:5.2.15
           command: ['sleep', 'infinity']
 ----
-
-== Deploy an Elasticsearch instance
 
 To run an Elasticsearch instance that waits for the kernel setting to be in place:
 

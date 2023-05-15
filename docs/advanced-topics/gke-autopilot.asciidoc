@@ -9,6 +9,7 @@ endif::[]
 
 This page shows how to run ECK on GKE Autopilot.
 
+* <<{p}-autopilot-setting-virtual-memory>>
 * <<{p}-autopilot-deploy-the-operator>>
 * <<{p}-autopilot-deploy-elasticsearch>>
 * <<{p}-autopilot-deploy-kibana>>
@@ -18,7 +19,7 @@ This page shows how to run ECK on GKE Autopilot.
 [id="{p}-autopilot-setting-virtual-memory"]
 == Ensuring virtual memory kernel settings
 
-If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The only way to set this kernal setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
+If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The recommended way to set this kernel setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
 
 CAUTION: Only use the provided `Daemonset` exactly as specified or it could be rejected by the Autopilot control plane.
 
@@ -27,21 +28,14 @@ CAUTION: Only use the provided `Daemonset` exactly as specified or it could be r
 
 . Refer to <<{p}-installing-eck>> for more information on installation options.
 
-. Create a namespace to hold the Elastic resources ({eck_resources_list}):
-+
-[source,shell]
-----
-kubectl create namespace elastic
-----
-
 [id="{p}-autopilot-deploy-elasticsearch"]
 == Deploy an Elasticsearch instance
 
-Create an Elasticsearch cluster. If you are using the `Daemonset` described in the <<{p}-virtual-memory>> section to set `max_map_count` ensure that the `initContainer` below is also used to ensure the setting prior to starting Elasticsearch.
+Create an Elasticsearch cluster. If you are using the `Daemonset` described in the <<{p}-virtual-memory>> section to set `max_map_count` you can add the `initContainer` below is also used to ensure the setting is set prior to starting Elasticsearch.
 
 [source,shell,subs="attributes,+macros"]
 ----
-cat $$<<$$EOF | kubectl apply -n elastic -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
@@ -57,7 +51,7 @@ spec:
     podTemplate:
       spec:
         # This init container ensures that the `max_map_count` setting has been applied before starting Elasticsearch.
-        # This is not required, but is encouraged when using the previous Daemonset to set max_map_count.
+        # This is not required, but is encouraged when using the previously mentioned Daemonset to set max_map_count.
         # Do not use this if setting config.node.store.allow_mmap: false
         initContainers:
         - name: max-map-count-check
@@ -72,7 +66,7 @@ Use the following code to create a Kibana instance:
 
 [source,shell,subs="attributes,+macros"]
 ----
-cat $$<<$$EOF | kubectl apply -n elastic -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
@@ -96,164 +90,4 @@ EOF
 [id="{p}-autopilot-deploy-agent"]
 == Deploy a standalone Elastic Agent
 
-Use the following code to deploy Elastic Agent as a DaemonSet in standalone mode with system integration enabled:
-
-[source,shell,subs="attributes,+macros"]
-----
-cat $$<<$$EOF | kubectl apply -n elastic -f -
-apiVersion: agent.k8s.elastic.co/v1alpha1
-kind: Agent
-metadata:
-  name: elastic-agent
-spec:
-  version: {version}
-  elasticsearchRefs:
-    name: "elasticsearch-sample"
-  daemonSet:
-    podTemplate:
-      spec:
-        volumes:
-        - name: "agent-data"
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                storageClassName: "e2e-default"
-                resources:
-                  requests:
-                    storage: 10Gi
-        containers:
-          - name: agent
-            # These requests come from
-            # github.com/elastic/elastic-agent/docs/manifests/elastic-agent-managed-gke-autopilot.yaml
-            resources:
-              requests:
-                # cpu: 200m # Keep this commented. We dont set the cpu limit to avoid scheduling problems of agent in autopilot scenarios
-                memory: 700Mi
-              limits:
-                # cpu: 200m # Keep this commented. We dont set the cpu limit to avoid scheduling problems of agent in autopilot scenarios
-                memory: 700Mi
-                ephemeral-storage: "500Mi"
-        serviceAccountName: elastic-agent
-        automountServiceAccountToken: true
-        securityContext:
-          runAsUser: 0
-  config:
-    id: 488e0b80-3634-11eb-8208-57893829af4e
-    revision: 2
-    agent:
-      monitoring:
-        enabled: true
-        use_output: default
-        logs: true
-        metrics: true
-    inputs:
-    - id: 4917ade0-3634-11eb-8208-57893829af4e
-      name: system-1
-      revision: 1
-      type: system/metrics
-      use_output: default
-      meta:
-        package:
-          name: system
-          version: {version}
-      data_stream:
-        namespace: default
-      streams:
-      - id: system/metrics-system.cpu
-        data_stream:
-          dataset: system.cpu
-          type: metrics
-        metricsets:
-        - cpu
-        cpu.metrics:
-        - percentages
-        - normalized_percentages
-        period: 10s
-      - id: system/metrics-system.diskio
-        data_stream:
-          dataset: system.diskio
-          type: metrics
-        metricsets:
-        - diskio
-        diskio.include_devices: null
-        period: 10s
-      - id: system/metrics-system.filesystem
-        data_stream:
-          dataset: system.filesystem
-          type: metrics
-        metricsets:
-        - filesystem
-        period: 1m
-        processors:
-        - drop_event.when.regexp:
-            system.filesystem.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
-      - id: system/metrics-system.fsstat
-        data_stream:
-          dataset: system.fsstat
-          type: metrics
-        metricsets:
-        - fsstat
-        period: 1m
-        processors:
-        - drop_event.when.regexp:
-            system.fsstat.mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib|snap)($|/)
-      - id: system/metrics-system.load
-        data_stream:
-          dataset: system.load
-          type: metrics
-        metricsets:
-        - load
-        period: 10s
-      - id: system/metrics-system.memory
-        data_stream:
-          dataset: system.memory
-          type: metrics
-        metricsets:
-        - memory
-        period: 10s
-      - id: system/metrics-system.network
-        data_stream:
-          dataset: system.network
-          type: metrics
-        metricsets:
-        - network
-        period: 10s
-        network.interfaces: null
-      - id: system/metrics-system.process
-        data_stream:
-          dataset: system.process
-          type: metrics
-        metricsets:
-        - process
-        period: 10s
-        process.include_top_n.by_cpu: 5
-        process.include_top_n.by_memory: 5
-        process.cmdline.cache.enabled: true
-        process.cgroups.enabled: false
-        process.include_cpu_ticks: false
-        processes:
-        - .*
-      - id: system/metrics-system.process_summary
-        data_stream:
-          dataset: system.process_summary
-          type: metrics
-        metricsets:
-        - process_summary
-        period: 10s
-      - id: system/metrics-system.socket_summary
-        data_stream:
-          dataset: system.socket_summary
-          type: metrics
-        metricsets:
-        - socket_summary
-        period: 10s
-      - id: system/metrics-system.uptime
-        data_stream:
-          dataset: system.uptime
-          type: metrics
-        metricsets:
-        - uptime
-        period: 10s
-EOF
-----
+Refer to link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/autopilot[Recipe to deploy Elasticsearch, Kibana, Elastic Fleet Server and Elastic Agent within GKE Autopilot].
