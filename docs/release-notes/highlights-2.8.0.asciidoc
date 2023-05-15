@@ -13,7 +13,7 @@ New and notable changes in version 2.8.0 of {n}. Check <<release-notes-2.8.0>> f
 [id="{p}-280-logstash"]
 === Logstash support
 
-ECK 2.8.0 introduces a new Custom Resource Definition (CRD) and controller to easily deploy and orchestrate link:https://www.elastic.co/logstash/[Logstash] on Kubernetes.
+ECK 2.8.0 includes a technical preview for link:https://www.elastic.co/logstash/[Logstash] support, introducing a new Custom Resource Definition (CRD) and controller to easily deploy and orchestrate {ls} on Kubernetes. The technical preview includes support for defining pipelines (with dynamic individual pipeline reload), integrating with Elasticsearch instances, and stack monitoring configuration from within the CRD.
 
 Refer to the <<{p}-logstash-quickstart>> for more information.
 
