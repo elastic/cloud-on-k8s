@@ -66,13 +66,15 @@
 [float]
 === Documentation improvements
 
-* Contributing page updated with helm chart tests suit {pull}6744[#6744]
+* Contributing page updated with Helm chart tests suite {pull}6744[#6744]
 * User-facing documentation for Logstash on ECK {pull}6743[#6743]
+* Add 2.6 and 2.7 to the triggered restart list {pull}6786[#6786] (issue: {issue}6765[#6765])
 
 [[nogroup-2.8.0]]
 [float]
 === Misc
 
+* Bump github.com/docker/distribution from 2.8.1+incompatible to 2.8.2+incompatible {pull}6801[#6801]
 * Bump google.golang.org/protobuf from 1.29.0 to 1.29.1 {pull}6549[#6549]
 * Update docker.io/library/golang Docker tag to v1.20.4 {pull}6752[#6752]
 * Update github.com/docker/docker {pull}6654[#6654]
