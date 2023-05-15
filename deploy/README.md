@@ -8,6 +8,12 @@ The instructions below are intended to deploy the Helm charts from a local copy 
 
 ## ECK Operator Helm Chart Usage
 
+View the available settings for customizing the installation.
+
+```sh
+helm show values ./eck-operator
+```
+
 Install the CRDs and deploy the operator with cluster-wide permissions to manage all namespaces.
 
 ```sh
@@ -26,12 +32,6 @@ helm install elastic-operator ./eck-operator -n my-namespace --create-namespace 
   --set=managedNamespaces='{my-namespace}' \
   --set=createClusterScopedResources=false \
   --set=webhook.enabled=false
-```
-
-View the available settings for customizing the installation.
-
-```sh
-helm show values ./eck-operator
 ```
 
 ## ECK Stack Helm Chart Usage
