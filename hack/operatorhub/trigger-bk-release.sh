@@ -15,17 +15,19 @@ set -eu
 : "$ECK_VERSION"
 : "$DRY_RUN"
 
+# extract branch from the tag
 branch=$(sed -r "s|v([0-9]\.[0-9])\..*|\1|" <<< "$ECK_VERSION")
-gh_vault_secret_name="operatorhub-release-github-$GH_USERNAME"
 
 curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-redhat-release/builds" -XPOST \
-    -H "Authorization: Bearer $BK_TOKEN" \
-    -d '{
+    -H "Authorization: Bearer $BK_TOKEN" -d '
+{
     "commit": "'"$ECK_VERSION"'",
     "branch": "'"$branch"'",
     "message": "release ECK '"$ECK_VERSION"' for OperatoHub/RedHat",
     "env": {
+        "BUILDKITE_TAG": "'"$ECK_VERSION"'",
         "OHUB_DRY_RUN": "'"$DRY_RUN"'",
-        "OHUB_GITHUB_VAULT_SECRET": "secret/ci/elastic-cloud-on-k8s/'"$gh_vault_secret_name"'"
+        "OHUB_DISABLE_PREFLIGHT": "'"$DRY_RUN"'",
+        "OHUB_GITHUB_VAULT_SECRET": "secret/ci/elastic-cloud-on-k8s/operatorhub-release-github-'"$GH_USERNAME"'"
     }
 }'
