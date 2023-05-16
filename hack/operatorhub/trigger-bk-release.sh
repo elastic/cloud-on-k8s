@@ -25,7 +25,7 @@ curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-
     "branch": "'"$branch"'",
     "message": "release ECK '"$ECK_VERSION"' for OperatoHub/RedHat",
     "env": {
-        "DRY_RUN": "'"$DRY_RUN"'",
+        "OHUB_DRY_RUN": "'"$DRY_RUN"'",
         "OHUB_GITHUB_VAULT_SECRET": "secret/ci/elastic-cloud-on-k8s/'"$gh_vault_secret_name"'"
     }
 }'
