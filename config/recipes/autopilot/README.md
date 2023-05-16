@@ -1,6 +1,6 @@
 = GKE Autopilot Configuration Examples
 
-This directory contains a yaml manifest with an example configuration for running Elasticsearch, Kibana, Fleet Server, Elastic Agent and Metricbeat on GKE Autopilot. These manifests are self-contained and work out-of-the-box on any GKE Autopilot cluster with a version greater than 1.25.
+This directory contains yaml manifests with an configurations for running Elasticsearch, Kibana, Fleet Server, Elastic Agent and Metricbeat on GKE Autopilot. These manifests are self-contained and work out-of-the-box on any GKE Autopilot cluster with a version greater than 1.25.
 
 IMPORTANT: These examples are for illustration purposes only and should not be considered to be production-ready.
 
@@ -14,7 +14,7 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes in
 
 ===== Kubernetes integration - `elasticsearch.yaml`+`kubernetes-integration.yaml`
 
-Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume, System, Volume, and State metrics for containers, daemonsets, jobs, nodes, persistent volumes/claims, pods, replicasets, resourcequotas, services, statefulsets, and storageclasses.
+Deploys Elastic Agent as a DaemonSet in standalone mode with Kubernetes integration enabled. Collects API server, Container, Event, Node, Pod, Volume, System, Volume, and State metrics for Containers, Daemonsets, Jobs, Nodes, Persistent volumes/claims, Pods, Replicasets, ResourceQuotas, Services, Statefulsets, and StorageClasses.
 
 ==== Metricbeat for Kubernetes monitoring - `elasticsearch.yaml`+`metricbeat_hosts.yaml`
 

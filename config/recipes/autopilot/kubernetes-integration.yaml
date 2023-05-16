@@ -30,8 +30,6 @@ spec:
               mountPath: /var/log
               readOnly: true
         volumes:
-        # This is required to prevent:
-        # "hostPath volume agent-data in container agent is accessed in write mode; disallowed in Autopilot"
         - name: "agent-data"
           ephemeral:
             volumeClaimTemplate:
@@ -364,7 +362,7 @@ kind: ClusterRole
 metadata:
   name: elastic-agent
 rules:
-- apiGroups: [""] # "" indicates the core API group
+- apiGroups: [""]
   resources:
   - namespaces
   - persistentvolumes
@@ -460,4 +458,4 @@ spec:
           limits:
             memory: 1Gi
             cpu: 200m
-...
+---
