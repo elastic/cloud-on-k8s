@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/joshdk/go-junit"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -20,7 +22,8 @@ const (
 	annotateFailures = "annotate-failures"
 	notifyFailures   = "notify-failures"
 
-	maxErrorSizeBytes = 3000 // to display more than 300 errors with a total below 1 MB
+	maxErrorSizeBytes        = 3000 // to display more than 300 errors with a total below 1 MB
+	maxSlackMessageSizeBytes = 3000
 )
 
 var (
@@ -53,7 +56,7 @@ func init() {
 
 func main() {
 	tests := map[string]sortedTests{}
-	failuresCount := 0
+	failuresCount, shortFailuresCount := 0, 0
 
 	// process all xml report in the given diretory
 	err := filepath.Walk(xmlDir, func(xmlReportPath string, info os.FileInfo, err error) error {
@@ -86,6 +89,7 @@ func main() {
 		tests[slugName] = sortTests(suites)
 
 		failuresCount += len(tests[slugName].Failed)
+		shortFailuresCount += len(tests[slugName].ShortFailed)
 
 		return nil
 	})
@@ -102,13 +106,22 @@ func main() {
 	if err != nil {
 		exitWith(err)
 	}
-	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"FailuresCount": failuresCount,
-		"Tests":         tests,
+	var output bytes.Buffer
+	err = tpl.Execute(&output, map[string]interface{}{
+		"FailuresCount":      failuresCount,
+		"ShortFailuresCount": shortFailuresCount,
+		"Tests":              tests,
 	})
 	if err != nil {
 		exitWith(err)
 	}
+
+	outBytes, err := truncateNotifyMessage(output.Bytes(), maxSlackMessageSizeBytes)
+	if err != nil {
+		exitWith(err)
+	}
+
+	fmt.Print(string(outBytes))
 
 	if failuresCount > 0 {
 		os.Exit(1)
@@ -135,7 +148,7 @@ func sortTests(suites []junit.Suite) sortedTests {
 				// on test failure
 
 				// to stay under the maximum size of a Buildkite annotation
-				test.Error = trimError(test.Error, maxErrorSizeBytes)
+				test.Error = truncateError(test.Error, maxErrorSizeBytes)
 
 				if strings.Contains(test.Name, "/") {
 					// keep sub tests
@@ -195,12 +208,39 @@ func sortByName(tests []junit.Test) {
 	})
 }
 
-func trimError(err error, bytes int) error {
+func truncateError(err error, length int) error {
 	msg := []byte(err.Error())
-	if len(msg) > bytes {
-		return errors.New(string(msg[0:bytes]))
+	if len(msg) > length {
+		return errors.New(string(msg[0 : length-1]))
 	}
 	return err
+}
+
+func truncateNotifyMessage(yamlDef []byte, length int) ([]byte, error) {
+	var pipeline struct {
+		Steps []struct {
+			Notify []struct {
+				Slack struct {
+					Message string `yaml:"message"`
+				} `yaml:"slack"`
+			} `yaml:"notify"`
+		} `yaml:"steps"`
+	}
+	err := yaml.Unmarshal(yamlDef, &pipeline)
+	if err != nil {
+		return nil, nil
+	}
+	for i, s := range pipeline.Steps {
+		for j, n := range s.Notify {
+			// truncate message and replace last 3 chars by '...'
+			pipeline.Steps[i].Notify[j].Slack.Message = n.Slack.Message[0:length-1-3] + "..."
+		}
+	}
+	yamlDefBytes, err := yaml.Marshal(pipeline)
+	if err != nil {
+		return nil, nil
+	}
+	return yamlDefBytes, nil
 }
 
 func exitWith(err error) {

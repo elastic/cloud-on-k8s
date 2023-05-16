@@ -1,10 +1,10 @@
 steps:
   - label: ""
     if: build.branch == "main"
-    {{- if eq .FailuresCount 0 }}
+    {{- if eq .ShortFailuresCount 0 }}
     command: echo "no failures to notify"
     {{- else }}
-    command: echo "{{ .FailuresCount }} failures to notify"; exit 1
+    command: echo "{{ .ShortFailuresCount }} failures to notify"; exit 1
     notify:
       - slack:
           channels:
