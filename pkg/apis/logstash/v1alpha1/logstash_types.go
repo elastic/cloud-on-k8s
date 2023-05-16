@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 )
 
 const (
@@ -333,7 +334,8 @@ func (lsmon *LogstashMonitoringAssociation) Associated() commonv1.Associated {
 }
 
 func (lsmon *LogstashMonitoringAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName(lsmon.ref)
+	// Use a custom suffix for monitoring elasticsearchRefs to avoid clashes with other elasticsearchRefs
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s-sm", hash.HashObject(lsmon.ref))
 }
 
 func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.AssociationType {
