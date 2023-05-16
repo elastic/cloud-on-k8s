@@ -6,17 +6,17 @@
 
 # Script to call the Buildkite API to trigger the release of ECK for OperatoHub/RedHat.
 #
-# Usage: BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r) USERNAME=you ECK_VERSION=v2.8.0 DRY_RUN=false ./trigger-bk-release.sh
+# Usage: BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r) GH_USERNAME=thb ECK_VERSION=v2.8.0-bc4 DRY_RUN=true ./trigger-bk-release.sh
 
 set -eu
 
 : "$BK_TOKEN"
-: "$USERNAME"
+: "$GH_USERNAME"
 : "$ECK_VERSION"
 : "$DRY_RUN"
 
 branch=$(sed -r "s|v([0-9]\.[0-9])\..*|\1|" <<< "$ECK_VERSION")
-gh_vault_secret_name="operatorhub-release-github-$USERNAME"
+gh_vault_secret_name="operatorhub-release-github-$GH_USERNAME"
 
 curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-redhat-release/builds" -XPOST \
     -H "Authorization: Bearer $BK_TOKEN" \
