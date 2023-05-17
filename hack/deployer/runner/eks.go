@@ -7,10 +7,10 @@ package runner
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"log"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
