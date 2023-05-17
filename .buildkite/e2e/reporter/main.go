@@ -14,7 +14,6 @@ import (
 	"text/template"
 
 	"github.com/joshdk/go-junit"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -106,8 +105,8 @@ func main() {
 	if err != nil {
 		exitWith(err)
 	}
-	var output bytes.Buffer
-	err = tpl.Execute(&output, map[string]interface{}{
+	var outBytes bytes.Buffer
+	err = tpl.Execute(&outBytes, map[string]interface{}{
 		"FailuresCount":      failuresCount,
 		"ShortFailuresCount": shortFailuresCount,
 		"Tests":              tests,
@@ -116,12 +115,14 @@ func main() {
 		exitWith(err)
 	}
 
-	outBytes, err := truncateNotifyMessage(output.Bytes(), maxSlackMessageSizeBytes)
-	if err != nil {
-		exitWith(err)
+	out := outBytes.String()
+
+	// truncate notify slack message if it exceeds the max size
+	if outputFormat == notifyFailures && len(out) > maxSlackMessageSizeBytes {
+		out = out[0:maxSlackMessageSizeBytes]
 	}
 
-	fmt.Print(string(outBytes))
+	fmt.Println(out)
 
 	if failuresCount > 0 {
 		os.Exit(1)
@@ -214,35 +215,6 @@ func truncateError(err error, length int) error {
 		return errors.New(string(msg[0 : length-1]))
 	}
 	return err
-}
-
-func truncateNotifyMessage(yamlDef []byte, length int) ([]byte, error) {
-	var pipeline struct {
-		Steps []struct {
-			Notify []struct {
-				Slack struct {
-					Message string `yaml:"message"`
-				} `yaml:"slack"`
-			} `yaml:"notify"`
-		} `yaml:"steps"`
-	}
-	err := yaml.Unmarshal(yamlDef, &pipeline)
-	if err != nil {
-		return nil, err
-	}
-	for i, s := range pipeline.Steps {
-		for j, n := range s.Notify {
-			if len(n.Slack.Message) >= length {
-				// truncate message and replace last 3 chars by '...'
-				pipeline.Steps[i].Notify[j].Slack.Message = n.Slack.Message[0:length-1-3] + "..."
-			}
-		}
-	}
-	yamlDefBytes, err := yaml.Marshal(pipeline)
-	if err != nil {
-		return nil, err
-	}
-	return yamlDefBytes, nil
 }
 
 func exitWith(err error) {
