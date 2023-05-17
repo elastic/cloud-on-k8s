@@ -22,6 +22,9 @@ spec:
     log.level: info
     api.http.host: "0.0.0.0"
     queue.type: memory
+  elasticsearchRefs:
+    - clusterName: test
+      name: monitoring
   podTemplate:
     spec:
       containers:
@@ -33,6 +36,19 @@ spec:
     logs:
       elasticsearchRefs:
         - name: monitoring
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input { exec { command => 'uptime' interval => 10 } }
+        output {
+          elasticsearch {
+            hosts => [ "${TEST_ES_HOSTS}" ]
+            ssl => true
+            cacert => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${TEST_ES_USER}"
+            password => "${TEST_ES_PASSWORD}"
+          }
+        }
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
