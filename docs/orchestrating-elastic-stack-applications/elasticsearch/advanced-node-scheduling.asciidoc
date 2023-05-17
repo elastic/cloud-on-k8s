@@ -209,7 +209,7 @@ Starting with ECK 2.0 the operator can make Kubernetes Node labels available as 
 
 . First, ensure that the operator's flag `exposed-node-labels` contains the list of the Kubernetes node labels that should be exposed in the Elasticsearch Pods. If you are using the provided installation manifest, or the Helm chart, then this flag is already preset with two wildcard patterns for well-known node labels that describe Kubernetes cluster topology, like `topology.kubernetes.io/.*` and `failure-domain.beta.kubernetes.io/.*`.
 . On the Elasticsearch resources set the `eck.k8s.elastic.co/downward-node-labels` annotations with the list of the Kubernetes node labels that should be copied as Pod annotations.
-. Use the link:https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/[Kubernetes downward API] in the `podTemplate` to make those annotations available as environment variables in Elasticsearch Pods.
+. Use the link:https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/[Kubernetes downward API] in the `podTemplate` to make those labels available as environment variables in Elasticsearch Pods.
 
 Refer to the next section or to the link:{eck_github}/tree/{eck_release_branch}/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample resource in the ECK source repository] for a complete example.
 
@@ -244,7 +244,7 @@ spec:
           - name: ZONE
             valueFrom:
               fieldRef:
-                fieldPath: metadata.annotations['topology.kubernetes.io/zone']
+                fieldPath: metadata.labels['topology.kubernetes.io/zone']
         topologySpreadConstraints:
           - maxSkew: 1
             topologyKey: topology.kubernetes.io/zone
