@@ -228,17 +228,19 @@ func truncateNotifyMessage(yamlDef []byte, length int) ([]byte, error) {
 	}
 	err := yaml.Unmarshal(yamlDef, &pipeline)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	for i, s := range pipeline.Steps {
 		for j, n := range s.Notify {
-			// truncate message and replace last 3 chars by '...'
-			pipeline.Steps[i].Notify[j].Slack.Message = n.Slack.Message[0:length-1-3] + "..."
+			if len(n.Slack.Message) >= length {
+				// truncate message and replace last 3 chars by '...'
+				pipeline.Steps[i].Notify[j].Slack.Message = n.Slack.Message[0:length-1-3] + "..."
+			}
 		}
 	}
 	yamlDefBytes, err := yaml.Marshal(pipeline)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return yamlDefBytes, nil
 }
