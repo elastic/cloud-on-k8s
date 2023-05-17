@@ -40,13 +40,6 @@ const (
 	YamlManifestFlag = "yaml-manifest"
 	TemplatesFlag    = "templates"
 	RootPathFlag     = "root-path"
-
-	// buildkite command flag
-	BuildkiteTokenFlag        = "buildkite-token"
-	BuildkiteBranchFlag       = "buildkite-branch"
-	BuildkiteCommitFlag       = "buildkite-commit"
-	BuildkitePRRepositoryFlag = "buildkite-pr-repository"
-	BuildkitePRIDFlag         = "buildkite-pr-id"
 )
 
 var (
@@ -79,13 +72,6 @@ var (
 	YamlManifest []string
 	Templates    string
 	RootPath     string
-
-	// buildkite command variable
-	BuildkiteToken        string
-	BuildkiteBranch       string
-	BuildkiteCommit       string
-	BuildkitePRRepository string
-	BuildkitePRID         string
 )
 
 // Config is the configuration that matches the config.yaml

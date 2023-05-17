@@ -209,22 +209,3 @@ OHUB_GITHUB_VAULT_SECRET="secret/ci/elastic-cloud-on-k8s/operatorhub-release-git
 | `--github-email`                 | User's Github email address.                                                                                                              | `OHUB_GITHUB_EMAIL`                 | `""`              |
 | `--delete-temp-directory`        | Whether to delete the temporary directory upon completion (useful for debugging).                                                         | `OHUB_DELETE_TEMP_DIRECTORY`        | `true`            |
 | `--dry-run`                      | If set, Github forks, and branches will be created within user's remote, but pull requests will not be created.                           | `OHUB_DRY_RUN`                      | `true`            |
-
-## Buildkite Command
-
-The `buildkite` command will start the operatorhub release operation within Buildkite.
-
-To generate a Buildkite token for use with this command visit https://buildkite.com/user/api-access-tokens.
-
-### Usage
-
-```shell
-./bin/operatorhub buildkite -b 'my-buildkite-token'
-```
-
-### Flags
-
-| Parameter           | Description                                                                                       | Environment Variable   | Default           |
-|---------------------|---------------------------------------------------------------------------------------------------|------------------------|-------------------|
-| `--buildkite-token` | Buildkite token for communicating with the Buildkite API.                                         | `OHUB_BUILDKITE_TOKEN` | `""`              |
-| `--conf`            | Path to config.yaml file.                                                                         | `OHUB_CONF`            | `"./config.yaml"` |
