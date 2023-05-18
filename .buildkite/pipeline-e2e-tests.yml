@@ -52,6 +52,7 @@ steps:
       # for all tags
       # for nightly builds from main
       - label: ":buildkite: e2e"
+        key: "nightly-e2e-tests"
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"
@@ -62,3 +63,12 @@ steps:
         command: |
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
+
+      # After nightly e2e tests, run a cleanup scripts to ensure dangling clusters are deleted
+      - label: ":broom: e2e test cluster cleanup"
+        depends_on:
+          - step: "nightly-e2e-tests"
+            allow_failure: true
+
+        commands:
+          - .buildkite/scripts/test/cleanup-e2e-clusters.sh
