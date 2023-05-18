@@ -23,5 +23,5 @@ CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(
 
 for i in ${CLUSTERS} ; do
     echo "Deleting cluster $i"
-    gcloud container clusters delete $i --region=europe-west6
+    gcloud container clusters delete "${i}" --region=europe-west6
 done
