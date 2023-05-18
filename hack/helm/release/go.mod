@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
-	google.golang.org/api v0.122.0
+	google.golang.org/api v0.123.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.12.0
 )
