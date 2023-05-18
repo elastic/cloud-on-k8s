@@ -10,7 +10,7 @@
 set -eux
 
 # Get the date 3 days in the past.
-DATE=$(date --date='3 days ago')
+DATE=$(date --date='3 days ago' --iso-8601=seconds)
 
 # Activate the Google service account
 vault read -field=service-account "$VAULT_ROOT_PATH/ci-gcp-k8s-operator" > /tmp/ci-gcp-k8s-operator.json
