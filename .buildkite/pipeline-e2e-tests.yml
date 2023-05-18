@@ -69,6 +69,11 @@ steps:
         depends_on:
           - step: "nightly-e2e-tests"
             allow_failure: true
+        if: |
+          build.tag != null
+          || ( build.branch == "main" && build.source == "schedule" )
+          || build.message =~ /^buildkite test .*e2e\/all.*/
+          || build.message == "buildkite run e2e test cleanup"
 
         commands:
           - .buildkite/scripts/test/cleanup-e2e-clusters.sh
