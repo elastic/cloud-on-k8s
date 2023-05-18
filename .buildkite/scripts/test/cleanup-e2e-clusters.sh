@@ -13,10 +13,7 @@ set -eu
 DATE=$(date --date='3 days ago')
 
 # Activate the Google service account
-vault read -format=json "$VAULT_ROOT_PATH/ci-gcp-k8s-operator" | jq .data > /tmp/ci-gcp-k8s-operator.json
-echo "showing json file"
-cat /tmp/ci-gcp-k8s-operator.json
-echo "end showing json file"
+vault read -format=json -field=service-account "$VAULT_ROOT_PATH/ci-gcp-k8s-operator" > /tmp/ci-gcp-k8s-operator.json
 gcloud auth activate-service-account --key-file=/tmp/ci-gcp-k8s-operator.json
 rm -f /tmp/ci-gcp-k8s-operator.json
 gcloud config set project elastic-cloud-dev
