@@ -7,7 +7,7 @@
 # Script to find any e2e clusters that are older than 3 days and delete them.
 # *Note* can be extended in the future to cleanup aks/eks/etc clusters.
 
-set -eux
+set -eu
 
 # Get the date 3 days in the past.
 DATE=$(date --date='3 days ago' --iso-8601=seconds)
