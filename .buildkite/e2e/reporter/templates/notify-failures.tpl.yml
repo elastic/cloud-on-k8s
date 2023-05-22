@@ -12,12 +12,12 @@ steps:
           message: |
           {{- range $i, $test := .ShortFailures }}
             🐞 `{{ $test.Name }}` {{ $test.EnvName }}
-          {{- if gt $i $.MaxNotifiedShortFailures }}
-            {{- break }}
-          {{- end }}
+            {{- if gt $i $.MaxNotifiedShortFailures }}
+              {{- break }}
+            {{- end }}
           {{- end }}
           {{- if gt .ShortFailuresCount $.MaxNotifiedShortFailures }}
-            Go to build to see more.
+            Go to build to see all {{ .ShortFailuresCount }} failures.
           {{- end }}
 
       {{- end }}
