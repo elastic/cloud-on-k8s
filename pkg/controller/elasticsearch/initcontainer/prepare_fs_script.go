@@ -7,7 +7,7 @@ package initcontainer
 import (
 	"bytes"
 	"fmt"
-	"html/template"
+	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
