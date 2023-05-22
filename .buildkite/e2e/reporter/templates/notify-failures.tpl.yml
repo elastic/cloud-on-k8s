@@ -1,18 +1,23 @@
 steps:
   - label: ""
     if: build.branch == "main"
-    {{- if eq .FailuresCount 0 }}
+    {{- if eq .ShortFailuresCount 0 }}
     command: echo "no failures to notify"
     {{- else }}
-    command: echo "{{ .FailuresCount }} failures to notify"; exit 1
+    command: echo "{{ .ShortFailuresCount }} failures to notify"; exit 1
     notify:
       - slack:
           channels:
             - "#eck"
           message: |
-          {{- range $envName, $sortedTests := .Tests }}
-            {{- range $test := $sortedTests.ShortFailed }}
-            🐞 `{{ $test.Name }}` {{ $envName }}
+          {{- range $i, $test := .ShortFailures }}
+            🐞 `{{ $test.Name }}` {{ $test.EnvName }}
+            {{- if gt $i $.MaxNotifiedShortFailures }}
+              {{- break }}
             {{- end }}
           {{- end }}
+          {{- if gt .ShortFailuresCount $.MaxNotifiedShortFailures }}
+            Go to build to see all {{ .ShortFailuresCount }} failures.
+          {{- end }}
+
       {{- end }}
