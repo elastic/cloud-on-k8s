@@ -63,6 +63,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	realVols, realVolMounts := buildVolumesAndMounts(params)
 	esAssociations := getEsAssociations(params)
 	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -90,6 +91,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).
+		WithVolumes(realVols...).
+		WithVolumeMounts(realVolMounts...).
 		WithVolumeLikes(vols...).
 		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithEnv(envs...).
