@@ -260,7 +260,7 @@ spec:
     Current features:
 
 
-    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, Elastic Maps Server and Logstash deployments
+    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, Elastic Maps Server, and Logstash deployments
 
     *  TLS Certificates management
 
