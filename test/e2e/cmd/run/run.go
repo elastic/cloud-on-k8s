@@ -35,12 +35,7 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute   // time to wait for the test job to finish
-	kubePollInterval     = 10 * time.Second    // Kube API polling interval
-	testRunLabel         = "test-run"          // name of the label applied to resources
-	logStreamLabel       = "stream-logs"       // name of the label enabling log streaming to e2e runner
-	testsLogFilePattern  = "e2e-tests-%s.json" // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute     // time to wait for the operator pod to be ready
+	operatorReadyTimeout = 3 * time.Minute // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -533,28 +528,6 @@ func (h *helper) runTestsLocally() error {
 	return cmd.Run()
 }
 
-func (h *helper) runTestsRemote() error {
-	client, err := h.createKubeClient()
-	if err != nil {
-		return errors.Wrap(err, "failed to create kubernetes client")
-	}
-
-	// start the event logger to log all relevant events in the cluster
-	stopChan := make(chan struct{})
-	eventLogger := newEventLogger(client, h.testContext, h.eventLog)
-	go eventLogger.Start(stopChan)
-
-	// stream the logs while waiting for the test job to finish
-	err = h.startAndMonitorTestJobs(client)
-	close(stopChan)
-
-	if err != nil {
-		return errors.Wrap(err, "test run failed")
-	}
-
-	return nil
-}
-
 func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	// load kubernetes client config
 	var overrides clientcmd.ConfigOverrides
@@ -579,36 +552,6 @@ func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	}
 
 	return kubernetes.NewForConfig(config)
-}
-
-// monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
-func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
-	testSession := NewJobsManager(client, h)
-
-	outputs := []io.Writer{os.Stdout}
-	if h.logToFile {
-		jl, err := newJSONLogToFile(fmt.Sprintf(testsLogFilePattern, h.testContext.ClusterName))
-		if err != nil {
-			log.Error(err, "Failed to create log file for test output")
-			return err
-		}
-		defer jl.Close()
-		outputs = append(outputs, jl)
-	}
-	writer := io.MultiWriter(outputs...)
-	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser)
-
-	if h.deployChaosJob {
-		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)
-		runJob.WithDependency(chaosJob)
-		testSession.Schedule(chaosJob)
-	}
-
-	testSession.Schedule(runJob)
-
-	testSession.Start() // block until log streamers are done
-
-	return testSession.err
 }
 
 type LogStreamProvider interface {
