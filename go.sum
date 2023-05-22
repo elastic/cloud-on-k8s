@@ -397,10 +397,14 @@ go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.1 h1:JcERpDUfaheW6k3Smmx1bfyFe
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.1/go.mod h1:zurLQudUp3VSmmLEoYpIP2OkLzsDYOkTWulGZYA2bE8=
 go.elastic.co/apm/module/apmhttp/v2 v2.4.1 h1:4jIuTNh14opEIwf+zMru1jGW3MuNj6vtI0dsx+6QMt0=
 go.elastic.co/apm/module/apmhttp/v2 v2.4.1/go.mod h1:pJ2sd5b4YCX1YX9VzhvFO6AXpqCPiP3dP5U9qBD4s+8=
+go.elastic.co/apm/module/apmhttp/v2 v2.4.2 h1:j/2yXHJLvrqsjrQaOU2IBHrYUxxrQoxqNXGqrNdcIfw=
+go.elastic.co/apm/module/apmhttp/v2 v2.4.2/go.mod h1:yRsWS4VMDbSW14LvyuC4D+/vrY9Fkcutg+NISr8cM5I=
 go.elastic.co/apm/module/apmzap/v2 v2.4.1 h1:vv5ZbrDvBrF0H7D+tuhSQ+NOrqbCH7d+hZNxrP/omRM=
 go.elastic.co/apm/module/apmzap/v2 v2.4.1/go.mod h1:OZs/UznopxCb8Ax/P1va0AhReViu+61D84/4W5wj9Oc=
 go.elastic.co/apm/v2 v2.4.1 h1:tMxAtHh5TXTYdFG0pTmmUOn/PTI3k/1T1ptb+3O+hYI=
 go.elastic.co/apm/v2 v2.4.1/go.mod h1:HdwVuAeoJMmoqAZZBNN2YVzj3UVLebtqoRCCydyCP+Q=
+go.elastic.co/apm/v2 v2.4.2 h1:FGaeqW24D36E/flrimKL3u95MV17/H/FXSDVFLNXtuY=
+go.elastic.co/apm/v2 v2.4.2/go.mod h1:TrRTYhkYSg4K0GfxuOtxLMGqtcJBUMHLFgG/E5UbJoY=
 go.elastic.co/fastjson v1.1.0 h1:3MrGBWWVIxe/xvsbpghtkFoPciPhOCmjsR/HfwEeQR4=
 go.elastic.co/fastjson v1.1.0/go.mod h1:boNGISWMjQsUPy/t6yqt2/1Wx4YNPSe+mZjlyw9vKKI=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
