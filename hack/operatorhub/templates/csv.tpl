@@ -253,14 +253,14 @@ spec:
       version: {{ .Version }}
     {{- end }}
   description: 'Elastic Cloud on Kubernetes (ECK) is the official operator by Elastic for automating the deployment, provisioning,
-    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent and Elastic Maps Server
-    on Kubernetes.
+    management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, Enterprise Search, Elastic Agent, Elastic Maps Server,
+    and Logstash on Kubernetes.
 
 
     Current features:
 
 
-    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent and Elastic Maps Server deployments
+    *  Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, Elastic Maps Server, and Logstash deployments
 
     *  TLS Certificates management
 
@@ -291,6 +291,8 @@ spec:
     * Elastic Agent: 7.10+, 8+
 
     * Elastic Maps Server: 7.11+, 8+
+
+    * Logstash 8.7+
 
 
     ECK should work with all conformant installers as listed in these [FAQs](https://github.com/cncf/k8s-conformance/blob/master/faq.md#what-is-a-distribution-hosted-platform-and-an-installer). Distributions include source patches and so may not work as-is with ECK.
@@ -377,6 +379,7 @@ spec:
   - search
   - database
   - apm
+  - logstash
   links:
   - name: Documentation
     url: https://www.elastic.co/guide/en/cloud-on-k8s/{{ .ShortVersion }}/index.html
