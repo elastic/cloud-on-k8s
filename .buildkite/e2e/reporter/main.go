@@ -22,7 +22,7 @@ const (
 
 	maxErrorSizeBytes        = 3000 // to display more than 300 errors with a total below 1 MB
 	maxSlackMessageSizeBytes = 3000
-	maxNotifiedShortFailures = 10
+	maxNotifiedShortFailures = 15
 )
 
 var (
