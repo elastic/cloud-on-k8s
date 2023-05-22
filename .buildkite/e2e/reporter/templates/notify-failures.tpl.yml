@@ -10,9 +10,14 @@ steps:
           channels:
             - "#eck"
           message: |
-          {{- range $envName, $sortedTests := .Tests }}
-            {{- range $test := $sortedTests.ShortFailed }}
-            🐞 `{{ $test.Name }}` {{ $envName }}
-            {{- end }}
+          {{- range $i, $test := .ShortFailures }}
+            🐞 `{{ $test.Name }}` {{ $test.EnvName }}
+          {{- if gt $i $.MaxNotifiedShortFailures }}
+            {{- break }}
           {{- end }}
+          {{- end }}
+          {{- if gt .ShortFailuresCount $.MaxNotifiedShortFailures }}
+            Go to build to see more.
+          {{- end }}
+
       {{- end }}

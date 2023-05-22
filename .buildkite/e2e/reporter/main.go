@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"errors"
 	"flag"
@@ -23,6 +22,7 @@ const (
 
 	maxErrorSizeBytes        = 3000 // to display more than 300 errors with a total below 1 MB
 	maxSlackMessageSizeBytes = 3000
+	maxNotifiedShortFailures = 10
 )
 
 var (
@@ -54,7 +54,7 @@ func init() {
 }
 
 func main() {
-	tests := map[string]sortedTests{}
+	testsMap := map[string]sortedTests{}
 	failuresCount, shortFailuresCount := 0, 0
 
 	// process all xml report in the given diretory
@@ -85,15 +85,23 @@ func main() {
 			return err
 		}
 
-		tests[slugName] = sortTests(suites)
+		testsMap[slugName] = sortTests(suites)
 
-		failuresCount += len(tests[slugName].Failed)
-		shortFailuresCount += len(tests[slugName].ShortFailed)
+		failuresCount += len(testsMap[slugName].Failed)
+		shortFailuresCount += len(testsMap[slugName].ShortFailed)
 
 		return nil
 	})
 	if err != nil {
 		exitWith(err)
+	}
+
+	// flatten short failures to make it easier to limit them
+	flatShortFailures := []Test{}
+	for envName, testsPerEnv := range testsMap {
+		for _, test := range testsPerEnv.ShortFailed {
+			flatShortFailures = append(flatShortFailures, Test{Test: test, EnvName: envName})
+		}
 	}
 
 	srcTpl, ok := tplMap[outputFormat]
@@ -105,28 +113,25 @@ func main() {
 	if err != nil {
 		exitWith(err)
 	}
-	var outBytes bytes.Buffer
-	err = tpl.Execute(&outBytes, map[string]interface{}{
-		"FailuresCount":      failuresCount,
-		"ShortFailuresCount": shortFailuresCount,
-		"Tests":              tests,
+	err = tpl.Execute(os.Stdout, map[string]interface{}{
+		"TestsMap":                 testsMap,
+		"FailuresCount":            failuresCount,
+		"ShortFailures":            flatShortFailures,
+		"ShortFailuresCount":       shortFailuresCount,
+		"MaxNotifiedShortFailures": maxNotifiedShortFailures,
 	})
 	if err != nil {
 		exitWith(err)
 	}
 
-	out := outBytes.String()
-
-	// truncate notify slack message if it exceeds the max size
-	if outputFormat == notifyFailures && len(out) > maxSlackMessageSizeBytes {
-		out = out[0:maxSlackMessageSizeBytes]
-	}
-
-	fmt.Println(out)
-
 	if failuresCount > 0 {
 		os.Exit(1)
 	}
+}
+
+type Test struct {
+	junit.Test
+	EnvName string
 }
 
 type sortedTests struct {
