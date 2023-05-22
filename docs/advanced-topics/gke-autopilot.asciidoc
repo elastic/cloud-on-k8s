@@ -64,8 +64,6 @@ EOF
 [id="{p}-autopilot-deploy-agent-beats"]
 == Deploy a standalone Elastic Agent and/or Beats
 
-When running Elastic Agent and Beats within GKE Autopilot there are storage constraints to be considered.
-
-1. No `HostPath` volumes are allowed, which the ECK operator defaults to when unset for both `Deployments` and `Daemonsets`. Instead use link:https://kubernetes.io/docs/concepts/storage/ephemeral-volumes[Kubernetes ephemeral volumes].
+When running Elastic Agent and Beats within GKE Autopilot there are storage constraints to be considered. No `HostPath` volumes are allowed, which the ECK operator defaults to when unset for both `Deployments` and `Daemonsets`. Instead use link:https://kubernetes.io/docs/concepts/storage/ephemeral-volumes[Kubernetes ephemeral volumes].
 
 Refer to link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/autopilot[Recipes to deploy Elasticsearch, Kibana, Elastic Fleet Server and Elastic Agent and/or Beats within GKE Autopilot].
