@@ -16,7 +16,6 @@ This page shows how to run ECK on GKE Autopilot.
 * <<{p}-autopilot-setting-virtual-memory>>
 * <<{p}-autopilot-deploy-the-operator>>
 * <<{p}-autopilot-deploy-elasticsearch>>
-* <<{p}-autopilot-deploy-kibana>>
 * <<{p}-autopilot-deploy-agent-beats>>
 
 [id="{p}-autopilot-setting-virtual-memory"]
@@ -27,7 +26,7 @@ If you are intending to run production workloads on GKE Autopilot then `vm.max_m
 CAUTION: Only use the provided `Daemonset` exactly as specified or it could be rejected by the Autopilot control plane.
 
 [id="{p}-autopilot-deploy-the-operator"]
-== Deploying the ECK Operator
+== Installing the ECK Operator
 
 . Refer to <<{p}-installing-eck>> for more information on installation options.
 
@@ -59,34 +58,6 @@ spec:
         initContainers:
         - name: max-map-count-check
           command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
-EOF
-----
-
-[id="{p}-autopilot-deploy-kibana"]
-== Deploy a Kibana instance
-
-Use the following code to create a Kibana instance:
-
-[source,shell,subs="attributes,+macros"]
-----
-cat $$<<$$EOF | kubectl apply -f -
-apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
-kind: Kibana
-metadata:
-  name: kibana-sample
-spec:
-  version: {version}
-  count: 1
-  elasticsearchRef:
-    name: "elasticsearch-sample"
-  podTemplate:
-    spec:
-      containers:
-      - name: kibana
-        resources:
-          limits:
-            memory: 1Gi
-            cpu: 1
 EOF
 ----
 

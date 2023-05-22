@@ -16,6 +16,19 @@ The kernel setting `vm.max_map_count=262144` can be set on the host directly, by
 For more information, check the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
+Optionally, you can select a different type of file system implementation for the storage. For possible options, check the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      index.store.type: niofs
+----
+
 == Using an Init Container to set virtual memory
 
 To add an init container that changes the host kernel setting before your Elasticsearch container starts, you can use the following example Elasticsearch spec:
@@ -50,7 +63,7 @@ To use a Daemonset that changes the host kernel setting on all nodes:
 
 [source,yaml,subs="attributes,+macros"]
 ----
-cat $$<<$$EOF | kubectl apply -n elastic -f -
+cat $$<<$$EOF | kubectl apply -n elastic-system -f -
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -81,6 +94,7 @@ spec:
         - name: sleep
           image: docker.io/bash:5.2.15
           command: ['sleep', 'infinity']
+EOF
 ----
 
 To run an Elasticsearch instance that waits for the kernel setting to be in place:
@@ -109,17 +123,4 @@ spec:
         - name: max-map-count-check
           command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
 EOF
-----
-
-Optionally, you can select a different type of file system implementation for the storage. For possible options, check the
-link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
-
-[source,yaml]
-----
-spec:
-  nodeSets:
-  - name: default
-    count: 3
-    config:
-      index.store.type: niofs
 ----
