@@ -28,7 +28,7 @@ const (
 var defaultElasticStackVersion = LatestReleasedVersion7x
 
 var (
-	testContextPath = flag.String("testContextPath", "", "Path to the test context file")
+	testContextPath = flag.String("testContextPath", "/tmp/context.json", "Path to the test context file")
 	ctxInit         sync.Once
 	ctx             Context
 	log             logr.Logger

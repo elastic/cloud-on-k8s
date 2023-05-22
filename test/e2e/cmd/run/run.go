@@ -80,7 +80,7 @@ func doRun(flags runFlags) error {
 			helper.deployMonitoring,
 			helper.installOperatorUnderTest,
 			helper.waitForOperatorToBeReady,
-			helper.runTestsRemote,
+			helper.runTestsLocally,
 		}
 	}
 
@@ -500,6 +500,10 @@ func (h *helper) runTestsLocally() error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
 
 	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("E2E_TAGS=%s", h.e2eTags))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("E2E_JSON=%t", h.logToFile))
+
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	// we need to set a process group ID to be able to terminate all child processes and not just the test.sh script later if the timeout is exceeded

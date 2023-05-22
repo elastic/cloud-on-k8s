@@ -92,7 +92,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.operatorImage, "operator-image", "", "Operator image")
 	cmd.Flags().IntVar(&flags.operatorReplicas, "operator-replicas", 1, "Operator replicas")
 	cmd.Flags().BoolVar(&flags.skipCleanup, "skip-cleanup", false, "Do not run cleanup actions after test run")
-	cmd.Flags().StringVar(&flags.testContextOutPath, "test-context-out", "", "Write the test context to the given path")
+	cmd.Flags().StringVar(&flags.testContextOutPath, "test-context-out", "/tmp/context.json", "Write the test context to the given path")
 	cmd.Flags().StringVar(&flags.testLicense, "test-license", "", "Test license to apply")
 	cmd.Flags().StringVar(&flags.testLicensePKeyPath, "test-license-pkey-path", "", "Path to private key to generate test licenses")
 	cmd.Flags().StringVar(&flags.monitoringSecrets, "monitoring-secrets", "", "Monitoring secrets to use")
