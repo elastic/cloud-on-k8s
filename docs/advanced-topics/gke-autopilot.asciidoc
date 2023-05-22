@@ -28,7 +28,7 @@ CAUTION: Only use the provided `Daemonset` exactly as specified or it could be r
 [id="{p}-autopilot-deploy-the-operator"]
 == Installing the ECK Operator
 
-. Refer to <<{p}-installing-eck>> for more information on installation options.
+Refer to <<{p}-installing-eck>> for more information on installation options.
 
 [id="{p}-autopilot-deploy-elasticsearch"]
 == Deploy an Elasticsearch instance
