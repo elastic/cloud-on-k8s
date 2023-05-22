@@ -132,37 +132,14 @@ func ValidateBuilderHashAnnotation(pod corev1.Pod, hash string) error {
 
 // LabelTestPods labels:
 // - operator pod,
-// - e2e runner pod
 func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	// label operator pod
-	if err := labelPod(
+	return labelPod(
 		c,
 		ctx.Operator.Name+"-0",
 		ctx.Operator.Namespace,
 		key,
-		value); err != nil {
-		return err
-	}
-
-	// find and label E2E test runner pod
-	podList := corev1.PodList{}
-	ns := client.InNamespace(ctx.E2ENamespace)
-	if err := c.List(context.Background(), &podList, ns); err != nil {
-		return err
-	}
-
-	for _, pod := range podList.Items {
-		if strings.HasPrefix(pod.Name, "eck-"+ctx.TestRun) {
-			return labelPod(
-				c,
-				pod.Name,
-				ctx.E2ENamespace,
-				key,
-				value)
-		}
-	}
-
-	return errors.New("e2e runner pod not found")
+		value)
 }
 
 func labelPod(client k8s.Client, name, namespace, key, value string) error {
