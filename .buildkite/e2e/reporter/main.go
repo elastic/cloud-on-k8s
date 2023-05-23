@@ -20,7 +20,9 @@ const (
 	annotateFailures = "annotate-failures"
 	notifyFailures   = "notify-failures"
 
-	maxErrorSizeBytes = 3000 // to display more than 300 errors with a total below 1 MB
+	maxErrorSizeBytes        = 3000 // to display more than 300 errors with a total below 1 MB
+	maxSlackMessageSizeBytes = 3000
+	maxNotifiedShortFailures = 15
 )
 
 var (
@@ -52,8 +54,8 @@ func init() {
 }
 
 func main() {
-	tests := map[string]sortedTests{}
-	failuresCount := 0
+	testsMap := map[string]sortedTests{}
+	failuresCount, shortFailuresCount := 0, 0
 
 	// process all xml report in the given diretory
 	err := filepath.Walk(xmlDir, func(xmlReportPath string, info os.FileInfo, err error) error {
@@ -83,14 +85,23 @@ func main() {
 			return err
 		}
 
-		tests[slugName] = sortTests(suites)
+		testsMap[slugName] = sortTests(suites)
 
-		failuresCount += len(tests[slugName].Failed)
+		failuresCount += len(testsMap[slugName].Failed)
+		shortFailuresCount += len(testsMap[slugName].ShortFailed)
 
 		return nil
 	})
 	if err != nil {
 		exitWith(err)
+	}
+
+	// flatten short failures to make it easier to limit them
+	flatShortFailures := []Test{}
+	for envName, testsPerEnv := range testsMap {
+		for _, test := range testsPerEnv.ShortFailed {
+			flatShortFailures = append(flatShortFailures, Test{Test: test, EnvName: envName})
+		}
 	}
 
 	srcTpl, ok := tplMap[outputFormat]
@@ -103,8 +114,11 @@ func main() {
 		exitWith(err)
 	}
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"FailuresCount": failuresCount,
-		"Tests":         tests,
+		"TestsMap":                 testsMap,
+		"FailuresCount":            failuresCount,
+		"ShortFailures":            flatShortFailures,
+		"ShortFailuresCount":       shortFailuresCount,
+		"MaxNotifiedShortFailures": maxNotifiedShortFailures,
 	})
 	if err != nil {
 		exitWith(err)
@@ -113,6 +127,11 @@ func main() {
 	if failuresCount > 0 {
 		os.Exit(1)
 	}
+}
+
+type Test struct {
+	junit.Test
+	EnvName string
 }
 
 type sortedTests struct {
@@ -135,7 +154,7 @@ func sortTests(suites []junit.Suite) sortedTests {
 				// on test failure
 
 				// to stay under the maximum size of a Buildkite annotation
-				test.Error = trimError(test.Error, maxErrorSizeBytes)
+				test.Error = truncateError(test.Error, maxErrorSizeBytes)
 
 				if strings.Contains(test.Name, "/") {
 					// keep sub tests
@@ -195,10 +214,10 @@ func sortByName(tests []junit.Test) {
 	})
 }
 
-func trimError(err error, bytes int) error {
+func truncateError(err error, length int) error {
 	msg := []byte(err.Error())
-	if len(msg) > bytes {
-		return errors.New(string(msg[0:bytes]))
+	if len(msg) > length {
+		return errors.New(string(msg[0 : length-1]))
 	}
 	return err
 }

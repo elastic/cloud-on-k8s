@@ -15,5 +15,6 @@ This section includes recipes that provide configuration examples for some commo
 * link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/maps[Expose Elastic Maps Server and Kibana using a Kubernetes Ingress]
 * link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/psp[Secure your cluster with Pod Security Policies]
 * link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/traefik[Use Traefik to expose Elastic Stack applications]
+* link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/autopilot[Deploy Elasticsearch, Kibana, Elastic Fleet Server and Elastic Agent within GKE Autopilot]
 
 WARNING: Compared to other configuration examples that are consistently tested, like <<{p}-elastic-agent-fleet-configuration-examples,fleet-managed Elastic Agent on ECK>>, <<{p}-elastic-agent-configuration-examples,standalone Elastic Agent on ECK>>, or <<{p}-beat-configuration-examples,Beats on ECK>>, the recipes in this section are not regularly tested by our automation system, and therefore should not be considered to be production-ready. 
