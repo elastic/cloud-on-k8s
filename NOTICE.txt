@@ -2390,11 +2390,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.43.0
-Time    : 2023-05-04T10:18:37Z
+Version : v0.44.0
+Time    : 2023-05-22T12:15:25Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.43.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.44.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15806,11 +15806,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.7.0
-Time    : 2023-04-06T17:54:20Z
+Version : v0.8.0
+Time    : 2023-05-08T21:24:50Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.8.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
