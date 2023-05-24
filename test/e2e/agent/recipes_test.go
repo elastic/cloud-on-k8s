@@ -285,10 +285,6 @@ func runAgentRecipe(
 		return agentBuilder
 	}
 
-	if strings.HasSuffix(filePath, "tpl") {
-		helper.RunTemplatedFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
-		return
-	}
 	helper.RunFile(t, filePath, namespace, suffix, additionalObjects, transformationsWrapped)
 }
 

@@ -6,18 +6,15 @@ package helper
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
-	"text/template"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -168,35 +165,6 @@ func RunFile(
 	test.BeforeAfterSequence(creates, deletes, builders...).RunSequential(t)
 }
 
-func RunTemplatedFile(
-	t *testing.T,
-	filePath, namespace, suffix string,
-	additionalObjects []client.Object,
-	transformations ...BuilderTransform) {
-	t.Helper()
-	tpl, err := template.New(path.Base(filePath)).ParseFiles(filePath)
-	require.NoError(t, err, "Failed to parse file %s", filePath)
-
-	var tplb bytes.Buffer
-
-	err = tpl.Execute(&tplb, map[string]interface{}{
-		"Namespace": namespace,
-		"Suffix":    suffix,
-	})
-	require.NoError(t, err, "Failed to execute template %s", filePath)
-
-	builders, objects, err := decodeCastAndTransform(t, bufio.NewReader(bytes.NewReader(tplb.Bytes())), namespace, suffix, MkTestName(t, filePath), transformations...)
-	if err != nil {
-		panic(err)
-	}
-
-	objects = append(objects, additionalObjects...)
-
-	creates, deletes := makeObjectSteps(t, objects)
-
-	test.BeforeAfterSequence(creates, deletes, builders...).RunSequential(t)
-}
-
 func extractFromFile(
 	t *testing.T,
 	filePath, namespace, suffix, fullTestName string,
@@ -207,17 +175,8 @@ func extractFromFile(
 	require.NoError(t, err, "Failed to open file %s", filePath)
 	defer f.Close()
 
-	return decodeCastAndTransform(t, bufio.NewReader(f), namespace, suffix, fullTestName, transformations...)
-}
-
-func decodeCastAndTransform(
-	t *testing.T,
-	reader *bufio.Reader,
-	namespace, suffix, fullTestName string,
-	transformations ...BuilderTransform,
-) ([]test.Builder, []client.Object, error) {
 	decoder := NewYAMLDecoder()
-	objects, err := decoder.ToObjects(reader)
+	objects, err := decoder.ToObjects(bufio.NewReader(f))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -375,6 +334,24 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			decodedObj.Name = name
 			decodedObj.Spec.Selector.MatchLabels["name"] = name
 			decodedObj.Spec.Template.ObjectMeta.Labels["name"] = name
+			for i, init := range decodedObj.Spec.Template.Spec.InitContainers {
+				if init.Name == "manage-agent-hostpath-permissions" {
+					for j, cmd := range decodedObj.Spec.Template.Spec.InitContainers[i].Command {
+						decodedObj.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
+							cmd,
+							"/var/lib/elastic-agent/default/elastic-agent/state",
+							fmt.Sprintf("/var/lib/elastic-agent/%s/elastic-agent-%s/state", namespace, suffix),
+							1,
+						)
+						decodedObj.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
+							cmd,
+							"/var/lib/elastic-agent/default/fleet-server/state",
+							fmt.Sprintf("/var/lib/elastic-agent/%s/fleet-server-%s/state", namespace, suffix),
+							1,
+						)
+					}
+				}
+			}
 		}
 
 		if builder != nil {
@@ -474,6 +451,41 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 						"fleet-server-agent-http.default",
 						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
 					)
+				}
+			}
+		}
+	}
+
+	type xpackFleetOutputs struct {
+		ID        string
+		IsDefault bool `yaml:"is_default"`
+		Name      string
+		Type      string
+		Hosts     []string
+		SSL       struct {
+			CertificateAuthorities []string
+		}
+	}
+
+	fleetOutputsKey := "xpack.fleet.outputs"
+	if untypedOutputs, ok := data[fleetOutputsKey]; ok {
+		if xpackOutputsSlice, ok := untypedOutputs.([]xpackFleetOutputs); ok {
+			for i, output := range xpackOutputsSlice {
+				if output.ID == "eck-fleet-agent-output-elasticsearch" {
+					for j, host := range output.Hosts {
+						xpackOutputsSlice[i].Hosts[j] = strings.ReplaceAll(
+							host,
+							"elasticsearch-es-http.default",
+							fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+						)
+					}
+					for j, ca := range output.SSL.CertificateAuthorities {
+						xpackOutputsSlice[i].SSL.CertificateAuthorities[j] = strings.ReplaceAll(
+							ca,
+							"elasticsearch-association/default/elasticsearch/",
+							fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
+						)
+					}
 				}
 			}
 		}

@@ -2,16 +2,15 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: manage-agent-hostpath-permissions-{{ .Suffix }}
-  namespace: {{ .Namespace }}
+  name: manage-agent-hostpath-permissions
 spec:
   selector:
     matchLabels:
-      name: manage-agent-hostpath-permissions-{{ .Suffix }}
+      name: manage-agent-hostpath-permissions
   template:
     metadata:
       labels:
-        name: manage-agent-hostpath-permissions-{{ .Suffix }}
+        name: manage-agent-hostpath-permissions
     spec:
       # This is only required when running in an selinux-enabled/Openshift environment.
       # Ensure this user has been added to the privileged scc in the correct namespace.
@@ -47,8 +46,8 @@ spec:
             # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
             # Multiple directories are supported for the fleet-server + agent use case.
             dirs=(
-              "/var/lib/elastic-agent/{{ .Namespace }}/elastic-agent-{{ .Suffix }}/state"
-              "/var/lib/elastic-agent/{{ .Namespace }}/fleet-server-{{ .Suffix }}/state"
+              "/var/lib/elastic-agent/default/elastic-agent/state"
+              "/var/lib/elastic-agent/default/fleet-server/state"
               )
             for dir in ${dirs[@]}; do
               if [[ ! -d "${dir}" ]]
@@ -81,16 +80,15 @@ spec:
   elasticsearchRef:
     name: elasticsearch
   config:
-    # xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-{{ .Suffix }}-es-http.e2e-mercury.svc:9200"]
-    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-{{ .Suffix }}-agent-http.e2e-mercury.svc:8220"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
       is_default: true
       name: eck-elasticsearch
       type: elasticsearch
-      hosts: ["https://elasticsearch-{{ .Suffix }}-es-http.e2e-mercury.svc:9200"]
+      hosts: ["https://elasticsearch-es-http.default.svc:9200"]
       ssl:
-        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/{{ .Namespace }}/elasticsearch-{{ .Suffix }}/certs/ca.crt"]
+        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch/certs/ca.crt"]
     xpack.fleet.packages:
     - name: system
       version: latest
@@ -204,7 +202,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: fleet-server
-  namespace: e2e-mercury 
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -283,7 +281,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: elastic-agent
-  namespace: e2e-mercury
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -292,7 +290,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: elastic-agent
-  namespace: e2e-mercury
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: elastic-agent
