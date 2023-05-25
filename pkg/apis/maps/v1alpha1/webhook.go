@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -39,21 +40,21 @@ var _ webhook.Validator = &ElasticMapsServer{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateCreate() error {
+func (m *ElasticMapsServer) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", m.Name)
 	return m.validate()
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateDelete() error {
+func (m *ElasticMapsServer) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", m.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateUpdate(_ runtime.Object) error {
+func (m *ElasticMapsServer) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", m.Name)
 	return m.validate()
 }
@@ -63,7 +64,7 @@ func (m *ElasticMapsServer) WebhookPath() string {
 	return webhookPath
 }
 
-func (m *ElasticMapsServer) validate() error {
+func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 	var errors field.ErrorList
 
 	for _, dc := range defaultChecks {
@@ -74,9 +75,9 @@ func (m *ElasticMapsServer) validate() error {
 
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return apierrors.NewInvalid(groupKind, m.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
-	return nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(ems *ElasticMapsServer) field.ErrorList {

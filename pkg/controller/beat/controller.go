@@ -190,7 +190,7 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if err := beat.ValidateCreate(); err != nil {
+	if _, err := beat.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, beat, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)

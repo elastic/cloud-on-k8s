@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -44,25 +45,25 @@ var _ webhook.Validator = &Kibana{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateCreate() error {
+func (k *Kibana) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", k.Name)
 	return k.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateDelete() error {
+func (k *Kibana) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", k.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateUpdate(old runtime.Object) error {
+func (k *Kibana) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", k.Name)
 	oldObj, ok := old.(*Kibana)
 	if !ok {
-		return errors.New("cannot cast old object to Kibana type")
+		return nil, errors.New("cannot cast old object to Kibana type")
 	}
 
 	return k.validate(oldObj)
@@ -73,7 +74,7 @@ func (k *Kibana) WebhookPath() string {
 	return webhookPath
 }
 
-func (k *Kibana) validate(old *Kibana) error {
+func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -83,7 +84,7 @@ func (k *Kibana) validate(old *Kibana) error {
 		}
 
 		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, k.Name, errors)
+			return nil, apierrors.NewInvalid(groupKind, k.Name, errors)
 		}
 	}
 
@@ -94,9 +95,9 @@ func (k *Kibana) validate(old *Kibana) error {
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, k.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, k.Name, errors)
 	}
-	return nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(k *Kibana) field.ErrorList {

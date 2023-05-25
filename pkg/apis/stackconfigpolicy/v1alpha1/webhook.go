@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -37,21 +38,21 @@ var _ webhook.Validator = &StackConfigPolicy{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateCreate() error {
+func (p *StackConfigPolicy) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", p.Name)
 	return p.validate()
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateDelete() error {
+func (p *StackConfigPolicy) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", p.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (p *StackConfigPolicy) ValidateUpdate(_ runtime.Object) error {
+func (p *StackConfigPolicy) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", p.Name)
 	return p.validate()
 }
@@ -61,7 +62,7 @@ func (p *StackConfigPolicy) WebhookPath() string {
 	return webhookPath
 }
 
-func (p *StackConfigPolicy) validate() error {
+func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 	var errors field.ErrorList
 
 	for _, dc := range defaultChecks {
@@ -72,9 +73,9 @@ func (p *StackConfigPolicy) validate() error {
 
 	if len(errors) > 0 {
 		validationLog.V(1).Info("failed validation", "errors", errors)
-		return apierrors.NewInvalid(groupKind, p.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, p.Name, errors)
 	}
-	return nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(policy *StackConfigPolicy) field.ErrorList {

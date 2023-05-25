@@ -273,7 +273,7 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if err := ent.ValidateCreate(); err != nil {
+	if _, err := ent.ValidateCreate(); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
