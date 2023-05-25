@@ -337,14 +337,14 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			for i, init := range decodedObj.Spec.Template.Spec.InitContainers {
 				if init.Name == "manage-agent-hostpath-permissions" {
 					for j, cmd := range decodedObj.Spec.Template.Spec.InitContainers[i].Command {
-						decodedObj.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
+						updatedCmd := strings.Replace(
 							cmd,
 							"/var/lib/elastic-agent/default/elastic-agent/state",
 							fmt.Sprintf("/var/lib/elastic-agent/%s/elastic-agent-%s/state", namespace, suffix),
 							1,
 						)
 						decodedObj.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
-							cmd,
+							updatedCmd,
 							"/var/lib/elastic-agent/default/fleet-server/state",
 							fmt.Sprintf("/var/lib/elastic-agent/%s/fleet-server-%s/state", namespace, suffix),
 							1,
@@ -456,35 +456,35 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 		}
 	}
 
-	type xpackFleetOutputs struct {
-		ID        string
-		IsDefault bool `yaml:"is_default"`
-		Name      string
-		Type      string
-		Hosts     []string
-		SSL       struct {
-			CertificateAuthorities []string
-		}
-	}
-
 	fleetOutputsKey := "xpack.fleet.outputs"
+
 	if untypedOutputs, ok := data[fleetOutputsKey]; ok {
-		if xpackOutputsSlice, ok := untypedOutputs.([]xpackFleetOutputs); ok {
-			for i, output := range xpackOutputsSlice {
-				if output.ID == "eck-fleet-agent-output-elasticsearch" {
-					for j, host := range output.Hosts {
-						xpackOutputsSlice[i].Hosts[j] = strings.ReplaceAll(
-							host,
-							"elasticsearch-es-http.default",
-							fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
-						)
-					}
-					for j, ca := range output.SSL.CertificateAuthorities {
-						xpackOutputsSlice[i].SSL.CertificateAuthorities[j] = strings.ReplaceAll(
-							ca,
-							"elasticsearch-association/default/elasticsearch/",
-							fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
-						)
+		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
+			for _, untypedOutputMap := range untypedXpackOutputsSlice {
+				if outputMap, ok := untypedOutputMap.(map[string]interface{}); ok {
+					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
+						for j, untypedHost := range outputMap["hosts"].([]interface{}) {
+							if host, ok := untypedHost.(string); ok {
+								outputMap["hosts"].([]interface{})[j] = strings.ReplaceAll(
+									host,
+									"elasticsearch-es-http.default",
+									fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+								)
+							}
+						}
+						if untypedSSL, ok := outputMap["ssl"].(map[string]interface{}); ok {
+							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]interface{}); ok {
+								for k, untypedCA := range untypedCAs {
+									if ca, ok := untypedCA.(string); ok {
+										outputMap["ssl"].(map[string]interface{})["certificate_authorities"].([]interface{})[k] = strings.ReplaceAll(
+											ca,
+											"elasticsearch-association/default/elasticsearch/",
+											fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
+										)
+									}
+								}
+							}
+						}
 					}
 				}
 			}
