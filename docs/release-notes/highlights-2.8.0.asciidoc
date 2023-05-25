@@ -68,5 +68,5 @@ It is now possible to fully delegate the generation of the transport certificate
 [id="{p}-280-stack-config-base-path"]
 === Provided base_path setting in snapshot repositories configuration is always applied
 
-Before ECK 2.8.0 the `base_path` setting was overridden by the operator in order to avoid conflict. The value provided for this setting is now always used when provided. Refer to <<{p}-stack-config-policy-specifics-snap-repo>> for more details.
+Before ECK 2.8.0 the `base_path` setting was overridden by the operator in order to avoid conflicts. The value provided for this setting is now always used when provided. Refer to <<{p}-stack-config-policy-specifics-snap-repo>> for more details.
 
