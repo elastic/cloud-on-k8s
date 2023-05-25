@@ -144,6 +144,11 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 		t.SkipNow()
 	}
 
+	// The recipe does not work fully within an openshift cluster without modifications.
+	if test.Ctx().OcpCluster {
+		t.SkipNow()
+	}
+
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
