@@ -130,7 +130,7 @@ type LogstashStatus struct {
 	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
-	Selector           string                          `json:"selector"`
+	Selector string `json:"selector"`
 }
 
 // +kubebuilder:object:root=true

@@ -91,7 +91,6 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					ObservedGeneration: 1,
-
 				},
 			},
 			expectedObjects: []expectedObject{},
