@@ -29,7 +29,7 @@
 * Create Elasticsearch client for observer only if needed {pull}6407[#6407] (issue: {issue}6090[#6090])
 * Add the full CA certificate chain to trusted HTTP certs for Elasticsearch {pull}6681[#6681] (issue: {issue}6574[#6574])
 * Allow custom certificates on the transport layer {pull}6727[#6727] (issue: {issue}6479[#6479])
-* Copy Elasticsearch configuration files before creating links {pull}6703[#6703] (issue: {issue}6126[#6126])
+* Hardened Security Context for Elasticsearch {pull}6703[#6703] (issue: {issue}6126[#6126])
 
 [[enhancement-helm-2.8.0]]
 [float]
@@ -67,11 +67,9 @@
 === Documentation improvements
 
 * Add 2.6 and 2.7 to the triggered restart list {pull}6786[#6786] (issue: {issue}6765[#6765])
+* Documentation for running ECK, Elasticsearch, and Kibana on GKE Autopilot {pull}6760[#6760] (issue: {issue}6713[#6713])
 * Contributing page updated with Helm chart tests suite {pull}6744[#6744]
-* Initial version of GKE Autopilot documentation. {pull}6760[#6760] (issue: {issue}6713[#6713])
-* Release notes and highlights for 2.8.0 {pull}6788[#6788]
-* Updating Helm charts local development README {pull}6746[#6746]
-* User-facing documentation for Logstash on ECK {pull}6743[#6743]
+* Documentation for Logstash on ECK {pull}6743[#6743]
 
 [[nogroup-2.8.0]]
 [float]
