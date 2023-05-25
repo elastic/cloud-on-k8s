@@ -91,6 +91,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					ObservedGeneration: 1,
+
 				},
 			},
 			expectedObjects: []expectedObject{},
@@ -208,6 +209,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
+					Selector:           "common.k8s.elastic.co/type=logstash,logstash.k8s.elastic.co/name=testLogstash",
 				},
 			},
 			wantErr: false,
@@ -314,6 +316,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
+					Selector:           "common.k8s.elastic.co/type=logstash,logstash.k8s.elastic.co/name=testLogstash",
 				},
 			},
 			wantErr: false,
@@ -412,6 +415,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					ExpectedNodes:      1,
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
+					Selector:           "common.k8s.elastic.co/type=logstash,logstash.k8s.elastic.co/name=testLogstash",
 				},
 			},
 			wantErr: false,
