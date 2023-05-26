@@ -39,6 +39,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
@@ -576,7 +577,11 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = viper.GetInt(operator.WebhookPortFlag)
+	webhookPort := viper.GetInt(operator.WebhookPortFlag)
+	opts.WebhookServer = crwebhook.NewServer(crwebhook.Options{
+		Port: webhookPort,
+	})
+
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
