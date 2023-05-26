@@ -3,9 +3,6 @@ agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   memory: 2G
 
-env:
-  OHUB_DRY_RUN: true
-
 steps:
 
   - label: ":go: build operatorhub tool"
