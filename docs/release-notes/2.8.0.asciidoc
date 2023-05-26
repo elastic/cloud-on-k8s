@@ -8,6 +8,7 @@
 [float]
 === Breaking changes
 
+* Use provided base path for stackconfigpolicy's snapshot repository {pull}6689[#6689] (issue: {issue}6692[#6692])
 * APM Server: Fix secret token config for APM Server 8.0+ {pull}6769[#6769] (issue: {issue}6768[#6768])
 
 [[feature-2.8.0]]
@@ -28,7 +29,7 @@
 * Create Elasticsearch client for observer only if needed {pull}6407[#6407] (issue: {issue}6090[#6090])
 * Add the full CA certificate chain to trusted HTTP certs for Elasticsearch {pull}6681[#6681] (issue: {issue}6574[#6574])
 * Allow custom certificates on the transport layer {pull}6727[#6727] (issue: {issue}6479[#6479])
-* Copy Elasticsearch configuration files before creating links {pull}6703[#6703] (issue: {issue}6126[#6126])
+* Hardened Security Context for Elasticsearch {pull}6703[#6703] (issue: {issue}6126[#6126])
 
 [[enhancement-helm-2.8.0]]
 [float]
@@ -58,7 +59,6 @@
 * Do not set FLEET_CA for well-known CAs {pull}6733[#6733] (issue: {issue}6673[#6673])
 * Fix default `elasticsearch-data` volumeMount configuration {pull}6725[#6725] (issue: {issue}6186[#6186])
 * Conditionally set container-suffix in ECK config {pull}6711[#6711] (issue: {issue}6695[#6695])
-* Use provided base path for stackconfigpolicy's snapshot repository {pull}6689[#6689] (issue: {issue}6692[#6692])
 * [helm-chart] Include webhook client configuration CA only when certificates are not managed by the operator or cert-manager {pull}6642[#6642] (issue: {issue}6641[#6641])
 * Remove default for daemonset/deployment in eck-beats & eck-agent Helm Charts {pull}6621[#6621] (issue: {issue}6330[#6330])
 
@@ -66,9 +66,10 @@
 [float]
 === Documentation improvements
 
-* Contributing page updated with Helm chart tests suite {pull}6744[#6744]
-* User-facing documentation for Logstash on ECK {pull}6743[#6743]
 * Add 2.6 and 2.7 to the triggered restart list {pull}6786[#6786] (issue: {issue}6765[#6765])
+* Documentation for running ECK, Elasticsearch, and Kibana on GKE Autopilot {pull}6760[#6760] (issue: {issue}6713[#6713])
+* Contributing page updated with Helm chart tests suite {pull}6744[#6744]
+* Documentation for Logstash on ECK {pull}6743[#6743]
 
 [[nogroup-2.8.0]]
 [float]
@@ -79,6 +80,7 @@
 * Update docker.io/library/golang Docker tag to v1.20.4 {pull}6752[#6752]
 * Update github.com/docker/docker {pull}6654[#6654]
 * Update k8s to v0.26.3 {pull}6546[#6546]
+* Update k8s.io/client-go to v0.26.5 {pull}6849[#6849] (issue: {issue}6848[#6848])
 * Update module cloud.google.com/go/storage to v1.30.0 {pull}6531[#6531]
 * Update module github.com/go-git/go-git/v5 to v5.6.1 {pull}6536[#6536]
 * Update module github.com/go-logr/logr to v1.2.4 {pull}6625[#6625]

@@ -63,3 +63,10 @@ securityContext:
 === Using custom certificates on the transport layer
 
 It is now possible to fully delegate the generation of the transport certificates used by the Elasticsearch nodes. Refer to <<{p}-transport-third-party-tools>> for more information about the requirements as well as some examples using the link:https://cert-manager.io/docs/projects/csi-driver/[cert-manager csi-driver] and link:https://cert-manager.io/docs/projects/trust-manager/[trust-manager] projects.
+
+[float]
+[id="{p}-280-stack-config-base-path"]
+=== Provided base_path setting in snapshot repositories configuration is always applied
+
+Before ECK 2.8.0 the `base_path` setting was overridden by the operator in order to avoid conflicts. The value provided for this setting is now always used when provided. Refer to <<{p}-stack-config-policy-specifics-snap-repo>> for more details.
+
