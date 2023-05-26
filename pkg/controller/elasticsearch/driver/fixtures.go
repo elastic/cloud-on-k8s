@@ -40,6 +40,7 @@ type testPod struct {
 	healthy, toUpgrade, inCluster, terminating bool
 	uid                                        types.UID
 	resourceVersion                            string
+	finalizers                                 []string
 }
 
 func newTestPod(name string) testPod {
@@ -57,6 +58,7 @@ func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; ret
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
 func (t testPod) withResourceVersion(rv string) testPod { t.resourceVersion = rv; return t } //nolint:unparam
+func (t testPod) withFinalizers(f []string) testPod     { t.finalizers = f; return t }
 func (t testPod) withRoles(roles ...esv1.NodeRole) testPod {
 	t.roles = make([]string, len(roles))
 	for i := range roles {
@@ -294,6 +296,7 @@ func (t testPod) toPod() corev1.Pod {
 			UID:               t.uid,
 			DeletionTimestamp: deletionTimestamp,
 			ResourceVersion:   t.resourceVersion,
+			Finalizers:        t.finalizers,
 		},
 	}
 

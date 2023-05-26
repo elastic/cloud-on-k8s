@@ -178,7 +178,8 @@ func Test_healthyPods(t *testing.T) {
 			args: args{
 				pods: newUpgradeTestPods(
 					newTestPod("masters-2").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
-					newTestPod("masters-1").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true).withResourceVersion("999"),
+					newTestPod("masters-1").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).
+						isTerminating(true).withResourceVersion("999").withFinalizers([]string{"something"}),
 					newTestPod("masters-0").inStatefulset("masters").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true).withResourceVersion("999"),
 				),
 				statefulSets: sset.StatefulSetList{

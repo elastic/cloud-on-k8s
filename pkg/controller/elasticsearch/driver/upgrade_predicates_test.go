@@ -376,7 +376,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("master-0").withRoles(esv1.MasterRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("node-0").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("node-1").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("node-2").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
+					newTestPod("node-2").withRoles(esv1.DataRole).isHealthy(true).needsUpgrade(true).isInCluster(true).
+						isTerminating(true).withFinalizers([]string{"something"}),
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
@@ -1161,7 +1162,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:    tt.fields.health,
 			}
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
-			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toClientObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
+			k8sClient := k8s.NewFakeClient(
+				tt.fields.upgradeTestPods.toClientObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
 			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", crlog.Log)
 			es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
 			ctx := upgradeCtx{

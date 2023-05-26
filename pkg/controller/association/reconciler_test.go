@@ -311,6 +311,7 @@ func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {
 	kb := sampleKibanaWithESRef()
 	now := metav1.NewTime(time.Now())
 	kb.DeletionTimestamp = &now
+	kb.Finalizers = []string{"something"}
 	r := testReconciler(&kb)
 	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should do nothing

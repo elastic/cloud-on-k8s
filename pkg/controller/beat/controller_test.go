@@ -207,6 +207,7 @@ func withAnnotations(beat beatv1beta1.Beat, annotations map[string]string) *beat
 func toBeDeleted(beat beatv1beta1.Beat) *beatv1beta1.Beat {
 	now := metav1.Now()
 	beat.DeletionTimestamp = &now
+	beat.Finalizers = []string{"something"}
 	return &beat
 }
 
