@@ -7,7 +7,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-git/go-git/v5 v5.7.0
 	github.com/google/go-containerregistry v0.15.2
-	github.com/hashicorp/vault/api v1.9.1
+	github.com/hashicorp/vault/api v1.9.2
 	github.com/operator-framework/operator-registry v1.27.1
 	github.com/otiai10/copy v1.11.0
 	github.com/sirupsen/logrus v1.9.2
@@ -26,6 +26,7 @@ require (
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/docker/cli v23.0.5+incompatible // indirect
 	github.com/docker/docker v23.0.5+incompatible // indirect
+	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
