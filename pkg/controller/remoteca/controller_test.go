@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -125,7 +126,7 @@ func withDataCert(caSecret *corev1.Secret, newCa []byte) *corev1.Secret {
 
 func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 	type fields struct {
-		clusters       []runtime.Object
+		clusters       []client.Object
 		accessReviewer rbac.AccessReviewer
 		licenseChecker license.Checker
 	}
@@ -145,7 +146,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "Simple remote cluster ns1/es1 -> ns2/es2",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),
@@ -172,7 +173,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "Bi-directional remote cluster ns1/es1 <-> ns2/es2",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").withRemoteCluster("ns1", "es1").build(),
@@ -199,7 +200,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "Deleted remote cluster",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),
@@ -240,7 +241,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "CA content has been updated, remote ca must be reconciled",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),
@@ -270,7 +271,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 			// ns1/es1 has been deleted - all related secrets in other namespaces must be deleted
 			name: "Deleted cluster",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					// ns2/es2
 					newClusteBuilder("ns2", "es2").withRemoteCluster("ns1", "es1").build(),
 					fakePublicCa("ns2", "es2"),
@@ -313,7 +314,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "No enterprise license, remote ca are not created",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),
@@ -352,7 +353,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "No enterprise license, existing remote ca are left untouched",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),
@@ -381,7 +382,7 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 		{
 			name: "Association is not allowed, existing remote ca are removed",
 			fields: fields{
-				clusters: []runtime.Object{
+				clusters: []client.Object{
 					newClusteBuilder("ns1", "es1").withRemoteCluster("ns2", "es2").build(),
 					fakePublicCa("ns1", "es1"),
 					newClusteBuilder("ns2", "es2").build(),

@@ -16,8 +16,12 @@ import (
 )
 
 // NewFakeClient creates a new fake Kubernetes client.
-func NewFakeClient(initObjs ...runtime.Object) Client {
-	return fake.NewClientBuilder().WithRuntimeObjects(initObjs...).WithScheme(clientgoscheme.Scheme).Build()
+func NewFakeClient(initObjs ...client.Object) Client {
+	return fake.NewClientBuilder().
+		WithObjects(initObjs...).
+		WithStatusSubresource(initObjs...).
+		WithScheme(clientgoscheme.Scheme).
+		Build()
 }
 
 var (

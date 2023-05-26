@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	commonsettings "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
@@ -43,7 +43,7 @@ func withAnnotations(es esv1.Elasticsearch, annotations map[string]string) esv1.
 }
 
 func TestSetupInitialMasterNodes(t *testing.T) {
-	v6Masters := []runtime.Object{
+	v6Masters := []crclient.Object{
 		// 3 master-only
 		sset.TestPod{Name: "es-master-0", Master: true, Data: false, Version: "6.8.5", ClusterName: "es", Namespace: "ns"}.BuildPtr(),
 		sset.TestPod{Name: "es-master-1", Master: true, Data: false, Version: "6.8.5", ClusterName: "es", Namespace: "ns"}.BuildPtr(),

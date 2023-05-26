@@ -12,8 +12,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -88,8 +88,8 @@ func TestRetrieveActualPVCs(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-2"}},
 		},
 	}
-	asRuntimeObjs := func(pvcs []corev1.PersistentVolumeClaim) []runtime.Object {
-		objs := make([]runtime.Object, 0, len(pvcs))
+	asClientObjs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
+		objs := make([]client.Object, 0, len(pvcs))
 		for i := range pvcs {
 			objs = append(objs, &pvcs[i])
 		}
@@ -104,7 +104,7 @@ func TestRetrieveActualPVCs(t *testing.T) {
 	}{
 		{
 			name:        "return expected PVCs for the StatefulSet",
-			k8sClient:   k8s.NewFakeClient(asRuntimeObjs(pvcs)...),
+			k8sClient:   k8s.NewFakeClient(asClientObjs(pvcs)...),
 			statefulSet: sset,
 			want:        expected,
 		},
@@ -116,7 +116,7 @@ func TestRetrieveActualPVCs(t *testing.T) {
 		},
 		{
 			name:        "extra PVCs exist but are not expected: don't return them",
-			k8sClient:   k8s.NewFakeClient(asRuntimeObjs(append(pvcs, corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-3"}}))...),
+			k8sClient:   k8s.NewFakeClient(asClientObjs(append(pvcs, corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-3"}}))...),
 			statefulSet: sset,
 			want:        expected,
 		},

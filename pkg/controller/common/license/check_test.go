@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -52,7 +52,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	require.NoError(t, err)
 
 	type fields struct {
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 		publicKey      []byte
 	}
 	tests := []struct {
@@ -64,7 +64,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "valid license: OK",
 			fields: fields{
-				initialObjects: asRuntimeObjects(validLicenseFixture, signatureBytes),
+				initialObjects: asClientObjects(validLicenseFixture, signatureBytes),
 				publicKey:      publicKeyBytesFixture(t),
 			},
 			want: true,
@@ -72,7 +72,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "valid trial: OK",
 			fields: fields{
-				initialObjects: []runtime.Object{asRuntimeObject(validTrialLicenseFixture), &statusSecret},
+				initialObjects: []client.Object{asClientObject(validTrialLicenseFixture), &statusSecret},
 			},
 			want:    true,
 			wantErr: false,
@@ -80,7 +80,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "valid legacy trial: OK",
 			fields: fields{
-				initialObjects: []runtime.Object{asRuntimeObject(validTrialLicenseFixture), &statusSecret},
+				initialObjects: []client.Object{asClientObject(validTrialLicenseFixture), &statusSecret},
 			},
 			want:    true,
 			wantErr: false,
@@ -88,7 +88,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "invalid trial: FAIL",
 			fields: fields{
-				initialObjects: []runtime.Object{asRuntimeObject(emptyTrialLicenseFixture), &statusSecret},
+				initialObjects: []client.Object{asClientObject(emptyTrialLicenseFixture), &statusSecret},
 			},
 			want:    false,
 			wantErr: false,
@@ -96,7 +96,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "expired trial: FAIL",
 			fields: fields{
-				initialObjects: append(asRuntimeObjects(expiredTrialLicense, expiredTrialSignatureBytes), &statusSecret),
+				initialObjects: append(asClientObjects(expiredTrialLicense, expiredTrialSignatureBytes), &statusSecret),
 			},
 			want:    false,
 			wantErr: false,
@@ -104,7 +104,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "invalid signature: FAIL",
 			fields: fields{
-				initialObjects: asRuntimeObjects(validLicenseFixture, []byte{}),
+				initialObjects: asClientObjects(validLicenseFixture, []byte{}),
 				publicKey:      publicKeyBytesFixture(t),
 			},
 			want:    false,
@@ -113,7 +113,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "no public key: FAIL",
 			fields: fields{
-				initialObjects: asRuntimeObjects(validLicenseFixture, signatureBytes),
+				initialObjects: asClientObjects(validLicenseFixture, signatureBytes),
 			},
 			want:    false,
 			wantErr: false,
@@ -145,19 +145,19 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
 	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
 	require.NoError(t, err)
-	validLicense := asRuntimeObjects(validLicenseFixture, signatureBytes)
+	validLicense := asClientObjects(validLicenseFixture, signatureBytes)
 
 	trialState, err := NewTrialState()
 	require.NoError(t, err)
 	validTrialLicenseFixture := emptyTrialLicenseFixture
 	require.NoError(t, trialState.InitTrialLicense(context.Background(), &validTrialLicenseFixture))
-	validTrialLicense := asRuntimeObject(validTrialLicenseFixture)
+	validTrialLicense := asClientObject(validTrialLicenseFixture)
 
 	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
 	require.NoError(t, err)
 
 	type fields struct {
-		initialObjects    []runtime.Object
+		initialObjects    []client.Object
 		operatorNamespace string
 		publicKey         []byte
 	}
@@ -183,7 +183,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 		{
 			name: "get valid trial enterprise license: OK",
 			fields: fields{
-				initialObjects:    []runtime.Object{validTrialLicense, &statusSecret},
+				initialObjects:    []client.Object{validTrialLicense, &statusSecret},
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},
@@ -205,7 +205,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 		{
 			name: "no license: OK",
 			fields: fields{
-				initialObjects:    []runtime.Object{},
+				initialObjects:    []client.Object{},
 				operatorNamespace: "test-system",
 			},
 			want:    false,
@@ -248,19 +248,19 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
 	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
 	require.NoError(t, err)
-	validLicense := asRuntimeObjects(validLicenseFixture, signatureBytes)
+	validLicense := asClientObjects(validLicenseFixture, signatureBytes)
 
 	trialState, err := NewTrialState()
 	require.NoError(t, err)
 	validTrialLicenseFixture := emptyTrialLicenseFixture
 	require.NoError(t, trialState.InitTrialLicense(context.Background(), &validTrialLicenseFixture))
-	validTrialLicense := asRuntimeObject(validTrialLicenseFixture)
+	validTrialLicense := asClientObject(validTrialLicenseFixture)
 
 	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
 	require.NoError(t, err)
 
 	type fields struct {
-		initialObjects    []runtime.Object
+		initialObjects    []client.Object
 		operatorNamespace string
 		publicKey         []byte
 	}
@@ -274,7 +274,7 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 		{
 			name: "get valid basic license: OK",
 			fields: fields{
-				initialObjects:    []runtime.Object{},
+				initialObjects:    []client.Object{},
 				operatorNamespace: "test-system",
 			},
 			wantType: LicenseTypeBasic,
@@ -293,7 +293,7 @@ func Test_ValidOperatorLicenseKey(t *testing.T) {
 		{
 			name: "get valid trial enterprise license: OK",
 			fields: fields{
-				initialObjects:    []runtime.Object{validTrialLicense, &statusSecret},
+				initialObjects:    []client.Object{validTrialLicense, &statusSecret},
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},

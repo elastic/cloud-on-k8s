@@ -245,7 +245,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		}
 		esClient := &fakeESClient{version: version.MustParse("7.13.0")}
 		es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
-		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing, tt.fields.esAnnotations)...)
+		k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toClientObjects(tt.fields.esVersion, tt.fields.maxUnavailable, nothing, tt.fields.esAnnotations)...)
 		ctx := upgradeCtx{
 			parentCtx:       context.Background(),
 			client:          k8sClient,
@@ -1161,7 +1161,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				health:    tt.fields.health,
 			}
 			esClient := &fakeESClient{version: version.MustParse(tt.fields.esVersion), Shutdowns: tt.fields.shutdowns}
-			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
+			k8sClient := k8s.NewFakeClient(tt.fields.upgradeTestPods.toClientObjects(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.podFilter, tt.fields.esAnnotations)...)
 			nodeShutdown := shutdown.NewNodeShutdown(esClient, tt.fields.upgradeTestPods.podNamesToESNodeID(), client.Restart, "", crlog.Log)
 			es := tt.fields.upgradeTestPods.toES(tt.fields.esVersion, tt.fields.maxUnavailable, tt.fields.esAnnotations)
 			ctx := upgradeCtx{

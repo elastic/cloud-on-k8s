@@ -15,9 +15,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
@@ -33,7 +33,7 @@ import (
 
 func TestReconcileApmServer_doReconcile(t *testing.T) {
 	type fields struct {
-		resources      []runtime.Object
+		resources      []client.Object
 		recorder       record.EventRecorder
 		dynamicWatches watches.DynamicWatches
 		Parameters     operator.Parameters
@@ -57,7 +57,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				},
 			},
 			fields: fields{
-				resources:      []runtime.Object{},
+				resources:      []client.Object{},
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters: operator.Parameters{
@@ -81,7 +81,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				},
 			},
 			fields: fields{
-				resources:      []runtime.Object{},
+				resources:      []client.Object{},
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},

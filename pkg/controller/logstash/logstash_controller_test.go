@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
@@ -30,7 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-func newReconcileLogstash(objs ...runtime.Object) *ReconcileLogstash {
+func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 	r := &ReconcileLogstash{
 		Client:         k8s.NewFakeClient(objs...),
 		recorder:       record.NewFakeRecorder(100),
@@ -43,7 +42,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 	defaultLabels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "testLogstash"}}).GetIdentityLabels()
 	tests := []struct {
 		name            string
-		objs            []runtime.Object
+		objs            []client.Object
 		request         reconcile.Request
 		want            reconcile.Result
 		expected        logstashv1alpha1.Logstash
@@ -52,7 +51,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 	}{
 		{
 			name: "valid unmanaged Logstash does not increment observedGeneration",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash",
@@ -98,7 +97,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 		},
 		{
 			name: "too long name fails validation, and updates observedGeneration",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstashwithtoolongofanamereallylongname",
@@ -132,7 +131,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 		},
 		{
 			name: "Logstash with ready StatefulSet and Pod updates status and creates secrets and service",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash",
@@ -214,7 +213,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 		},
 		{
 			name: "Logstash with a custom service creates secrets and service",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash",
@@ -320,7 +319,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 		},
 		{
 			name: "Logstash with a service with no port creates secrets and service",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testLogstash",

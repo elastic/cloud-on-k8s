@@ -258,7 +258,7 @@ func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ stri
 	return false, nil
 }
 
-func testReconciler(runtimeObjs ...runtime.Object) Reconciler {
+func testReconciler(runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: kbAssociationInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
@@ -744,7 +744,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 	}
 	tests := []struct {
 		name              string
-		runtimeObjects    []runtime.Object
+		runtimeObjects    []client.Object
 		associated        commonv1.Association
 		esRef             commonv1.ObjectSelector
 		wantES            esv1.Elasticsearch
@@ -753,7 +753,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 	}{
 		{
 			name:              "retrieve existing Elasticsearch",
-			runtimeObjects:    []runtime.Object{&es, &associatedKibana},
+			runtimeObjects:    []client.Object{&es, &associatedKibana},
 			associated:        associatedKibana.EsAssociation(),
 			esRef:             commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:            es,
@@ -762,7 +762,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 		},
 		{
 			name:           "Elasticsearch not found: remove association conf in Kibana",
-			runtimeObjects: []runtime.Object{&associatedKibana}, // no ES
+			runtimeObjects: []client.Object{&associatedKibana}, // no ES
 			associated:     associatedKibana.EsAssociation(),
 			esRef:          commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
 			wantES:         esv1.Elasticsearch{},

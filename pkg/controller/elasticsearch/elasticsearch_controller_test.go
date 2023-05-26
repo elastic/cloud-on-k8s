@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
@@ -23,7 +23,7 @@ import (
 
 // newTestReconciler returns a ReconcileElasticsearch struct, allowing the internal k8s client to
 // contain certain runtime objects.
-func newTestReconciler(objects ...runtime.Object) *ReconcileElasticsearch {
+func newTestReconciler(objects ...client.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),
 		recorder: record.NewFakeRecorder(100),
@@ -101,7 +101,7 @@ var noInProgressOperations = esv1.InProgressOperations{
 
 func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 	type k8sClientFields struct {
-		objects []runtime.Object
+		objects []client.Object
 	}
 	type args struct {
 		request reconcile.Request
@@ -116,7 +116,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "unmanaged ES has no error, and no observedGeneration update",
 			k8sClientFields: k8sClientFields{
-				[]runtime.Object{
+				[]client.Object{
 					newBuilder("testES", "test").
 						WithGeneration(2).
 						WithAnnotations(map[string]string{common.ManagedAnnotation: "false"}).
@@ -139,7 +139,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "ES with too long name, fails initial reconcile, but has observedGeneration updated",
 			k8sClientFields: k8sClientFields{
-				[]runtime.Object{
+				[]client.Object{
 					newBuilder("testESwithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
@@ -171,7 +171,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
 			k8sClientFields: k8sClientFields{
-				[]runtime.Object{
+				[]client.Object{
 					newBuilder("testESwithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
@@ -193,7 +193,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 		{
 			name: "Invalid ES version errors, and updates observedGeneration",
 			k8sClientFields: k8sClientFields{
-				[]runtime.Object{
+				[]client.Object{
 					newBuilder("testES", "test").
 						WithGeneration(2).
 						WithVersion("invalid").

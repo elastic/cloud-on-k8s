@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/driver"
@@ -50,7 +50,7 @@ func TestParsePipelinesRef(t *testing.T) {
 		name            string
 		pipelinesRef    *commonv1.ConfigSource
 		secretKey       string
-		runtimeObjs     []runtime.Object
+		runtimeObjs     []client.Object
 		want            *Config
 		wantErr         bool
 		existingWatches []string
@@ -61,7 +61,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "happy path",
 			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
@@ -75,7 +75,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "happy path, secret already watched",
 			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
@@ -90,7 +90,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "no pipelinesRef specified",
 			pipelinesRef: nil,
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
@@ -104,7 +104,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "no pipelinesRef specified: clear existing watches",
 			pipelinesRef: nil,
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
@@ -119,7 +119,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "secret not found: error out but watch the future secret",
 			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
 			secretKey:    "configFile.yml",
-			runtimeObjs:  []runtime.Object{},
+			runtimeObjs:  []client.Object{},
 			want:         nil,
 			wantErr:      true,
 			wantWatches:  []string{watchName},
@@ -128,7 +128,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "missing key in the referenced secret: error out, watch the secret and emit an event",
 			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{
@@ -143,7 +143,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			name:         "invalid config the referenced secret: error out, watch the secret and emit an event",
 			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
 			secretKey:    "configFile.yml",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
 					Data: map[string][]byte{

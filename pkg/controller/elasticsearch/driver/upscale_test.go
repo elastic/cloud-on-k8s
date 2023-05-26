@@ -18,8 +18,8 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
@@ -428,7 +428,7 @@ func Test_adjustZenConfig(t *testing.T) {
 		name                      string
 		es                        esv1.Elasticsearch
 		statefulSet               sset.TestSset
-		pods                      []runtime.Object
+		pods                      []client.Object
 		wantMinimumMasterNodesSet bool
 		wantInitialMasterNodesSet bool
 	}{
@@ -443,7 +443,7 @@ func Test_adjustZenConfig(t *testing.T) {
 			name:        "adjust zen1 minimum_master_nodes if some 6.8.x are still in flight",
 			es:          bootstrappedES,
 			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
-			pods: []runtime.Object{
+			pods: []client.Object{
 				newTestPod("masters-0").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
 				newTestPod("masters-1").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),
 				newTestPod("masters-2").withVersion("6.8.0").withRoles(esv1.MasterRole, esv1.DataRole).toPodPtr(),

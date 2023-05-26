@@ -17,9 +17,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -38,8 +38,8 @@ var customResourceLimits = corev1.ResourceRequirements{
 
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
-	getPods := func(kbName string, podCount int, version string) []runtime.Object {
-		var result []runtime.Object
+	getPods := func(kbName string, podCount int, version string) []client.Object {
+		var result []client.Object
 		for i := 0; i < podCount; i++ {
 			result = append(result, &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -58,7 +58,7 @@ func Test_getStrategyType(t *testing.T) {
 		return result
 	}
 
-	clearVersionLabels := func(objects []runtime.Object) []runtime.Object {
+	clearVersionLabels := func(objects []client.Object) []client.Object {
 		for _, object := range objects {
 			pod, ok := object.(*corev1.Pod)
 			if !ok {
@@ -75,7 +75,7 @@ func Test_getStrategyType(t *testing.T) {
 		name            string
 		expectedKbName  string
 		expectedVersion string
-		initialObjects  []runtime.Object
+		initialObjects  []client.Object
 		clientError     bool
 		wantErr         bool
 		wantStrategy    appsv1.DeploymentStrategyType
@@ -84,7 +84,7 @@ func Test_getStrategyType(t *testing.T) {
 			name:            "Pods not created yet",
 			expectedVersion: "7.4.0",
 			expectedKbName:  "test",
-			initialObjects:  []runtime.Object{},
+			initialObjects:  []client.Object{},
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
@@ -197,7 +197,7 @@ func Test_getStrategyType(t *testing.T) {
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
 		kb             func() *kbv1.Kibana
-		initialObjects func() []runtime.Object
+		initialObjects func() []client.Object
 	}
 
 	tests := []struct {
@@ -210,7 +210,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			name: "without remote objects",
 			args: args{
 				kb:             kibanaFixture,
-				initialObjects: func() []runtime.Object { return nil },
+				initialObjects: func() []client.Object { return nil },
 			},
 			want:    deployment.Params{},
 			wantErr: true,
@@ -269,8 +269,8 @@ func TestDriverDeploymentParams(t *testing.T) {
 			name: "Checksum takes secret contents into account",
 			args: args{
 				kb: kibanaFixture,
-				initialObjects: func() []runtime.Object {
-					return []runtime.Object{
+				initialObjects: func() []client.Object {
+					return []client.Object{
 						&corev1.Secret{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "es-ca-secret",
@@ -634,8 +634,8 @@ func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 	return kbFixture
 }
 
-func defaultInitialObjects() []runtime.Object {
-	return []runtime.Object{
+func defaultInitialObjects() []client.Object {
+	return []client.Object{
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "es-ca-secret",

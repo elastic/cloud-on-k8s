@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -30,7 +29,7 @@ var defaultKibana = kbv1.Kibana{
 
 func TestReconcileConfigSecret(t *testing.T) {
 	type args struct {
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 		kb             kbv1.Kibana
 	}
 	tests := []struct {
@@ -42,7 +41,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			name: "config secret should be created",
 			args: args{
 				kb: defaultKibana,
-				initialObjects: []runtime.Object{&kbv1.Kibana{
+				initialObjects: []client.Object{&kbv1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-ns",
@@ -59,7 +58,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			name: "empty config secret should be updated",
 			args: args{
 				kb: defaultKibana,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
@@ -80,7 +79,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			name: "bad config secret should be updated",
 			args: args{
 				kb: defaultKibana,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",

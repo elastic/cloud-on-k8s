@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -419,7 +418,7 @@ type k8sFailingStatusWriter struct {
 	client.StatusWriter
 }
 
-func newK8sFailingStatusUpdateClient(initObjs ...runtime.Object) *k8sFailingStatusUpdateClient {
+func newK8sFailingStatusUpdateClient(initObjs ...client.Object) *k8sFailingStatusUpdateClient {
 	return &k8sFailingStatusUpdateClient{
 		client:       k8s.NewFakeClient(initObjs...),
 		statusWriter: &k8sFailingStatusWriter{},

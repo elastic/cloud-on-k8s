@@ -13,7 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -40,7 +40,7 @@ func podWithRevision(name, revision string) *corev1.Pod {
 
 func Test_podsToUpgrade(t *testing.T) {
 	type args struct {
-		pods         []runtime.Object
+		pods         []client.Object
 		statefulSets sset.StatefulSetList
 	}
 	tests := []struct {
@@ -62,7 +62,7 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
+				pods: []client.Object{
 					podWithRevision("masters-0", "rev-a"),
 					podWithRevision("masters-1", "rev-a"),
 					podWithRevision("nodes-0", "rev-a"),
@@ -85,7 +85,7 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
+				pods: []client.Object{
 					podWithRevision("masters-0", "rev-a"),
 					podWithRevision("masters-1", "rev-a"),
 				},
@@ -105,7 +105,7 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
+				pods: []client.Object{
 					podWithRevision("masters-0", "rev-a"),
 					podWithRevision("masters-1", "rev-a"),
 				},
@@ -125,7 +125,7 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
+				pods: []client.Object{
 					podWithRevision("masters-0", "rev-b"),
 					podWithRevision("masters-1", "rev-a"),
 				},
@@ -196,7 +196,7 @@ func Test_healthyPods(t *testing.T) {
 			esState := &testESState{
 				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.NewFakeClient(tt.args.pods.toRuntimeObjects("7.5.0", 0, nothing, nil)...)
+			client := k8s.NewFakeClient(tt.args.pods.toClientObjects("7.5.0", 0, nothing, nil)...)
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)
@@ -428,7 +428,7 @@ func Test_defaultDriver_maybeCompleteNodeUpgrades(t *testing.T) {
 		nodesInCluster    map[string]esclient.Node
 		shutdowns         map[string]esclient.NodeShutdown
 		routingAllocation esclient.ClusterRoutingAllocation
-		runtimeObjects    []runtime.Object
+		runtimeObjects    []client.Object
 		expectations      func(*expectations.Expectations)
 		assertions        func(*reconciler.Results, *fakeESClient)
 	}{

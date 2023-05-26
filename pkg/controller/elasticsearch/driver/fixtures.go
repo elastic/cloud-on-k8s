@@ -11,9 +11,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
@@ -165,8 +165,8 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []runtime.Object {
-	var result []runtime.Object
+func (u upgradeTestPods) toClientObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []crclient.Object {
+	var result []crclient.Object
 	for _, testPod := range u {
 		pod := testPod.toPod()
 		if !f(pod) {

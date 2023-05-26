@@ -11,8 +11,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -23,7 +23,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 	trueVal := true
 
 	type args struct {
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 	}
 	tests := []struct {
 		name          string
@@ -35,7 +35,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo-cluster",
