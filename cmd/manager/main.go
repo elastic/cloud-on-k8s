@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -560,15 +559,15 @@ func startOperator(ctx context.Context) error {
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
 		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
-		// opts.Namespace implicitly allows watching cluster-scoped resources (e.g. storage classes)
-		opts.Namespace = managedNamespaces[0]
+
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
 		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
-
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
+
+	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
+	opts.Cache.Namespaces = managedNamespaces
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
