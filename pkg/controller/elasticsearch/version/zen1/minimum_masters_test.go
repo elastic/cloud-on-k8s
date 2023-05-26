@@ -96,7 +96,7 @@ type fakeESClient struct {
 	client.Client
 }
 
-func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) error {
+func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, count int) error {
 	f.called = true
 	f.calledWith = count
 	return nil

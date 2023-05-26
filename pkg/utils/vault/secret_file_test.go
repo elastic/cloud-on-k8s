@@ -193,7 +193,7 @@ func newMockClient(t *testing.T, data ...string) Client {
 	}
 }
 
-func (c *mockClient) Read(path string) (*api.Secret, error) {
+func (c *mockClient) Read(_ string) (*api.Secret, error) {
 	c.readCount++
 	return &api.Secret{Data: c.data}, nil
 }

@@ -314,7 +314,7 @@ type fakeInvalidLicenseUpdater struct {
 	statusCodeOnGetLicense int
 }
 
-func (f *fakeInvalidLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
+func (f *fakeInvalidLicenseUpdater) GetLicense(_ context.Context) (esclient.License, error) {
 	if f.statusCodeOnGetLicense == 200 {
 		return f.license, nil
 	}
@@ -327,18 +327,18 @@ type fakeLicenseUpdater struct {
 	updateLicenseCalled bool
 }
 
-func (f *fakeLicenseUpdater) StartTrial(ctx context.Context) (esclient.StartTrialResponse, error) {
+func (f *fakeLicenseUpdater) StartTrial(_ context.Context) (esclient.StartTrialResponse, error) {
 	return esclient.StartTrialResponse{
 		Acknowledged:    true,
 		TrialWasStarted: true,
 	}, nil
 }
 
-func (f *fakeLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
+func (f *fakeLicenseUpdater) GetLicense(_ context.Context) (esclient.License, error) {
 	return f.license, nil
 }
 
-func (f *fakeLicenseUpdater) UpdateLicense(ctx context.Context, licenses esclient.LicenseUpdateRequest) (esclient.LicenseUpdateResponse, error) {
+func (f *fakeLicenseUpdater) UpdateLicense(_ context.Context, _ esclient.LicenseUpdateRequest) (esclient.LicenseUpdateResponse, error) {
 	f.updateLicenseCalled = true
 	return esclient.LicenseUpdateResponse{
 		Acknowledged:  true,
@@ -346,7 +346,7 @@ func (f *fakeLicenseUpdater) UpdateLicense(ctx context.Context, licenses esclien
 	}, nil
 }
 
-func (f *fakeLicenseUpdater) StartBasic(ctx context.Context) (esclient.StartBasicResponse, error) {
+func (f *fakeLicenseUpdater) StartBasic(_ context.Context) (esclient.StartBasicResponse, error) {
 	f.startBasicCalled = true
 	return esclient.StartBasicResponse{}, nil
 }
@@ -358,7 +358,7 @@ type fakeClient struct {
 	errors map[client.ObjectKey]error
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+func (f *fakeClient) Get(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 	if err := f.errors[key]; err != nil {
 		return err
 	}

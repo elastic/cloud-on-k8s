@@ -486,7 +486,7 @@ func withESReference(apm apmv1.ApmServer, selector commonv1.ObjectSelector) *apm
 	return obj
 }
 
-func withAssociationConf(apm apmv1.ApmServer, conf commonv1.AssociationConf) *apmv1.ApmServer {
+func withAssociationConf(apm apmv1.ApmServer, _ commonv1.AssociationConf) *apmv1.ApmServer {
 	obj := apm.DeepCopy()
 	association := apmv1.NewApmEsAssociation(obj)
 	association.SetAssociationConf(
