@@ -60,7 +60,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(mgr, c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -79,55 +79,55 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &esv1.Elasticsearch{},
-		},
-	); err != nil {
+		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), handler.EnqueueRequestForOwner(
+			mgr.GetScheme(), mgr.GetRESTMapper(),
+			&esv1.Elasticsearch{}, handler.OnlyControllerOwner(),
+		)); err != nil {
 		return err
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := watches.WatchPods(c, label.ClusterNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, label.ClusterNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &esv1.Elasticsearch{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&esv1.Elasticsearch{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch config maps for dynamic watches (currently used for additional CAs trust)
-	if err := c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, r.dynamicWatches.ConfigMaps); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}), r.dynamicWatches.ConfigMaps); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
-		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &esv1.Elasticsearch{},
-		},
-	}); err != nil {
+		IsController: true,
+		OwnerType:    &esv1.Elasticsearch{},
+		Scheme:       mgr.GetScheme(),
+		Mapper:       mgr.GetRESTMapper(),
+	},
+	); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, esv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, esv1.Kind); err != nil {
 		return err
 	}
 

@@ -44,7 +44,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(mgr, c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -59,49 +59,48 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 }
 
 // addWatches adds watches for all resources this controller cares about
-func addWatches(c controller.Controller, r *ReconcileLogstash) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogstash) error {
 	// Watch for changes to Logstash
-	if err := c.Watch(&source.Kind{Type: &logstashv1alpha1.Logstash{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &logstashv1alpha1.Logstash{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &logstashv1alpha1.Logstash{},
-		},
-	); err != nil {
+		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}), handler.EnqueueRequestForOwner(
+			mgr.GetScheme(), mgr.GetRESTMapper(),
+			&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
+		)); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching StatefulSets only may lead to missing some events.
-	if err := watches.WatchPods(c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &logstashv1alpha1.Logstash{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &logstashv1alpha1.Logstash{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, logstashv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, logstashv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileLogstash{}

@@ -5,6 +5,7 @@
 package remoteca
 
 import (
+	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -24,28 +26,31 @@ import (
 )
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
-func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteCa) error {
 	// Watch for changes to RemoteCluster
-	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch Secrets that contain remote certificate authorities managed by this controller
-	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels())); err != nil {
+	if err := c.Watch(
+		source.Kind(mgr.GetCache(), &v1.Secret{}),
+		handler.EnqueueRequestsFromMapFunc(newRequestsFromMatchedLabels()),
+	); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &v1.Secret{}), r.watches.Secrets); err != nil {
 		return err
 	}
 
 	return r.watches.Secrets.AddHandlers(
 		&watches.OwnerWatch{
-			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-				IsController: true,
-				OwnerType:    &esv1.Elasticsearch{},
-			},
+			Scheme:       mgr.GetScheme(),
+			Mapper:       mgr.GetRESTMapper(),
+			OwnerType:    &esv1.Elasticsearch{},
+			IsController: true,
 		},
 	)
 }
@@ -53,7 +58,7 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
 // labels set on a Secret which contains the remote CA.
 func newRequestsFromMatchedLabels() handler.MapFunc {
-	return func(obj client.Object) []reconcile.Request {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
 		labels := obj.GetLabels()
 		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, commonv1.TypeLabelName) {
 			return nil

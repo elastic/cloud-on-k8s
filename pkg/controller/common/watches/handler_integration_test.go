@@ -48,7 +48,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		})
 		ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: reconcileFunc})
 		require.NoError(t, err)
-		require.NoError(t, ctrl.Watch(&source.Kind{Type: &corev1.Secret{}}, eventHandler))
+		require.NoError(t, ctrl.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), eventHandler))
 		return nil
 	}
 

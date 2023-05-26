@@ -59,7 +59,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(mgr, c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler of StackConfigPolicy.
@@ -74,23 +74,23 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileStackConfigPolicy) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
 	// watch for changes to StackConfigPolicy
-	if err := c.Watch(&source.Kind{Type: &policyv1alpha1.StackConfigPolicy{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, r.reconcileRequestForAllPolicies()); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), r.reconcileRequestForAllPolicies()); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, reconcileRequestForSoftOwnerPolicy())
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy())
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced || softOwner.Kind != policyv1alpha1.Kind {
 			return nil
@@ -103,7 +103,7 @@ func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
 
 // requestsAllStackConfigPolicies returns the requests to reconcile all StackConfigPolicy resources.
 func (r *ReconcileStackConfigPolicy) reconcileRequestForAllPolicies() handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(es client.Object) []reconcile.Request {
+	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, es client.Object) []reconcile.Request {
 		var stackConfigList policyv1alpha1.StackConfigPolicyList
 		err := r.Client.List(context.Background(), &stackConfigList)
 		if err != nil {

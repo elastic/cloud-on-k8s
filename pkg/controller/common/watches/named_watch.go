@@ -5,6 +5,8 @@
 package watches
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -26,13 +28,13 @@ type NamedWatch struct {
 
 var _ handler.EventHandler = &NamedWatch{}
 
-func (w NamedWatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (w NamedWatch) Create(_ context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (w NamedWatch) Update(_ context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.ObjectOld) {
 		q.Add(req)
 	}
@@ -41,13 +43,13 @@ func (w NamedWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterf
 	}
 }
 
-func (w NamedWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (w NamedWatch) Delete(_ context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}
 }
 
-func (w NamedWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (w NamedWatch) Generic(_ context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Object) {
 		q.Add(req)
 	}

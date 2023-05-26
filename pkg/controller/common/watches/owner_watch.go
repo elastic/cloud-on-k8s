@@ -5,11 +5,17 @@
 package watches
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
 type OwnerWatch struct {
-	handler.EnqueueRequestForOwner
+	Scheme       *runtime.Scheme
+	Mapper       meta.RESTMapper
+	OwnerType    client.Object
+	IsController bool
 }
 
 func (o *OwnerWatch) Key() string {
@@ -17,7 +23,12 @@ func (o *OwnerWatch) Key() string {
 }
 
 func (o *OwnerWatch) EventHandler() handler.EventHandler {
-	return o
+	opts := []handler.OwnerOption{}
+	if o.IsController {
+		opts = []handler.OwnerOption{handler.OnlyControllerOwner()}
+	}
+
+	return handler.EnqueueRequestForOwner(o.Scheme, o.Mapper, o.OwnerType, opts...)
 }
 
 var _ HandlerRegistration = &OwnerWatch{}

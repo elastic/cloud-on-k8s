@@ -72,7 +72,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r.Client)
+	return addWatches(mgr, c, r.Client)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -108,37 +108,38 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(c controller.Controller, k8sClient k8s.Client) error {
+func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Client) error {
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
 
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
-		secret, ok := object.(*corev1.Secret)
-		if !ok {
-			log.Error(
-				pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object),
-				"dropping watch event due to error in handler")
-			return nil
-		}
-		if !license.IsOperatorLicense(*secret) {
-			return nil
-		}
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
+		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
+			secret, ok := object.(*corev1.Secret)
+			if !ok {
+				log.Error(
+					pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object),
+					"dropping watch event due to error in handler")
+				return nil
+			}
+			if !license.IsOperatorLicense(*secret) {
+				return nil
+			}
 
-		// if a license is added/modified we want to update for potentially all clusters managed by this instance
-		// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-		rs, err := reconcileRequestsForAllClusters(k8sClient, log)
-		if err != nil {
-			// dropping the event(s) at this point
-			log.Error(err, "failed to list affected clusters in enterprise license watch")
-			return nil
-		}
-		return rs
-	}),
+			// if a license is added/modified we want to update for potentially all clusters managed by this instance
+			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
+			rs, err := reconcileRequestsForAllClusters(k8sClient, log)
+			if err != nil {
+				// dropping the event(s) at this point
+				log.Error(err, "failed to list affected clusters in enterprise license watch")
+				return nil
+			}
+			return rs
+		}),
 	); err != nil {
 		return err
 	}

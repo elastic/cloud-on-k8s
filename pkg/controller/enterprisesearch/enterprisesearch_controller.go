@@ -52,7 +52,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler)
+	return addWatches(mgr, c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -66,48 +66,48 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
-func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(&source.Kind{Type: &entv1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(source.Kind(mgr.GetCache(), &entv1.EnterpriseSearch{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &entv1.EnterpriseSearch{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(c, EnterpriseSearchNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, EnterpriseSearchNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &entv1.EnterpriseSearch{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &entv1.EnterpriseSearch{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, entv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, entv1.Kind); err != nil {
 		return err
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}

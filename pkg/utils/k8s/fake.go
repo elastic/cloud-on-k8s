@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -28,20 +29,28 @@ type failingSubClient struct {
 	err error
 }
 
-func (fc failingSubClient) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+func (fc failingSubClient) Create(_ context.Context, _ client.Object, subResource client.Object, _ ...client.SubResourceCreateOption) error {
 	return fc.err
 }
 
-func (fc failingSubClient) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
+func (fc failingSubClient) Get(_ context.Context, _ client.Object, subResource client.Object, _ ...client.SubResourceGetOption) error {
 	return fc.err
 }
 
-func (fc failingSubClient) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+func (fc failingSubClient) Update(_ context.Context, _ client.Object, _ ...client.SubResourceUpdateOption) error {
 	return fc.err
 }
 
-func (fc failingSubClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+func (fc failingSubClient) Patch(_ context.Context, _ client.Object, patch client.Patch, _ ...client.SubResourcePatchOption) error {
 	return fc.err
+}
+
+func (fc failingSubClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, fc.err
+}
+
+func (fc failingSubClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return false, fc.err
 }
 
 type failingClient struct {
@@ -54,31 +63,31 @@ func NewFailingClient(err error) Client {
 	return failingClient{err: err}
 }
 
-func (fc failingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+func (fc failingClient) Get(_ context.Context, key client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
 	return fc.err
 }
 
-func (fc failingClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+func (fc failingClient) List(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
 	return fc.err
 }
 
-func (fc failingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+func (fc failingClient) Create(_ context.Context, _ client.Object, _ ...client.CreateOption) error {
 	return fc.err
 }
 
-func (fc failingClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+func (fc failingClient) Delete(_ context.Context, _ client.Object, _ ...client.DeleteOption) error {
 	return fc.err
 }
 
-func (fc failingClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (fc failingClient) Update(_ context.Context, _ client.Object, _ ...client.UpdateOption) error {
 	return fc.err
 }
 
-func (fc failingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (fc failingClient) Patch(_ context.Context, _ client.Object, patch client.Patch, _ ...client.PatchOption) error {
 	return fc.err
 }
 
-func (fc failingClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
+func (fc failingClient) DeleteAllOf(_ context.Context, _ client.Object, _ ...client.DeleteAllOfOption) error {
 	return fc.err
 }
 

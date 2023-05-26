@@ -232,37 +232,38 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 	}
 }
 
-func addWatches(c controller.Controller) error {
+func addWatches(mgr manager.Manager, c controller.Controller) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-		secret, ok := obj.(*corev1.Secret)
-		if !ok {
-			// no contextual logging available
-			ulog.Log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
-		}
-		if licensing.IsEnterpriseTrial(*secret) {
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
+		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+			secret, ok := obj.(*corev1.Secret)
+			if !ok {
+				// no contextual logging available
+				ulog.Log.Error(fmt.Errorf("object of type %T in secret watch", obj), "dropping event due to type error")
+			}
+			if licensing.IsEnterpriseTrial(*secret) {
+				return []reconcile.Request{
+					{
+						NamespacedName: types.NamespacedName{
+							Namespace: obj.GetNamespace(),
+							Name:      obj.GetName(),
+						},
+					},
+				}
+			}
+
+			if obj.GetName() != licensing.TrialStatusSecretKey {
+				return nil
+			}
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Namespace: obj.GetNamespace(),
-						Name:      obj.GetName(),
+						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
 					},
 				},
 			}
-		}
-
-		if obj.GetName() != licensing.TrialStatusSecretKey {
-			return nil
-		}
-		return []reconcile.Request{
-			{
-				NamespacedName: types.NamespacedName{
-					Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-					Name:      secret.Annotations[licensing.TrialLicenseSecretName],
-				},
-			},
-		}
-	}),
+		}),
 	)
 }
 
@@ -274,7 +275,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c)
+	return addWatches(mgr, c)
 }
 
 var _ reconcile.Reconciler = &ReconcileTrials{}

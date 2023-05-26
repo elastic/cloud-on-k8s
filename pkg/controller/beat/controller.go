@@ -52,7 +52,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(mgr, c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -67,47 +67,47 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 }
 
 // addWatches adds watches for all resources this controller cares about
-func addWatches(c controller.Controller, r *ReconcileBeat) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
-	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &beatv1beta1.Beat{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch DaemonSets
-	if err := c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
-	if err := watches.WatchPods(c, beatcommon.NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, beatcommon.NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned Secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &beatv1beta1.Beat{},
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(c, beatv1beta1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, beatv1beta1.Kind); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
 }
 
 var _ reconcile.Reconciler = &ReconcileBeat{}

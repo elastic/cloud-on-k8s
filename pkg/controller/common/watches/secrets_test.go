@@ -5,6 +5,7 @@
 package watches
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -75,7 +76,7 @@ func Test_reconcileReqForSoftOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			requests := toRequestsFunc(&tt.secret)
+			requests := toRequestsFunc(context.Background(), &tt.secret)
 			require.Equal(t, tt.wantReconcileRequests, requests)
 		})
 	}
