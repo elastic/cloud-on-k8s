@@ -1,4 +1,27 @@
 ---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.7.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  podTemplate:
+    spec:
+      nodeSelector:
+        cloud.google.com/compute-class: "Balanced"
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 200m
+          limits:
+            memory: 1Gi
+            cpu: 200m
+---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
@@ -156,27 +179,4 @@ roleRef:
   kind: ClusterRole
   name: metricbeat
   apiGroup: rbac.authorization.k8s.io
----
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kibana
-spec:
-  version: 8.7.0
-  count: 1
-  elasticsearchRef:
-    name: elasticsearch
-  podTemplate:
-    spec:
-      nodeSelector:
-        cloud.google.com/compute-class: "Balanced"
-      containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: 200m
-          limits:
-            memory: 1Gi
-            cpu: 200m
 ---
