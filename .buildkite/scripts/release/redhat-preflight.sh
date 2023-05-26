@@ -10,7 +10,6 @@
 set -euo pipefail
 
 VAULT_ROOT_PATH=${VAULT_ROOT_PATH:-secret/ci/elastic-cloud-on-k8s}
-DRY_RUN=${DRY_RUN:-true}
 
 tmpDir=$(mktemp -d)
 trap 'rm -rf "$tmpDir"' 0
