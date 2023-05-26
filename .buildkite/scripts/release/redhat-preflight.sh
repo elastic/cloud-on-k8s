@@ -33,11 +33,6 @@ main() {
         exit 0
     fi
 
-    if ! which preflight; then
-        curl -sL -o "$tmpDir/preflight" "https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-$(uname -m)"
-        chmod u+x "$tmpDir/preflight"
-    fi
-
     vault read -format=json -field=data "$VAULT_ROOT_PATH/operatorhub-release-preflight" > "$tmpDir/auth.json"
     
     preflight check container "quay.io/redhat-isv-containers/$PROJECT_ID:$tag" --pyxis-api-token="$API_KEY" --certification-project-id="$PROJECT_ID" --submit -d "$tmpDir/auth.json"

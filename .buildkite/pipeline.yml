@@ -1,5 +1,5 @@
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:d8e4780b
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   cpu: "4"
   memory: "2G"
 
