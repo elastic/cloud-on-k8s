@@ -62,15 +62,13 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
 	logstash := params.Logstash
 	status := params.Status
-	labelSelector := sset.Spec.Selector
-
 	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{NameLabelName: logstash.Name})
 	if err != nil {
 		return status, err
 	}
 
-	if labelSelector != nil {
-		selector, err := metav1.LabelSelectorAsSelector(labelSelector)
+	if sset.Spec.Selector != nil {
+		selector, err := metav1.LabelSelectorAsSelector(sset.Spec.Selector)
 		if err != nil {
 			return logstashv1alpha1.LogstashStatus{}, err
 		}
