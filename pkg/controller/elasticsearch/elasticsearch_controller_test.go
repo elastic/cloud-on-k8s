@@ -169,26 +169,34 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				).BuildAndCopy(),
 		},
 		{
-			name: "ES with too long name, and needing annotations update, fails initial reconcile, and does not have status.* updated because of a 409/resource conflict",
+			name: "Invalid ES with too long name, and updates observedGeneration",
 			k8sClientFields: k8sClientFields{
 				[]client.Object{
-					newBuilder("testESwithtoolongofanamereallylongname", "test").
+					newBuilder("testeswithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
 			args: args{
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "testESwithtoolongofanamereallylongname",
+						Name:      "testeswithtoolongofanamereallylongname",
 						Namespace: "test",
 					},
 				},
 			},
 			wantErr: false,
-			expected: newBuilder("testESwithtoolongofanamereallylongname", "test").
+			expected: newBuilder("testeswithtoolongofanamereallylongname", "test").
 				WithGeneration(2).
 				WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
-				WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).BuildAndCopy(),
+				WithStatus(
+					esv1.ElasticsearchStatus{
+						ObservedGeneration:   2,
+						Phase:                esv1.ElasticsearchResourceInvalid,
+						Health:               esv1.ElasticsearchUnknownHealth,
+						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						InProgressOperations: noInProgressOperations,
+					},
+				).BuildAndCopy(),
 		},
 		{
 			name: "Invalid ES version errors, and updates observedGeneration",
