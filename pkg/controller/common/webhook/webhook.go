@@ -58,8 +58,6 @@ type validatingWebhook struct {
 	validator         admission.Validator
 }
 
-var _ admission.DecoderInjector = &validatingWebhook{}
-
 // InjectDecoder injects the decoder automatically.
 func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 	v.decoder = d
