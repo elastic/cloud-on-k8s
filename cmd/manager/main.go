@@ -545,7 +545,6 @@ func startOperator(ctx context.Context) error {
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
 		Scheme:                     clientgoscheme.Scheme,
-		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           LeaderElectionLeaseName,
@@ -578,8 +577,10 @@ func startOperator(ctx context.Context) error {
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
+	webhookCertDir := viper.GetString(operator.WebhookCertDirFlag)
 	opts.WebhookServer = crwebhook.NewServer(crwebhook.Options{
-		Port: webhookPort,
+		Port:    webhookPort,
+		CertDir: webhookCertDir,
 	})
 
 	mgr, err := ctrl.NewManager(cfg, opts)
@@ -681,7 +682,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -973,6 +974,7 @@ func setupWebhook(
 	ctx context.Context,
 	mgr manager.Manager,
 	params operator.Parameters,
+	webhookCertDir string,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
@@ -1024,7 +1026,7 @@ func setupWebhook(
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
 	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := os.Stat(keyPath)
