@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 	InitConfigScript = `#!/usr/bin/env bash
 set -eu
 
-init_config_initialized_flag=` + InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
+init_config_initialized_flag=` + lsvolume.InitContainerConfigVolumeMountPath + `/elastic-internal-init-config.ok
 
 if [[ -f "${init_config_initialized_flag}" ]]; then
     echo "Logstash configuration already initialized."
@@ -27,12 +28,12 @@ fi
 
 echo "Setup Logstash configuration"
 
-mount_path=` + InitContainerConfigVolumeMountPath + `
+mount_path=` + lsvolume.InitContainerConfigVolumeMountPath + `
 
 cp -f /usr/share/logstash/config/*.* "$mount_path"
 
-ln -sf ` + InternalConfigVolumeMountPath + `/logstash.yml  $mount_path
-ln -sf ` + InternalPipelineVolumeMountPath + `/pipelines.yml  $mount_path
+ln -sf ` + lsvolume.InternalConfigVolumeMountPath + `/logstash.yml  $mount_path
+ln -sf ` + lsvolume.InternalPipelineVolumeMountPath + `/pipelines.yml  $mount_path
 
 touch "${init_config_initialized_flag}"
 echo "Logstash configuration successfully prepared."
@@ -55,9 +56,9 @@ func initConfigContainer(ls logstashv1alpha1.Logstash) corev1.Container {
 		},
 		Command: []string{"/usr/bin/env", "bash", "-c", InitConfigScript},
 		VolumeMounts: []corev1.VolumeMount{
-			ConfigSharedVolume.InitContainerVolumeMount(),
-			ConfigVolume(ls).VolumeMount(),
-			PipelineVolume(ls).VolumeMount(),
+			lsvolume.ConfigSharedVolume.InitContainerVolumeMount(),
+			lsvolume.ConfigVolume(ls).VolumeMount(),
+			lsvolume.PipelineVolume(ls).VolumeMount(),
 		},
 
 		Resources: corev1.ResourceRequirements{

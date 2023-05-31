@@ -12,4 +12,14 @@ const (
 	LogstashLogsVolumeName = "logstash-logs"
 	LogstashLogsMountPath  = "/usr/share/logstash/logs"
 
-	)
+	ConfigVolumeName = "config"
+	ConfigMountPath  = "/usr/share/logstash/config"
+
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
+	// InternalConfigVolumeName is a volume which contains the generated configuration.
+	InternalConfigVolumeName        = "elastic-internal-logstash-config"
+	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
+	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
+	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
+
+)

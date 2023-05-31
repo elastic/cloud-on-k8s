@@ -18,6 +18,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 )
 
+const (
+	LogstashConfigFileName   = "logstash.yml"
+)
+
 func reconcileConfig(params Params, configHash hash.Hash) error {
 	defer tracing.Span(&params.Context)()
 
