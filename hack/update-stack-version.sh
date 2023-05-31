@@ -34,7 +34,7 @@ for_all_yaml_do() {
 	local function="$1"
 	# Directories containing Yaml files with version references to replace
 	# Note: hack/operatorhub/config.yaml will need to be updated manually
-	local dirs=(config/samples config/recipes config/e2e test/e2e deploy/eck-stack deploy/eck-beats deploy/eck-kibana deploy/eck-elasticsearch deploy/eck-agent deploy/eck-fleet-server)
+	local dirs=(config/samples config/recipes config/e2e test/e2e deploy/eck-stack)
 	LC_CTYPE=C LANG=C find "${dirs[@]}" -type f -iname \*.yaml \
 		| while read -r file; do "$function" "$file"; done
 }
@@ -44,5 +44,3 @@ bump_version test/e2e/test/version.go
 bump_version test/e2e/stack_test.go
 bump_version hack/operatorhub/config.yaml
 bump_version Makefile
-bump_version deploy/eck-elasticsearch/values.yaml
-bump_version deploy/eck-kibana/values.yaml
