@@ -14,13 +14,13 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -87,11 +87,11 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	}
 
 	// add default PVCs if no user defined PVCs exist
-	params.Logstash.Spec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-		params.Logstash.Spec.VolumeClaimTemplates,
-		params.Logstash.Spec.PodTemplate.Spec,
-		volume.DefaultVolumeClaimTemplates...,
-	)
+	//params.Logstash.Spec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+	//	params.Logstash.Spec.VolumeClaimTemplates,
+	//	params.Logstash.Spec.PodTemplate.Spec,
+	//	volume.DefaultVolumeClaimTemplates...,
+	//)
 
 	if err := reconcileConfig(params, configHash); err != nil {
 		return results.WithError(err), params.Status

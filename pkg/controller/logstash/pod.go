@@ -24,14 +24,6 @@ import (
 )
 
 const (
-	ConfigVolumeName = "config"
-	ConfigMountPath  = "/usr/share/logstash/config"
-
-	LogstashConfigVolumeName = "logstash"
-	LogstashConfigFileName   = "logstash.yml"
-
-	PipelineVolumeName = "pipeline"
-	PipelineFileName   = "pipelines.yml"
 
 	// ConfigHashAnnotationName is an annotation used to store the Logstash config hash.
 	ConfigHashAnnotationName = "logstash.k8s.elastic.co/config-hash"
@@ -63,7 +55,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	realVols, realVolMounts := buildVolumesAndMounts(params)
+	realVols, realVolMounts := buildVolumesAndMounts(params.Logstash)
 	esAssociations := getEsAssociations(params)
 	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err

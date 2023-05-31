@@ -11,12 +11,22 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+
 )
 
 const (
-	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
+	ConfigVolumeName = "config"
+	ConfigMountPath  = "/usr/share/logstash/config"
 
+	LogstashConfigVolumeName = "logstash"
+	LogstashConfigFileName   = "logstash.yml"
+
+	PipelineVolumeName = "pipeline"
+	PipelineFileName   = "pipelines.yml"
+
+	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
 	// InternalConfigVolumeName is a volume which contains the generated configuration.
 	InternalConfigVolumeName        = "elastic-internal-logstash-config"
 	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
@@ -52,11 +62,21 @@ func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
 }
 
 
-func buildVolumesAndMounts(params Params)([]corev1.Volume, []corev1.VolumeMount) {
-	persistentVolumes := make([]corev1.Volume, 0, len(params.Logstash.Spec.VolumeClaimTemplates))
+func buildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []corev1.VolumeMount) {
+	persistentVolumes := make([]corev1.Volume, 0, len(ls.Spec.VolumeClaimTemplates))
 
-	// Add default volume here if there aren't any...
-	for _, claimTemplate := range params.Logstash.Spec.VolumeClaimTemplates {
+	// Add logs volume
+	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
+
+	// Add the default `logstash-data' PVC
+	ls.Spec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+		ls.Spec.VolumeClaimTemplates,
+		ls.Spec.PodTemplate.Spec,
+		lsvolume.DefaultVolumeClaimTemplates...,
+	)
+
+	// Add volume claims user-defined + `logstash-data`
+	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
 		persistentVolumes = append(persistentVolumes, corev1.Volume{
 			Name: claimTemplate.Name,
 			VolumeSource: corev1.VolumeSource{
@@ -68,9 +88,12 @@ func buildVolumesAndMounts(params Params)([]corev1.Volume, []corev1.VolumeMount)
 		})
 	}
 	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
-	volumeMounts := make([]corev1.VolumeMount, 0)
-	volumeMounts = lsvolume.AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, params.Logstash.Spec.PodTemplate.Spec.Volumes...))
 
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	// Add volume mount for data volume to the total list of volumes
+	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
+	volumeMounts = lsvolume.AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
+	volumeMounts = append(volumeMounts, lsvolume.DefaultLogsVolumeMount)
 	return persistentVolumes, volumeMounts
 }
 
