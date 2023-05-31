@@ -494,8 +494,9 @@ func (h *helper) runTestsLocally() error {
 	log.Info("Running local test script", "timeout", h.testTimeout.String())
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
 
-	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
+	cmd := exec.Command("test/e2e/run.sh", "-run", h.testRegex, "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("CLUSTER_NAME=%s", h.clusterName))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("E2E_TAGS=%s", h.e2eTags))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("E2E_JSON=%t", h.logToFile))
 

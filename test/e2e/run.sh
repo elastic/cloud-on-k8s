@@ -34,4 +34,4 @@ main() {
   fi
 }
 
-main "$@"
+main "$@" | tee "e2e-tests-${CLUSTER_NAME}.json"
