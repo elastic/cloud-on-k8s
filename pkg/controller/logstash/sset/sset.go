@@ -30,8 +30,6 @@ type Params struct {
 	RevisionHistoryLimit *int32
 }
 
-type StatefulSetList []appsv1.StatefulSet
-
 func New(params Params) appsv1.StatefulSet {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

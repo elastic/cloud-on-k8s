@@ -21,5 +21,4 @@ const (
 	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
 	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
 	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
-
 )

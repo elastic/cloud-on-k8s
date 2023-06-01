@@ -6,17 +6,47 @@ package volume
 
 import (
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
-func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []corev1.VolumeMount) {
+// AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
+//
+// The default PVCs are not appended if:
+// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
+func AppendDefaultPVCs(existing []corev1.PersistentVolumeClaim, ls logstashv1alpha1.Logstash) []corev1.PersistentVolumeClaim {
+	// create a set of volume names that are not PVC-volumes
+	existingVolumes := set.Make()
+
+	for _, existingPVC := range existing {
+		existingVolumes.Add(existingPVC.Name)
+	}
+
+	for _, volume := range ls.Spec.PodTemplate.Spec.Volumes {
+		existingVolumes.Add(volume.Name)
+	}
+
+	for _, defaultPVC := range DefaultVolumeClaimTemplates {
+		if existingVolumes.Has(defaultPVC.Name) {
+			continue
+		}
+		existing = append(existing, defaultPVC)
+	}
+	return existing
+}
+
+func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount) {
 	persistentVolumes := make([]corev1.Volume, 0)
 
-	// Create volumes from VolumeClaimTemplates.
+	// Add Default logs volume to list of persistent volumes
+	persistentVolumes = append(persistentVolumes, DefaultLogsVolume)
+
+	// Create volumes from any VolumeClaimTemplates.
 	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
 		persistentVolumes = append(persistentVolumes, corev1.Volume{
 			Name: claimTemplate.Name,
@@ -31,13 +61,9 @@ func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []core
 
 	volumeMounts := make([]corev1.VolumeMount, 0)
 
-	// Add the volume mount for the default data volume
+	// Add volume mounts for data and log volumes
 	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
 	volumeMounts = AppendDefaultLogVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
-
-	// Add logs volume and mount
-	//persistentVolumes = append(persistentVolumes, DefaultLogsVolume)
-	//volumeMounts = append(volumeMounts, DefaultLogsVolumeMount)
 
 	return persistentVolumes, volumeMounts
 }
@@ -66,7 +92,6 @@ func CertificatesDir(association commonv1.Association) string {
 	)
 }
 
-
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
 	var vols []volume.VolumeLike //nolint:prealloc
 	for i, assoc := range associations {
@@ -87,4 +112,3 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 	}
 	return vols, nil
 }
-

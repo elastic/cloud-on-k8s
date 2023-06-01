@@ -21,7 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
-	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
 const (
@@ -51,12 +51,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	vols, err := lsvolume.BuildVolumeLikes(params.Logstash)
+	vols, err := volume.BuildVolumeLikes(params.Logstash)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	realVols, realVolMounts := lsvolume.BuildVolumesAndMounts(params.Logstash)
+	realVols, realVolMounts := volume.BuildVolumesAndMounts(params.Logstash)
 	esAssociations := getEsAssociations(params)
 	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err

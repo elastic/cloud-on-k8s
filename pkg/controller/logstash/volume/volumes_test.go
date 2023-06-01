@@ -11,6 +11,11 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_getVolumesFromAssociations(t *testing.T) {
@@ -82,4 +87,163 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			require.Equal(t, tt.wantAssociationsLength, len(associations))
 		})
 	}
+}
+
+func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
+	hostPathType := corev1.HostPathDirectoryOrCreate
+
+	tt := []struct {
+		name     string
+		logstash logstashv1alpha1.Logstash
+		want     []corev1.ContainerPort
+	}{
+		{
+			name: "with default data PVC",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+				},
+			},
+		},
+		{
+			name: "with user provided data PVC",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "logstash-data",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									corev1.ReadWriteOnce,
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("42Ti"),
+									},
+								},
+							},
+						},
+					}},
+				},
+			},
+		{
+			name: "with user provided other PVC",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "pq",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									corev1.ReadWriteOnce,
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("42Ti"),
+									},
+								},
+							},
+						},
+					}},
+			},
+		},
+		{
+			name: "with user provided other PVC and logstash-data",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "pq",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									corev1.ReadWriteOnce,
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("42Ti"),
+									},
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "logstash-data",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									corev1.ReadWriteOnce,
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("42Ti"),
+									},
+								},
+							},
+						},
+					}},
+			},
+		},
+		{
+			name: "with user provided data empty volume",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Volumes: []corev1.Volume{{
+								Name: "logstash-data",
+								VolumeSource: corev1.VolumeSource{
+									EmptyDir: &corev1.EmptyDirVolumeSource{},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with user provided data hostpath volume",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Volumes: []corev1.Volume{{
+								Name: "logstash-data",
+								VolumeSource: corev1.VolumeSource{
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/mnt/data",
+										Type: &hostPathType,
+									},
+								},
+							}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.logstash.Spec.VolumeClaimTemplates = AppendDefaultPVCs(tc.logstash.Spec.VolumeClaimTemplates,
+															          tc.logstash)
+			_, volumeMounts := BuildVolumesAndMounts(tc.logstash)
+			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
+			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))
+		})
+	}
+}
+
+func contains(volumeMounts []corev1.VolumeMount, volumeMountName, volumeMountPath string) bool {
+	for _, vm := range volumeMounts {
+		if vm.Name == volumeMountName && vm.MountPath == volumeMountPath {
+			return true
+		}
+	}
+	return false
 }
