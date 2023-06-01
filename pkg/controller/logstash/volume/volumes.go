@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package logstash
+package volume
 
 import (
 	"fmt"
@@ -10,13 +10,10 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
-	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
-	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
-
 )
 
-func buildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []corev1.VolumeMount) {
+func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []corev1.VolumeMount) {
 	persistentVolumes := make([]corev1.Volume, 0)
 
 	// Create volumes from VolumeClaimTemplates.
@@ -35,20 +32,21 @@ func buildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []core
 	volumeMounts := make([]corev1.VolumeMount, 0)
 
 	// Add the volume mount for the default data volume
-	volumeMounts = lsvolume.AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
+	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
+	volumeMounts = AppendDefaultLogVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
 
 	// Add logs volume and mount
-	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
-	volumeMounts = append(volumeMounts, lsvolume.DefaultLogsVolumeMount)
+	//persistentVolumes = append(persistentVolumes, DefaultLogsVolume)
+	//volumeMounts = append(volumeMounts, DefaultLogsVolumeMount)
 
 	return persistentVolumes, volumeMounts
 }
 
-func buildVolumeLikes(params Params) ([]volume.VolumeLike, error) {
-	vols := []volume.VolumeLike{lsvolume.ConfigSharedVolume, lsvolume.ConfigVolume(params.Logstash), lsvolume.PipelineVolume(params.Logstash)}
+func BuildVolumeLikes(ls logstashv1alpha1.Logstash) ([]volume.VolumeLike, error) {
+	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(ls), PipelineVolume(ls)}
 
 	// all volumes with CAs of direct associations
-	caAssocVols, err := getVolumesFromAssociations(params.Logstash.GetAssociations())
+	caAssocVols, err := getVolumesFromAssociations(ls.GetAssociations())
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +55,17 @@ func buildVolumeLikes(params Params) ([]volume.VolumeLike, error) {
 
 	return vols, nil
 }
+
+func CertificatesDir(association commonv1.Association) string {
+	ref := association.AssociationRef()
+	return fmt.Sprintf(
+		"/mnt/elastic-internal/%s-association/%s/%s/certs",
+		association.AssociationType(),
+		ref.Namespace,
+		ref.NameOrSecretName(),
+	)
+}
+
 
 func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
 	var vols []volume.VolumeLike //nolint:prealloc
@@ -73,18 +82,9 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 		vols = append(vols, volume.NewSecretVolumeWithMountPath(
 			caSecretName,
 			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
-			certificatesDir(assoc),
+			CertificatesDir(assoc),
 		))
 	}
 	return vols, nil
 }
 
-func certificatesDir(association commonv1.Association) string {
-	ref := association.AssociationRef()
-	return fmt.Sprintf(
-		"/mnt/elastic-internal/%s-association/%s/%s/certs",
-		association.AssociationType(),
-		ref.Namespace,
-		ref.NameOrSecretName(),
-	)
-}

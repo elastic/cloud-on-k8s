@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
+
 )
 
 var (
@@ -87,4 +89,42 @@ func AppendDefaultDataVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.
 		}
 	}
 	return mounts
+}
+
+// AppendDefaultLogVolumeMount appends a volume mount for the default log volume if the slice of volumes contains the default log volume.
+func AppendDefaultLogVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.Volume) []corev1.VolumeMount {
+	for _, v := range volumes {
+		if v.Name == LogstashLogsVolumeName {
+			return append(mounts, DefaultLogsVolumeMount)
+		}
+	}
+	return mounts
+}
+
+// AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
+//
+// The default PVCs are not appended if:
+// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
+func AppendDefaultPVCs(
+	existing []corev1.PersistentVolumeClaim,
+	podSpec corev1.PodSpec,
+	defaults ...corev1.PersistentVolumeClaim,
+) []corev1.PersistentVolumeClaim {
+	// create a set of volume names that are not PVC-volumes
+	nonPVCvolumes := set.Make()
+
+	for _, volume := range podSpec.Volumes {
+		if volume.PersistentVolumeClaim == nil {
+			// this volume is not a PVC
+			nonPVCvolumes.Add(volume.Name)
+		}
+	}
+
+	for _, defaultPVC := range defaults {
+		if nonPVCvolumes.Has(defaultPVC.Name) {
+			continue
+		}
+		existing = append(existing, defaultPVC)
+	}
+	return existing
 }

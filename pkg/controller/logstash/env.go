@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
 func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
@@ -52,7 +53,7 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 		})
 
 		if assocConf.GetCACertProvided() {
-			caPath := filepath.Join(certificatesDir(assoc), certificates.CAFileName)
+			caPath := filepath.Join(lsvolume.CertificatesDir(assoc), certificates.CAFileName)
 			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE_AUTHORITY", caPath))
 		}
 	}

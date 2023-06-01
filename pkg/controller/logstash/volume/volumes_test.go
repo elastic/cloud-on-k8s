@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package logstash
+package volume
 
 import (
 	"testing"
@@ -17,24 +17,22 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 	// Note: we use setAssocConfs to set the AssociationConfs which are normally set in the reconciliation loop.
 	for _, tt := range []struct {
 		name                   string
-		params                 Params
+		logstash               logstashv1alpha1.Logstash
 		setAssocConfs          func(assocs []commonv1.Association)
 		wantAssociationsLength int
 	}{
 		{
 			name: "es refs",
-			params: Params{
-				Logstash: logstashv1alpha1.Logstash{
-					Spec: logstashv1alpha1.LogstashSpec{
-						ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
-							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
-								ClusterName:    "production",
-							},
-							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"},
-								ClusterName:    "production2",
-							},
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+						{
+							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+							ClusterName:    "production",
+						},
+						{
+							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"},
+							ClusterName:    "production2",
 						},
 					},
 				},
@@ -51,18 +49,16 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 		},
 		{
 			name: "one es ref with ca, another no ca",
-			params: Params{
-				Logstash: logstashv1alpha1.Logstash{
-					Spec: logstashv1alpha1.LogstashSpec{
-						ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
-							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "uat"},
-								ClusterName:    "uat",
-							},
-							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "production"},
-								ClusterName:    "production",
-							},
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+						{
+							ObjectSelector: commonv1.ObjectSelector{Name: "uat"},
+							ClusterName:    "uat",
+						},
+						{
+							ObjectSelector: commonv1.ObjectSelector{Name: "production"},
+							ClusterName:    "production",
 						},
 					},
 				},
@@ -79,7 +75,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			assocs := tt.params.Logstash.GetAssociations()
+			assocs := tt.logstash.GetAssociations()
 			tt.setAssocConfs(assocs)
 			associations, err := getVolumesFromAssociations(assocs)
 			require.NoError(t, err)
