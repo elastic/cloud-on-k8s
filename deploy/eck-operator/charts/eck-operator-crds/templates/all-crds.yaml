@@ -10023,7 +10023,7 @@ spec:
                                 of compute resources required. If Requests is omitted
                                 for a container, it defaults to Limits if that is
                                 explicitly specified, otherwise to an implementation-defined
-                                value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                               type: object
                           type: object
                         selector:
@@ -10132,7 +10132,7 @@ spec:
                             volume claim. If underlying persistent volume is being
                             resized then the Condition will be set to 'ResizeStarted'.
                           items:
-                            description: PersistentVolumeClaimCondition contails details
+                            description: PersistentVolumeClaimCondition contains details
                               about state of pvc
                             properties:
                               lastProbeTime:
