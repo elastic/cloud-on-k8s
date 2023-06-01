@@ -53,7 +53,7 @@ Agent is the Schema for the Agents API.
 | Field | Description
 | *`apiVersion`* __string__ | `agent.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `Agent`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-agent-v1alpha1-agentspec[$$AgentSpec$$]__ | 
 |===
@@ -116,8 +116,8 @@ AgentSpec defines the desired state of the Agent
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
-| *`updateStrategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`updateStrategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
 |===
 
 
@@ -134,9 +134,9 @@ AgentSpec defines the desired state of the Agent
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
 | *`replicas`* __integer__ | 
-| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
+| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
 |===
 
 
@@ -181,7 +181,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `apm.k8s.elastic.co/v1`
 | *`kind`* __string__ | `ApmServer`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]__ | 
 |===
@@ -207,7 +207,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the APM Server resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 | *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster. It allows APM agent central configuration management in Kibana.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
@@ -237,7 +237,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `apm.k8s.elastic.co/v1beta1`
 | *`kind`* __string__ | `ApmServer`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]__ | 
 |===
@@ -262,7 +262,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the APM Server resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 |===
 
@@ -290,7 +290,7 @@ ElasticsearchAutoscaler represents an ElasticsearchAutoscaler resource in a Kube
 | Field | Description
 | *`apiVersion`* __string__ | `autoscaling.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `ElasticsearchAutoscaler`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchautoscalerspec[$$ElasticsearchAutoscalerSpec$$]__ | 
 |===
@@ -310,7 +310,7 @@ ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscal
 |===
 | Field | Description
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-autoscaling-v1alpha1-elasticsearchref[$$ElasticsearchRef$$]__ | 
-| *`pollingPeriod`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#duration-v1-meta[$$Duration$$]__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API.
+| *`pollingPeriod`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#duration-v1-meta[$$Duration$$]__ | PollingPeriod is the period at which to synchronize with the Elasticsearch autoscaling API.
 |===
 
 
@@ -354,7 +354,7 @@ Beat is the Schema for the Beats API.
 | Field | Description
 | *`apiVersion`* __string__ | `beat.k8s.elastic.co/v1beta1`
 | *`kind`* __string__ | `Beat`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]__ | 
 |===
@@ -402,8 +402,8 @@ BeatSpec defines the desired state of a Beat.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
-| *`updateStrategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`updateStrategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#daemonsetupdatestrategy-v1-apps[$$DaemonSetUpdateStrategy$$]__ | 
 |===
 
 
@@ -420,9 +420,9 @@ BeatSpec defines the desired state of a Beat.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
 | *`replicas`* __integer__ | 
-| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
+| *`strategy`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#deploymentstrategy-v1-apps[$$DeploymentStrategy$$]__ | 
 |===
 
 
@@ -661,9 +661,9 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#poddisruptionbudgetspec-v1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#poddisruptionbudgetspec-v1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
 |===
 
 
@@ -745,9 +745,9 @@ ServiceTemplate defines the template for a Kubernetes Service.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
 |===
 
 
@@ -812,8 +812,8 @@ Condition represents Elasticsearch resource's condition. **This API is in techni
 |===
 | Field | Description
 | *`type`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1alpha1-conditiontype[$$ConditionType$$]__ | 
-| *`status`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#conditionstatus-v1-core[$$ConditionStatus$$]__ | 
-| *`lastTransitionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`status`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#conditionstatus-v1-core[$$ConditionStatus$$]__ | 
+| *`lastTransitionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#time-v1-meta[$$Time$$]__ | 
 | *`message`* __string__ | 
 |===
 
@@ -944,9 +944,9 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#poddisruptionbudgetspec-v1beta1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#poddisruptionbudgetspec-v1beta1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
 |===
 
 
@@ -1018,9 +1018,9 @@ ServiceTemplate defines the template for a Kubernetes Service.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
 |===
 
 
@@ -1125,7 +1125,7 @@ DownscaleOperation provides details about in progress downscale operations. **Th
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#time-v1-meta[$$Time$$]__ | 
 | *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-downscalednode[$$DownscaledNode$$] array__ | Nodes which are scheduled to be removed from the cluster.
 | *`stalled`* __boolean__ | Stalled represents a state where no progress can be made. It is only available for clusters managed with the Elasticsearch shutdown API.
 |===
@@ -1162,7 +1162,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `elasticsearch.k8s.elastic.co/v1`
 | *`kind`* __string__ | `Elasticsearch`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
 | *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
@@ -1332,8 +1332,8 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Elasticsearch configuration.
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy. If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
-| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name.
 |===
 
 
@@ -1442,7 +1442,7 @@ UpgradeOperation provides an overview of the pending or in progress changes appl
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#time-v1-meta[$$Time$$]__ | 
 | *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-upgradednode[$$UpgradedNode$$] array__ | Nodes that must be restarted for upgrade.
 |===
 
@@ -1480,7 +1480,7 @@ UpscaleOperation provides an overview of in progress changes applied by the oper
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#time-v1-meta[$$Time$$]__ | 
+| *`lastUpdatedTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#time-v1-meta[$$Time$$]__ | 
 | *`nodes`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-newnode[$$NewNode$$] array__ | Nodes expected to be added by the operator.
 |===
 
@@ -1540,7 +1540,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `elasticsearch.k8s.elastic.co/v1beta1`
 | *`kind`* __string__ | `Elasticsearch`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
 | *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1beta1-elasticsearchstatus[$$ElasticsearchStatus$$]__ | 
@@ -1606,8 +1606,8 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the Elasticsearch configuration.
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
-| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name.
 |===
 
 
@@ -1653,7 +1653,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | Field | Description
 | *`apiVersion`* __string__ | `enterprisesearch.k8s.elastic.co/v1`
 | *`kind`* __string__ | `EnterpriseSearch`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]__ | 
 |===
@@ -1679,7 +1679,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration. Configuration settings are merged and have precedence over settings specified in `config`.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
@@ -1708,7 +1708,7 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | Field | Description
 | *`apiVersion`* __string__ | `enterprisesearch.k8s.elastic.co/v1beta1`
 | *`kind`* __string__ | `EnterpriseSearch`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]__ | 
 |===
@@ -1734,7 +1734,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration. Configuration settings are merged and have precedence over settings specified in `config`.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
@@ -1762,7 +1762,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `kibana.k8s.elastic.co/v1`
 | *`kind`* __string__ | `Kibana`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]__ | 
 |===
@@ -1788,7 +1788,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`enterpriseSearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster. Kibana provides the default Enterprise Search UI starting version 7.14.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
@@ -1819,7 +1819,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | Field | Description
 | *`apiVersion`* __string__ | `kibana.k8s.elastic.co/v1beta1`
 | *`kind`* __string__ | `Kibana`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]__ | 
 |===
@@ -1844,7 +1844,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 |===
 
@@ -1890,7 +1890,7 @@ Logstash is the Schema for the logstashes API
 | Field | Description
 | *`apiVersion`* __string__ | `logstash.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `Logstash`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashspec[$$LogstashSpec$$]__ | 
 | *`status`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashstatus[$$LogstashStatus$$]__ | 
@@ -1939,7 +1939,7 @@ LogstashSpec defines the desired state of Logstash
 | *`pipelinesRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines. Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`] can be specified.
 | *`services`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashservice[$$LogstashService$$] array__ | Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to be opened up for other services: Beats, TCP, UDP, etc, inputs.
 | *`monitoring`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-monitoring[$$Monitoring$$]__ | Monitoring enables you to collect and ship log and monitoring data of this Logstash. Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different Elasticsearch monitoring clusters running in the same Kubernetes cluster.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options for the Logstash pods.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options for the Logstash pods.
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash. Secrets data can be then referenced in the Logstash config using the Secret's keys or as specified in `Entries` field of each SecureSetting.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
@@ -1993,7 +1993,7 @@ ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes clus
 | Field | Description
 | *`apiVersion`* __string__ | `maps.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `ElasticMapsServer`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]__ | 
 |===
@@ -2011,7 +2011,7 @@ ElasticMapsServerList contains a list of ElasticMapsServer
 | Field | Description
 | *`apiVersion`* __string__ | `maps.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `ElasticMapsServerList`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#listmeta-v1-meta[$$ListMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#listmeta-v1-meta[$$ListMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`items`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-elasticmapsserver[$$ElasticMapsServer$$] array__ | 
 |===
@@ -2037,7 +2037,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration
 | *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-configsource[$$ConfigSource$$]__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration. Configuration settings are merged and have precedence over settings specified in `config`.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Elastic Maps Server.
-| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
@@ -2109,7 +2109,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | Field | Description
 | *`apiVersion`* __string__ | `stackconfigpolicy.k8s.elastic.co/v1alpha1`
 | *`kind`* __string__ | `StackConfigPolicy`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]__ | 
 |===
@@ -2128,7 +2128,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#labelselector-v1-meta[$$LabelSelector$$]__ | 
+| *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta[$$LabelSelector$$]__ | 
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | 
 | *`elasticsearch`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]__ | 
 |===
