@@ -14,7 +14,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -519,7 +518,7 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 }
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
-func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...runtime.Object) Reconciler {
+func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),

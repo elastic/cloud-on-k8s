@@ -393,6 +393,6 @@ func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
 	return f.autoscalingPolicies, nil
 }
-func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, maxLazyMLNodes int32, maxMemory string) error {
+func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
 	return nil
 }

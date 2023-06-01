@@ -26,7 +26,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	}
 
 	// The deprecated/legacy controller watches for changes on Elasticsearch clusters.
-	if err := legacyController.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := legacyController.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -36,8 +36,8 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	if err := controller.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchAutoscaler{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := controller.Watch(source.Kind(mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
-	return controller.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, reconciler.Watches.ReferencedResources)
+	return controller.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), reconciler.Watches.ReferencedResources)
 }

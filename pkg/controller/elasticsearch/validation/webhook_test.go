@@ -29,7 +29,7 @@ func asJSON(obj interface{}) []byte {
 }
 
 func Test_validatingWebhook_Handle(t *testing.T) {
-	decoder, _ := admission.NewDecoder(k8s.Scheme())
+	decoder := admission.NewDecoder(k8s.Scheme())
 	type fields struct {
 		client               k8s.Client
 		validateStorageClass bool

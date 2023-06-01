@@ -179,7 +179,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 }
 
 // VersionDefaults generates any version specific settings that should exist by default.
-func VersionDefaults(kb *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
+func VersionDefaults(_ *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
 	if v.GTE(version.From(7, 6, 0)) {
 		// setting exists only as of 7.6.0
 		return settings.MustCanonicalConfig(map[string]interface{}{XpackLicenseManagementUIEnabled: false})

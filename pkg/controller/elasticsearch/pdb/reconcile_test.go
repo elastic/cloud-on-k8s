@@ -14,12 +14,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -52,7 +52,7 @@ func TestReconcile(t *testing.T) {
 	}
 	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
 	type args struct {
-		initObjs     []runtime.Object
+		initObjs     []client.Object
 		es           esv1.Elasticsearch
 		statefulSets sset.StatefulSetList
 	}
@@ -72,7 +72,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				initObjs:     []runtime.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
+				initObjs:     []client.Object{withHashLabel(withOwnerRef(defaultPDB(), defaultEs))},
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -81,7 +81,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				initObjs:     []runtime.Object{defaultPDB()},
+				initObjs:     []client.Object{defaultPDB()},
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
 			},
@@ -105,7 +105,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb disabled in the ES spec: should delete the existing one",
 			args: args{
-				initObjs: []runtime.Object{defaultPDB()},
+				initObjs: []client.Object{defaultPDB()},
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}},
@@ -127,7 +127,10 @@ func TestReconcile(t *testing.T) {
 					Version: "v1",
 					Kind:    "PodDisruptionBudget",
 				}, meta.RESTScopeNamespace)
-			k8sClient := fake.NewClientBuilder().WithScheme(clientgoscheme.Scheme).WithRESTMapper(restMapper).WithRuntimeObjects(tt.args.initObjs...).Build()
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(clientgoscheme.Scheme).
+				WithRESTMapper(restMapper).
+				WithObjects(tt.args.initObjs...).Build()
 
 			err := Reconcile(context.Background(), k8sClient, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)

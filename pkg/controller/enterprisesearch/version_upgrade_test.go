@@ -15,8 +15,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
@@ -102,7 +102,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 	tests := []struct {
 		name           string
 		ent            entv1.EnterpriseSearch
-		runtimeObjs    []runtime.Object
+		runtimeObjs    []client.Object
 		httpChecks     roundTripChecks
 		wantUpdatedEnt entv1.EnterpriseSearch
 		wantErr        string
@@ -110,7 +110,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		{
 			name: "no version upgrade: nothing to do",
 			ent:  entWithVersion("7.7.0", nil),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.0"),
 			},
 			httpChecks: roundTripChecks{
@@ -121,7 +121,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		{
 			name: "version upgrade requested: enable read-only mode",
 			ent:  entWithVersion("7.7.1", nil),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
@@ -139,7 +139,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		{
 			name: "version upgrade requested, but no Pod running: error out",
 			ent:  entWithVersion("7.7.1", nil),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.0"),
 			},
 			wantErr: "a version upgrade is scheduled, but no Pod in the prior version is running:" +
@@ -150,7 +150,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			ent: entWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
@@ -167,7 +167,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			ent: entWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.1"),
 				podWithVersion("pod1", "7.7.1"),
 				podWithVersion("pod2", "7.7.1"),
@@ -184,7 +184,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			name: "version upgrade requested, but no association configured : do nothing",
 			ent: entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
 				Spec: entv1.EnterpriseSearchSpec{Version: "7.7.1"}},
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
@@ -259,19 +259,19 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 	tests := []struct {
 		name string
 		ent  entv1.EnterpriseSearch
-		pods []runtime.Object
+		pods []client.Object
 		want bool
 	}{
 		{
 			name: "no Pods exist: not a version upgrade",
 			ent:  entWithVersion("7.7.1", nil),
-			pods: []runtime.Object{},
+			pods: []client.Object{},
 			want: false,
 		},
 		{
 			name: "all Pods match the expected version: not a version upgrade",
 			ent:  entWithVersion("7.7.0", nil),
-			pods: []runtime.Object{
+			pods: []client.Object{
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
 			},
@@ -280,7 +280,7 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 		{
 			name: "at least one Pod has an earlier version: version upgrade",
 			ent:  entWithVersion("7.7.1", nil),
-			pods: []runtime.Object{
+			pods: []client.Object{
 				podWithVersion("pod1", "7.7.1"),
 				podWithVersion("pod2", "7.7.0"),
 			},
@@ -348,21 +348,21 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		runtimeObjs     []runtime.Object
+		runtimeObjs     []client.Object
 		ent             entv1.EnterpriseSearch
 		expectedVersion version.Version
 		want            bool
 	}{
 		{
 			name:            "7.7.0 to 7.7.0: not a version upgrade",
-			runtimeObjs:     []runtime.Object{deploymentv77},
+			runtimeObjs:     []client.Object{deploymentv77},
 			ent:             entv77,
 			expectedVersion: version.MustParse(entv77.Spec.Version),
 			want:            false,
 		},
 		{
 			name:            "7.7.0 to 7.8.0: version upgrade",
-			runtimeObjs:     []runtime.Object{deploymentv77},
+			runtimeObjs:     []client.Object{deploymentv77},
 			ent:             entv78,
 			expectedVersion: version.MustParse(entv78.Spec.Version),
 			want:            true,

@@ -4396,8 +4396,8 @@ spec:
                                       of compute resources required. If Requests is
                                       omitted for a container, it defaults to Limits
                                       if that is explicitly specified, otherwise to
-                                      an implementation-defined value. More info:
-                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                      an implementation-defined value. Requests cannot
+                                      exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                 type: object
                               selector:
@@ -4513,7 +4513,7 @@ spec:
                                   volume is being resized then the Condition will
                                   be set to 'ResizeStarted'.
                                 items:
-                                  description: PersistentVolumeClaimCondition contails
+                                  description: PersistentVolumeClaimCondition contains
                                     details about state of pvc
                                   properties:
                                     lastProbeTime:
@@ -4690,9 +4690,9 @@ spec:
                           the PDB for eviction. \n Additional policies may be added
                           in the future. Clients making eviction decisions should
                           disallow eviction of unhealthy pods if they encounter an
-                          unrecognized policy in this field. \n This field is alpha-level.
+                          unrecognized policy in this field. \n This field is beta-level.
                           The eviction API uses this field when the feature gate PDBUnhealthyPodEvictionPolicy
-                          is enabled (disabled by default)."
+                          is enabled (enabled by default)."
                         type: string
                     type: object
                 type: object
@@ -6145,8 +6145,8 @@ spec:
                                       of compute resources required. If Requests is
                                       omitted for a container, it defaults to Limits
                                       if that is explicitly specified, otherwise to
-                                      an implementation-defined value. More info:
-                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                      an implementation-defined value. Requests cannot
+                                      exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                                     type: object
                                 type: object
                               selector:
@@ -6262,7 +6262,7 @@ spec:
                                   volume is being resized then the Condition will
                                   be set to 'ResizeStarted'.
                                 items:
-                                  description: PersistentVolumeClaimCondition contails
+                                  description: PersistentVolumeClaimCondition contains
                                     details about state of pvc
                                   properties:
                                     lastProbeTime:
@@ -6441,9 +6441,9 @@ spec:
                           the PDB for eviction. \n Additional policies may be added
                           in the future. Clients making eviction decisions should
                           disallow eviction of unhealthy pods if they encounter an
-                          unrecognized policy in this field. \n This field is alpha-level.
+                          unrecognized policy in this field. \n This field is beta-level.
                           The eviction API uses this field when the feature gate PDBUnhealthyPodEvictionPolicy
-                          is enabled (disabled by default)."
+                          is enabled (enabled by default)."
                         type: string
                     type: object
                 type: object

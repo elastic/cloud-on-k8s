@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -128,7 +128,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 
 	namespacedSecretName := PublicCertsSecretRef(esv1.ESNamer, k8s.ExtractNamespacedName(owner))
 
-	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
+	mkClient := func(t *testing.T, objs ...client.Object) k8s.Client {
 		t.Helper()
 		return k8s.NewFakeClient(objs...)
 	}
@@ -159,7 +159,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		client     func(*testing.T, ...runtime.Object) k8s.Client
+		client     func(*testing.T, ...client.Object) k8s.Client
 		wantSecret func(*testing.T) *corev1.Secret
 		wantErr    bool
 	}{
@@ -170,7 +170,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		},
 		{
 			name: "is updated on mismatch",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data[CertFileName] = []byte{0, 1, 2, 3}
@@ -180,7 +180,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		},
 		{
 			name: "removes extraneous keys",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data["extra"] = []byte{0, 1, 2, 3}
@@ -190,7 +190,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		},
 		{
 			name: "preserves labels and annotations",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				s.Labels["label1"] = "labelValue1"
@@ -268,7 +268,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		custCerts                   *CertificatesSecret
 		disableInternalCADefaulting bool
 		services                    []corev1.Service
-		initialObjects              []runtime.Object
+		initialObjects              []client.Object
 	}
 	tests := []struct {
 		name    string
@@ -279,7 +279,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		{
 			name: "should update CA in es-http-certs-public",
 			args: args{
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					// es-http-ca-internal uses a new CA
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{

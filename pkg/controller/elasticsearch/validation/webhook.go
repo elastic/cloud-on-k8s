@@ -53,8 +53,6 @@ type validatingWebhook struct {
 	managedNamespaces    set.StringSet
 }
 
-var _ admission.DecoderInjector = &validatingWebhook{}
-
 // InjectDecoder injects the decoder automatically.
 func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
 	wh.decoder = d

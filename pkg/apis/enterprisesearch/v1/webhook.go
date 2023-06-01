@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -45,25 +46,25 @@ var _ webhook.Validator = &EnterpriseSearch{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateCreate() error {
+func (ent *EnterpriseSearch) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", ent.Name)
 	return ent.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateDelete() error {
+func (ent *EnterpriseSearch) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", ent.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
+func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", ent.Name)
 	oldObj, ok := old.(*EnterpriseSearch)
 	if !ok {
-		return errors.New("cannot cast old object to EnterpriseSearch type")
+		return nil, errors.New("cannot cast old object to EnterpriseSearch type")
 	}
 
 	return ent.validate(oldObj)
@@ -74,7 +75,7 @@ func (ent *EnterpriseSearch) WebhookPath() string {
 	return webhookPath
 }
 
-func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) error {
+func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings, error) {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -84,7 +85,7 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) error {
 		}
 
 		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, ent.Name, errors)
+			return nil, apierrors.NewInvalid(groupKind, ent.Name, errors)
 		}
 	}
 
@@ -95,9 +96,9 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) error {
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, ent.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, ent.Name, errors)
 	}
-	return nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(ent *EnterpriseSearch) field.ErrorList {
