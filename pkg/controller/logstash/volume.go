@@ -11,68 +11,15 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	lsvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 
 )
 
-//const (
-//	ConfigVolumeName = "config"
-//	ConfigMountPath  = "/usr/share/logstash/config"
-//
-//	LogstashConfigFileName   = "logstash.yml"
-//	PipelineFileName   = "pipelines.yml"
-//
-//	InitContainerConfigVolumeMountPath = "/mnt/elastic-internal/logstash-config-local"
-//	// InternalConfigVolumeName is a volume which contains the generated configuration.
-//	InternalConfigVolumeName        = "elastic-internal-logstash-config"
-//	InternalConfigVolumeMountPath   = "/mnt/elastic-internal/logstash-config"
-//	InternalPipelineVolumeName      = "elastic-internal-logstash-pipeline"
-//	InternalPipelineVolumeMountPath = "/mnt/elastic-internal/logstash-pipeline"
-//)
-//
-//var (
-//	// ConfigSharedVolume contains the Logstash config/ directory, it contains the contents of config from the docker container
-//	ConfigSharedVolume = volume.SharedVolume{
-//		VolumeName:             ConfigVolumeName,
-//		InitContainerMountPath: InitContainerConfigVolumeMountPath,
-//		ContainerMountPath:     ConfigMountPath,
-//	}
-//)
-//
-//// ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
-//func ConfigVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
-//	return volume.NewSecretVolumeWithMountPath(
-//		logstashv1alpha1.ConfigSecretName(ls.Name),
-//		InternalConfigVolumeName,
-//		InternalConfigVolumeMountPath,
-//	)
-//}
-//
-//// PipelineVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
-//func PipelineVolume(ls logstashv1alpha1.Logstash) volume.SecretVolume {
-//	return volume.NewSecretVolumeWithMountPath(
-//		logstashv1alpha1.PipelineSecretName(ls.Name),
-//		InternalPipelineVolumeName,
-//		InternalPipelineVolumeMountPath,
-//	)
-//}
-//
-
 func buildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []corev1.VolumeMount) {
-	persistentVolumes := make([]corev1.Volume, 0, len(ls.Spec.VolumeClaimTemplates))
+	persistentVolumes := make([]corev1.Volume, 0)
 
-	// Add logs volume
-	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
-
-	// Add the default `logstash-data' PVC
-	ls.Spec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-		ls.Spec.VolumeClaimTemplates,
-		ls.Spec.PodTemplate.Spec,
-		lsvolume.DefaultVolumeClaimTemplates...,
-	)
-
-	// Add volume claims user-defined + `logstash-data`
+	// Create volumes from VolumeClaimTemplates.
 	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
 		persistentVolumes = append(persistentVolumes, corev1.Volume{
 			Name: claimTemplate.Name,
@@ -84,17 +31,20 @@ func buildVolumesAndMounts(ls logstashv1alpha1.Logstash)([]corev1.Volume, []core
 			},
 		})
 	}
-	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
 
 	volumeMounts := make([]corev1.VolumeMount, 0)
-	// Add volume mount for data volume to the total list of volumes
-	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
+
+	// Add the volume mount for the default data volume
 	volumeMounts = lsvolume.AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
+
+	// Add logs volume and mount
+	persistentVolumes = append(persistentVolumes, lsvolume.DefaultLogsVolume)
 	volumeMounts = append(volumeMounts, lsvolume.DefaultLogsVolumeMount)
+
 	return persistentVolumes, volumeMounts
 }
 
-func buildVolumes(params Params) ([]volume.VolumeLike, error) {
+func buildVolumeLikes(params Params) ([]volume.VolumeLike, error) {
 	vols := []volume.VolumeLike{lsvolume.ConfigSharedVolume, lsvolume.ConfigVolume(params.Logstash), lsvolume.PipelineVolume(params.Logstash)}
 
 	// all volumes with CAs of direct associations

@@ -21,6 +21,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+
 )
 
 const (
@@ -50,7 +52,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	vols, err := buildVolumes(params)
+	vols, err := buildVolumeLikes(params)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
