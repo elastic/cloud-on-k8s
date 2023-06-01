@@ -93,7 +93,6 @@ type LogstashSpec struct {
 	// Items defined here take precedence over any default claims added by the operator with the same name.
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
-
 }
 
 type LogstashService struct {

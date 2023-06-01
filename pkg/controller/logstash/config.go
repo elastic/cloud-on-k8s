@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	LogstashConfigFileName   = "logstash.yml"
+	LogstashConfigFileName = "logstash.yml"
 )
 
 func reconcileConfig(params Params, configHash hash.Hash) error {

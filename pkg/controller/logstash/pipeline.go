@@ -16,11 +16,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
-
 )
 
 const (
-	PipelineFileName   = "pipelines.yml"
+	PipelineFileName = "pipelines.yml"
 )
 
 func reconcilePipeline(params Params) error {

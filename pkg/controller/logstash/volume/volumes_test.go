@@ -100,8 +100,7 @@ func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
 		{
 			name: "with default data PVC",
 			logstash: logstashv1alpha1.Logstash{
-				Spec: logstashv1alpha1.LogstashSpec{
-				},
+				Spec: logstashv1alpha1.LogstashSpec{},
 			},
 		},
 		{
@@ -125,8 +124,8 @@ func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
 							},
 						},
 					}},
-				},
 			},
+		},
 		{
 			name: "with user provided other PVC",
 			logstash: logstashv1alpha1.Logstash{
@@ -231,7 +230,7 @@ func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.logstash.Spec.VolumeClaimTemplates = AppendDefaultPVCs(tc.logstash.Spec.VolumeClaimTemplates,
-															          tc.logstash)
+				tc.logstash)
 			_, volumeMounts := BuildVolumesAndMounts(tc.logstash)
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))

@@ -20,8 +20,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
