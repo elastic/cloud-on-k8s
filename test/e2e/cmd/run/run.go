@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	operatorReadyTimeout = 3 * time.Minute // time to wait for the operator pod to be ready
+	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
+	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -491,8 +492,8 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestsLocally() error {
-	log.Info("Running local test script", "timeout", h.testTimeout.String())
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+	log.Info("Running local test script", "timeout", jobTimeout.String())
+	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 
 	cmd := exec.Command("test/e2e/run.sh", "-run", h.testRegex, "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec
 	cmd.Env = os.Environ()
