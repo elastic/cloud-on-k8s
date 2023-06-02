@@ -36,6 +36,7 @@ func SetupValidatingWebhookWithConfig(config *Config) error {
 		config.WebhookPath,
 		&webhook.Admission{
 			Handler: &validatingWebhook{
+				decoder:           admission.NewDecoder(config.Manager.GetScheme()),
 				validator:         config.Validator,
 				licenseChecker:    config.LicenseChecker,
 				managedNamespaces: set.Make(config.ManagedNamespace...)}})
@@ -56,12 +57,6 @@ type validatingWebhook struct {
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
 	validator         admission.Validator
-}
-
-// InjectDecoder injects the decoder automatically.
-func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
-	v.decoder = d
-	return nil
 }
 
 // Handle satisfies the admission.Handler interface
