@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/operator-framework/operator-registry v1.27.1
 	github.com/otiai10/copy v1.11.0
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	k8s.io/api v0.26.1
