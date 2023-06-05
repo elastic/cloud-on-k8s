@@ -32,7 +32,7 @@ func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
 		t.SkipNow()
 	}
 
-	// Temporarily skip upgrades to `8.9.0-SNAPSHOT`
+	// Temporarily skip upgrades to `8.9.x-SNAPSHOT`
 	dstVer := version.MustParse(dstVersion)
 	if dstVer.Major == 8 && dstVer.Minor == 9 && isSnapshot(dstVer) {
 		t.Skip("Upgrades to 8.9.0-SNAPSHOT are temporarily disabled, refer to https://github.com/elastic/cloud-on-k8s/issues/6878")
