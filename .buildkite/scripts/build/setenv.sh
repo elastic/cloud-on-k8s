@@ -76,7 +76,7 @@ main() {
         IMG_SUFFIX="-pr"
         IMG_VERSION="$BUILDKITE_PULL_REQUEST-$sha1"
 
-        set_env BUILD_PLATFORM=linux/amd64
+        #set_env BUILD_PLATFORM=linux/amd64
 
     else # any branch
         REGISTRY_NAMESPACE=eck-ci
@@ -87,6 +87,8 @@ main() {
     set_env "REGISTRY_NAMESPACE=$REGISTRY_NAMESPACE"
     set_env "IMG_SUFFIX=$IMG_SUFFIX"
     set_env "IMG_VERSION=$IMG_VERSION${OPERATOR_VERSION_SUFFIX:+-$OPERATOR_VERSION_SUFFIX}"
+
+    set_env "IMAGE=docker.elastic.co/$REGISTRY_NAMESPACE/eck-operator:$IMG_VERSION${OPERATOR_VERSION_SUFFIX:+-$OPERATOR_VERSION_SUFFIX}"
 }
 
 main "$@"

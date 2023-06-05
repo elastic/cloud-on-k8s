@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.5 as builder
+FROM docker.io/library/golang:1.20.5 as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM

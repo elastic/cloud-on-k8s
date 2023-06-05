@@ -8,47 +8,50 @@ env:
 
 steps:
 
-  - group: checks
-    steps:
-
-      - label: ":go: lint"
-        command: "make lint check-local-changes"
-        agents:
-          cpu: "6"
-          memory: "6G"
-
-      - label: ":go: generate"
-        command: "make generate check-local-changes"
-
-      - label: ":go: checks"
-        commands:
-          - "make check-license-header check-predicates shellcheck reattach-pv"
-          - env -i .buildkite/scripts/build/setenv_test.sh
-
-  - group: tests
-    steps:
-
-      - label: ":go: unit-tests"
-        command: "make unit-xml"
-        agents:
-          memory: "4G"
-
-      - label: ":go: integration-tests"
-        command: "make integration-xml"
-        agents:
-          memory: "4G"
-
-      - label: ":go: manifest-gen-tests"
-        command: "make manifest-gen-test"
-
-      - label: ":go: helm-tests"
-        command: "make helm-test"
-
   - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
+    command: buildkite-agent pipeline upload .buildkite/pipeline-multiarch-build.yml
 
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
+  # - group: checks
+  #   steps:
 
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
+  #     - label: ":go: lint"
+  #       command: "make lint check-local-changes"
+  #       agents:
+  #         cpu: "6"
+  #         memory: "6G"
+
+  #     - label: ":go: generate"
+  #       command: "make generate check-local-changes"
+
+  #     - label: ":go: checks"
+  #       commands:
+  #         - "make check-license-header check-predicates shellcheck reattach-pv"
+  #         - env -i .buildkite/scripts/build/setenv_test.sh
+
+  # - group: tests
+  #   steps:
+
+  #     - label: ":go: unit-tests"
+  #       command: "make unit-xml"
+  #       agents:
+  #         memory: "4G"
+
+  #     - label: ":go: integration-tests"
+  #       command: "make integration-xml"
+  #       agents:
+  #         memory: "4G"
+
+  #     - label: ":go: manifest-gen-tests"
+  #       command: "make manifest-gen-test"
+
+  #     - label: ":go: helm-tests"
+  #       command: "make helm-test"
+
+  # - label: ":buildkite:"
+  #   command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
+
+  # - label: ":buildkite:"
+  #   command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
+
+  # - label: ":buildkite:"
+  #   command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml

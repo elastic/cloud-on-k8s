@@ -39,20 +39,20 @@ endif
 # for dev, suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
-REGISTRY           ?= docker.elastic.co
-REGISTRY_NAMESPACE ?= eck-dev
-NAME               ?= eck-operator
-SNAPSHOT           ?= true
-VERSION            ?= $(shell cat VERSION)
-TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
-IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
-IMG_VERSION        ?= $(VERSION)-$(TAG)
+REGISTRY            ?= docker.elastic.co
+REGISTRY_NAMESPACE  ?= eck-dev
+NAME                ?= eck-operator
+SNAPSHOT            ?= true
+VERSION             ?= $(shell cat VERSION)
+TAG                 ?= $(shell git rev-parse --short=8 --verify HEAD)
+OPERATOR_IMAGE_NAME ?= $(NAME)$(IMG_SUFFIX)
+IMG_VERSION         ?= $(VERSION)-$(TAG)
 
 BASE_IMG                     := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
 OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8:$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(OPERATOR_IMAGE_NAME):$(IMG_VERSION)
+OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(OPERATOR_IMAGE_NAME)-ubi8:$(IMG_VERSION)
 
 # From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
 #
@@ -64,10 +64,13 @@ ifeq ($(ENABLE_FIPS),true)
 	GO_TAGS += goexperiment.boringcrypto
 	OPERATOR_IMAGE               := $(BASE_IMG)-fips:$(IMG_VERSION)
 	OPERATOR_IMAGE_UBI           := $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(OPERATOR_IMAGE_NAME)-fips:$(IMG_VERSION)
+	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(OPERATOR_IMAGE_NAME)-ubi8-fips:$(IMG_VERSION)
 	BUILD_PLATFORM := linux/amd64
 endif
+
+print-%:
+	@ echo $($*)
 
 print-operator-image:
 	@ echo $(OPERATOR_IMAGE)

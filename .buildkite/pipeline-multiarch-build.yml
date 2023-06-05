@@ -1,0 +1,73 @@
+env:
+  BUILD_PLATFORM: "linux/amd64,linux/arm64"
+
+steps:
+
+  - label: "generate go crds config"
+    key: "operator-image-build"
+    commands:
+      - .buildkite/scripts/build/setenv.sh
+      - make go-generate generate-crds-v1 generate-config-file
+    artifact_paths:
+      - "config/*.yaml"
+      - "**/zz_generated*.go"
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+      cpu: "4"
+      memory: "2G"
+
+  - wait: ~
+
+  - label: "build push amd64 image"
+    if: build.env("BUILD_PLATFORM") =~ /amd64/
+    command:
+      - buildkite-agent artifact download 'config/*.yaml' config/
+      - buildkite-agent artifact download '**/zz_generated*.go' .
+      - .buildkite/scripts/build/setenv.sh
+      - ./drivah.toml.sh
+      - pwd
+      - ls -al Dockerfile
+      - source .env
+      - drivah build --push .
+      - buildkite-agent annotate "🐬  <code>$${IMAGE}-amd64</code> pushed<br>" --style 'success' --context 'ctx-build-success' --append
+    agents:
+      image: "docker.elastic.co/ci-agent-images/drivah:0.18.1"
+      ephemeralStorage: "20G"
+      memory: "4G"
+    plugins:
+      - elastic/vault-docker-login#v0.3.0:
+          secret_path: "secret/ci/elastic-cloud-on-k8s/docker-registry-elastic"
+
+  - label: "build push arm64 image"
+    if: build.env("BUILD_PLATFORM") =~ /arm64/
+    command:
+      - buildkite-agent artifact download 'config/*.yaml' config/
+      - buildkite-agent artifact download '**/zz_generated*.go' .
+      - .buildkite/scripts/build/setenv.sh
+      - source .env
+      - drivah build --push .
+      - buildkite-agent annotate "🐋  <code>$${IMAGE}-arm64</code> pushed<br>" --style 'success' --context 'ctx-build-success' --append
+    agents:
+      provider: "aws"
+      imagePrefix: "drivah-ubuntu-2204-aarch64"
+      instanceType: "m6g.xlarge"
+    plugins:
+      - elastic/vault-docker-login#v0.3.0:
+          secret_path: "secret/ci/elastic-cloud-on-k8s/docker-registry-elastic"
+  
+  - wait: ~
+
+  - label: "push manifest"
+    command:
+      - .buildkite/scripts/build/setenv.sh
+      - source .env
+      - buildah manifest create $${IMAGE} $$(sed -e "s|linux/|$${IMAGE}-|g" -e "s|,| |g" <<< $$BUILD_PLATFORM)
+      - buildah manifest push $${IMAGE} "docker://$${IMAGE}"
+      - buildah manifest inspect $${IMAGE}
+      - buildkite-agent annotate "🐳  <code>$${IMAGE}</code> pushed" --style 'success' --context 'ctx-build-success' --append
+    agents:
+      image: "docker.elastic.co/ci-agent-images/drivah:0.18.1"
+      ephemeralStorage: "20G"
+    plugins:
+      - elastic/vault-docker-login#v0.3.0:
+          secret_path: "secret/ci/elastic-cloud-on-k8s/docker-registry-elastic"
