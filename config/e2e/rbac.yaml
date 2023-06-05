@@ -102,6 +102,7 @@ rules:
       - list
       - watch
       - delete
+      - deletecollection
       - create
       - update
   - apiGroups:
@@ -199,6 +200,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - autoscaling.k8s.elastic.co
     resources:
@@ -212,6 +214,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - apm.k8s.elastic.co
     resources:
@@ -225,6 +228,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - kibana.k8s.elastic.co
     resources:
@@ -238,6 +242,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - apm.k8s.elastic.co
     resources:
@@ -251,6 +256,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - enterprisesearch.k8s.elastic.co
     resources:
@@ -264,6 +270,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - beat.k8s.elastic.co
     resources:
@@ -277,6 +284,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - agent.k8s.elastic.co
     resources:
@@ -290,6 +298,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - maps.k8s.elastic.co
     resources:
@@ -303,6 +312,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - stackconfigpolicy.k8s.elastic.co
     resources:
@@ -316,6 +326,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups :
       - logstash.k8s.elastic.co
     resources:
@@ -329,6 +340,7 @@ rules:
       - update
       - patch
       - delete
+      - deletecollection
   - apiGroups:
       - storage.k8s.io
     resources:
