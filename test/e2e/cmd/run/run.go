@@ -65,8 +65,8 @@ func doRun(flags runFlags) error {
 		// CI test run steps
 		steps = []stepFunc{
 			helper.createScratchDir,
-			helper.initTestContext,
 			helper.initTestSecrets,
+			helper.initTestContext,
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createOperatorNamespaces,
@@ -173,6 +173,7 @@ func (h *helper) initTestContext() error {
 		TestLicense:           h.testLicense,
 		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
+		GCPCredentialsPath:    h.gcpCredentialsPath,
 		TestRegex:             h.testRegex,
 		TestRun:               h.testRunName,
 		TestTimeout:           h.testTimeout,
@@ -252,7 +253,7 @@ func (h *helper) initTestSecrets() error {
 
 	// Only initialize gcp credentials when running in CI
 	if os.Getenv("CI") == "true" {
-		b, err := vault.ReadFile(c, vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          "gcp-credentials.json",
 			Path:          "ci-gcp-k8s-operator",
 			FieldResolver: func() string { return "service-account" },
@@ -260,8 +261,12 @@ func (h *helper) initTestSecrets() error {
 		if err != nil {
 			return fmt.Errorf("reading gcp credentials: %w", err)
 		}
-		h.testSecrets["gcp-credentials.json"] = string(b)
-		h.testContext.GCPCredentialsPath = "/var/run/secrets/e2e/gcp-credentials.json"
+		h.testSecrets["gcp-credentials.json"] = string(bytes)
+		filename, err := writeTempSecret(bytes)
+		if err != nil {
+			return fmt.Errorf("writing gcp credentials: %w", err)
+		}
+		h.gcpCredentialsPath = filename
 	}
 
 	if h.testLicense != "" {
@@ -274,7 +279,11 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("reading %v: %w", h.testLicense, err)
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
-		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
+		filename, err := writeTempSecret(bytes)
+		if err != nil {
+			return fmt.Errorf("writing test license: %w", err)
+		}
+		h.testLicense = filename
 	}
 
 	if h.testLicensePKeyPath != "" {
@@ -288,7 +297,11 @@ func (h *helper) initTestSecrets() error {
 			return fmt.Errorf("reading %v: %w", h.testLicensePKeyPath, err)
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
-		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
+		filename, err := writeTempSecret(bytes)
+		if err != nil {
+			return fmt.Errorf("writing dev private key: %w", err)
+		}
+		h.testLicensePKeyPath = filename
 	}
 
 	if h.monitoringSecrets != "" {
@@ -798,4 +811,18 @@ func (h *helper) runECKDiagnostics() {
 	if err := cmd.Run(); err != nil {
 		log.Error(err, "Failed to run eck-diagnostics")
 	}
+}
+
+func writeTempSecret(bytes []byte) (string, error) {
+	file, err := os.CreateTemp("", "")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return file.Name(), nil
 }

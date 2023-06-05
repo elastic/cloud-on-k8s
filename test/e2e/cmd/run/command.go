@@ -52,6 +52,7 @@ type runFlags struct {
 	e2eTags                string
 	testEnvTags            []string
 	gsBucketName           string
+	gcpCredentialsPath     string
 }
 
 var log logr.Logger
