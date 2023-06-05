@@ -243,7 +243,7 @@ endif
 endif
 
 # Deploy the operator against the current k8s cluster
-deploy: check-gke install-crds build-operator-image apply-operator
+deploy: check-gke install-crds publish-operator-image apply-operator
 
 apply-operator:
 ifeq ($(strip $(MANAGED_NAMESPACES)),)
@@ -578,7 +578,7 @@ ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
 
 ci-build-operator-e2e-run: E2E_JSON := true
-ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
+ci-build-operator-e2e-run: setup-e2e publish-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
