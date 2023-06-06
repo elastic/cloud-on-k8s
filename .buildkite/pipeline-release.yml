@@ -24,8 +24,8 @@ steps:
         trigger: unified-release-copy-elastic-images-to-dockerhub
         build:
           env:
-            NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
-            TAG: "${BUILDKITE_TAG}"
+            IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
+            IMAGES_TAG: "${BUILDKITE_TAG}"
 
       # live helm charts release
       - label: ":buildkite:"
