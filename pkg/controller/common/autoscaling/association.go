@@ -7,7 +7,6 @@ package autoscaling
 import (
 	"context"
 
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esav1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
@@ -16,16 +15,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
-const (
-	autoscalerWithDeprecatedAnnotation = "cluster has both the autoscaling annotation and an autoscaler resource associate, please remove the elasticsearch.alpha.elastic.co/autoscaling-* annotations"
-	deprecatedAnnotation               = "the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource"
-)
-
 func GetAssociatedAutoscalingResource(
 	ctx context.Context,
 	k8s k8s.Client,
 	es esv1.Elasticsearch,
-	recorder record.EventRecorder,
 ) (v1alpha1.AutoscalingResource, error) {
 	// Let's try to detect any associated autoscaler
 	autoscalers := &esav1alpha1.ElasticsearchAutoscalerList{}

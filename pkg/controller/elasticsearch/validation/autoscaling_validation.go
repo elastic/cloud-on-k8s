@@ -11,7 +11,6 @@ import (
 )
 
 func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
-
 	// We no longer support autoscaling annotation, return error if present
 	if es.IsAutoscalingAnnotationSet() {
 		return field.ErrorList{

@@ -24,7 +24,6 @@ import (
 )
 
 const (
-	autoscalingVersionMsg                  = "autoscaling is not available in this version of Elasticsearch"
 	cfgInvalidMsg                          = "Configuration invalid"
 	duplicateNodeSets                      = "NodeSet names must be unique"
 	invalidNamesErrMsg                     = "Elasticsearch configuration would generate resources with invalid names"
