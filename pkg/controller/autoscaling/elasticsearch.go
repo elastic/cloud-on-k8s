@@ -19,16 +19,7 @@ import (
 // Add creates both legacy and new Elasticsearch autoscaling controllers, and adds them to the Manager with default RBAC.
 // The Manager will set fields on the Controllers and Start them when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	legacyReconciler, reconciler := elasticsearch.NewReconcilers(mgr, p)
-	legacyController, err := common.NewController(mgr, elasticsearch.LegacyControllerName, legacyReconciler, p)
-	if err != nil {
-		return err
-	}
-
-	// The deprecated/legacy controller watches for changes on Elasticsearch clusters.
-	if err := legacyController.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}), &handler.EnqueueRequestForObject{}); err != nil {
-		return err
-	}
+	reconciler := elasticsearch.NewReconciler(mgr, p)
 
 	// The CRD based controller watches for changes on both the ElasticsearchAutoscaler CRD, and on the Elasticsearch resources to make sure the
 	// NodeSets resources are reconciled with the required resources.

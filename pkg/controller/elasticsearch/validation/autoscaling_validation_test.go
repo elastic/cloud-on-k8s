@@ -50,15 +50,10 @@ func TestResourcePolicies_Validate(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:      "Happy path",
-			wantError: false,
-			version:   "7.11.0",
-		},
-		{
-			name:          "Wrong version",
-			version:       "7.10.0",
+			name:          "Happy path",
 			wantError:     true,
-			expectedError: "metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: \"7.10.0\": autoscaling is not available in this version of Elasticsearch",
+			version:       "7.11.0",
+			expectedError: "metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: \"7.11.0\": autoscaling annotation is no longer supported",
 		},
 	}
 	for _, tt := range tests {
