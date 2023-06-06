@@ -212,6 +212,12 @@ tests:
       - equal:
           path: spec.image
           value: my.registry.com/elastic/elasticsearch:8.8.0
+  - it: should render no podDisruptionBudget by default
+    set:
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value: null
   - it: should render podDisruptionBudget properly
     set:
       podDisruptionBudget:
@@ -229,6 +235,13 @@ tests:
               selector:
                 matchLabels:
                   elasticsearch.k8s.elastic.co/cluster-name: quickstart
+  - it: should render empty podDisruptionBudget if disabled
+    set:
+      podDisruptionBudget: {}
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value: {}
   - it: should render serviceAccountName properly
     set:
       serviceAccountName: my-sa
