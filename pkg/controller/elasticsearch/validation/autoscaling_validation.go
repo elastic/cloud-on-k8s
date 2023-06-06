@@ -16,7 +16,7 @@ func validAutoscalingConfiguration(es esv1.Elasticsearch) field.ErrorList {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("metadata").Child("annotations", esv1.ElasticsearchAutoscalingSpecAnnotationName),
-				es.Spec.Version,
+				esv1.ElasticsearchAutoscalingSpecAnnotationName,
 				autoscalingAnnotationUnsupportedErrMsg,
 			),
 		}

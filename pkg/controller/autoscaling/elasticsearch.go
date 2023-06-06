@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 )
 
-// Add creates both legacy and new Elasticsearch autoscaling controllers, and adds them to the Manager with default RBAC.
+// Add creates a new Elasticsearch autoscaling controllers, and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controllers and Start them when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
 	reconciler := elasticsearch.NewReconciler(mgr, p)
