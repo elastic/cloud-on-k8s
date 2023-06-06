@@ -136,7 +136,6 @@ type emsStatus struct {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	println(test.Ctx().TestTimeout)
 	return test.StepList{
 		{
 			Name: "Elastic Maps Server should respond to requests",
