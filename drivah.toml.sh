@@ -19,7 +19,8 @@ get_go_ldflags() {
         -X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=${SNAPSHOT:-true}"
 }
 
-source .env
+# source env build vars
+export $($ROOT/.buildkite/scripts/build/setenv.sh | grep -v "(^#)" | xargs)
 
 cat <<EOF
 [docker]

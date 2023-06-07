@@ -1,0 +1,32 @@
+env:
+  BUILD_PLATFORM: "linux/amd64,linux/arm64"
+
+steps:
+
+  - label: "generate go crds config"
+    key: "operator-image-build"
+    commands:
+      - .buildkite/scripts/build/setenv.sh
+      - make go-generate generate-crds-v1 generate-config-file
+    artifact_paths:
+      - "config/*.yaml"
+      - "**/zz_generated*.go"
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+      cpu: "4"
+      memory: "2G"
+
+  - wait: ~
+
+  - label: ":seedling: Trigger Image Creation"
+    commands:
+      - buildkite-agent artifact download 'config/*.yaml' config/
+      - buildkite-agent artifact download '**/zz_generated*.go' .
+      - .buildkite/scripts/build/setenv.sh
+      - make -C /agent generate-docker-images
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      DOCKER_IMAGE: docker.elastic.co/eck-ci/eck-operator
+      DOCKER_IMAGE_TAG: ${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_COMMIT:0:8}
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"

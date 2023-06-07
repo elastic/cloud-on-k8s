@@ -9,7 +9,7 @@ env:
 steps:
 
   - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-multiarch-build.yml
+    command: buildkite-agent pipeline upload .buildkite/pipeline-multiarch-build-2.yml
 
   # - group: checks
   #   steps:
