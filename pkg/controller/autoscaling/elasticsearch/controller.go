@@ -80,7 +80,7 @@ type ReconcileElasticsearchAutoscaler struct {
 	Watches watches.DynamicWatches
 }
 
-// NewReconciler returns a new (CRD based) reconcile.Reconciler
+// NewReconciler returns a new autoscaling reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler {
 	c := mgr.GetClient()
 	reconcileAutoscaling := baseReconcileAutoscaling{
