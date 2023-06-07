@@ -95,7 +95,7 @@ func TestReconcile(t *testing.T) {
 		wantErr    *wantedErr
 	}{
 		{
-			name: "User should not use both the Autoscaling CRD and the annotation",
+			name: "User should not use the Autoscaling annotation",
 			fields: fields{
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
@@ -106,7 +106,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: defaultRequeue,
 			wantErr: &wantedErr{ // Autoscaling API error should be returned.
-				message: `ElasticsearchAutoscaler.autoscaling.k8s.elastic.co "test-autoscaler" is invalid: metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: "elasticsearch.alpha.elastic.co/autoscaling-spec": Cannot use the ElasticsearchAutoscaler resource and the autoscaling annotation at the same time, please remove the annotation`,
+				message: `ElasticsearchAutoscaler.autoscaling.k8s.elastic.co "test-autoscaler" is invalid: metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: "elasticsearch.alpha.elastic.co/autoscaling-spec": Autoscaling annotation is no longer supported, please remove the annotation`,
 				fatal:   true, // We are not expecting the autoscaling controller to update the cluster.
 			},
 			wantEvents: []string{},
