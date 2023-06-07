@@ -77,7 +77,7 @@ spec:
       schedules:
         Every day:
           branch: main
-          cronline: '@midnight'
+          cronline: '42 21 * * *'
           message: Nightly `main` snapshot e2e tests
       teams:
         cloud-k8s-operator: {}
