@@ -6,6 +6,8 @@ package elasticsearch
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,18 +17,55 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
+	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
+)
+
+var (
+	fetchEvents = func(recorder *record.FakeRecorder) []string {
+		close(recorder.Events)
+		events := make([]string, 0)
+		for event := range recorder.Events {
+			events = append(events, event)
+		}
+		return events
+	}
+
+	fakeService = &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "testns",
+			Name:      services.InternalServiceName("testes"),
+		},
+	}
+	fakeEndpoints = &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "testns",
+			Name:      services.InternalServiceName("testes"),
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Addresses: []corev1.EndpointAddress{{
+				IP: "10.0.0.2",
+			}},
+			Ports: []corev1.EndpointPort{},
+		}},
+	}
 )
 
 func TestReconcile(t *testing.T) {
@@ -56,7 +95,7 @@ func TestReconcile(t *testing.T) {
 		wantErr    *wantedErr
 	}{
 		{
-			name: "User should not use both the Autoscaling CRD and the annotation",
+			name: "User should not use the Autoscaling annotation",
 			fields: fields{
 				recorder:       record.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
@@ -67,7 +106,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: defaultRequeue,
 			wantErr: &wantedErr{ // Autoscaling API error should be returned.
-				message: `ElasticsearchAutoscaler.autoscaling.k8s.elastic.co "test-autoscaler" is invalid: metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: "elasticsearch.alpha.elastic.co/autoscaling-spec": Cannot use the ElasticsearchAutoscaler resource and the autoscaling annotation at the same time, please remove the annotation`,
+				message: `ElasticsearchAutoscaler.autoscaling.k8s.elastic.co "test-autoscaler" is invalid: metadata.annotations.elasticsearch.alpha.elastic.co/autoscaling-spec: Invalid value: "elasticsearch.alpha.elastic.co/autoscaling-spec": Autoscaling annotation is no longer supported, please remove the annotation`,
 				fatal:   true, // We are not expecting the autoscaling controller to update the cluster.
 			},
 			wantEvents: []string{},
@@ -221,7 +260,7 @@ func TestReconcile(t *testing.T) {
 				if err := yaml.Unmarshal(bytes, &es); err != nil {
 					t.Fatalf("yaml.Unmarshal error = %v, wantErr %v", err, tt.wantErr)
 				}
-				esa := v1alpha1.ElasticsearchAutoscaler{}
+				esa := autoscalingv1alpha1.ElasticsearchAutoscaler{}
 				bytes, err = os.ReadFile(filepath.Join("testdata", "custom_resource", tt.args.manifestsDir, "autoscaler.yml"))
 				require.NoError(t, err)
 				if err := yaml.Unmarshal(bytes, &esa); err != nil {
@@ -283,11 +322,11 @@ func TestReconcile(t *testing.T) {
 				require.NoError(t, yaml.Unmarshal(bytes, &expectedElasticsearch))
 
 				// Get back ElasticsearchAutoscaler from the API Server.
-				updatedElasticsearchAutoscaler := &v1alpha1.ElasticsearchAutoscaler{}
+				updatedElasticsearchAutoscaler := &autoscalingv1alpha1.ElasticsearchAutoscaler{}
 				require.NoError(t, k8sClient.Get(context.Background(), client.ObjectKey{Namespace: "testns", Name: "test-autoscaler"}, updatedElasticsearchAutoscaler))
 
 				// Read expected the expected ElasticsearchAutoscaler resource.
-				expectedElasticsearchAutoscaler := &v1alpha1.ElasticsearchAutoscaler{}
+				expectedElasticsearchAutoscaler := &autoscalingv1alpha1.ElasticsearchAutoscaler{}
 				bytes, err = os.ReadFile(filepath.Join("testdata", "custom_resource", tt.args.manifestsDir, "autoscaler-expected.yml"))
 				require.NoError(t, err)
 				require.NoError(t, yaml.Unmarshal(bytes, expectedElasticsearchAutoscaler))
@@ -302,4 +341,98 @@ func TestReconcile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func statusesEqual(t *testing.T, got, want v1alpha1.AutoscalingResource) {
+	t.Helper()
+	gotStatus, err := got.GetElasticsearchAutoscalerStatus()
+	require.NoError(t, err)
+	wantStatus, err := want.GetElasticsearchAutoscalerStatus()
+	require.NoError(t, err)
+	require.Equal(t, len(gotStatus.AutoscalingPolicyStatuses), len(wantStatus.AutoscalingPolicyStatuses))
+	for _, wantPolicyStatus := range wantStatus.AutoscalingPolicyStatuses {
+		gotPolicyStatus := getPolicyStatus(gotStatus.AutoscalingPolicyStatuses, wantPolicyStatus.Name)
+		require.NotNilf(t, gotPolicyStatus, "Autoscaling policy '%s' not found", wantPolicyStatus.Name)
+		require.ElementsMatch(t, gotPolicyStatus.NodeSetNodeCount, wantPolicyStatus.NodeSetNodeCount)
+		require.ElementsMatch(t, gotPolicyStatus.PolicyStates, wantPolicyStatus.PolicyStates)
+		for resource := range wantPolicyStatus.ResourcesSpecification.Requests {
+			require.True(
+				t,
+				resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests),
+				"unexpected resource requests for policy %s, expected %v, got %v", gotPolicyStatus.Name, wantPolicyStatus.ResourcesSpecification.Requests, gotPolicyStatus.ResourcesSpecification.Requests)
+		}
+		for resource := range wantPolicyStatus.ResourcesSpecification.Limits {
+			require.True(
+				t,
+				resources.ResourceEqual(resource, wantPolicyStatus.ResourcesSpecification.Limits, gotPolicyStatus.ResourcesSpecification.Limits),
+				"unexpected resource limits for policy %s, expected %v, got %v", gotPolicyStatus.Name, wantPolicyStatus.ResourcesSpecification.Limits, gotPolicyStatus.ResourcesSpecification.Limits)
+		}
+	}
+}
+
+func getPolicyStatus(autoscalingPolicyStatuses []v1alpha1.AutoscalingPolicyStatus, name string) *v1alpha1.AutoscalingPolicyStatus {
+	for _, policyStatus := range autoscalingPolicyStatuses {
+		if policyStatus.Name == name {
+			return &policyStatus
+		}
+	}
+	return nil
+}
+
+type fakeEsClient struct {
+	t *testing.T
+	esclient.Client
+
+	autoscalingPolicies                         esclient.AutoscalingCapacityResult
+	policiesCleaned                             bool
+	errorOnDeleteAutoscalingAutoscalingPolicies bool
+	updatedPolicies                             map[string]v1alpha1.AutoscalingPolicy
+}
+
+func newFakeEsClient(t *testing.T) *fakeEsClient {
+	t.Helper()
+	return &fakeEsClient{
+		t:                   t,
+		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
+		updatedPolicies:     make(map[string]v1alpha1.AutoscalingPolicy),
+	}
+}
+
+func (f *fakeEsClient) withCapacity(testdata string) *fakeEsClient {
+	policies := esclient.AutoscalingCapacityResult{}
+	bytes, err := os.ReadFile("testdata/" + testdata + "/capacity.json")
+	if err != nil {
+		f.t.Fatalf("Error while reading autoscaling capacity content: %v", err)
+	}
+	if err := json.Unmarshal(bytes, &policies); err != nil {
+		f.t.Fatalf("Error while parsing autoscaling capacity content: %v", err)
+	}
+	f.autoscalingPolicies = policies
+	return f
+}
+
+func (f *fakeEsClient) withErrorOnDeleteAutoscalingAutoscalingPolicies() *fakeEsClient {
+	f.errorOnDeleteAutoscalingAutoscalingPolicies = true
+	return f
+}
+
+func (f *fakeEsClient) newFakeElasticsearchClient(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
+	return f, nil
+}
+
+func (f *fakeEsClient) DeleteAutoscalingPolicies(_ context.Context) error {
+	f.policiesCleaned = true
+	if f.errorOnDeleteAutoscalingAutoscalingPolicies {
+		return fmt.Errorf("simulated error while calling DeleteAutoscalingAutoscalingPolicies")
+	}
+	return nil
+}
+func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1alpha1.AutoscalingPolicy) error {
+	return nil
+}
+func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
+	return f.autoscalingPolicies, nil
+}
+func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
+	return nil
 }

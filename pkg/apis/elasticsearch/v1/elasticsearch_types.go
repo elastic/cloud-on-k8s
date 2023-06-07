@@ -5,7 +5,6 @@
 package v1
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/blang/semver/v4"
@@ -13,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
-	v1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -449,63 +447,6 @@ func (es *Elasticsearch) ElasticServiceAccount() (commonv1.ServiceAccountName, e
 func (es Elasticsearch) IsAutoscalingAnnotationSet() bool {
 	_, ok := es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
 	return ok
-}
-
-// AutoscalingAnnotation returns the autoscaling spec in the Elasticsearch manifest.
-// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
-func (es Elasticsearch) AutoscalingAnnotation() string {
-	return es.Annotations[ElasticsearchAutoscalingSpecAnnotationName]
-}
-
-var _ v1alpha1.AutoscalingResource = &Elasticsearch{}
-
-// AutoscalingSpec is the root object of the autoscaling specification in the Elasticsearch resource definition.
-// +kubebuilder:object:generate=false
-type AutoscalingSpec struct {
-	AutoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs `json:"policies"`
-
-	// PollingPeriod is the period at which to synchronize and poll the Elasticsearch autoscaling API.
-	PollingPeriod *metav1.Duration `json:"pollingPeriod"`
-
-	// Elasticsearch is stored in the autoscaling spec for convenience. It should be removed once the autoscaling spec is
-	// fully part of the Elasticsearch specification.
-	Elasticsearch Elasticsearch `json:"-"`
-}
-
-func (es Elasticsearch) GetAutoscalingPolicySpecs() (v1alpha1.AutoscalingPolicySpecs, error) {
-	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
-	if err != nil {
-		return nil, err
-	}
-	return autoscalingSpecification.AutoscalingPolicySpecs, nil
-}
-
-func (es Elasticsearch) GetPollingPeriod() (*metav1.Duration, error) {
-	autoscalingSpecification, err := es.GetAutoscalingSpecificationFromAnnotation()
-	if err != nil {
-		return nil, err
-	}
-	return autoscalingSpecification.PollingPeriod, nil
-}
-
-func (es Elasticsearch) GetElasticsearchAutoscalerStatus() (v1alpha1.ElasticsearchAutoscalerStatus, error) {
-	autoscalingStatus, err := ElasticsearchAutoscalerStatusFrom(es)
-	if err != nil {
-		return v1alpha1.ElasticsearchAutoscalerStatus{}, err
-	}
-	return autoscalingStatus, nil
-}
-
-// GetAutoscalingSpecificationFromAnnotation unmarshal autoscaling specifications from an Elasticsearch resource.
-// Deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.
-func (es Elasticsearch) GetAutoscalingSpecificationFromAnnotation() (AutoscalingSpec, error) {
-	autoscalingSpec := AutoscalingSpec{}
-	if len(es.AutoscalingAnnotation()) == 0 {
-		return autoscalingSpec, nil
-	}
-	err := json.Unmarshal([]byte(es.AutoscalingAnnotation()), &autoscalingSpec)
-	autoscalingSpec.Elasticsearch = es
-	return autoscalingSpec, err
 }
 
 func (es Elasticsearch) SecureSettings() []commonv1.SecretSource {
