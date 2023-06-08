@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,7 +139,7 @@ func Test_getEnvVars(t *testing.T) {
 				assocs[0].SetNamespace("default")
 			},
 			wantEnvs: []corev1.EnvVar{
-				{Name: "PRODUCTION_ES_HOSTS", Value: "https://some.gcp.cloud.es.io"},
+				{Name: "PRODUCTION_ES_HOSTS", Value: "https://some.gcp.cloud.es.io:443"},
 				{Name: "PRODUCTION_ES_USER", Value: "fake_user"},
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
@@ -159,6 +160,63 @@ func Test_getEnvVars(t *testing.T) {
 			envs, err := buildEnv(params, assocs)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantEnvs, envs)
+		})
+	}
+}
+
+func Test_addPortToHttpsUrl(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name:     "HTTPS URL without port",
+			url:      "https://some.gcp.cloud.es.io",
+			expected: "https://some.gcp.cloud.es.io:443",
+			wantErr:  false,
+		},
+		{
+			name:     "HTTPS URL with port",
+			url:      "https://some.gcp.cloud.es.io:9200",
+			expected: "https://some.gcp.cloud.es.io:9200",
+			wantErr:  false,
+		},
+		{
+			name:     "Non-HTTPS URL",
+			url:      "http://some.gcp.cloud.es.io",
+			expected: "http://some.gcp.cloud.es.io",
+			wantErr:  false,
+		},
+		{
+			name:     "Non-HTTPS without port",
+			url:      "http://some.gcp.cloud.es.io:9200",
+			expected: "http://some.gcp.cloud.es.io:9200",
+			wantErr:  false,
+		},
+		{
+			name:     "HTTPS IPv6 URL without port",
+			url:      "https://[fe80::1]/",
+			expected: "https://[fe80::1]:443/",
+			wantErr:  false,
+		},
+		{
+			name:    "invalid URL",
+			url:     "ht tp://foo.com/",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := addPortToHttpsUrl(tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("addPortToHttpsUrl() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
