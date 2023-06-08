@@ -8,8 +8,55 @@ env:
 
 steps:
 
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-multiarch-build-2.yml
+  - label: ":buildkite: image build"
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+    commands:
+      - buildkite-agent meta-data set BUILD_TYPE eck
+      - make -C /agent generate-docker-images
+
+  - label: ":buildkite: dev image build"
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      BUILD_LICENSE_PUBKEY: "dev"
+      OPERATOR_VERSION_SUFFIX: "dev"
+    commands:
+      - buildkite-agent meta-data set BUILD_TYPE eck-dev
+      - make -C /agent generate-docker-images
+
+  - label: ":buildkite: UBI image build"
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      ENABLE_UBI_BUILD: true
+    commands:
+      - buildkite-agent meta-data set BUILD_TYPE eck-ubi
+      - make -C /agent generate-docker-images
+
+  - label: ":buildkite: UBI image build"
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      ENABLE_UBI_BUILD: true
+    commands:
+      - buildkite-agent meta-data set BUILD_TYPE eck-ubi-fips
+      - make -C /agent generate-docker-images
+
+  - label: ":buildkite: FIPS image build"
+    agents:
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      ENABLE_FIPS_BUILD: true
+    commands:
+      - buildkite-agent meta-data set BUILD_TYPE eck-fips
+      - make -C /agent generate-docker-images
 
   # - group: checks
   #   steps:

@@ -3,6 +3,9 @@ FROM docker.io/library/golang:1.20.5 as builder
 
 ARG GO_LDFLAGS
 ARG GO_TAGS
+ARG PUBLISH_IMAGE_UBI
+ARG ENABLE_FIPS
+
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
 # ENV KUBECTL_VERSION=1.26.3
