@@ -34,7 +34,9 @@ func authToGCP(
 			return err
 		}
 
-		_, err := vault.ReadFile(client, vault.SecretFile{
+		_, err := vault.ReadFile(func() vault.Client {
+			return client
+		}, vault.SecretFile{
 			Path:          vaultPath,
 			Name:          keyFileName,
 			FieldResolver: func() string { return serviceAccountVaultFieldName },

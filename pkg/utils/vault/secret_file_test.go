@@ -31,7 +31,7 @@ func Test_ReadFile(t *testing.T) {
 	// load the secret file
 	bytes, err := ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, readCount(c))
+	assert.Equal(t, 1, readCount(c()))
 	assert.Equal(t, `42`, string(bytes))
 
 	// check that the file exists
@@ -45,7 +45,7 @@ func Test_ReadFile(t *testing.T) {
 	// load the file to checlk we read the new content and don't read in vault
 	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, readCount(c))
+	assert.Equal(t, 1, readCount(c()))
 	assert.Equal(t, `new_content`, string(bytes))
 
 	// check that the file exists
@@ -59,7 +59,7 @@ func Test_ReadFile(t *testing.T) {
 	// load again from vault to read the initial value
 	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, readCount(c))
+	assert.Equal(t, 2, readCount(c()))
 	assert.Equal(t, `42`, string(bytes))
 
 	// delete the file
@@ -70,7 +70,7 @@ func Test_ReadFile(t *testing.T) {
 	f.Name = "in-memory"
 	bytes, err = ReadFile(c, f)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, readCount(c))
+	assert.Equal(t, 3, readCount(c()))
 	assert.Equal(t, `42`, string(bytes))
 
 	// check that the file does not exist
@@ -175,7 +175,7 @@ type mockClient struct {
 	readCount int
 }
 
-func newMockClient(t *testing.T, data ...string) Client {
+func newMockClient(t *testing.T, data ...string) func() Client {
 	t.Helper()
 
 	if len(data)%2 != 0 {
@@ -187,9 +187,11 @@ func newMockClient(t *testing.T, data ...string) Client {
 		dataMap[data[i]] = data[i+1]
 	}
 
-	return &mockClient{
-		data:      dataMap,
-		readCount: 0,
+	return func() Client {
+		return &mockClient{
+			data:      dataMap,
+			readCount: 0,
+		}
 	}
 }
 
