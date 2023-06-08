@@ -1,8 +1,6 @@
 # Build the operator binary
 FROM docker.io/library/golang:1.20.5 as builder
 
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
 ARG GO_LDFLAGS
 ARG GO_TAGS
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
@@ -15,6 +13,12 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 # Copy the go source
 COPY pkg/    pkg/
 COPY cmd/    cmd/
+
+# generate go code and eck config file
+ENV LICENSE_PUBKEY=/license.key
+COPY ./license.key /license.key
+COPY Makefile Makefile
+RUN make go-generate generate-config-file
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod CGO_ENABLED=0 GOOS=linux \
@@ -43,7 +47,7 @@ LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, 
       org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
-COPY config/eck.yaml /conf/eck.yaml
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/config/eck.yaml /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/

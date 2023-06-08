@@ -3,26 +3,26 @@ env:
 
 steps:
 
-  - label: "generate go crds config"
-    key: "operator-image-build"
-    commands:
-      - .buildkite/scripts/build/setenv.sh
-      - make go-generate generate-crds-v1 generate-config-file
-    artifact_paths:
-      - "config/*.yaml"
-      - "**/zz_generated*.go"
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-      cpu: "4"
-      memory: "2G"
+  # - label: "generate go crds config"
+  #   key: "operator-image-build"
+  #   commands:
+  #     - .buildkite/scripts/build/setenv.sh
+  #     - make go-generate generate-crds-v1 generate-config-file
+  #   artifact_paths:
+  #     - "config/*.yaml"
+  #     - "**/zz_generated*.go"
+  #   agents:
+  #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  #     cpu: "4"
+  #     memory: "2G"
 
-  - wait: ~
+  # - wait: ~
 
   - label: ":seedling: Trigger Image Creation"
     commands:
-      - buildkite-agent artifact download 'config/*.yaml' config/
-      - buildkite-agent artifact download '**/zz_generated*.go' .
-      - .buildkite/scripts/build/setenv.sh
+      #- buildkite-agent artifact download 'config/*.yaml' config/
+      #- buildkite-agent artifact download '**/zz_generated*.go' .
+      #- .buildkite/scripts/build/setenv.sh
       - make -C /agent generate-docker-images
     env:
       DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic

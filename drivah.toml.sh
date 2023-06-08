@@ -19,8 +19,11 @@ get_go_ldflags() {
         -X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=${SNAPSHOT:-true}"
 }
 
+# fetch public license key
+vault read -field=${SECRET_FIELD_PREFIX:-}pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > license.key
+
 # source env build vars
-export $($ROOT/.buildkite/scripts/build/setenv.sh | grep -v "(^#)" | xargs)
+export $($ROOT/.buildkite/scripts/build/setenv.sh | grep -v "^#" | xargs)
 
 cat <<EOF
 [docker]
