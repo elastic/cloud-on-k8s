@@ -3,8 +3,7 @@ FROM docker.io/library/golang:1.20.5 as builder
 
 ARG GO_LDFLAGS
 ARG GO_TAGS
-ARG PUBLISH_IMAGE_UBI
-ARG ENABLE_FIPS
+ARG LICENSE_PUBKEY_PATH
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -17,16 +16,16 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
 
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-COPY ["go.mod", "go.sum", "./"]
+COPY go.mod go.sum ./
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 
 # # Copy the sources
-COPY pkg/    pkg/
-COPY cmd/    cmd/
+COPY pkg/ pkg/
+COPY cmd/ cmd/
 
 # Generate pkg/controller/common/license/zz_generated.pubkey.go and config/eck.yaml
 ENV LICENSE_PUBKEY=/license.key
-COPY ./license.key /license.key
+COPY ${LICENSE_PUBKEY_PATH} /license.key
 COPY Makefile VERSION ./
 # COPY .git .git
 RUN make go-generate
@@ -35,7 +34,9 @@ RUN make go-generate
 # COPY hack/ hack/
 # RUN make generate-crds-v1 generate-config-file
 COPY deploy/ deploy/
-RUN helm template -s templates/configmap.yaml -f deploy/eck-operator/values.yaml --set=webhook.enabled=false --set=telemetry.distributionChannel=image deploy/eck-operator > eck.yaml
+RUN helm template deploy/eck-operator -s templates/configmap.yaml \
+      -f deploy/eck-operator/values.yaml --set=webhook.enabled=false --set=telemetry.distributionChannel=image \
+      > eck.yaml
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod CGO_ENABLED=0 GOOS=linux \
