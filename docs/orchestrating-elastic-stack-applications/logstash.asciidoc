@@ -288,10 +288,10 @@ NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not cur
 [id="{p}-logstash-pipelines-es"]
 === Using Elasticsearch in Logstash pipelines
 
-The `spec.elasticsearchRefs` section provides a mechanism to help configure Logstash to estabish a secured connection to one or more managed Elasticsearch clusters. By default, each `elasticsearchRef` will target all nodes in its referenced Elasticsearch cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
+The `spec.elasticsearchRefs` section provides a mechanism to help configure Logstash to establish a secured connection to one or more ECK managed Elasticsearch clusters. By default, each `elasticsearchRef` will target all nodes in its referenced Elasticsearch cluster. If you want to direct traffic to specific nodes of your Elasticsearch cluster, refer to <<{p}-traffic-splitting>> for more information and examples.
 
 When you use `elasticsearchRefs` in a Logstash pipeline, the Logstash operator creates the necessary resources from the associated Elasticsearch cluster, and provides environment variables to allow these resources to be accessed from the pipeline configuration. 
-Environment variables are replaced at runtime with the appropriate values.```
+Environment variables are replaced at runtime with the appropriate values.
 The environment variables have a fixed naming convention:
 
 * `NORMALIZED_CLUSTERNAME_ES_HOSTS`
@@ -367,6 +367,48 @@ spec:
 <4> Elasticsearch output definitions - use the environment variables created by the Logstash operator when specifying an `ElasticsearchRef`. Note the use of "normalized" versions of the `clusterName` in the environment variables used to populate the relevant fields.
 
 
+[id="{p}-logstash-external-es"]
+==== Connect to an external Elasticsearch cluster
+
+Logstash can connect to external Elasticsearch cluster that is not managed by ECK.
+You can reference a Secret instead of an Elasticsearch cluster in the `elasticsearchRefs` section through the `secretName` attribute:
+
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: external-es-ref
+stringData:
+  url: https://abcd-42.xyz.elastic-cloud.com <1>
+  username: logstash_user <2>
+  password: REDACTED <3>
+  ca.crt: REDACTED <4>
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRefs:
+    - clusterName: prod-es
+      secretName: external-es-ref <5>
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - secretName: external-es-ref <5>
+    logs:
+      elasticsearchRefs:
+      - secretName: external-es-ref <5>
+----
+
+<1> The URL to reach the Elasticsearch cluster.
+<2> The username of the user to be authenticated to the Elasticsearch cluster.
+<3> The password of the user to be authenticated to the Elasticsearch cluster.
+<4> The CA certificate in PEM format to secure communication to the Elasticsearch cluster (optional).
+<5> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
 
 [id="{p}-logstash-expose-services"]
 === Expose services
