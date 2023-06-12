@@ -18,7 +18,7 @@ steps:
       - buildkite-agent meta-data set BUILD_FLAVORS eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips
       - make -C /agent generate-docker-images
     env:
-      PRE_BUILD_SCRIPT: ./gen-drivah.toml.sh
+      PRE_BUILD_SCRIPT: build/gen-drivah.toml.sh
       DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
       RECURSIVE: true
 

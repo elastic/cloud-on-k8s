@@ -14,14 +14,14 @@
 #
 
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")"; pwd)"
+HERE="$(cd "$(dirname "$0")"; pwd)"
+ROOT="$HERE/.."
 
 get_arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
 
 generate_drivah_config() {
     local img=$1
     local tag=$2
-    local build_context=$3
 cat <<EOF
 #!/bin/bash
 
@@ -38,9 +38,10 @@ cat <<END
 [docker]
 
 [buildah]
-build_flags = ["${build_context}"]
+build_flags = [ "../../"]
 
 [container.image]
+build_context = "../../"
 names = ["${img}"]
 tags = ["${tag}-\$(get_arch)"]
 
@@ -48,7 +49,7 @@ tags = ["${tag}-\$(get_arch)"]
 VERSION = "${ECK_VERSION}"
 GO_LDFLAGS = "\$(get_go_ldflags)"
 GO_TAGS = "${GO_TAGS}"
-LICENSE_PUBKEY_PATH = "${LICENSE_PUBKEY_PATH}"
+LICENSE_PUBKEY_PATH = "build/$LICENSE_PUBKEY"
 END
 
 EOF
@@ -77,7 +78,7 @@ SHA1=$(git rev-parse --short=8 --verify HEAD)
 SNAPSHOT=true
 
 BUILD_TRIGGER=$(get_meta BUILD_TRIGGER "${BUILD_TRIGGER}")
-echo -n "# -- BUILD_TRIGGER=$BUILD_TRIGGER"
+echo -n "# -- env: BUILD_TRIGGER=$BUILD_TRIGGER"
 
 case "$BUILD_TRIGGER" in       
     tag) # depends on BUILDKITE_TAG
@@ -89,13 +90,13 @@ case "$BUILD_TRIGGER" in
         DOCKER_IMAGE="docker.elastic.co/eck-snapshots/eck-operator"
         DOCKER_IMAGE_TAG="$ECK_VERSION-$SHA1"
     ;;
-    dev)
-        DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-dev"
-        DOCKER_IMAGE_TAG="dev-$SHA1"
-    ;;
     pr) # depends on BUILDKITE_PULL_REQUEST
         DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-pr"
         DOCKER_IMAGE_TAG="$BUILDKITE_PULL_REQUEST-$SHA1"
+    ;;
+    dev)
+        DOCKER_IMAGE="docker.elastic.co/eck-dev/eck-operator"
+        DOCKER_IMAGE_TAG="dev-$SHA1"
     ;;
     *)
         DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-br"
@@ -105,8 +106,6 @@ esac
 
 ## create Dockerfile(s) and drivah.toml(s) depending on the build flavors
 
-#rm -rf build/
-
 BUILD_FLAVORS=$(get_meta BUILD_FLAVORS "${BUILD_FLAVORS}")
 echo " BUILD_FLAVORS=$BUILD_FLAVORS"
 
@@ -115,7 +114,8 @@ IFS=","; for flavor in $BUILD_FLAVORS; do
     # default vars
     LICENSE_PUBKEY=license.key
     GO_TAGS=release
-    CONTAINERFILE_PATH=$ROOT/Dockerfile
+    CONTAINERFILE_PATH=$HERE/Dockerfile
+    LICENSE_PUBKEY=license.key
     
     img="$DOCKER_IMAGE"
     tag="$DOCKER_IMAGE_TAG"
@@ -127,36 +127,30 @@ IFS=","; for flavor in $BUILD_FLAVORS; do
     fi
     if [[ "$flavor" =~ -ubi8 ]]; then
             img="$img-ubi8"
-            CONTAINERFILE_PATH=$ROOT/Dockerfile-ubi
+            CONTAINERFILE_PATH=$HERE/Dockerfile-ubi
     fi
     if [[ "$flavor" =~ -fips ]]; then
             img="$img-fips"
             GO_TAGS="$GO_TAGS,goexperiment.boringcrypto"
     fi
 
-    # fetch public license key
-    LICENSE_PUBKEY_PATH=$LICENSE_PUBKEY
-    if [[ "$LICENSE_PUBKEY" != "" ]] && [[ ! -f "$LICENSE_PUBKEY" ]]; then
-        vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > $LICENSE_PUBKEY_PATH
-    fi
-
-    echo "$img:$tag" >> images-$(get_arch)
-
     # dev mode
     if [[ "$flavor" == "dev" ]]; then
-            LICENSE_PUBKEY= GO_TAGS=
-            generate_drivah_config "$img-dev" "$tag" "." | bash
-            exit 0
+        GO_TAGS=
+        generate_drivah_config "$img-dev" "$tag" | bash
+        exit 0
     fi
 
-    #if [[ "$flavor" == "eck" ]]; then
-        generate_drivah_config "$img" "$tag" "." | bash
-    #else
-        # copy Dockerfile and generate drivah.toml
-        echo "# -- build $img:$tag"
-        mkdir -p "build/$flavor"
-        generate_drivah_config "$img" "$tag" "../../" > "build/$flavor/drivah.toml.sh"
-        chmod +x build/$flavor/drivah.toml.sh
-        cp -f "$CONTAINERFILE_PATH" "build/$flavor/Dockerfile"
-   #fi
+    # fetch public license key
+    if [[ ! -f "$HERE/$LICENSE_PUBKEY" ]]; then
+        vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > $HERE/$LICENSE_PUBKEY
+    fi
+
+    # copy Dockerfile and generate drivah.toml
+    echo "# -- build: $img:$tag"
+    mkdir -p "$HERE/$flavor"
+    generate_drivah_config "$img" "$tag" > "$HERE/$flavor/drivah.toml.sh"
+    chmod +x $HERE/$flavor/drivah.toml.sh
+    cp -f "$CONTAINERFILE_PATH" "$HERE/$flavor/Dockerfile"
+
 done
