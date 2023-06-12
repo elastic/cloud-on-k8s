@@ -210,9 +210,9 @@ func Test_addPortToHttpsUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := addPortToHttpsUrl(tt.url)
+			got, err := addPortToHTTPSURL(tt.url)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("addPortToHttpsUrl() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("addPortToHTTPSURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
