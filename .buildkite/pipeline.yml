@@ -10,16 +10,17 @@ steps:
 
   - label: ":buildkite: build"
     agents:
-      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0"
+      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.0.3"
     env:
       DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
     commands:
       - buildkite-agent meta-data set BUILD_TRIGGER pr
       - buildkite-agent meta-data set BUILD_FLAVORS eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips
-      - ./drivah.toml.sh
       - make -C /agent generate-docker-images
-    artifact_paths:
-      - build/**/*
+    env:
+      PRE_BUILD_SCRIPT: ./gen-drivah.toml.sh
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      RECURSIVE: true
 
   # - group: checks
   #   steps:

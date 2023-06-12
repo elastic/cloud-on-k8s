@@ -14,25 +14,21 @@ ENV HELM_VERSION=3.10.1
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh -v v${HELM_VERSION} --no-sudo && rm get_helm.sh
 
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
+# Cache download dependencies go
 COPY go.mod go.sum ./
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 
-# # Copy the sources
+# Copy the sources
 COPY pkg/ pkg/
 COPY cmd/ cmd/
 
-# Generate pkg/controller/common/license/zz_generated.pubkey.go and config/eck.yaml
+# Generate go sources (including pkg/controller/common/license/zz_generated.pubkey.go)
 ENV LICENSE_PUBKEY=/license.key
 COPY ${LICENSE_PUBKEY_PATH} /license.key
-COPY Makefile VERSION ./
-# COPY .git .git
+COPY Makefile VERSION .git/ ./
 RUN make go-generate
-# COPY config/ config/
-# COPY deploy/ deploy/
-# COPY hack/ hack/
-# RUN make generate-crds-v1 generate-config-file
+
+# Generate default eck config
 COPY deploy/ deploy/
 RUN helm template deploy/eck-operator -s templates/configmap.yaml \
       -f deploy/eck-operator/values.yaml --set=webhook.enabled=false --set=telemetry.distributionChannel=image \

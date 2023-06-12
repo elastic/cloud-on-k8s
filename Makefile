@@ -15,6 +15,12 @@ export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
+drivah:
+	docker run --rm -ti \
+		-v $(shell pwd):/go/src/github.com/elastic/cloud-on-k8s -w /go/src/github.com/elastic/cloud-on-k8s\
+		docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.1.0 bash
+
+
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 

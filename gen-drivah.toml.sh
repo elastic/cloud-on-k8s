@@ -16,6 +16,8 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")"; pwd)"
 
+get_arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
+
 generate_drivah_config() {
     local img=$1
     local tag=$2
@@ -43,15 +45,11 @@ names = ["${img}"]
 tags = ["${tag}-\$(get_arch)"]
 
 [container.image.build_args]
+VERSION = "${ECK_VERSION}"
 GO_LDFLAGS = "\$(get_go_ldflags)"
 GO_TAGS = "${GO_TAGS}"
 LICENSE_PUBKEY_PATH = "${LICENSE_PUBKEY_PATH}"
 END
-
-if [[ ! -d build ]]; then
-echo "[container.image.hooks]"
-echo "pre_build = \"buildkite-agent artifact download 'build/**' .\""
-fi
 
 EOF
 }
@@ -112,7 +110,7 @@ esac
 BUILD_FLAVORS=$(get_meta BUILD_FLAVORS "${BUILD_FLAVORS}")
 echo " BUILD_FLAVORS=$BUILD_FLAVORS"
 
-IFS=","; for t in $BUILD_FLAVORS; do
+IFS=","; for flavor in $BUILD_FLAVORS; do
     
     # default vars
     LICENSE_PUBKEY=license.key
@@ -122,16 +120,16 @@ IFS=","; for t in $BUILD_FLAVORS; do
     img="$DOCKER_IMAGE"
     tag="$DOCKER_IMAGE_TAG"
 
-    if [[ "$t" =~ -dev ]]; then
+    if [[ "$flavor" =~ -dev ]]; then
             tag="$tag-dev"
             LICENSE_PUBKEY=dev-license.key
             BUILD_LICENSE_PUBKEY=dev
     fi
-    if [[ "$t" =~ -ubi8 ]]; then
+    if [[ "$flavor" =~ -ubi8 ]]; then
             img="$img-ubi8"
             CONTAINERFILE_PATH=$ROOT/Dockerfile-ubi
     fi
-    if [[ "$t" =~ -fips ]]; then
+    if [[ "$flavor" =~ -fips ]]; then
             img="$img-fips"
             GO_TAGS="$GO_TAGS,goexperiment.boringcrypto"
     fi
@@ -142,21 +140,23 @@ IFS=","; for t in $BUILD_FLAVORS; do
         vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > $LICENSE_PUBKEY_PATH
     fi
 
+    echo "$img:$tag" >> images-$(get_arch)
+
     # dev mode
-    if [[ "$t" == "dev" ]]; then
+    if [[ "$flavor" == "dev" ]]; then
             LICENSE_PUBKEY= GO_TAGS=
-            generate_drivah_config "$DOCKER_IMAGE-dev" "$DOCKER_IMAGE_TAG" "." | bash
+            generate_drivah_config "$img-dev" "$tag" "." | bash
             exit 0
     fi
 
-    if [[ "$t" == "eck" ]]; then
+    #if [[ "$flavor" == "eck" ]]; then
         generate_drivah_config "$img" "$tag" "." | bash
-    else
+    #else
         # copy Dockerfile and generate drivah.toml
         echo "# -- build $img:$tag"
-        mkdir -p build/$t
-        generate_drivah_config "$img" "$tag" "../../" > build/$t/drivah.toml.sh
-        chmod +x build/$t/drivah.toml.sh
-        cp -f $CONTAINERFILE_PATH build/$t/Dockerfile
-    fi
+        mkdir -p "build/$flavor"
+        generate_drivah_config "$img" "$tag" "../../" > "build/$flavor/drivah.toml.sh"
+        chmod +x build/$flavor/drivah.toml.sh
+        cp -f "$CONTAINERFILE_PATH" "build/$flavor/Dockerfile"
+   #fi
 done

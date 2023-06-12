@@ -26,7 +26,7 @@ COPY cmd cmd/
 # Generate pkg/controller/common/license/zz_generated.pubkey.go and config/eck.yaml
 ENV LICENSE_PUBKEY=/license.key
 COPY ${LICENSE_PUBKEY_PATH} /license.key
-COPY Makefile VERSION ./
+COPY Makefile VERSION .git/ ./
 # COPY .git .git
 RUN make go-generate
 # COPY config/ config/
@@ -65,7 +65,7 @@ LABEL name="Elastic Cloud on Kubernetes" \
       io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes"
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
-COPY config/eck.yaml /conf/eck.yaml
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/
