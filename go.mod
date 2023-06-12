@@ -15,7 +15,7 @@ require (
 	github.com/google/go-containerregistry v0.15.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/golang-lru/v2 v2.0.2
+	github.com/hashicorp/golang-lru/v2 v2.0.3
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/imdario/mergo v0.3.16
 	github.com/magiconair/properties v1.8.7
