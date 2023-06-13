@@ -40,7 +40,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.7.0
+  version: 8.8.0
   nodeSets:
   - name: default
     count: 1
@@ -154,6 +154,7 @@ spec:
             resources:
               requests:
                 cpu: 200m
+                memory: 700Mi
               limits:
                 ephemeral-storage: "10Gi"
         volumes:
@@ -203,6 +204,7 @@ spec:
             resources:
               requests:
                 cpu: 200m
+                memory: 700Mi
               limits:
                 ephemeral-storage: "10Gi"
         serviceAccountName: elastic-agent
