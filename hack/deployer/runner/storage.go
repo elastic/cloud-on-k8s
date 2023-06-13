@@ -48,6 +48,7 @@ func createStorageClass() error {
 	// string, both are set.
 	sc = strings.ReplaceAll(sc, `storageclass.kubernetes.io/is-default-class: "true"`, `storageclass.kubernetes.io/is-default-class: "false"`)
 	sc = strings.ReplaceAll(sc, `storageclass.beta.kubernetes.io/is-default-class: "true"`, `storageclass.beta.kubernetes.io/is-default-class: "false"`)
+	log.Printf("creating storage class: '%s'\n", sc)
 	return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
