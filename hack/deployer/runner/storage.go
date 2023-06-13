@@ -32,11 +32,14 @@ func createStorageClass() error {
 
 	defaultName, err := getDefaultStorageClassName()
 	if err != nil {
+		log.Printf("error in getdefaultsc: %s", err)
 		return err
 	}
 
+	log.Printf("About to exec: %s", fmt.Sprintf("kubectl get sc %s -o yaml", defaultName))
 	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
 	if err != nil {
+		log.Printf("error in exec.NewCommand: %s", err)
 		return err
 	}
 
@@ -68,6 +71,7 @@ func getDefaultStorageClassName() (string, error) {
 			`storageclass\.beta\.kubernetes\.io/is-default-class`,
 		} {
 			template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
+			log.Printf("about to exec: %s", fmt.Sprintf(template, annotation))
 			baseScs, err := exec.NewCommand(fmt.Sprintf(template, annotation)).OutputList()
 			if err != nil {
 				return "", err
