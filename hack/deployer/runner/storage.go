@@ -28,7 +28,7 @@ func createStorageClass() error {
 		return nil
 	}
 
-	log.Println("Creating storage class...")
+	log.Printf("Creating storage class...\n")
 
 	defaultName, err := getDefaultStorageClassName()
 	if err != nil {
@@ -36,7 +36,8 @@ func createStorageClass() error {
 		return err
 	}
 
-	log.Printf("About to exec: %s", fmt.Sprintf("kubectl get sc %s -o yaml", defaultName))
+	log.Printf("default sc found to be: %s\n", defaultName)
+	log.Printf("About to exec: %s\n", fmt.Sprintf("kubectl get sc %s -o yaml", defaultName))
 	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
 	if err != nil {
 		log.Printf("error in exec.NewCommand: %s", err)
