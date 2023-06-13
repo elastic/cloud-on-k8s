@@ -6,6 +6,14 @@ steps:
   - group: helm-release
     steps:
 
+      - label: ":go: helm releaser tool"
+        commands:
+          - cd hack/helm/release
+          - make build
+          - buildkite-agent artifact upload bin/releaser
+
+      - wait
+
       - label: "operator dev helm chart"
         if: |
           ( build.branch == "main" && build.source != "schedule" )
@@ -13,10 +21,6 @@ steps:
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-operator helm charts"
           || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "operator-image-build"
-        key: "eck-operator-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
@@ -31,10 +35,6 @@ steps:
           || build.message =~ /^buildkite test .*release.*/
           || build.message == "release eck-resources helm charts"
           || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "operator-image-build"
-        key: "eck-resources-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
@@ -47,9 +47,6 @@ steps:
           build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
           || build.message == "release eck-operator helm charts"
           || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "eck-operator-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
@@ -62,9 +59,6 @@ steps:
           build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
           || build.message == "release eck-resources helm charts"
           || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "eck-resources-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser

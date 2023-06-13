@@ -8,61 +8,56 @@ env:
 
 steps:
 
-  - label: ":buildkite: build"
+  - group: checks
+    steps:
+
+      - label: ":go: lint"
+        command: "make lint check-local-changes"
+        agents:
+          cpu: "6"
+          memory: "6G"
+
+      - label: ":go: generate"
+        command: "make generate check-local-changes"
+
+      - label: ":go: checks"
+        commands:
+          - "make check-license-header check-predicates shellcheck reattach-pv"
+
+  - group: tests
+    steps:
+
+      - label: ":go: unit-tests"
+        command: "make unit-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: integration-tests"
+        command: "make integration-xml"
+        agents:
+          memory: "4G"
+
+      - label: ":go: manifest-gen-tests"
+        command: "make manifest-gen-test"
+
+      - label: ":go: helm-tests"
+        command: "make helm-test"
+
+  - label: ":buildkite:"
     agents:
       image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.0.3"
-    env:
-      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
-    commands:
-      - buildkite-agent meta-data set BUILD_TRIGGER pr
-      - buildkite-agent meta-data set BUILD_FLAVORS eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips
-      - make -C /agent generate-docker-images
     env:
       PRE_BUILD_SCRIPT: build/gen-drivah.toml.sh
       DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
       RECURSIVE: true
+    commands:
+      - buildkite-agent meta-data set BUILD_TRIGGER $$(.buildkite/scripts/common/trigger.sh)
+      - make -C /agent generate-docker-images
 
-  # - group: checks
-  #   steps:
+  - wait
 
-  #     - label: ":go: lint"
-  #       command: "make lint check-local-changes"
-  #       agents:
-  #         cpu: "6"
-  #         memory: "6G"
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
 
-  #     - label: ":go: generate"
-  #       command: "make generate check-local-changes"
-
-  #     - label: ":go: checks"
-  #       commands:
-  #         - "make check-license-header check-predicates shellcheck reattach-pv"
-  #         - env -i .buildkite/scripts/build/setenv_test.sh
-
-  # - group: tests
-  #   steps:
-
-  #     - label: ":go: unit-tests"
-  #       command: "make unit-xml"
-  #       agents:
-  #         memory: "4G"
-
-  #     - label: ":go: integration-tests"
-  #       command: "make integration-xml"
-  #       agents:
-  #         memory: "4G"
-
-  #     - label: ":go: manifest-gen-tests"
-  #       command: "make manifest-gen-test"
-
-  #     - label: ":go: helm-tests"
-  #       command: "make helm-test"
-
-  # - label: ":buildkite:"
-  #   command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
-
-  # - label: ":buildkite:"
-  #   command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
-
-  # - label: ":buildkite:"
-  #   command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml

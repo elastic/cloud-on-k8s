@@ -134,7 +134,7 @@ func validate(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("while creating vault client: %w", err)
 		}
-		_, err = vault.ReadFile(c, vault.SecretFile{
+		_, err = vault.ReadFile(func() vault.Client { return c }, vault.SecretFile{
 			Name:          credentialsFilePath,
 			Path:          googleCredsVaultSecretPath,
 			FieldResolver: func() string { return googleCredsVaultSecretKey },

@@ -4,7 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# retry function
+#  function
 # -------------------------------------
 # Retry a command for a specified number of times until the command exits successfully.
 # Retry wait period backs off exponentially after each retry.

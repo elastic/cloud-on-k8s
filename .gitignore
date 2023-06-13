@@ -26,6 +26,7 @@ vendor/
 
 # Elastic license keys
 license.key
+dev-license.key
 dev-private.key
 
 # test licenses used in the E2E tests
@@ -74,4 +75,7 @@ hack/pipeline-validator/validator
 
 # ignore Helm lock file
 Chart.lock
+
+# build
+build/[eckdev]*
 

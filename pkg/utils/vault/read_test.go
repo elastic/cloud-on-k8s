@@ -11,7 +11,8 @@ import (
 )
 
 func Test_Get(t *testing.T) {
-	c := newMockClient(t, "secret", "42")
+	mock := newMockClient(t, "secret", "42")
+	c := func() Client { return mock }
 
 	secret, err := Get(c(), "fakepath", "secret")
 	assert.NoError(t, err)
@@ -22,10 +23,11 @@ func Test_Get(t *testing.T) {
 }
 
 func Test_GetMany(t *testing.T) {
-	c := newMockClient(t,
+	mock := newMockClient(t,
 		"secret", "42",
 		"token", "24",
 	)
+	c := func() Client { return mock }
 
 	secrets, err := GetMany(c(), "fakepath", "secret")
 	assert.NoError(t, err)

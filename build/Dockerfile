@@ -1,46 +1,39 @@
 # Build the operator binary
 FROM docker.io/library/golang:1.20.5 as builder
 
-ARG GO_LDFLAGS
+ARG VERSION
+ARG SHA1
+ARG SNAPSHOT
 ARG GO_TAGS
 ARG LICENSE_PUBKEY_PATH
 
+ENV LICENSE_PUBKEY=/license.key
+
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
-# ENV KUBECTL_VERSION=1.26.3
-# RUN curl -fsSLO https://dl.k8s.io/v${KUBECTL_VERSION}/bin/linux/$(uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")/kubectl && \
-#     mv kubectl /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
 ENV HELM_VERSION=3.10.1
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && ./get_helm.sh -v v${HELM_VERSION} --no-sudo && rm get_helm.sh
 
 # Cache download dependencies go
-COPY go.mod go.sum ./
+COPY Makefile go.mod go.sum ./
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 
+# Generate default eck config (required Helm)
+COPY deploy/ deploy/
+RUN mkdir config && make generate-config-file
+
 # Copy the sources
+ENV LICENSE_PUBKEY=/license.key
+COPY $LICENSE_PUBKEY_PATH /license.key
 COPY pkg/ pkg/
 COPY cmd/ cmd/
 
-# Generate go sources (including pkg/controller/common/license/zz_generated.pubkey.go)
-ENV LICENSE_PUBKEY=/license.key
-COPY ${LICENSE_PUBKEY_PATH} /license.key
-COPY Makefile VERSION .git/ ./
-RUN make go-generate
-
-# Generate default eck config
-COPY deploy/ deploy/
-RUN helm template deploy/eck-operator -s templates/configmap.yaml \
-      -f deploy/eck-operator/values.yaml --set=webhook.enabled=false --set=telemetry.distributionChannel=image \
-      > eck.yaml
-
 # Build
-RUN --mount=type=cache,mode=0755,target=/go/pkg/mod CGO_ENABLED=0 GOOS=linux \
-      go build \
-      -mod readonly \
-      -ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
-      -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
+      CGO_ENABLED=0 GOOS=linux make go-build
 
+# ---------------------------------------------
 # Copy the operator binary into a lighter image
 FROM gcr.io/distroless/static:nonroot
 
@@ -61,7 +54,7 @@ LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, 
       org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/config/eck.yaml  /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/

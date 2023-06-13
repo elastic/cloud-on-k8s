@@ -5,35 +5,34 @@
 # you may not use this file except in compliance with the Elastic License 2.0.
 
 #
-# Build ECK operator image(s).
+# Generate drivah.toml to build ECK operator image(s).
 #
 # Environment variables:
-
-#    BUILD_TRIGGER    tag|merge-main|nightly-main|pr (default: pr)
-#    BUILD_FLAVORS    comma separated list (values: eck,eck-fips,eck-ubi8,eck-ubi8-fips,eck-dev) (default: dev)
+#    BUILD_TRIGGER    tag|merge-main|nightly-main|pr|dev (default: dev)
+#    BUILD_FLAVORS    comma separated list (values: dev,eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips) (default: dev)
 #
 
-set -uo pipefail
+set -euo pipefail
+
 HERE="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$HERE/.."
 
-get_arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
+get_meta() {
+    local key=$1
+    local default_val=$2
+
+    if [[ "${CI:-}" == "true" ]]; then
+        buildkite-agent meta-data get "$key" &> v
+        status=$? val=$(cat v); rm v
+        [[ "$status" == 0 ]] && echo "$val" || echo "$default_val"
+    else
+        echo "$default_val"
+    fi
+}
 
 generate_drivah_config() {
     local img=$1
     local tag=$2
-cat <<EOF
-#!/bin/bash
-
-get_arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
-
-get_go_ldflags() {
-    echo "-X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=${ECK_VERSION} \
-        -X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=${SHA1} \
-        -X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildDate=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-        -X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=${SNAPSHOT}"
-}
-
 cat <<END
 [docker]
 
@@ -41,116 +40,125 @@ cat <<END
 build_flags = [ "../../"]
 
 [container.image]
-build_context = "../../"
 names = ["${img}"]
-tags = ["${tag}-\$(get_arch)"]
+tags = ["${tag}-${ARCH}"]
+build_context = "../../"
 
 [container.image.build_args]
 VERSION = "${ECK_VERSION}"
-GO_LDFLAGS = "\$(get_go_ldflags)"
+SHA1 = "${SHA1}"
 GO_TAGS = "${GO_TAGS}"
+SNAPSHOT = "${SNAPSHOT}"
 LICENSE_PUBKEY_PATH = "build/$LICENSE_PUBKEY"
 END
-
-EOF
 }
 
-get_meta() {
-    buildkite-agent meta-data get $1 2> /dev/null > v
-    local meta_status=$?
-    local meta_val=$(cat v); rm v
-    local default_val=$2
-    if [[ "$meta_status" == 0 ]]; then
-        echo "$meta_val"
-    else
-        echo "$default_val"
-    fi
-}
-
-# default values
-BUILD_TRIGGER="${BUILD_TRIGGER:-dev}"
-BUILD_FLAVORS="${BUILD_FLAVORS:-dev}"
-
-## set DOCKER_IMAGE/DOCKER_IMAGE_TAG depending on the trigger
-
+ARCH=$(uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
 ECK_VERSION=$(cat "$ROOT/VERSION")
 SHA1=$(git rev-parse --short=8 --verify HEAD)
 SNAPSHOT=true
 
-BUILD_TRIGGER=$(get_meta BUILD_TRIGGER "${BUILD_TRIGGER}")
-echo -n "# -- env: BUILD_TRIGGER=$BUILD_TRIGGER"
+main() {
+    # set DOCKER_IMAGE/DOCKER_IMAGE_TAG depending on the trigger
 
-case "$BUILD_TRIGGER" in       
-    tag) # depends on BUILDKITE_TAG
-        DOCKER_IMAGE="docker.elastic.co/eck/eck-operator"
-        DOCKER_IMAGE_TAG="${BUILDKITE_TAG#v}"
-        SNAPSHOT=false
-    ;;
-    merge-main|nightly-main)
-        DOCKER_IMAGE="docker.elastic.co/eck-snapshots/eck-operator"
-        DOCKER_IMAGE_TAG="$ECK_VERSION-$SHA1"
-    ;;
-    pr) # depends on BUILDKITE_PULL_REQUEST
-        DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-pr"
-        DOCKER_IMAGE_TAG="$BUILDKITE_PULL_REQUEST-$SHA1"
-    ;;
-    dev)
-        DOCKER_IMAGE="docker.elastic.co/eck-dev/eck-operator"
-        DOCKER_IMAGE_TAG="dev-$SHA1"
-    ;;
-    *)
-        DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-br"
-        DOCKER_IMAGE_TAG="$ECK_VERSION-$SHA1"
-    ;;
-esac
-
-## create Dockerfile(s) and drivah.toml(s) depending on the build flavors
-
-BUILD_FLAVORS=$(get_meta BUILD_FLAVORS "${BUILD_FLAVORS}")
-echo " BUILD_FLAVORS=$BUILD_FLAVORS"
-
-IFS=","; for flavor in $BUILD_FLAVORS; do
+    BUILD_TRIGGER="${BUILD_TRIGGER:-dev}"
+    BUILD_TRIGGER=$(get_meta BUILD_TRIGGER "${BUILD_TRIGGER}")
     
-    # default vars
-    LICENSE_PUBKEY=license.key
-    GO_TAGS=release
-    CONTAINERFILE_PATH=$HERE/Dockerfile
-    LICENSE_PUBKEY=license.key
+    echo -n "# -- env: BUILD_TRIGGER=$BUILD_TRIGGER"
+
+    case "$BUILD_TRIGGER" in
+        tag-*)
+            : "$BUILDKITE_TAG" # required
+            DOCKER_IMAGE="docker.elastic.co/eck/eck-operator"
+            DOCKER_IMAGE_TAG="${BUILDKITE_TAG#v}" # remove v prefix
+            SNAPSHOT=false
+        ;;
+        *-main)
+            DOCKER_IMAGE="docker.elastic.co/eck-snapshots/eck-operator"
+            DOCKER_IMAGE_TAG="$ECK_VERSION-$SHA1"
+        ;;
+        pr-*)
+            : "$BUILDKITE_PULL_REQUEST" # required
+            DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-pr"
+            DOCKER_IMAGE_TAG="$BUILDKITE_PULL_REQUEST-$SHA1"
+        ;;
+        dev)
+            DOCKER_IMAGE="docker.elastic.co/eck-dev/eck-operator"
+            DOCKER_IMAGE_TAG="dev-$SHA1"
+        ;;
+        *)
+            DOCKER_IMAGE="docker.elastic.co/eck-ci/eck-operator-br"
+            DOCKER_IMAGE_TAG="$ECK_VERSION-$SHA1"
+        ;;
+    esac
+
+    BUILD_FLAVORS=$(get_meta BUILD_FLAVORS "${BUILD_FLAVORS:-}")
+
+    # auto-detect flavors depending on the trigger if not set
     
-    img="$DOCKER_IMAGE"
-    tag="$DOCKER_IMAGE_TAG"
-
-    if [[ "$flavor" =~ -dev ]]; then
-            tag="$tag-dev"
-            LICENSE_PUBKEY=dev-license.key
-            BUILD_LICENSE_PUBKEY=dev
-    fi
-    if [[ "$flavor" =~ -ubi8 ]]; then
-            img="$img-ubi8"
-            CONTAINERFILE_PATH=$HERE/Dockerfile-ubi
-    fi
-    if [[ "$flavor" =~ -fips ]]; then
-            img="$img-fips"
-            GO_TAGS="$GO_TAGS,goexperiment.boringcrypto"
+    if [[ ${BUILD_FLAVORS} == "" ]]; then
+        case $BUILD_TRIGGER in
+            tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips" ;;
+            *-main)          BUILD_FLAVORS="eck,eck-dev" ;;
+            *-test-snapshot) BUILD_FLAVORS="eck,eck-dev" ;;
+            pr-*)            BUILD_FLAVORS="eck" ;;
+            dev)             BUILD_FLAVORS="dev" ;;
+            *)               echo "error: trigger '$BUILD_TRIGGER' not supported"; exit ;;
+        esac
     fi
 
-    # dev mode
-    if [[ "$flavor" == "dev" ]]; then
-        GO_TAGS=
-        generate_drivah_config "$img-dev" "$tag" | bash
-        exit 0
-    fi
+    # create Dockerfile(s) and drivah.toml(s) depending on the build flavors
 
-    # fetch public license key
-    if [[ ! -f "$HERE/$LICENSE_PUBKEY" ]]; then
-        vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > $HERE/$LICENSE_PUBKEY
-    fi
+    echo " BUILD_FLAVORS=$BUILD_FLAVORS"
 
-    # copy Dockerfile and generate drivah.toml
-    echo "# -- build: $img:$tag"
-    mkdir -p "$HERE/$flavor"
-    generate_drivah_config "$img" "$tag" > "$HERE/$flavor/drivah.toml.sh"
-    chmod +x $HERE/$flavor/drivah.toml.sh
-    cp -f "$CONTAINERFILE_PATH" "$HERE/$flavor/Dockerfile"
+    rm -rf build/[eckdv]*
 
-done
+    IFS=","; for flavor in $BUILD_FLAVORS; do
+
+        # default vars reset at each iteration
+        CONTAINERFILE_PATH=$HERE/Dockerfile
+        GO_TAGS=release
+        LICENSE_PUBKEY=license.key
+        local img="$DOCKER_IMAGE"
+        local tag="$DOCKER_IMAGE_TAG"
+
+        if [[ "$flavor" == "dev" ]]; then
+            # build without public license key
+            GO_TAGS=
+            touch "$HERE/$LICENSE_PUBKEY"
+        fi
+        if [[ "$flavor" =~ -dev ]]; then
+                tag="$tag-dev"
+                LICENSE_PUBKEY=dev-license.key
+                BUILD_LICENSE_PUBKEY=dev
+        fi
+        if [[ "$flavor" =~ -ubi8 ]]; then
+                img="$img-ubi8"
+                CONTAINERFILE_PATH=$HERE/Dockerfile-ubi
+        fi
+        if [[ "$flavor" =~ -fips ]]; then
+                img="$img-fips"
+                GO_TAGS="$GO_TAGS,goexperiment.boringcrypto"
+        fi
+
+        # store the "eck" flavor image to run e2e tests later with it
+        if  [[ "${CI:-}" == "true" ]] && [[ "$flavor" == "eck" ]]; then
+            buildkite-agent meta-data set operator-image "$img:$tag"
+        fi
+
+        # fetch public license key
+        if [[ ! -f "$HERE/$LICENSE_PUBKEY" ]]; then
+            vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license \
+                | base64 --decode > "$HERE/$LICENSE_PUBKEY"
+        fi
+
+        # generate drivah.toml and copy Dockerfile
+        echo "# -- build: $img:$tag"
+        mkdir -p "$HERE/$flavor"
+        generate_drivah_config "$img" "$tag" > "$HERE/$flavor/drivah.toml"
+        cp -f "$CONTAINERFILE_PATH" "$HERE/$flavor/Dockerfile"
+
+    done
+}
+
+main

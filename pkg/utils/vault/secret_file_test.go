@@ -13,7 +13,8 @@ import (
 )
 
 func Test_ReadFile(t *testing.T) {
-	c := newMockClient(t, "key", "42")
+	mock := newMockClient(t, "key", "42")
+	c := func() Client { return mock }
 	f := SecretFile{
 		Name:          "test.json",
 		Path:          "test",
@@ -79,10 +80,11 @@ func Test_ReadFile(t *testing.T) {
 }
 
 func Test_LicensePubKeyPrefix(t *testing.T) {
-	c := newMockClient(t,
+	mock := newMockClient(t,
 		"secret", "s3cr3t",
 		"special-secret", "sp3c!@l",
 	)
+	c := func() Client { return mock }
 	f := SecretFile{
 		Name:          "in-memory",
 		Path:          "test",
@@ -107,7 +109,8 @@ func Test_LicensePubKeyPrefix(t *testing.T) {
 }
 
 func Test_SecretFile_Base64Encoded(t *testing.T) {
-	c := newMockClient(t, "f", "eyJ5b3BsYSI6ImJvdW0ifQ==")
+	mock := newMockClient(t, "f", "eyJ5b3BsYSI6ImJvdW0ifQ==")
+	c := func() Client { return mock }
 	f := SecretFile{
 		Name:          "in-memory",
 		Path:          "test",
@@ -142,17 +145,19 @@ func Test_SecretFile_Base64Encoded(t *testing.T) {
 
 	// error if the secret is not in base64
 	f.Base64Encoded = true
-	c = newMockClient(t, "f", "notbase64")
+	mock = newMockClient(t, "f", "notbase64")
+	c = func() Client { return mock }
+
 	_, err = ReadFile(c, f)
 	assert.Error(t, err)
 }
 
 func Test_SecretFile_FormatJson(t *testing.T) {
-	c := newMockClient(t,
+	mock := newMockClient(t,
 		"a", "1",
 		"b", "2",
 	)
-
+	c := func() Client { return mock }
 	f := SecretFile{
 		Name:       "in-memory",
 		Path:       "test",
@@ -175,7 +180,7 @@ type mockClient struct {
 	readCount int
 }
 
-func newMockClient(t *testing.T, data ...string) func() Client {
+func newMockClient(t *testing.T, data ...string) Client {
 	t.Helper()
 
 	if len(data)%2 != 0 {
@@ -187,11 +192,9 @@ func newMockClient(t *testing.T, data ...string) func() Client {
 		dataMap[data[i]] = data[i+1]
 	}
 
-	return func() Client {
-		return &mockClient{
-			data:      dataMap,
-			readCount: 0,
-		}
+	return &mockClient{
+		data:      dataMap,
+		readCount: 0,
 	}
 }
 

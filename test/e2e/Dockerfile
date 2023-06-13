@@ -1,11 +1,9 @@
 # Docker image for the E2E tests runner
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.5
-
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
+FROM docker.io/library/golang:1.20.5
 
 ENV GCLOUD_VERSION=381.0.0
 ENV ECK_DIAG_VERSION=1.4.0
+ENV LICENSE_PUBKEY=/license.key
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -26,17 +24,24 @@ RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${E
 # create the go test cache directory
 RUN mkdir -p /.cache && chmod 777 /.cache
 
+# cache download dependencies go
+COPY Makefile go.mod go.sum ./
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
+
+# copy sources
+COPY test/e2e/license.key /license.key
+COPY pkg/ pkg/
+COPY cmd/ cmd/
+
+# Build
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod make go-generate
+
+# copy sources
+COPY config/ config/
+COPY test/ test/
+
 # non-root user to support restricted security policies
 RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
 USER 1001
-
-# download go dependencies
-COPY ["go.mod", "go.sum","./"]
-RUN go mod download
-
-# copy sources
-COPY pkg/ pkg/
-COPY config/ config/
-COPY test/ test/
 
 ENTRYPOINT ["test/e2e/run.sh"]
