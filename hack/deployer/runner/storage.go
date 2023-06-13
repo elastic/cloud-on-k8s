@@ -79,7 +79,14 @@ func getDefaultStorageClassName() (string, error) {
 			}
 
 			if len(baseScs) != 0 {
-				return baseScs[0], nil
+				// Seeing "E0613 19:23:30.442396    3773 memcache.go:287] couldn't get resource list for metrics.k8s.io/v1beta1: the server is currently unable to handle the request"
+				// being returned in CI for the default storage class without returning any error. Trying to catch this scenario here and retry.
+				sc := baseScs[0]
+				if strings.Contains(sc, "the server is currently unable to handle the request") {
+					err = fmt.Errorf("while retrieving storageclass: %s", sc)
+					return "", err
+				}
+				return sc, nil
 			}
 		}
 		return "", fmt.Errorf("default storageclass not found")
