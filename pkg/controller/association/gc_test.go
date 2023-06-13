@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -33,7 +33,7 @@ func newUserSecret(
 	namespace, name,
 	associationNamespaceLabel, associationNameLabel,
 	associationNamespaceValue, associationNameValue string,
-) runtime.Object {
+) client.Object {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -51,7 +51,7 @@ func newServiceAccountSecret(
 	namespace, name,
 	associationNamespaceLabel, associationNameLabel,
 	associationNamespaceValue, associationNameValue string,
-) runtime.Object {
+) client.Object {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

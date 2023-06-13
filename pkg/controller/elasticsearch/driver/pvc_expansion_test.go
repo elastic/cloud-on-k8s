@@ -16,9 +16,9 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -88,8 +88,8 @@ func Test_handleVolumeExpansion(t *testing.T) {
 		}
 		return pvcs
 	}
-	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []runtime.Object {
-		var ptrs []runtime.Object
+	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
+		var ptrs []client.Object
 		for i := range pvcs {
 			ptrs = append(ptrs, &pvcs[i])
 		}
@@ -104,7 +104,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         args
-		runtimeObjs  []runtime.Object
+		runtimeObjs  []client.Object
 		expectedPVCs []corev1.PersistentVolumeClaim
 		wantErr      bool
 		wantRecreate bool
@@ -304,7 +304,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 	sset2JSON := string(sset2Bytes)
 
 	type args struct {
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		es          esv1.Elasticsearch
 	}
 	tests := []struct {
@@ -318,7 +318,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "no annotation: nothing to do",
 			args: args{
-				runtimeObjs: []runtime.Object{sset1, pod1},
+				runtimeObjs: []client.Object{sset1, pod1},
 				es:          *es(),
 			},
 			wantES:          *es(),
@@ -328,7 +328,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "StatefulSet to delete",
 			args: args{
-				runtimeObjs: []runtime.Object{sset1, pod1}, // sset exists with the same UID
+				runtimeObjs: []client.Object{sset1, pod1}, // sset exists with the same UID
 				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			},
 			wantES:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
@@ -339,7 +339,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "StatefulSet to create",
 			args: args{
-				runtimeObjs: []runtime.Object{pod1}, // sset doesn't exist
+				runtimeObjs: []client.Object{pod1}, // sset doesn't exist
 				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			},
 			wantES: *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
@@ -351,7 +351,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "StatefulSet already recreated: remove the annotation",
 			args: args{
-				runtimeObjs: []runtime.Object{sset1DifferentUID, pod1WithOwnerRef}, // sset recreated
+				runtimeObjs: []client.Object{sset1DifferentUID, pod1WithOwnerRef}, // sset recreated
 				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			},
 			wantES:          *es(),                                    // annotation removed
@@ -362,7 +362,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "multiple statefulsets to handle",
 			args: args{
-				runtimeObjs: []runtime.Object{sset1, sset2, pod1},
+				runtimeObjs: []client.Object{sset1, sset2, pod1},
 				es: *withAnnotation(withAnnotation(es(),
 					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
@@ -377,7 +377,7 @@ func Test_recreateStatefulSets(t *testing.T) {
 		{
 			name: "additional annotations are ignored",
 			args: args{
-				runtimeObjs: []runtime.Object{sset1DifferentUID, pod1}, // sset recreated
+				runtimeObjs: []client.Object{sset1DifferentUID, pod1}, // sset recreated
 				es: *withAnnotation(withAnnotation(es(),
 					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 					"another-annotation-key", sset2JSON),

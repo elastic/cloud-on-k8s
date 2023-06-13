@@ -12,8 +12,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user/filerealm"
@@ -24,7 +24,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	tests := []struct {
 		name              string
-		existingSecrets   []runtime.Object
+		existingSecrets   []client.Object
 		existingFileRealm filerealm.Realm
 		assertions        func(t *testing.T, u users)
 	}{
@@ -40,7 +40,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 		},
 		{
 			name: "elastic user secret exists but is invalid: generate a new elastic user",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
 					Data:       nil, // no password or password removed
@@ -58,7 +58,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 		},
 		{
 			name: "reuse the existing elastic user and password hash",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
 					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
@@ -74,7 +74,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if the existing one doesn't match",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
 					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
@@ -91,7 +91,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if there is none in the file realm",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
 					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
@@ -171,7 +171,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	tests := []struct {
 		name              string
-		existingSecrets   []runtime.Object
+		existingSecrets   []client.Object
 		existingFileRealm filerealm.Realm
 		assertions        func(t *testing.T, u users)
 	}{
@@ -188,7 +188,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the existing passwords and hashes",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{
@@ -211,7 +211,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if the existing one doesn't match",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{
@@ -236,7 +236,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 		},
 		{
 			name: "reuse the password but generate a new hash if there is none in the file realm",
-			existingSecrets: []runtime.Object{
+			existingSecrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
 					Data: map[string][]byte{

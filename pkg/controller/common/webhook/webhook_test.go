@@ -276,7 +276,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			decoder, _ := admission.NewDecoder(k8s.Scheme())
+			decoder := admission.NewDecoder(k8s.Scheme())
 			v := &validatingWebhook{
 				decoder:           decoder,
 				managedNamespaces: tt.fields.managedNamespaces,

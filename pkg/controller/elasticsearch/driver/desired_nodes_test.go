@@ -25,11 +25,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/utils/pointer"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -656,9 +656,9 @@ func (esb esBuilder) toEs() esv1.Elasticsearch {
 	}
 }
 
-func (esb esBuilder) toResources() []runtime.Object {
+func (esb esBuilder) toResources() []crclient.Object {
 	es := esb.toEs()
-	result := []runtime.Object{&es}
+	result := []crclient.Object{&es}
 	for _, nodeSet := range esb.nodeSets {
 		if !nodeSet.pvcExists {
 			continue

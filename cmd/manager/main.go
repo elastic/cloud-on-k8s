@@ -35,11 +35,11 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
@@ -545,7 +545,6 @@ func startOperator(ctx context.Context) error {
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
 		Scheme:                     clientgoscheme.Scheme,
-		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           LeaderElectionLeaseName,
@@ -560,15 +559,15 @@ func startOperator(ctx context.Context) error {
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
 		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
-		// opts.Namespace implicitly allows watching cluster-scoped resources (e.g. storage classes)
-		opts.Namespace = managedNamespaces[0]
+
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
 		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
-
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
+
+	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
+	opts.Cache.Namespaces = managedNamespaces
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
@@ -577,7 +576,13 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = viper.GetInt(operator.WebhookPortFlag)
+	webhookPort := viper.GetInt(operator.WebhookPortFlag)
+	webhookCertDir := viper.GetString(operator.WebhookCertDirFlag)
+	opts.WebhookServer = crwebhook.NewServer(crwebhook.Options{
+		Port:    webhookPort,
+		CertDir: webhookCertDir,
+	})
+
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
@@ -677,7 +682,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -969,6 +974,7 @@ func setupWebhook(
 	ctx context.Context,
 	mgr manager.Manager,
 	params operator.Parameters,
+	webhookCertDir string,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
@@ -1020,13 +1026,15 @@ func setupWebhook(
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	//nolint:staticcheck
+	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
 		_, err := os.Stat(keyPath)
 		// err could be that the file does not exist, but also that permission was denied or something else
 		if os.IsNotExist(err) {
 			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
+
 			return false, nil
 		} else if err != nil {
 			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)

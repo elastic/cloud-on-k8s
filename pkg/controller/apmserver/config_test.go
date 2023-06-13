@@ -11,11 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -25,11 +26,23 @@ func TestNewConfigFromSpec(t *testing.T) {
 		configOverrides map[string]interface{}
 		esAssocConf     *commonv1.AssociationConf
 		kbAssocConf     *commonv1.AssociationConf
+		version         version.Version
 		wantConf        map[string]interface{}
 		wantErr         bool
 	}{
 		{
-			name: "default config",
+			name:    "default config",
+			version: version.MinFor(8, 0, 0),
+			wantConf: map[string]interface{}{
+				"apm-server.auth.secret_token": "${SECRET_TOKEN}",
+			},
+		},
+		{
+			name:    "default config pre 8.0",
+			version: version.MinFor(7, 0, 0),
+			wantConf: map[string]interface{}{
+				"apm-server.secret_token": "${SECRET_TOKEN}",
+			},
 		},
 		{
 			name: "with overridden config",
@@ -39,6 +52,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 			wantConf: map[string]interface{}{
 				"apm-server.secret_token": "MYSECRET",
 			},
+			version: version.MinFor(7, 0, 0),
 		},
 		{
 			name: "without Elasticsearch CA cert",
@@ -50,10 +64,13 @@ func TestNewConfigFromSpec(t *testing.T) {
 				URL:            "https://test-es-http.default.svc:9200",
 			},
 			wantConf: map[string]interface{}{
+				// version specific auth token
+				"apm-server.auth.secret_token":  "${SECRET_TOKEN}",
 				"output.elasticsearch.hosts":    []string{"https://test-es-http.default.svc:9200"},
 				"output.elasticsearch.username": "elastic",
 				"output.elasticsearch.password": "password",
 			},
+			version: version.MinFor(8, 0, 0),
 		},
 		{
 			name: "with Elasticsearch CA cert",
@@ -65,11 +82,13 @@ func TestNewConfigFromSpec(t *testing.T) {
 				URL:            "https://test-es-http.default.svc:9200",
 			},
 			wantConf: map[string]interface{}{
+				"apm-server.auth.secret_token":                     "${SECRET_TOKEN}",
 				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
 				"output.elasticsearch.username":                    "elastic",
 				"output.elasticsearch.password":                    "password",
 				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/ca.crt"},
 			},
+			version: version.MinFor(8, 0, 0),
 		},
 		{
 			name: "missing auth secret",
@@ -81,6 +100,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 				URL:            "https://test-es-http.default.svc:9200",
 			},
 			wantErr: true,
+			version: version.MinFor(8, 0, 0),
 		},
 		{
 			name: "Kibana and Elasticsearch configuration",
@@ -110,7 +130,10 @@ func TestNewConfigFromSpec(t *testing.T) {
 				"apm-server.kibana.username":                    "apm-kb-user",
 				"apm-server.kibana.password":                    "password-kb-user",
 				"apm-server.kibana.ssl.certificate_authorities": []string{"config/kibana-certs/ca.crt"},
+				// version specific auth token
+				"apm-server.auth.secret_token": "${SECRET_TOKEN}",
 			},
+			version: version.MinFor(8, 0, 0),
 		},
 		{
 			name: "Elasticsearch fully configured and Kibana configuration without CA",
@@ -139,7 +162,10 @@ func TestNewConfigFromSpec(t *testing.T) {
 				"apm-server.kibana.host":     "https://test-kb-http.default.svc:9200",
 				"apm-server.kibana.username": "apm-kb-user",
 				"apm-server.kibana.password": "password-kb-user",
+				// version specific auth token
+				"apm-server.auth.secret_token": "${SECRET_TOKEN}",
 			},
+			version: version.MinFor(8, 0, 0),
 		},
 	}
 
@@ -158,7 +184,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 			apmv1.NewApmEsAssociation(apmServer).SetAssociationConf(tc.esAssocConf)
 			apmv1.NewApmKibanaAssociation(apmServer).SetAssociationConf(tc.kbAssocConf)
 
-			gotConf, err := newConfigFromSpec(context.Background(), client, apmServer)
+			gotConf, err := newConfigFromSpec(context.Background(), client, apmServer, tc.version)
 			if tc.wantErr {
 				require.Error(t, err)
 				return
@@ -173,8 +199,8 @@ func TestNewConfigFromSpec(t *testing.T) {
 	}
 }
 
-func mkAuthSecrets() []runtime.Object {
-	return []runtime.Object{
+func mkAuthSecrets() []client.Object {
+	return []client.Object{
 		&v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-es-elastic-user",
@@ -198,7 +224,6 @@ func mkConf(t *testing.T, overrides map[string]interface{}) *settings.CanonicalC
 	t.Helper()
 	cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
 		"apm-server.host":            ":8200",
-		"apm-server.secret_token":    "${SECRET_TOKEN}",
 		"apm-server.ssl.certificate": "/mnt/elastic-internal/http-certs/tls.crt",
 		"apm-server.ssl.enabled":     true,
 		"apm-server.ssl.key":         "/mnt/elastic-internal/http-certs/tls.key",

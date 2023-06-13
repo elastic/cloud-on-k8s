@@ -19,7 +19,7 @@ import (
 // deleted or replaced by an external event. The Elasticsearch controller should then wait for
 // the Elasticsearch autoscaling controller to update again the resources in the NodeSets.
 func (d *defaultDriver) autoscaledResourcesSynced(ctx context.Context, es esv1.Elasticsearch) (bool, error) {
-	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, d.Client, es, d.Recorder())
+	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, d.Client, es)
 	if err != nil {
 		return false, err
 	}

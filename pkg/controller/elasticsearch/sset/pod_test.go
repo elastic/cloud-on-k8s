@@ -12,7 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -76,7 +76,7 @@ func TestStatefulSetName(t *testing.T) {
 
 // Test that we actually filter on the sset name and the namespace
 func TestGetActualPodsForStatefulSet(t *testing.T) {
-	objs := []runtime.Object{
+	objs := []client.Object{
 		getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
 		getPodSample("pod1", "ns1", "sset0", "clus0", "0"),
 		getPodSample("pod2", "ns0", "sset1", "clus1", "0"),
@@ -99,7 +99,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 		Master:          true,
 	}.BuildPtr()
 
-	objs := []runtime.Object{
+	objs := []client.Object{
 		masterPod,
 		getPodSample("pod1", "ns0", "sset0", "clus0", "0"),
 		getPodSample("pod2", "ns1", "sset0", "clus0", "0"),

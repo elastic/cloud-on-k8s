@@ -1,0 +1,103 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.8.0]]
+== {n} version 2.8.0
+
+[[breaking-2.8.0]]
+[float]
+=== Breaking changes
+
+* Use provided base path for stackconfigpolicy's snapshot repository {pull}6689[#6689] (issue: {issue}6692[#6692])
+* APM Server: Fix secret token config for APM Server 8.0+ {pull}6769[#6769] (issue: {issue}6768[#6768])
+
+[[feature-2.8.0]]
+[float]
+=== New features
+
+* Introduce the Logstash operator for ECK {pull}6732[#6732] (issue: {issue}1453[#1453])
+
+[[enhancement-2.8.0]]
+[float]
+=== Enhancements
+
+[[enhancement-es-2.8.0]]
+[float]
+==== Elasticsearch
+
+* Call _nodes/shutdown from pre-stop hook {pull}6544[#6544] (issue: {issue}6478[#6478])
+* Create Elasticsearch client for observer only if needed {pull}6407[#6407] (issue: {issue}6090[#6090])
+* Add the full CA certificate chain to trusted HTTP certs for Elasticsearch {pull}6681[#6681] (issue: {issue}6574[#6574])
+* Allow custom certificates on the transport layer {pull}6727[#6727] (issue: {issue}6479[#6479])
+* Hardened Security Context for Elasticsearch {pull}6703[#6703] (issue: {issue}6126[#6126])
+
+[[enhancement-helm-2.8.0]]
+[float]
+==== Helm charts
+
+* Enable hostNetwork support in eck-operator Helm chart {pull}6636[#6636]
+* Add PodDisruptionBudget to eck-operator Helm chart {pull}6671[#6671]
+
+[[enhancement-operator-2.8.0]]
+[float]
+==== ECK Operator
+
+* Add operator flag to define webhook port {pull}6691[#6691] (issue: {issue}6655[#6655])
+* Add operator flag to define global container repository {pull}6737[#6737] (issue: {issue}6643[#6643])
+
+[[enhancement-fleet-2.8.0]]
+[float]
+==== Fleet
+
+* [Fleet] Deprecate is_default and is_default_fleet_server flags {pull}6724[#6724] (issue: {issue}6678[#6678])
+
+[[bug-2.8.0]]
+[float]
+=== Bug fixes
+
+* Fix doc attributes in stack-helm-chart.asciidoc {pull}6742[#6742]
+* Do not set FLEET_CA for well-known CAs {pull}6733[#6733] (issue: {issue}6673[#6673])
+* Fix default `elasticsearch-data` volumeMount configuration {pull}6725[#6725] (issue: {issue}6186[#6186])
+* Conditionally set container-suffix in ECK config {pull}6711[#6711] (issue: {issue}6695[#6695])
+* [helm-chart] Include webhook client configuration CA only when certificates are not managed by the operator or cert-manager {pull}6642[#6642] (issue: {issue}6641[#6641])
+* Remove default for daemonset/deployment in eck-beats & eck-agent Helm Charts {pull}6621[#6621] (issue: {issue}6330[#6330])
+
+[[docs-2.8.0]]
+[float]
+=== Documentation improvements
+
+* Add 2.6 and 2.7 to the triggered restart list {pull}6786[#6786] (issue: {issue}6765[#6765])
+* Documentation for running ECK, Elasticsearch, and Kibana on GKE Autopilot {pull}6760[#6760] (issue: {issue}6713[#6713])
+* Contributing page updated with Helm chart tests suite {pull}6744[#6744]
+* Documentation for Logstash on ECK {pull}6743[#6743]
+
+[[nogroup-2.8.0]]
+[float]
+=== Misc
+
+* Bump github.com/docker/distribution from 2.8.1+incompatible to 2.8.2+incompatible {pull}6801[#6801]
+* Bump google.golang.org/protobuf from 1.29.0 to 1.29.1 {pull}6549[#6549]
+* Update docker.io/library/golang Docker tag to v1.20.4 {pull}6752[#6752]
+* Update github.com/docker/docker {pull}6654[#6654]
+* Update k8s to v0.26.3 {pull}6546[#6546]
+* Update k8s.io/client-go to v0.26.5 {pull}6849[#6849] (issue: {issue}6848[#6848])
+* Update module cloud.google.com/go/storage to v1.30.0 {pull}6531[#6531]
+* Update module github.com/go-git/go-git/v5 to v5.6.1 {pull}6536[#6536]
+* Update module github.com/go-logr/logr to v1.2.4 {pull}6625[#6625]
+* Update module github.com/google/go-containerregistry to v0.14.0 {pull}6532[#6532]
+* Update module github.com/hashicorp/vault/api to v1.9.1 {pull}6707[#6707]
+* Update module github.com/imdario/mergo to v0.3.15 {pull}6581[#6581]
+* Update module github.com/operator-framework/operator-registry to v1.26.5 {pull}6622[#6622]
+* Update module github.com/prometheus/client_golang to v1.15.0 {pull}6686[#6686]
+* Update module github.com/spf13/cobra to v1.7.0 {pull}6647[#6647]
+* Update module go.elastic.co/apm/module/apmelasticsearch/v2 to v2.3.0 {pull}6631[#6631]
+* Update module go.elastic.co/apm/module/apmzap/v2 to v2.3.0 {pull}6633[#6633]
+* Update module go.uber.org/automaxprocs to v1.5.2 {pull}6547[#6547]
+* Update module golang.org/x/crypto to v0.8.0 {pull}6669[#6669]
+* Update module golang.org/x/text to v0.9.0 {pull}6666[#6666]
+* Update module google.golang.org/api to v0.115.0 {pull}6651[#6651]
+* Update module sigs.k8s.io/controller-runtime to v0.14.6 {pull}6614[#6614]
+* Update module sigs.k8s.io/controller-tools to v0.11.4 {pull}6718[#6718]
+* Update modules go.elastic.co/apm/* to v2.4.1 {pull}6739[#6739]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.7-1107 {pull}6646[#6646]
+

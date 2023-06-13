@@ -111,5 +111,10 @@ Agent/finalizers
 ElasticMapsServer/status +
 ElasticMapsServer/finalizers
 |maps.k8s.elastic.co|no
+|Logstash +
+Logstash/status +
+Logstash/finalizers
+|logstashes.k8s.elastic.co|no
+
 |===
 

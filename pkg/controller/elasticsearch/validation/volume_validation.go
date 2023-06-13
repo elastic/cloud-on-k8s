@@ -75,7 +75,7 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
 
-	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, k8sClient, proposed, nil)
+	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, k8sClient, proposed)
 	if err != nil {
 		log.Error(
 			err,

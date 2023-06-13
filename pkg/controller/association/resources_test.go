@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -84,7 +84,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		name           string
 		kibana         kbv1.Kibana
 		es             esv1.Elasticsearch
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
@@ -99,7 +99,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					},
 				},
 			},
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userInKibanaNamespace,
@@ -138,7 +138,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					},
 				},
 			},
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userInKibanaNamespace,
@@ -180,7 +180,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			name:   "only valid objects",
 			kibana: kibanaFixture,
 			es:     esFixture,
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userInKibanaNamespace,
@@ -211,7 +211,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				ObjectMeta: kibanaFixtureObjectMeta,
 			},
 			es: esFixture,
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userInKibanaNamespace,
@@ -265,7 +265,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					Namespace: "ns1",
 				},
 			},
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "kibana-foo-kibana-user",

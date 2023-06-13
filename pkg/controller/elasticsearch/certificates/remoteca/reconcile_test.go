@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -24,7 +24,7 @@ import (
 func TestReconcile(t *testing.T) {
 	type args struct {
 		es          esv1.Elasticsearch
-		secrets     []runtime.Object
+		secrets     []client.Object
 		transportCA certificates.CA
 	}
 	testTransportCA, _ := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
@@ -38,7 +38,7 @@ func TestReconcile(t *testing.T) {
 			name: "Certificates should be sorted",
 			args: args{
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
-				secrets: []runtime.Object{
+				secrets: []client.Object{
 					&v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "b",
@@ -70,7 +70,7 @@ func TestReconcile(t *testing.T) {
 			name: "Only include Secrets with the right label",
 			args: args{
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
-				secrets: []runtime.Object{
+				secrets: []client.Object{
 					&v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "b",

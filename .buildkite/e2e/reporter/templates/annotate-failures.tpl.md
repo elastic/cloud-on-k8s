@@ -1,4 +1,4 @@
-{{- range $envName, $sortedTests := .Tests }}
+{{- range $envName, $sortedTests := .TestsMap }}
 {{- range $test := $sortedTests.Failed }}
 
 <p>

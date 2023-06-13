@@ -82,7 +82,7 @@ func (s *MutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.
 	}
 }
 
-func (s *MutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.StepList {
+func (s *MutationReversalTestContext) VerificationSteps(_ *test.K8sClient) test.StepList {
 	//nolint:thelper
 	return test.StepList{
 		{

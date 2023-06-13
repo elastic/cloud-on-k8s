@@ -35,6 +35,7 @@ var eslog = ulog.Log.WithName("es-validation")
 func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string) {
 	wh := &validatingWebhook{
 		client:               mgr.GetClient(),
+		decoder:              admission.NewDecoder(mgr.GetScheme()),
 		validateStorageClass: validateStorageClass,
 		exposedNodeLabels:    exposedNodeLabels,
 		licenseChecker:       licenseChecker,
@@ -51,14 +52,6 @@ type validatingWebhook struct {
 	exposedNodeLabels    NodeLabels
 	licenseChecker       license.Checker
 	managedNamespaces    set.StringSet
-}
-
-var _ admission.DecoderInjector = &validatingWebhook{}
-
-// InjectDecoder injects the decoder automatically.
-func (wh *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
-	wh.decoder = d
-	return nil
 }
 
 func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) error {

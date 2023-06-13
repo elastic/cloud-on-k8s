@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -542,7 +542,7 @@ func assertSameSecretContent(t *testing.T, expectedData, actualData map[string][
 func TestReporter_report(t *testing.T) {
 	testNS := "ns1"
 	type fields struct {
-		objects []runtime.Object
+		objects []client.Object
 	}
 	tests := []struct {
 		name     string
@@ -552,7 +552,7 @@ func TestReporter_report(t *testing.T) {
 		{
 			name: "With metrics monitoring only",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -603,7 +603,7 @@ func TestReporter_report(t *testing.T) {
 		{
 			name: "With log monitoring only",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -639,7 +639,7 @@ func TestReporter_report(t *testing.T) {
 		}, {
 			name: "With downward API and one label",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -676,7 +676,7 @@ func TestReporter_report(t *testing.T) {
 		}, {
 			name: "With downward API and several labels",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,

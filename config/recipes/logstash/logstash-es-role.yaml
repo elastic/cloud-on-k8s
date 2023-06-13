@@ -1,0 +1,55 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: my-roles-secret
+stringData:
+  roles.yml: |-
+    eck_logstash_user_role:
+      cluster: [ "monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get"]
+      indices:
+      - names: [ "my-index", "logstash", "logstash-*", "ecs-logstash", "ecs-logstash-*", "logs-*", "metrics-*", "synthetics-*", "traces-*" ]
+        privileges: [ "manage", "write", "create_index", "read", "view_index_metadata" ]
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 8.8.0
+  auth:
+    roles:
+      - secretName: my-roles-secret
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  count: 1
+  version: 8.8.0
+  elasticsearchRefs:
+    - name: elasticsearch
+      clusterName: eck
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input { exec { command => "uptime" interval => 10 } } 
+        output { 
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            ssl => true
+            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            index => "my-index"
+            data_stream => false
+            ilm_enabled => false
+            manage_template => false
+          } 
+        }
+---

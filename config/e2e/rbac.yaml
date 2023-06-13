@@ -102,6 +102,7 @@ rules:
       - list
       - watch
       - delete
+      - deletecollection
       - create
       - update
   - apiGroups:

@@ -156,11 +156,11 @@ func (c *clientV6) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 	return response, err
 }
 
-func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error {
+func (c *clientV6) AddVotingConfigExclusions(_ context.Context, _ []string) error {
 	return errNotSupportedInEs6x
 }
 
-func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+func (c *clientV6) DeleteVotingConfigExclusions(_ context.Context, waitForRemoval bool) error {
 	return errNotSupportedInEs6x
 }
 
@@ -211,7 +211,7 @@ func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 	return false, errors.New("no master found in ClusterBootstrappedForZen2")
 }
 
-func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
+func (c *clientV6) GetClusterState(_ context.Context) (ClusterState, error) {
 	return ClusterState{}, errors.New("cluster state is not supported in Elasticsearch 6.x")
 }
 

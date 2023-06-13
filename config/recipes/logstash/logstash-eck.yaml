@@ -1,0 +1,108 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 8.8.0
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        # This setting has performance implications. See the README for more details.
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+spec:
+  type: filebeat
+  version: 8.8.0
+  config:
+    filebeat.inputs:
+      - type: log
+        paths:
+          - /data/logstash-tutorial.log
+    output.logstash:
+      hosts: ["logstash-ls-beats:5044"]
+  deployment:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        initContainers:
+          - name: download-tutorial
+            image: curlimages/curl
+            command: ["/bin/sh"]
+            args: ["-c", "curl -L https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz | gunzip -c > /data/logstash-tutorial.log"]
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        containers:
+          - name: filebeat
+            volumeMounts:
+              - name: data
+                mountPath: /data
+              - name: beat-data
+                mountPath: /usr/share/filebeat/data
+        volumes:
+          - name: data
+            emptydir: {}
+          - name: beat-data
+            emptydir: {}
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  count: 1
+  version: 8.8.0
+  elasticsearchRefs:
+    - clusterName: eck
+      name: elasticsearch
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        filter {
+          grok {
+            match => { "message" => "%{HTTPD_COMMONLOG}"}
+          }
+          geoip {
+            source => "[source][address]"
+            target => "[source]"
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+        }
+  services:
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044

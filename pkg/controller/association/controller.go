@@ -37,33 +37,33 @@ func AddAssociationController(
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(mgr, c, r)
 }
 
-func addWatches(c controller.Controller, r *Reconciler) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) error {
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
-	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), r.AssociatedObjTemplate()), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch Secrets owned by the associated resource
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    r.AssociatedObjTemplate(),
-		IsController: true,
-	}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(),
+		r.AssociatedObjTemplate(), handler.OnlyControllerOwner(),
+	)); err != nil {
 		return err
 	}
 
 	// Dynamically watch the referenced resources (e.g. Elasticsearch B for a Kibana A -> Elasticsearch B association)
-	if err := c.Watch(&source.Kind{Type: r.ReferencedObjTemplate()}, r.watches.ReferencedResources); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), r.ReferencedObjTemplate()), r.watches.ReferencedResources); err != nil {
 		return err
 	}
 
 	// Dynamically watch Secrets (CA Secret of the referenced resource, ES user secret or custom referenced object secret)
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.watches.Secrets); err != nil {
 		return err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	return c.Watch(&source.Kind{Type: &corev1.Service{}}, r.watches.Services)
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), r.watches.Services)
 }

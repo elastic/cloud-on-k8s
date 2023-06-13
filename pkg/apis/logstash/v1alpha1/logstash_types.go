@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 )
 
 const (
@@ -128,6 +129,8 @@ type LogstashStatus struct {
 
 	// MonitoringAssociationStatus is the status of any auto-linking to monitoring Elasticsearch clusters.
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
+
+	Selector string `json:"selector"`
 }
 
 // +kubebuilder:object:root=true
@@ -140,7 +143,7 @@ type LogstashStatus struct {
 // +kubebuilder:printcolumn:name="expected",type="integer",JSONPath=".status.expectedNodes",description="Expected nodes"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Logstash version"
-// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.expectedNodes,selectorpath=.status.selector
 // +kubebuilder:storageversion
 type Logstash struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -333,7 +336,8 @@ func (lsmon *LogstashMonitoringAssociation) Associated() commonv1.Associated {
 }
 
 func (lsmon *LogstashMonitoringAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName(lsmon.ref)
+	// Use a custom suffix for monitoring elasticsearchRefs to avoid clashes with other elasticsearchRefs
+	return commonv1.FormatNameWithID(commonv1.ElasticsearchConfigAnnotationNameBase+"%s-sm", hash.HashObject(lsmon.ref))
 }
 
 func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.AssociationType {

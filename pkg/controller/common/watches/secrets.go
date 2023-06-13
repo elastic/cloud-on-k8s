@@ -5,11 +5,14 @@
 package watches
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -63,15 +66,15 @@ func WatchUserProvidedNamespacedSecrets(
 }
 
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
-func WatchSoftOwnedSecrets(c controller.Controller, ownerKind string) error {
+func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKind string) error {
 	return c.Watch(
-		&source.Kind{Type: &corev1.Secret{}},
+		source.Kind(mgr.GetCache(), &corev1.Secret{}),
 		handler.EnqueueRequestsFromMapFunc(reconcileReqForSoftOwner(ownerKind)),
 	)
 }
 
 func reconcileReqForSoftOwner(kind string) handler.MapFunc {
-	return func(object client.Object) []reconcile.Request {
+	return func(ctx context.Context, object client.Object) []reconcile.Request {
 		softOwner, referenced := reconciler.SoftOwnerRefFromLabels(object.GetLabels())
 		if !referenced {
 			return nil

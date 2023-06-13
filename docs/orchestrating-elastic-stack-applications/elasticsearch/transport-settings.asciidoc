@@ -69,6 +69,7 @@ spec:
     count: 3
 ----
 
+[id="{p}-transport-third-party-tools"]
 == Issue node transport certificates with third-party tools
 
 When following the instructions in <<{p}-transport-ca>> the issuance of certificates is orchestrated by the ECK operator and the operator needs access to the CAs private key.

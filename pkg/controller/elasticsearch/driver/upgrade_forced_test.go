@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
@@ -161,7 +161,7 @@ func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runtimeObjs := make([]runtime.Object, 0, len(tt.actualPods))
+			runtimeObjs := make([]crclient.Object, 0, len(tt.actualPods))
 			for i := range tt.actualPods {
 				runtimeObjs = append(runtimeObjs, &tt.actualPods[i])
 			}
