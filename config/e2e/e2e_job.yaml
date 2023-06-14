@@ -56,8 +56,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-          - name: RESULT_FILE
-            value: "{{ .Context.ResultFile }}"
+            - name: RESULT_FILE
+              value: "{{ .Context.ResultFile }}"
           readinessProbe:
             exec:
               command:
