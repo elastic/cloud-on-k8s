@@ -52,3 +52,6 @@ steps:
 
   - label: ":buildkite:"
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
+
+  - label: ":buildkite:"
+    command: buildkite-agent pipeline upload .buildkite/pipeline-autopilot.yml
