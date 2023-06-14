@@ -357,21 +357,37 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		certificatesDir(esAssociation),
 	))
 
-	v, err := version.Parse(agent.Spec.Version)
-	if err != nil {
-		return nil, err // error unlikely and should have been caught during validation
-	}
-
-	// WE DON'T SUPPORT FLEET+AGENT < 7.14, so this isn't VALID!!
-	//
-	// Agent prior to 7.14.0 did not respect the FLEET_CA environment variable and as such
-	// the Agent is going to update Pod-wide CA store before starting Elastic Agent.
-	// (https://github.com/elastic/beats/pull/26529)
-	if v.LT(version.MinFor(7, 14, 0)) {
+	// If agent is set to run as root, then we will add the Elasticsearch CA to the
+	// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
+	// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
+	// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
+	if runningAsRoot(agent) {
 		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
 		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
 	}
 	return builder, nil
+}
+
+func runningAsRoot(agent agentv1alpha1.Agent) bool {
+	if agent.Spec.DaemonSet != nil {
+		for _, container := range agent.Spec.DaemonSet.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	if agent.Spec.Deployment != nil {
+		for _, container := range agent.Spec.Deployment.PodTemplate.Spec.Containers {
+			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+				if *container.SecurityContext.RunAsUser == 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association, configHash hash.Hash) error {
