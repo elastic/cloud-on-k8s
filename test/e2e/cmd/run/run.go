@@ -248,9 +248,10 @@ func isOcpCluster(h *helper) bool {
 }
 
 // isAutopilotCluster will detect whether we are running within an autopilot cluster
-// by using the `allowlistedv2workloads` resource.
+// by using the `remotenodes` resource, which only seems to exist on autopilot clusters
+// not standard GKE clusters.
 func isAutopilotCluster(h *helper) bool {
-	_, _, err := h.kubectl("get", "allowlistedv2workloads")
+	_, _, err := h.kubectl("get", "remotenodes")
 	return err == nil
 }
 
