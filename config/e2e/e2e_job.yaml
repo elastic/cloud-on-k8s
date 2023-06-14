@@ -52,11 +52,8 @@ spec:
           # it will assign a tiny amount of cpu
           # which causes e2e tests to be very slow.
           resources:
-            limits:
-              cpu: "2"
-              memory: 2Gi
             requests:
-              cpu: "2"
+              cpu: "1"
               memory: 2Gi
 {{ end }}
           securityContext:
