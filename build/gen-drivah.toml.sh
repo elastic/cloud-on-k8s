@@ -8,7 +8,7 @@
 # Generate drivah.toml to build ECK operator image(s).
 #
 # Environment variables:
-#    BUILD_TRIGGER    tag|merge-main|nightly-main|pr|dev (default: dev)
+#    TRIGGER          tag|merge-main|nightly-main|pr|dev (default: dev)
 #    BUILD_FLAVORS    comma separated list (values: dev,eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips) (default: dev)
 #
 
@@ -17,28 +17,12 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$HERE/.."
 
-get_meta() {
-    local key=$1
-    local default_val=$2
-
-    if [[ "${CI:-}" == "true" ]]; then
-        buildkite-agent meta-data get "$key" &> v
-        status=$? val=$(cat v); rm v
-        [[ "$status" == 0 ]] && echo "$val" || echo "$default_val"
-    else
-        echo "$default_val"
-    fi
-}
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 
 generate_drivah_config() {
     local img=$1
     local tag=$2
 cat <<END
-[docker]
-
-[buildah]
-build_flags = [ "../../"]
-
 [container.image]
 names = ["${img}"]
 tags = ["${tag}-${ARCH}"]
@@ -61,12 +45,11 @@ SNAPSHOT=true
 main() {
     # set DOCKER_IMAGE/DOCKER_IMAGE_TAG depending on the trigger
 
-    BUILD_TRIGGER="${BUILD_TRIGGER:-dev}"
-    BUILD_TRIGGER=$(get_meta BUILD_TRIGGER "${BUILD_TRIGGER}")
+    TRIGGER="${TRIGGER:-dev}"
     
-    echo -n "# -- env: BUILD_TRIGGER=$BUILD_TRIGGER"
+    echo -n "# -- env: TRIGGER=$TRIGGER"
 
-    case "$BUILD_TRIGGER" in
+    case "$TRIGGER" in
         tag-*)
             : "$BUILDKITE_TAG" # required
             DOCKER_IMAGE="docker.elastic.co/eck/eck-operator"
@@ -92,18 +75,18 @@ main() {
         ;;
     esac
 
-    BUILD_FLAVORS=$(get_meta BUILD_FLAVORS "${BUILD_FLAVORS:-}")
+    BUILD_FLAVORS=${BUILD_FLAVORS:-}
 
     # auto-detect flavors depending on the trigger if not set
     
     if [[ ${BUILD_FLAVORS} == "" ]]; then
-        case $BUILD_TRIGGER in
+        case $TRIGGER in
             tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips" ;;
             *-main)          BUILD_FLAVORS="eck,eck-dev" ;;
             *-test-snapshot) BUILD_FLAVORS="eck,eck-dev" ;;
             pr-*)            BUILD_FLAVORS="eck" ;;
             dev)             BUILD_FLAVORS="dev" ;;
-            *)               echo "error: trigger '$BUILD_TRIGGER' not supported"; exit ;;
+            *)               echo "error: trigger '$TRIGGER' not supported"; exit ;;
         esac
     fi
 
@@ -148,7 +131,7 @@ main() {
 
         # fetch public license key
         if [[ ! -f "$HERE/$LICENSE_PUBKEY" ]]; then
-            vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license \
+            retry vault read -field=${BUILD_LICENSE_PUBKEY:+$BUILD_LICENSE_PUBKEY-}pubkey secret/ci/elastic-cloud-on-k8s/license \
                 | base64 --decode > "$HERE/$LICENSE_PUBKEY"
         fi
 

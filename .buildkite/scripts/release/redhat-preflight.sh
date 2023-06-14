@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
+
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
+
 VAULT_ROOT_PATH=${VAULT_ROOT_PATH:-secret/ci/elastic-cloud-on-k8s}
 
 tmpDir=$(mktemp -d)
@@ -22,9 +26,9 @@ container_already_verified() {
 main() {
     local tag="${1#v}"
 
-    API_KEY=$(vault read -field=api-key "$VAULT_ROOT_PATH/operatorhub-release-redhat")
+    API_KEY=$(retry vault read -field=api-key "$VAULT_ROOT_PATH/operatorhub-release-redhat")
     export API_KEY
-    PROJECT_ID=$(vault read -field=project-id "$VAULT_ROOT_PATH/operatorhub-release-redhat")
+    PROJECT_ID=$(retry vault read -field=project-id "$VAULT_ROOT_PATH/operatorhub-release-redhat")
     export PROJECT_ID
 
     if container_already_verified; then
@@ -32,7 +36,7 @@ main() {
         exit 0
     fi
 
-    vault read -format=json -field=data "$VAULT_ROOT_PATH/operatorhub-release-preflight" > "$tmpDir/auth.json"
+    retry vault read -format=json -field=data "$VAULT_ROOT_PATH/operatorhub-release-preflight" > "$tmpDir/auth.json"
     
     preflight check container "quay.io/redhat-isv-containers/$PROJECT_ID:$tag" --pyxis-api-token="$API_KEY" --certification-project-id="$PROJECT_ID" --submit -d "$tmpDir/auth.json"
     

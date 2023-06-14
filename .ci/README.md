@@ -23,7 +23,7 @@ export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [pipeline-gen](.buildkite/e2e/pipeline-gen) and[set-deployer-config.sh](.buildkite/scripts/test/set-deployer-config.sh). Example:
+Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [pipeline-gen](.buildkite/e2e/pipeline-gen) and [set-deployer-config.sh](.buildkite/e2e/scripts/set-deployer-config.sh). Example:
 
 ```sh
 > .buildkite/e2e/pipeline-gen/pipeline-gen -f p=gke,s=8.6.2 -e | tee .env
@@ -43,7 +43,7 @@ E2E_STACK_VERSION=8.6.2
 
 > export $(cat .env | xargs)
 
-> .buildkite/scripts/test/set-deployer-config.sh
+> .buildkite/e2e/scripts/set-deployer-config.sh
 
 > make -C .ci TARGET="run-deployer e2e-run" ci
 ```

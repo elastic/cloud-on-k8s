@@ -7,13 +7,15 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")"; pwd)"
+ROOT="$HERE/../.."
 
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
 sha1() { git rev-parse --short=8 --verify HEAD; }
 
 main() {
     if [[ ! -f "${HERE}/license.key" ]]; then
-        vault read -field=pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > "$HERE/license.key"
+        retry vault read -field=pubkey secret/ci/elastic-cloud-on-k8s/license | base64 --decode > "$HERE/license.key"
     fi
 
     img="docker.elastic.co/eck-ci/eck-e2e-tests"
@@ -25,9 +27,6 @@ main() {
     fi
 
     cat <<END
-[buildah]
-build_flags = [ "../../"]
-
 [container.image]
 names = ["$img"]
 tags = ["$tag-$(arch)"]
@@ -35,7 +34,6 @@ build_context = "../../"
 
 [container.image.build_args]
 GO_TAGS = "release"
-LICENSE_PUBKEY_PATH = "test/e2e/license.key"
 END
 
 }

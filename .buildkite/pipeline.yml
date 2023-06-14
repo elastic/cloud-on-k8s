@@ -43,21 +43,67 @@ steps:
       - label: ":go: helm-tests"
         command: "make helm-test"
 
+  # generate build steps with serverless-docker-builder
   - label: ":buildkite:"
     agents:
-      image: "docker.elastic.co/employees/ramonbutter/serverless-docker-builder:0.0.3"
+      image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.4"
     env:
-      PRE_BUILD_SCRIPT: build/gen-drivah.toml.sh
       DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
       RECURSIVE: true
-    commands:
-      - buildkite-agent meta-data set BUILD_TRIGGER $$(.buildkite/scripts/common/trigger.sh)
-      - make -C /agent generate-docker-images
+      PRE_BUILD_SCRIPT: .buildkite/scripts/build/gen-drivah.sh
+    commands: make -C /agent generate-docker-images
 
   - wait
 
+  # generate e2e-tests steps with pipeline-gen
   - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
+    command: |
+      trigger=$$(.buildkite/scripts/common/trigger.sh)
+      .buildkite/e2e/steps.sh $$trigger | buildkite-agent pipeline upload
 
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
+  - group: release
+    steps:
+
+      - label: "k8s manifests"
+        if: |
+          true ||
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+          || build.message =~ /^buildkite test .*release.*/
+        commands:
+          - make generate-manifests
+          - .buildkite/scripts/release/k8s-manifests.sh
+
+      # dry run helm charts release
+      - label: ":buildkite:"
+        if: build.message =~ /^buildkite test .*release.*/
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+
+      - label: "copy images to dockerhub"
+        if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+        trigger: unified-release-copy-elastic-images-to-dockerhub
+        build:
+          env:
+            IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
+            IMAGES_TAG: "${BUILDKITE_TAG}"
+
+      # live helm charts release
+      - label: ":buildkite:"
+        if: |
+          build.message !~ /^buildkite test .*release.*/
+          && (
+            ( build.branch == "main" && build.source != "schedule" )
+            || build.tag != null
+            || build.message =~ /^release eck/
+          )
+        command: |
+          sed "s|DRY_RUN: true|DRY_RUN: false|" .buildkite/pipeline-release-helm.yml | buildkite-agent pipeline upload 
+
+      - label: ":buildkite:"
+        if: |
+          build.message =~ /^buildkite test .*operatorhub.*/
+          || build.message =~ /^release eck .*operatorhub.*/
+        trigger: cloud-on-k8s-operator-redhat-release
+        build:
+          env:
+            DRY_RUN: "${DRY_RUN:-true}"

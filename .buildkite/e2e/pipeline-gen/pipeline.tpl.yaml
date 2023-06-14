@@ -17,7 +17,7 @@ steps:
       {{- end }}
 
     commands:
-      - .buildkite/scripts/test/set-deployer-config.sh
+      - .buildkite/e2e/scripts/set-deployer-config.sh
 
       {{- if $test.Dind }}
       - make -C .ci TARGET="run-deployer" ci
@@ -58,7 +58,7 @@ steps:
       - echo "{{$key}}={{$val}}" >> .env
       {{- end }}
 
-      - .buildkite/scripts/test/set-deployer-config.sh
+      - .buildkite/e2e/scripts/set-deployer-config.sh
 
       {{- $deployerCommand := "run-deployer" }}
       {{- if $test.RemoteKubeconfig }}
@@ -109,8 +109,8 @@ steps:
           DEPLOYER_OPERATION: delete
 
         commands:
-          - .buildkite/scripts/test/set-deployer-config.sh
-          - .buildkite/scripts/common/cp-diagnostics.sh
+          - .buildkite/e2e/scripts/set-deployer-config.sh
+          - .buildkite/e2e/scripts/cp-diagnostics.sh
 
         {{- if not $test.Dind }}
           - make run-deployer
@@ -133,7 +133,7 @@ steps:
     continue_on_failure: true
 
   - label: "aggregate tests-results"
-    command: .buildkite/scripts/test/report-tests-results.sh
+    command: .buildkite/e2e/scripts/report-tests-results.sh
     artifact_paths:
       - ".buildkite/e2e/reporter/*.md"
       - ".buildkite/e2e/reporter/*.yml"

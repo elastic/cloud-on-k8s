@@ -3,7 +3,8 @@ FROM docker.io/library/golang:1.20.5
 
 ENV GCLOUD_VERSION=381.0.0
 ENV ECK_DIAG_VERSION=1.4.0
-ENV LICENSE_PUBKEY=/license.key
+
+ARG GO_TAGS
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -21,27 +22,25 @@ RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${E
     tar xzf eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
     mv eck-diagnostics /usr/local/bin/eck-diagnostics
 
-# create the go test cache directory
+# create cache directories
 RUN mkdir -p /.cache && chmod 777 /.cache
 
 # cache download dependencies go
 COPY Makefile go.mod go.sum ./
-RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
+RUN go mod download
 
 # copy sources
-COPY test/e2e/license.key /license.key
 COPY pkg/ pkg/
 COPY cmd/ cmd/
-
-# Build
-RUN --mount=type=cache,mode=0755,target=/go/pkg/mod make go-generate
-
-# copy sources
 COPY config/ config/
 COPY test/ test/
 
 # non-root user to support restricted security policies
 RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
 USER 1001
+
+# go generate pub key
+COPY test/e2e/license.key /license.key
+RUN LICENSE_PUBKEY=/license.key go generate -tags="${GO_TAGS}" ./pkg/... ./cmd/...
 
 ENTRYPOINT ["test/e2e/run.sh"]
