@@ -463,25 +463,27 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 	// Adjust the Kibana's spec.config.xpack.fleet.outputs section to both
 	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
 	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
-	if untypedOutputs, ok := data[fleetOutputsKey]; ok {
+	if untypedOutputs, ok := data[fleetOutputsKey]; ok { //nolint:nestif
 		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
 			for _, untypedOutputMap := range untypedXpackOutputsSlice {
 				if outputMap, ok := untypedOutputMap.(map[string]interface{}); ok {
 					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
-						for j, untypedHost := range outputMap["hosts"].([]interface{}) {
-							if host, ok := untypedHost.(string); ok {
-								outputMap["hosts"].([]interface{})[j] = strings.ReplaceAll(
-									host,
-									"elasticsearch-es-http.default",
-									fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
-								)
+						if outputSlice, ok := outputMap["hosts"].([]interface{}); ok {
+							for j, untypedHost := range outputSlice {
+								if host, ok := untypedHost.(string); ok {
+									outputSlice[j] = strings.ReplaceAll(
+										host,
+										"elasticsearch-es-http.default",
+										fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+									)
+								}
 							}
 						}
 						if untypedSSL, ok := outputMap["ssl"].(map[string]interface{}); ok {
 							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]interface{}); ok {
 								for k, untypedCA := range untypedCAs {
 									if ca, ok := untypedCA.(string); ok {
-										outputMap["ssl"].(map[string]interface{})["certificate_authorities"].([]interface{})[k] = strings.ReplaceAll(
+										untypedCAs[k] = strings.ReplaceAll(
 											ca,
 											"elasticsearch-association/default/elasticsearch/",
 											fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
