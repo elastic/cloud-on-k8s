@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 func Test_amendBuilderForFleetMode(t *testing.T) {
@@ -716,6 +717,20 @@ fi
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "7.13.2",
 					FleetServerEnabled: false,
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "agent",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(0),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			assoc:   assocToSameNs,
