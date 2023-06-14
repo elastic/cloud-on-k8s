@@ -23,7 +23,7 @@ const recipesFile = "../../config/recipes/autopilot/fleet-kubernetes-integration
 // and Kibana instance.
 func TestAutopilot(t *testing.T) {
 	if !test.Ctx().AutopilotCluster {
-		return
+		t.Skip("Not a GKE Autopilot Cluster")
 	}
 	randSuffix := rand.String(4)
 	ns := test.Ctx().ManagedNamespace(0)

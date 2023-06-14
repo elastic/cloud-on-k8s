@@ -107,8 +107,7 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 }
 
 func (c *Command) OutputList() (list []string, err error) {
-	var out string
-	out, err = c.output()
+	out, err := c.output()
 	if err != nil {
 		return nil, err
 	}

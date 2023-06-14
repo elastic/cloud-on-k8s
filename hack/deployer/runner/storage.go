@@ -28,19 +28,15 @@ func createStorageClass() error {
 		return nil
 	}
 
-	log.Printf("Creating storage class...\n")
+	log.Println("Creating storage class...")
 
 	defaultName, err := getDefaultStorageClassName()
 	if err != nil {
-		log.Printf("error in getdefaultsc: %s", err)
 		return err
 	}
 
-	log.Printf("default sc found to be: %s\n", defaultName)
-	log.Printf("About to exec: %s\n", fmt.Sprintf("kubectl get sc %s -o yaml", defaultName))
 	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
 	if err != nil {
-		log.Printf("error in exec.NewCommand: %s", err)
 		return err
 	}
 
@@ -52,7 +48,6 @@ func createStorageClass() error {
 	// string, both are set.
 	sc = strings.ReplaceAll(sc, `storageclass.kubernetes.io/is-default-class: "true"`, `storageclass.kubernetes.io/is-default-class: "false"`)
 	sc = strings.ReplaceAll(sc, `storageclass.beta.kubernetes.io/is-default-class: "true"`, `storageclass.beta.kubernetes.io/is-default-class: "false"`)
-	log.Printf("creating storage class: '%s'\n", sc)
 	return exec.NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
@@ -72,15 +67,15 @@ func getDefaultStorageClassName() (string, error) {
 			`storageclass\.beta\.kubernetes\.io/is-default-class`,
 		} {
 			template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
-			log.Printf("about to exec: %s", fmt.Sprintf(template, annotation))
 			baseScs, err := exec.NewCommand(fmt.Sprintf(template, annotation)).OutputList()
 			if err != nil {
 				return "", err
 			}
 
 			if len(baseScs) != 0 {
-				// Seeing "E0613 19:23:30.442396    3773 memcache.go:287] couldn't get resource list for metrics.k8s.io/v1beta1: the server is currently unable to handle the request"
-				// being returned in CI for the default storage class without returning any error. Trying to catch this scenario here and retry.
+				// When building an Autopilot GKE cluster, initially we will see the error/warning:
+				// E0613 19:23:30.442396    3773 memcache.go:287] couldn't get resource list for metrics.k8s.io/v1beta1: the server is currently unable to handle the request
+				// which returns exit code '0' from kubectl, which makes adjusting the storage classes fail. This catches the error and retries until successful.
 				sc := baseScs[0]
 				if strings.Contains(sc, "the server is currently unable to handle the request") {
 					err = fmt.Errorf("while retrieving storageclass: %s", sc)
