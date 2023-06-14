@@ -458,6 +458,11 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	fleetOutputsKey := "xpack.fleet.outputs"
 
+	// This is only used when testing Agent+Fleet running as non-root. (config/recipes/elastic-agent/fleet-kubernetes-integration-noroot.yaml)
+	//
+	// Adjust the Kibana's spec.config.xpack.fleet.outputs section to both
+	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
+	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
 	if untypedOutputs, ok := data[fleetOutputsKey]; ok {
 		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
 			for _, untypedOutputMap := range untypedXpackOutputsSlice {

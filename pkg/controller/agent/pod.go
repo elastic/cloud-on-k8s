@@ -361,6 +361,9 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 	// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
 	// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
 	// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
+	//
+	// For historic purposes (https://github.com/elastic/beats/pull/26529) we thought that Agent didn't respect
+	// FLEET_CA, but that was changed in 7.14.0 which is the lowest valid version we support of Agent + Fleet.
 	if runningAsRoot(agent) {
 		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
 		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
