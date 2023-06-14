@@ -169,7 +169,7 @@ roleRef:
 EOF
 ----
 +
-<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
+<1> The root user is required to persist state in a hostPath volume and to trust the Elasticsearc CA in Fleet mode. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 +
 Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
@@ -301,7 +301,7 @@ spec:
               name: system
 ----
 
-*  `xpack.fleet.agents.elasticsearch.hosts`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in.
+*  `xpack.fleet.agents.elasticsearch.hosts`  must point to the Elasticsearch cluster that Elastic Agents should send data to. For ECK-managed Elasticsearch clusters, ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed in. See <<{p}_storing_local_state_in_host_path_volume>> for details on how this is required to be adjusted when running agent as non-root.
 
 *  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
@@ -543,7 +543,7 @@ Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
 
 1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
-2. If local state storage is still desired but running the Agent container as root is not allowed, then you can can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*.
+2. If local state storage is still desired but running the Agent container as root is not allowed, then you can can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also Note the Kibana changes required to trust the Elasticsearch CA*
 
 [source,yaml]
 ----
@@ -577,16 +577,18 @@ spec:
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: fleet-server
+  name: fleet-server-sample
   namespace: elastic-apps
 spec:
+  mode: fleet
+  fleetServerEnabled: true
   deployment: {}
 ...
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
-  name: elastic-agent
+  name: elastic-agent-sample
   namespace: elastic-apps
 spec:
   daemonSet: {}
@@ -666,4 +668,24 @@ spec:
         - name: sleep
           image: docker.io/bash:5.2.15
           command: ['sleep', 'infinity']
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  config:
+    # xpack.fleet.agents.elasticsearch.hosts: <== This entry must not exist.
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
+    xpack.fleet.outputs:
+    - id: eck-fleet-agent-output-elasticsearch
+      is_default: true
+      name: eck-elasticsearch
+      type: elasticsearch
+      hosts:
+      # Note that the correct URL for Elasticsearch is https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200
+      - "https://elasticsearch-sample-es-http.default.svc:9200"
+      ssl:
+        # Note the correct path for this is /mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt
+        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"]
 ----
