@@ -36,4 +36,4 @@ main() {
   sleep infinity
 }
 
-main "$@" | tee /tmp/e2e-tests.json
+main "$@" | tee "$RESULT_FILE"

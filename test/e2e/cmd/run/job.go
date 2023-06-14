@@ -37,7 +37,7 @@ type Job struct {
 	resultFile string
 }
 
-func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor, resultFile string) *Job {
+func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
 	logStreamWg := &sync.WaitGroup{}
 	runningWg := &sync.WaitGroup{}
 	runningWg.Add(1)
@@ -52,7 +52,6 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 		runningWg:          runningWg,
 		logStreamWg:        logStreamWg,
 		timestampExtractor: timestampExtractor,
-		resultFile:         resultFile,
 	}
 }
 
@@ -68,6 +67,11 @@ func (j *Job) Stop() {
 
 func (j *Job) WithDependency(dependency *Job) *Job {
 	j.dependency = dependency
+	return j
+}
+
+func (j *Job) WithResultFile(f string) *Job {
+	j.resultFile = f
 	return j
 }
 

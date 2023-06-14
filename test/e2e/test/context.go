@@ -125,6 +125,7 @@ type Context struct {
 	E2ETags               string             `json:"e2e_tags"`
 	LogToFile             bool               `json:"log_to_file"`
 	GSBucketName          string             `json:"gs_bucket_name"`
+	ResultFile            string             `json:"result_file"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
