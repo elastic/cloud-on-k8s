@@ -56,6 +56,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/done
       volumes:
         - name: test-config
           configMap:

@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubectl/pkg/util/podutils"
 
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -128,24 +129,31 @@ func (jm *JobsManager) Start() {
 				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
+
 			switch newPod.Status.Phase {
 			case corev1.PodRunning:
 				job.onPodEvent(jm.Clientset, newPod)
-			case corev1.PodSucceeded:
-				if job.podSucceeded {
-					// already done, but the informer is not stopped yet so this code is still running
-					return
+
+				// download result file when pod is ready
+				if podutils.IsPodReady(newPod) {
+					if job.resultFile != "" {
+						log.Info("Downloading pod result file", "pod", newPod.Name)
+
+						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, job.resultFile)
+						dst := fmt.Sprintf("./e2e-tests-%s.json", jm.clusterName)
+
+						_, _, err := jm.kubectl("cp", src, dst)
+						if err != nil {
+							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
+						}
+					}
+					jm.Stop()
 				}
-				log.Info("Pod succeeded", "name", newPod.Name, "status", newPod.Status.Phase)
-				job.onPodEvent(jm.Clientset, newPod)
-				job.WaitForLogs()
+
+			case corev1.PodSucceeded, corev1.PodFailed:
+				log.Info("Unexpected pod status", "name", newPod.Name, "status", newPod.Status.Phase)
 				jm.Stop()
-			case corev1.PodFailed:
-				// One of the managed Job/Pod has failed, wait for logs and return.
-				jm.err = errors.Errorf("Pod %s has failed", newPod.Name)
-				log.Error(jm.err, "Pod is in failed state", "name", newPod.Name)
-				job.WaitForLogs()
-				jm.Stop()
+
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
 			}

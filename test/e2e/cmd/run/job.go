@@ -32,9 +32,12 @@ type Job struct {
 	stopLogStream      chan struct{}   // notify the log stream it can stop when EOF
 	logStreamWg        *sync.WaitGroup // wait for the log stream goroutines to be over
 	writer             io.Writer       // where to stream the logs in "realtime"
+
+	// Job result file to download when the pod is ready
+	resultFile string
 }
 
-func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
+func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor, resultFile string) *Job {
 	logStreamWg := &sync.WaitGroup{}
 	runningWg := &sync.WaitGroup{}
 	runningWg.Add(1)
@@ -49,20 +52,8 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 		runningWg:          runningWg,
 		logStreamWg:        logStreamWg,
 		timestampExtractor: timestampExtractor,
+		resultFile:         resultFile,
 	}
-}
-
-// WaitForLogs waits for logs to be fully read before leaving.
-func (j *Job) WaitForLogs() {
-	if j.stopRequested {
-		// already done in the past
-		return
-	}
-	j.stopRequested = true
-	close(j.stopLogStream)
-	log.Info("Waiting for log stream to be over", "name", j.jobName)
-	j.logStreamWg.Wait()
-	close(j.streamErrors)
 }
 
 // Stop is only a best effort to stop the streaming process
@@ -72,6 +63,7 @@ func (j *Job) Stop() {
 		return
 	}
 	close(j.stopLogStream)
+	close(j.streamErrors)
 }
 
 func (j *Job) WithDependency(dependency *Job) *Job {

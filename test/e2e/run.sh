@@ -32,6 +32,8 @@ main() {
   else
     run_e2e_tests "$@"
   fi
+  touch /tmp/done
+  sleep infinity
 }
 
-main "$@"
+main "$@" | tee /tmp/e2e-tests.json
