@@ -39,8 +39,6 @@ spec:
             value: "{{ .Context.E2ETags }}"
           - name: CHAOS
             value: "true"
-          - name: RESULT_FILE
-            value: "{{ .Context.ResultFile }}"
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
