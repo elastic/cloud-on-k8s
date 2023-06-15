@@ -77,27 +77,25 @@ func (j *Job) WithResultFile(f string) *Job {
 // onPodEvent ensures that log streaming is started and also manages the internal state of the Job based on the events
 // received from the informer.
 func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
-	if pod.Status.Phase == corev1.PodRunning {
-		if !j.jobStarted {
-			j.jobStarted = true
-			j.runningWg.Done() // notify dependent that this job has started
-			log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
-			j.logStreamWg.Add(1)
-			go func() {
-				// Read stream failure errors
-				for streamErr := range j.streamErrors {
-					log.Error(streamErr, "Stream failure")
-				}
-			}()
-			go func() {
-				streamProvider := &PodLogStreamProvider{
-					client:    client,
-					pod:       pod.Name,
-					namespace: pod.Namespace,
-				}
-				streamTestJobOutput(streamProvider, j.timestampExtractor, j.writer, j.streamErrors, j.stopLogStream)
-				defer j.logStreamWg.Done()
-			}()
-		}
+	if pod.Status.Phase == corev1.PodRunning && !j.jobStarted {
+		j.jobStarted = true
+		j.runningWg.Done() // notify dependent that this job has started
+		log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)
+		j.logStreamWg.Add(1)
+		go func() {
+			// Read stream failure errors
+			for streamErr := range j.streamErrors {
+				log.Error(streamErr, "Stream failure")
+			}
+		}()
+		go func() {
+			streamProvider := &PodLogStreamProvider{
+				client:    client,
+				pod:       pod.Name,
+				namespace: pod.Namespace,
+			}
+			streamTestJobOutput(streamProvider, j.timestampExtractor, j.writer, j.streamErrors, j.stopLogStream)
+			defer j.logStreamWg.Done()
+		}()
 	}
 }
