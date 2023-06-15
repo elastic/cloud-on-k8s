@@ -30,8 +30,10 @@ main() {
   if [ "${chaos}" == true ] ; then
     run_chaos "$@"
   else
-    run_e2e_tests "$@"
+    run_e2e_tests "$@" | tee "$RESULT_FILE"
   fi
+  touch /tmp/done
+  sleep infinity
 }
 
 main "$@"

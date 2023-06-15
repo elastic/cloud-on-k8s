@@ -22,9 +22,8 @@ type Job struct {
 	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
-	jobStarted    bool // keep track of the first Pod running event
-	podSucceeded  bool // keep track of when we're done
-	stopRequested bool // keep track when a stop request has already been requested
+	jobStarted   bool // keep track of the first Pod running event
+	podSucceeded bool // keep track of when we're done
 
 	// Job logs management
 	timestampExtractor timestampExtractor
@@ -32,6 +31,9 @@ type Job struct {
 	stopLogStream      chan struct{}   // notify the log stream it can stop when EOF
 	logStreamWg        *sync.WaitGroup // wait for the log stream goroutines to be over
 	writer             io.Writer       // where to stream the logs in "realtime"
+
+	// Job result file to download when the pod is ready
+	resultFile string
 }
 
 func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
@@ -52,30 +54,19 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 	}
 }
 
-// WaitForLogs waits for logs to be fully read before leaving.
-func (j *Job) WaitForLogs() {
-	if j.stopRequested {
-		// already done in the past
-		return
-	}
-	j.stopRequested = true
-	close(j.stopLogStream)
-	log.Info("Waiting for log stream to be over", "name", j.jobName)
-	j.logStreamWg.Wait()
-	close(j.streamErrors)
-}
-
 // Stop is only a best effort to stop the streaming process
 func (j *Job) Stop() {
-	if j.stopRequested {
-		// Job already stopped
-		return
-	}
 	close(j.stopLogStream)
+	close(j.streamErrors)
 }
 
 func (j *Job) WithDependency(dependency *Job) *Job {
 	j.dependency = dependency
+	return j
+}
+
+func (j *Job) WithResultFile(f string) *Job {
+	j.resultFile = f
 	return j
 }
 
