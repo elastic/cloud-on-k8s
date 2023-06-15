@@ -16,8 +16,8 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubectl/pkg/util/podutils"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
@@ -135,7 +135,7 @@ func (jm *JobsManager) Start() {
 				job.onPodEvent(jm.Clientset, newPod)
 
 				// download result file when pod is ready
-				if podutils.IsPodReady(newPod) {
+				if k8s.IsPodReady(*newPod) {
 					if job.resultFile != "" {
 						log.Info("Downloading pod result file", "pod", newPod.Name)
 
