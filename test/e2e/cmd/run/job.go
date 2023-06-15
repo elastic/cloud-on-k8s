@@ -22,9 +22,8 @@ type Job struct {
 	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
-	jobStarted    bool // keep track of the first Pod running event
-	podSucceeded  bool // keep track of when we're done
-	stopRequested bool // keep track when a stop request has already been requested
+	jobStarted   bool // keep track of the first Pod running event
+	podSucceeded bool // keep track of when we're done
 
 	// Job logs management
 	timestampExtractor timestampExtractor
@@ -57,10 +56,6 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 
 // Stop is only a best effort to stop the streaming process
 func (j *Job) Stop() {
-	if j.stopRequested {
-		// Job already stopped
-		return
-	}
 	close(j.stopLogStream)
 	close(j.streamErrors)
 }
