@@ -57,6 +57,7 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 // Stop is only a best effort to stop the streaming process
 func (j *Job) Stop() {
 	close(j.stopLogStream)
+	close(j.streamErrors)
 }
 
 func (j *Job) WithDependency(dependency *Job) *Job {

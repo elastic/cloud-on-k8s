@@ -28,6 +28,7 @@ type JobsManager struct {
 	context.Context
 	cancelFunc context.CancelFunc
 	*kubernetes.Clientset
+	stopRequested bool
 
 	jobs map[string]*Job
 	err  error // used to notify that an error occurred in this session
@@ -169,6 +170,10 @@ func (jm *JobsManager) Start() {
 }
 
 func (jm *JobsManager) Stop() {
+	if jm.stopRequested {
+		return
+	}
+	jm.stopRequested = true
 	for _, job := range jm.jobs {
 		job.Stop()
 	}
