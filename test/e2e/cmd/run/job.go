@@ -22,8 +22,8 @@ type Job struct {
 	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
-	jobStarted   bool // keep track of the first Pod running event
-	podSucceeded bool // keep track of when we're done
+	jobStarted    bool // keep track of the first Pod running event
+	stopRequested bool // keep track of the stop attempts
 
 	// Job logs management
 	timestampExtractor timestampExtractor
@@ -33,7 +33,8 @@ type Job struct {
 	writer             io.Writer       // where to stream the logs in "realtime"
 
 	// Job result file to download when the pod is ready
-	resultFile string
+	resultFile           string
+	resultFileDownloaded bool // keep track of download attempts
 }
 
 func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
@@ -44,7 +45,6 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 		jobName:            podName,
 		templatePath:       templatePath,
 		jobStarted:         false,
-		podSucceeded:       false,
 		stopLogStream:      make(chan struct{}), // notify the log stream it can stop when EOF
 		streamErrors:       make(chan error, 1), // receive log stream errors
 		writer:             writer,
@@ -56,6 +56,10 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 
 // Stop is only a best effort to stop the streaming process
 func (j *Job) Stop() {
+	if j.stopRequested {
+		return
+	}
+	j.stopRequested = true
 	close(j.stopLogStream)
 	close(j.streamErrors)
 }
@@ -96,7 +100,5 @@ func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 				defer j.logStreamWg.Done()
 			}()
 		}
-	case corev1.PodSucceeded:
-		j.podSucceeded = true
 	}
 }
