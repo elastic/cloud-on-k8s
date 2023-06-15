@@ -4,3 +4,6 @@
 
 build:
 	go build -o bin/releaser main.go
+
+go-run:
+	go run main.go --env=dev --dry-run=true --charts-dir=../../../deploy
