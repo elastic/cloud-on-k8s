@@ -28,7 +28,8 @@ type JobsManager struct {
 	context.Context
 	cancelFunc context.CancelFunc
 	*kubernetes.Clientset
-	stopRequested bool
+	stopRequested     bool
+	downloadRequested bool
 
 	jobs map[string]*Job
 	err  error // used to notify that an error occurred in this session
@@ -138,6 +139,10 @@ func (jm *JobsManager) Start() {
 				// download result file when pod is ready
 				if k8s.IsPodReady(*newPod) {
 					if job.resultFile != "" {
+						if jm.downloadRequested {
+							return
+						}
+						jm.downloadRequested = true
 						log.Info("Downloading pod result file", "pod", newPod.Name)
 
 						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, job.resultFile)
