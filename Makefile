@@ -613,7 +613,3 @@ check-predicates:
 	@ diff \
 		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
 		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
-
-# Runs small Go tool to validate syntax correctness of Jenkins pipelines
-validate-jenkins-pipelines:
-	@ go run ./hack/pipeline-validator/main.go
