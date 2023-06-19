@@ -172,5 +172,8 @@ func (jm *JobsManager) Start() {
 }
 
 func (jm *JobsManager) Stop() {
+	for _, job := range jm.jobs {
+		job.Stop()
+	}
 	jm.cancelFunc()
 }
