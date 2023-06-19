@@ -108,10 +108,7 @@ spec:
       repository: elastic/cloud-on-k8s
       pipeline_file: .buildkite/pipeline-release-redhat.yml
       provider_settings:
-        build_tags: true
-        build_pull_requests: false
-        build_branches: true
-        publish_commit_status: false
+        trigger_mode: none
       teams:
         cloud-k8s-operator: {}
         everyone:
@@ -140,10 +137,7 @@ spec:
       repository: elastic/cloud-on-k8s
       pipeline_file: .buildkite/pipeline-release-helm.yml
       provider_settings:
-        build_tags: true
-        build_pull_requests: false
-        build_branches: true
-        publish_commit_status: false
+        trigger_mode: none
       teams:
         cloud-k8s-operator: {}
         everyone:
