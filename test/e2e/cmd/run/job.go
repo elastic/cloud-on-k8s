@@ -22,7 +22,8 @@ type Job struct {
 	runningWg  *sync.WaitGroup // wait for the dependency to be started
 
 	// Job context
-	jobStarted bool // keep track of the first Pod running event
+	jobStarted    bool // keep track of the first Pod running event
+	stopRequested bool // keep track of the stop attempts
 
 	// Job logs management
 	timestampExtractor timestampExtractor
@@ -53,6 +54,15 @@ func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor t
 	}
 }
 
+// Stop is only a best effort to stop the streaming process
+func (j *Job) Stop() {
+	if j.stopRequested {
+		return
+	}
+	j.stopRequested = true
+	close(j.stopLogStream)
+}
+
 func (j *Job) WithDependency(dependency *Job) *Job {
 	j.dependency = dependency
 	return j
@@ -74,7 +84,7 @@ func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 		go func() {
 			// Read stream failure errors
 			for streamErr := range j.streamErrors {
-				log.Error(streamErr, "Stream failure")
+				log.Info("Stream failure", "pod", pod.Name, "err", streamErr)
 			}
 		}()
 		go func() {

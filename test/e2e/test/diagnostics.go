@@ -33,8 +33,8 @@ func canRunDiagnostics(ctx Context) bool {
 		log.Error(err, "while checking for existence of %s", ctx.GCPCredentialsPath)
 		return false
 	}
-	// If we're not in CI, then don't run diagnostics on e2e test failures.
-	if os.Getenv("CI") != "true" {
+	// If we're not in Kubernetes, then don't run diagnostics on e2e test failures.
+	if _, inK8s := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !inK8s {
 		return false
 	}
 	if _, err := exec.LookPath("eck-diagnostics"); err != nil {
