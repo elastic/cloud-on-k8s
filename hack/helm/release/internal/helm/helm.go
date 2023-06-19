@@ -54,7 +54,6 @@ func Release(conf ReleaseConfig) error {
 	if err != nil {
 		return fmt.Errorf("while creating temp dir: %w", err)
 	}
-	// keep and print the temp dir in dry run mode
 	if conf.KeepTmpDir {
 		log.Printf("Not deleting temporary directory: %s", tempDir)
 	} else {
