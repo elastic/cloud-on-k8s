@@ -64,8 +64,6 @@ steps:
           machineType: "n1-standard-16"
 
       - label: ":go: helm releaser tool"
-        key: "build-helm-releaser-tool"
         commands:
           - cd hack/helm/release
           - make build
-          - buildkite-agent artifact upload bin/releaser
