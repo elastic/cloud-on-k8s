@@ -62,6 +62,8 @@ func (j *Job) Stop() {
 	j.stopRequested = true
 	close(j.stopLogStream)
 	log.Info("Waiting for log stream to be over", "name", j.jobName)
+	// wait before closing the streamErrors channel because it may receive errors before the stopLogStream
+	// channel we just closed is read and the log stream go routine is actually stopped.
 	j.logStreamWg.Wait()
 	close(j.streamErrors)
 }
