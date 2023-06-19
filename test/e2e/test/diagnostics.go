@@ -34,7 +34,7 @@ func canRunDiagnostics(ctx Context) bool {
 		return false
 	}
 	// If we're not in Kubernetes, then don't run diagnostics on e2e test failures.
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+	if _, inK8s := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !inK8s {
 		return false
 	}
 	if _, err := exec.LookPath("eck-diagnostics"); err != nil {
