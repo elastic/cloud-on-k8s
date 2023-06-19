@@ -84,7 +84,7 @@ func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 		go func() {
 			// Read stream failure errors
 			for streamErr := range j.streamErrors {
-				log.Error(streamErr, "Stream failure")
+				log.Info("Stream failure", "pod", pod.Name, "err", streamErr)
 			}
 		}()
 		go func() {
