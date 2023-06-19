@@ -147,8 +147,9 @@ func (jm *JobsManager) Start() {
 							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
 						}
 						job.resultFileDownloaded = true
+
+						jm.Stop()
 					}
-					jm.Stop()
 				}
 
 			case corev1.PodSucceeded, corev1.PodFailed:
