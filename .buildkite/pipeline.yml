@@ -51,4 +51,6 @@ steps:
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
 
   - label: ":buildkite:"
+    depends_on:
+      - "operator-image-build"
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml
