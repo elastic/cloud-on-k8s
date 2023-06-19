@@ -1,10 +1,14 @@
 steps:
-  - label: ""
-    if: build.branch == "main"
-    {{- if eq .ShortFailuresCount 0 }}
-    command: echo "no failures to notify"
-    {{- else }}
-    command: echo "{{ .ShortFailuresCount }} failures to notify"; exit 1
+
+  # fail the build if e2e tests failures
+  - label: "{{ .ShortFailuresCount }} failure(s)"
+    command: exit {{ .ShortFailuresCount }}
+
+  # notify e2e tests failures for the main branch and tags
+  {{- if gt .ShortFailuresCount 0 }}
+  - label: "notify"
+    if: build.branch == "main" || build.tag != null
+    command: echo "notify"
     notify:
       - slack:
           channels:
@@ -19,5 +23,4 @@ steps:
           {{- if gt .ShortFailuresCount $.MaxNotifiedShortFailures }}
             Go to build to see all {{ .ShortFailuresCount }} failures.
           {{- end }}
-
-      {{- end }}
+  {{- end }}
