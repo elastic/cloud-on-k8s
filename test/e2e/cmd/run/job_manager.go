@@ -154,6 +154,7 @@ func (jm *JobsManager) Start() {
 
 			case corev1.PodSucceeded, corev1.PodFailed:
 				log.Info("Unexpected pod status", "name", newPod.Name, "status", newPod.Status.Phase)
+				jm.err = fmt.Errorf("unexpected status %s for pod %s", newPod.Status.Phase, newPod.Name)
 				jm.Stop()
 
 			default:
