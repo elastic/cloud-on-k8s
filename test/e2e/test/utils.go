@@ -214,8 +214,7 @@ func deleteTestResources(ctx context.Context) error {
 		}
 	}
 
-	for i := 0; i < 2; i++ {
-		namespace := Ctx().ManagedNamespace(i)
+	for _, namespace := range Ctx().Operator.ManagedNamespaces {
 		dynamicClient := dynamic.New(clntset.RESTClient())
 		for gv, resources := range groupVersionToResourceListMap {
 			gvSlice := strings.Split(gv, "/")
