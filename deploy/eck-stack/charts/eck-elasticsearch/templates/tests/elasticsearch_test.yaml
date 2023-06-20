@@ -237,7 +237,7 @@ tests:
                   elasticsearch.k8s.elastic.co/cluster-name: quickstart
   - it: should render empty podDisruptionBudget if disabled
     set:
-      podDisruptionBudget: {}
+      podDisruptionBudget.disabled: true
     asserts:
       - equal:
           path: spec.podDisruptionBudget
