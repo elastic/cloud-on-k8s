@@ -6,7 +6,6 @@ package logstash
 
 import (
 	"errors"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -38,12 +37,7 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 
 		normalizedClusterName := normalize(clusterName)
 
-		modifiedURL, err := addPortToHTTPSURL(assocConf.GetURL())
-		if err != nil {
-			return nil, err
-		}
-
-		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_HOSTS", modifiedURL))
+		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_HOSTS", assocConf.GetURL()))
 		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USER", credentials.Username))
 		envs = append(envs, corev1.EnvVar{
 			Name: normalizedClusterName + "_ES_PASSWORD",
@@ -83,21 +77,4 @@ func createEnvVar(key string, value string) corev1.EnvVar {
 		Name:  key,
 		Value: value,
 	}
-}
-
-// addPortToHTTPSURL add port 443 to HTTPS URL if the URL does not specify the port.
-// HTTPS is normally expected to be port 443. Logstash by default add port 9200 to
-// elasticsearch URL regardless of HTTP/HTTPS, which could fail the connection to
-// Elastic Cloud.
-func addPortToHTTPSURL(esURL string) (string, error) {
-	parsedURL, err := url.Parse(esURL)
-	if err != nil {
-		return "", err
-	}
-
-	if parsedURL.Scheme == "https" && parsedURL.Port() == "" {
-		parsedURL.Host += ":443"
-	}
-
-	return parsedURL.String(), nil
 }
