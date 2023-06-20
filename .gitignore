@@ -66,8 +66,6 @@ e2e-tests.xml
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go
 
-# ignore validator for Jenkins pipelines
-hack/pipeline-validator/validator
 
 # ignore binary for buildkite pipeline-gen
 .buildkite/e2e/pipeline-gen/pipeline-gen

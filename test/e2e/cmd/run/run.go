@@ -35,12 +35,13 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute   // time to wait for the test job to finish
-	kubePollInterval     = 10 * time.Second    // Kube API polling interval
-	testRunLabel         = "test-run"          // name of the label applied to resources
-	logStreamLabel       = "stream-logs"       // name of the label enabling log streaming to e2e runner
-	testsLogFilePattern  = "e2e-tests-%s.json" // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute     // time to wait for the operator pod to be ready
+	jobTimeout           = 600 * time.Minute     // time to wait for the test job to finish
+	kubePollInterval     = 10 * time.Second      // Kube API polling interval
+	testRunLabel         = "test-run"            // name of the label applied to resources
+	logStreamLabel       = "stream-logs"         // name of the label enabling log streaming to e2e runner
+	testsLogFilePattern  = "job-%s.json"         // name of file to keep all test logs in JSON format
+	operatorReadyTimeout = 3 * time.Minute       // time to wait for the operator pod to be ready
+	testsResultFile      = "/tmp/e2e-tests.json" // file used to write test results and downloaded at the end of the execution
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -192,6 +193,7 @@ func (h *helper) initTestContext() error {
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
 		GSBucketName:          h.gsBucketName,
+		ResultFile:            testsResultFile,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -592,7 +594,7 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 		outputs = append(outputs, jl)
 	}
 	writer := io.MultiWriter(outputs...)
-	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser)
+	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser).WithResultFile(testsResultFile)
 
 	if h.deployChaosJob {
 		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)
