@@ -121,12 +121,12 @@ remoteClusters: {}
 
 # VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.
 # Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion.
-# Defaults to DeleteOnScaledownAndClusterDeletion if unset.
+# By default, if not set or empty, the operator sets DeleteOnScaledownAndClusterDeletion.
 #
 volumeClaimDeletePolicy: ""
 
 # Settings to limit the disruption when pods need to be rescheduled for some reason such as upgrades or routine maintenance.
-# By default when it is unset, the operator sets a default budget that selects all Elastisearch cluster pods and sets `maxUnavailable` to 1.
+# By default, if not set, the operator sets a budget that selects all Elastisearch cluster pods and sets `maxUnavailable` to 1.
 # To completely disable the pod disruption budget set `disabled` to true.
 #
 # podDisruptionBudget:
@@ -143,7 +143,7 @@ volumeClaimDeletePolicy: ""
 # serviceAccountName: ""
 
 # Number of revisions to retain to allow rollback in the underlying StatefulSets.
-# Defaults to 10.
+# By default, if not set, Kubernetes sets 10.
 #
 # revisionHistoryLimit: 2
 
