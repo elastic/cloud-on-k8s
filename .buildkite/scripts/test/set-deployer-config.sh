@@ -52,6 +52,8 @@ write_deployer_config() {
     fi
 
     case "$E2E_PROVIDER" in gke|ocp|gke-autopilot)
+    # stripping "-autopilot" if it exists from the e2e provider
+    # as the providers do not include the "autopilot" suffix.
     w "  ${E2E_PROVIDER%"-autopilot"}:"
     w "    gCloudProject: elastic-cloud-dev"
     ;; esac
