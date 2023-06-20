@@ -20,7 +20,7 @@ This section describes how to configure and deploy Elastic Agent in link:https:/
 
 . To deploy Fleet Server, Elastic Agents, Elasticsearch, and Kibana, apply the following specification:
 +
-[source,yaml,subs="attributes,+macros"]
+[source,yaml,subs="attributes,callouts,+macros"]
 ----
 cat $$<<$$EOF | kubectl apply -f -
 apiVersion: agent.k8s.elastic.co/v1alpha1
