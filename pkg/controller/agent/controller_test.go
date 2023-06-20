@@ -13,9 +13,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -27,7 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
-func newReconcileAgent(objs ...runtime.Object) *ReconcileAgent {
+func newReconcileAgent(objs ...client.Object) *ReconcileAgent {
 	r := &ReconcileAgent{
 		Client:         k8s.NewFakeClient(objs...),
 		recorder:       record.NewFakeRecorder(100),
@@ -40,7 +40,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 	defaultLabels := (&agentv1alpha1.Agent{ObjectMeta: metav1.ObjectMeta{Name: "testAgent"}}).GetIdentityLabels()
 	tests := []struct {
 		name     string
-		objs     []runtime.Object
+		objs     []client.Object
 		request  reconcile.Request
 		want     reconcile.Result
 		expected agentv1alpha1.Agent
@@ -48,7 +48,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 	}{
 		{
 			name: "valid unmanaged agent does not increment observedGeneration",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testAgent",
@@ -95,7 +95,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 		},
 		{
 			name: "too long name fails validation, and updates observedGeneration",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testAgentwithtoolongofanamereallylongname",
@@ -128,7 +128,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 		},
 		{
 			name: "agent with ready deployment+pod updates status.health properly",
-			objs: []runtime.Object{
+			objs: []client.Object{
 				&agentv1alpha1.Agent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "testAgent",

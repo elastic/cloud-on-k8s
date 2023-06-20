@@ -10,7 +10,9 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -49,7 +51,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 
 	var status logstashv1alpha1.LogstashStatus
 
-	if status, err = calculateStatus(&params, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas); err != nil {
+	if status, err = calculateStatus(&params, reconciled); err != nil {
 		results.WithError(errors.Wrap(err, "while calculating status"))
 	}
 	return results, status
@@ -57,18 +59,24 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster
 // and will return any error encountered.
-func calculateStatus(params *Params, ready, desired int32) (logstashv1alpha1.LogstashStatus, error) {
+func calculateStatus(params *Params, sset appsv1.StatefulSet) (logstashv1alpha1.LogstashStatus, error) {
 	logstash := params.Logstash
 	status := params.Status
-
 	pods, err := k8s.PodsMatchingLabels(params.Client, logstash.Namespace, map[string]string{NameLabelName: logstash.Name})
 	if err != nil {
 		return status, err
 	}
 
+	if sset.Spec.Selector != nil {
+		selector, err := metav1.LabelSelectorAsSelector(sset.Spec.Selector)
+		if err != nil {
+			return logstashv1alpha1.LogstashStatus{}, err
+		}
+		status.Selector = selector.String()
+	}
 	status.Version = common.LowestVersionFromPods(params.Context, status.Version, pods, VersionLabelName)
-	status.AvailableNodes = ready
-	status.ExpectedNodes = desired
+	status.AvailableNodes = sset.Status.ReadyReplicas
+	status.ExpectedNodes = sset.Status.Replicas
 	return status, nil
 }
 

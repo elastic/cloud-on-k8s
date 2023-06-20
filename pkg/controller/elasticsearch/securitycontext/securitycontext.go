@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	// RunAsNonRootMinStackVersion is the minimum Stack version to use RunAsNonRoot with the Elasticsearch image.
-	// Before 8.8.0 Elasticsearch image runs has non-numeric user.
-	// Refer to https://github.com/elastic/elasticsearch/pull/95390 for more information.
+	// RunAsNonRootMinStackVersion is the minimum Stack version to use RunAsNonRoot with the Elasticsearch and Beats images.
+	// Before 8.8.0 Elasticsearch and Beats images ran as a non-numeric user.
+	// Refer to https://github.com/elastic/elasticsearch/pull/95390 and https://github.com/elastic/beats/pull/35272 for more information.
 	RunAsNonRootMinStackVersion = version.MustParse("8.8.0-SNAPSHOT")
 
 	// DropCapabilitiesMinStackVersion is the minimum Stack version to Drop all the capabilities.
@@ -42,15 +42,18 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 	return sc
 }
 
-func DefaultBeatSecurityContext() *corev1.SecurityContext {
-	return &corev1.SecurityContext{
+func DefaultBeatSecurityContext(ver version.Version) *corev1.SecurityContext {
+	sc := &corev1.SecurityContext{
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
-		Privileged: ptr.Bool(false),
-		// Update to true when https://github.com/elastic/beats/pull/35272 is merged.
-		// RunAsNonRoot:             ptr.Bool(true),
+		Privileged:               ptr.Bool(false),
 		ReadOnlyRootFilesystem:   ptr.Bool(true),
 		AllowPrivilegeEscalation: ptr.Bool(false),
 	}
+	if ver.LT(RunAsNonRootMinStackVersion) {
+		return sc
+	}
+	sc.RunAsNonRoot = ptr.Bool(true)
+	return sc
 }

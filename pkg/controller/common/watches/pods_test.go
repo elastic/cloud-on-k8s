@@ -5,6 +5,7 @@
 package watches
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,7 @@ func Test_objToReconcileRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := fn(tt.obj)
+			got := fn(context.Background(), tt.obj)
 			require.Equal(t, tt.want, got)
 		})
 	}

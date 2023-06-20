@@ -8,10 +8,10 @@ package autoscaling
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +19,6 @@ import (
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/autoscaling/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -223,19 +222,6 @@ func (ab *AutoscalingBuilder) WithFixedDecider(policy string, fixedDeciderSettin
 	policySpec.Deciders["fixed"] = fixedDeciderSettings
 	ab.policies[policy] = policySpec
 	return ab
-}
-
-// ToJSON converts the autoscaling policy into JSON.
-func (ab *AutoscalingBuilder) ToJSON() string {
-	spec := esv1.AutoscalingSpec{}
-	for _, policySpec := range ab.policies {
-		spec.AutoscalingPolicySpecs = append(spec.AutoscalingPolicySpecs, policySpec)
-	}
-	bytes, err := json.Marshal(spec)
-	if err != nil {
-		ab.t.Fatalf("can't serialize autoscaling spec, err: %s", err)
-	}
-	return string(bytes)
 }
 
 func (ab *AutoscalingBuilder) Build() *autoscalingv1alpha1.ElasticsearchAutoscaler {

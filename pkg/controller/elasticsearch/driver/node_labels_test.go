@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -50,7 +50,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 	type args struct {
 		ctx     context.Context
 		es      *esv1.Elasticsearch
-		objects []runtime.Object
+		objects []client.Object
 	}
 	tests := []struct {
 		name                string
@@ -68,7 +68,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 						Annotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/region,topology.kubernetes.io/zone"},
 					},
 				},
-				objects: []runtime.Object{
+				objects: []client.Object{
 					newPodBuilder("elasticsearch-sample-es-default-0").scheduledOn("k8s-node-0").build(),
 					newPodBuilder("elasticsearch-sample-es-default-1").scheduledOn("k8s-node-1").build(),
 					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-0"}},
@@ -88,7 +88,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 						Annotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/region,topology.kubernetes.io/zone"},
 					},
 				},
-				objects: []runtime.Object{
+				objects: []client.Object{
 					newPodBuilder("elasticsearch-sample-es-default-0").scheduledOn("k8s-node-0").build(),
 					newPodBuilder("elasticsearch-sample-es-default-1").scheduledOn("k8s-node-1").build(),
 					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-0", Labels: map[string]string{"topology.kubernetes.io/region": "europe-west1", "topology.kubernetes.io/zone": "europe-west1-a"}}},
@@ -117,7 +117,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 						Annotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/region,topology.kubernetes.io/zone"},
 					},
 				},
-				objects: []runtime.Object{
+				objects: []client.Object{
 					newPodBuilder("elasticsearch-sample-es-default-0").scheduledOn("k8s-node-0").withAnnotation(map[string]string{"foo": "bar"}).build(),
 					newPodBuilder("elasticsearch-sample-es-default-1").scheduledOn("k8s-node-1").withAnnotation(map[string]string{"foo": "bar"}).build(),
 					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-0", Labels: map[string]string{"topology.kubernetes.io/region": "europe-west1", "topology.kubernetes.io/zone": "europe-west1-a"}}},
@@ -148,7 +148,7 @@ func Test_annotatePodsWithNodeLabels(t *testing.T) {
 						Annotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/region,topology.kubernetes.io/zone"},
 					},
 				},
-				objects: []runtime.Object{
+				objects: []client.Object{
 					newPodBuilder("elasticsearch-sample-es-default-0").scheduledOn("k8s-node-0").withAnnotation(map[string]string{"foo": "bar", "topology.kubernetes.io/region": "existing-annotation"}).build(),
 					newPodBuilder("elasticsearch-sample-es-default-1").scheduledOn("k8s-node-1").withAnnotation(map[string]string{"foo": "bar", "topology.kubernetes.io/region": "existing-annotation"}).build(),
 					&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "k8s-node-0", Labels: map[string]string{"topology.kubernetes.io/region": "europe-west1", "topology.kubernetes.io/zone": "europe-west1-a"}}},

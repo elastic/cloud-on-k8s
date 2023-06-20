@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -38,21 +38,21 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		resources               []runtime.Object
+		resources               []client.Object
 		expectGenerations       []appsv1.StatefulSet
 		wantSatisfied           bool
 		wantExpectedGenerations map[types.NamespacedName]ResourceGeneration
 	}{
 		{
 			name:                    "no generation expected",
-			resources:               []runtime.Object{&sset1, &sset2},
+			resources:               []client.Object{&sset1, &sset2},
 			expectGenerations:       nil,
 			wantSatisfied:           true,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{},
 		},
 		{
 			name:              "one generation expected, unsatisfied",
-			resources:         []runtime.Object{&sset1, &sset2},
+			resources:         []client.Object{&sset1, &sset2},
 			expectGenerations: []appsv1.StatefulSet{sset2HigherGen},
 			wantSatisfied:     false,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{
@@ -63,21 +63,21 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 		},
 		{
 			name:                    "one generation expected, satisfied",
-			resources:               []runtime.Object{&sset1, &sset2HigherGen},
+			resources:               []client.Object{&sset1, &sset2HigherGen},
 			expectGenerations:       []appsv1.StatefulSet{sset2HigherGen},
 			wantSatisfied:           true,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{},
 		},
 		{
 			name:                    "two generations expected, satisfied",
-			resources:               []runtime.Object{&sset1HigherGen, &sset2HigherGen},
+			resources:               []client.Object{&sset1HigherGen, &sset2HigherGen},
 			expectGenerations:       []appsv1.StatefulSet{sset1HigherGen, sset2HigherGen},
 			wantSatisfied:           true,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{},
 		},
 		{
 			name:              "two generations expected, one unsatisfied",
-			resources:         []runtime.Object{&sset1HigherGen, &sset2},
+			resources:         []client.Object{&sset1HigherGen, &sset2},
 			expectGenerations: []appsv1.StatefulSet{sset1HigherGen, sset2HigherGen},
 			wantSatisfied:     false,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{
@@ -88,14 +88,14 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 		},
 		{
 			name:                    "expecting a generation for a StatefulSet that does not exist anymore: satisfied",
-			resources:               []runtime.Object{},
+			resources:               []client.Object{},
 			expectGenerations:       []appsv1.StatefulSet{sset1},
 			wantSatisfied:           true,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{},
 		},
 		{
 			name:                    "expecting a generation for a StatefulSet that was replaced: satisfied",
-			resources:               []runtime.Object{&sset1},
+			resources:               []client.Object{&sset1},
 			expectGenerations:       []appsv1.StatefulSet{sset1DifferentUID},
 			wantSatisfied:           true,
 			wantExpectedGenerations: map[types.NamespacedName]ResourceGeneration{},

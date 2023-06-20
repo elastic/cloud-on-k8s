@@ -11,9 +11,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -241,7 +241,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	type args struct {
 		as             *apmv1.ApmServer
 		podSpecParams  PodSpecParams
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 	}
 	tests := []struct {
 		name    string
@@ -254,7 +254,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			args: args{
 				as:            apmFixture,
 				podSpecParams: defaultPodSpecParams,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -273,7 +273,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 					CASecretName:   "es-ca",
 				}, nil),
 				podSpecParams: defaultPodSpecParams,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -320,7 +320,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 						CASecretName:   "kb-ca",
 					}),
 				podSpecParams: defaultPodSpecParams,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -382,7 +382,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			args: args{
 				as:            apmFixture,
 				podSpecParams: defaultPodSpecParams,
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -412,7 +412,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 					}
 					return params
 				}(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -438,7 +438,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 					}
 					return params
 				}(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
@@ -480,7 +480,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 					}
 					return params
 				}(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -199,8 +199,8 @@ func TestNewConfigFromSpec(t *testing.T) {
 	}
 }
 
-func mkAuthSecrets() []runtime.Object {
-	return []runtime.Object{
+func mkAuthSecrets() []client.Object {
+	return []client.Object{
 		&v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-es-elastic-user",

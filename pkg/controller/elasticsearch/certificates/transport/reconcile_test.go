@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -32,7 +31,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 		extraCA        []byte
 		es             *esv1.Elasticsearch
 		rotationParams certificates.RotationParams
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 	}
 	tests := []struct {
 		name          string
@@ -45,7 +44,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			args: args{
 				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 3).addNodeSet("sset3", 4).build(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					// 2 Pods in sset1
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.3").build(),
@@ -103,7 +102,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				ca:      testRSACA,
 				extraCA: extraCA,
 				es:      newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.3").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(0).withIP("1.1.2.2").build(),
@@ -149,7 +148,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			args: args{
 				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(0).withIP("1.1.2.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(1).withIP("1.1.2.3").build(),

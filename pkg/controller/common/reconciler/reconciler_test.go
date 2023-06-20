@@ -50,7 +50,7 @@ func TestReconcileResource(t *testing.T) {
 	tests := []struct {
 		name                 string
 		args                 func() args
-		initialObjects       []runtime.Object
+		initialObjects       []client.Object
 		argAssertion         func(args args)
 		exptectedErrorMsg    string
 		serverStateAssertion func(serverState corev1.Secret)
@@ -134,7 +134,7 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			initialObjects: []runtime.Object{&corev1.Secret{
+			initialObjects: []client.Object{&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      objectKey.Name,
 					Namespace: objectKey.Namespace,
@@ -168,7 +168,7 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			initialObjects: []runtime.Object{obj},
+			initialObjects: []client.Object{obj},
 			argAssertion: func(args args) {
 				// should be unchanged
 				assert.Equal(t, "be quiet", string(args.Expected.(*corev1.Secret).Data["bar"])) //nolint:forcetypeassert
@@ -200,7 +200,7 @@ func TestReconcileResource(t *testing.T) {
 					UpdateReconciled: noopModifier,
 				}
 			},
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      objectKey.Name,
@@ -240,7 +240,7 @@ func TestReconcileResource(t *testing.T) {
 					UpdateReconciled: noopModifier,
 				}
 			},
-			initialObjects: []runtime.Object{
+			initialObjects: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       objectKey.Namespace,

@@ -19,7 +19,7 @@ import (
 )
 
 // TODO refactor identical to Kibana client
-func NewLogstashClient(logstash v1alpha1.Logstash, k *test.K8sClient) (*http.Client, error) {
+func NewLogstashClient(logstash v1alpha1.Logstash, _ *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	// TODO: Integrate with TLS on metrics API
 	// if ems.Spec.HTTP.TLS.Enabled() {

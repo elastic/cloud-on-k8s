@@ -1,0 +1,462 @@
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  podTemplate:
+    spec:
+      nodeSelector:
+        cloud.google.com/compute-class: "Balanced"
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 200m
+          limits:
+            memory: 1Gi
+            cpu: 200m
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 8.8.0
+  elasticsearchRefs:
+  - name: elasticsearch
+  daemonSet:
+    podTemplate:
+      spec:
+        nodeSelector:
+          cloud.google.com/compute-class: "Balanced"
+        containers:
+          - name: agent
+            securityContext:
+              runAsUser: 0
+            env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            resources:
+              requests:
+                cpu: 200m
+              limits:
+                ephemeral-storage: "10Gi"
+            volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+        volumes:
+        - name: "agent-data"
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "standard-rwo"
+                resources:
+                  requests:
+                    storage: 10Gi
+        - name: varlog
+          hostPath:
+            path: /var/log
+        automountServiceAccountToken: true
+        serviceAccountName: elastic-agent
+  config:
+    id: 488e0b80-3634-11eb-8208-57893829af4e
+    revision: 2
+    agent:
+      monitoring:
+        enabled: false
+    inputs:
+    - id: 678daef0-3634-11eb-8208-57893829af4e
+      name: kubernetes-1
+      revision: 1
+      type: kubernetes/metrics
+      use_output: default
+      meta:
+        package:
+          name: kubernetes
+          version: latest
+      data_stream:
+        namespace: k8s
+      streams:
+      - id: kubernetes/metrics-kubernetes.apiserver
+        data_stream:
+          dataset: kubernetes.apiserver
+          type: metrics
+        metricsets:
+        - apiserver
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.container
+        data_stream:
+          dataset: kubernetes.container
+          type: metrics
+        metricsets:
+        - container
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.NODE_NAME}:10250'
+        period: 10s
+        ssl.verification_mode: none
+      - id: kubernetes/metrics-kubernetes.event
+        data_stream:
+          dataset: kubernetes.event
+          type: metrics
+        metricsets:
+        - event
+        period: 10s
+        add_metadata: true
+      - id: kubernetes/metrics-kubernetes.node
+        data_stream:
+          dataset: kubernetes.node
+          type: metrics
+        metricsets:
+        - node
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.NODE_NAME}:10250'
+        period: 10s
+        ssl.verification_mode: none
+      - id: kubernetes/metrics-kubernetes.pod
+        data_stream:
+          dataset: kubernetes.pod
+          type: metrics
+        metricsets:
+        - pod
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.NODE_NAME}:10250'
+        period: 10s
+        ssl.verification_mode: none
+      - id: kubernetes/metrics-kubernetes.system
+        data_stream:
+          dataset: kubernetes.system
+          type: metrics
+        metricsets:
+        - system
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.NODE_NAME}:10250'
+        period: 10s
+        ssl.verification_mode: none
+      - id: kubernetes/metrics-kubernetes.volume
+        data_stream:
+          dataset: kubernetes.volume
+          type: metrics
+        metricsets:
+        - volume
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'https://${env.NODE_NAME}:10250'
+        period: 10s
+        ssl.verification_mode: none
+    - id: C07CC023-84F5-4623-962C-5F82E9DF7899
+      name: kubernetes-2
+      revision: 1
+      type: kubernetes/metrics
+      use_output: default
+      meta:
+        package:
+          name: kubernetes
+          version: latest
+      data_stream:
+        namespace: k8s
+      streams:
+      - id: kubernetes/metrics-kubernetes.state_container
+        data_stream:
+          dataset: kubernetes.state_container
+          type: metrics
+        metricsets:
+        - state_container
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_container
+        data_stream:
+          dataset: kubernetes.state_container
+          type: metrics
+        metricsets:
+        - state_cronjob
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_daemonset
+        data_stream:
+          dataset: kubernetes.state_daemonset
+          type: metrics
+        metricsets:
+        - state_daemonset
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_deployment
+        data_stream:
+          dataset: kubernetes.state_deployment
+          type: metrics
+        metricsets:
+        - state_deployment
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_job
+        data_stream:
+          dataset: kubernetes.state_job
+          type: metrics
+        metricsets:
+        - state_job
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_node
+        data_stream:
+          dataset: kubernetes.state_node
+          type: metrics
+        metricsets:
+        - state_node
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_persistentvolume
+        data_stream:
+          dataset: kubernetes.state_persistentvolume
+          type: metrics
+        metricsets:
+        - state_persistentvolume
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_persistentvolumeclaim
+        data_stream:
+          dataset: kubernetes.state_persistentvolumeclaim
+          type: metrics
+        metricsets:
+        - state_persistentvolumeclaim
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_pod
+        data_stream:
+          dataset: kubernetes.state_pod
+          type: metrics
+        metricsets:
+        - state_pod
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_replicaset
+        data_stream:
+          dataset: kubernetes.state_replicaset
+          type: metrics
+        metricsets:
+        - state_replicaset
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_resourcequota
+        data_stream:
+          dataset: kubernetes.state_resourcequota
+          type: metrics
+        metricsets:
+        - state_resourcequota
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_service
+        data_stream:
+          dataset: kubernetes.state_service
+          type: metrics
+        metricsets:
+        - state_service
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_statefulset
+        data_stream:
+          dataset: kubernetes.state_statefulset
+          type: metrics
+        metricsets:
+        - state_statefulset
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      - id: kubernetes/metrics-kubernetes.state_storageclass
+        data_stream:
+          dataset: kubernetes.state_storageclass
+          type: metrics
+        metricsets:
+        - state_storageclass
+        add_metadata: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        hosts:
+        - 'kube-state-metrics:8080'
+        period: 30s
+        ssl.certificate_authorities:
+        - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    # Disabled per https://github.com/elastic/beats/pull/35134
+    # - id: C07CC023-84F5-4623-962C-5F82E9DF7855
+    #   name: kubernetes-4
+    #   type: filestream
+    #   data_stream:
+    #     namespace: k8s
+    #   use_output: default
+    #   streams:
+    #   - id: kubernetes/logs-kubernetes.container_logs
+    #     data_stream:
+    #       type: logs
+    #       dataset: kubernetes.container_logs
+    #     paths:
+    #       - '/var/log/containers/*${kubernetes.container.id}.log'
+    #     prospector.scanner.symlinks: true
+    #     parsers:
+    #     - container:
+    #         stream: all
+    #         format: auto
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - persistentvolumes
+  - persistentvolumeclaims
+  - pods
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - services
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups: ["apps"]
+  resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["storage.k8s.io"]
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+---

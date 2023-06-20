@@ -244,7 +244,7 @@ func TestManager_StopObserving(t *testing.T) {
 	}
 }
 
-func TestManager_AddObservationListener(t *testing.T) {
+func TestManager_AddObservationListener(_ *testing.T) {
 	m := NewManager(1*time.Second, nil)
 	ctx := context.Background()
 

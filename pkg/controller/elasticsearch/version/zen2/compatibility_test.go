@@ -12,7 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -70,12 +70,12 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		pods []runtime.Object
+		pods []client.Object
 		want bool
 	}{
 		{
 			name: "only v7 master nodes",
-			pods: []runtime.Object{
+			pods: []client.Object{
 				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
 				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
 				sset.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
@@ -84,7 +84,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 		},
 		{
 			name: "only v6 master nodes (with v7 data nodes)",
-			pods: []runtime.Object{
+			pods: []client.Object{
 				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
 				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
 				sset.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
@@ -93,7 +93,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 		},
 		{
 			name: "mixed v6/v7 masters",
-			pods: []runtime.Object{
+			pods: []client.Object{
 				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
 				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
 			},
@@ -101,7 +101,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 		},
 		{
 			name: "no pods",
-			pods: []runtime.Object{},
+			pods: []client.Object{},
 			want: false,
 		},
 	}

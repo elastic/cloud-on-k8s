@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
@@ -38,7 +38,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 
 	namespacedSecretName := PublicCertsSecretRef(k8s.ExtractNamespacedName(owner))
 
-	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
+	mkClient := func(t *testing.T, objs ...client.Object) k8s.Client {
 		t.Helper()
 		return k8s.NewFakeClient(objs...)
 	}
@@ -64,7 +64,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		client     func(*testing.T, ...runtime.Object) k8s.Client
+		client     func(*testing.T, ...client.Object) k8s.Client
 		extraCA    []byte
 		wantSecret func(*testing.T) *corev1.Secret
 		wantErr    bool
@@ -76,7 +76,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		},
 		{
 			name: "is updated on mismatch",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data[certificates.CAFileName] = []byte("/some/ca.crt")
@@ -98,7 +98,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		},
 		{
 			name: "removes extraneous keys",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				s.Data["extra"] = []byte{0, 1, 2, 3}
@@ -108,7 +108,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		},
 		{
 			name: "preserves labels and annotations",
-			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+			client: func(t *testing.T, _ ...client.Object) k8s.Client {
 				t.Helper()
 				s := mkWantedSecret(t)
 				if s.Labels == nil {

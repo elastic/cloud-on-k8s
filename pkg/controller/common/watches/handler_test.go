@@ -5,6 +5,7 @@
 package watches
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -138,7 +139,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}
 
 	d := NewDynamicEnqueueRequest()
-	require.NoError(t, d.InjectMapper(getRESTMapper()))
+	// require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -159,7 +160,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertEmptyQueue()
 
 	// simulate an object creation
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject1,
 	}, q)
 	assertEmptyQueue()
@@ -173,31 +174,31 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	assertEmptyQueue()
 
 	// simulate first object creation
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject1,
 	}, q)
 	assertReconcileReq(watching)
 
 	// simulate object update
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject1,
 		ObjectNew: updated1,
 	}, q)
 	assertReconcileReq(watching)
 	// simulate object deletion
-	d.Delete(event.DeleteEvent{
+	d.Delete(context.Background(), event.DeleteEvent{
 		Object: testObject1,
 	}, q)
 	assertReconcileReq(watching)
 
 	// simulate second object creation
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject2,
 	}, q)
 	// no watcher, nothing in the queue
 	assertEmptyQueue()
 	// simulate second object update
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)
@@ -211,12 +212,12 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 		Name:    "test-watch-2",
 	}))
 	// simulate second object creation
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject2,
 	}, q)
 	assertReconcileReq(watching)
 	// simulate second object update
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)
@@ -225,14 +226,14 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	// remove the watch for object 2
 	d.RemoveHandlerForKey("test-watch-2")
 	// simulate object update: nothing should happen
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)
 	assertEmptyQueue()
 
 	// updates on the first object should still work
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject1,
 		ObjectNew: updated1,
 	}, q)
@@ -246,14 +247,14 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}))
 
 	// update on the first object should register
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject1,
 		ObjectNew: updated1,
 	}, q)
 	assertReconcileReq(watching)
 
 	// update on the second object should register too
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)
@@ -269,28 +270,28 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 
 	// setup an owner watch where owner is testObject1
 	require.NoError(t, d.AddHandler(&OwnerWatch{
-		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-			OwnerType:    testObject1,
-			IsController: true,
-		},
+		Scheme:       scheme.Scheme,
+		Mapper:       getRESTMapper(),
+		OwnerType:    testObject1,
+		IsController: true,
 	}))
 
 	// let's make object 1 the owner of object 2
 	require.NoError(t, controllerutil.SetControllerReference(testObject1, testObject2, scheme.Scheme))
 	// an update on object 2 should enqueue a request for object 1 (the owner)
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)
 	assertReconcileReq(nsn1)
 	// same for deletes
-	d.Delete(event.DeleteEvent{
+	d.Delete(context.Background(), event.DeleteEvent{
 		Object: testObject2,
 	}, q)
 	assertReconcileReq(nsn1)
 
 	// named watch on object 1 should still work
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject1,
 	}, q)
 	assertReconcileReq(watching)
@@ -303,7 +304,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}))
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject2,
 	}, q)
 	expected := []types.NamespacedName{
@@ -341,7 +342,6 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	updated2.Labels = map[string]string{"updated": "2"}
 
 	d := NewDynamicEnqueueRequest()
-	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -362,24 +362,24 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	assertEmptyQueue()
 	// setup an owner watch where owner is testObject1
 	require.NoError(t, d.AddHandler(&OwnerWatch{
-		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-			OwnerType:    testObject1,
-			IsController: true,
-		},
+		OwnerType:    testObject1,
+		IsController: true,
+		Scheme:       scheme.Scheme,
+		Mapper:       getRESTMapper(),
 	}))
 	// END FIXTURES
 
 	require.NoError(t, controllerutil.SetControllerReference(testObject1, testObject2, scheme.Scheme))
 
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject1,
 	}, q)
-	d.Create(event.CreateEvent{
+	d.Create(context.Background(), event.CreateEvent{
 		Object: testObject2,
 	}, q)
 
 	// an update on object 2 should enqueue a request for object 1 (the owner)
-	d.Update(event.UpdateEvent{
+	d.Update(context.Background(), event.UpdateEvent{
 		ObjectOld: testObject2,
 		ObjectNew: updated2,
 	}, q)

@@ -11,9 +11,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
@@ -40,6 +40,7 @@ type testPod struct {
 	healthy, toUpgrade, inCluster, terminating bool
 	uid                                        types.UID
 	resourceVersion                            string
+	finalizers                                 []string
 }
 
 func newTestPod(name string) testPod {
@@ -57,6 +58,7 @@ func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; ret
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
 func (t testPod) withResourceVersion(rv string) testPod { t.resourceVersion = rv; return t } //nolint:unparam
+func (t testPod) withFinalizers(f []string) testPod     { t.finalizers = f; return t }
 func (t testPod) withRoles(roles ...esv1.NodeRole) testPod {
 	t.roles = make([]string, len(roles))
 	for i := range roles {
@@ -165,8 +167,8 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []runtime.Object {
-	var result []runtime.Object
+func (u upgradeTestPods) toClientObjects(version string, maxUnavailable int, f filter, annotations map[string]string) []crclient.Object {
+	var result []crclient.Object
 	for _, testPod := range u {
 		pod := testPod.toPod()
 		if !f(pod) {
@@ -294,6 +296,7 @@ func (t testPod) toPod() corev1.Pod {
 			UID:               t.uid,
 			DeletionTimestamp: deletionTimestamp,
 			ResourceVersion:   t.resourceVersion,
+			Finalizers:        t.finalizers,
 		},
 	}
 

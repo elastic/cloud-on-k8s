@@ -10,7 +10,6 @@
 set -euo pipefail
 
 VAULT_ROOT_PATH=${VAULT_ROOT_PATH:-secret/ci/elastic-cloud-on-k8s}
-DRY_RUN=${DRY_RUN:-true}
 
 tmpDir=$(mktemp -d)
 trap 'rm -rf "$tmpDir"' 0
@@ -31,11 +30,6 @@ main() {
     if container_already_verified; then
         echo "Preflight has already been submitted ✅"
         exit 0
-    fi
-
-    if ! which preflight; then
-        curl -sL -o "$tmpDir/preflight" "https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.2.1/preflight-linux-$(uname -m)"
-        chmod u+x "$tmpDir/preflight"
     fi
 
     vault read -format=json -field=data "$VAULT_ROOT_PATH/operatorhub-release-preflight" > "$tmpDir/auth.json"

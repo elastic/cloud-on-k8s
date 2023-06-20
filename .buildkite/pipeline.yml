@@ -1,5 +1,5 @@
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:d8e4780b
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   cpu: "4"
   memory: "2G"
 
@@ -51,4 +51,6 @@ steps:
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
 
   - label: ":buildkite:"
+    depends_on:
+      - "operator-image-build"
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml

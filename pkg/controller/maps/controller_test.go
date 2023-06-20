@@ -86,7 +86,12 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{Name: nsnFixture.Name, Namespace: nsnFixture.Namespace, DeletionTimestamp: &timeFixture, Generation: 2},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              nsnFixture.Name,
+						Namespace:         nsnFixture.Namespace,
+						DeletionTimestamp: &timeFixture, Generation: 2,
+						Finalizers: []string{"something"},
+					},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
 					},

@@ -5,27 +5,47 @@
 package watches
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+func Add(mgr manager.Manager, c controller.Controller, owner client.Object, objects ...client.Object) error {
+	if err := c.Watch(
+		source.Kind(mgr.GetCache(), owner), &handler.EnqueueRequestForObject{},
+	); err != nil {
+		return err
+	}
+	for _, object := range objects {
+		if err := c.Watch(
+			source.Kind(mgr.GetCache(), object),
+			handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), owner, handler.OnlyControllerOwner()),
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
-func WatchPods(c controller.Controller, objNameLabel string) error {
+func WatchPods(mgr manager.Manager, c controller.Controller, objNameLabel string) error {
 	return c.Watch(
-		&source.Kind{Type: &corev1.Pod{}},
+		source.Kind(mgr.GetCache(), &corev1.Pod{}),
 		handler.EnqueueRequestsFromMapFunc(objToReconcileRequest(objNameLabel)),
 	)
 }
 
 // objToReconcileRequest returns a function to enqueue reconcile requests for the resource name set at objNameLabel.
-func objToReconcileRequest(objNameLabel string) func(object client.Object) []reconcile.Request {
-	return func(object client.Object) []reconcile.Request {
+func objToReconcileRequest(objNameLabel string) handler.MapFunc {
+	return func(ctx context.Context, object client.Object) []reconcile.Request {
 		labels := object.GetLabels()
 		objectName, isSet := labels[objNameLabel]
 		if !isSet {

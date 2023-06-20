@@ -69,7 +69,7 @@ func noAutoscalingAnnotation(ctx context.Context, esa v1alpha1.ElasticsearchAuto
 			errs, field.Invalid(
 				field.NewPath("metadata").Child("annotations", esv1.ElasticsearchAutoscalingSpecAnnotationName),
 				esv1.ElasticsearchAutoscalingSpecAnnotationName,
-				"Cannot use the ElasticsearchAutoscaler resource and the autoscaling annotation at the same time, please remove the annotation",
+				"Autoscaling annotation is no longer supported, please remove the annotation",
 			),
 		)
 	}

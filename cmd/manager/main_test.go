@@ -13,11 +13,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
@@ -43,12 +43,12 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {
 		name        string
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		assert      func(c k8s.Client, t *testing.T)
 	}{
 		{
 			name: "don't gc secrets owned by a different Kind of resource",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing another resource (a Secret) that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "a-secret", "Secret"),
 			},
@@ -59,7 +59,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "no Elasticsearch soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "Elasticsearch"},
@@ -74,7 +74,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "some Elasticsearch soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing ES that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
@@ -85,7 +85,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "no Kibana soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&kbv1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "Kibana"},
@@ -100,7 +100,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "some Kibana soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing Kibana that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
@@ -111,7 +111,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "no ApmServer soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&apmv1.ApmServer{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "ApmServer"},
@@ -126,7 +126,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "some ApmServer soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing ApmServer that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
@@ -137,7 +137,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "no EnterpriseSearch soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&entv1.EnterpriseSearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "EnterpriseSearch"},
@@ -152,7 +152,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "some EnterpriseSearch soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing EnterpriseSearch that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
@@ -163,7 +163,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "no Beat soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&beatv1beta1.Beat{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					TypeMeta:   metav1.TypeMeta{Kind: "Beat"},
@@ -178,7 +178,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		},
 		{
 			name: "some Beat soft-owned secrets to gc",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				// secret referencing Beat that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},

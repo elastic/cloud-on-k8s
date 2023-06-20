@@ -1,4 +1,4 @@
-{{- range $envName, $sortedTests := .Tests }}
+{{- range $envName, $sortedTests := .TestsMap }}
 {{- if gt (len $sortedTests.Passed) 0 }}
 
 <p>

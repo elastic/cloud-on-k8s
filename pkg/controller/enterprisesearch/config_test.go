@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
@@ -65,7 +65,7 @@ func entWithAssociation(name string, version string, associationConf commonv1.As
 func Test_parseConfigRef(t *testing.T) {
 	tests := []struct {
 		name        string
-		secrets     []runtime.Object
+		secrets     []client.Object
 		ent         entv1.EnterpriseSearch
 		wantConfig  *settings.CanonicalConfig
 		wantWatches bool
@@ -80,7 +80,7 @@ func Test_parseConfigRef(t *testing.T) {
 		},
 		{
 			name:        "a referenced secret does not exist: return an error",
-			secrets:     []runtime.Object{},
+			secrets:     []client.Object{},
 			ent:         entWithConfigRef("non-existing"),
 			wantConfig:  nil,
 			wantWatches: true,
@@ -88,7 +88,7 @@ func Test_parseConfigRef(t *testing.T) {
 		},
 		{
 			name: "a referenced secret is invalid: return an error",
-			secrets: []runtime.Object{
+			secrets: []client.Object{
 				secretWithConfig("invalid", []byte("invalidyaml")),
 			},
 			ent:         entWithConfigRef("invalid"),
@@ -195,7 +195,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 func TestReconcileConfig(t *testing.T) {
 	tests := []struct {
 		name        string
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		ent         entv1.EnterpriseSearch
 		ipFamily    corev1.IPFamily
 		// we don't compare the exact secret content because some keys are random, but we at least check
@@ -268,7 +268,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name: "update existing default config secret",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -319,7 +319,7 @@ func TestReconcileConfig(t *testing.T) {
 				CASecretName:   "sample-ent-es-ca",
 				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
 			}),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -368,7 +368,7 @@ func TestReconcileConfig(t *testing.T) {
 				CASecretName:   "sample-ent-es-ca",
 				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
 			}),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -518,7 +518,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name: "with user-provided config secret",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -605,7 +605,7 @@ func TestReconcileConfig(t *testing.T) {
 func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 	tests := []struct {
 		name        string
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		ent         entv1.EnterpriseSearch
 		assertions  func(t *testing.T, settings reusableSettings)
 	}{
@@ -675,7 +675,7 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 					}},
 				},
 			},
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -720,7 +720,7 @@ secret_session_key: alreadysetsessionkey
 					}},
 				},
 			},
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -771,7 +771,7 @@ secret_session_key: alreadysetsessionkey
 func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 	tests := []struct {
 		name        string
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		ent         entv1.EnterpriseSearch
 		ipFamily    corev1.IPFamily
 		wantCmd     string
@@ -808,7 +808,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		},
 		{
 			name: "update existing readiness probe script if different",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -840,7 +840,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				CASecretName:   "sample-ent-es-ca",
 				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
 			}),
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
@@ -856,7 +856,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		},
 		{
 			name: "with es credentials in a user-provided config secret",
-			runtimeObjs: []runtime.Object{
+			runtimeObjs: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",

@@ -80,8 +80,8 @@ type ReconcileElasticsearchAutoscaler struct {
 	Watches watches.DynamicWatches
 }
 
-// NewReconcilers returns both a legacy (ES annotation based) and new (CRD based) reconcile.Reconciler
-func NewReconcilers(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearchAutoscalingAnnotation, *ReconcileElasticsearchAutoscaler) {
+// NewReconciler returns a new autoscaling reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearchAutoscaler {
 	c := mgr.GetClient()
 	reconcileAutoscaling := baseReconcileAutoscaling{
 		Client:           c,
@@ -90,11 +90,10 @@ func NewReconcilers(mgr manager.Manager, params operator.Parameters) (*Reconcile
 		recorder:         mgr.GetEventRecorderFor(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
-	return &ReconcileElasticsearchAutoscalingAnnotation{reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(LegacyControllerName))},
-		&ReconcileElasticsearchAutoscaler{
-			baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
-			Watches:                  watches.NewDynamicWatches(),
-		}
+	return &ReconcileElasticsearchAutoscaler{
+		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
+		Watches:                  watches.NewDynamicWatches(),
+	}
 }
 
 func dynamicWatchName(request reconcile.Request) string {

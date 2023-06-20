@@ -25,7 +25,7 @@ func (c *clientV8) AddVotingConfigExclusions(ctx context.Context, nodeNames []st
 	return nil
 }
 
-func (c *clientV8) SyncedFlush(ctx context.Context) error {
+func (c *clientV8) SyncedFlush(_ context.Context) error {
 	return errors.New("synced flush is not supported in Elasticsearch 8.x")
 }
 

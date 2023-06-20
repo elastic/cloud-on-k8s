@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -143,7 +144,7 @@ func TestAggregator(t *testing.T) {
 	require.Equal(t, 325.9073486328125, inGiB(val))
 }
 
-func readObjects(t *testing.T, filePath string) []runtime.Object {
+func readObjects(t *testing.T, filePath string) []client.Object {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
@@ -160,7 +161,7 @@ func readObjects(t *testing.T, filePath string) []runtime.Object {
 
 	yamlReader := yaml.NewYAMLReader(bufio.NewReader(f))
 
-	var objects []runtime.Object
+	var objects []client.Object
 
 	for {
 		yamlBytes, err := yamlReader.Read()
@@ -171,8 +172,11 @@ func readObjects(t *testing.T, filePath string) []runtime.Object {
 
 			require.NoError(t, err)
 		}
-		obj, _, err := decoder.Decode(yamlBytes, nil, nil)
+		runtimeObj, _, err := decoder.Decode(yamlBytes, nil, nil)
 		require.NoError(t, err)
+
+		obj, ok := runtimeObj.(client.Object)
+		require.True(t, ok)
 
 		objects = append(objects, obj)
 	}

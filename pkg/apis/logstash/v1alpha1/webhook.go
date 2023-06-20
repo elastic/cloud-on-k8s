@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -32,25 +33,25 @@ var _ webhook.Validator = &Logstash{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (l *Logstash) ValidateCreate() error {
+func (l *Logstash) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", l.Name)
 	return l.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (l *Logstash) ValidateDelete() error {
+func (l *Logstash) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", l.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (l *Logstash) ValidateUpdate(old runtime.Object) error {
+func (l *Logstash) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", l.Name)
 	oldObj, ok := old.(*Logstash)
 	if !ok {
-		return errors.New("cannot cast old object to Logstash type")
+		return nil, errors.New("cannot cast old object to Logstash type")
 	}
 
 	return l.validate(oldObj)
@@ -61,7 +62,7 @@ func (l *Logstash) WebhookPath() string {
 	return webhookPath
 }
 
-func (l *Logstash) validate(old *Logstash) error {
+func (l *Logstash) validate(old *Logstash) (admission.Warnings, error) {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -78,7 +79,7 @@ func (l *Logstash) validate(old *Logstash) error {
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, l.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, l.Name, errors)
 	}
-	return nil
+	return nil, nil
 }

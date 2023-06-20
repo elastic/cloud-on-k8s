@@ -56,6 +56,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: RESULT_FILE
+              value: "{{ .Context.ResultFile }}"
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/done
       volumes:
         - name: test-config
           configMap:

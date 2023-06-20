@@ -5,14 +5,12 @@
 package watches
 
 import (
+	"context"
 	"sync"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -42,8 +40,6 @@ func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 type DynamicEnqueueRequest struct {
 	mutex         sync.RWMutex
 	registrations map[string]HandlerRegistration
-	// mapper maps GroupVersionKinds to Resources
-	mapper meta.RESTMapper
 }
 
 // AddHandlers adds the new event handlers to this DynamicEnqueueRequest.
@@ -60,14 +56,7 @@ func (d *DynamicEnqueueRequest) AddHandlers(handlers ...HandlerRegistration) err
 func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	if _, err := inject.SchemeInto(scheme.Scheme, handler); err != nil {
-		log.Error(err, "Failed to add handler to dynamic enqueue request")
-		return err
-	}
-	if _, err := inject.MapperInto(d.mapper, handler); err != nil {
-		log.Error(err, "Failed to add mapper to dynamic enqueue request")
-		return err
-	}
+
 	_, exists := d.registrations[handler.Key()]
 	if !exists {
 		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations", d.registrations)
@@ -103,46 +92,38 @@ func (d *DynamicEnqueueRequest) Registrations() []string {
 var _ handler.EventHandler = &DynamicEnqueueRequest{}
 
 // Create is called in response to a create event - e.g. Pod Creation.
-func (d *DynamicEnqueueRequest) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
-		v.EventHandler().Create(evt, q)
+		v.EventHandler().Create(ctx, evt, q)
 	}
 }
 
 // Update is called in response to an update event -  e.g. Pod Updated.
-func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
-		v.EventHandler().Update(evt, q)
+		v.EventHandler().Update(ctx, evt, q)
 	}
 }
 
 // Delete is called in response to a delete event - e.g. Pod Deleted.
-func (d *DynamicEnqueueRequest) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
-		v.EventHandler().Delete(evt, q)
+		v.EventHandler().Delete(ctx, evt, q)
 	}
 }
 
 // Generic is called in response to an event of an unknown type or a synthetic event triggered as a cron or
 // external trigger request - e.g. reconcile Autoscaling, or a Webhook.
-func (d *DynamicEnqueueRequest) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (d *DynamicEnqueueRequest) Generic(ctx context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
-		v.EventHandler().Generic(evt, q)
+		v.EventHandler().Generic(ctx, evt, q)
 	}
 }
-
-// InjectMapper is called by the Controller to provide the rest mapper used by the manager.
-func (d *DynamicEnqueueRequest) InjectMapper(m meta.RESTMapper) error {
-	d.mapper = m
-	return nil
-}
-
-var _ inject.Mapper = &DynamicEnqueueRequest{}

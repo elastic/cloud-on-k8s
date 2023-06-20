@@ -13,9 +13,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -49,7 +49,7 @@ var sampleEsWithAuth = esv1.Elasticsearch{
 		},
 	}},
 }
-var sampleUserProvidedFileRealmSecrets = []runtime.Object{
+var sampleUserProvidedFileRealmSecrets = []client.Object{
 	&corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "filerealm-secret-1"},
 		Data: map[string][]byte{
@@ -68,7 +68,7 @@ var sampleUserProvidedFileRealmSecrets = []runtime.Object{
 	},
 }
 
-var sampleUserProvidedRolesSecret = []runtime.Object{
+var sampleUserProvidedRolesSecret = []client.Object{
 	&corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "roles-secret-1"},
 		Data: map[string][]byte{
@@ -87,7 +87,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 	tests := []struct {
 		name          string
 		es            esv1.Elasticsearch
-		secrets       []runtime.Object
+		secrets       []client.Object
 		existingRealm filerealm.Realm
 		watched       watches.DynamicWatches
 		wantWatched   []string
@@ -140,7 +140,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
 				}}},
 			},
-			secrets: []runtime.Object{
+			secrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
 					Data: map[string][]byte{
@@ -171,7 +171,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 	tests := []struct {
 		name        string
 		es          esv1.Elasticsearch
-		secrets     []runtime.Object
+		secrets     []client.Object
 		watched     watches.DynamicWatches
 		wantWatched []string
 		wantRoles   RolesFileContent
@@ -219,7 +219,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
 				}}},
 			},
-			secrets: []runtime.Object{
+			secrets: []client.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
 					Data: map[string][]byte{

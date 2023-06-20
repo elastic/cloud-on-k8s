@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -122,7 +122,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	tests := []struct {
 		name               string
 		cluster            *esv1.Elasticsearch
-		k8sResources       []runtime.Object
+		k8sResources       []crclient.Object
 		wantErr            string
 		wantClusterLicense bool
 		wantRequeue        bool
@@ -131,7 +131,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:               "no existing license: nothing to do",
 			cluster:            cluster,
-			k8sResources:       []runtime.Object{cluster},
+			k8sResources:       []crclient.Object{cluster},
 			wantErr:            "",
 			wantClusterLicense: false,
 			wantRequeue:        false,
@@ -140,7 +140,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:    "no existing license but cluster license exists: delete cluster license",
 			cluster: cluster,
-			k8sResources: []runtime.Object{cluster, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			k8sResources: []crclient.Object{cluster, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 				Name:      esv1.LicenseSecretName("cluster"),
 				Namespace: "namespace",
 			}}},
@@ -152,7 +152,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:    "existing gold matching license",
 			cluster: cluster,
-			k8sResources: []runtime.Object{
+			k8sResources: []crclient.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypeGold, 1, false),
 				cluster,
 			},
@@ -164,7 +164,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:    "existing platinum matching license",
 			cluster: cluster,
-			k8sResources: []runtime.Object{
+			k8sResources: []crclient.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, false),
 				cluster,
 			},
@@ -176,7 +176,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:    "existing license expired",
 			cluster: cluster,
-			k8sResources: []runtime.Object{
+			k8sResources: []crclient.Object{
 				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
 			},

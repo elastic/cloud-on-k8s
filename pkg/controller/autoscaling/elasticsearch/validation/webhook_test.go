@@ -45,7 +45,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 		wantRuntimeError    *string
 	}{
 		{
-			name: "Using both the autoscaler and the autoscaling annotation",
+			name: "Using the autoscaling annotation",
 			args: args{
 				es: es(map[string]string{esv1.ElasticsearchAutoscalingSpecAnnotationName: ""}, nil, nil, "8.0.0"),
 				esa: v1alpha1.ElasticsearchAutoscaler{
@@ -58,7 +58,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 				},
 				checker: yesCheck,
 			},
-			wantValidationError: ptr.String("Cannot use the ElasticsearchAutoscaler resource and the autoscaling annotation at the same time"),
+			wantValidationError: ptr.String("Autoscaling annotation is no longer supported"),
 		},
 		{
 			name: "ML must be in a dedicated autoscaling policy",

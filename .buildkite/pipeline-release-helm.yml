@@ -6,6 +6,13 @@ steps:
   - group: helm-release
     steps:
 
+      - label: ":go: helm releaser tool"
+        key: "build-helm-releaser-tool"
+        commands:
+          - cd hack/helm/release
+          - make build
+          - buildkite-agent artifact upload bin/releaser
+
       - label: "operator dev helm chart"
         if: |
           ( build.branch == "main" && build.source != "schedule" )
@@ -15,7 +22,6 @@ steps:
           || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
-          - "operator-image-build"
         key: "eck-operator-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
@@ -33,7 +39,6 @@ steps:
           || build.message == "release all helm charts"
         depends_on:
           - "build-helm-releaser-tool"
-          - "operator-image-build"
         key: "eck-resources-dev-helm"
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/

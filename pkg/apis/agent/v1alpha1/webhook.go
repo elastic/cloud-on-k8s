@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -45,25 +46,25 @@ func (a *Agent) GetWarnings() []string {
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateCreate() error {
+func (a *Agent) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", a.Name)
 	return a.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateDelete() error {
+func (a *Agent) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", a.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (a *Agent) ValidateUpdate(old runtime.Object) error {
+func (a *Agent) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", a.Name)
 	oldObj, ok := old.(*Agent)
 	if !ok {
-		return errors.New("cannot cast old object to Agent type")
+		return nil, errors.New("cannot cast old object to Agent type")
 	}
 
 	return a.validate(oldObj)
@@ -74,7 +75,7 @@ func (a *Agent) WebhookPath() string {
 	return webhookPath
 }
 
-func (a *Agent) validate(old *Agent) error {
+func (a *Agent) validate(old *Agent) (admission.Warnings, error) {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -84,7 +85,7 @@ func (a *Agent) validate(old *Agent) error {
 		}
 
 		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, a.Name, errors)
+			return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
 		}
 	}
 
@@ -95,7 +96,7 @@ func (a *Agent) validate(old *Agent) error {
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, a.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, a.Name, errors)
 	}
-	return nil
+	return nil, nil
 }

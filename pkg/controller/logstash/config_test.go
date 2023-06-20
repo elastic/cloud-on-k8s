@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
@@ -22,7 +22,7 @@ import (
 
 func Test_newConfig(t *testing.T) {
 	type args struct {
-		runtimeObjs []runtime.Object
+		runtimeObjs []client.Object
 		logstash    v1alpha1.Logstash
 	}
 	tests := []struct {
@@ -70,7 +70,7 @@ log:
 		{
 			name: "with configRef",
 			args: args{
-				runtimeObjs: []runtime.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash:    logstashWithConfigRef("cfg", nil),
 			},
 			want: `api:
@@ -87,7 +87,7 @@ log:
 		{
 			name: "config takes precedence",
 			args: args{
-				runtimeObjs: []runtime.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
 					"log.level": "warn",
 				}}),
