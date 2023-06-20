@@ -51,10 +51,10 @@ write_deployer_config() {
     w '  kubernetesVersion: "'"${DEPLOYER_K8S_VERSION}"'"'
     fi
 
-    case "$E2E_PROVIDER" in gke|ocp|gke-autopilot)
-    # stripping "-autopilot" if it exists from the e2e provider
-    # as the providers do not include the "autopilot" suffix.
-    w "  ${E2E_PROVIDER%"-autopilot"}:"
+    # extract provider to configure from the e2e provider (first elem separated by '-')
+    read -r -d '-' provider <<< "$E2E_PROVIDER"
+    case "$provider" in gke|ocp)
+    w "  $provider:"
     w "    gCloudProject: elastic-cloud-dev"
     ;; esac
 
