@@ -360,6 +360,11 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		if builder != nil {
 			// ECK driven resources can be further transformed
 			for _, transformer := range transformers {
+				// This check is required as transformers is a variadic
+				// argument to "RunFile" (not a slice) and sending nil will panic here.
+				if transformer == nil {
+					continue
+				}
 				builder = transformer(builder)
 			}
 			builders = append(builders, builder)
