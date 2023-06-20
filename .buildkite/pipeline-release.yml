@@ -7,11 +7,8 @@ steps:
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
-        depends_on:
-          - "operator-image-build"
         commands:
-          - buildkite-agent artifact download 'config/*.yaml' config/
-          - .buildkite/scripts/build/setenv.sh
+          - make generate-manifests
           - .buildkite/scripts/release/k8s-manifests.sh
 
       # dry run helm charts release

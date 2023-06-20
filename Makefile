@@ -103,7 +103,7 @@ dependencies: tidy
 # Generate code, CRDs and documentation
 ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
-generate: tidy generate-crds-v1 generate-config-file generate-api-docs generate-notice-file
+generate: tidy generate-manifests generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -112,17 +112,16 @@ go-generate:
 	@ # we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds-v1: go-generate controller-gen
-	# Generate webhook manifest
-	# Webhook definitions exist in pkg/apis, pkg/controller/elasticsearch/validation and pkg/controller/autoscaling/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
-	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
-	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
-	# generate a CRD only version without the operator manifests
+generate-manifests: controller-gen
+	# -- generate  webhook manifest
+	@ $(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
+	# -- generate  crd bases manifests
+	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
+	# -- kustomize crd manifests
+	@ kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
+	# -- generate  crds manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
-	# generate the operator manifests
+	# -- generate  operator manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--profile=global \
@@ -172,12 +171,12 @@ helm-test:
 	@hack/helm/test.sh
 
 integration: GO_TAGS += integration
-integration: clean generate-crds-v1
+integration: clean generate-manifests
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
 		go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds-v1
+integration-xml: clean generate-manifests
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
 		gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
@@ -196,7 +195,7 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-install-crds: generate-crds-v1
+install-crds: generate-manifests
 	kubectl apply -f $(ALL_V1_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
