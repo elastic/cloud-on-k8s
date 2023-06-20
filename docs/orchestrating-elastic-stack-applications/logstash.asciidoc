@@ -380,7 +380,7 @@ kind: Secret
 metadata:
   name: external-es-ref
 stringData:
-  url: https://abcd-42.xyz.elastic-cloud.com <1>
+  url: https://abcd-42.xyz.elastic-cloud.com:443 <1>
   username: logstash_user <2>
   password: REDACTED <3>
   ca.crt: REDACTED <4>
@@ -409,6 +409,8 @@ spec:
 <3> The password of the user to be authenticated to the Elasticsearch cluster.
 <4> The CA certificate in PEM format to secure communication to the Elasticsearch cluster (optional).
 <5> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
+
+NOTE: Please always specify the port in URL when connect to external Elasticsearch Cluster.
 
 [id="{p}-logstash-expose-services"]
 === Expose services
