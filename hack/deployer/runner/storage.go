@@ -30,12 +30,16 @@ func createStorageClass() error {
 
 	log.Println("Creating storage class...")
 
+	// When building an Autopilot GKE cluster, initially we will see the error/warning:
+	// E0613 19:23:30.442396    3773 memcache.go:287] couldn't get resource list for metrics.k8s.io/v1beta1: the server is currently unable to handle the request
+	// which returns exit code '0' from kubectl, which makes adjusting the storage classes fail. The following only reads stdout to try and avoid failing to read
+	// the default storage class.
 	defaultName, err := getDefaultStorageClassName()
 	if err != nil {
 		return err
 	}
 
-	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
+	sc, err := exec.NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).StdoutOnly().Output()
 	if err != nil {
 		return err
 	}
@@ -67,21 +71,13 @@ func getDefaultStorageClassName() (string, error) {
 			`storageclass\.beta\.kubernetes\.io/is-default-class`,
 		} {
 			template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
-			baseScs, err := exec.NewCommand(fmt.Sprintf(template, annotation)).OutputList()
+			baseScs, err := exec.NewCommand(fmt.Sprintf(template, annotation)).StdoutOnly().OutputList()
 			if err != nil {
 				return "", err
 			}
 
 			if len(baseScs) != 0 {
-				// When building an Autopilot GKE cluster, initially we will see the error/warning:
-				// E0613 19:23:30.442396    3773 memcache.go:287] couldn't get resource list for metrics.k8s.io/v1beta1: the server is currently unable to handle the request
-				// which returns exit code '0' from kubectl, which makes adjusting the storage classes fail. This catches the error and retries until successful.
-				sc := baseScs[0]
-				if strings.Contains(sc, "the server is currently unable to handle the request") {
-					err = fmt.Errorf("while retrieving storageclass: %s", sc)
-					return "", err
-				}
-				return sc, nil
+				return baseScs[0], nil
 			}
 		}
 		return "", fmt.Errorf("default storageclass not found")
