@@ -410,7 +410,7 @@ spec:
 <4> The CA certificate in PEM format to secure communication to the Elasticsearch cluster (optional).
 <5> The `secretName` and `name` attributes are mutually exclusive, you have to choose one or the other.
 
-NOTE: Please always specify the port in URL when connect to external Elasticsearch Cluster.
+NOTE: Please always specify the port in URL when connecting to an external Elasticsearch Cluster.
 
 [id="{p}-logstash-expose-services"]
 === Expose services
