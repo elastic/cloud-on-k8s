@@ -24,14 +24,13 @@ COPY deploy/ deploy/
 RUN mkdir config && make generate-config-file
 
 # Copy the sources
-ENV LICENSE_PUBKEY=/license.key
-COPY $LICENSE_PUBKEY_PATH /license.key
 COPY pkg/ pkg/
 COPY cmd/ cmd/
+COPY $LICENSE_PUBKEY_PATH /license.key
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
-      CGO_ENABLED=0 GOOS=linux make go-build
+      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/license.key make go-build
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
