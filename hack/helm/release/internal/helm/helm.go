@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/api/googleapi"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -39,6 +41,8 @@ type ReleaseConfig struct {
 	CredentialsFilePath string
 	// DryRun determines whether to run the release without making any changes to the GCS bucket or the Helm repository index file.
 	DryRun bool
+	// KeepTmpDir determines whether the temporary directory should be kept or not
+	KeepTmpDir bool
 }
 
 // Release runs the Helm charts release.
@@ -50,7 +54,11 @@ func Release(conf ReleaseConfig) error {
 	if err != nil {
 		return fmt.Errorf("while creating temp dir: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	if conf.KeepTmpDir {
+		log.Printf("Not deleting temporary directory: %s", tempDir)
+	} else {
+		defer os.RemoveAll(tempDir)
+	}
 
 	charts, err := readCharts(conf.ChartsDir)
 	if err != nil {
@@ -115,6 +123,13 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 		err = copy(chart.srcPath, tempChartDirPath)
 		if err != nil {
 			return fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
+		}
+
+		// generates Chart.lock by doing the equivalent of 'helm update dependency', which will not download or update anything
+		// as all dependencies are local without repository
+		man := &downloader.Manager{Out: ioutil.Discard, ChartPath: tempChartDirPath}
+		if err := man.Update(); err != nil {
+			return fmt.Errorf("while updating chart (%s) dependencies to generate Chart.lock: %w", chart.Name, err)
 		}
 
 		// package the chart into a chart archive

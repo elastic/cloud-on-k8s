@@ -7,7 +7,7 @@ steps:
         key: "operator-image-build"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="generate-crds-v1 publish-operator-multiarch-image" ci
+          - make -C .buildkite TARGET="generate-crds-v1 publish-operator-multiarch-image" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set operator-image $$(make print-operator-image)
         agents:
@@ -21,7 +21,7 @@ steps:
         key: "e2e-tests-image-build"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="publish-e2e-multiarch-image" ci
+          - make -C .buildkite TARGET="publish-e2e-multiarch-image" ci
           # save image for e2e-tests
           - buildkite-agent meta-data set e2e-image $$(make print-e2e-image)
         agents:
@@ -42,7 +42,7 @@ steps:
           OPERATOR_VERSION_SUFFIX: "dev"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="publish-operator-multiarch-image" ci
+          - make -C .buildkite TARGET="publish-operator-multiarch-image" ci
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -57,15 +57,13 @@ steps:
           ENABLE_FIPS: "true"
         commands:
           - .buildkite/scripts/build/setenv.sh
-          - make -C .ci TARGET="publish-operator-multiarch-image" ci
+          - make -C .buildkite TARGET="publish-operator-multiarch-image" ci
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
           machineType: "n1-standard-16"
 
       - label: ":go: helm releaser tool"
-        key: "build-helm-releaser-tool"
         commands:
           - cd hack/helm/release
           - make build
-          - buildkite-agent artifact upload bin/releaser
