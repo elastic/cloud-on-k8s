@@ -126,8 +126,8 @@ remoteClusters: {}
 volumeClaimDeletePolicy: ""
 
 # Settings to limit the disruption when pods need to be rescheduled for some reason such as upgrades or routine maintenance.
-# Default budget selects all cluster pods and sets `maxUnavailable` to 1.
-# To disable, set `disabled` to true.
+# Defaults to a budget that selects all Elasticsearch cluster pods and sets `maxUnavailable` to 1 if unset.
+# To completely disable the pod disruption budget set `disabled` to true.
 #
 # podDisruptionBudget:
 #   spec:
