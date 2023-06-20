@@ -190,7 +190,7 @@ func Test_addPortToHttpsUrl(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:     "Non-HTTPS without port",
+			name:     "Non-HTTPS with port",
 			url:      "http://some.gcp.cloud.es.io:9200",
 			expected: "http://some.gcp.cloud.es.io:9200",
 			wantErr:  false,
