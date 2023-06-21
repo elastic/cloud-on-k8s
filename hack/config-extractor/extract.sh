@@ -18,4 +18,5 @@ OUT_FILE="${SCRIPT_DIR}/../../config/eck.yaml"
     --set=webhook.enabled=false \
     --set=telemetry.distributionChannel=image \
     | go run main.go > "$OUT_FILE"
+    echo >> "$OUT_FILE" # empty line at EOF
 )
