@@ -708,14 +708,14 @@ fi
 			wantErr:     false,
 		},
 		{
-			name: "fleet server disabled, same namespace, version < 7.14",
+			name: "fleet server disabled, same namespace",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "agent",
 					Namespace: agentNs,
 				},
 				Spec: agentv1alpha1.AgentSpec{
-					Version:            "7.13.2",
+					Version:            "7.16.2",
 					FleetServerEnabled: false,
 					DaemonSet: &agentv1alpha1.DaemonSetSpec{
 						PodTemplate: corev1.PodTemplateSpec{
