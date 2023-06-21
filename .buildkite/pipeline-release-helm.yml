@@ -29,7 +29,7 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=dev --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+          - echo rxeleaser --env=dev --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
 
       - wait
 
@@ -46,7 +46,7 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=dev --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
+          - echo rxeleaser --env=dev --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
 
       - wait
 
@@ -61,7 +61,7 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+          - echo rxeleaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
 
       - wait
 
@@ -76,4 +76,4 @@ steps:
         commands:
           - buildkite-agent artifact download "bin/releaser" /usr/local/
           - chmod u+x /usr/local/bin/releaser
-          - releaser --env=prod --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
+          - echo rxeleaser --env=prod --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
