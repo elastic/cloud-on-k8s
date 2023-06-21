@@ -18,7 +18,7 @@
 #   DEPLOYER_KIND_NODE_IMAGE
 #   DEPLOYER_KIND_IP_FAMILY
 
-set -eu
+set -eux
 
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
