@@ -56,8 +56,15 @@ spec:
   image: {{ . }}
   {{- end }}
   {{- with .Values.podDisruptionBudget }}
+    {{- if .disabled }}
+  podDisruptionBudget: {}
+    {{- else }}
+      {{- with .spec }}
   podDisruptionBudget:
-    {{- toYaml . | nindent 4 }}
+    spec:
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    {{- end }}
   {{- end }}
   {{- with .Values.serviceAccountName }}
   serviceAccountName: {{ . }}
