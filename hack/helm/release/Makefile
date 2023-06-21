@@ -8,8 +8,8 @@ build:
 go-run:
 	go run main.go --env=dev --dry-run=true --keep-tmp-dir=true --charts-dir=../../../deploy
 
-test-release-all:
-	DRY_RUN=true ./trigger-helm-release.sh all
+test-release-eck-stack-dev:
+	DRY_RUN=true ./trigger-helm-release.sh "eck-stack dev"
 
 release-eck-operator:
 	DRY_RUN=false ./trigger-helm-release.sh eck-operator

@@ -18,6 +18,7 @@ steps:
       ( build.branch == "main" && build.source != "schedule" )
       || build.tag != null
       || build.message =~ /^buildkite test .*release.*/
+      || build.message == "release eck-operator dev helm charts"
       || build.message == "release eck-operator helm charts"
       || build.message == "release all helm charts"
     depends_on:
@@ -35,6 +36,7 @@ steps:
       ( build.branch == "main" && build.source != "schedule" )
       || build.tag != null
       || build.message =~ /^buildkite test .*release.*/
+      || build.message == "release eck-stack dev helm charts"
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
     depends_on:

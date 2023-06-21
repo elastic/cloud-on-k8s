@@ -38,8 +38,7 @@ main() {
     {
         "commit": "HEAD",
         "branch": "'"$BRANCH"'",
-        "message": "👻 release '"$scope"' helm charts 🎃",
-
+        "message": "release '"$scope"' helm charts",
         "env": {
             "DRY_RUN": "'"$DRY_RUN"'"
         }
