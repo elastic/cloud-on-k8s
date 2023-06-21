@@ -2179,11 +2179,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.15.1
-Time    : 2023-05-03T09:48:04Z
+Version : v1.16.0
+Time    : 2023-06-15T10:46:32Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.15.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.16.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14925,11 +14925,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.9.0
-Time    : 2022-12-22T13:34:39Z
+Version : v0.10.1
+Time    : 2023-05-28T21:22:15Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.10.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
