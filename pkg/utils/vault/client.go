@@ -24,8 +24,6 @@ const (
 	ghTokenEnvVar = "GITHUB_TOKEN" //nolint:gosec
 )
 
-var once sync.Once
-
 type Client interface {
 	Read(path string) (*api.Secret, error)
 }
@@ -35,6 +33,7 @@ type ClientProvider func() (Client, error)
 func NewClientProvider() func() (Client, error) {
 	var err error
 	var client Client
+	var once sync.Once
 	return func() (Client, error) {
 		once.Do(func() {
 			client, err = NewClient()
