@@ -18,7 +18,7 @@
 #   DEPLOYER_KIND_NODE_IMAGE
 #   DEPLOYER_KIND_IP_FAMILY
 
-set -eux
+set -eu
 
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
@@ -51,10 +51,10 @@ write_deployer_config() {
     w '  kubernetesVersion: "'"${DEPLOYER_K8S_VERSION}"'"'
     fi
 
-    # extract provider to configure from the e2e provider (first elem separated by '-')
-    read -r -d '-' provider <<< "$E2E_PROVIDER"
-    case "$provider" in gke|ocp)
-    w "  $provider:"
+    case "$E2E_PROVIDER" in gke*|ocp*)
+    # extract provider name up to the first occurrence of '-'
+    # to handle case such as 'gke-autopilot'
+    w "  ${E2E_PROVIDER%%-*}:"
     w "    gCloudProject: elastic-cloud-dev"
     ;; esac
 
