@@ -13,6 +13,8 @@ steps:
       - cd hack/helm/release
       - make build
       - buildkite-agent artifact upload bin/releaser
+    agents:
+      cpu: "4"
 
   - label: "operator dev helm chart"
     if: |
