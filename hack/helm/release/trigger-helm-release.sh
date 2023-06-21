@@ -25,7 +25,7 @@ set -eu
 : "$BRANCH"
 : "$DRY_RUN"
 
-# properties required to to test PRs:
+# properties required to test PRs:
         # "pull_request_base_branch": "main",
         # "pull_request_id": "<number>",
         # "pull_request_repository": "git://github.com/<username>/cloud-on-k8s.git",
