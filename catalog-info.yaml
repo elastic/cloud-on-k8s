@@ -39,8 +39,9 @@ spec:
     spec:
       repository: elastic/cloud-on-k8s
       provider_settings:
+        trigger_mode: "code"
+        build_pull_requests: true
         build_branches: true
-        build_pull_request_ready_for_review: true
         build_tags: true
         publish_blocked_as_pending: true
         publish_commit_status: true
@@ -74,6 +75,9 @@ spec:
       repository: elastic/cloud-on-k8s
       provider_settings:
         trigger_mode: none
+        build_pull_requests: true
+        build_branches: true
+        build_tags: true
       schedules:
         Every day:
           branch: main
@@ -109,6 +113,9 @@ spec:
       pipeline_file: .buildkite/pipeline-release-redhat.yml
       provider_settings:
         trigger_mode: none
+        build_pull_requests: true
+        build_branches: true
+        build_tags: true
       teams:
         cloud-k8s-operator: {}
         everyone:
@@ -138,6 +145,9 @@ spec:
       pipeline_file: .buildkite/pipeline-release-helm.yml
       provider_settings:
         trigger_mode: none
+        build_pull_requests: true
+        build_branches: true
+        build_tags: true
       teams:
         cloud-k8s-operator: {}
         everyone:
