@@ -2,6 +2,9 @@ agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   memory: 2G
 
+env:
+  DRY_RUN: ${DRY_RUN:-true}
+
 steps:
 
   - label: ":go: helm releaser tool"
