@@ -193,6 +193,7 @@ func (h *helper) initTestContext() error {
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
 		GSBucketName:          h.gsBucketName,
+		AutopilotCluster:      isAutopilotCluster(h),
 		ResultFile:            testsResultFile,
 	}
 
@@ -245,6 +246,14 @@ func getKubernetesVersion(h *helper) version.Version {
 
 func isOcpCluster(h *helper) bool {
 	_, _, err := h.kubectl("get", "clusterversion")
+	return err == nil
+}
+
+// isAutopilotCluster will detect whether we are running within an autopilot cluster
+// by using the `remotenodes` resource, which only seems to exist on autopilot clusters
+// not standard GKE clusters.
+func isAutopilotCluster(h *helper) bool {
+	_, _, err := h.kubectl("get", "remotenodes")
 	return err == nil
 }
 
