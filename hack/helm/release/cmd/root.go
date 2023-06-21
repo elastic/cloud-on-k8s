@@ -140,11 +140,8 @@ func validate(_ *cobra.Command, _ []string) error {
 	}
 
 	if viper.GetBool(enableVaultFlag) {
-		c, err := vault.NewClient()
-		if err != nil {
-			return fmt.Errorf("while creating vault client: %w", err)
-		}
-		_, err = vault.ReadFile(c, vault.SecretFile{
+		c := vault.NewClientProvider()
+		_, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          credentialsFilePath,
 			Path:          googleCredsVaultSecretPath,
 			FieldResolver: func() string { return googleCredsVaultSecretKey },

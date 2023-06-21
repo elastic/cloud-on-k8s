@@ -260,10 +260,7 @@ func isAutopilotCluster(h *helper) bool {
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 
-	c, err := vault.NewClient()
-	if err != nil {
-		return err
-	}
+	c := vault.NewClientProvider()
 
 	// Only initialize gcp credentials when running in CI
 	if os.Getenv("CI") == "true" {
