@@ -40,7 +40,7 @@ main() {
         "branch": "'"$BRANCH"'",
         "message": "release '"$scope"' helm charts",
         "env": {
-            "DRY_RUN": "'"$DRY_RUN"'"
+            "HELM_DRY_RUN": "'"$DRY_RUN"'"
         }
     }'
 }
