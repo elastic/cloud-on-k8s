@@ -11,14 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 
 	"github.com/pkg/errors"
 
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
 )
-
-var once sync.Once
 
 // canRunDiagnostics will determine if this e2e test run has the ability to run eck-diagnostics after
 // each test failure, which includes uploading the resulting zip file to a GS bucket. If the job name
@@ -57,10 +54,8 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	if !canRunDiagnostics(testCtx) {
 		return
 	}
-	log.Info("running eck-diagnostics job")
-	once.Do(func() {
-		run(ctx, "initialising gs-util", "gcloud", "auth", "activate-service-account", fmt.Sprintf("--key-file=%s", testCtx.GCPCredentialsPath))
-	})
+	log.Info("Running eck-diagnostics", "cluster", testCtx.ClusterName, "test", testName, "step", step.Name)
+
 	otherNS := append([]string{testCtx.E2ENamespace}, testCtx.Operator.ManagedNamespaces...)
 	// The following appends the clustername, test name, and it's sub-test names together with a '-'.
 	// The cluster name is added to the eck-diagnostics file name to avoid conflicts at the last step
@@ -70,6 +65,11 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 	fullTestName := fmt.Sprintf("%s-%s-%s", testCtx.ClusterName, testName, step.Name)
 	// Convert any spaces to "_", and "/" to "-" in the test name.
 	normalizedTestName := strings.ReplaceAll(strings.ReplaceAll(fullTestName, " ", "_"), "/", "-")
-	run(ctx, "eck-diagnostics", "--output-directory", "/tmp", "-n", fmt.Sprintf("eck-diagnostics-%s.zip", normalizedTestName), "-o", testCtx.Operator.Namespace, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics")
-	run(ctx, "gsutil", "cp", "/tmp/*.zip", fmt.Sprintf("gs://%s/jobs/%s/", testCtx.GSBucketName, testCtx.ClusterName))
+
+	run(ctx, "eck-diagnostics",
+		"--output-directory", Ctx().ArtefactsDir,
+		"-n", fmt.Sprintf("eck-diagnostics-%s.zip", normalizedTestName),
+		"-o", testCtx.Operator.Namespace,
+		"-r", strings.Join(otherNS, ","),
+		"--run-agent-diagnostics")
 }

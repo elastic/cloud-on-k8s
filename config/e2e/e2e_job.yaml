@@ -67,8 +67,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: RESULT_FILE
-              value: "{{ .Context.ResultFile }}"
+            - name: ARTEFACTS_DIR
+              value: "{{ .Context.ArtefactsDir }}"
+            - name: CLUSTER_NAME
+              value: "{{ .Context.ClusterName }}"
           readinessProbe:
             exec:
               command:
