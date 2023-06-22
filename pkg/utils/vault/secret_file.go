@@ -42,12 +42,17 @@ type SecretFile struct {
 
 // ReadFile reads the file if it exists or else reads the Secret from Vault and
 // writes it to the file on disk.
-func ReadFile(c func() Client, f SecretFile) ([]byte, error) {
+func ReadFile(clientProvider ClientProvider, f SecretFile) ([]byte, error) {
 	if _, err := os.Stat(f.Name); err == nil {
 		return os.ReadFile(f.Name)
 	}
 
-	bytes, err := f.readFromVault(c())
+	client, err := clientProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := f.readFromVault(client)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,11 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Script to upload ECK k8s manifests to S3.
+# Script to upload ECK k8s manifests (conf/operator.yaml and conf/crds.yaml) to S3.
+#
+# The version for publishing the manifests is the value of the environment variable
+# BUILDKITE_TAG or, if not set, it is extracted from the buidkite meta-data 
+# 'operator-image'.
 
 set -eu
 
@@ -16,11 +20,12 @@ get_image_tag() {
   buildkite-agent meta-data get operator-image --default "" | cut -d':' -f2
 }
 
-IMAGE_TAG=${BUILDKITE_TAG:-$(get_image_tag)}
-
 main() {
-  if [[ "$IMAGE_TAG" == "" ]]; then
-    echo "error: IMAGE_TAG required to upload k8s manifests to S3"
+  local version=${BUILDKITE_TAG:-$(get_image_tag)}
+  version=${version#v} # remove v prefix
+
+  if [[ "$version" == "" ]]; then
+    echo "error: version is required to upload k8s manifests to S3"
     exit 1
   fi
 
@@ -30,7 +35,8 @@ main() {
   export AWS_SECRET_ACCESS_KEY
 
   for f in operator.yaml crds.yaml; do
-    aws s3 cp "$ROOT/config/$f" "s3://download.elasticsearch.org/downloads/eck/$IMAGE_TAG/$f"
+    echo "-- aws s3 cp config/$f s3://download.elasticsearch.org/downloads/eck/$version/$f"
+    aws s3 cp "$ROOT/config/$f" "s3://download.elasticsearch.org/downloads/eck/$version/$f"
   done
 }
 

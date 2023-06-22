@@ -203,57 +203,56 @@ func deleteTestResources(ctx context.Context) error {
 	}
 
 	groupVersionToResourceListMap := map[string][]v1.APIResource{}
-
 	_, resources, err := clntset.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		log.Error(err, "while running kubernetes client discovery")
 		return err
 	}
-
 	for _, resource := range resources {
 		if strings.Contains(resource.GroupVersion, "k8s.elastic.co") {
 			groupVersionToResourceListMap[resource.GroupVersion] = resource.APIResources
 		}
 	}
 
-	namespace := Ctx().E2ENamespace
-	dynamicClient := dynamic.New(clntset.RESTClient())
-	for gv, resources := range groupVersionToResourceListMap {
-		gvSlice := strings.Split(gv, "/")
-		if len(gvSlice) != 2 {
-			continue
-		}
-		group, version := gvSlice[0], gvSlice[1]
-		for _, resource := range resources {
-			if err := dynamicClient.Resource(schema.GroupVersionResource{
-				Group:    group,
-				Resource: resource.Name,
-				Version:  version,
-			}).Namespace(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
-				msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
-				log.Error(err, msg, "group", group, "resource", resource.Name, "version", version)
-				return err
+	for _, namespace := range Ctx().Operator.ManagedNamespaces {
+		dynamicClient := dynamic.New(clntset.RESTClient())
+		for gv, resources := range groupVersionToResourceListMap {
+			gvSlice := strings.Split(gv, "/")
+			if len(gvSlice) != 2 {
+				continue
+			}
+			group, version := gvSlice[0], gvSlice[1]
+			for _, resource := range resources {
+				if err := dynamicClient.Resource(schema.GroupVersionResource{
+					Group:    group,
+					Resource: resource.Name,
+					Version:  version,
+				}).Namespace(namespace).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{}); err != nil && !api_errors.IsNotFound(err) {
+					msg := fmt.Sprintf("while deleting elastic resources in %s", namespace)
+					log.Error(err, msg, "group", group, "resource", resource.Name, "version", version)
+					return err
+				}
 			}
 		}
-	}
 
-	list, err := clntset.CoreV1().Secrets(namespace).List(ctx, v1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
-	}
-	for _, secret := range list.Items {
-		if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
-			return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
+		list, err := clntset.CoreV1().Secrets(namespace).List(ctx, v1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("while listing all secrets in namespace %s: %w", namespace, err)
 		}
-	}
+		for _, secret := range list.Items {
+			if err := clntset.CoreV1().Secrets(namespace).Delete(ctx, secret.GetName(), v1.DeleteOptions{}); err != nil {
+				return fmt.Errorf("while deleting secret %s in namespace %s: %w", secret.GetName(), namespace, err)
+			}
+		}
 
-	pods, err := clntset.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("while listing all pods in namespace %s: %w", namespace, err)
-	}
-	for _, pod := range pods.Items {
-		if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil {
-			return fmt.Errorf("while deleting pod %s in namespace %s: %w", pod.GetName(), namespace, err)
+		pods, err := clntset.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("while listing all pods in namespace %s: %w", namespace, err)
+		}
+		for _, pod := range pods.Items {
+			if err := clntset.CoreV1().Pods(namespace).Delete(ctx, pod.GetName(), v1.DeleteOptions{}); err != nil {
+				return fmt.Errorf("while deleting pod %s in namespace %s: %w", pod.GetName(), namespace, err)
+			}
 		}
 	}
 	return nil

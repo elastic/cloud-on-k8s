@@ -45,6 +45,17 @@ spec:
               mountPath: /etc/e2e
             - name: test-secrets
               mountPath: /var/run/secrets/e2e
+{{ if .Context.AutopilotCluster }}
+            - name: tmp
+              mountPath: /tmp
+          # If resources aren't assigned in autopilot
+          # it will assign a tiny amount of cpu
+          # which causes e2e tests to be very slow.
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+{{ end }}
           securityContext:
             allowPrivilegeEscalation: false
           env:
@@ -70,5 +81,16 @@ spec:
         - name: test-secrets
           secret:
             secretName: "eck-{{ .Context.TestRun }}"
+{{ if .Context.AutopilotCluster }}
+        - name: tmp
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "e2e-default"
+                resources:
+                  requests:
+                    storage: 10Gi
+{{ end }}
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test

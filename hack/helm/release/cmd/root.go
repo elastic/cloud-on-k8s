@@ -22,6 +22,7 @@ const (
 	chartsDirFlag       = "charts-dir"
 	credentialsFileFlag = "credentials-file"
 	dryRunFlag          = "dry-run"
+	keepTmpDirFlag      = "keep-tmp-dir"
 	envFlag             = "env"
 	enableVaultFlag     = "enable-vault"
 
@@ -66,6 +67,7 @@ func releaseCmd() *cobra.Command {
 					ChartsRepoURL:       chartsRepoURL,
 					CredentialsFilePath: viper.GetString(credentialsFileFlag),
 					DryRun:              viper.GetBool(dryRunFlag),
+					KeepTmpDir:          viper.GetBool(keepTmpDirFlag),
 				})
 		},
 	}
@@ -79,6 +81,14 @@ func releaseCmd() *cobra.Command {
 		"Do not upload files to bucket, or update Helm index (env: HELM_DRY_RUN)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
+
+	flags.BoolP(
+		keepTmpDirFlag,
+		"k",
+		false,
+		"Keep temporary directory which contains the Helm charts ready to be published (env: HELM_KEEP_TMP_DIR)",
+	)
+	_ = viper.BindPFlag(keepTmpDirFlag, flags.Lookup(keepTmpDirFlag))
 
 	flags.String(
 		chartsDirFlag,
@@ -130,11 +140,8 @@ func validate(_ *cobra.Command, _ []string) error {
 	}
 
 	if viper.GetBool(enableVaultFlag) {
-		c, err := vault.NewClient()
-		if err != nil {
-			return fmt.Errorf("while creating vault client: %w", err)
-		}
-		_, err = vault.ReadFile(func() vault.Client { return c }, vault.SecretFile{
+		c := vault.NewClientProvider()
+		_, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          credentialsFilePath,
 			Path:          googleCredsVaultSecretPath,
 			FieldResolver: func() string { return googleCredsVaultSecretKey },

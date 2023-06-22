@@ -39,9 +39,6 @@ monitoring-secrets.json
 config/operator.yaml
 config/crds.yaml
 
-# ignore generated configuration
-config/eck.yaml
-
 # ignore all generated docs HTML
 docs/html/*
 
@@ -67,8 +64,6 @@ e2e-tests.xml
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go
 
-# ignore validator for Jenkins pipelines
-hack/pipeline-validator/validator
 
 # ignore binary for buildkite pipeline-gen
 .buildkite/e2e/pipeline-gen/pipeline-gen

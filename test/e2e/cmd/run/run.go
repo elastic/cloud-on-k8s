@@ -193,6 +193,7 @@ func (h *helper) initTestContext() error {
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
 		GSBucketName:          h.gsBucketName,
+		AutopilotCluster:      isAutopilotCluster(h),
 		ResultFile:            testsResultFile,
 	}
 
@@ -248,21 +249,22 @@ func isOcpCluster(h *helper) bool {
 	return err == nil
 }
 
+// isAutopilotCluster will detect whether we are running within an autopilot cluster
+// by using the `remotenodes` resource, which only seems to exist on autopilot clusters
+// not standard GKE clusters.
+func isAutopilotCluster(h *helper) bool {
+	_, _, err := h.kubectl("get", "remotenodes")
+	return err == nil
+}
+
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 
-	newVaultClient := func() vault.Client {
-		c, err := vault.NewClient()
-		if err != nil {
-			println("failed to create vault client, err:", err.Error())
-			os.Exit(1)
-		}
-		return c
-	}
+	c := vault.NewClientProvider()
 
 	// Only initialize gcp credentials when running in CI
 	if os.Getenv("CI") == "true" {
-		b, err := vault.ReadFile(newVaultClient, vault.SecretFile{
+		b, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          "gcp-credentials.json",
 			Path:          "ci-gcp-k8s-operator",
 			FieldResolver: func() string { return "service-account" },
@@ -275,7 +277,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.testLicense != "" {
-		bytes, err := vault.ReadFile(newVaultClient, vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          h.testLicense,
 			Path:          "test-licenses",
 			FieldResolver: vault.LicensePubKeyPrefix("enterprise"),
@@ -288,7 +290,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.testLicensePKeyPath != "" {
-		bytes, err := vault.ReadFile(newVaultClient, vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          h.testLicensePKeyPath,
 			Path:          "license",
 			FieldResolver: func() string { return "dev-privkey" },
@@ -302,7 +304,7 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.monitoringSecrets != "" {
-		bytes, err := vault.ReadFile(newVaultClient, vault.SecretFile{
+		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:       h.monitoringSecrets,
 			Path:       "monitoring-cluster",
 			FormatJSON: true,

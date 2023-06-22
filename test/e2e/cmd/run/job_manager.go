@@ -136,7 +136,7 @@ func (jm *JobsManager) Start() {
 
 				// download result file when pod is ready
 				if k8s.IsPodReady(*newPod) {
-					if job.resultFile != "" {
+					if job.resultFile != "" && !job.resultFileDownloaded {
 						log.Info("Downloading pod result file", "pod", newPod.Name)
 
 						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, job.resultFile)
@@ -146,12 +146,15 @@ func (jm *JobsManager) Start() {
 						if err != nil {
 							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
 						}
+						job.resultFileDownloaded = true
+
+						jm.Stop()
 					}
-					jm.Stop()
 				}
 
 			case corev1.PodSucceeded, corev1.PodFailed:
 				log.Info("Unexpected pod status", "name", newPod.Name, "status", newPod.Status.Phase)
+				jm.err = fmt.Errorf("unexpected status %s for pod %s", newPod.Status.Phase, newPod.Name)
 				jm.Stop()
 
 			default:

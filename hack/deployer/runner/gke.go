@@ -253,6 +253,9 @@ func (d *GKEDriver) create() error {
 	opts := []string{}
 
 	if d.plan.Gke.NetworkPolicy {
+		if d.plan.Gke.Autopilot {
+			return fmt.Errorf("--enable-network-policy must not be set if autopilot is enabled")
+		}
 		opts = append(opts, "--enable-network-policy")
 	}
 
@@ -268,16 +271,40 @@ func (d *GKEDriver) create() error {
 	}
 	labels = fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels)
 
-	return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
-		`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
-		`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
-		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
-		`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
-		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
-		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		strings.Join(opts, " ")).
+	var createGKEClusterCommand string
+	if !d.plan.Gke.Autopilot {
+		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
+			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 40 ` +
+			`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
+			`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
+			`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
+			`--network projects/{{.GCloudProject}}/global/networks/default ` +
+			strings.Join(opts, " ")
+	} else {
+		// Autopilot cluster.
+		log.Println("autopilot cluster enabled")
+		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
+			`--region {{.Region}} --cluster-version {{.KubernetesVersion}} ` +
+			`--scopes {{.GcpScopes}} --network projects/{{.GCloudProject}}/global/networks/default ` +
+			strings.Join(opts, " ")
+	}
+
+	err = exec.NewCommand(createGKEClusterCommand).
 		AsTemplate(d.ctx).
 		Run()
+
+	if err != nil {
+		return err
+	}
+
+	// Since gcloud doesn't support labels at creation time for autopilot clusters, update the labels after creation.
+	if d.plan.Gke.Autopilot {
+		return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
+			AsTemplate(d.ctx).
+			Run()
+	}
+	return nil
 }
 
 // username attempts to extract the username from the current account.
