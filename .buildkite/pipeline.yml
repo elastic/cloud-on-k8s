@@ -23,7 +23,6 @@ steps:
       - label: ":go: checks"
         commands:
           - "make check-license-header check-predicates shellcheck reattach-pv"
-          - env -i .buildkite/scripts/build/setenv_test.sh
 
   - group: tests
     steps:
@@ -44,8 +43,19 @@ steps:
       - label: ":go: helm-tests"
         command: "make helm-test"
 
+  # generate build steps with serverless-docker-builder
   - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-build.yml
+    agents:
+      image: "docker.elastic.co/eck-dev/serverless-docker-builder:0.0.4-SNAPSHOT"
+    commands: make -C /agent generate-docker-images
+    env:
+      DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+      RECURSIVE: true
+      PRE_BUILD_SCRIPT: ".buildkite/scripts/build/pre-build-{{matrix}}.sh"
+      GROUP_NAME: "build {{matrix}}"
+    matrix:
+      - operator
+      - e2e-tests
 
   - label: ":buildkite:"
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
