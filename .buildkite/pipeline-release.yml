@@ -26,5 +26,5 @@ steps:
         trigger: cloud-on-k8s-operator-helm-release
         build:
           env:
-            DRY_RUN: false
+            HELM_DRY_RUN: false
 
