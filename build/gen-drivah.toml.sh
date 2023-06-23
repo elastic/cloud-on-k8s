@@ -4,41 +4,38 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Prepare Dockerfile(s) and drivah.toml(s) depending on a list of build flavors to build ECK operator image(s).
-#
-# Environment variables:
-#    DOCKER_IMAGE       base Docker image
-#    DOCKER_IMAGE_TAG   base Docker image tag
-#    BUILD_FLAVORS      comma separated list (values: dev,eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips) (default: dev)
-#
+# Prepare Dockerfile(s) and drivah.toml(s) to build ECK operator container image(s).
 
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$HERE/.."
 
+source "$ROOT/.buildkite/scripts/common/lib.sh"
+
 retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 
-: "$DOCKER_IMAGE"
-: "$DOCKER_IMAGE_TAG"
+: "$IMAGE_NAME"
+: "$IMAGE_TAG"
 : "$BUILD_FLAVORS"
 
-ARCH=$(uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
-VERSION=$(cat "$ROOT/VERSION")
-SHA1=$(git rev-parse --short=8 --verify HEAD)
-GO_TAGS=release
-LICENSE_PUBKEY=license.key
+ARCH=$(common::arch)
+SHA1=$(common::sha1)
+VERSION=$(common::version)
+
 SNAPSHOT=true
+GO_TAGS=${GO_TAGS-release}
+LICENSE_PUBKEY=license.key
 
 generate_drivah_config() {
-    local image=$1
-    local image_tag=$2
+    local name=$1
+    local tag=$2
     local go_tags=$3
     local license_pub_key=$4
 cat <<END
 [container.image]
-names = ["${image}"]
-tags = ["${image_tag}-${ARCH}"]
+names = ["${name}"]
+tags = ["${tag}-${ARCH}"]
 build_context = "../../"
 
 [container.image.build_args]
@@ -51,15 +48,16 @@ END
 }
 
 main() {
-    echo "#-- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS"
+    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS"
 
     # disable SNAPSHOT for tags
     tag_pattern="^[0-9]+\.[0-9]+\.[0-9]+"
-    if [[ "$DOCKER_IMAGE_TAG"  =~ $tag_pattern ]]; then
+    if [[ "$IMAGE_TAG"  =~ $tag_pattern ]]; then
         SNAPSHOT=false
     fi
 
-    rm -rf build/[eckdv]*
+    # delete only dirs
+    find "$HERE" -maxdepth 1 -mindepth 1 -type d -exec rm -rf '{}' \;
 
     IFS=","; for flavor in $BUILD_FLAVORS; do
 
@@ -68,8 +66,8 @@ main() {
         go_tags=$GO_TAGS
         license_pubkey=$LICENSE_PUBKEY
 
-        image="$DOCKER_IMAGE"
-        image_tag="$DOCKER_IMAGE_TAG"
+        name="$IMAGE_NAME"
+        tag="$IMAGE_TAG"
 
          # dev build without public license key
         if [[ "$flavor" == "dev" ]]; then
@@ -78,24 +76,19 @@ main() {
         fi
         # DEV license public key build
         if [[ "$flavor" =~ -dev ]]; then
-                image_tag="$image_tag-dev"
+                tag="$tag-dev"
                 license_pubkey=dev-license.key
                 BUILD_LICENSE_PUBKEY=dev
         fi
         # UBI8 build
         if [[ "$flavor" =~ -ubi8 ]]; then
-                image="$image-ubi8"
+                name="$name-ubi8"
                 container_file_path=$HERE/Dockerfile-ubi
         fi
         # FIPS build
         if [[ "$flavor" =~ -fips ]]; then
-                image="$image-fips"
+                name="$name-fips"
                 go_tags="$go_tags,goexperiment.boringcrypto"
-        fi
-
-        # store the "eck" operator image to run e2e tests later with it
-        if  [[ "${CI:-}" == "true" ]] && [[ "$flavor" == "eck" ]]; then
-            buildkite-agent meta-data set operator-image "$image:$image_tag"
         fi
 
         # fetch public license key
@@ -106,10 +99,11 @@ main() {
         fi
 
         # generate drivah.toml and copy Dockerfile
-        echo "# -- build: $image:$image_tag"
+        echo "# -- build: $name:$tag"
         mkdir -p "$HERE/$flavor"
-        generate_drivah_config "$image" "$image_tag" "$go_tags" "$license_pubkey" > "$HERE/$flavor/drivah.toml"
+        generate_drivah_config "$name" "$tag" "$go_tags" "$license_pubkey" > "$HERE/$flavor/drivah.toml"
         cp -f "$container_file_path" "$HERE/$flavor/Dockerfile"
+
     done
 }
 

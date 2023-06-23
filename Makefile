@@ -18,9 +18,6 @@ KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
-# Allow FIPS compliance by means of BoringCrypto build tag.
-ENABLE_FIPS ?= false
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
@@ -36,24 +33,24 @@ endif
 
 ## -- Docker image
 
-# for dev, suffix image name with current user name
-IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
-
 REGISTRY            ?= docker.elastic.co
+
+export SNAPSHOT     ?= true
+export VERSION      ?= $(shell cat VERSION)
+export SHA1         ?= $(shell git rev-parse --short=8 --verify HEAD)
+export ARCH         ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+
+# for dev, suffix image name with current user name
+IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
 REGISTRY_NAMESPACE  ?= eck-dev
-OPERATOR_NAME       ?= eck-operator$(IMG_SUFFIX)
-SNAPSHOT            ?= true
-VERSION             ?= $(shell cat VERSION)
-SHA1                ?= $(shell git rev-parse --short=8 --verify HEAD)
-IMAGE_NAME          := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
-IMAGE_TAG           ?= $(VERSION)-$(SHA1)
+OPERATOR_NAME       ?= eck-operator$(IMAGE_SUFFIX)
+
+export IMAGE_NAME   := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
+export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
 OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
 print-%:
 	@ echo $($*)
-
-print-operator-image:
-	@ echo $(IMAGE_NAME):$(IMAGE_TAG)
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(SHA1) \
@@ -177,7 +174,7 @@ manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
+	shellcheck -x $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 upgrade-test: docker-build docker-push
 	@hack/upgrade-test-harness/run.sh
@@ -194,7 +191,7 @@ install-crds: generate-manifests
 run: install-crds go-run
 
 go-run:
-	# Run the operator locally with debug logs and operator image set to latest
+	@ # Run the operator locally with debug logs and operator image set to latest
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
@@ -211,7 +208,7 @@ go-run:
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
-	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+	@ (cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
 		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
 		-- \
 		manager \
@@ -358,10 +355,9 @@ switch-tanzu:
 ##  --    Docker images    --  ##
 #################################
 
+# build amd64 image for dev purposes
 BUILD_PLATFORM ?= "linux/amd64"
-BUILD_FLAVORS  ?= "dev"
-
-operator-docker-push:
+docker-push-operator:
 	docker buildx build . \
 	 	-f build/Dockerfile \
 		--progress=plain \
@@ -372,9 +368,13 @@ operator-docker-push:
 		--push \
 		-t $(OPERATOR_IMAGE)
 
-operator-drivah-build:
+drivah-generate:
 	@ build/gen-drivah.toml.sh
-	@ drivah build ./build
+
+# standard way to build operator image(s) using drivah
+export BUILD_FLAVORS ?= dev
+drivah-push-operator: drivah-generate
+	drivah build ./build
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(IMAGE_NAME) | tail +3 | awk '{print $$2}'); \
@@ -396,8 +396,26 @@ switch-registry-dev: # just use the default values of variables
 ##  --   End to end tests    --  ##
 ###################################
 
+# -- build
+
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
-E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(SHA1)
+export E2E_IMAGE_NAME      ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests
+export E2E_IMAGE_TAG       ?= $(SHA1)
+
+# push amd64 image for dev purposes
+docker-push-e2e:
+	docker buildx build \
+		--progress=plain \
+		--file test/e2e/Dockerfile \
+		--platform $(BUILD_PLATFORM) \
+		--push \
+		-t $(E2E_IMAGE_NAME):$(E2E_IMAGE_TAG) .
+
+# standard way to build e2e tests image using drivah
+drivah-build-e2e:
+	drivah build test/e2e
+
+# -- run
 
 E2E_STACK_VERSION          ?= 8.8.0
 # regexp to filter tests to run
@@ -415,17 +433,6 @@ E2E_TEST_ENV_TAGS          ?= ""
 ifneq (,$(GO_TAGS))
 E2E_TAGS := $(GO_TAGS),$(E2E_TAGS)
 endif
-
-e2e-docker-push:
-	docker buildx build \
-		--progress=plain \
-		--file test/e2e/Dockerfile \
-		--platform $(BUILD_PLATFORM) \
-		--push \
-		-t $(E2E_IMG) .
-
-e2e-drivah-build:
-	@ drivah build test/e2e
 
 e2e-run: go-generate
 	go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
