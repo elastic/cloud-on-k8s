@@ -29,14 +29,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
-// TestVersionUpgradeOrdering deploys the entire stack, with resources associated together.
-// Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func TestVersionUpgradeOrdering(t *testing.T) {
-	initialVersion := test.LatestReleasedVersion7x
+	runVersionUpgradeOrdering(t, test.LatestReleasedVersion7x, false)
+}
+
+func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
+	runVersionUpgradeOrdering(t, "8.6.0", true)
+}
+
+// runVersionUpgradeOrdering deploys the entire stack, with resources associated together.
+// Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
+func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash bool) {
 	updatedVersion := test.LatestReleasedVersion8x
 
 	// upgrading the entire stack can take some time, since we need to account for (in order):
@@ -74,9 +81,6 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	entUpdated := ent.WithVersion(updatedVersion)
-	logstash := logstash.NewBuilder("ls").
-		WithVersion(initialVersion) // pre 8.x doesn't require any config, but we change the version after calling
-	logstashUpdated := logstash.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
@@ -86,8 +90,16 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
 	fbUpdated := fb.WithVersion(updatedVersion)
 
-	initialBuilders := []test.Builder{es, kb, apm, ent, fb, logstash}
-	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated, logstashUpdated}
+	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
+	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
+
+	logstash := logstash.NewBuilder("ls").WithVersion(initialVersion) // pre 8.x doesn't require any config, but we change the version after calling
+
+	if withLogstash {
+		initialBuilders = append(initialBuilders, logstash)
+		logstashUpdated := logstash.WithVersion(updatedVersion)
+		updatedBuilders = append(updatedBuilders, logstashUpdated)
+	}
 
 	versionUpgrade := func(k *test.K8sClient) test.StepList {
 		steps := test.StepList{}
@@ -106,7 +118,9 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 					ApmServer:        ref(k8s.ExtractNamespacedName(&apm.ApmServer)),
 					EnterpriseSearch: ref(k8s.ExtractNamespacedName(&ent.EnterpriseSearch)),
 					Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
-					Logstash:         ref(k8s.ExtractNamespacedName(&logstash.Logstash)),
+				}
+				if withLogstash {
+					stackVersions.Logstash = ref(k8s.ExtractNamespacedName(&logstash.Logstash))
 				}
 				err := stackVersions.Retrieve(k.Client)
 				// check the retrieved versions first (before returning on err)
