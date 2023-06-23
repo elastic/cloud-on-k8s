@@ -161,8 +161,12 @@ func (s StackResourceVersions) IsValid() bool {
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
-	for _, ref := range []refVersion{s.Elasticsearch, s.Kibana, s.ApmServer, s.EnterpriseSearch, s.Beat, s.Logstash} {
-		if ref.version != version {
+	refs := []refVersion{s.Elasticsearch, s.Kibana, s.ApmServer, s.EnterpriseSearch, s.Beat}
+	if s.Logstash.version != "" {
+		refs = append(refs, s.Logstash)
+	}
+	for _, ref := range refs {
+		if ref.version != "" && ref.version != version {
 			return false
 		}
 	}
@@ -170,7 +174,10 @@ func (s StackResourceVersions) AllSetTo(version string) bool {
 }
 
 func (s *StackResourceVersions) Retrieve(client k8s.Client) error {
-	calls := []func(c k8s.Client) error{s.retrieveBeat, s.retrieveApmServer, s.retrieveKibana, s.retrieveEnterpriseSearch, s.retrieveElasticsearch, s.retrieveLogstash}
+	calls := []func(c k8s.Client) error{s.retrieveBeat, s.retrieveApmServer, s.retrieveKibana, s.retrieveEnterpriseSearch, s.retrieveElasticsearch}
+	if s.Logstash.version != "" {
+		calls = append(calls, s.retrieveLogstash)
+	}
 	// grab at least one error if multiple occur
 	var callsErr error
 	for _, f := range calls {
