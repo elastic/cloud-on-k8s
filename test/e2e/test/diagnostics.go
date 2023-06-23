@@ -7,12 +7,9 @@ package test
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/command"
 )
@@ -22,14 +19,6 @@ import (
 // is set (not empty), the google credentials file exists, and the eck-diagnostics binary exists
 // then we should be able to run diagnostics.
 func canRunDiagnostics(ctx Context) bool {
-	// If we don't have credentials to write to bucket, then we can't run diagnostics
-	// after e2e test failures, as we upload the zip file to a bucket.
-	if _, err := os.Stat(ctx.GCPCredentialsPath); err != nil && errors.Is(err, fs.ErrNotExist) {
-		return false
-	} else if err != nil {
-		log.Error(err, "while checking for existence of %s", ctx.GCPCredentialsPath)
-		return false
-	}
 	// If we're not in Kubernetes, then don't run diagnostics on e2e test failures.
 	if _, inK8s := os.LookupEnv("KUBERNETES_SERVICE_HOST"); !inK8s {
 		return false
