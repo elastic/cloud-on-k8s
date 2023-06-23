@@ -35,15 +35,18 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute     // time to wait for the test job to finish
-	kubePollInterval     = 10 * time.Second      // Kube API polling interval
-	testRunLabel         = "test-run"            // name of the label applied to resources
-	logStreamLabel       = "stream-logs"         // name of the label enabling log streaming to e2e runner
-	testsLogFilePattern  = "job-%s.json"         // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute       // time to wait for the operator pod to be ready
-	testsResultFile      = "/tmp/e2e-tests.json" // file used to write test results and downloaded at the end of the execution
+	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
+	kubePollInterval     = 10 * time.Second  // Kube API polling interval
+	testRunLabel         = "test-run"        // name of the label applied to resources
+	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
+	testsLogFilePattern  = "job-%s.json"     // name of file to keep all test logs in JSON format
+	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
+
+	// ArtefactsDir is a directory in a pod job where files (e.g. go test result file or eck-diagnostics archives) can be written
+	// and downloaded by the job manager when the pod is ready.
+	artefactsDir = "/tmp/artefacts"
 )
 
 type stepFunc func() error
@@ -192,9 +195,8 @@ func (h *helper) initTestContext() error {
 		TestEnvTags:           h.testEnvTags,
 		E2ETags:               h.e2eTags,
 		LogToFile:             h.logToFile,
-		GSBucketName:          h.gsBucketName,
 		AutopilotCluster:      isAutopilotCluster(h),
-		ResultFile:            testsResultFile,
+		ArtefactsDir:          artefactsDir,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -261,20 +263,6 @@ func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
 
 	c := vault.NewClientProvider()
-
-	// Only initialize gcp credentials when running in CI
-	if os.Getenv("CI") == "true" {
-		b, err := vault.ReadFile(c, vault.SecretFile{
-			Name:          "gcp-credentials.json",
-			Path:          "ci-gcp-k8s-operator",
-			FieldResolver: func() string { return "service-account" },
-		})
-		if err != nil {
-			return fmt.Errorf("reading gcp credentials: %w", err)
-		}
-		h.testSecrets["gcp-credentials.json"] = string(b)
-		h.testContext.GCPCredentialsPath = "/var/run/secrets/e2e/gcp-credentials.json"
-	}
 
 	if h.testLicense != "" {
 		bytes, err := vault.ReadFile(c, vault.SecretFile{
@@ -600,7 +588,8 @@ func (h *helper) startAndMonitorTestJobs(client *kubernetes.Clientset) error {
 		outputs = append(outputs, jl)
 	}
 	writer := io.MultiWriter(outputs...)
-	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser).WithResultFile(testsResultFile)
+	runJob := NewJob("eck-"+h.testRunName, "config/e2e/e2e_job.yaml", writer, goLangTestTimestampParser).
+		WithArtefactsDir(artefactsDir)
 
 	if h.deployChaosJob {
 		chaosJob := NewJob("chaos-"+h.testRunName, "config/e2e/chaos_job.yaml", os.Stdout, stdTimestampParser)

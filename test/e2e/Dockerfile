@@ -4,20 +4,9 @@ FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.5
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-ENV GCLOUD_VERSION=381.0.0
 ENV ECK_DIAG_VERSION=1.4.0
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
-
-# gcloud sdk to use gsutil
-ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
-RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz && \
-    mkdir -p /usr/local/gcloud && \
-    tar -zxf google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz -C /usr/local && \
-    /usr/local/google-cloud-sdk/install.sh --quiet && \
-    gcloud config set core/disable_usage_reporting true && \
-    gcloud config set component_manager/disable_update_check true && \
-    rm google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz
 
 RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${ECK_DIAG_VERSION}/eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
     tar xzf eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
