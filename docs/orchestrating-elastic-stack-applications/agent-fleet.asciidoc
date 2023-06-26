@@ -619,10 +619,10 @@ spec:
           name: "agent-data"
       initContainers:
         - name: manage-agent-hostpath-permissions
-          # fedora is only required when needing the `chcon` binary when running
+          # UBI is only required when needing the `chcon` binary when running
           # in an senlinux-enabled/Openshift environment. If that
           # is not required then the following smaller image can be used instead:
-          # image: fedora:39
+          # image: registry.access.redhat.com/ubi8/ubi-minimal:latest
           image: docker.io/bash:5.2.15
           resources:
             limits:
