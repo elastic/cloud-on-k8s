@@ -63,17 +63,3 @@ steps:
         command: |
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
-
-      # After nightly e2e tests, run a cleanup scripts to ensure dangling clusters are deleted
-      - label: ":broom: e2e test cluster cleanup"
-        depends_on:
-          - step: "nightly-e2e-tests"
-            allow_failure: true
-        if: |
-          build.tag != null
-          || ( build.branch == "main" && build.source == "schedule" )
-          || build.message =~ /^buildkite test .*e2e\/all.*/
-          || build.message == "buildkite run e2e test cleanup"
-
-        commands:
-          - .buildkite/scripts/test/cleanup-e2e-clusters.sh
