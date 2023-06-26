@@ -57,7 +57,9 @@ done
 vault read -field=data "$VAULT_ROOT_PATH/ci-aws-k8s-operator" > /tmp/ci-aws-k8s-operator.json
 AWS_ACCESS_KEY_ID=$(jq .access-key /tmp/ci-aws-k8s-operator.json -r)
 AWS_SECRET_ACCESS_KEY=$(jq .secret-key /tmp/ci-aws-k8s-operator.json -r)
-mkdir ~/.aws | true
+if [ ! -d ~/.aws ]; then
+  mkdir ~/.aws
+fi
 cat << EOF > ~/.aws/credentials
 [default]
 aws_access_key_id = ${AWS_ACCESS_KEY_ID}
@@ -68,8 +70,8 @@ EOF
 for region in ap-northeast-3 eu-west-1; do
     EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))')
     for i in ${EKS_CLUSTERS}; do
-        NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d $DATE 'map(select(.cluster.createdAt | . <= $d))|.[].name')
-        if [ ! -z "$NAME" ]; then
+        NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d "$DATE" 'map(select(.cluster.createdAt | . <= $d))|.[].name')
+        if [ -n "$NAME" ]; then
             echo "Deleting eks cluster $NAME"
             cd "$ROOT"
             E2E_PROVIDER=eks CLUSTER_NAME="$NAME" DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
