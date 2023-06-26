@@ -33,31 +33,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
-func TestVersionUpgradeOrdering(t *testing.T) {
-	runVersionUpgradeOrdering(t, test.LatestReleasedVersion7x, false)
-}
+var (
+	updatedVersion = test.LatestReleasedVersion8x
+)
 
-func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
-	runVersionUpgradeOrdering(t, "8.6.0", true)
-}
-
-// runVersionUpgradeOrdering deploys the entire stack, with resources associated together.
-// Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
-func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash bool) {
-	updatedVersion := test.LatestReleasedVersion8x
-
-	// upgrading the entire stack can take some time, since we need to account for (in order):
-	// - Elasticsearch rolling upgrade
-	// - Kibana + Enterprise Search deployments upgrade
-	// - APMServer deployment upgrade + Beat daemonset upgrade
-	timeout := test.Ctx().TestTimeout * 2
-
+func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Builder, []test.Builder, StackResourceVersions) {
 	// Single-node ES clusters cannot be green with APM indices (see https://github.com/elastic/apm-server/issues/414).
 	es := elasticsearch.NewBuilder("es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithVersion(initialVersion).
 		WithRestrictedSecurityContext()
-	esUpdated := es.WithVersion(updatedVersion)
 	esRef := commonv1.ObjectSelector{Namespace: es.Elasticsearch.Namespace, Name: es.Elasticsearch.Name}
 	kb := kibana.NewBuilder("kb").
 		WithNodeCount(1).
@@ -65,7 +50,6 @@ func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext().
 		WithAPMIntegration()
-	kbUpdated := kb.WithVersion(updatedVersion)
 	kbRef := commonv1.ObjectSelector{Namespace: kb.Kibana.Namespace, Name: kb.Kibana.Name}
 	apm := apmserver.NewBuilder("apm").
 		WithNodeCount(1).
@@ -73,14 +57,12 @@ func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef).
 		WithRestrictedSecurityContext()
-	apmUpdated := apm.WithVersion(updatedVersion)
 	ent := enterprisesearch.NewBuilder("ent").
 		WithNodeCount(1).
 		WithVersion(initialVersion). // pre 8.x doesn't require any config, but we change the version after calling
 		WithoutConfig().             // NewBuilder which relies on the version from test.Ctx(), so removing config here
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
-	entUpdated := ent.WithVersion(updatedVersion)
 	fb := beat.NewBuilder("fb").
 		WithType(filebeat.Type).
 		WithRoles(beat.AutodiscoverClusterRoleName).
@@ -88,18 +70,59 @@ func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef)
 	fb = beat.ApplyYamls(t, fb, beattests.E2EFilebeatConfig, beattests.E2EFilebeatPodTemplate)
-	fbUpdated := fb.WithVersion(updatedVersion)
+
+	esUpdated := es.WithVersion(test.LatestReleasedVersion8x)
+	kbUpdated := kb.WithVersion(test.LatestReleasedVersion8x)
+	apmUpdated := apm.WithVersion(test.LatestReleasedVersion8x)
+	entUpdated := ent.WithVersion(test.LatestReleasedVersion8x)
+	fbUpdated := fb.WithVersion(test.LatestReleasedVersion8x)
 
 	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
 	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
 
-	logstash := logstash.NewBuilder("ls").WithVersion(initialVersion) // pre 8.x doesn't require any config, but we change the version after calling
-
-	if withLogstash {
-		initialBuilders = append(initialBuilders, logstash)
-		logstashUpdated := logstash.WithVersion(updatedVersion)
-		updatedBuilders = append(updatedBuilders, logstashUpdated)
+	stackVersions := StackResourceVersions{
+		Elasticsearch:    ref(k8s.ExtractNamespacedName(&es.Elasticsearch)),
+		Kibana:           ref(k8s.ExtractNamespacedName(&kb.Kibana)),
+		ApmServer:        ref(k8s.ExtractNamespacedName(&apm.ApmServer)),
+		EnterpriseSearch: ref(k8s.ExtractNamespacedName(&ent.EnterpriseSearch)),
+		Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
 	}
+
+	//return es, kb, apm, ent, fb
+	//updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
+
+	return initialBuilders, updatedBuilders, stackVersions
+}
+
+func TestVersionUpgradeOrdering(t *testing.T) {
+	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, test.LatestReleasedVersion7x)
+	runVersionUpgradeOrdering(t, initialBuilders, updatedBuilders, stackVersions)
+}
+
+func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
+	initialVersion := "8.6.0"
+	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, "8.6.0")
+
+	ls := logstash.NewBuilder("ls").WithVersion(initialVersion)
+	lsUpdated := ls.WithVersion(test.LatestReleasedVersion8x)
+	lsRef := ref(k8s.ExtractNamespacedName(&ls.Logstash))
+
+	initialBuilders = append(initialBuilders, ls)
+	updatedBuilders = append(initialBuilders, lsUpdated)
+	stackVersions.Logstash = &lsRef
+
+	runVersionUpgradeOrdering(t, initialBuilders, updatedBuilders, stackVersions)
+}
+
+// runVersionUpgradeOrdering deploys the entire stack, with resources associated together.
+// Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
+func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, updatedBuilders []test.Builder, stackVersions StackResourceVersions) {
+
+	// upgrading the entire stack can take some time, since we need to account for (in order):
+	// - Elasticsearch rolling upgrade
+	// - Kibana + Enterprise Search deployments upgrade
+	// - APMServer deployment upgrade + Beat daemonset upgrade
+	timeout := test.Ctx().TestTimeout * 2
 
 	versionUpgrade := func(k *test.K8sClient) test.StepList {
 		steps := test.StepList{}
@@ -112,17 +135,6 @@ func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash
 			Name: "Check all resources are eventually upgraded in the right order",
 			Test: test.UntilSuccess(func() error {
 				// retrieve the version from the status of all resources
-				stackVersions := StackResourceVersions{
-					Elasticsearch:    ref(k8s.ExtractNamespacedName(&es.Elasticsearch)),
-					Kibana:           ref(k8s.ExtractNamespacedName(&kb.Kibana)),
-					ApmServer:        ref(k8s.ExtractNamespacedName(&apm.ApmServer)),
-					EnterpriseSearch: ref(k8s.ExtractNamespacedName(&ent.EnterpriseSearch)),
-					Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
-				}
-				if withLogstash {
-					logstashRef := ref(k8s.ExtractNamespacedName(&logstash.Logstash))
-					stackVersions.Logstash = &logstashRef
-				}
 				err := stackVersions.Retrieve(k.Client)
 				// check the retrieved versions first (before returning on err)
 				t.Log(stackVersions)
@@ -149,7 +161,7 @@ type StackResourceVersions struct {
 	ApmServer        refVersion
 	EnterpriseSearch refVersion
 	Beat             refVersion
-	Logstash         *refVersion // optional
+	Logstash         *refVersion // optional as we test stack upgrade with and without it
 }
 
 func (s StackResourceVersions) IsValid() bool {
