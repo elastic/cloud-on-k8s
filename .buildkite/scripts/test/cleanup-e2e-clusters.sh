@@ -19,11 +19,13 @@ DATE=$(date --date='3 days ago' --iso-8601=seconds)
 
 # Activate the Google service account
 vault read -field=service-account "$VAULT_ROOT_PATH/ci-gcp-k8s-operator" > /tmp/ci-gcp-k8s-operator.json
+echo "Logging into Google..."
 gcloud auth activate-service-account --key-file=/tmp/ci-gcp-k8s-operator.json
 rm -f /tmp/ci-gcp-k8s-operator.json
 gcloud config set project elastic-cloud-dev
 
 # Get a list of cluster names with a `createTime` < 3 days ago.
+echo "Attempting to find gke clusters > 3 days old"
 CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*")
 
 for i in ${CLUSTERS} ; do
@@ -40,9 +42,11 @@ vault read -field=data "$VAULT_ROOT_PATH/ci-azr-k8s-operator" > /tmp/ci-azr-k8s-
 CLIENT_ID=$(jq .appId /tmp/ci-azr-k8s-operator.json -r)
 CLIENT_SECRET=$(jq .password /tmp/ci-azr-k8s-operator.json -r)
 TENANT_ID=$(jq .tenant /tmp/ci-azr-k8s-operator.json -r)
+echo "Logging into Azure..."
 az login --service-principal -u "${CLIENT_ID}" -p "${CLIENT_SECRET}" --tenant "${TENANT_ID}"
 
 # Get a list of cluslter names with a `createdTime` < 3 days ago.
+echo "Attempting to find aks clusters > 3 days old"
 AZURE_CLUSTERS=$(az resource list -l westeurope -g cloudonk8s-dev --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "$DATE" 'map(select(.createdTime | . <= $d))|.[].name')
 
 for i in ${AZURE_CLUSTERS}; do
@@ -54,6 +58,7 @@ done
 
 ## AWS Clusters
 
+echo "Logging into AWS..."
 vault read -field=data "$VAULT_ROOT_PATH/ci-aws-k8s-operator" > /tmp/ci-aws-k8s-operator.json
 AWS_ACCESS_KEY_ID=$(jq .access-key /tmp/ci-aws-k8s-operator.json -r)
 AWS_SECRET_ACCESS_KEY=$(jq .secret-key /tmp/ci-aws-k8s-operator.json -r)
@@ -68,8 +73,10 @@ EOF
 
 # We have standard eks clusters in ap-northeast-3, and arm in eu-west-1.
 for region in ap-northeast-3 eu-west-1; do
+    echo "getting a list of all clusters in ${region}"
     EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))')
     for i in ${EKS_CLUSTERS}; do
+        echo "determining if cluster ${i} is > 3 days old"
         NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d "$DATE" 'map(select(.cluster.createdAt | . <= $d))|.[].name')
         if [ -n "$NAME" ]; then
             echo "Deleting eks cluster $NAME"
