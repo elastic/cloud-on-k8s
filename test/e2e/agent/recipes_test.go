@@ -193,9 +193,13 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
+	if v.GT(version.MinFor(8, 8, 0)) {
+		t.Skip("Disabled since 8.8.0, refer to https://github.com/elastic/cloud-on-k8s/issues/5105")
+	}
+
 	// https://github.com/elastic/cloud-on-k8s/issues/6331
 	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
+		t.Skip("Disabled for 8.6.x, refer to https://github.com/elastic/cloud-on-k8s/issues/6331")
 	}
 
 	notLoggingPod := beat.NewPodBuilder("test")

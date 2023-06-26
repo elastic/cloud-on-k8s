@@ -45,6 +45,15 @@ func (ds DeploymentStatus) IsDegraded(prev DeploymentStatus) bool {
 	return prev.Health == GreenHealth && ds.Health != GreenHealth
 }
 
+// ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
+type ConfigMapRef struct {
+	ConfigMapName string `json:"configMapName,omitempty"`
+}
+
+func (c ConfigMapRef) IsDefined() bool {
+	return len(c.ConfigMapName) > 0
+}
+
 // SecretRef is a reference to a secret that exists in the same namespace.
 type SecretRef struct {
 	// SecretName is the name of the secret.

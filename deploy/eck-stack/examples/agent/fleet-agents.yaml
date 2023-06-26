@@ -55,7 +55,6 @@ eck-kibana:
         monitoring_enabled:
         - logs
         - metrics
-        is_default_fleet_server: true
         package_policies:
         - name: fleet_server-1
           id: fleet_server-1
@@ -68,7 +67,6 @@ eck-kibana:
         - logs
         - metrics
         unenroll_timeout: 900
-        is_default: true
         package_policies:
         - package:
             name: system
@@ -81,6 +79,8 @@ eck-agent:
   enabled: true
   
   spec:
+    # Agent policy to be used.
+    policyID: eck-agent
     # Reference to ECK-managed Kibana instance.
     #
     kibanaRef:
@@ -111,6 +111,8 @@ eck-fleet-server:
   fullnameOverride: "fleet-server"
 
   spec:
+    # Agent policy to be used.
+    policyID: eck-fleet-server
     kibanaRef:
       name: kibana
     elasticsearchRefs:

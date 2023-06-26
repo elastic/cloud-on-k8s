@@ -1,6 +1,6 @@
-newVersion: 2.8.0-SNAPSHOT
-prevVersion: 2.7.0
-stackVersion: 8.8.0-SNAPSHOT
+newVersion: 2.9.0-SNAPSHOT
+prevVersion: 2.8.0
+stackVersion: 8.9.0-SNAPSHOT
 minSupportedOpenshiftVersion: v4.8
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
@@ -30,6 +30,9 @@ crds:
   - name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
     displayName: Elastic Stack Config Policy
     description: Elastic Stack Config Policy
+  - name: logstashes.logstash.k8s.elastic.co
+    displayName: Logstash
+    description: Logstash instance
 packages:
   - outputPath: community-operators
     packageName: elastic-cloud-eck

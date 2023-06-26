@@ -60,27 +60,27 @@ var (
 		Array: []LinkedFile{
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", filerealm.UsersFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", filerealm.UsersFile),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.RolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", user.RolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", user.RolesFile),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersRolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", filerealm.UsersRolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", filerealm.UsersRolesFile),
 			},
 			{
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", settings.ConfigFileName),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", settings.ConfigFileName),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.UnicastHostsFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", esvolume.UnicastHostsFile),
 			},
 			{
 				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", esvolume.ServiceAccountsFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.ContainerMountPath, "/", esvolume.ServiceAccountsFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", esvolume.ServiceAccountsFile),
 			},
 		},
 	}
@@ -109,7 +109,6 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	certificatesVolumeMount := transportCertificatesVolume.VolumeMount()
 	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
 
-	privileged := false
 	volumeMounts := append(
 		// we will also inherit all volume mounts from the main container later on in the pod template builder
 		PluginVolumes.InitContainerVolumeMounts(),
@@ -125,13 +124,10 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            PrepareFilesystemContainerName,
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privileged,
-		},
-		Env:          defaults.PodDownwardEnvVars(),
-		Command:      []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
-		VolumeMounts: volumeMounts,
-		Resources:    defaultResources,
+		Env:             defaults.PodDownwardEnvVars(),
+		Command:         []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
+		VolumeMounts:    volumeMounts,
+		Resources:       defaultResources,
 	}
 
 	return container, nil

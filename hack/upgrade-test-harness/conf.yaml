@@ -29,6 +29,9 @@ testParams:
   - name: v270
     operatorVersion: 2.7.0
     stackVersion: 8.7.0
+  - name: v280
+    operatorVersion: 2.8.0
+    stackVersion: 8.8.0
   - name: upcoming
-    operatorVersion: 2.8.0-SNAPSHOT
-    stackVersion: 8.8.0-SNAPSHOT
+    operatorVersion: 2.9.0-SNAPSHOT
+    stackVersion: 8.9.0-SNAPSHOT

@@ -1,0 +1,62 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: monitoring
+spec:
+  version: 8.6.1
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  version: 8.8.0
+  config:
+    log.level: info
+    api.http.host: "0.0.0.0"
+    queue.type: memory
+  elasticsearchRefs:
+    - clusterName: test
+      name: monitoring
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+        - name: monitoring
+    logs:
+      elasticsearchRefs:
+        - name: monitoring
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input { exec { command => 'uptime' interval => 10 } }
+        output {
+          elasticsearch {
+            hosts => [ "${TEST_ES_HOSTS}" ]
+            ssl => true
+            cacert => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${TEST_ES_USER}"
+            password => "${TEST_ES_PASSWORD}"
+          }
+        }
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: 8.6.1
+  elasticsearchRef:
+    name: monitoring
+  count: 1
+---

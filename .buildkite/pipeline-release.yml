@@ -7,35 +7,24 @@ steps:
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
-        depends_on:
-          - "operator-image-build"
         commands:
-          - buildkite-agent artifact download 'config/*.yaml' config/
-          - .buildkite/scripts/build/setenv.sh
+          - make generate-manifests
           - .buildkite/scripts/release/k8s-manifests.sh
 
-      # dry run helm charts release
-      - label: ":buildkite:"
-        if: build.message =~ /^buildkite test .*release.*/
-        command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
-
-      # live helm charts release
-      - label: ":buildkite:"
-        if: |
-          build.message !~ /^buildkite test .*release.*/
-          && (
-            ( build.branch == "main" && build.source != "schedule" )
-            || build.tag != null
-            || build.message =~ /^release eck/
-          )
-        command: |
-          sed "s|DRY_RUN: true|DRY_RUN: false|" .buildkite/pipeline-release-helm.yml | buildkite-agent pipeline upload 
-
-      - label: ":buildkite:"
-        if: |
-          build.message =~ /^buildkite test .*operatorhub.*/
-          || build.message =~ /^release eck .*operatorhub.*/
-        trigger: cloud-on-k8s-operator-redhat-release
+      - label: "copy images to dockerhub"
+        if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+        trigger: unified-release-copy-elastic-images-to-dockerhub
         build:
           env:
-            DRY_RUN: "${DRY_RUN:-true}"
+            IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
+            IMAGES_TAG: "${BUILDKITE_TAG}"
+
+      - label: ":buildkite: helm charts release"
+        if: | # merge-main or tags
+          ( build.branch == "main" && build.source != "schedule" )
+          || build.tag != null
+        trigger: cloud-on-k8s-operator-helm-release
+        build:
+          env:
+            HELM_DRY_RUN: false
+

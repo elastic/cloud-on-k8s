@@ -30,11 +30,18 @@ const (
 	SoftOwnerKindLabel      = "eck.k8s.elastic.co/owner-kind"
 )
 
+func WithPostUpdate(f func()) func(p *Params) {
+	return func(p *Params) {
+		p.PostUpdate = f
+	}
+}
+
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
-func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) (corev1.Secret, error) {
+func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object, opts ...func(*Params)) (corev1.Secret, error) {
 	var reconciled corev1.Secret
-	if err := ReconcileResource(Params{
+
+	params := Params{
 		Context:    ctx,
 		Client:     c,
 		Owner:      owner,
@@ -54,7 +61,11 @@ func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, 
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 		},
-	}); err != nil {
+	}
+	for _, opt := range opts {
+		opt(&params)
+	}
+	if err := ReconcileResource(params); err != nil {
 		return corev1.Secret{}, err
 	}
 	return reconciled, nil

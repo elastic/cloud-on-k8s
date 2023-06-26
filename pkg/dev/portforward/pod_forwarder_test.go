@@ -21,7 +21,7 @@ type capturingDialer struct {
 	addresses []string
 }
 
-func (d *capturingDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+func (d *capturingDialer) DialContext(_ context.Context, _, address string) (net.Conn, error) {
 	d.addresses = append(d.addresses, address)
 	return nil, nil
 }

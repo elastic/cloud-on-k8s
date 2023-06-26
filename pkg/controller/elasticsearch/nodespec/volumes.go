@@ -60,6 +60,10 @@ func buildVolumes(
 		esvolume.FileSettingsVolumeName,
 		esvolume.FileSettingsVolumeMountPath,
 	)
+	tmpVolume := volume.NewEmptyDirVolume(
+		esvolume.TempVolumeName,
+		esvolume.TempVolumeMountPath,
+	)
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(nodeSpec.VolumeClaimTemplates))
 	for _, claimTemplate := range nodeSpec.VolumeClaimTemplates {
@@ -89,6 +93,7 @@ func buildVolumes(
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
 			downwardAPIVolume.Volume(),
+			tmpVolume.Volume(),
 		)...)
 	if keystoreResources != nil {
 		volumes = append(volumes, keystoreResources.Volume)
@@ -106,6 +111,7 @@ func buildVolumes(
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),
 		downwardAPIVolume.VolumeMount(),
+		tmpVolume.VolumeMount(),
 	)
 
 	// version gate for the file-based settings volume and volumeMounts
@@ -114,7 +120,8 @@ func buildVolumes(
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
 
-	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, volumes)
+	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
+	volumeMounts = esvolume.AppendDefaultDataVolumeMount(volumeMounts, append(volumes, nodeSpec.PodTemplate.Spec.Volumes...))
 
 	return volumes, volumeMounts
 }

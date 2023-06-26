@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -50,25 +51,25 @@ var _ webhook.Validator = &ApmServer{}
 
 // ValidateCreate is called by the validating webhook to validate the create operation.
 // Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateCreate() error {
+func (as *ApmServer) ValidateCreate() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate create", "name", as.Name)
 	return as.validate(nil)
 }
 
 // ValidateDelete is called by the validating webhook to validate the delete operation.
 // Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateDelete() error {
+func (as *ApmServer) ValidateDelete() (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate delete", "name", as.Name)
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate is called by the validating webhook to validate the update operation.
 // Satisfies the webhook.Validator interface.
-func (as *ApmServer) ValidateUpdate(old runtime.Object) error {
+func (as *ApmServer) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	validationLog.V(1).Info("Validate update", "name", as.Name)
 	oldObj, ok := old.(*ApmServer)
 	if !ok {
-		return errors.New("cannot cast old object to ApmServer type")
+		return nil, errors.New("cannot cast old object to ApmServer type")
 	}
 
 	return as.validate(oldObj)
@@ -79,7 +80,7 @@ func (as *ApmServer) WebhookPath() string {
 	return webhookPath
 }
 
-func (as *ApmServer) validate(old *ApmServer) error {
+func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -89,7 +90,7 @@ func (as *ApmServer) validate(old *ApmServer) error {
 		}
 
 		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, as.Name, errors)
+			return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
 		}
 	}
 
@@ -100,9 +101,9 @@ func (as *ApmServer) validate(old *ApmServer) error {
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, as.Name, errors)
+		return nil, apierrors.NewInvalid(groupKind, as.Name, errors)
 	}
-	return nil
+	return nil, nil
 }
 
 func checkNoUnknownFields(as *ApmServer) field.ErrorList {

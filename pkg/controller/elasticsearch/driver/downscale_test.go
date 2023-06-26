@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
@@ -146,7 +146,7 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&es, &ssetMaster1Replica, &ssetMaster3Replicas, &ssetData4Replicas,
+	runtimeObjs = []client.Object{&es, &ssetMaster1Replica, &ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster1Replica[0], &podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
@@ -839,7 +839,7 @@ func Test_attemptDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var runtimeObjs []runtime.Object
+			var runtimeObjs []client.Object
 			for i := range tt.statefulSets {
 				runtimeObjs = append(runtimeObjs, &tt.statefulSets[i])
 			}
@@ -1034,7 +1034,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 		name               string
 		downscale          ssetDownscale
 		statefulSets       sset.StatefulSetList
-		apiserverResources []runtime.Object
+		apiserverResources []client.Object
 		wantZen1Called     bool
 		wantZen1CalledWith int
 	}{
@@ -1046,7 +1046,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				targetReplicas:  2,
 			},
 			statefulSets:       sset.StatefulSetList{ssetMasters},
-			apiserverResources: []runtime.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
+			apiserverResources: []client.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
 			wantZen1Called:     false,
 		},
 		{
@@ -1057,7 +1057,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				targetReplicas:  2,
 			},
 			statefulSets:       sset.StatefulSetList{ssetMasters, ssetData},
-			apiserverResources: []runtime.Object{&es, &ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
+			apiserverResources: []client.Object{&es, &ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
 			wantZen1Called:     false,
 		},
 		{
@@ -1069,7 +1069,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			},
 			statefulSets: sset.StatefulSetList{ssetMasters},
 			// 2 master nodes in the apiserver
-			apiserverResources: []runtime.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1]},
+			apiserverResources: []client.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1]},
 			wantZen1Called:     true,
 			wantZen1CalledWith: 1,
 		},
@@ -1106,15 +1106,15 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		resources []runtime.Object
+		resources []client.Object
 	}{
 		{
 			name:      "happy path: delete 3 resources",
-			resources: []runtime.Object{&es, &sset, &cfg, &svc},
+			resources: []client.Object{&es, &sset, &cfg, &svc},
 		},
 		{
 			name:      "cfg and service were already deleted: should not return an error",
-			resources: []runtime.Object{&es, &sset},
+			resources: []client.Object{&es, &sset},
 		},
 	}
 	for _, tt := range tests {
@@ -1135,14 +1135,14 @@ func Test_deleteStatefulSets(t *testing.T) {
 	tests := []struct {
 		name          string
 		toDelete      sset.StatefulSetList
-		objs          []runtime.Object
+		objs          []client.Object
 		wantRemaining sset.StatefulSetList
 		wantErr       func(err error) bool
 	}{
 		{
 			name:     "nothing to delete",
 			toDelete: nil,
-			objs: []runtime.Object{
+			objs: []client.Object{
 				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 			},
@@ -1157,7 +1157,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
 				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
 			},
-			objs: []runtime.Object{
+			objs: []client.Object{
 				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
 				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name, ResourceVersion: "999"}.BuildPtr(),
@@ -1171,7 +1171,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 			toDelete: sset.StatefulSetList{
 				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
 			},
-			objs:          []runtime.Object{},
+			objs:          []client.Object{},
 			wantRemaining: nil,
 			wantErr:       apierrors.IsNotFound,
 		},

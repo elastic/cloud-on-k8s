@@ -175,7 +175,7 @@ type mockClient struct {
 	readCount int
 }
 
-func newMockClient(t *testing.T, data ...string) Client {
+func newMockClient(t *testing.T, data ...string) ClientProvider {
 	t.Helper()
 
 	if len(data)%2 != 0 {
@@ -187,18 +187,23 @@ func newMockClient(t *testing.T, data ...string) Client {
 		dataMap[data[i]] = data[i+1]
 	}
 
-	return &mockClient{
+	c := &mockClient{
 		data:      dataMap,
 		readCount: 0,
 	}
+
+	return func() (Client, error) {
+		return c, nil
+	}
 }
 
-func (c *mockClient) Read(path string) (*api.Secret, error) {
+func (c *mockClient) Read(_ string) (*api.Secret, error) {
 	c.readCount++
 	return &api.Secret{Data: c.data}, nil
 }
 
-func readCount(c Client) int {
+func readCount(client ClientProvider) int {
+	c, _ := client()
 	m, _ := c.(*mockClient)
 	return m.readCount
 }

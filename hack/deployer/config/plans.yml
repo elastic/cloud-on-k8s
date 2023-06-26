@@ -10,10 +10,24 @@ plans:
   # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
-    region: europe-west6
+    region: us-central1
     localSsdCount: 1
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-autopilot-ci
+  operation: create
+  clusterName: ci-autopilot
+  provider: gke
+  kubernetesVersion: 1.25
+  serviceAccount: true
+  enforceSecurityPolicies: true
+  # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
+  # diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  gke:
+    autopilot: true
+    region: us-central1
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+-
 - id: gke-dev
   operation: create
   clusterName: dev
@@ -40,6 +54,17 @@ plans:
     # we set a default of /20 that can be overridden here
     # clusterIpv4Cidr: /20
     # servicesIpv4Cidr: /20
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
+- id: gke-autopilot-dev
+  operation: create
+  clusterName: dev-autopilot
+  provider: gke
+  kubernetesVersion: 1.25
+  serviceAccount: false
+  enforceSecurityPolicies: true
+  gke:
+    autopilot: true
+    region: europe-west1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: aks-ci
   operation: create
@@ -69,7 +94,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.12.9
+  clientVersion: 4.12.14
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -79,7 +104,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.12.9
+  clientVersion: 4.12.14
   provider: ocp
   machineType: n1-standard-8
   serviceAccount: true
@@ -93,7 +118,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.24
+  kubernetesVersion: 1.25
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-3
@@ -106,7 +131,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.24
+  kubernetesVersion: 1.25
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -118,7 +143,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.24
+  kubernetesVersion: 1.25
   enforceSecurityPolicies: true
   eks:
     region: eu-west-2
@@ -142,22 +167,22 @@ plans:
   clusterName: eck
   clientVersion: 0.17.0
   provider: kind
-  kubernetesVersion: 1.22.13
+  kubernetesVersion: 1.27.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
+    nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
   clientVersion: 0.17.0
   provider: kind
-  kubernetesVersion: 1.22.13
+  kubernetesVersion: 1.27.1
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
+    nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
     ipFamily: ipv4
 - id: tanzu-ci
   operation: create

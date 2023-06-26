@@ -40,7 +40,7 @@ type fakeESClient struct {
 	err  error
 }
 
-func (f *fakeESClient) GetClusterInfo(ctx context.Context) (esclient.Info, error) {
+func (f *fakeESClient) GetClusterInfo(_ context.Context) (esclient.Info, error) {
 	return esclient.Info{ClusterUUID: f.uuid}, f.err
 }
 

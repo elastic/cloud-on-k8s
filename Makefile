@@ -103,7 +103,7 @@ dependencies: tidy
 # Generate code, CRDs and documentation
 ALL_V1_CRDS=config/crds/v1/all-crds.yaml
 
-generate: tidy generate-crds-v1 generate-config-file generate-api-docs generate-notice-file
+generate: tidy generate-manifests generate-config-file generate-api-docs generate-notice-file
 
 tidy:
 	go mod tidy
@@ -112,17 +112,16 @@ go-generate:
 	@ # we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds-v1: go-generate controller-gen
-	# Generate webhook manifest
-	# Webhook definitions exist in pkg/apis, pkg/controller/elasticsearch/validation and pkg/controller/autoscaling/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
-	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
-	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
-	# generate a CRD only version without the operator manifests
+generate-manifests: controller-gen
+	# -- generate  webhook manifest
+	@ $(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
+	# -- generate  crd bases manifests
+	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
+	# -- kustomize crd manifests
+	@ kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
+	# -- generate  crds manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
-	# generate the operator manifests
+	# -- generate  operator manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--profile=global \
@@ -172,14 +171,18 @@ helm-test:
 	@hack/helm/test.sh
 
 integration: GO_TAGS += integration
-integration: clean generate-crds-v1
-	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+integration: clean
+	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+		KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+			go test $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
+	done
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds-v1
+integration-xml: clean
+	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+		gotestsum --junitfile integration-tests.xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
+	done
 
 lint:
 	GOGC=50 golangci-lint run --verbose
@@ -196,7 +199,7 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-install-crds: generate-crds-v1
+install-crds: generate-manifests
 	kubectl apply -f $(ALL_V1_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
@@ -243,7 +246,7 @@ endif
 endif
 
 # Deploy the operator against the current k8s cluster
-deploy: check-gke install-crds build-operator-image apply-operator
+deploy: check-gke install-crds publish-operator-image apply-operator
 
 apply-operator:
 ifeq ($(strip $(MANAGED_NAMESPACES)),)
@@ -467,7 +470,7 @@ E2E_REGISTRY_NAMESPACE     ?= eck-dev
 
 E2E_IMG_TAG                ?= $(IMG_VERSION)
 E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
-E2E_STACK_VERSION          ?= 8.7.0
+E2E_STACK_VERSION          ?= 8.8.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
@@ -578,7 +581,7 @@ ci-e2e: E2E_JSON := true
 ci-e2e: setup-e2e e2e-run
 
 ci-build-operator-e2e-run: E2E_JSON := true
-ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
+ci-build-operator-e2e-run: setup-e2e publish-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
@@ -613,7 +616,3 @@ check-predicates:
 	@ diff \
 		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
 		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
-
-# Runs small Go tool to validate syntax correctness of Jenkins pipelines
-validate-jenkins-pipelines:
-	@ go run ./hack/pipeline-validator/main.go

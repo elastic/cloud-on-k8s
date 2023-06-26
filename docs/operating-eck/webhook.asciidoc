@@ -53,6 +53,7 @@ You can customise almost all aspects of the webhook setup by changing the <<{p}-
 |webhook-cert-dir     | /tmp/k8s-webhook-server/serving-certs | Path to mount the certificate.
 |webhook-name         | elastic-webhook.k8s.elastic.co | Name of the `ValidatingWebhookConfiguration` resource.
 |webhook-secret       | elastic-webhook-server-cert | Name of the secret containing the certificate for the webhook server.
+|webhook-port         | 9443    | Port to listen for incoming validation requests.
 |===
 
 

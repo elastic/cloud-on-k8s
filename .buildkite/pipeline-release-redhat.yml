@@ -1,10 +1,6 @@
-
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:5827bee6
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   memory: 2G
-
-env:
-  OHUB_DRY_RUN: true
 
 steps:
 

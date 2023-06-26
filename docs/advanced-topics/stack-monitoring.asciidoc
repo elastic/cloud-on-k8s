@@ -9,7 +9,7 @@ endif::[]
 = Stack Monitoring
 
 You can enable link:https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html[Stack Monitoring]
-on Elasticsearch, Kibana and Beats to collect and ship their metrics and logs to a dedicated monitoring cluster.
+on Elasticsearch, Kibana, Beats and Logstash to collect and ship their metrics and logs to a dedicated monitoring cluster.
 
 To enable Stack Monitoring, simply reference the monitoring Elasticsearch cluster in the `spec.monitoring` section of their specification.
 
@@ -46,7 +46,7 @@ spec:
   version: {version}
   elasticsearchRef:
     name: monitored-sample
-    namespace: production <2>
+    namespace: production <1>
   monitoring:
     metrics:
       elasticsearchRefs:
@@ -69,22 +69,38 @@ spec:
     metrics:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <3>
+        namespace: observability <1>
     logs:
       elasticsearchRefs:
       - name: monitoring
-        namespace: observability <3>
+        namespace: observability <1>
+---
+apiVersion: logstash.k8s.elastic.co/v1beta1
+kind: Logstash
+metadata:
+    name: monitored-sample
+spec:
+  version: {version}
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
+    logs:
+      elasticsearchRefs:
+      - name: monitoring
+        namespace: observability <1>
 ----
 
-<1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elasticsearch cluster are running in the same namespace.
-<2> The use of `namespace` is optional if the Elasticsearch cluster and the Kibana instance are running in the same namespace.
-<3> The use of `namespace` is optional if the Elasticsearch cluster and the Beats instance are running in the same namespace.
+<1> The use of `namespace` is optional if the monitoring Elasticsearch cluster and the monitored Elastic Stack resource are running in the same namespace.
 
 NOTE: You can configure an Elasticsearch cluster to monitor itself.
 
 NOTE: If Stack Monitoring is configured for a Beat, but the corresponding Elasticsearch cluster is not monitored, the Kibana Stack Monitoring page will not show the Beats data.
 
 NOTE: If Logs Stack Monitoring is configured for a Beat, and custom container arguments (`podTemplate.spec.containers[].args`) include `-e`, which enables logging to stderr and disables log file output, this argument will be removed from the Pod to allow the Filebeat sidecar to consume the Beat's log files.
+
+NOTE: Stack Monitoring for Logstash on ECK is only available for Logstash versions 8.7.0 and later.
 
 IMPORTANT: The monitoring cluster must be managed by ECK in the same Kubernetes cluster as the monitored one.
 

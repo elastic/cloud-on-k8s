@@ -16,7 +16,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -49,11 +51,25 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	metricbeat.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(ver)
 	return metricbeat, nil
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (stackmon.BeatSidecar, error) {
-	return stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
+	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	fileBeat.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(ver)
+	return fileBeat, nil
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers

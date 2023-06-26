@@ -26,10 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
-
-var log = ulog.Log.WithName("test-webhook")
 
 // ValidationWebhookTestCase represents a test case for testing a validation webhook
 type ValidationWebhookTestCase struct {
@@ -82,9 +79,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
-	webhook := admission.ValidatingWebhookFor(validator)
-	require.NoError(t, webhook.InjectScheme(clientgoscheme.Scheme))
-	require.NoError(t, webhook.InjectLogger(log))
+	webhook := admission.ValidatingWebhookFor(clientgoscheme.Scheme, validator)
 
 	server := httptest.NewServer(webhook)
 	defer server.Close()

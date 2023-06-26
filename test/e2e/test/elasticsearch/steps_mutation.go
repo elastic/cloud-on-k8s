@@ -109,7 +109,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
 				dataIntegrityCheck = NewDataIntegrityCheck(k, b)
-				require.NoError(t, dataIntegrityCheck.Init())
+				test.Eventually(func() error {
+					return dataIntegrityCheck.Init()
+				})(t)
 			},
 		},
 		test.Step{

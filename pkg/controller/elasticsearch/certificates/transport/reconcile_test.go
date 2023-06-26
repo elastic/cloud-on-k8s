@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"reflect"
 	"testing"
@@ -13,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -28,9 +28,10 @@ import (
 func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 	type args struct {
 		ca             *certificates.CA
+		extraCA        []byte
 		es             *esv1.Elasticsearch
 		rotationParams certificates.RotationParams
-		initialObjects []runtime.Object
+		initialObjects []client.Object
 	}
 	tests := []struct {
 		name          string
@@ -43,7 +44,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			args: args{
 				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 3).addNodeSet("sset3", 4).build(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					// 2 Pods in sset1
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.3").build(),
@@ -96,11 +97,12 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			},
 		},
 		{
-			name: "Should reuse and update existing transport certs Secrets",
+			name: "Should reuse and update existing transport certs Secrets and handle additional CAs",
 			args: args{
-				ca: testRSACA,
-				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
-				initialObjects: []runtime.Object{
+				ca:      testRSACA,
+				extraCA: extraCA,
+				es:      newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
+				initialObjects: []client.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(1).withIP("1.1.1.3").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(0).withIP("1.1.2.2").build(),
@@ -125,7 +127,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 5 items are expected in the Secret: the CA + 2 * (crt and private keys)
 				assert.Equal(t, 5, len(transportCerts1.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testRSACABytes, transportCerts1.Data["ca.crt"])
+				assert.Equal(t, bytes.Join([][]byte{testRSACABytes, extraCA}, nil), transportCerts1.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -135,7 +137,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// 5 items are expected in the Secret: the CA + 2 * (crt and private keys)
 				assert.Equal(t, 5, len(transportCerts2.Data))
 				// Check that ca.crt exists
-				assert.Equal(t, testRSACABytes, transportCerts2.Data["ca.crt"])
+				assert.Equal(t, bytes.Join([][]byte{testRSACABytes, extraCA}, nil), transportCerts2.Data["ca.crt"])
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
@@ -146,7 +148,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 			args: args{
 				ca: testRSACA,
 				es: newEsBuilder().addNodeSet("sset1", 2).addNodeSet("sset2", 2).build(),
-				initialObjects: []runtime.Object{
+				initialObjects: []client.Object{
 					newPodBuilder().forEs(testEsName).inNodeSet("sset1").withIndex(0).withIP("1.1.1.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(0).withIP("1.1.2.2").build(),
 					newPodBuilder().forEs(testEsName).inNodeSet("sset2").withIndex(1).withIP("1.1.2.3").build(),
@@ -190,7 +192,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
-			if got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, *tt.args.es, tt.args.rotationParams); !reflect.DeepEqual(got, tt.want) {
+			if got := ReconcileTransportCertificatesSecrets(context.Background(), k8sClient, tt.args.ca, tt.args.extraCA, *tt.args.es, tt.args.rotationParams); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileTransportCertificatesSecrets() = %v, want %v", got, tt.want)
 			}
 			// Check Secrets

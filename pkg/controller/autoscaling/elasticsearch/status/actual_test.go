@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -22,7 +22,7 @@ import (
 
 func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 	type args struct {
-		statefulSets          []runtime.Object
+		statefulSets          []client.Object
 		es                    esv1.Elasticsearch
 		autoscalingPolicySpec v1alpha1.AutoscalingPolicySpec
 		nodeSets              []string
@@ -36,7 +36,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "No existing StatefulSet",
 			args: args{
-				statefulSets: []runtime.Object{ /* no existing StatefulSet */ },
+				statefulSets: []client.Object{ /* no existing StatefulSet */ },
 				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "esname", Namespace: "esns"}},
 				autoscalingPolicySpec: v1alpha1.AutoscalingPolicySpec{
 					NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "aspec"},
@@ -48,7 +48,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "Has existing resources only with storage",
 			args: args{
-				statefulSets: []runtime.Object{
+				statefulSets: []client.Object{
 					buildStatefulSet(
 						"nodeset-1",
 						3,
@@ -81,7 +81,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "Has existing resources, happy path",
 			args: args{
-				statefulSets: []runtime.Object{
+				statefulSets: []client.Object{
 					buildStatefulSet(
 						"nodeset-1",
 						3,
@@ -123,7 +123,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "No volume claim",
 			args: args{
-				statefulSets: []runtime.Object{
+				statefulSets: []client.Object{
 					buildStatefulSet(
 						"nodeset-1",
 						3,
@@ -164,7 +164,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "Several volume claims",
 			args: args{
-				statefulSets: []runtime.Object{
+				statefulSets: []client.Object{
 					buildStatefulSet(
 						"nodeset-1",
 						3,
@@ -188,7 +188,7 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 		{
 			name: "Not the default volume claims",
 			args: args{
-				statefulSets: []runtime.Object{
+				statefulSets: []client.Object{
 					buildStatefulSet(
 						"nodeset-1",
 						3,

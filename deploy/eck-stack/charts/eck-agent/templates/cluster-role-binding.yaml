@@ -1,0 +1,33 @@
+{{- with .Values.clusterRoleBinding }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $.Values.annotations .annotations }}
+  annotations:
+    {{- with $.Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- with .subjects }}
+subjects:
+{{- range . }}
+  - kind: {{ .kind }}
+    name: {{ .name }}
+    namespace: {{ .namespace | default $.Release.Namespace | quote }}
+{{- end }}
+{{- end }}
+roleRef:
+  kind: {{ .roleRef.kind }}
+  name: {{ .roleRef.name }}
+  apiGroup: {{ .roleRef.apiGroup }}
+{{- end }}

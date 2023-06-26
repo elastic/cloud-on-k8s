@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -23,7 +23,7 @@ import (
 
 func Test_newBeatConfig(t *testing.T) {
 	type args struct {
-		initObjects []runtime.Object
+		initObjects []client.Object
 		beatName    string
 		baseConfig  string
 		associated  commonv1.Associated
@@ -41,7 +41,7 @@ func Test_newBeatConfig(t *testing.T) {
 param1: value1
 param2: value2
 `,
-				initObjects: []runtime.Object{
+				initObjects: []client.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "monitored-default-monitoring-beat-es-mon-user",
@@ -195,7 +195,7 @@ func TestBuildMetricbeatBaseConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			initObjects := []runtime.Object{internalUsersSecret}
+			initObjects := []client.Object{internalUsersSecret}
 			if tc.certsSecret != nil {
 				initObjects = append(initObjects, tc.certsSecret)
 			}

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ptr "k8s.io/utils/pointer"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -261,6 +262,11 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		initContainers[i].Env = initContainerEnv
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 		initContainers[i].Resources = DefaultResources
+		initContainers[i].SecurityContext = &corev1.SecurityContext{
+			Privileged:               ptr.Bool(false),
+			ReadOnlyRootFilesystem:   ptr.Bool(false),
+			AllowPrivilegeEscalation: ptr.Bool(false),
+		}
 	}
 
 	// remove the prepare-fs init-container from comparison, it has its own volume mount logic
@@ -304,10 +310,21 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				Env:          initContainerEnv,
 				VolumeMounts: volumeMounts,
 				Resources:    DefaultResources, // inherited from main container
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: ptr.Bool(false),
+					// ReadOnlyRootFilesystem is expected to be false in this test because there is no data volume.
+					ReadOnlyRootFilesystem:   ptr.Bool(false),
+					AllowPrivilegeEscalation: ptr.Bool(false),
+				},
 			}),
 			Containers: []corev1.Container{
 				{
 					Name: "additional-container",
+					SecurityContext: &corev1.SecurityContext{
+						Privileged:               ptr.Bool(false),
+						ReadOnlyRootFilesystem:   ptr.Bool(false),
+						AllowPrivilegeEscalation: ptr.Bool(false),
+					},
 				},
 				{
 					Name:  "elasticsearch",
@@ -324,6 +341,11 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 					ReadinessProbe: NewReadinessProbe(),
 					Lifecycle: &corev1.Lifecycle{
 						PreStop: NewPreStopHook(),
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Privileged:               ptr.Bool(false),
+						ReadOnlyRootFilesystem:   ptr.Bool(false),
+						AllowPrivilegeEscalation: ptr.Bool(false),
 					},
 				},
 			},

@@ -1,0 +1,334 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: max-map-count-setter
+  labels:
+    k8s-app: max-map-count-setter
+spec:
+  selector:
+    matchLabels:
+      name: max-map-count-setter
+  template:
+    metadata:
+      labels:
+        name: max-map-count-setter
+    spec:
+      nodeSelector:
+        cloud.google.com/compute-class: "Balanced"
+      initContainers:
+        - name: max-map-count-setter
+          image: docker.io/bash:5.2.15
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          command: ['/usr/local/bin/bash', '-e', '-c', 'echo 262144 > /proc/sys/vm/max_map_count']
+      containers:
+        - name: sleep
+          image: docker.io/bash:5.2.15
+          command: ['sleep', 'infinity']
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 8.8.0
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          cloud.google.com/compute-class: "Balanced"
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+              cpu: 500m
+        initContainers:
+        - name: max-map-count-check
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 10m
+            limits:
+              memory: 16Mi
+              cpu: 10m
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
+    xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    xpack.fleet.packages:
+    - name: system
+      version: latest
+    - name: elastic_agent
+      version: latest
+    - name: fleet_server
+      version: latest
+    - name: kubernetes
+      version: latest
+    xpack.fleet.agentPolicies:
+    - name: Fleet Server on ECK policy
+      id: eck-fleet-server
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
+      package_policies:
+      - name: fleet_server-1
+        id: fleet_server-1
+        package:
+          name: fleet_server
+    - name: Elastic Agent on ECK policy
+      id: eck-agent
+      namespace: default
+      monitoring_enabled:
+      - logs
+      - metrics
+      unenroll_timeout: 900
+      package_policies:
+      - package:
+          name: system
+        name: system-1
+      - package:
+          name: kubernetes
+        name: kubernetes-1
+  podTemplate:
+    spec:
+      nodeSelector:
+        cloud.google.com/compute-class: "Balanced"
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: fleet-server
+spec:
+  version: 8.8.0
+  kibanaRef:
+    name: kibana
+  elasticsearchRefs:
+  - name: elasticsearch
+  mode: fleet
+  fleetServerEnabled: true
+  policyID: eck-fleet-server
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          cloud.google.com/compute-class: "Balanced"
+        containers:
+          - name: agent
+            resources:
+              requests:
+                cpu: 200m
+                memory: 700Mi
+              limits:
+                ephemeral-storage: "10Gi"
+        volumes:
+        - name: "agent-data"
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "standard-rwo"
+                resources:
+                  requests:
+                    storage: 10Gi
+        serviceAccountName: fleet-server
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata: 
+  name: elastic-agent
+spec:
+  version: 8.8.0
+  kibanaRef:
+    name: kibana
+  fleetServerRef: 
+    name: fleet-server
+  mode: fleet
+  policyID: eck-agent
+  daemonSet:
+    podTemplate:
+      spec:
+        nodeSelector:
+          cloud.google.com/compute-class: "Balanced"
+        volumes:
+        - name: "agent-data"
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "standard-rwo"
+                resources:
+                  requests:
+                    storage: 10Gi
+        containers:
+          - name: agent
+            resources:
+              requests:
+                cpu: 200m
+                memory: 700Mi
+              limits:
+                ephemeral-storage: "10Gi"
+        serviceAccountName: elastic-agent
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fleet-server
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - namespaces
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fleet-server
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fleet-server
+subjects:
+- kind: ServiceAccount
+  name: fleet-server
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: fleet-server
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - nodes
+  - namespaces
+  - events
+  - services
+  - configmaps
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+- apiGroups: ["extensions"]
+  resources:
+    - replicasets
+  verbs: 
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - "apps"
+  resources:
+  - statefulsets
+  - deployments
+  - replicasets
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - nodes/stats
+  verbs:
+  - get
+- apiGroups:
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+---

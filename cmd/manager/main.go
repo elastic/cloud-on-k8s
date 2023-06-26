@@ -16,6 +16,9 @@ import (
 	"strings"
 	"time"
 
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
+
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,11 +35,11 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
@@ -99,7 +102,7 @@ const (
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
 
-	LeaderElectionConfigMapName = "elastic-operator-leader"
+	LeaderElectionLeaseName = "elastic-operator-leader"
 
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
@@ -179,6 +182,11 @@ func Command() *cobra.Command {
 		operator.ContainerRegistryFlag,
 		container.DefaultContainerRegistry,
 		"Container registry to use when downloading Elastic Stack container images",
+	)
+	cmd.Flags().String(
+		operator.ContainerRepositoryFlag,
+		"",
+		"Container repository to use when downloading Elastic Stack container images",
 	)
 	cmd.Flags().String(
 		operator.ContainerSuffixFlag,
@@ -317,6 +325,11 @@ func Command() *cobra.Command {
 		operator.WebhookNameFlag,
 		DefaultWebhookName,
 		"Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when enable-webhook is true.",
+	)
+	cmd.Flags().Int(
+		operator.WebhookPortFlag,
+		WebhookPort,
+		"Port is the port that the webhook server serves at.",
 	)
 	cmd.Flags().String(
 		operator.SetDefaultSecurityContextFlag,
@@ -471,6 +484,13 @@ func startOperator(ctx context.Context) error {
 	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
+	// set the default container repository
+	containerRepository := viper.GetString(operator.ContainerRepositoryFlag)
+	if containerRepository != "" {
+		log.Info("Setting default container repository", "container_repository", containerRepository)
+		container.SetContainerRepository(containerRepository)
+	}
+
 	// allow users to specify a container suffix unless --ubi-only mode is active
 	suffix := viper.GetString(operator.ContainerSuffixFlag)
 	if len(suffix) > 0 {
@@ -525,10 +545,9 @@ func startOperator(ctx context.Context) error {
 	// Create a new Cmd to provide shared dependencies and start components
 	opts := ctrl.Options{
 		Scheme:                     clientgoscheme.Scheme,
-		CertDir:                    viper.GetString(operator.WebhookCertDirFlag),
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
-		LeaderElectionResourceLock: resourcelock.ConfigMapsLeasesResourceLock, // TODO: use 'lease' after operator is released with 'configmapsleases'
-		LeaderElectionID:           LeaderElectionConfigMapName,
+		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		LeaderElectionID:           LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
 	}
@@ -540,15 +559,15 @@ func startOperator(ctx context.Context) error {
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
 		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
-		// opts.Namespace implicitly allows watching cluster-scoped resources (e.g. storage classes)
-		opts.Namespace = managedNamespaces[0]
+
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
 		// The managed cache should always include the operator namespace so that we can work with operator-internal resources.
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
-
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
+
+	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
+	opts.Cache.Namespaces = managedNamespaces
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
@@ -557,7 +576,13 @@ func startOperator(ctx context.Context) error {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
-	opts.Port = WebhookPort
+	webhookPort := viper.GetInt(operator.WebhookPortFlag)
+	webhookCertDir := viper.GetString(operator.WebhookCertDirFlag)
+	opts.WebhookServer = crwebhook.NewServer(crwebhook.Options{
+		Port:    webhookPort,
+		CertDir: webhookCertDir,
+	})
+
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
@@ -657,7 +682,7 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer)
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -847,6 +872,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "Agent", registerFunc: agent.Add},
 		{name: "Maps", registerFunc: maps.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
+		{name: "Logstash", registerFunc: logstash.Add},
 	}
 
 	for _, c := range controllers {
@@ -872,9 +898,11 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "AGENT-KB", registerFunc: associationctl.AddAgentKibana},
 		{name: "AGENT-FS", registerFunc: associationctl.AddAgentFleetServer},
 		{name: "EMS-ES", registerFunc: associationctl.AddMapsES},
+		{name: "LOGSTASH-ES", registerFunc: associationctl.AddLogstashES},
 		{name: "ES-MONITORING", registerFunc: associationctl.AddEsMonitoring},
 		{name: "KB-MONITORING", registerFunc: associationctl.AddKbMonitoring},
 		{name: "BEAT-MONITORING", registerFunc: associationctl.AddBeatMonitoring},
+		{name: "LOGSTASH-MONITORING", registerFunc: associationctl.AddLogstashMonitoring},
 	}
 
 	for _, c := range assocControllers {
@@ -913,6 +941,7 @@ func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespace
 		For(&beatv1beta1.BeatList{}, associationctl.BeatAssociationLabelNamespace, associationctl.BeatAssociationLabelName).
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		For(&emsv1alpha1.ElasticMapsServerList{}, associationctl.MapsESAssociationLabelNamespace, associationctl.MapsESAssociationLabelName).
+		For(&logstashv1alpha1.LogstashList{}, associationctl.LogstashAssociationLabelNamespace, associationctl.LogstashAssociationLabelName).
 		DoGarbageCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("user garbage collector failed: %w", err)
@@ -925,14 +954,15 @@ func garbageCollectSoftOwnedSecrets(ctx context.Context, k8sClient k8s.Client) {
 	defer span.End()
 
 	if err := reconciler.GarbageCollectAllSoftOwnedOrphanSecrets(ctx, k8sClient, map[string]client.Object{
-		esv1.Kind:           &esv1.Elasticsearch{},
-		apmv1.Kind:          &apmv1.ApmServer{},
-		kbv1.Kind:           &kbv1.Kibana{},
-		entv1.Kind:          &entv1.EnterpriseSearch{},
-		beatv1beta1.Kind:    &beatv1beta1.Beat{},
-		agentv1alpha1.Kind:  &agentv1alpha1.Agent{},
-		emsv1alpha1.Kind:    &emsv1alpha1.ElasticMapsServer{},
-		policyv1alpha1.Kind: &policyv1alpha1.StackConfigPolicy{},
+		esv1.Kind:             &esv1.Elasticsearch{},
+		apmv1.Kind:            &apmv1.ApmServer{},
+		kbv1.Kind:             &kbv1.Kibana{},
+		entv1.Kind:            &entv1.EnterpriseSearch{},
+		beatv1beta1.Kind:      &beatv1beta1.Beat{},
+		agentv1alpha1.Kind:    &agentv1alpha1.Agent{},
+		emsv1alpha1.Kind:      &emsv1alpha1.ElasticMapsServer{},
+		policyv1alpha1.Kind:   &policyv1alpha1.StackConfigPolicy{},
+		logstashv1alpha1.Kind: &logstashv1alpha1.Logstash{},
 	}); err != nil {
 		log.Error(err, "Orphan secrets garbage collection failed, will be attempted again at next operator restart.")
 		return
@@ -944,6 +974,7 @@ func setupWebhook(
 	ctx context.Context,
 	mgr manager.Manager,
 	params operator.Parameters,
+	webhookCertDir string,
 	clientset kubernetes.Interface,
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
@@ -973,6 +1004,7 @@ func setupWebhook(
 		&kbv1.Kibana{},
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
+		&logstashv1alpha1.Logstash{},
 	}
 	for _, obj := range webhookObjects {
 		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
@@ -994,13 +1026,15 @@ func setupWebhook(
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	//nolint:staticcheck
+	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
 		_, err := os.Stat(keyPath)
 		// err could be that the file does not exist, but also that permission was denied or something else
 		if os.IsNotExist(err) {
 			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
+
 			return false, nil
 		} else if err != nil {
 			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)

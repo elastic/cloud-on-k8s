@@ -1,0 +1,72 @@
+[[release-highlights-2.8.0]]
+== 2.8.0 release highlights
+
+WARNING: This release includes a hardened default security context for Elasticsearch containers. It is highly recommended to test against a staging environment before deploying to production.
+
+[float]
+[id="{p}-280-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.8.0 of {n}. Check <<release-notes-2.8.0>> for the full list of changes.
+
+[float]
+[id="{p}-280-logstash"]
+=== Logstash support
+
+ECK 2.8.0 includes a technical preview for link:https://www.elastic.co/logstash/[Logstash] support, introducing a new Custom Resource Definition (CRD) and controller to easily deploy and orchestrate {ls} on Kubernetes. The technical preview includes support for defining pipelines (with dynamic individual pipeline reload), integrating with Elasticsearch instances, and stack monitoring configuration from within the CRD.
+
+Refer to the <<{p}-logstash-quickstart>> for more information.
+
+[float]
+[id="{p}-280-hardened-es-security-context"]
+=== Hardened Security Context for Elasticsearch container
+
+The default `SecurityContext` of the Elasticsearch containers has been hardened, it includes the following specification by default:
+
+[source,yaml]
+----
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+----
+
+For Elasticsearch versions above `8.0.0` the container's `SecurityContext` also include the following capabilities settings:
+
+[source,yaml]
+----
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+----
+
+Starting with Elasticsearch `8.8.0`, `runAsNonRoot` is also set to `true`:
+
+[source,yaml]
+----
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+----
+
+[float]
+[id="{p}-280-using-custom-transport-certificates"]
+=== Using custom certificates on the transport layer
+
+It is now possible to fully delegate the generation of the transport certificates used by the Elasticsearch nodes. Refer to <<{p}-transport-third-party-tools>> for more information about the requirements as well as some examples using the link:https://cert-manager.io/docs/projects/csi-driver/[cert-manager csi-driver] and link:https://cert-manager.io/docs/projects/trust-manager/[trust-manager] projects.
+
+[float]
+[id="{p}-280-stack-config-base-path"]
+=== Provided base_path setting in snapshot repositories configuration is always applied
+
+Before ECK 2.8.0 the `base_path` setting was overridden by the operator in order to avoid conflicts. The value provided for this setting is now always used when provided. Refer to <<{p}-stack-config-policy-specifics-snap-repo>> for more details.
+

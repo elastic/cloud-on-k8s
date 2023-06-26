@@ -22,7 +22,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -33,6 +32,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/apmserver"
 	beatcommon "github.com/elastic/cloud-on-k8s/v2/pkg/controller/beat/common"
@@ -42,6 +42,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -74,6 +75,9 @@ func CreateClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := appsv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
 	if err := esv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
@@ -90,6 +94,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := agentv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := logstashv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -358,7 +365,16 @@ func (k K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
-func (k K8sClient) CreateOrUpdate(objs ...client.Object) error {
+func (k *K8sClient) DeleteSecrets(secrets ...corev1.Secret) error {
+	for i := range secrets {
+		if err := k.Client.Delete(context.Background(), &secrets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (k K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified
 		obj := k8s.DeepCopyObject(obj)
@@ -427,6 +443,15 @@ func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOptio
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName: agent.TypeLabelValue,
 		agent.NameLabelName:    agent.Name(agentName),
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+}
+
+func LogstashPodListOptions(logstashNamespace, logstashName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(logstashNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		commonv1.TypeLabelName: logstash.TypeLabelValue,
+		logstash.NameLabelName: logstashName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

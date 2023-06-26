@@ -1,0 +1,258 @@
+suite: test elasticsearch
+templates:
+  - templates/elasticsearch.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      version: 8.2.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.version
+          value: 8.2.0
+  - it: name override should work properly
+    set:
+      nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: override
+  - it: setting volumeClaimDeletePolicy should work properly
+    set:
+      volumeClaimDeletePolicy: DeleteOnScaledownOnly
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: spec.volumeClaimDeletePolicy
+          value: DeleteOnScaledownOnly
+  - it: setting volumeClaimDeletePolicy incorrectly should fail
+    set:
+      volumeClaimDeletePolicy: invalid
+    release:
+      name: quickstart
+    asserts:
+      - failedTemplate:
+          errorMessage: volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'
+  - it: should render labels, annotations, and additional custom values properly
+    set:
+      labels:
+        test: label
+      annotations:
+        test: annotation
+      monitoring:
+        metrics:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+        logs:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+      transport:
+        service:
+          metadata:
+            labels:
+              test: label
+          spec:
+            type: LoadBalancer
+      http:
+        service:
+          spec:
+            type: LoadBalancer
+      secureSettings:
+      - secretName: one-secure-settings-secret
+      - secretName: two-secure-settings-secret
+      updateStrategy:
+        changeBudget:
+          maxSurge: 3
+          maxUnavailable: 1
+      remoteClusters:
+      - name: cluster-one
+        elasticsearchRef:
+          name: cluster-one
+      - name: cluster-two
+        elasticsearchRef:
+          name: cluster-two
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-elasticsearch
+            helm.sh/chart: eck-elasticsearch-0.7.0-SNAPSHOT
+            test: label
+      - equal:
+          path: metadata.annotations
+          value:
+            eck.k8s.elastic.co/license: enterprise
+            test: annotation
+      - equal:
+          path: spec.monitoring
+          value:
+            metrics:
+              elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+            logs:
+              elasticsearchRefs:
+              - name: monitoring
+                namespace: observability
+      - equal:
+          path: spec.transport
+          value:
+            service:
+              metadata:
+                labels:
+                  test: label
+              spec:
+                type: LoadBalancer
+      - equal:
+          path: spec.http
+          value:
+            service:
+              spec:
+                type: LoadBalancer
+      - equal:
+          path: spec.secureSettings
+          value:
+          - secretName: one-secure-settings-secret
+          - secretName: two-secure-settings-secret
+      - equal:
+          path: spec.updateStrategy
+          value:
+            changeBudget:
+              maxSurge: 3
+              maxUnavailable: 1
+      - equal:
+          path: spec.remoteClusters
+          value:
+          - name: cluster-one
+            elasticsearchRef:
+              name: cluster-one
+          - name: cluster-two
+            elasticsearchRef:
+              name: cluster-two
+  - it: should render node roles properly
+    values:
+      - ../../examples/hot-warm-cold.yaml
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Elasticsearch
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-elasticsearch
+      - equal:
+          path: spec.nodeSets[0].name
+          value: masters
+      - equal:
+          path: spec.nodeSets[1].name
+          value: hot
+      - equal:
+          path: spec.nodeSets[2].name
+          value: warm
+      - equal:
+          path: spec.nodeSets[3].name
+          value: cold
+  - it: should render es user and roles properly
+    set:
+      auth:
+        fileRealm:
+          - secretName: filerealm-secret-1
+        roles:
+          - secretName: roles-secret-1
+    asserts:
+      - equal:
+          path: spec.auth.fileRealm[0].secretName
+          value: filerealm-secret-1
+      - equal:
+          path: spec.auth.roles[0].secretName
+          value: roles-secret-1
+  - it: should render image properly
+    set:
+      image: my.regis.try/es:8
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.regis.try/es:8
+  - it: should render image properly
+    set:
+      image: my.registry.com/elastic/elasticsearch:8.8.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/elasticsearch:8.8.0
+  - it: should render no podDisruptionBudget by default
+    set:
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value: null
+  - it: should render podDisruptionBudget properly
+    set:
+      podDisruptionBudget:
+        spec:
+          minAvailable: 2
+          selector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: quickstart
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value:
+             spec:
+              minAvailable: 2
+              selector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: quickstart
+  - it: should render empty podDisruptionBudget if disabled
+    set:
+      podDisruptionBudget.disabled: true
+    asserts:
+      - equal:
+          path: spec.podDisruptionBudget
+          value: {}
+  - it: should render serviceAccountName properly
+    set:
+      serviceAccountName: my-sa
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: my-sa
+  - it: should render revisionHistoryLimit properly
+    set:
+      revisionHistoryLimit: 2
+    asserts:
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 2

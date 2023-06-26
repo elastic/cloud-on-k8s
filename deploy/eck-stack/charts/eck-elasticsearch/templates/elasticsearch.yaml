@@ -1,0 +1,74 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: enterprise
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with .Values.auth }}
+  auth:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.secureSettings }}
+  secureSettings:
+    {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- with .Values.transport }}
+  transport:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.http }}
+  http:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  version: {{ required "An Elasticsearch version is required" .Values.version }}
+  {{- with .Values.monitoring }}
+  monitoring:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.remoteClusters }}
+  remoteClusters:
+    {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- with .Values.volumeClaimDeletePolicy }}
+  volumeClaimDeletePolicy:
+    {{- if and (not (eq . "DeleteOnScaledownOnly")) (not (eq . "DeleteOnScaledownAndClusterDeletion")) }}
+    {{ fail "volumeClaimDeletePolicy can only be one of 'DeleteOnScaledownOnly' or 'DeleteOnScaledownAndClusterDeletion'" }}
+    {{- end }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if eq (len .Values.nodeSets) 0 }}
+  {{ fail "At least one nodeSet is required" }}
+  {{- end }}
+  nodeSets:
+{{ toYaml .Values.nodeSets | nindent 4 }}
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+  {{- with .Values.podDisruptionBudget }}
+    {{- if .disabled }}
+  podDisruptionBudget: {}
+    {{- else }}
+      {{- with .spec }}
+  podDisruptionBudget:
+    spec:
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}

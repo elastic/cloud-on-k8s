@@ -1,0 +1,70 @@
+:page_id: autopilot 
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Deploy ECK on GKE Autopilot
+
+This page shows how to run ECK on GKE Autopilot.
+
+1. It is recommended that each Kubernetes host's virtual memory kernel settings be modified. Refer to <<{p}-virtual-memory>>.
+2. It is recommended that Elasticsearch Pods have an `initContainer` that waits for virtual memory settings to be in place. Refer to <<{p}-autopilot-deploy-elasticsearch>>.
+3. For Elastic Agent/Beats there are storage limitations to be considered. Refer to <<{p}-autopilot-deploy-agent-beats>>
+4. Ensure you are using a node class that is applicable for your workload by adding a `cloud.google.com/compute-class` label in a `nodeSelector`. Refer to link:https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-compute-classes[GKE Autopilot documentation.]
+
+* <<{p}-autopilot-setting-virtual-memory>>
+* <<{p}-autopilot-deploy-the-operator>>
+* <<{p}-autopilot-deploy-elasticsearch>>
+* <<{p}-autopilot-deploy-agent-beats>>
+
+[id="{p}-autopilot-setting-virtual-memory"]
+== Ensuring virtual memory kernel settings
+
+If you are intending to run production workloads on GKE Autopilot then `vm.max_map_count` should be set. The recommended way to set this kernel setting on the Autopilot hosts is with a `Daemonset` as described in the <<{p}-virtual-memory>> section. You must be running at least version 1.25 when on the `regular` channel or using the `rapid` channel, which currently runs version 1.26.
+
+CAUTION: Only use the provided `Daemonset` exactly as specified or it could be rejected by the Autopilot control plane.
+
+[id="{p}-autopilot-deploy-the-operator"]
+== Installing the ECK Operator
+
+Refer to <<{p}-installing-eck>> for more information on installation options.
+
+[id="{p}-autopilot-deploy-elasticsearch"]
+== Deploy an Elasticsearch instance
+
+Create an Elasticsearch cluster. If you are using the `Daemonset` described in the <<{p}-virtual-memory>> section to set `max_map_count` you can add the `initContainer` below is also used to ensure the setting is set prior to starting Elasticsearch.
+
+[source,shell,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 1
+    # Only uncomment the below section if you are not using the Daemonset to set max_map_count.
+    # config:
+    #  node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        # This init container ensures that the `max_map_count` setting has been applied before starting Elasticsearch.
+        # This is not required, but is encouraged when using the previously mentioned Daemonset to set max_map_count.
+        # Do not use this if setting config.node.store.allow_mmap: false
+        initContainers:
+        - name: max-map-count-check
+          command: ['sh', '-c', "while true; do mmc=$(cat /proc/sys/vm/max_map_count); if [ ${mmc} -eq 262144 ]; then exit 0; fi; sleep 1; done"]
+EOF
+----
+
+[id="{p}-autopilot-deploy-agent-beats"]
+== Deploy a standalone Elastic Agent and/or Beats
+
+When running Elastic Agent and Beats within GKE Autopilot there are storage constraints to be considered. No `HostPath` volumes are allowed, which the ECK operator defaults to when unset for both `Deployments` and `Daemonsets`. Instead use link:https://kubernetes.io/docs/concepts/storage/ephemeral-volumes[Kubernetes ephemeral volumes].
+
+Refer to link:https://github.com/elastic/cloud-on-k8s/tree/main/config/recipes/autopilot[Recipes to deploy Elasticsearch, Kibana, Elastic Fleet Server and Elastic Agent and/or Beats within GKE Autopilot].

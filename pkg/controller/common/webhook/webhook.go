@@ -36,6 +36,7 @@ func SetupValidatingWebhookWithConfig(config *Config) error {
 		config.WebhookPath,
 		&webhook.Admission{
 			Handler: &validatingWebhook{
+				decoder:           admission.NewDecoder(config.Manager.GetScheme()),
 				validator:         config.Validator,
 				licenseChecker:    config.LicenseChecker,
 				managedNamespaces: set.Make(config.ManagedNamespace...)}})
@@ -56,14 +57,6 @@ type validatingWebhook struct {
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
 	validator         admission.Validator
-}
-
-var _ admission.DecoderInjector = &validatingWebhook{}
-
-// InjectDecoder injects the decoder automatically.
-func (v *validatingWebhook) InjectDecoder(d *admission.Decoder) error {
-	v.decoder = d
-	return nil
 }
 
 // Handle satisfies the admission.Handler interface
@@ -88,14 +81,16 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 		return admission.Allowed("")
 	}
 
+	warnings := MaybeGetWarnings(obj)
+
 	if err := v.commonValidations(ctx, req, obj); err != nil {
-		return admission.Denied(err.Error())
+		return admission.Denied(err.Error()).WithWarnings(warnings...)
 	}
 
 	if req.Operation == admissionv1.Create {
-		err = obj.ValidateCreate()
+		_, err = obj.ValidateCreate()
 		if err != nil {
-			return admission.Denied(err.Error())
+			return admission.Denied(err.Error()).WithWarnings(warnings...)
 		}
 	}
 
@@ -104,20 +99,20 @@ func (v *validatingWebhook) Handle(ctx context.Context, req admission.Request) a
 		err = v.decoder.DecodeRaw(req.OldObject, oldObj)
 		if err != nil {
 			whlog.Error(err, "decoding old object from webhook request into type (%T)", oldObj)
-			return admission.Errored(http.StatusBadRequest, err)
+			return admission.Errored(http.StatusBadRequest, err).WithWarnings(warnings...)
 		}
-		err = obj.ValidateUpdate(oldObj)
+		_, err = obj.ValidateUpdate(oldObj)
 		if err != nil {
-			return admission.Denied(err.Error())
+			return admission.Denied(err.Error()).WithWarnings(warnings...)
 		}
 	}
 
 	if req.Operation == admissionv1.Delete {
-		err = obj.ValidateDelete()
+		_, err = obj.ValidateDelete()
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
 	}
 
-	return admission.Allowed("")
+	return admission.Allowed("").WithWarnings(warnings...)
 }

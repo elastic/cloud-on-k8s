@@ -20,6 +20,7 @@ ECK can be configured using either command line flags or environment variables.
 |cert-validity |8760h |Duration representing the validity period of a generated TLS certificate.
 |config |"" | Path to a file containing the operator configuration.
 |container-registry |docker.elastic.co | Container registry to use for pulling Elastic Stack container images.
+|container-repository |"" | Container repository to use for pulling Elastic Stack container images.
 |container-suffix |"" | Suffix to be appended to container images by default. Cannot be combined with `--ubi-only` flag.
 |disable-config-watch| false| Watch the configuration file for changes and restart to apply them. Only effective when the `--config` flag is used to set the configuration file.
 |disable-telemetry| false| Disable periodically updating ECK telemetry data for Kibana to consume.
@@ -45,6 +46,7 @@ ECK can be configured using either command line flags or environment variables.
 |webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
 |webhook-name |"elastic-webhook.k8s.elastic.co" |Name of the Kubernetes ValidatingWebhookConfiguration resource. Only used when `enable-webhook` is true.
 |webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
+|webhook-port   | 9443    | Port to listen for incoming validation requests.
 |===
 
 

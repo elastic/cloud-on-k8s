@@ -4,3 +4,15 @@
 
 build:
 	go build -o bin/releaser main.go
+
+go-run:
+	go run main.go --env=dev --dry-run=true --keep-tmp-dir=true --charts-dir=../../../deploy
+
+test-release-eck-stack-dev:
+	DRY_RUN=true ./trigger-helm-release.sh "eck-stack dev"
+
+release-eck-operator:
+	DRY_RUN=false ./trigger-helm-release.sh eck-operator
+
+release-eck-stack:
+	DRY_RUN=false ./trigger-helm-release.sh eck-stack

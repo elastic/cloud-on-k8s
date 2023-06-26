@@ -12,8 +12,9 @@ import (
 const DefaultContainerRegistry = "docker.elastic.co"
 
 var (
-	containerRegistry = DefaultContainerRegistry
-	containerSuffix   = ""
+	containerRegistry   = DefaultContainerRegistry
+	containerRepository = ""
+	containerSuffix     = ""
 )
 
 // SetContainerRegistry sets the global container registry used to download Elastic stack images.
@@ -21,11 +22,24 @@ func SetContainerRegistry(registry string) {
 	containerRegistry = registry
 }
 
+// SetContainerRegistry sets a global container repository used to download Elastic stack images.
+func SetContainerRepository(repository string) {
+	containerRepository = repository
+}
+
 func SetContainerSuffix(suffix string) {
 	containerSuffix = suffix
 }
 
 type Image string
+
+func (i Image) Name() string {
+	parts := strings.Split(string(i), "/")
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return string(i)
+}
 
 const (
 	APMServerImage        Image = "apm/apm-server"
@@ -40,13 +54,21 @@ const (
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server-ubi8"
+	LogstashImage         Image = "logstash/logstash"
 )
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 func ImageRepository(img Image, version string) string {
+	// replace repository if defined
+	image := img
+
+	if containerRepository != "" {
+		image = Image(fmt.Sprintf("%s/%s", containerRepository, img.Name()))
+	}
+
 	// don't double append suffix if already contained as e.g. the case for maps
 	if strings.HasSuffix(string(img), containerSuffix) {
-		return fmt.Sprintf("%s/%s:%s", containerRegistry, img, version)
+		return fmt.Sprintf("%s/%s:%s", containerRegistry, image, version)
 	}
-	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, img, containerSuffix, version)
+	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, containerSuffix, version)
 }

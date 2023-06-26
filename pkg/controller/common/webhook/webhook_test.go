@@ -60,12 +60,70 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
 				},
 			},
 			want: admission.Allowed(""),
+		},
+		{
+			name: "no policy id when agent running in standalone mode should not return a warning",
+			fields: fields{
+				set.Make("elastic"),
+				&agentv1alpha1.Agent{},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "elastic",
+								Labels: map[string]string{
+									"test": "label1",
+								},
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "7.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Allowed(""),
+		},
+		{
+			name: "no policy id is allowed when agent running in fleet mode but it should return a warning",
+			fields: fields{
+				set.Make("elastic"),
+				&agentv1alpha1.Agent{},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "elastic",
+								Labels: map[string]string{
+									"test": "label1",
+								},
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "7.14.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								Mode:       agentv1alpha1.AgentFleetMode,
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Allowed("").WithWarnings("Agent elastic/testAgent: spec.PolicyID is empty, spec.PolicyID will become mandatory in a future release"),
 		},
 		{
 			name: "create agent is denied because of invalid version, and returns denied.",
@@ -88,6 +146,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "0.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -116,6 +175,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -172,6 +232,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -187,6 +248,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -215,6 +277,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.1",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -230,6 +293,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
 							},
 						}),
 					},
@@ -241,7 +305,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			decoder, _ := admission.NewDecoder(k8s.Scheme())
+			decoder := admission.NewDecoder(k8s.Scheme())
 			v := &validatingWebhook{
 				decoder:           decoder,
 				managedNamespaces: tt.fields.managedNamespaces,

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
@@ -227,6 +228,69 @@ func TestNewReporter(t *testing.T) {
 				},
 			},
 		},
+		&logstashv1alpha1.Logstash{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
+			},
+			Spec: logstashv1alpha1.LogstashSpec{
+				Count: 3,
+				Monitoring: commonv1.Monitoring{
+					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+				},
+				Pipelines: []commonv1.Config{
+					{Data: map[string]interface{}{"pipeline.id": "main"}},
+				},
+				Services: []logstashv1alpha1.LogstashService{
+					{
+						Name: "test1",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9200},
+								},
+							},
+						},
+					},
+					{
+						Name: "test2",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9201},
+								},
+							},
+						},
+					},
+				},
+			},
+			Status: logstashv1alpha1.LogstashStatus{
+				AvailableNodes: 3,
+			},
+		},
+		&logstashv1alpha1.Logstash{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns2",
+			},
+			Spec: logstashv1alpha1.LogstashSpec{
+				Count: 1,
+				Services: []logstashv1alpha1.LogstashService{
+					{
+						Name: "test1",
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Port: 9200},
+								},
+							},
+						},
+					},
+				},
+			},
+			Status: logstashv1alpha1.LogstashStatus{
+				AvailableNodes: 1,
+			},
+		},
 		&beatv1beta1.Beat{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "beat1",
@@ -417,6 +481,14 @@ func TestNewReporter(t *testing.T) {
       helm_resource_count: 1
       pod_count: 0
       resource_count: 3
+    logstashes:
+      pipeline_count: 1
+      pipeline_ref_count: 0
+      pod_count: 4
+      resource_count: 2
+      service_count: 3
+      stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
     maps:
       pod_count: 1
       resource_count: 1
@@ -470,7 +542,7 @@ func assertSameSecretContent(t *testing.T, expectedData, actualData map[string][
 func TestReporter_report(t *testing.T) {
 	testNS := "ns1"
 	type fields struct {
-		objects []runtime.Object
+		objects []client.Object
 	}
 	tests := []struct {
 		name     string
@@ -480,7 +552,7 @@ func TestReporter_report(t *testing.T) {
 		{
 			name: "With metrics monitoring only",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -531,7 +603,7 @@ func TestReporter_report(t *testing.T) {
 		{
 			name: "With log monitoring only",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -567,7 +639,7 @@ func TestReporter_report(t *testing.T) {
 		}, {
 			name: "With downward API and one label",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,
@@ -604,7 +676,7 @@ func TestReporter_report(t *testing.T) {
 		}, {
 			name: "With downward API and several labels",
 			fields: fields{
-				objects: []runtime.Object{
+				objects: []client.Object{
 					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: testNS,

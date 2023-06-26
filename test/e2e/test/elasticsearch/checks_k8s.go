@@ -51,6 +51,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckClusterHealth(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
+		CheckContainerSecurityContext(b.Elasticsearch, k),
 		CheckClusterUUIDAnnotation(b.Elasticsearch, k),
 	}
 }
@@ -359,6 +360,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
 				// we intentionally hardcode the names here to catch any accidental breaking change
+				b.Elasticsearch.Name + "-es-internal-http",
 				b.Elasticsearch.Name + "-es-http",
 				b.Elasticsearch.Name + "-es-transport",
 			} {
@@ -385,8 +387,9 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			expectedEs := b.GetExpectedElasticsearch()
 			for endpointName, addrCount := range map[string]int{
 				// we intentionally hardcode the names here to catch any accidental breaking change
-				b.Elasticsearch.Name + "-es-http":      int(expectedEs.Spec.NodeCount()),
-				b.Elasticsearch.Name + "-es-transport": int(expectedEs.Spec.NodeCount()),
+				b.Elasticsearch.Name + "-es-internal-http": int(expectedEs.Spec.NodeCount()),
+				b.Elasticsearch.Name + "-es-http":          int(expectedEs.Spec.NodeCount()),
+				b.Elasticsearch.Name + "-es-transport":     int(expectedEs.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana

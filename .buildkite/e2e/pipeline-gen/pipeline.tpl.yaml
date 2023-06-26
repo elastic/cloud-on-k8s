@@ -20,7 +20,7 @@ steps:
       - .buildkite/scripts/test/set-deployer-config.sh
 
       {{- if $test.Dind }}
-      - make -C .ci TARGET="run-deployer" ci
+      - make -C .buildkite TARGET="run-deployer" ci
       {{- else }}
       - make run-deployer
       {{- end }}
@@ -66,7 +66,7 @@ steps:
       {{- end }}
 
       {{- if $test.Dind }}
-      - make -C .ci TARGET="{{ $deployerCommand }} e2e-run" ci
+      - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
       {{- else }}
       - make {{ $deployerCommand }} e2e-run
       {{- end }}
@@ -110,17 +110,18 @@ steps:
 
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
-          - .buildkite/scripts/common/cp-diagnostics.sh
 
         {{- if not $test.Dind }}
           - make run-deployer
         {{- else }}
-          - make -C .ci TARGET="run-deployer" ci
+          - make -C .buildkite TARGET="run-deployer" ci
         agents:
           provider: "gcp"
           image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
         {{- end }}
-
+        retry:
+          automatic:
+            - limit: 5
 
 
     {{- end }}

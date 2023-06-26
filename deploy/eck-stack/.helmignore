@@ -22,3 +22,4 @@
 *.tmproj
 .vscode/
 templates/tests
+charts/*/templates/tests

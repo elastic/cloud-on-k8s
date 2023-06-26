@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -18,6 +19,10 @@ const (
 	annotateSuccess  = "annotate-success"
 	annotateFailures = "annotate-failures"
 	notifyFailures   = "notify-failures"
+
+	maxErrorSizeBytes        = 3000 // to display more than 300 errors with a total below 1 MB
+	maxSlackMessageSizeBytes = 3000
+	maxNotifiedShortFailures = 15
 )
 
 var (
@@ -49,8 +54,8 @@ func init() {
 }
 
 func main() {
-	tests := map[string]sortedTests{}
-	failuresCount := 0
+	testsMap := map[string]sortedTests{}
+	failuresCount, shortFailuresCount := 0, 0
 
 	// process all xml report in the given diretory
 	err := filepath.Walk(xmlDir, func(xmlReportPath string, info os.FileInfo, err error) error {
@@ -80,9 +85,10 @@ func main() {
 			return err
 		}
 
-		tests[slugName] = sortTests(suites)
+		testsMap[slugName] = sortTests(suites)
 
-		failuresCount += len(tests[slugName].Failed)
+		failuresCount += len(testsMap[slugName].Failed)
+		shortFailuresCount += len(testsMap[slugName].ShortFailed)
 
 		return nil
 	})
@@ -90,22 +96,29 @@ func main() {
 		exitWith(err)
 	}
 
+	// flatten short failures to make it easier to limit them
+	flatShortFailures := []Test{}
+	for envName, testsPerEnv := range testsMap {
+		for _, test := range testsPerEnv.ShortFailed {
+			flatShortFailures = append(flatShortFailures, Test{Test: test, EnvName: envName})
+		}
+	}
+
 	srcTpl, ok := tplMap[outputFormat]
 	if !ok {
 		exitWith(fmt.Errorf("output format not supported"))
 	}
 
-	tpl, err := template.New("report").Funcs(template.FuncMap{
-		"splitTestName": func(testName string) string {
-			return strings.Split(testName, "/")[0]
-		},
-	}).Parse(srcTpl)
+	tpl, err := template.New("report").Parse(srcTpl)
 	if err != nil {
 		exitWith(err)
 	}
 	err = tpl.Execute(os.Stdout, map[string]interface{}{
-		"FailuresCount": failuresCount,
-		"Tests":         tests,
+		"TestsMap":                 testsMap,
+		"FailuresCount":            failuresCount,
+		"ShortFailures":            flatShortFailures,
+		"ShortFailuresCount":       shortFailuresCount,
+		"MaxNotifiedShortFailures": maxNotifiedShortFailures,
 	})
 	if err != nil {
 		exitWith(err)
@@ -116,21 +129,33 @@ func main() {
 	}
 }
 
+type Test struct {
+	junit.Test
+	EnvName string
+}
+
 type sortedTests struct {
-	Failed []junit.Test
-	Passed []junit.Test
+	Failed      []junit.Test
+	ShortFailed []junit.Test
+	Passed      []junit.Test
 }
 
 func sortTests(suites []junit.Suite) sortedTests {
 	failedTests := []junit.Test{}
+	shortFailedTests := []junit.Test{}
 	passedTests := []junit.Test{}
 	failedTestsMap := map[string]junit.Test{}
+	shortFailedTestsMap := map[string]junit.Test{}
 
 	// traverse all suites to find failed and passed tests
 	for _, suite := range suites {
 		for _, test := range suite.Tests {
 			if test.Error != nil {
 				// on test failure
+
+				// to stay under the maximum size of a Buildkite annotation
+				test.Error = truncateError(test.Error, maxErrorSizeBytes)
+
 				if strings.Contains(test.Name, "/") {
 					// keep sub tests
 					failedTests = append(failedTests, test)
@@ -138,6 +163,12 @@ func sortTests(suites []junit.Suite) sortedTests {
 					// store parent tests for later
 					failedTestsMap[test.Name] = test
 				}
+
+				// also store all tests with only the parent test name
+				shortTest := test
+				shortTest.Name = strings.Split(test.Name, "/")[0]
+				shortFailedTestsMap[shortTest.Name] = shortTest
+
 			} else {
 				// on test success
 				if !strings.Contains(test.Name, "/") {
@@ -157,16 +188,38 @@ func sortTests(suites []junit.Suite) sortedTests {
 	for _, test := range failedTestsMap {
 		failedTests = append(failedTests, test)
 	}
-
 	// add a failure if no failed or passed test was found
 	if len(failedTests) == 0 && len(passedTests) == 0 {
 		failedTests = []junit.Test{{Name: "NoTestRun", Error: errors.New("see job log")}}
 	}
+	// build the list of tests with short names
+	for _, shortTest := range shortFailedTestsMap {
+		shortFailedTests = append(shortFailedTests, shortTest)
+	}
+
+	sortByName(shortFailedTests)
+	sortByName(failedTests)
+	sortByName(passedTests)
 
 	return sortedTests{
-		Failed: failedTests,
-		Passed: passedTests,
+		Failed:      failedTests,
+		ShortFailed: shortFailedTests,
+		Passed:      passedTests,
 	}
+}
+
+func sortByName(tests []junit.Test) {
+	sort.Slice(tests, func(i, j int) bool {
+		return tests[i].Name < tests[j].Name
+	})
+}
+
+func truncateError(err error, length int) error {
+	msg := []byte(err.Error())
+	if len(msg) > length {
+		return errors.New(string(msg[0 : length-1]))
+	}
+	return err
 }
 
 func exitWith(err error) {
