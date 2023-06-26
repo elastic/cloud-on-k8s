@@ -63,6 +63,10 @@ func (b Builder) SkipTest() bool {
 		if ver.GTE(version.MinFor(8, 0, 0)) && ver.LT(version.MinFor(8, 1, 0)) {
 			return true
 		}
+		// Elastic agent bug "deadlock on startup", https://github.com/elastic/cloud-on-k8s/issues/6331#issuecomment-1478320487
+		if ver.GE(version.MinFor(8, 6, 0)) && ver.LT(version.MinFor(8, 7, 0)) {
+			return true
+		}
 	}
 
 	return supportedVersions.WithinRange(ver) != nil
