@@ -43,11 +43,13 @@ TENANT_ID=$(jq .tenant /tmp/ci-azr-k8s-operator.json -r)
 az login --service-principal -u "${CLIENT_ID}" -p "${CLIENT_SECRET}" --tenant "${TENANT_ID}"
 
 # Get a list of cluslter names with a `createdTime` < 3 days ago.
-AZURE_CLUSTERS=$(az resource list -l westeurope -g cloudonk8s-dev --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d $DATE 'map(select(.createdTime | . <= $d))|.[].name')
+AZURE_CLUSTERS=$(az resource list -l westeurope -g cloudonk8s-dev --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "$DATE" 'map(select(.createdTime | . <= $d))|.[].name')
 
 for i in ${AZURE_CLUSTERS}; do
     echo "Deleting azure cluster $i"
-    echo az aks delete -n $i -g cloudonk8s-dev
+    cd "$ROOT"
+    E2E_PROVIDER=aks CLUSTER_NAME=$i DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
+    echo make run-deployer
 done
 
 ## AWS Clusters
@@ -69,7 +71,9 @@ for region in ap-northeast-3 eu-west-1; do
         NAME=$(aws eks describe-cluster --name $i --region a"${region}" | jq -r --arg d $DATE 'map(select(.cluster.createdAt | . <= $d))|.[].name')
         if [ ! -z "$NAME" ]; then
             echo "Deleting eks cluster $NAME"
-            echo eksctl delete cluster --region="${region}" --name="$NAME"
+            cd "$ROOT"
+            E2E_PROVIDER=eks CLUSTER_NAME=$NAME DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
+            echo make run-deployer
         fi
     done
 done
