@@ -68,11 +68,11 @@ EOF
 for region in ap-northeast-3 eu-west-1; do
     EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))')
     for i in ${EKS_CLUSTERS}; do
-        NAME=$(aws eks describe-cluster --name $i --region a"${region}" | jq -r --arg d $DATE 'map(select(.cluster.createdAt | . <= $d))|.[].name')
+        NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d $DATE 'map(select(.cluster.createdAt | . <= $d))|.[].name')
         if [ ! -z "$NAME" ]; then
             echo "Deleting eks cluster $NAME"
             cd "$ROOT"
-            E2E_PROVIDER=eks CLUSTER_NAME=$NAME DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
+            E2E_PROVIDER=eks CLUSTER_NAME="$NAME" DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
             echo make run-deployer
         fi
     done
