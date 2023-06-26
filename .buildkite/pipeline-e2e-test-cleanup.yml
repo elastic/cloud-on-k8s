@@ -6,5 +6,7 @@ steps:
 
   # Run a cleanup script to ensure dangling clusters are deleted
   - label: ":broom: e2e test cluster cleanup"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
     commands:
       - .buildkite/scripts/test/cleanup-e2e-clusters.sh
