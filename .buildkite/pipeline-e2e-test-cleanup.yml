@@ -1,0 +1,10 @@
+agents:
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  memory: 2G
+
+steps:
+
+  # Run a cleanup script to ensure dangling clusters are deleted
+  - label: ":broom: e2e test cluster cleanup"
+    commands:
+      - .buildkite/scripts/test/cleanup-e2e-clusters.sh

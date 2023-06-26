@@ -9,6 +9,9 @@
 
 set -eu
 
+WD="$(cd "$(dirname "$0")"; pwd)"
+ROOT="$WD/../../.."
+
 # Get the date 3 days in the past.
 DATE=$(date --date='3 days ago' --iso-8601=seconds)
 
@@ -23,5 +26,7 @@ CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(
 
 for i in ${CLUSTERS} ; do
     echo "Deleting cluster $i"
-    gcloud container clusters delete "${i}" --region=europe-west6
+    cd $ROOT
+    E2E_PROVIDER=gke CLUSTER_NAME=$i DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
+    make run-deployer
 done
