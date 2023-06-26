@@ -120,7 +120,8 @@ func runVersionUpgradeOrdering(t *testing.T, initialVersion string, withLogstash
 					Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
 				}
 				if withLogstash {
-					stackVersions.Logstash = ref(k8s.ExtractNamespacedName(&logstash.Logstash))
+					logstashRef := ref(k8s.ExtractNamespacedName(&logstash.Logstash))
+					stackVersions.Logstash = &logstashRef
 				}
 				err := stackVersions.Retrieve(k.Client)
 				// check the retrieved versions first (before returning on err)
@@ -148,7 +149,7 @@ type StackResourceVersions struct {
 	ApmServer        refVersion
 	EnterpriseSearch refVersion
 	Beat             refVersion
-	Logstash         refVersion
+	Logstash         *refVersion // optional
 }
 
 func (s StackResourceVersions) IsValid() bool {
@@ -162,8 +163,8 @@ func (s StackResourceVersions) IsValid() bool {
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
 	refs := []refVersion{s.Elasticsearch, s.Kibana, s.ApmServer, s.EnterpriseSearch, s.Beat}
-	if s.Logstash.version != "" {
-		refs = append(refs, s.Logstash)
+	if s.Logstash != nil {
+		refs = append(refs, *s.Logstash)
 	}
 	for _, ref := range refs {
 		if ref.version != "" && ref.version != version {
@@ -175,7 +176,7 @@ func (s StackResourceVersions) AllSetTo(version string) bool {
 
 func (s *StackResourceVersions) Retrieve(client k8s.Client) error {
 	calls := []func(c k8s.Client) error{s.retrieveBeat, s.retrieveApmServer, s.retrieveKibana, s.retrieveEnterpriseSearch, s.retrieveElasticsearch}
-	if s.Logstash.version != "" {
+	if s.Logstash != nil {
 		calls = append(calls, s.retrieveLogstash)
 	}
 	// grab at least one error if multiple occur
