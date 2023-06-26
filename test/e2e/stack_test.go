@@ -88,9 +88,6 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 		Beat:             ref(k8s.ExtractNamespacedName(&fb.Beat)),
 	}
 
-	//return es, kb, apm, ent, fb
-	//updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
-
 	return initialBuilders, updatedBuilders, stackVersions
 }
 
