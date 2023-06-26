@@ -131,11 +131,6 @@ func TestFleetMode(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// installation of policies and integrations through Kibana file based configuration was broken between those versions:
-	if v.LT(version.MinFor(8, 1, 0)) && v.GTE(version.MinFor(8, 0, 0)) {
-		t.SkipNow()
-	}
-
 	name := "test-agent-fleet"
 
 	esBuilder := elasticsearch.NewBuilder(name).

@@ -53,12 +53,18 @@ type Builder struct {
 }
 
 func (b Builder) SkipTest() bool {
+	ver := version.MustParse(b.Agent.Spec.Version)
 	supportedVersions := version.SupportedAgentVersions
+
 	if b.Agent.Spec.FleetModeEnabled() {
 		supportedVersions = version.SupportedFleetModeAgentVersions
+
+		// Kibana bug "index conflict on install policy", https://github.com/elastic/kibana/issues/126611
+		if ver.GTE(version.MinFor(8, 0, 0)) && ver.LT(version.MinFor(8, 1, 0)) {
+			return true
+		}
 	}
 
-	ver := version.MustParse(b.Agent.Spec.Version)
 	return supportedVersions.WithinRange(ver) != nil
 }
 
