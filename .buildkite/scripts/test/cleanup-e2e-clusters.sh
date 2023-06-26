@@ -26,7 +26,7 @@ CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(
 
 for i in ${CLUSTERS} ; do
     echo "Deleting cluster $i"
-    cd $ROOT
+    cd "$ROOT"
     E2E_PROVIDER=gke CLUSTER_NAME=$i DEPLOYER_OPERATION=delete .buildkite/scripts/test/set-deployer-config.sh
     make run-deployer
 done
