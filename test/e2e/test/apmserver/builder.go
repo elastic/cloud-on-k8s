@@ -32,7 +32,6 @@ var _ test.Builder = Builder{}
 var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
-
 	// https://github.com/elastic/cloud-on-k8s/issues/6947
 	if test.Ctx().ElasticStackVersion == "8.9.0-SNAPSHOT" && b.HasNoIntegration() {
 		return true
