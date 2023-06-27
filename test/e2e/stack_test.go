@@ -105,7 +105,7 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 	lsRef := ref(k8s.ExtractNamespacedName(&ls.Logstash))
 
 	initialBuilders = append(initialBuilders, ls)
-	updatedBuilders = append(initialBuilders, lsUpdated)
+	updatedBuilders = append(updatedBuilders, lsUpdated)
 	stackVersions.Logstash = &lsRef
 
 	runVersionUpgradeOrdering(t, initialBuilders, updatedBuilders, stackVersions)
