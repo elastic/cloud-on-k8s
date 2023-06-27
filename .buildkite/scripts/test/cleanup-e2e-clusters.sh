@@ -27,7 +27,9 @@ gcloud config set project elastic-cloud-dev
 # Get a list of cluster names with a `createTime` < 3 days ago.
 echo "Attempting to find gke clusters > 3 days old"
 echo gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*"
+set -x
 CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*")
+set +x
 
 for i in ${CLUSTERS} ; do
     echo "Deleting cluster $i"
