@@ -19,6 +19,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
+const APMServerDataStreamsWaitForIntegration = "apm-server.data_streams.wait_for_integration"
+
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmv1.ApmServer
@@ -30,6 +32,12 @@ var _ test.Builder = Builder{}
 var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
+
+	// https://github.com/elastic/cloud-on-k8s/issues/6947
+	if test.Ctx().ElasticStackVersion == "8.9.0-SNAPSHOT" && b.HasNoIntegration() {
+		return true
+	}
+
 	// APM doesn't work in 8.5.3, see https://github.com/elastic/apm-server/issues/10089.
 	return test.Ctx().ElasticStackVersion == "8.5.3"
 }
@@ -183,8 +191,24 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	}
 
 	return b.WithConfig(map[string]interface{}{
-		"apm-server.data_streams.wait_for_integration": false,
+		APMServerDataStreamsWaitForIntegration: false,
 	})
+}
+
+func (b Builder) HasNoIntegration() bool {
+	if b.ApmServer.Spec.Config != nil || b.ApmServer.Spec.Config.Data != nil {
+		v, ok := b.ApmServer.Spec.Config.Data[APMServerDataStreamsWaitForIntegration]
+		if !ok {
+			// integration is used if no setting
+			return false
+		}
+		if value, ok := v.(bool); ok {
+			// no integration if the setting value is false
+			return !value
+		}
+		return ok
+	}
+	return false
 }
 
 func (b Builder) WithMutatedFrom(builder *Builder) Builder {
