@@ -83,7 +83,7 @@ EOF
 # We have standard eks clusters in ap-northeast-3, and arm in eu-west-1.
 for region in ap-northeast-3 eu-west-1; do
     echo "getting a list of all clusters in ${region}"
-    EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))')
+    EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))|.Name')
     for i in ${EKS_CLUSTERS}; do
         echo "determining if cluster ${i} is > 3 days old"
         NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d "$DATE" 'map(select(.cluster.createdAt | . <= $d))|.[].name')
