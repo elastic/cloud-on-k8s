@@ -27,9 +27,7 @@ gcloud config set project elastic-cloud-dev
 # Get a list of cluster names with a `createTime` < 3 days ago.
 echo "Attempting to find gke clusters > 3 days old"
 echo gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*"
-set -x
 CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*")
-set +x
 echo "after listing gcloud clusters"
 
 for i in ${CLUSTERS} ; do
@@ -45,7 +43,7 @@ echo "after deleting any gcloud clusters"
 
 # Handle logging into Azure using cli
 echo "before reading azure data from vault"
-vault read -field=data "$VAULT_ROOT_PATH/ci-azr-k8s-operator" > /tmp/ci-azr-k8s-operator.json
+vault read -field=data -format=json "$VAULT_ROOT_PATH/ci-azr-k8s-operator" > /tmp/ci-azr-k8s-operator.json
 echo "after reading azure data from vault"
 echo "before reading azure client id"
 CLIENT_ID=$(jq .appId /tmp/ci-azr-k8s-operator.json -r)
@@ -70,7 +68,7 @@ done
 ## AWS Clusters
 
 echo "Logging into AWS..."
-vault read -field=data "$VAULT_ROOT_PATH/ci-aws-k8s-operator" > /tmp/ci-aws-k8s-operator.json
+vault read -field=data -format=json "$VAULT_ROOT_PATH/ci-aws-k8s-operator" > /tmp/ci-aws-k8s-operator.json
 AWS_ACCESS_KEY_ID=$(jq .access-key /tmp/ci-aws-k8s-operator.json -r)
 AWS_SECRET_ACCESS_KEY=$(jq .secret-key /tmp/ci-aws-k8s-operator.json -r)
 if [ ! -d ~/.aws ]; then
