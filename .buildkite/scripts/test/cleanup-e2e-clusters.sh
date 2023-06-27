@@ -69,8 +69,8 @@ done
 
 echo "Logging into AWS..."
 vault read -field=data -format=json "$VAULT_ROOT_PATH/ci-aws-k8s-operator" > /tmp/ci-aws-k8s-operator.json
-AWS_ACCESS_KEY_ID=$(jq .access-key /tmp/ci-aws-k8s-operator.json -r)
-AWS_SECRET_ACCESS_KEY=$(jq .secret-key /tmp/ci-aws-k8s-operator.json -r)
+AWS_ACCESS_KEY_ID=$(jq '.["access-key"]' /tmp/ci-aws-k8s-operator.json -r)
+AWS_SECRET_ACCESS_KEY=$(jq '.["secret-key"]' /tmp/ci-aws-k8s-operator.json -r)
 if [ ! -d ~/.aws ]; then
   mkdir ~/.aws
 fi
