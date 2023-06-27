@@ -167,7 +167,10 @@ func (s StackResourceVersions) IsValid() bool {
 		s.Kibana.GTE(s.Beat) &&
 		s.Kibana.GTE(s.ApmServer) &&
 		// ES >= EnterpriseSearch
-		s.Elasticsearch.GTE(s.EnterpriseSearch)
+		s.Elasticsearch.GTE(s.EnterpriseSearch) &&
+		// ES >= Logstash
+		(s.Logstash != nil && s.Elasticsearch.GTE(*s.Logstash))
+
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
