@@ -33,7 +33,7 @@ var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
 	// https://github.com/elastic/cloud-on-k8s/issues/6947
-	if test.Ctx().ElasticStackVersion == "8.9.0-SNAPSHOT" && b.HasNoIntegration() {
+	if test.Ctx().ElasticStackVersion == "8.9.0-SNAPSHOT" && !b.HasIntegration() {
 		return true
 	}
 
@@ -194,20 +194,22 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	})
 }
 
-func (b Builder) HasNoIntegration() bool {
+// HasIntegration returns true if the APM Server uses the APM integration through Kibana to setup the index templates.
+// The detection is based on a setting that we set to disable the integration check.
+func (b Builder) HasIntegration() bool {
 	if b.ApmServer.Spec.Config != nil || b.ApmServer.Spec.Config.Data != nil {
 		v, ok := b.ApmServer.Spec.Config.Data[APMServerDataStreamsWaitForIntegration]
 		if !ok {
 			// integration is used if no setting
-			return false
+			return true
 		}
 		if value, ok := v.(bool); ok {
-			// no integration if the setting value is false
-			return !value
+			// integration if the setting value is true
+			return value
 		}
 		return ok
 	}
-	return false
+	return true
 }
 
 func (b Builder) WithMutatedFrom(builder *Builder) Builder {
