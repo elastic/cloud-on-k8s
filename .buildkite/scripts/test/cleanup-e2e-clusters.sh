@@ -30,6 +30,7 @@ echo gcloud container clusters list --region=europe-west6 --format="value(name)"
 set -x
 CLUSTERS=$(gcloud container clusters list --region=europe-west6 --format="value(name)" --filter="createTime<${DATE} AND name~eck-e2e.*")
 set +x
+echo "after listing gcloud clusters"
 
 for i in ${CLUSTERS} ; do
     echo "Deleting cluster $i"
@@ -38,12 +39,19 @@ for i in ${CLUSTERS} ; do
     make run-deployer
 done
 
+echo "after deleting any gcloud clusters"
+
 ## Azure Clusters
 
 # Handle logging into Azure using cli
+echo "before reading azure data from vault"
 vault read -field=data "$VAULT_ROOT_PATH/ci-azr-k8s-operator" > /tmp/ci-azr-k8s-operator.json
+echo "after reading azure data from vault"
+echo "before reading azure client id"
 CLIENT_ID=$(jq .appId /tmp/ci-azr-k8s-operator.json -r)
+echo "before reading azure client secret"
 CLIENT_SECRET=$(jq .password /tmp/ci-azr-k8s-operator.json -r)
+echo "before reading azure tenant id"
 TENANT_ID=$(jq .tenant /tmp/ci-azr-k8s-operator.json -r)
 echo "Logging into Azure..."
 az login --service-principal -u "${CLIENT_ID}" -p "${CLIENT_SECRET}" --tenant "${TENANT_ID}"
