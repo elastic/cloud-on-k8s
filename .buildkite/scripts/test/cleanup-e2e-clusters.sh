@@ -86,7 +86,7 @@ for region in ap-northeast-3 eu-west-1; do
     EKS_CLUSTERS=$(eksctl get cluster -r "${region}" -o json | jq -r '.[] | select(.Name|test("eck-e2e"))|.Name')
     for i in ${EKS_CLUSTERS}; do
         echo "determining if cluster ${i} is > 3 days old"
-        NAME=$(aws eks describe-cluster --name "$i" --region a"${region}" | jq -r --arg d "$DATE" 'map(select(.cluster.createdAt | . <= $d))|.[].name')
+        NAME=$(aws eks describe-cluster --name "$i" --region "${region}" | jq -r --arg d "$DATE" 'map(select(.cluster.createdAt | . <= $d))|.[].name')
         if [ -n "$NAME" ]; then
             echo "Deleting eks cluster $NAME"
             cd "$ROOT"
