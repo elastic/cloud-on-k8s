@@ -162,14 +162,18 @@ type StackResourceVersions struct {
 }
 
 func (s StackResourceVersions) IsValid() bool {
+	isLogstashValid := true
+	if s.Logstash != nil {
+		// ES >= Logstash
+		isLogstashValid = s.Elasticsearch.GTE(*s.Logstash)
+	}
 	// ES >= Kibana >= (Beats, APM)
 	return s.Elasticsearch.GTE(s.Kibana) &&
 		s.Kibana.GTE(s.Beat) &&
 		s.Kibana.GTE(s.ApmServer) &&
 		// ES >= EnterpriseSearch
 		s.Elasticsearch.GTE(s.EnterpriseSearch) &&
-		// ES >= Logstash
-		(s.Logstash != nil && s.Elasticsearch.GTE(*s.Logstash))
+		isLogstashValid
 
 }
 
