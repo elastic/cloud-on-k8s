@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s/hack/helm/release
 go 1.19
 
 require (
-	cloud.google.com/go/storage v1.30.1
+	cloud.google.com/go/storage v1.31.0
 	github.com/elastic/cloud-on-k8s/v2 v2.8.0
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.7.0
@@ -20,10 +20,10 @@ replace github.com/elastic/cloud-on-k8s/v2 => ../../..
 exclude github.com/docker/docker v23.0.1+incompatible
 
 require (
-	cloud.google.com/go v0.110.0 // indirect
+	cloud.google.com/go v0.110.2 // indirect
 	cloud.google.com/go/compute v1.19.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/iam v0.13.0 // indirect
+	cloud.google.com/go/iam v1.1.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
