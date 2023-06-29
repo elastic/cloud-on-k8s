@@ -22,9 +22,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
+	defaultFsGroup = 1000
 
 	// ConfigHashAnnotationName is an annotation used to store the Logstash config hash.
 	ConfigHashAnnotationName = "logstash.k8s.elastic.co/config-hash"
@@ -43,6 +45,10 @@ var (
 			corev1.ResourceMemory: resource.MustParse("2Gi"),
 			corev1.ResourceCPU:    resource.MustParse("1000m"),
 		},
+	}
+
+	DefaultSecurityContext = corev1.PodSecurityContext{
+		FSGroup: pointer.Int64(defaultFsGroup),
 	}
 )
 
@@ -89,6 +95,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithVolumeLikes(vols...).
 		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithEnv(envs...).
+		WithPodSecurityContext(DefaultSecurityContext).
 		WithInitContainerDefaults()
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
