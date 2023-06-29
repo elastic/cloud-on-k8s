@@ -38,7 +38,7 @@ var (
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
 		checkNoDowngrade,
-		checkPVCshanges,
+		checkPVCchanges,
 	}
 )
 
@@ -112,8 +112,8 @@ func checkESRefsNamed(l *Logstash) field.ErrorList {
 	return errorList
 }
 
-// checkPVCshanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
-func checkPVCshanges(current, proposed *Logstash) field.ErrorList {
+// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+func checkPVCchanges(current, proposed *Logstash) field.ErrorList {
 	var errs field.ErrorList
 	if current == nil || proposed == nil {
 		return errs
