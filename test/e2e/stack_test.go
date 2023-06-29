@@ -100,7 +100,17 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 	initialVersion := "8.6.0"
 	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, "8.6.0")
 
-	ls := logstash.NewBuilder("ls").WithVersion(initialVersion)
+	ls := logstash.NewBuilder("ls").WithVersion(initialVersion).
+		WithElasticsearchRefs(
+			// associate logstash to the es ref stored in the stackVersions
+			logstashv1alpha1.ElasticsearchCluster{
+				ObjectSelector: commonv1.ObjectSelector{
+					Namespace: stackVersions.Elasticsearch.ref.Namespace,
+					Name:      stackVersions.Elasticsearch.ref.Name,
+				},
+				ClusterName: "es",
+			},
+		)
 	lsUpdated := ls.WithVersion(test.LatestReleasedVersion8x)
 	lsRef := ref(k8s.ExtractNamespacedName(&ls.Logstash))
 
@@ -159,6 +169,15 @@ type StackResourceVersions struct {
 	EnterpriseSearch refVersion
 	Beat             refVersion
 	Logstash         *refVersion // optional as we test stack upgrade with and without it
+}
+
+func (s StackResourceVersions) String() string {
+	str := fmt.Sprintf("es: %s, kb: %s, apm: %s, ent: %s, beat: %s", s.Elasticsearch.version, s.Kibana.version,
+		s.ApmServer.version, s.EnterpriseSearch.version, s.Beat.version)
+	if s.Logstash != nil {
+		str += fmt.Sprintf(", ls: %s", s.Logstash.version)
+	}
+	return str
 }
 
 func (s StackResourceVersions) IsValid() bool {
