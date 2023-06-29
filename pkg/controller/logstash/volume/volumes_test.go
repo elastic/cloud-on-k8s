@@ -230,9 +230,11 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.logstash.Spec.VolumeClaimTemplates = AppendDefaultPVCs(tc.logstash.Spec.VolumeClaimTemplates,
 				tc.logstash.Spec.PodTemplate.Spec)
-			_, volumeMounts := BuildVolumesAndMounts(tc.logstash)
+			_, volumeMounts, err := BuildVolumes(tc.logstash)
+			assert.NoError(t, err)
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))
+			assert.True(t, contains(volumeMounts, "config", "/usr/share/logstash/config"))
 		})
 	}
 }

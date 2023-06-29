@@ -88,7 +88,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 
 		filebeat := b.Container
 		// Add the logs volume mount from the logstash container
-		filebeat.VolumeMounts = append(filebeat.VolumeMounts, volume.DefaultLogsVolumeMount)
+		filebeat.VolumeMounts = append(filebeat.VolumeMounts, volume.DefaultLogsVolume.VolumeMount())
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(filebeat)
 		configHash.Write(b.ConfigHash.Sum(nil))

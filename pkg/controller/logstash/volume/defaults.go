@@ -48,18 +48,10 @@ var (
 	// DefaultVolumeClaimTemplates is the default volume claim templates for Logstash pods
 	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{DefaultDataVolumeClaim}
 
-	// DefaultLogsVolume is the default EmptyDir logs volume for Logstash pods.
-	DefaultLogsVolume = corev1.Volume{
-		Name: LogstashLogsVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-	// DefaultLogsVolumeMount is the default logs volume mount for the Logstash container.
-	DefaultLogsVolumeMount = corev1.VolumeMount{
-		Name:      LogstashLogsVolumeName,
-		MountPath: LogstashLogsMountPath,
-	}
+	DefaultLogsVolume = volume.NewEmptyDirVolume(
+		LogstashLogsVolumeName,
+		LogstashLogsMountPath,
+	)
 )
 
 // ConfigVolume returns a SecretVolume to hold the Logstash config of the given Logstash resource.
@@ -85,16 +77,6 @@ func AppendDefaultDataVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.
 	for _, v := range volumes {
 		if v.Name == LogstashDataVolumeName {
 			return append(mounts, DefaultDataVolumeMount)
-		}
-	}
-	return mounts
-}
-
-// AppendDefaultLogVolumeMount appends a volume mount for the default log volume if the slice of volumes contains the default log volume.
-func AppendDefaultLogVolumeMount(mounts []corev1.VolumeMount, volumes []corev1.Volume) []corev1.VolumeMount {
-	for _, v := range volumes {
-		if v.Name == LogstashLogsVolumeName {
-			return append(mounts, DefaultLogsVolumeMount)
 		}
 	}
 	return mounts

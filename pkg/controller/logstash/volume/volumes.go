@@ -38,36 +38,31 @@ func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec core
 	return existingPVCs
 }
 
-func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount) {
-	volumes := make([]corev1.Volume, 0)
-	volumeMounts := make([]corev1.VolumeMount, 0)
+func BuildVolumes(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount, error) {
+	// all volumes with CAs of direct associations
+	caAssocVolumes, err := getVolumesFromAssociations(ls.GetAssociations())
+	if err != nil {
+		return nil, nil, err
+	}
 
-	// add Default logs volume
-	volumes = append(volumes, DefaultLogsVolume)
-	// add PVC volumes
+	volumeLikes := append(
+		caAssocVolumes,
+		ConfigSharedVolume,
+		ConfigVolume(ls),
+		PipelineVolume(ls),
+		DefaultLogsVolume,
+	)
+	volumes, volumeMounts := volume.Resolve(volumeLikes)
+
+	// append future volumes from PVCs
 	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
 		volumes = append(volumes, corev1.Volume{Name: claimTemplate.Name})
 	}
 
-	// add volume mounts for data and log volumes
-	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, volumes)
-	volumeMounts = AppendDefaultLogVolumeMount(volumeMounts, volumes)
+	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)
+	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, append(volumes, ls.Spec.PodTemplate.Spec.Volumes...))
 
-	return volumes, volumeMounts
-}
-
-func BuildConfigPipelineVolumeLikes(ls logstashv1alpha1.Logstash) ([]volume.VolumeLike, error) {
-	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(ls), PipelineVolume(ls)}
-
-	// all volumes with CAs of direct associations
-	caAssocVols, err := getVolumesFromAssociations(ls.GetAssociations())
-	if err != nil {
-		return nil, err
-	}
-
-	vols = append(vols, caAssocVols...)
-
-	return vols, nil
+	return volumes, volumeMounts, nil
 }
 
 func CertificatesDir(association commonv1.Association) string {

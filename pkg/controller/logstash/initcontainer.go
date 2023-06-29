@@ -60,7 +60,6 @@ func initConfigContainer(ls logstashv1alpha1.Logstash) corev1.Container {
 			volume.ConfigVolume(ls).VolumeMount(),
 			volume.PipelineVolume(ls).VolumeMount(),
 		},
-
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("50Mi"),

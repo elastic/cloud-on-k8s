@@ -57,12 +57,11 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	vols, err := volume.BuildConfigPipelineVolumeLikes(params.Logstash)
+	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	volumes, volumeMounts := volume.BuildVolumesAndMounts(params.Logstash)
 	esAssociations := getEsAssociations(params)
 	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -90,13 +89,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).
+		WithEnv(envs...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
-		WithVolumeLikes(vols...).
 		WithInitContainers(initConfigContainer(params.Logstash)).
-		WithEnv(envs...).
-		WithPodSecurityContext(DefaultSecurityContext).
-		WithInitContainerDefaults()
+		WithInitContainerDefaults().
+		WithPodSecurityContext(DefaultSecurityContext)
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {
