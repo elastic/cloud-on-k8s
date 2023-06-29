@@ -51,12 +51,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	vols, err := volume.BuildVolumeLikes(params.Logstash)
+	vols, err := volume.BuildConfigPipelineVolumeLikes(params.Logstash)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	realVols, realVolMounts := volume.BuildVolumesAndMounts(params.Logstash)
+	volumes, volumeMounts := volume.BuildVolumesAndMounts(params.Logstash)
 	esAssociations := getEsAssociations(params)
 	if err := writeEsAssocToConfigHash(params, esAssociations, configHash); err != nil {
 		return corev1.PodTemplateSpec{}, err
@@ -84,8 +84,8 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).
-		WithVolumes(realVols...).
-		WithVolumeMounts(realVolMounts...).
+		WithVolumes(volumes...).
+		WithVolumeMounts(volumeMounts...).
 		WithVolumeLikes(vols...).
 		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithEnv(envs...).

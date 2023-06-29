@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	LogstashConfigFileName = "logstash.yml"
+	ConfigFileName = "logstash.yml"
 )
 
 func reconcileConfig(params Params, configHash hash.Hash) error {
@@ -37,7 +37,7 @@ func reconcileConfig(params Params, configHash hash.Hash) error {
 			Labels:    labels.AddCredentialsLabel(params.Logstash.GetIdentityLabels()),
 		},
 		Data: map[string][]byte{
-			LogstashConfigFileName: cfgBytes,
+			ConfigFileName: cfgBytes,
 		},
 	}
 
@@ -72,7 +72,7 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 	if params.Logstash.Spec.Config != nil {
 		return settings.NewCanonicalConfigFrom(params.Logstash.Spec.Config.Data)
 	}
-	return common.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.ConfigRef, LogstashConfigFileName)
+	return common.ParseConfigRef(params, &params.Logstash, params.Logstash.Spec.ConfigRef, ConfigFileName)
 }
 
 func defaultConfig() *settings.CanonicalConfig {

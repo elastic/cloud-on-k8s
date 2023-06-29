@@ -15,60 +15,48 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
 )
 
-// AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
-//
-// The default PVCs are not appended if:
-// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
-func AppendDefaultPVCs(existing []corev1.PersistentVolumeClaim, ls logstashv1alpha1.Logstash) []corev1.PersistentVolumeClaim {
-	// create a set of volume names that are not PVC-volumes
-	existingVolumes := set.Make()
+// AppendDefaultPVCs appends defaults PVCs to a given list of PVCs.
+// Default PVCs are appended if there is no given PVCs or volumes in the poSpec with the same name.
+func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec corev1.PodSpec) []corev1.PersistentVolumeClaim {
+	// create a set of volume names
+	volumeNames := set.Make()
 
-	for _, existingPVC := range existing {
-		existingVolumes.Add(existingPVC.Name)
+	for _, existingPVC := range existingPVCs {
+		volumeNames.Add(existingPVC.Name)
 	}
 
-	for _, volume := range ls.Spec.PodTemplate.Spec.Volumes {
-		existingVolumes.Add(volume.Name)
+	for _, existingVolume := range podSpec.Volumes {
+		volumeNames.Add(existingVolume.Name)
 	}
 
 	for _, defaultPVC := range DefaultVolumeClaimTemplates {
-		if existingVolumes.Has(defaultPVC.Name) {
+		if volumeNames.Has(defaultPVC.Name) {
 			continue
 		}
-		existing = append(existing, defaultPVC)
+		existingPVCs = append(existingPVCs, defaultPVC)
 	}
-	return existing
+	return existingPVCs
 }
 
 func BuildVolumesAndMounts(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount) {
-	persistentVolumes := make([]corev1.Volume, 0)
-
-	// Add Default logs volume to list of persistent volumes
-	persistentVolumes = append(persistentVolumes, DefaultLogsVolume)
-
-	// Create volumes from any VolumeClaimTemplates.
-	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
-		persistentVolumes = append(persistentVolumes, corev1.Volume{
-			Name: claimTemplate.Name,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					// actual claim name will be resolved and fixed right before pod creation
-					ClaimName: "claim-name-placeholder",
-				},
-			},
-		})
-	}
-
+	volumes := make([]corev1.Volume, 0)
 	volumeMounts := make([]corev1.VolumeMount, 0)
 
-	// Add volume mounts for data and log volumes
-	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
-	volumeMounts = AppendDefaultLogVolumeMount(volumeMounts, append(persistentVolumes, ls.Spec.PodTemplate.Spec.Volumes...))
+	// add Default logs volume
+	volumes = append(volumes, DefaultLogsVolume)
+	// add PVC volumes
+	for _, claimTemplate := range ls.Spec.VolumeClaimTemplates {
+		volumes = append(volumes, corev1.Volume{Name: claimTemplate.Name})
+	}
 
-	return persistentVolumes, volumeMounts
+	// add volume mounts for data and log volumes
+	volumeMounts = AppendDefaultDataVolumeMount(volumeMounts, volumes)
+	volumeMounts = AppendDefaultLogVolumeMount(volumeMounts, volumes)
+
+	return volumes, volumeMounts
 }
 
-func BuildVolumeLikes(ls logstashv1alpha1.Logstash) ([]volume.VolumeLike, error) {
+func BuildConfigPipelineVolumeLikes(ls logstashv1alpha1.Logstash) ([]volume.VolumeLike, error) {
 	vols := []volume.VolumeLike{ConfigSharedVolume, ConfigVolume(ls), PipelineVolume(ls)}
 
 	// all volumes with CAs of direct associations

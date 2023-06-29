@@ -96,7 +96,8 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 
-	params.Logstash.Spec.VolumeClaimTemplates = volume.AppendDefaultPVCs(params.Logstash.Spec.VolumeClaimTemplates, params.Logstash)
+	params.Logstash.Spec.VolumeClaimTemplates = volume.AppendDefaultPVCs(params.Logstash.Spec.VolumeClaimTemplates,
+		params.Logstash.Spec.PodTemplate.Spec)
 
 	podTemplate, err := buildPodTemplate(params, configHash)
 	if err != nil {

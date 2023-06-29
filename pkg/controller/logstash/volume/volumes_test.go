@@ -89,13 +89,12 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 	}
 }
 
-func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
+func Test_BuildVolumesAndMounts(t *testing.T) {
 	hostPathType := corev1.HostPathDirectoryOrCreate
 
 	tt := []struct {
 		name     string
 		logstash logstashv1alpha1.Logstash
-		want     []corev1.ContainerPort
 	}{
 		{
 			name: "with default data PVC",
@@ -230,7 +229,7 @@ func Test_BuildVolumes_DefaultVolumesMountPath(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.logstash.Spec.VolumeClaimTemplates = AppendDefaultPVCs(tc.logstash.Spec.VolumeClaimTemplates,
-				tc.logstash)
+				tc.logstash.Spec.PodTemplate.Spec)
 			_, volumeMounts := BuildVolumesAndMounts(tc.logstash)
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))
