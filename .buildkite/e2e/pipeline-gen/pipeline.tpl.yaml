@@ -110,7 +110,6 @@ steps:
 
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
-          - .buildkite/scripts/common/cp-diagnostics.sh
 
         {{- if not $test.Dind }}
           - make run-deployer
@@ -123,7 +122,6 @@ steps:
         retry:
           automatic:
             - limit: 5
-
 
 
     {{- end }}

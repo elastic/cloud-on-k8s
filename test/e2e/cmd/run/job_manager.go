@@ -7,6 +7,7 @@ package run
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -134,19 +135,18 @@ func (jm *JobsManager) Start() {
 			case corev1.PodRunning:
 				job.onPodEvent(jm.Clientset, newPod)
 
-				// download result file when pod is ready
+				// locally copy all files from the artifacts directory when the pod is ready
 				if k8s.IsPodReady(*newPod) {
-					if job.resultFile != "" && !job.resultFileDownloaded {
-						log.Info("Downloading pod result file", "pod", newPod.Name)
+					if job.artefactsDir != "" && !job.artefactsDownloaded {
+						log.Info("Downloading pod artefacts", "pod", newPod.Name)
 
-						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, job.resultFile)
-						dst := fmt.Sprintf("./e2e-tests-%s.json", jm.clusterName)
-
+						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, filepath.Join(job.artefactsDir, "."))
+						dst := "."
 						_, _, err := jm.kubectl("cp", src, dst)
 						if err != nil {
 							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
 						}
-						job.resultFileDownloaded = true
+						job.artefactsDownloaded = true
 
 						jm.Stop()
 					}
