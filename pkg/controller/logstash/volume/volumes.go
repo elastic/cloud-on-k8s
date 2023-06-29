@@ -40,13 +40,13 @@ func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec core
 
 func BuildVolumes(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	// all volumes with CAs of direct associations
-	caAssocVolumes, err := getVolumesFromAssociations(ls.GetAssociations())
+	volumeLikes, err := getVolumesFromAssociations(ls.GetAssociations())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volumeLikes := append(
-		caAssocVolumes,
+	volumeLikes = append(
+		volumeLikes,
 		ConfigSharedVolume,
 		ConfigVolume(ls),
 		PipelineVolume(ls),
