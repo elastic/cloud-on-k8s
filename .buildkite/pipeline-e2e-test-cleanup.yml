@@ -1,7 +1,3 @@
-env:
-  # Future use....
-  DRY_RUN: true
-
 agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:9203b231
   memory: 2G
