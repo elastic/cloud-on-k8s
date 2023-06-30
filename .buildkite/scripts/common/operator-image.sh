@@ -44,7 +44,7 @@ operator::set_image_vars() {
     export IMAGE_TAG
 }
 
-# Sets operator BUILD_FLAVORS in the environment depending on the given trigger if it is no set.
+# Sets operator BUILD_FLAVORS in the environment depending on the given trigger if it is not set.
 operator::set_build_flavors_var() {
     trigger=$1
     if [[ "${BUILD_FLAVORS:-}" == "" ]]; then
