@@ -368,12 +368,12 @@ docker-push-operator:
 		--push \
 		-t $(OPERATOR_IMAGE)
 
-drivah-generate:
+drivah-generate-operator:
 	@ build/gen-drivah.toml.sh
 
 # standard way to build operator image(s) using drivah
 export BUILD_FLAVORS ?= dev
-drivah-push-operator: drivah-generate
+drivah-build-operator: drivah-generate
 	drivah build ./build
 
 purge-gcr-images:
