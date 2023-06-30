@@ -45,10 +45,6 @@ steps:
   {{- end }}
     key: "e2e-{{ $test.SlugName }}"
     # let's be optimistic and run the tests without dependency on the images build
-    {{- if $test.RemoteKubeconfig }}
-    depends_on:
-      - "e2e-cluster-{{ $test.SlugName }}"
-    {{- end }}
 
     env:
       {{- range $key, $val := $test.Env }}
