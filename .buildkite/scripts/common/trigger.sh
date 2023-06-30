@@ -35,42 +35,43 @@ trigger::set_from_env() {
 }
 
 is_tag-final() {
-    [[ "${BUILDKITE_TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] && return 0 || return 1
+    [[ "${BUILDKITE_TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
 is_tag-bc() {
-    [[ "${BUILDKITE_TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+-[a-z]+[0-9]+$ ]] && return 0 || return 1
+    [[ "${BUILDKITE_TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+-[a-z]+[0-9]+$ ]]
 }
 
 is_merge-main() {
-    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "webhook" ]] && return 0 || return 1
+    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "webhook" ]]
 }
 
 is_nightly-main() {
-    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "schedule" ]] && return 0 || return 1
+    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "schedule" ]]
 }
 
 is_pr-commit() {
-    [[ "${BUILDKITE_PULL_REQUEST:-}" != "" && "${BUILDKITE_PULL_REQUEST:-}" != "false" && "${GITHUB_PR_TRIGGER_COMMENT:-}" == ""  ]] \
-        && return 0 || return 1
+    [[ "${BUILDKITE_PULL_REQUEST:-}" != "" && "${BUILDKITE_PULL_REQUEST:-}" != "false" && "${GITHUB_PR_TRIGGER_COMMENT:-}" == "" ]]
 }
 
 is_pr-comment() {
-    [[ "${GITHUB_PR_TRIGGER_COMMENT:-}" != ""  ]] && return 0 || return 1
+    [[ "${GITHUB_PR_TRIGGER_COMMENT:-}" != "" ]]
 }
 
 is_pr-comment-test-snapshot() {
-    [[ "${GITHUB_PR_TRIGGER_COMMENT:-}" =~ s=[0-9\.]*-SNAPSHOT ]] && return 0 || return 1
+    [[ "${GITHUB_PR_TRIGGER_COMMENT:-}" =~ s=[0-9\.]*-SNAPSHOT ]]
 }
 
 is_merge-xyz() {
-    ! is_pr-commit && ! is_pr-comment && [[ "${BUILDKITE_BRANCH:-}" != "main" ]] && return 0 || return 1
+    ! is_pr-commit && ! is_pr-comment && [[ "${BUILDKITE_BRANCH:-}" != "main" ]]
 }
 
 is_api() {
-    [[ "${BUILDKITE_SOURCE:-}" == "api" && "${GITHUB_PR_TRIGGER_USER:-}" == "" ]] && return 0 || return 1
+    [[ "${BUILDKITE_SOURCE:-}" == "api" && "${GITHUB_PR_TRIGGER_USER:-}" == "" ]]
 }
 
 is_dev() {
-    [[ "${CI:-}" != "true" ]] && return 0 || return 1
+    [[ "${CI:-}" != "true" ]]
 }
+
+trigger::set_from_env
