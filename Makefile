@@ -373,7 +373,7 @@ drivah-generate-operator:
 
 # standard way to build operator image(s) using drivah
 export BUILD_FLAVORS ?= dev
-drivah-build-operator: drivah-generate
+drivah-build-operator: drivah-generate-operator
 	drivah build ./build
 
 purge-gcr-images:
