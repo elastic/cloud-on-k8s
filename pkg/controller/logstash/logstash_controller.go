@@ -26,10 +26,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -161,6 +163,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 
 func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1alpha1.Logstash) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&ctx)()
+	logger := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 	status := newStatus(logstash)
 
@@ -170,6 +173,18 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 	}
 	if !areAssocsConfigured {
 		return results, status
+	}
+
+	logstashVersion, err := version.Parse(logstash.Spec.Version)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	assocAllowed, err := association.AllowVersion(logstashVersion, &logstash, logger, r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !assocAllowed {
+		return results, status // will eventually retry
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
