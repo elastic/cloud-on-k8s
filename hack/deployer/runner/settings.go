@@ -100,18 +100,12 @@ type RunConfig struct {
 }
 
 func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
-	yml, err := os.ReadFile(plansFile)
+	plans, err := ParsePlans(plansFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}
 
-	var plans Plans
-	err = yaml.Unmarshal(yml, &plans)
-	if err != nil {
-		return Plans{}, RunConfig{}, err
-	}
-
-	yml, err = os.ReadFile(runConfigFile)
+	yml, err := os.ReadFile(runConfigFile)
 	if err != nil {
 		return Plans{}, RunConfig{}, err
 	}
@@ -123,4 +117,19 @@ func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
 	}
 
 	return plans, runConfig, nil
+}
+
+func ParsePlans(plansFile string) (Plans, error) {
+	yml, err := os.ReadFile(plansFile)
+	if err != nil {
+		return Plans{}, err
+	}
+
+	var plans Plans
+	err = yaml.Unmarshal(yml, &plans)
+	if err != nil {
+		return Plans{}, err
+	}
+
+	return plans, nil
 }

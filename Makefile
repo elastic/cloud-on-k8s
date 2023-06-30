@@ -583,6 +583,11 @@ ci-build-operator-e2e-run: setup-e2e publish-operator-image e2e-run
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
+run-deployer-cleanup: build-deployer
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
+
 set-kubeconfig: build-deployer
 	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 

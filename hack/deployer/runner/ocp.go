@@ -462,3 +462,7 @@ func (d *OCPDriver) baseDomain() string {
 	}
 	return baseDomain
 }
+
+func (d *OCPDriver) Cleanup(druRun bool) ([]string, error) {
+	return nil, fmt.Errorf("unimplemented")
+}

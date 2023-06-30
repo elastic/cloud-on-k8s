@@ -245,4 +245,41 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
+func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
+	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json`
+	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).Output()
+	if err != nil {
+		return nil, err
+	}
+	if len(allClusters) == 0 {
+		return nil, nil
+	}
+	f, err := os.CreateTemp(os.TempDir(), "deployer_all_clusters")
+	if err != nil {
+		return nil, fmt.Errorf("while creating temp file: %w", err)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	_, err = f.Write([]byte(allClusters))
+	if err != nil {
+		return nil, fmt.Errorf("while writing all clusters into temporary file: %w", err)
+	}
+	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select((.cluster.createdAt | . <= $d) && (.cluster.name|test("eck-e2e"))))|.[].cluster.name' %s`, f.Name())
+	clustersToDelete, err := exec.NewCommand(jqCmd).AsTemplate(e.ctx).OutputList()
+	if err != nil {
+		return nil, fmt.Errorf("while running jq command to determine clusters to delete: %w", err)
+	}
+	for _, cluster := range clustersToDelete {
+		e.ctx["ClusterName"] = cluster
+		if dryRun {
+			continue
+		}
+		if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
+			return nil, err
+		}
+	}
+	return clustersToDelete, nil
+}
+
 var _ Driver = &EKSDriver{}

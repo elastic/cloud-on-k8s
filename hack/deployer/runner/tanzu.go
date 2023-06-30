@@ -442,4 +442,8 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		WithoutStreaming().Run()
 }
 
+func (t *TanzuDriver) Cleanup(dryRun bool) ([]string, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
+
 var _ Driver = &TanzuDriver{}

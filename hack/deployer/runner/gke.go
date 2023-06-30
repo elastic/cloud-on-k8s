@@ -400,3 +400,23 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	}
 	return nil
 }
+
+func (d *GKEDriver) Cleanup(dryRun bool) ([]string, error) {
+	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	cmd := `gcloud container clusters list --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~eck-e2e.*"`
+	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
+	if err != nil {
+		return nil, err
+	}
+	for _, cluster := range clusters {
+		d.ctx["ClusterName"] = cluster
+		if dryRun {
+			continue
+		}
+		if err = d.delete(); err != nil {
+			return nil, err
+		}
+	}
+	return clusters, nil
+}

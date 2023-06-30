@@ -7,7 +7,9 @@ package runner
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -186,4 +188,43 @@ func (d *AKSDriver) delete() error {
 		"--name", d.plan.ClusterName,
 		"--resource-group", d.plan.Aks.ResourceGroup).
 		Run()
+}
+
+func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
+	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	allClustersCmd := `az resource list -l {{.Region}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']"`
+	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(d.ctx).Output()
+	if err != nil {
+		return nil, err
+	}
+	if len(allClusters) == 0 {
+		return nil, nil
+	}
+	f, err := os.CreateTemp(os.TempDir(), "deployer_all_clusters")
+	if err != nil {
+		return nil, fmt.Errorf("while creating temp file: %w", err)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	_, err = f.Write([]byte(allClusters))
+	if err != nil {
+		return nil, fmt.Errorf("while writing all clusters into temporary file: %w", err)
+	}
+	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select(.createdTime | . <= $d))|.[].name' %s`, f.Name())
+	clustersToDelete, err := exec.NewCommand(jqCmd).AsTemplate(d.ctx).OutputList()
+	if err != nil {
+		return nil, fmt.Errorf("while running jq command to determine clusters to delete: %w", err)
+	}
+	for _, cluster := range clustersToDelete {
+		d.ctx["ClusterName"] = cluster
+		if dryRun {
+			continue
+		}
+		if err = d.delete(); err != nil {
+			return nil, err
+		}
+	}
+	return clustersToDelete, nil
 }

@@ -1,3 +1,6 @@
+env:
+  DRY_RUN: true
+
 agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:9203b231
   memory: 2G
@@ -9,4 +12,4 @@ steps:
     if: |
       build.message == "buildkite run e2e test cleanup"
     commands:
-      - .buildkite/scripts/test/cleanup-e2e-clusters.sh
+      - make run-deployer-cleanup --dry-run=\$DRY_RUN
