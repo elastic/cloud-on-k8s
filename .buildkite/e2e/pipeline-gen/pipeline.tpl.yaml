@@ -44,7 +44,7 @@ steps:
   - label: ":k8s: :go: {{ $test.Name }}"
   {{- end }}
     key: "e2e-{{ $test.SlugName }}"
-    # let's be optimistic and run the tests without dependency with the images build
+    # let's be optimistic and run the tests without dependency on the images build
     {{- if $test.RemoteKubeconfig }}
     depends_on:
       - "e2e-cluster-{{ $test.SlugName }}"
