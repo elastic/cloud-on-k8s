@@ -1,4 +1,5 @@
 env:
+  # Future use....
   DRY_RUN: true
 
 agents:
@@ -12,4 +13,4 @@ steps:
     if: |
       build.message == "buildkite run e2e test cleanup"
     commands:
-      - make run-deployer-cleanup --dry-run=\$DRY_RUN
+      - make run-deployer-cleanup
