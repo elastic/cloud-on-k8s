@@ -29,11 +29,11 @@ func CleanupCommand() *cobra.Command {
 			case runner.GKEDriverID:
 				return cleanup(plansFile, []string{"gke-ci"}, &runner.GKEDriverFactory{}, dryRun)
 			case runner.AKSDriverID:
-				return cleanup(plansFile, []string{"aks-ci"}, &runner.GKEDriverFactory{}, dryRun)
+				return cleanup(plansFile, []string{"aks-ci"}, &runner.AKSDriverFactory{}, dryRun)
 			case runner.OCPDriverID:
 				return errUnimplemented
 			case runner.EKSDriverID:
-				return cleanup(plansFile, []string{"eks-ci", "eks-arm-ci"}, &runner.GKEDriverFactory{}, dryRun)
+				return cleanup(plansFile, []string{"eks-ci", "eks-arm-ci"}, &runner.EKSDriverFactory{}, dryRun)
 			case runner.KindDriverID:
 				return errUnimplemented
 			default:
