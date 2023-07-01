@@ -122,9 +122,15 @@ func (d *AKSDriver) auth() error {
 		log.Print("Authenticating as service account...")
 		credentials, err := azure.NewCredentials(d.vaultClient)
 		if err != nil {
-			return err
+			log.Printf("while getting new credentials: %s", err)
+			return fmt.Errorf("while getting new credentials: %w", err)
 		}
-		return azure.Login(credentials)
+		log.Print("logging into azure...")
+		err = azure.Login(credentials)
+		if err != nil {
+			log.Printf("while logging into azure %s", err)
+			return fmt.Errorf("while loggin into azure: %w", err)
+		}
 	}
 
 	log.Print("Authenticating as user...")
