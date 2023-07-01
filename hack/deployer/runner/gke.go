@@ -402,6 +402,9 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) Cleanup(dryRun bool) ([]string, error) {
+	if _, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
+		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
+	}
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
 		d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
