@@ -246,6 +246,9 @@ func (e *EKSDriver) writeAWSCredentials() error {
 }
 
 func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
+	if err := e.auth(); err != nil {
+		return nil, err
+	}
 	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json`
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).Output()
 	if err != nil {

@@ -191,6 +191,9 @@ func (d *AKSDriver) delete() error {
 }
 
 func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
+	if err := d.auth(); err != nil {
+		return nil, err
+	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	allClustersCmd := `az resource list -l {{.Region}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']"`

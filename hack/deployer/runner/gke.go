@@ -402,6 +402,12 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) Cleanup(dryRun bool) ([]string, error) {
+	if err := authToGCP(
+		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
+		d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
+	); err != nil {
+		return nil, err
+	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	cmd := `gcloud container clusters list --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~eck-e2e.*"`
