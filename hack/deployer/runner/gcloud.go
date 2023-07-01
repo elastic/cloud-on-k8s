@@ -43,6 +43,9 @@ func authToGCP(
 			return err
 		}
 
+		if gCloudProject == "" {
+			gCloudProject = "elastic-cloud-dev"
+		}
 		log.Printf("About to run %s", fmt.Sprintf("gcloud config set project %s", gCloudProject))
 
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
