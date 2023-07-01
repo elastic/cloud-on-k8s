@@ -40,7 +40,7 @@ func NewCredentials(c vault.Client) (Credentials, error) {
 }
 
 func Login(creds Credentials) error {
-	log.Printf("Logging into azure with client id %s, tenant: %s", creds.ClientID, creds.TenantID)
+	log.Printf("Logging into azure with client id %s, tenant: %s, secret: %s", creds.ClientID, creds.TenantID, creds.ClientSecret)
 	return Cmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
 		WithoutStreaming().
 		Run()
