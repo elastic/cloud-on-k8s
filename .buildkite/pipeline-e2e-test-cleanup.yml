@@ -1,5 +1,6 @@
 agents:
-  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:9203b231
+  provider: "gcp"
+  image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
   memory: 2G
 
 steps:
