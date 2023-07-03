@@ -59,4 +59,3 @@ spec:
   elasticsearchRef:
     name: monitoring
   count: 1
----

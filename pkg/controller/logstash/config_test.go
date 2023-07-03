@@ -144,7 +144,7 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 			Name:      name,
 		},
 		Data: map[string][]byte{
-			LogstashConfigFileName: cfg,
+			ConfigFileName: cfg,
 		},
 	}
 }

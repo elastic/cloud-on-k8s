@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -94,6 +95,9 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	if err := reconcilePipeline(params); err != nil {
 		return results.WithError(err), params.Status
 	}
+
+	params.Logstash.Spec.VolumeClaimTemplates = volume.AppendDefaultPVCs(params.Logstash.Spec.VolumeClaimTemplates,
+		params.Logstash.Spec.PodTemplate.Spec)
 
 	podTemplate, err := buildPodTemplate(params, configHash)
 	if err != nil {

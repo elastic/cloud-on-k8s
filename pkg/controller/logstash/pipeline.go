@@ -18,6 +18,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 )
 
+const (
+	PipelineFileName = "pipelines.yml"
+)
+
 func reconcilePipeline(params Params) error {
 	defer tracing.Span(&params.Context)()
 

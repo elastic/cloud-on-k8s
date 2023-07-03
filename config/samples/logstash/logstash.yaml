@@ -3,8 +3,8 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  count: 3
   version: 8.8.0
+  count: 3
   config:
     log.level: info
     api.http.host: "0.0.0.0"
@@ -12,7 +12,3 @@ spec:
   pipelines:
     - pipeline.id: main
       config.string: input { exec { command => 'uptime' interval => 10 } } output { stdout{} }
-  podTemplate:
-    spec:
-      containers:
-        - name: logstash
