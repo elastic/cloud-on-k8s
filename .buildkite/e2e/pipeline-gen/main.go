@@ -356,11 +356,11 @@ func commonTestEnv(name string, slugName string, stackVersion string) (map[strin
 
 	operatorImage, err := getMetadata("operator-image")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get operator-image metadata: %w", err)
 	}
 	e2eImage, err := getMetadata("e2e-image")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get e2e-image metadata: %w", err)
 	}
 
 	env := map[string]string{
