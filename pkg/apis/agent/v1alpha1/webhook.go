@@ -38,7 +38,7 @@ func (a *Agent) GetWarnings() []string {
 	if a == nil {
 		return nil
 	}
-	if len(a.Spec.PolicyID) == 0 {
+	if a.Spec.Mode == AgentFleetMode && len(a.Spec.PolicyID) == 0 {
 		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, a.Namespace, a.Name, MissingPolicyIDMessage)}
 	}
 	return nil

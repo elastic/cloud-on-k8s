@@ -69,7 +69,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			want: admission.Allowed(""),
 		},
 		{
-			name: "no policy id is allowed but it should return a warning.",
+			name: "no policy id when agent running in standalone mode should not return a warning",
 			fields: fields{
 				set.Make("elastic"),
 				&agentv1alpha1.Agent{},
@@ -89,6 +89,35 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "7.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Allowed(""),
+		},
+		{
+			name: "no policy id is allowed when agent running in fleet mode but it should return a warning",
+			fields: fields{
+				set.Make("elastic"),
+				&agentv1alpha1.Agent{},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "testAgent",
+								Namespace: "elastic",
+								Labels: map[string]string{
+									"test": "label1",
+								},
+							},
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "7.14.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								Mode:       agentv1alpha1.AgentFleetMode,
 							},
 						}),
 					},

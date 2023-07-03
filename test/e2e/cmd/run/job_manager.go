@@ -7,6 +7,7 @@ package run
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
@@ -128,24 +130,33 @@ func (jm *JobsManager) Start() {
 				log.Error(errors.New("received an update event for an unmanaged Pod"), "namespace", newPod.Namespace, "name", newPod.Name)
 				return
 			}
+
 			switch newPod.Status.Phase {
 			case corev1.PodRunning:
 				job.onPodEvent(jm.Clientset, newPod)
-			case corev1.PodSucceeded:
-				if job.podSucceeded {
-					// already done, but the informer is not stopped yet so this code is still running
-					return
+
+				// locally copy all files from the artifacts directory when the pod is ready
+				if k8s.IsPodReady(*newPod) {
+					if job.artefactsDir != "" && !job.artefactsDownloaded {
+						log.Info("Downloading pod artefacts", "pod", newPod.Name)
+
+						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, filepath.Join(job.artefactsDir, "."))
+						dst := "."
+						_, _, err := jm.kubectl("cp", src, dst)
+						if err != nil {
+							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
+						}
+						job.artefactsDownloaded = true
+
+						jm.Stop()
+					}
 				}
-				log.Info("Pod succeeded", "name", newPod.Name, "status", newPod.Status.Phase)
-				job.onPodEvent(jm.Clientset, newPod)
-				job.WaitForLogs()
+
+			case corev1.PodSucceeded, corev1.PodFailed:
+				log.Info("Unexpected pod status", "name", newPod.Name, "status", newPod.Status.Phase)
+				jm.err = fmt.Errorf("unexpected status %s for pod %s", newPod.Status.Phase, newPod.Name)
 				jm.Stop()
-			case corev1.PodFailed:
-				// One of the managed Job/Pod has failed, wait for logs and return.
-				jm.err = errors.Errorf("Pod %s has failed", newPod.Name)
-				log.Error(jm.err, "Pod is in failed state", "name", newPod.Name)
-				job.WaitForLogs()
-				jm.Stop()
+
 			default:
 				log.Info("Waiting for pod to be ready", "name", newPod.Name, "status", newPod.Status.Phase)
 			}

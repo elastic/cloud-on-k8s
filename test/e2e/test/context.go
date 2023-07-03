@@ -121,10 +121,11 @@ type Context struct {
 	ClusterName           string             `json:"clusterName"`
 	KubernetesVersion     version.Version    `json:"kubernetes_version"`
 	GCPCredentialsPath    string             `json:"gcp_credentials_path"`
+	AutopilotCluster      bool               `json:"autopilot_cluster"`
 	TestEnvTags           []string           `json:"test_tags"`
 	E2ETags               string             `json:"e2e_tags"`
 	LogToFile             bool               `json:"log_to_file"`
-	GSBucketName          string             `json:"gs_bucket_name"`
+	ArtefactsDir          string             `json:"artefacts_dir"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

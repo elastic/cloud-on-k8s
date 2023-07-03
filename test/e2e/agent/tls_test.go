@@ -20,11 +20,6 @@ import (
 func TestFleetAgentWithoutTLS(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
-
 	// Disabling TLS for Fleet isn't supported before 7.16, as Elasticsearch doesn't allow
 	// api keys to be enabled when TLS is disabled.
 	if v.LT(version.MustParse("7.16.0")) {

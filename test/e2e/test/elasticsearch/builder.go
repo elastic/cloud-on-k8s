@@ -335,6 +335,18 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 }
 
+func (b Builder) WithoutAllowMMAP() Builder {
+	builderCopy := b.DeepCopy()
+	for i := range builderCopy.Elasticsearch.Spec.NodeSets {
+		if builderCopy.Elasticsearch.Spec.NodeSets[i].Config == nil {
+			builderCopy.Elasticsearch.Spec.NodeSets[i].Config = &commonv1.Config{}
+			continue
+		}
+		delete(builderCopy.Elasticsearch.Spec.NodeSets[i].Config.Data, "node.store.allow_mmap")
+	}
+	return *builderCopy
+}
+
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 	refs := make([]commonv1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {

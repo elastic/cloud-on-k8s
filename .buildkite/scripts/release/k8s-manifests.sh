@@ -4,24 +4,40 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-# Script to upload ECK k8s manifests to S3.
+# Script to upload ECK k8s manifests (conf/operator.yaml and conf/crds.yaml) to S3.
+#
+# The version for publishing the manifests is the value of the environment variable
+# BUILDKITE_TAG or, if not set, it is extracted from the buidkite meta-data 
+# 'operator-image'.
 
 set -eu
 
 ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
-# shellcheck disable=SC1091
-source "$ROOT/.env"
 
-if [[ "$IMG_VERSION" == "" ]]; then
-  echo "error: IMG_VERSION required to upload manifests to S3"
-  exit 1
-fi
+retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 
-AWS_ACCESS_KEY_ID=$(vault read -field=access-key-id "$VAULT_ROOT_PATH/release-aws-s3")
-export AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY=$(vault read -field=secret-access-key "$VAULT_ROOT_PATH/release-aws-s3")
-export AWS_SECRET_ACCESS_KEY
+get_image_tag() {
+  buildkite-agent meta-data get operator-image --default "" | cut -d':' -f2
+}
 
-for f in operator.yaml crds.yaml; do
-  aws s3 cp "$ROOT/config/$f" "s3://download.elasticsearch.org/downloads/eck/$IMG_VERSION/$f"
-done
+main() {
+  local version=${BUILDKITE_TAG:-$(get_image_tag)}
+  version=${version#v} # remove v prefix
+
+  if [[ "$version" == "" ]]; then
+    echo "error: version is required to upload k8s manifests to S3"
+    exit 1
+  fi
+
+  AWS_ACCESS_KEY_ID=$(retry vault read -field=access-key-id "$VAULT_ROOT_PATH/release-aws-s3")
+  export AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY=$(retry vault read -field=secret-access-key "$VAULT_ROOT_PATH/release-aws-s3")
+  export AWS_SECRET_ACCESS_KEY
+
+  for f in operator.yaml crds.yaml; do
+    echo "-- aws s3 cp config/$f s3://download.elasticsearch.org/downloads/eck/$version/$f"
+    aws s3 cp "$ROOT/config/$f" "s3://download.elasticsearch.org/downloads/eck/$version/$f"
+  done
+}
+
+main

@@ -4,9 +4,12 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 
-set -euo pipefail
+set -uo pipefail
 
 chaos=${CHAOS:-"false"}
+
+ARTEFACTS_DIR=${ARTEFACTS_DIR:-.}
+CLUSTER_NAME=${CLUSTER_NAME:-local}
 
 run_e2e_tests() {
   if [ "${E2E_JSON}" == "true" ]
@@ -30,8 +33,11 @@ main() {
   if [ "${chaos}" == true ] ; then
     run_chaos "$@"
   else
-    run_e2e_tests "$@"
+    mkdir -p "$ARTEFACTS_DIR"
+    run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
   fi
+  touch /tmp/done
+  sleep infinity
 }
 
 main "$@"

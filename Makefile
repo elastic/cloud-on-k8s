@@ -18,9 +18,6 @@ KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
-# Allow FIPS compliance by means of BoringCrypto build tag.
-ENABLE_FIPS ?= false
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
@@ -36,44 +33,27 @@ endif
 
 ## -- Docker image
 
+REGISTRY            ?= docker.elastic.co
+
+export SNAPSHOT     ?= true
+export VERSION      ?= $(shell cat VERSION)
+export SHA1         ?= $(shell git rev-parse --short=8 --verify HEAD)
+export ARCH         ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+
 # for dev, suffix image name with current user name
-IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
+IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
+REGISTRY_NAMESPACE  ?= eck-dev
+OPERATOR_NAME       ?= eck-operator$(IMAGE_SUFFIX)
 
-REGISTRY           ?= docker.elastic.co
-REGISTRY_NAMESPACE ?= eck-dev
-NAME               ?= eck-operator
-SNAPSHOT           ?= true
-VERSION            ?= $(shell cat VERSION)
-TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
-IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
-IMG_VERSION        ?= $(VERSION)-$(TAG)
+export IMAGE_NAME   := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
+export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
+OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
-BASE_IMG                     := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
-OPERATOR_IMAGE               ?= $(BASE_IMG):$(IMG_VERSION)
-OPERATOR_IMAGE_UBI           ?= $(BASE_IMG)-ubi8:$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE     ?= docker.io/elastic/$(IMG_NAME):$(IMG_VERSION)
-OPERATOR_DOCKERHUB_IMAGE_UBI ?= docker.io/elastic/$(IMG_NAME)-ubi8:$(IMG_VERSION)
-
-# From https://github.com/golang/go/blob/master/src/internal/goexperiment/flags.go#L17-L18
-#
-# Experiments are exposed to the build in the following ways:
-# - Build tag goexperiment.x is set if experiment x (lower case) is enabled.
-#
-# Also, if fips is enabled, push fips versions of all builds to container registrys.
-ifeq ($(ENABLE_FIPS),true)
-	GO_TAGS += goexperiment.boringcrypto
-	OPERATOR_IMAGE               := $(BASE_IMG)-fips:$(IMG_VERSION)
-	OPERATOR_IMAGE_UBI           := $(BASE_IMG)-ubi8-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE     := docker.io/elastic/$(IMG_NAME)-fips:$(IMG_VERSION)
-	OPERATOR_DOCKERHUB_IMAGE_UBI := docker.io/elastic/$(IMG_NAME)-ubi8-fips:$(IMG_VERSION)
-	BUILD_PLATFORM := linux/amd64
-endif
-
-print-operator-image:
-	@ echo $(OPERATOR_IMAGE)
+print-%:
+	@ echo $($*)
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/v2/pkg/about.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildHash=$(SHA1) \
 	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/v2/pkg/about.buildSnapshot=$(SNAPSHOT)
 
@@ -100,36 +80,50 @@ all: dependencies lint check-license-header unit integration e2e-compile elastic
 dependencies: tidy
 	go mod download
 
-# Generate code, CRDs and documentation
-ALL_V1_CRDS=config/crds/v1/all-crds.yaml
-
-generate: tidy generate-crds-v1 generate-config-file generate-api-docs generate-notice-file
-
 tidy:
 	go mod tidy
 
+go-build: go-generate
+	go build \
+		-mod readonly \
+		-ldflags "$(GO_LDFLAGS)" -tags="$(GO_TAGS)" -a \
+		 -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
+
+reattach-pv:
+	# just check that reattach-pv still compiles
+	go build -o /dev/null support/reattach-pv/main.go
+
+compile-all:
+	@ go build ./...
+	@ $(MAKE) e2e-compile
+
+## -- generate code, CRDs and documentation
+
 go-generate:
-	@ # we use this in pkg/controller/common/license
+	@ # generate use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
-generate-crds-v1: go-generate controller-gen
-	# Generate webhook manifest
-	# Webhook definitions exist in pkg/apis, pkg/controller/elasticsearch/validation and pkg/controller/autoscaling/elasticsearch/validation
-	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
-	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
-	# apply patches to work around some CRD generation issues, and merge them into a single file
-	kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
-	# generate a CRD only version without the operator manifests
+generate: tidy generate-manifests generate-config-file generate-api-docs generate-notice-file
+
+ALL_V1_CRDS=config/crds/v1/all-crds.yaml
+
+generate-manifests: controller-gen
+	# -- generate  webhook manifest
+	@ $(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/...
+	# -- generate  crd bases manifests
+	@ $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/v1/bases
+	# -- kustomize crd manifests
+	@ kubectl kustomize config/crds/v1/patches > $(ALL_V1_CRDS)
+	# -- generate  crds manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
-	# generate the operator manifests
+	# -- generate  operator manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--profile=global \
 		--set=installCRDs=false \
 		--set=telemetry.distributionChannel=all-in-one \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
+		--set=image.tag=$(IMAGE_TAG) \
+		--set=image.repository=$(IMAGE_NAME) \
 		--set=nameOverride=$(OPERATOR_NAME) \
 		--set=fullnameOverride=$(OPERATOR_NAME) > config/operator.yaml
 
@@ -145,20 +139,8 @@ generate-notice-file:
 generate-image-dependencies:
 	@hack/licence-detector/generate-image-deps.sh
 
-elastic-operator: generate
-	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
-
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
-
-reattach-pv:
-	# just check that reattach-pv still compiles
-	go build -o /dev/null support/reattach-pv/main.go
-
-compile-all: 
-	@ go build ./...
-	@ go test -run=dryrun ./cmd/... ./pkg/... > /dev/null
-	@ $(MAKE) e2e-compile
 
 ## -- tests
 
@@ -172,14 +154,18 @@ helm-test:
 	@hack/helm/test.sh
 
 integration: GO_TAGS += integration
-integration: clean generate-crds-v1
-	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
+integration: clean
+	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+		KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+			go test $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
+	done
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean generate-crds-v1
+integration-xml: clean
+	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
 	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
+		gotestsum --junitfile integration-tests.xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
+	done
 
 lint:
 	GOGC=50 golangci-lint run --verbose
@@ -188,7 +174,7 @@ manifest-gen-test:
 	hack/manifest-gen/test.sh
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
+	shellcheck -x $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 upgrade-test: docker-build docker-push
 	@hack/upgrade-test-harness/run.sh
@@ -196,7 +182,8 @@ upgrade-test: docker-build docker-push
 #############################
 ##  --       Run       --  ##
 #############################
-install-crds: generate-crds-v1
+
+install-crds: generate-manifests
 	kubectl apply -f $(ALL_V1_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
@@ -204,7 +191,7 @@ install-crds: generate-crds-v1
 run: install-crds go-run
 
 go-run:
-	# Run the operator locally with debug logs and operator image set to latest
+	@ # Run the operator locally with debug logs and operator image set to latest
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
@@ -221,7 +208,7 @@ go-run:
 				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
-	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+	@ (cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
 		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
 		-- \
 		manager \
@@ -249,8 +236,8 @@ apply-operator:
 ifeq ($(strip $(MANAGED_NAMESPACES)),)
 	@ ./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
+		--set=image.tag=$(IMAGE_TAG) \
+		--set=image.repository=$(IMAGE_NAME) \
 		--set=nameOverride=$(OPERATOR_NAME) \
 		--set=fullnameOverride=$(OPERATOR_NAME) | kubectl apply -f -
 else
@@ -258,8 +245,8 @@ else
 		--profile=restricted \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--set=installCRDs=true \
-		--set=image.tag=$(IMG_VERSION) \
-		--set=image.repository=$(BASE_IMG) \
+		--set=image.tag=$(IMAGE_TAG) \
+		--set=image.repository=$(IMAGE_NAME) \
 		--set=nameOverride=$(OPERATOR_NAME) \
 		--set=fullnameOverride=$(OPERATOR_NAME) \
 		--set=managedNamespaces="{$(MANAGED_NAMESPACES)}" | kubectl apply -f -
@@ -275,7 +262,6 @@ samples:
 # Display elasticsearch credentials of the first stack
 show-credentials:
 	@ echo "elastic:$$(kubectl get secret elasticsearch-sample-es-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
-
 
 ##########################################
 ##  --    K8s clusters bootstrap    --  ##
@@ -311,6 +297,12 @@ DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --
 
 build-deployer:
 	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
+
+run-deployer: build-deployer
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+
+set-kubeconfig: build-deployer
+	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 create-default-config:
 ifeq ($(wildcard hack/deployer/config/deployer-config-$(PROVIDER).yml),)
@@ -359,93 +351,34 @@ switch-kind:
 switch-tanzu:
 	@ echo "tanzu" > hack/deployer/config/provider
 
-
-
 #################################
 ##  --    Docker images    --  ##
 #################################
 
-BUILD_PLATFORM ?= "linux/amd64,linux/arm64"	
-
-publish-operator-multiarch-image:
-	@ .buildkite/scripts/build/is_published.sh $(OPERATOR_IMAGE) $(BUILD_PLATFORM) \
-	|| $(MAKE) docker-multiarch-build
-
-docker-multiarch-build: go-generate generate-config-file
-	@ hack/docker.sh -l -m $(OPERATOR_IMAGE)
+# build amd64 image for dev purposes
+BUILD_PLATFORM ?= "linux/amd64"
+docker-push-operator:
 	docker buildx build . \
+	 	-f build/Dockerfile \
 		--progress=plain \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
 		--platform $(BUILD_PLATFORM) \
-		-t $(OPERATOR_IMAGE) \
-		--push
-ifeq ($(PUBLISH_IMAGE_DOCKERHUB),true)
-	@ $(MAKE) docker-multiarch-build-dockerhub
-endif
-ifeq ($(PUBLISH_IMAGE_UBI),true)
-	@ $(MAKE) docker-multiarch-build-ubi
-endif
-
-docker-multiarch-build-dockerhub:
-	docker buildx build . \
-		--progress=plain \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
-		--platform $(BUILD_PLATFORM) \
-		-t $(OPERATOR_DOCKERHUB_IMAGE) \
-		--push
-
-docker-multiarch-build-ubi:
-	docker buildx build . \
-		--progress=plain \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
-		--platform $(BUILD_PLATFORM) \
-		-f Dockerfile.ubi \
-		-t $(OPERATOR_IMAGE_UBI) \
-		--push
-
-publish-operator-image:
-	@ docker pull $(OPERATOR_IMAGE) \
-	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
-	|| $(MAKE) docker-build docker-push
-
-docker-build: go-generate generate-config-file
-	DOCKER_BUILDKIT=1 docker build . \
-		--progress=plain \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
+		--push \
 		-t $(OPERATOR_IMAGE)
 
-docker-push:
-	@ hack/docker.sh -l -p $(OPERATOR_IMAGE)
+drivah-generate-operator:
+	@ build/gen-drivah.toml.sh
 
-buildah-login:
-	@ buildah login \
-		--username="$(shell vault read -field=username $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
-		--password="$(shell vault read -field=password $(VAULT_ROOT_PATH)/docker-registry-elastic)" \
-		$(REGISTRY)
-
-buildah-operator-image: go-generate generate-config-file buildah-login
-	buildah bud \
-		--isolation=chroot --storage-driver=vfs \
-		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
-		--build-arg GO_TAGS='$(GO_TAGS)' \
-		--build-arg VERSION='$(VERSION)' \
-		--platform $(BUILD_PLATFORM) \
-		-t $(OPERATOR_IMAGE) .
-	buildah push \
-		--storage-driver=vfs \
-		$(OPERATOR_IMAGE)
+# standard way to build operator image(s) using drivah
+export BUILD_FLAVORS ?= dev
+drivah-build-operator: drivah-generate-operator
+	drivah build ./build
 
 purge-gcr-images:
-	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
-		do gcloud container images untag $(BASE_IMG):$$i; \
+	@ for i in $(gcloud container images list-tags $(IMAGE_NAME) | tail +3 | awk '{print $$2}'); \
+		do gcloud container images untag $(IMAGE_NAME):$$i; \
 	done
 
 switch-registry-gcr:
@@ -463,10 +396,27 @@ switch-registry-dev: # just use the default values of variables
 ##  --   End to end tests    --  ##
 ###################################
 
-E2E_REGISTRY_NAMESPACE     ?= eck-dev
+# -- build
 
-E2E_IMG_TAG                ?= $(IMG_VERSION)
-E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
+E2E_REGISTRY_NAMESPACE     ?= eck-dev
+export E2E_IMAGE_NAME      ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests
+export E2E_IMAGE_TAG       ?= $(SHA1)
+
+# push amd64 image for dev purposes
+docker-push-e2e:
+	docker buildx build \
+		--progress=plain \
+		--file test/e2e/Dockerfile \
+		--platform $(BUILD_PLATFORM) \
+		--push \
+		-t $(E2E_IMAGE_NAME):$(E2E_IMAGE_TAG) .
+
+# standard way to build e2e tests image using drivah
+drivah-build-e2e:
+	drivah build test/e2e
+
+# -- run
+
 E2E_STACK_VERSION          ?= 8.8.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
@@ -483,39 +433,6 @@ E2E_TEST_ENV_TAGS          ?= ""
 ifneq (,$(GO_TAGS))
 E2E_TAGS := $(GO_TAGS),$(E2E_TAGS)
 endif
-
-print-e2e-image:
-	@ echo $(E2E_IMG)
-
-e2e-docker-build: go-generate
-	DOCKER_BUILDKIT=1 docker build --progress=plain -t $(E2E_IMG) -f test/e2e/Dockerfile .
-
-e2e-docker-push:
-	@ hack/docker.sh -l -p $(E2E_IMG)
-
-publish-e2e-multiarch-image:
-	@ .buildkite/scripts/build/is_published.sh $(E2E_IMG) $(BUILD_PLATFORM) \
-	|| $(MAKE) e2e-docker-multiarch-build
-
-e2e-docker-multiarch-build: go-generate
-	@ hack/docker.sh -l -m $(E2E_IMG)
-	docker buildx build \
-		--progress=plain \
-		--file test/e2e/Dockerfile \
-		--platform $(BUILD_PLATFORM) \
-		--push \
-		-t $(E2E_IMG) .
-
-e2e-buildah: go-generate buildah-login
-	buildah bud \
-		--isolation=chroot --storage-driver=vfs \
-		--platform $(BUILD_PLATFORM) \
-		-f test/e2e/Dockerfile \
-		-t $(E2E_IMG) \
-		.
-	buildah push \
-		--storage-driver=vfs \
-		$(E2E_IMG)
 
 e2e-run: go-generate
 	go run -tags='$(GO_TAGS)' test/e2e/cmd/main.go run \
@@ -564,31 +481,6 @@ e2e-local: go-generate
 		--test-timeout=$(TEST_TIMEOUT) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS)
 
-##########################################
-##  --    Continuous integration    --  ##
-##########################################
-
-ci-check: check-license-header lint shellcheck generate check-local-changes check-predicates
-
-ci: unit-xml integration-xml docker-build reattach-pv
-
-setup-e2e: e2e-compile run-deployer publish-e2e-multiarch-image
-
-ci-e2e: E2E_JSON := true
-ci-e2e: setup-e2e e2e-run
-
-ci-build-operator-e2e-run: E2E_JSON := true
-ci-build-operator-e2e-run: setup-e2e publish-operator-image e2e-run
-
-run-deployer: build-deployer
-	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
-
-set-kubeconfig: build-deployer
-	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
-
-ci-release: clean ci-check build-operator-multiarch-image
-	@ echo $(OPERATOR_IMAGE) and $(OPERATOR_DOCKERHUB_IMAGE) were pushed!
-
 ##########################
 ##  --   Helpers    --  ##
 ##########################
@@ -613,7 +505,3 @@ check-predicates:
 	@ diff \
 		<(grep "name:" "$(CODE)" | grep -o "$(PREDICATE_PATTERN)" ) \
 		<(grep '\*\* [a-z]' "$(DOC)" | grep -o "$(PREDICATE_PATTERN)" )
-
-# Runs small Go tool to validate syntax correctness of Jenkins pipelines
-validate-jenkins-pipelines:
-	@ go run ./hack/pipeline-validator/main.go

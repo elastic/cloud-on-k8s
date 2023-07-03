@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -66,6 +67,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
+	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -350,11 +352,19 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *corev1.Service:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
+		case *appsv1.DaemonSet:
+			decodedObj.Namespace = namespace
+			decodedObj.Name = decodedObj.Name + "-" + suffix
 		}
 
 		if builder != nil {
 			// ECK driven resources can be further transformed
 			for _, transformer := range transformers {
+				// This check is required as transformers is a variadic
+				// argument to "RunFile" (not a slice) and sending nil will panic here.
+				if transformer == nil {
+					continue
+				}
 				builder = transformer(builder)
 			}
 			builders = append(builders, builder)
