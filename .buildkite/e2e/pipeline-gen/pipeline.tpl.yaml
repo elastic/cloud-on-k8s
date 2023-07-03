@@ -6,7 +6,7 @@ steps:
 
 {{- range $test := .Tests }}
 
-  {{- if $test.RemoteKubeconfig }}
+  {{- if and $test.RemoteKubeconfig (not $test.Vcluster) }}
 
   # create k8s cluster
   - label: ":k8s: {{ $test.Name }}"
@@ -44,8 +44,7 @@ steps:
   - label: ":k8s: :go: {{ $test.Name }}"
   {{- end }}
     key: "e2e-{{ $test.SlugName }}"
-
-    {{- if $test.RemoteKubeconfig }}
+    {{- if and $test.RemoteKubeconfig (not $test.Vcluster) }}
     depends_on:
       - "e2e-cluster-{{ $test.SlugName }}"
       # let's be optimistic and run the tests without dependency on the images build
@@ -64,14 +63,18 @@ steps:
       - .buildkite/scripts/test/set-deployer-config.sh
 
       {{- $deployerCommand := "run-deployer" }}
-      {{- if $test.RemoteKubeconfig }}
+      {{- if and $test.RemoteKubeconfig (not $test.Vcluster) }}
         {{- $deployerCommand = "set-kubeconfig" }}
       {{- end }}
 
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
       {{- else }}
-      - make {{ $deployerCommand }} e2e-run
+      - make {{ $deployerCommand }}
+        {{- if $test.Vcluster }}
+      - vcluster create e2e-eck-{{ $test.SlugName }}-$$BUILDKITE_BUILD_NUMBER --expose
+        {{- end }}
+      - make e2e-run
       {{- end }}
 
     agents:
@@ -116,7 +119,12 @@ steps:
           - .buildkite/scripts/test/set-deployer-config.sh
 
         {{- if not $test.Dind }}
+            {{- if $test.Vcluster }}
+          - make set-kubeconfig
+          - vcluster delete e2e-eck-{{ $test.SlugName }}-$$BUILDKITE_BUILD_NUMBER
+            {{- else }}
           - make run-deployer
+            {{- end }}
         {{- else }}
           - make -C .buildkite TARGET="run-deployer" ci
         agents:

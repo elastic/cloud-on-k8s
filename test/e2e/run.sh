@@ -34,7 +34,9 @@ main() {
     run_chaos "$@"
   else
     mkdir -p "$ARTEFACTS_DIR"
-    run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
+    # unique id to support running different tests in the same cluster in parallel
+    id=$(sha1sum <<< "$RANDOM-$(date +%s)"| cut -c1-8)
+    run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME-$id.json"
   fi
   touch /tmp/done
   sleep infinity

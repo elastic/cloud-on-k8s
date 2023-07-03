@@ -117,14 +117,17 @@ func (d *GKEDriver) Execute() error {
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
-		} else {
-			if err := d.create(); err != nil {
+			if err := d.GetCredentials(); err != nil {
 				return err
 			}
+			return nil
+		}
+		if err := d.create(); err != nil {
+			return err
+		}
 
-			if err := d.bindRoles(); err != nil {
-				return err
-			}
+		if err := d.bindRoles(); err != nil {
+			return err
 		}
 
 		if d.plan.Gke.Private {

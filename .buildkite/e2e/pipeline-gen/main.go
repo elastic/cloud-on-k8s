@@ -43,6 +43,7 @@ const (
 	EnvVarGoTags               = "GO_TAGS"
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
+	EnvVarVcluster             = "VCLUSTER"
 
 	KindAgentsMachineType = "n1-standard-16"
 )
@@ -221,6 +222,7 @@ type TestsSuiteRun struct {
 	Dind             bool
 	Cleanup          bool
 	RemoteKubeconfig bool
+	Vcluster         bool
 }
 
 func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (TestsSuiteRun, error) {
@@ -258,6 +260,10 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 	}
 	for k, v := range mixed {
 		t.Env[k] = v
+	}
+
+	if t.Env[EnvVarVcluster] == "true" {
+		t.Vcluster = true
 	}
 
 	return t, nil

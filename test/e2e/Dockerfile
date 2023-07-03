@@ -27,6 +27,9 @@ COPY test/ test/
 RUN chown -R 1001 /go/src/github.com/elastic/cloud-on-k8s
 USER 1001
 
+# compile _test.go with `-run` flag matching no test
+RUN go test github.com/elastic/cloud-on-k8s/v2/test/e2e/... -run warm
+
 # go generate pub key
 COPY test/e2e/license.key /license.key
 RUN LICENSE_PUBKEY=/license.key go generate -tags="${GO_TAGS}" ./pkg/... ./cmd/...
