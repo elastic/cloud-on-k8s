@@ -42,7 +42,7 @@ is_tag-bc() {
 }
 
 is_merge-main() {
-    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "webhook" ]]
+    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" != "schedule" ]]
 }
 
 is_nightly-main() {
