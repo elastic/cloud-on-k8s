@@ -31,4 +31,6 @@ USER 1001
 COPY test/e2e/license.key /license.key
 RUN LICENSE_PUBKEY=/license.key go generate -tags="${GO_TAGS}" ./pkg/... ./cmd/...
 
+RUN chmod 777 /.cache/go-build/* /go/src/github.com/elastic/cloud-on-k8s
+
 ENTRYPOINT ["test/e2e/run.sh"]
