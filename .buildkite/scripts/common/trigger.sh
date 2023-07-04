@@ -26,12 +26,11 @@ trigger::set_from_env() {
     for t in $T; do
         if "is_$t"; then
             echo "$t"
-            return 0
+            return
         fi
     done
 
     echo unknown
-    return 1
 }
 
 is_tag-final() {
@@ -74,4 +73,3 @@ is_dev() {
     [[ "${CI:-}" != "true" ]]
 }
 
-trigger::set_from_env
