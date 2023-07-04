@@ -26,12 +26,11 @@ trigger::set_from_env() {
     for t in $T; do
         if "is_$t"; then
             echo "$t"
-            return 0
+            return
         fi
     done
 
     echo unknown
-    return 1
 }
 
 is_tag-final() {
@@ -43,7 +42,7 @@ is_tag-bc() {
 }
 
 is_merge-main() {
-    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" == "webhook" ]]
+    [[ "${BUILDKITE_BRANCH:-}" == "main" && "${BUILDKITE_SOURCE:-}" != "schedule" ]]
 }
 
 is_nightly-main() {
@@ -74,4 +73,3 @@ is_dev() {
     [[ "${CI:-}" != "true" ]]
 }
 
-trigger::set_from_env
