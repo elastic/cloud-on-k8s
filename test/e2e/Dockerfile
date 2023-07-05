@@ -31,6 +31,9 @@ USER 1001
 COPY test/e2e/license.key /license.key
 RUN LICENSE_PUBKEY=/license.key go generate -tags="${GO_TAGS}" ./pkg/... ./cmd/...
 
-RUN chmod 777 /.cache/go-build/* /go/src/github.com/elastic/cloud-on-k8s
+# Set r/w permissions for user members of root group (GID=0) to support OpenShift Container Platform running containers
+# using arbitrarily assigned user ID, which is always member of the root group.
+RUN chgrp -R 0 /.cache/go-build/ /go/src/github.com/elastic/cloud-on-k8s && \
+    chmod -R g=u /.cache/go-build/ /go/src/github.com/elastic/cloud-on-k8s
 
 ENTRYPOINT ["test/e2e/run.sh"]
