@@ -34,4 +34,4 @@ testParams:
     stackVersion: 8.8.0
   - name: upcoming
     operatorVersion: 2.9.0-SNAPSHOT
-    stackVersion: 8.9.0-SNAPSHOT
+    stackVersion: 8.10.0-SNAPSHOT
