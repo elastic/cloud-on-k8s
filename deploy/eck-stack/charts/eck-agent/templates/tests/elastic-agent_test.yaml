@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 8.9.0-SNAPSHOT
+          value: 8.9.0
       - equal:
           path: spec.config
           value: null

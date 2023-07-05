@@ -1,5 +1,5 @@
 name: filebeat
-version: 8.9.0-SNAPSHOT
+version: 8.9.0
 spec:
   type: filebeat
   elasticsearchRef:
