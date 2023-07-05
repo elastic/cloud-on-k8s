@@ -31,7 +31,7 @@ generate_drivah_config() {
     local name=$1
     local tag=$2
     local go_tags=$3
-    local license_pub_key=$4
+    local license_pubkey=$4
 cat <<END
 [container.image]
 names = ["${name}"]
@@ -43,7 +43,7 @@ VERSION = "${VERSION}"
 SHA1 = "${SHA1}"
 GO_TAGS = "${go_tags}"
 SNAPSHOT = "${SNAPSHOT}"
-LICENSE_PUBKEY = "$license_pub_key"
+LICENSE_PUBKEY = "$license_pubkey"
 END
 }
 
