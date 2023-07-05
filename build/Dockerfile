@@ -5,9 +5,7 @@ ARG VERSION
 ARG SHA1
 ARG SNAPSHOT
 ARG GO_TAGS
-ARG LICENSE_PUBKEY_PATH
-
-ENV LICENSE_PUBKEY=/license.key
+ARG LICENSE_PUBKEY
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
@@ -21,11 +19,11 @@ COPY config/eck.yaml .
 # Copy the sources
 COPY pkg/ pkg/
 COPY cmd/ cmd/
-COPY $LICENSE_PUBKEY_PATH /license.key
+COPY build/$LICENSE_PUBKEY /$LICENSE_PUBKEY
 
 # Build
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
-      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/license.key make go-build
+      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make go-build
 
 # ---------------------------------------------
 # Copy the operator binary into a lighter image
