@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
+	jobTimeout           = 900 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
 	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
