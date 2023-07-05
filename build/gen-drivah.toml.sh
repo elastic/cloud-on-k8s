@@ -43,7 +43,7 @@ VERSION = "${VERSION}"
 SHA1 = "${SHA1}"
 GO_TAGS = "${go_tags}"
 SNAPSHOT = "${SNAPSHOT}"
-LICENSE_PUBKEY_PATH = "build/$license_pub_key"
+LICENSE_PUBKEY = "$license_pub_key"
 END
 }
 
