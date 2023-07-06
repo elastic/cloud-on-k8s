@@ -87,7 +87,7 @@ steps:
       - label: "kind/TestSmoke"
         fixed:
           E2E_PROVIDER: kind
-          TESTS_MATCH: TestSmoke
+          TESTS_MATCH: TestRemoteCluster
           E2E_TAGS: "e2e,mixed"
           MONITORING_SECRETS: ""
           E2E_SKIP_CLEANUP: true
