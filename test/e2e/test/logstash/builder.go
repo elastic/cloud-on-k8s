@@ -9,11 +9,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	ptr "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -50,7 +52,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
-		WithPodLabel(run.TestNameLabel, name)
+		WithPodLabel(run.TestNameLabel, name).
+		// this is a pragmatic deviation from the practice we have for Elasticsearch were we test with the e2e-default storage class in general
+		// but test with network attached volumes in samples and recipes to have both local and networked volume test paths
+		WithTestStorageClass()
 }
 
 func (b Builder) WithImage(image string) Builder {
@@ -136,7 +141,7 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 	if b.Logstash.Spec.PodTemplate.Spec.Containers == nil {
 		b.Logstash.Spec.PodTemplate.Spec.Containers = []corev1.Container{
 			{
-				Name:         "logstash",
+				Name:         logstashv1alpha1.LogstashContainerName,
 				VolumeMounts: mounts,
 			},
 		}
@@ -148,6 +153,21 @@ func (b Builder) WithVolumeMounts(mounts ...corev1.VolumeMount) Builder {
 	}
 	b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts = append(b.Logstash.Spec.PodTemplate.Spec.Containers[0].VolumeMounts, mounts...)
 
+	return b
+}
+
+func (b Builder) WithTestStorageClass() Builder {
+	for _, vc := range b.Logstash.Spec.VolumeClaimTemplates {
+		if vc.Name == volume.LogstashDataVolumeName {
+			// a custom volume claim template is set we don't need to do anything
+			return b
+		}
+	}
+
+	// define the default volume claim with the e2e storage class
+	vc := volume.DefaultDataVolumeClaim.DeepCopy()
+	vc.Spec.StorageClassName = ptr.String(test.DefaultStorageClass)
+	b.Logstash.Spec.VolumeClaimTemplates = append(b.Logstash.Spec.VolumeClaimTemplates, *vc)
 	return b
 }
 

@@ -53,7 +53,7 @@ func TestResourcesRequirements(t *testing.T) {
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				newPVC("2Gi", elasticsearch.DefaultStorageClass),
+				newPVC("2Gi", test.DefaultStorageClass),
 			},
 		})
 
