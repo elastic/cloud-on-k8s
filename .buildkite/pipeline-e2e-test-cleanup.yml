@@ -1,13 +1,50 @@
 agents:
-  provider: "gcp"
-  image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
   memory: 2G
 
 steps:
 
-  # Run a cleanup script to ensure dangling clusters are deleted
-  - label: ":broom: e2e test cluster cleanup"
+  - label: ":go: build deployer"
+    key: "build-deployer"
     if: |
       build.message == "buildkite run e2e test cleanup"
     commands:
-      - make run-deployer-cleanup
+      - make build-deployer
+      - buildkite-agent artifact upload hack/deployer/deployer
+
+  - label: ":broom: e2e test cluster cleanup gke"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    depends_on:
+      - "build-deployer"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
+
+  - label: ":broom: e2e test cluster cleanup aks"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    depends_on:
+      - "build-deployer"
+    agents:
+      # docker is needed for running aks deployer
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      machineType: "n1-standard-16"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
+
+  - label: ":broom: e2e test cluster cleanup eks"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    depends_on:
+      - "build-deployer"
+    agents:
+      # docker is needed for running eks deployer
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      machineType: "n1-standard-16"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
