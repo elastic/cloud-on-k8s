@@ -33,9 +33,9 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
       machineType: "n1-standard-16"
     commands:
-      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
-      - chmod u+x /usr/local/hack/deployer/deployer
-      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
+      - buildkite-agent artifact download "hack/deployer/deployer" /tmp
+      - chmod u+x /tmp/hack/deployer/deployer
+      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
 
   - label: ":broom: e2e test cluster cleanup eks"
     if: |
@@ -49,5 +49,5 @@ steps:
       machineType: "n1-standard-16"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
-      - chmod u+x /usr/local/hack/deployer/deployer
-      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
+      - chmod u+x /tmp/hack/deployer/deployer
+      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
