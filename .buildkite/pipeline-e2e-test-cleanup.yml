@@ -18,8 +18,8 @@ steps:
     depends_on:
       - "build-deployer"
     commands:
-      - buildkite-agent artifact download "bin/releaser" /usr/local/
-      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - /usr/local/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
 
   - label: ":broom: e2e test cluster cleanup aks"
     if: |
@@ -32,8 +32,8 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
       machineType: "n1-standard-16"
     commands:
-      - buildkite-agent artifact download "bin/releaser" /usr/local/
-      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - /usr/local/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
 
   - label: ":broom: e2e test cluster cleanup eks"
     if: |
@@ -46,5 +46,5 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
       machineType: "n1-standard-16"
     commands:
-      - buildkite-agent artifact download "bin/releaser" /usr/local/
-      - ./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - /usr/local/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
