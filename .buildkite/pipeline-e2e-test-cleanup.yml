@@ -52,6 +52,6 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
       machineType: "n1-standard-16"
     commands:
-      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - buildkite-agent artifact download "hack/deployer/deployer" /tmp
       - chmod u+x /tmp/hack/deployer/deployer
       - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks

@@ -131,6 +131,7 @@ func (d *AKSDriver) auth() error {
 			log.Printf("while logging into azure %s", err)
 			return fmt.Errorf("while loggin into azure: %w", err)
 		}
+		return nil
 	}
 
 	log.Print("Authenticating as user...")
