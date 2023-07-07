@@ -92,8 +92,10 @@ func doRun(flags runFlags) error {
 
 	for _, step := range steps {
 		if err := step(); err != nil {
-			helper.dumpEventLog()
-			helper.runECKDiagnostics()
+			if !flags.local {
+				helper.dumpEventLog()
+				helper.runECKDiagnostics()
+			}
 			return err
 		}
 	}
