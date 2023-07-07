@@ -119,7 +119,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 								corev1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
-						StorageClassName: pointer.String(elasticsearch.DefaultStorageClass),
+						StorageClassName: pointer.String(test.DefaultStorageClass),
 					},
 				},
 				{
@@ -135,7 +135,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 								corev1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
-						StorageClassName: pointer.String(elasticsearch.DefaultStorageClass),
+						StorageClassName: pointer.String(test.DefaultStorageClass),
 					},
 				},
 			},
