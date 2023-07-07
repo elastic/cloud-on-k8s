@@ -12,7 +12,7 @@ import (
 
 const (
 	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
-	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
+	// reference in the VolumeClaimTemplates section of the Elasticsearch and Logstash specs
 	DefaultStorageClass = "e2e-default"
 )
 
