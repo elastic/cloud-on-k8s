@@ -341,7 +341,7 @@ func (t *TanzuDriver) suspend() {
 // loginToAzure we use Azure as the infrastructure provider for Tanzu testing.
 func (t *TanzuDriver) loginToAzure() error {
 	log.Println("Logging in to Azure")
-	return azure.Login(t.azureCredentials)
+	return azure.Login(t.azureCredentials, false)
 }
 
 // loginToContainerRegistry we use a private container registry to make the Tanzu CLI available in CI.

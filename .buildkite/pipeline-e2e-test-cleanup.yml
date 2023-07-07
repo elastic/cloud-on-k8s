@@ -1,8 +1,6 @@
 agents:
-  image: "docker.elastic.co/ci-agent-images/eck-region/go-builder-buildkite-agent:1.19-02"
-  memory: "2G"
-  # image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-  # memory: 2G
+  image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  memory: 2G
 
 steps:
 
@@ -17,8 +15,6 @@ steps:
   - label: ":broom: e2e test cluster cleanup gke"
     if: |
       build.message == "buildkite run e2e test cleanup"
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
     depends_on:
       - "build-deployer"
     commands:
@@ -31,11 +27,6 @@ steps:
       build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
-    agents:
-      # docker is needed for running aks deployer
-      provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-      machineType: "n1-standard-16"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /tmp
       - chmod u+x /tmp/hack/deployer/deployer
@@ -46,11 +37,6 @@ steps:
       build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
-    agents:
-      # docker is needed for running eks deployer
-      provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
-      machineType: "n1-standard-16"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /tmp
       - chmod u+x /tmp/hack/deployer/deployer

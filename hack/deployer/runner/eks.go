@@ -87,9 +87,10 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 var _ DriverFactory = &EKSDriverFactory{}
 
 type EKSDriver struct {
-	plan    Plan
-	cleanUp []func()
-	ctx     map[string]interface{}
+	plan       Plan
+	cleanUp    []func()
+	ctx        map[string]interface{}
+	withDocker bool
 }
 
 func (e *EKSDriver) newCmd(cmd string) *exec.Command {

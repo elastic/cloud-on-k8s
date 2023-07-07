@@ -35,9 +35,10 @@ type AKSDriverFactory struct {
 }
 
 type AKSDriver struct {
-	plan        Plan
-	ctx         map[string]interface{}
-	vaultClient vault.Client
+	plan          Plan
+	ctx           map[string]interface{}
+	vaultClient   vault.Client
+	withoutDocker bool
 }
 
 func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
@@ -126,7 +127,7 @@ func (d *AKSDriver) auth() error {
 			return fmt.Errorf("while getting new credentials: %w", err)
 		}
 		log.Print("logging into azure...")
-		err = azure.Login(credentials)
+		err = azure.Login(credentials, d.withoutDocker)
 		if err != nil {
 			log.Printf("while logging into azure %s", err)
 			return fmt.Errorf("while loggin into azure: %w", err)
@@ -198,6 +199,8 @@ func (d *AKSDriver) delete() error {
 }
 
 func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
+	// Do not use docker in the cleanup steps
+	d.withoutDocker = true
 	if err := d.auth(); err != nil {
 		return nil, err
 	}

@@ -39,11 +39,16 @@ func NewCredentials(c vault.Client) (Credentials, error) {
 	}, nil
 }
 
-func Login(creds Credentials) error {
+func Login(creds Credentials, withoutDocker bool) error {
 	log.Printf("Logging into azure with client id %s, tenant: %s, secret: %s", creds.ClientID, creds.TenantID, creds.ClientSecret)
-	return Cmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
-		WithoutStreaming().
-		Run()
+	if !withoutDocker {
+		return Cmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
+			WithoutStreaming().
+			Run()
+	}
+	command := fmt.Sprintf(`az login --service-principal -u %s -p %s --tenant %s`, creds.ClientID, creds.ClientSecret, creds.TenantID)
+	_, err := exec.NewCommand(command).Output()
+	return err
 }
 
 func ExistsCmd(cmd *exec.Command) (bool, error) {
