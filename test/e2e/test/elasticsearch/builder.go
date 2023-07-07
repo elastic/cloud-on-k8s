@@ -115,7 +115,10 @@ func newBuilder(name, randSuffix string) Builder {
 }
 
 func (b Builder) WithImage(image string) Builder {
-	b.Elasticsearch.Spec.Image = image
+	// do not override images set e.g. by WithVersion with empty strings
+	if len(image) > 0 {
+		b.Elasticsearch.Spec.Image = image
+	}
 	return b
 }
 
