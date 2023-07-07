@@ -23,7 +23,7 @@ const (
 func authToGCP(
 	client vault.Client, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
-) error {
+) error { //nolint unparam
 	//nolint:nestif
 	if asServiceAccount {
 		log.Println("Authenticating as service account...")
