@@ -19,6 +19,7 @@ steps:
       - "build-deployer"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
 
   - label: ":broom: e2e test cluster cleanup aks"
@@ -33,6 +34,7 @@ steps:
       machineType: "n1-standard-16"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
 
   - label: ":broom: e2e test cluster cleanup eks"
@@ -47,4 +49,5 @@ steps:
       machineType: "n1-standard-16"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
