@@ -86,11 +86,14 @@ steps:
       cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
       - label: "kind/TestSmoke"
         fixed:
-          E2E_PROVIDER: kind
-          TESTS_MATCH: TestSmoke
+          E2E_PROVIDER: gke
+          TESTS_MATCH: TestVersionUpgradeOrdering
+          E2E_STACK_VERSION: 8.9.0-SNAPSHOT
+          CLUSTER_NAME: thb-eck-dev-cluster
           E2E_TAGS: "e2e,mixed"
           MONITORING_SECRETS: ""
           E2E_SKIP_CLEANUP: true
+          K8S_SKIP_CLEANUP: true
       DEF
 
   # for PR comment
