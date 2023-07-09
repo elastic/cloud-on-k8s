@@ -47,7 +47,8 @@ operator::set_image_vars() {
 # Sets operator BUILD_FLAVORS in the environment depending on the given trigger if it is not set.
 operator::set_build_flavors_var() {
     trigger=$1
-    if [[ "${BUILD_FLAVORS:-}" == "" ]]; then
+    BUILD_FLAVORS=$(buildkite-agent meta-data get BUILD_FLAVORS --default "${BUILD_FLAVORS:-}")
+    if [[ "${BUILD_FLAVORS}" == "" ]]; then
         case $trigger in
             tag-*)           BUILD_FLAVORS="eck,eck-dev,eck-fips,eck-ubi8,eck-ubi8-fips" ;;
             *-main)          BUILD_FLAVORS="eck,eck-dev" ;;

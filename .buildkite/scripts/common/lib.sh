@@ -13,3 +13,12 @@ common::version() { cat "$ROOT/VERSION"; }
 common::arch() { uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"; }
 
 common::retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
+
+common::skip_build_arch() {
+    SKIP_BUILD_ARCH=$(buildkite-agent meta-data get SKIP_BUILD_ARCH --default "")
+    if [[ "${SKIP_BUILD_ARCH:-}" == "$(common::arch)" ]]; then
+        echo "skip ${ARCH} build" >&2
+        return 0
+    fi
+    return 1
+}

@@ -32,7 +32,17 @@ generate_drivah_config() {
     local tag=$2
     local go_tags=$3
     local license_pubkey=$4
-cat <<END
+
+    if common::skip_build_arch; then
+        cat <<- END
+[container.image]
+names = []
+tags = []
+END
+        exit
+    fi
+
+    cat <<END
 [container.image]
 names = ["${name}"]
 tags = ["${tag}-${ARCH}"]

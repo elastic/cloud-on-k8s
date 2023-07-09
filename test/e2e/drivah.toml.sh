@@ -33,6 +33,15 @@ main() {
         exit 0
     fi
 
+    if common::skip_build_arch; then
+    cat <<- END
+[container.image]
+names = []
+tags = []
+END
+        exit
+    fi
+
     if [[ "$GO_TAGS" == "release" ]] && [[ ! -f "${HERE}/license.key" ]]; then
         common::retry vault read -field=pubkey secret/ci/elastic-cloud-on-k8s/license \
             | base64 --decode > "$HERE/license.key"
