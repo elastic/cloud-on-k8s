@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License 2.0;
+# you may not use this file except in compliance with the Elastic License 2.0.
+
+# Script to trigger the main pipline with a particular set of e2e tests via the Buildkite API.
+#
+# Usage:  BRANCH=xyz \
+#         ./trigger-e2e.sh
+#
+# Required environment variables:
+#    BK_TOKEN
+#    BRANCH
+#
+# Argument:
+#    SCOPE  to select which charts to release ("all", "eck-operator" or "eck-stack")
+#
+
+set -eu
+
+BRANCH=${BRANCH:-drivah-multiarch-build}
+
+if [[ -f ~/.buildkite/config.json ]]; then
+    BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r)
+fi
+
+: "$BK_TOKEN"
+: "$BRANCH"
+
+# properties required to test PRs:
+        # "pull_request_base_branch": "main",
+        # "pull_request_id": "<number>",
+        # "pull_request_repository": "git://github.com/<username>/cloud-on-k8s.git",
+
+if_args_jq() {
+    args="${1:-}" && shift
+    if [[ "${args}" != "" ]]; then
+        cat /dev/stdin | jq "$@"
+    else
+        cat /dev/stdin
+    fi
+}
+
+emoticon() {
+    echo "🐞 🐸 🐙 🦊 🐳 👻 🤡 🦄 🐹" | tr ' ' '\n' | shuf -n1
+}
+
+api() {
+    if [[ "${DRY_RUN:-}" == "" ]]; then
+        curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator/builds" -XPOST \
+                -H "Authorization: Bearer $BK_TOKEN" -s -d @-
+    else
+        cat /dev/stdin | jq .
+    fi
+}
+
+main() {
+    args="${@:-}"
+    echo ' {
+        "commit": "HEAD",
+        "branch": "'"$BRANCH"'"
+    }' \
+    | jq '. + {"message": "🧪 '"${args:-this $(emoticon)}"'"}' \
+    | if_args_jq "$args" '. + {"env":{
+            "GITHUB_PR_TRIGGER_COMMENT":"buildkite test this '"${args}"'",
+            "GITHUB_PR_COMMENT_VAR_ARGS":"'"${args}"'"
+        }}' \
+    | api
+   
+}
+
+main "$@"

@@ -50,7 +50,7 @@ steps:
     steps:
       - label: ":buildkite:"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.5"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.6"
         commands:
           - buildkite-agent meta-data set BUILD_FLAVORS "eck,eck-dev"
           #- buildkite-agent meta-data set SKIP_BUILD_ARCH "arm64"
@@ -66,7 +66,7 @@ steps:
     steps:
       - label: ":buildkite:"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.5"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.6"
         commands: make -C /agent generate-docker-images
         env:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic

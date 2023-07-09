@@ -26,12 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-const (
-	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
-	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
-	DefaultStorageClass = "e2e-default"
-)
-
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -115,7 +109,10 @@ func newBuilder(name, randSuffix string) Builder {
 }
 
 func (b Builder) WithImage(image string) Builder {
-	b.Elasticsearch.Spec.Image = image
+	// do not override images set e.g. by WithVersion with empty strings
+	if len(image) > 0 {
+		b.Elasticsearch.Spec.Image = image
+	}
 	return b
 }
 
@@ -379,7 +376,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 }
 
 func (b Builder) WithDefaultPersistentVolumes() Builder {
-	storageClass := DefaultStorageClass
+	storageClass := test.DefaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
 			if existing.Name == volume.ElasticsearchDataVolumeName {
