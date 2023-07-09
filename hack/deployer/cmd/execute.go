@@ -11,7 +11,7 @@ import (
 )
 
 func ExecuteCommand() *cobra.Command {
-	var plansFile, configFile, clientBuildDefDir *string
+	var plansFile, configFile, clientBuildDefDir, id *string
 	var operation string
 	var executeCmd = &cobra.Command{
 		Use:   "execute",
@@ -23,10 +23,12 @@ func ExecuteCommand() *cobra.Command {
 			}
 
 			if operation != "" {
-				runConfig.Overrides["operation"] = operation
+				runConfig.Overrides = map[string]interface{}{
+					"operation": operation,
+				}
 			}
 
-			driver, err := runner.GetDriver(plans.Plans, runConfig, *clientBuildDefDir)
+			driver, err := runner.GetDriver(plans.Plans, runConfig, *clientBuildDefDir, *id)
 			if err != nil {
 				return err
 			}
@@ -35,7 +37,7 @@ func ExecuteCommand() *cobra.Command {
 		},
 	}
 
-	plansFile, configFile, clientBuildDefDir = registerFileFlags(executeCmd)
+	plansFile, configFile, clientBuildDefDir, id = registerFileFlags(executeCmd)
 
 	executeCmd.Flags().StringVar(&operation, "operation", "", "Operation type. This will override config files.")
 

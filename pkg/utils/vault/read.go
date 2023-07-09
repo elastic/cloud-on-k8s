@@ -33,7 +33,7 @@ func Get(c Client, secretPath string, fieldName string) (string, error) {
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
 func GetMany(c Client, secretPath string, fieldNames ...string) ([]string, error) {
-	secretPath = filepath.Join(rootPath(), secretPath)
+	secretPath = filepath.Join(RootPath(), secretPath)
 	secret, err := read(c, secretPath)
 	if secret == nil {
 		return nil, fmt.Errorf("no data found at %s", secretPath)
@@ -78,7 +78,7 @@ func read(c Client, secretPath string) (*api.Secret, error) {
 	return secret, nil
 }
 
-func rootPath() string {
+func RootPath() string {
 	rootPath := os.Getenv(rootPathEnvVar)
 	if rootPath == "" {
 		return defaultRootPath

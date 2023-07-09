@@ -7,7 +7,6 @@
 #################################
 
 # Read env files, ignores if they doesn't exist
--include .registry.env
 -include .env
 
 # make sure sub-commands don't use eg. fish shell
@@ -293,16 +292,16 @@ bootstrap-minikube:
 ## -- clouds
 
 PROVIDER=$(shell test -f hack/deployer/config/provider && cat hack/deployer/config/provider)
-DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config-$(PROVIDER).yml
+DEPLOYER=./hack/deployer/deployer --config-file=hack/deployer/config/deployer-config-$(PROVIDER).yml
 
 build-deployer:
 	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 run-deployer: build-deployer
-	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+	./hack/deployer/deployer execute
 
 set-kubeconfig: build-deployer
-	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
+	./hack/deployer/deployer get credentials
 
 create-default-config:
 ifeq ($(wildcard hack/deployer/config/deployer-config-$(PROVIDER).yml),)
@@ -443,7 +442,6 @@ e2e-run: go-generate
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
-		--elastic-stack-images=stack-versions-def.json \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \

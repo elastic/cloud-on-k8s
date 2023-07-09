@@ -36,13 +36,14 @@ const (
 	EnvVarTestsMatch           = "TESTS_MATCH"
 	EnvVarTestLicensePKeyPath  = "TEST_LICENSE_PKEY_PATH"
 	EnvVarBuildLicensePubkey   = "BUILD_LICENSE_PUBKEY"
-	EnvVarLicensePubKey        = "export LICENSE_PUBKEY"
+	EnvVarLicensePubKey        = "LICENSE_PUBKEY"
 	EnvVarTestLicense          = "TEST_LICENSE"
 	EnvVarMonitoringSecrets    = "MONITORING_SECRETS"
 	EnvVarE2EJson              = "E2E_JSON"
 	EnvVarGoTags               = "GO_TAGS"
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
+	EnvVarK8sSkipCleanup       = "K8S_SKIP_CLEANUP"
 
 	KindAgentsMachineType = "n1-standard-16"
 )
@@ -242,12 +243,18 @@ func newTestsSuite(groupLabel string, fixed Env, mixedLen int, mixed Env) (Tests
 		return TestsSuiteRun{}, err
 	}
 
+	cleanup := !slices.Contains(providersNoCleanup, provider)
+	skipCleanup, ok := lookupEnv(EnvVarK8sSkipCleanup, fixed, mixed)
+	if ok {
+		cleanup = skipCleanup == "false"
+	}
+
 	t := TestsSuiteRun{
 		Name:             name,
 		Provider:         provider,
 		SlugName:         slugName,
 		Dind:             slices.Contains(providersInDocker, provider),
-		Cleanup:          !slices.Contains(providersNoCleanup, provider),
+		Cleanup:          cleanup,
 		RemoteKubeconfig: !slices.Contains(providersNoRemoteConfig, provider),
 		Env:              env,
 	}
@@ -389,8 +396,8 @@ func commonTestEnv(name string, slugName string, stackVersion string) (map[strin
 
 	// dev mode
 	if os.Getenv("CI") != "true" {
-		env[EnvVarLicensePubKey] = filepath.Join(rootDir, ".ci/license.key")
-		env[EnvVarTestLicense] = filepath.Join(rootDir, ".ci/test-license.json")
+		env[EnvVarLicensePubKey] = filepath.Join(rootDir, "test/e2e/license.key")
+		env[EnvVarTestLicense] = filepath.Join(rootDir, "test/e2e/test-license.json")
 		env[EnvVarMonitoringSecrets] = ""
 	}
 

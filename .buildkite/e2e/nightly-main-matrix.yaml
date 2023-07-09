@@ -20,16 +20,17 @@
 - label: kind
   fixed:
     E2E_PROVIDER: kind
+    DEPLOYER_kind_ipFamily: ipv4
   mixed:
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.21.14@sha256:9d9eb5fb26b4fbc0c6d95fa8c790414f9750dd583f5d7cee45d92e8c26670aa1
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.22.15@sha256:7d9708c4b0873f0fe2e171e2b1b7f45ae89482617778c1c875f1053d4cef2e41
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.23.13@sha256:ef453bb7c79f0e3caba88d2067d4196f427794086a7d0df8df4f019d5e336b61 
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.24.7@sha256:577c630ce8e509131eab1aea12c022190978dd2f745aac5eb1fe65c0807eb315
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.26.3@sha256:61b92f38dff6ccc29969e7aa154d34e38b89443af1a2c14e6cfbd2df6419c66f
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
-      DEPLOYER_KIND_IP_FAMILY: ipv6
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.21.14@sha256:9d9eb5fb26b4fbc0c6d95fa8c790414f9750dd583f5d7cee45d92e8c26670aa1
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.22.15@sha256:7d9708c4b0873f0fe2e171e2b1b7f45ae89482617778c1c875f1053d4cef2e41
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.23.13@sha256:ef453bb7c79f0e3caba88d2067d4196f427794086a7d0df8df4f019d5e336b61 
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.24.7@sha256:577c630ce8e509131eab1aea12c022190978dd2f745aac5eb1fe65c0807eb315
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.26.3@sha256:61b92f38dff6ccc29969e7aa154d34e38b89443af1a2c14e6cfbd2df6419c66f
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
+    - DEPLOYER_kind_nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
+      DEPLOYER_kind_ipFamily: ipv6
 
 - label: gke
   fixed:
@@ -49,11 +50,11 @@
   fixed:
     E2E_PROVIDER: ocp
   mixed:
-    #- DEPLOYER_CLIENT_VERSION: "4.8.57"
-    #- DEPLOYER_CLIENT_VERSION: "4.9.58"
-    #- DEPLOYER_CLIENT_VERSION: "4.10.55"
-    #- DEPLOYER_CLIENT_VERSION: "4.11.33"
-    - DEPLOYER_CLIENT_VERSION: "4.13.4"
+    #- DEPLOYER_clientVersion: "4.8.57"
+    #- DEPLOYER_clientVersion: "4.9.58"
+    #- DEPLOYER_clientVersion: "4.10.55"
+    #- DEPLOYER_clientVersion: "4.11.33"
+    - DEPLOYER_clientVersion: "4.13.4"
 
 - label: eks-arm
   fixed:

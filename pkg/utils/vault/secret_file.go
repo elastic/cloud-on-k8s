@@ -70,7 +70,7 @@ func ReadFile(clientProvider ClientProvider, f SecretFile) ([]byte, error) {
 func (f SecretFile) readFromVault(c Client) ([]byte, error) {
 	log.Printf("Read %s from vault", f.Path)
 
-	secretPath := filepath.Join(rootPath(), f.Path)
+	secretPath := filepath.Join(RootPath(), f.Path)
 	secret, err := read(c, secretPath)
 	if err != nil {
 		return nil, err

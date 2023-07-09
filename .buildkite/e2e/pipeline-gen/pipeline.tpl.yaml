@@ -18,8 +18,6 @@ steps:
       {{- end }}
 
     commands:
-      - .buildkite/scripts/test/set-deployer-config.sh
-
       {{- if $test.Dind }}
       - make -C .buildkite TARGET="run-deployer" ci
       {{- else }}
@@ -60,8 +58,6 @@ steps:
       {{- range $key, $val := $test.Env }}
       - echo "{{$key}}={{$val}}" >> .env
       {{- end }}
-
-      - .buildkite/scripts/test/set-deployer-config.sh
 
       {{- $deployerCommand := "run-deployer" }}
       {{- if $test.RemoteKubeconfig }}
@@ -110,11 +106,9 @@ steps:
           {{- range $key, $val := $test.Env }}
           {{$key}}: "{{$val}}"
           {{- end }}
-          DEPLOYER_OPERATION: delete
+          DEPLOYER_operation: delete
 
         commands:
-          - .buildkite/scripts/test/set-deployer-config.sh
-
         {{- if not $test.Dind }}
           - make run-deployer
         {{- else }}
