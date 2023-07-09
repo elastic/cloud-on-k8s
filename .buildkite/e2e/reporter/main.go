@@ -68,11 +68,12 @@ func main() {
 		}
 
 		// extract slug name from the report file name
+		slugName := strings.TrimPrefix(xmlReportPath, "reports/")
+		slugName = strings.TrimSuffix(slugName, ".xml")
 		match := extractSlugNameRe.FindStringSubmatch(xmlReportPath)
-		if len(match) != 2 {
-			return fmt.Errorf("failed to extract slug name from %s", xmlReportPath)
+		if len(match) == 2 {
+			slugName = match[1]
 		}
-		slugName := match[1]
 
 		// ingest xml report to work with structs
 		xmlReport, err := os.ReadFile(xmlReportPath)
