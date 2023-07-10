@@ -22,34 +22,34 @@ import (
 )
 
 type runFlags struct {
-	managedNamespaces      []string
-	e2eImage               string
-	elasticStackVersion    string
-	kubeConfig             string
-	operatorImage          string
-	testLicensePKeyPath    string
-	testContextOutPath     string
-	testLicense            string
-	scratchDirRoot         string
-	testRegex              string
-	testRunName            string
-	monitoringSecrets      string
-	pipeline               string
-	buildNumber            string
-	provider               string
-	clusterName            string
-	operatorReplicas       int
-	commandTimeout         time.Duration
-	logVerbosity           int
-	testTimeout            time.Duration
-	autoPortForwarding     bool
-	skipCleanup            bool
-	local                  bool
-	logToFile              bool
-	ignoreWebhookFailures  bool
-	deployChaosJob         bool
-	e2eTags                string
-	testEnvTags            []string
+	managedNamespaces     []string
+	e2eImage              string
+	elasticStackVersion   string
+	kubeConfig            string
+	operatorImage         string
+	testLicensePKeyPath   string
+	testContextOutPath    string
+	testLicense           string
+	scratchDirRoot        string
+	testRegex             string
+	testRunName           string
+	monitoringSecrets     string
+	pipeline              string
+	buildNumber           string
+	provider              string
+	clusterName           string
+	operatorReplicas      int
+	commandTimeout        time.Duration
+	logVerbosity          int
+	testTimeout           time.Duration
+	autoPortForwarding    bool
+	skipCleanup           bool
+	local                 bool
+	logToFile             bool
+	ignoreWebhookFailures bool
+	deployChaosJob        bool
+	e2eTags               string
+	testEnvTags           []string
 }
 
 var log logr.Logger
