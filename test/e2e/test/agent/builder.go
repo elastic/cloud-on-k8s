@@ -96,17 +96,15 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
-	def := test.Ctx().ImageDefinitionFor(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
-				Version: def.Version,
+				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 		Suffix: suffix,
 	}.
-		WithImage(def.Image).
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
@@ -178,11 +176,6 @@ func (b Builder) WithElasticsearchRefs(refs ...agentv1alpha1.Output) Builder {
 
 func (b Builder) WithConfig(config *commonv1.Config) Builder {
 	b.Agent.Spec.Config = config
-	return b
-}
-
-func (b Builder) WithImage(image string) Builder {
-	b.Agent.Spec.Image = image
 	return b
 }
 
@@ -329,16 +322,6 @@ func (b Builder) WithFleetMode() Builder {
 
 func (b Builder) WithFleetServer() Builder {
 	b.Agent.Spec.FleetServerEnabled = true
-	return b.WithFleetImage()
-}
-
-func (b Builder) WithFleetImage() Builder {
-	// do not override image or version unless an explicit override exists as builder might already have been configured
-	// with a specific version which we do want to preserve.
-	if def := test.Ctx().ImageDefinitionOrNil(FleetServerPseudoKind); def != nil {
-		b.Agent.Spec.Image = def.Image
-		b.Agent.Spec.Version = def.Version
-	}
 	return b
 }
 
