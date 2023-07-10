@@ -99,7 +99,6 @@ type Context struct {
 	E2ENamespace          string             `json:"e2e_namespace"`
 	E2EServiceAccount     string             `json:"e2e_service_account"`
 	ElasticStackVersion   string             `json:"elastic_stack_version"`
-	ElasticStackImages    ElasticStackImages `json:"elastic_stack_images"`
 	LogVerbosity          int                `json:"log_verbosity"`
 	OperatorImage         string             `json:"operator_image"`
 	OperatorImageRepo     string             `json:"operator_image_repo"`
@@ -141,27 +140,6 @@ func (c Context) HasTag(tag string) bool {
 // KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
 func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
-}
-
-// ImageDefinitionFor returns a specific override for the given kind of resource. Defaults to an empty image
-// and the global Elastic Stack version under test if no override exists.
-func (c Context) ImageDefinitionFor(kind string) ElasticStackImageDefinition {
-	for _, def := range c.ElasticStackImages {
-		if kind == def.Kind {
-			return def
-		}
-	}
-	return ElasticStackImageDefinition{Version: c.ElasticStackVersion}
-}
-
-// ImageDefinitionOrNil returns a specific override for the given kind of resource. Returns nil if no override exists.
-func (c Context) ImageDefinitionOrNil(kind string) *ElasticStackImageDefinition {
-	for _, def := range c.ElasticStackImages {
-		if kind == def.Kind {
-			return &def
-		}
-	}
-	return nil
 }
 
 // ClusterResource is a generic cluster resource.

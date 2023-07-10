@@ -23,11 +23,6 @@ set -eu
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
 
-write_stack_version_def() {
-    # TODO
-    echo '[]' > "$ROOT/stack-versions-def.json"
-}
-
 w()  { echo "$@" >> "$ROOT/deployer-config.yml"; }
 
 write_deployer_config() { 
@@ -66,4 +61,3 @@ write_deployer_config() {
 }
 
 write_deployer_config
-write_stack_version_def
