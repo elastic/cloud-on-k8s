@@ -98,24 +98,14 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-	def := test.Ctx().ImageDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
 		},
 	}.
-		WithVersion(def.Version).
-		WithImage(def.Image).
+		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
-}
-
-func (b Builder) WithImage(image string) Builder {
-	// do not override images set e.g. by WithVersion with empty strings
-	if len(image) > 0 {
-		b.Elasticsearch.Spec.Image = image
-	}
-	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {
@@ -175,6 +165,9 @@ func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
 		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	} else {
+		// reset the image in case the builder was set to a SNAPSHOT version at some point
+		b.Elasticsearch.Spec.Image = ""
 	}
 	return b
 }

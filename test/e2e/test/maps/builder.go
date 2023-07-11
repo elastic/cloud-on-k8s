@@ -36,25 +36,18 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().ImageDefinitionFor(v1alpha1.Kind)
 	return Builder{
 		EMS: v1alpha1.ElasticMapsServer{
 			ObjectMeta: meta,
 			Spec: v1alpha1.MapsSpec{
 				Count:   1,
-				Version: def.Version,
+				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 	}.
-		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
-}
-
-func (b Builder) WithImage(image string) Builder {
-	b.EMS.Spec.Image = image
-	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {

@@ -39,28 +39,21 @@ func newBuilder(name, randSuffix string) Builder {
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
-	def := test.Ctx().ImageDefinitionFor(logstashv1alpha1.Kind)
 	return Builder{
 		Logstash: logstashv1alpha1.Logstash{
 			ObjectMeta: meta,
 			Spec: logstashv1alpha1.LogstashSpec{
 				Count:   1,
-				Version: def.Version,
+				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 	}.
-		WithImage(def.Image).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name).
 		// this is a pragmatic deviation from the practice we have for Elasticsearch were we test with the e2e-default storage class in general
 		// but test with network attached volumes in samples and recipes to have both local and networked volume test paths
 		WithTestStorageClass()
-}
-
-func (b Builder) WithImage(image string) Builder {
-	b.Logstash.Spec.Image = image
-	return b
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
