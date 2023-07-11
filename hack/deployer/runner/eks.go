@@ -253,40 +253,36 @@ func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json`
-	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).Output()
+	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("eck-e2e")))| .[].Name'`
+	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
 		return nil, err
 	}
 	if len(allClusters) == 0 {
 		return nil, nil
 	}
-	f, err := os.CreateTemp(os.TempDir(), "deployer_all_clusters")
-	if err != nil {
-		return nil, fmt.Errorf("while creating temp file: %w", err)
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-	_, err = f.Write([]byte(allClusters))
-	if err != nil {
-		return nil, fmt.Errorf("while writing all clusters into temporary file: %w", err)
-	}
-	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select((.cluster.createdAt | . <= $d) and (.cluster.name|test("eck-e2e"))))|.[].cluster.name' %s`, f.Name())
-	clustersToDelete, err := exec.NewCommand(jqCmd).AsTemplate(e.ctx).OutputList()
-	if err != nil {
-		return nil, fmt.Errorf("while running jq command to determine clusters to delete: %w", err)
-	}
-	for _, cluster := range clustersToDelete {
+	var deletedClusters []string
+	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
+	for _, cluster := range allClusters {
 		e.ctx["ClusterName"] = cluster
-		if dryRun {
-			continue
+		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).Output()
+		if err != nil {
+			return nil, fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
-		if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
-			return nil, err
+		if clustersToDelete != "" {
+			deletedClusters = append(deletedClusters, cluster)
+			if dryRun {
+				log.Printf("not deleting cluster %s as dry-run is set")
+				continue
+			}
+			log.Printf("deleting cluster %s")
+			if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
+				return nil, err
+			}
 		}
 	}
-	return clustersToDelete, nil
+
+	return deletedClusters, nil
 }
 
 var _ Driver = &EKSDriver{}
