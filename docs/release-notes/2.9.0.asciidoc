@@ -12,13 +12,13 @@
 === Enhancements
 
 * Add Support for volumeClaimTemplates for Logstash controller {pull}6884[#6884]
-* Add back runAsNonRoot=true to Beats >= 8.8.x {pull}6793[#6793]
+* Enable runAsNonRoot=true for Beats >= 8.8.x {pull}6793[#6793]
 
 [[bug-2.9.0]]
 [float]
 === Bug fixes
 
-* Validating policy ID only when running in fleet mode for Elastic Agent {pull}6938[#6938] (issue: {issue}6903[#6903])
+* Validating policy ID only when running in Fleet mode for Elastic Agent {pull}6938[#6938] (issue: {issue}6903[#6903])
 * Add Selector to Logstash status {pull}6854[#6854]
 
 [[docs-2.9.0]]
@@ -26,7 +26,6 @@
 === Documentation improvements
 
 * Document Logstash connection to external Elasticsearch {pull}6895[#6895]
-* Fix rendering of autopilot recipes README {pull}6856[#6856]
 
 [[nogroup-2.9.0]]
 [float]
