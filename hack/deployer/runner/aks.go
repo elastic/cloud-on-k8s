@@ -7,7 +7,6 @@ package runner
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -206,32 +205,13 @@ func (d *AKSDriver) Cleanup() ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	allClustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']"`
-	log.Printf("about to run command: %s", allClustersCmd)
-	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(d.ctx).Output()
+	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select(.createdTime | . <= $d))|.[].name'`
+	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, fmt.Errorf("while running az resource list command: %w", err)
 	}
-	log.Printf("finished running command: %s", allClustersCmd)
-	if len(allClusters) == 0 {
+	if len(clustersToDelete) == 0 {
 		return nil, nil
-	}
-	f, err := os.CreateTemp(os.TempDir(), "deployer_all_clusters")
-	if err != nil {
-		return nil, fmt.Errorf("while creating temp file: %w", err)
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-	_, err = f.Write([]byte(allClusters))
-	if err != nil {
-		return nil, fmt.Errorf("while writing all clusters into temporary file: %w", err)
-	}
-	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select(.createdTime | . <= $d))|.[].name' %s`, f.Name())
-	log.Printf("about to run command: %s", jqCmd)
-	clustersToDelete, err := exec.NewCommand(jqCmd).AsTemplate(d.ctx).OutputList()
-	if err != nil {
-		return nil, fmt.Errorf("while running jq command to determine clusters to delete: %w", err)
 	}
 	for _, cluster := range clustersToDelete {
 		d.ctx["ClusterName"] = cluster
