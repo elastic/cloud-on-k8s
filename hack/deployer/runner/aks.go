@@ -206,7 +206,7 @@ func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	allClustersCmd := `az resource list -l {{.Region}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']"`
+	allClustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']"`
 	log.Printf("about to run command: %s", allClustersCmd)
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(d.ctx).Output()
 	if err != nil {

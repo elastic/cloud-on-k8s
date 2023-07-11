@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/vault"
@@ -250,6 +251,8 @@ func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	if err := e.auth(); err != nil {
 		return nil, err
 	}
+	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json`
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).Output()
 	if err != nil {
