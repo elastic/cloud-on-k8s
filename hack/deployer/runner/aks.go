@@ -210,7 +210,7 @@ func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	log.Printf("about to run command: %s", allClustersCmd)
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(d.ctx).Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("while running az resource list command: %w", err)
 	}
 	log.Printf("finished running command: %s", allClustersCmd)
 	if len(allClusters) == 0 {
