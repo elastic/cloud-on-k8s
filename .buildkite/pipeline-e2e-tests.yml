@@ -52,7 +52,6 @@ steps:
       # for all tags
       # for nightly builds from main
       - label: ":buildkite: e2e"
-        key: "nightly-e2e-tests"
         depends_on:
           - "operator-image-build"
           - "e2e-tests-image-build"

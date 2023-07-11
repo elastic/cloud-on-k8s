@@ -122,14 +122,11 @@ func (d *AKSDriver) auth() error {
 		log.Print("Authenticating as service account...")
 		credentials, err := azure.NewCredentials(d.vaultClient)
 		if err != nil {
-			log.Printf("while getting new credentials: %s", err)
 			return fmt.Errorf("while getting new credentials: %w", err)
 		}
-		log.Print("logging into azure...")
 		err = azure.Login(credentials, d.withoutDocker)
 		if err != nil {
-			log.Printf("while logging into azure %s", err)
-			return fmt.Errorf("while loggin into azure: %w", err)
+			return fmt.Errorf("while logging into azure: %w", err)
 		}
 		return nil
 	}
@@ -215,7 +212,7 @@ func (d *AKSDriver) Cleanup() ([]string, error) {
 	}
 	for _, cluster := range clustersToDelete {
 		d.ctx["ClusterName"] = cluster
-		log.Printf("about to attempt deletion of cluster: %s", cluster)
+		log.Printf("deleting cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err
 		}
