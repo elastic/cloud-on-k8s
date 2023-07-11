@@ -182,7 +182,7 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithVersion(dstVersion).
-		RelaxMutationHealthChecks()
+		TolerateMutationChecksFailures(10)
 
 	srcNodeCount := 3
 
