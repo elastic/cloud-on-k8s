@@ -129,7 +129,6 @@ func (c *Command) output() (string, error) {
 			Parse(c.command)).Execute(&b, c.params); err != nil {
 			return "", err
 		}
-		log.Printf("template parsed command: %s", b.String())
 		c.command = b.String()
 	}
 
@@ -169,7 +168,6 @@ func (c *Command) output() (string, error) {
 		cmd.Stderr = nil
 	}
 
-	log.Printf("cmd.Args: %v", cmd.Args)
 	err := cmd.Run()
 	return b.String(), err
 }
