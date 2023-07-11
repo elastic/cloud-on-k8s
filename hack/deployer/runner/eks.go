@@ -272,7 +272,7 @@ func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while writing all clusters into temporary file: %w", err)
 	}
-	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select((.cluster.createdAt | . <= $d) && (.cluster.name|test("eck-e2e"))))|.[].cluster.name' %s`, f.Name())
+	jqCmd := fmt.Sprintf(`jq -r --arg d "{{.Date}}" 'map(select((.cluster.createdAt | . <= $d) and (.cluster.name|test("eck-e2e"))))|.[].cluster.name' %s`, f.Name())
 	clustersToDelete, err := exec.NewCommand(jqCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
 		return nil, fmt.Errorf("while running jq command to determine clusters to delete: %w", err)
