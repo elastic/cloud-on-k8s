@@ -159,7 +159,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
-					assert.Equal(t, b.relaxMutationHealthChecks, continuousHealthChecks.FailureCount)
+					if !b.relaxMutationHealthChecks {
+						assert.Equal(t, 0, continuousHealthChecks.FailureCount)
+					}
 				},
 			},
 			test.Step{
