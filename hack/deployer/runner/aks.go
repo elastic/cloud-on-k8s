@@ -198,7 +198,7 @@ func (d *AKSDriver) delete() error {
 		Run()
 }
 
-func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
+func (d *AKSDriver) Cleanup() ([]string, error) {
 	// Do not use docker in the cleanup steps
 	d.withoutDocker = true
 	if err := d.auth(); err != nil {
@@ -235,9 +235,6 @@ func (d *AKSDriver) Cleanup(dryRun bool) ([]string, error) {
 	}
 	for _, cluster := range clustersToDelete {
 		d.ctx["ClusterName"] = cluster
-		if dryRun {
-			continue
-		}
 		log.Printf("about to attempt deletion of cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err

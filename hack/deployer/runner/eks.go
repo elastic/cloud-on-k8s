@@ -88,10 +88,9 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 var _ DriverFactory = &EKSDriverFactory{}
 
 type EKSDriver struct {
-	plan       Plan
-	cleanUp    []func()
-	ctx        map[string]interface{}
-	withDocker bool
+	plan    Plan
+	cleanUp []func()
+	ctx     map[string]interface{}
 }
 
 func (e *EKSDriver) newCmd(cmd string) *exec.Command {
@@ -247,7 +246,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
-func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
+func (e *EKSDriver) Cleanup() ([]string, error) {
 	if err := e.auth(); err != nil {
 		return nil, err
 	}
@@ -271,11 +270,7 @@ func (e *EKSDriver) Cleanup(dryRun bool) ([]string, error) {
 		}
 		if clustersToDelete != "" {
 			deletedClusters = append(deletedClusters, cluster)
-			if dryRun {
-				log.Printf("not deleting cluster %s as dry-run is set")
-				continue
-			}
-			log.Printf("deleting cluster %s")
+			log.Printf("deleting cluster %s", cluster)
 			if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
 				return nil, err
 			}

@@ -276,7 +276,7 @@ func (k *KindDriver) ensureClientImage() error {
 	return nil
 }
 
-func (k *KindDriver) Cleanup(dryRun bool) ([]string, error) {
+func (k *KindDriver) Cleanup() ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 

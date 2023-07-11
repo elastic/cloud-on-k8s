@@ -31,7 +31,7 @@ type Driver interface {
 	Execute() error
 	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
-	Cleanup(dryRun bool) ([]string, error)
+	Cleanup() ([]string, error)
 }
 
 func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {

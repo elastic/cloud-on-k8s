@@ -401,7 +401,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
-func (d *GKEDriver) Cleanup(dryRun bool) ([]string, error) {
+func (d *GKEDriver) Cleanup() ([]string, error) {
 	if _, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
 		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
 	}
@@ -420,9 +420,6 @@ func (d *GKEDriver) Cleanup(dryRun bool) ([]string, error) {
 	}
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
-		if dryRun {
-			continue
-		}
 		if err = d.delete(); err != nil {
 			return nil, err
 		}
