@@ -52,6 +52,8 @@ type Builder struct {
 	expectedElasticsearch *esv1.Elasticsearch
 
 	GlobalCA bool
+
+	relaxMutationHealthChecks bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -543,6 +545,15 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+// RelaxMutationHealthCheck relaxes the continuous health check performed during a mutation.
+// When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
+// which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
+// https://github.com/elastic/cloud-on-k8s/issues/5795.
+func (b Builder) RelaxMutationHealthChecks() Builder {
+	b.relaxMutationHealthChecks = true
+	return b
 }
 
 // -- Helper functions

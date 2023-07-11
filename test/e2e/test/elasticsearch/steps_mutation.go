@@ -155,10 +155,11 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
+
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
-					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
+					assert.Equal(t, b.relaxMutationHealthChecks, continuousHealthChecks.FailureCount)
 				},
 			},
 			test.Step{
