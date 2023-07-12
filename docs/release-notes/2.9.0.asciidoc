@@ -5,13 +5,16 @@
 == {n} version 2.9.0
 
 
+[[breaking-2.9.0]]
+[float]
+=== Breaking changes
 
+* Add Support for volumeClaimTemplates for Logstash controller {pull}6884[#6884]
 
 [[enhancement-2.9.0]]
 [float]
 === Enhancements
 
-* Add Support for volumeClaimTemplates for Logstash controller {pull}6884[#6884]
 * Enable runAsNonRoot=true for Beats >= 8.8.x {pull}6793[#6793]
 
 [[bug-2.9.0]]

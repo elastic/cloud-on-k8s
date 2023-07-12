@@ -286,6 +286,10 @@ NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not cur
 
 [id="{p}-logstash-volumes"]
 === Defining data volumes for Logstash
+added:[2.9.0]
+
+WARNING: Volume support for Logstash is a breaking change to earlier versions of ECK and requires you to recreate your Logstash objects.
+
 By default, a PersistentVolume called `logstash-data` is created, that maps to `/usr/share/logstash/data`` for persistent storage, typically used for storage from plugins. The `logstash-data` volume claim is, by default, a small (1Gi) volume, using the standard StorageClass of your Kubernetes cluster, but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data`.
 
 [source,yaml,subs="attributes,+macros,callouts"]
@@ -308,7 +312,7 @@ spec:
 ----
 
 
-Separate storage (for example for Logstash configurations using persistent queues (PQ) and/or dead letter queues (DLQ) can be added by including an additional `spec.volumeClaimTemplate` along with a corresponding `spec.podTemplate.spec.containers.volumeMount` for each requested volume, as shown in the following example:
+Separate storage, for example for Logstash configurations using persistent queues (PQ) and/or dead letter queues (DLQ), can be added by including an additional `spec.volumeClaimTemplate` along with a corresponding `spec.podTemplate.spec.containers.volumeMount` for each requested volume, as shown in the following example:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -318,7 +322,7 @@ metadata:
   name: logstash
 spec:
   count: 1
-  version: {version} 
+  version: {version}
   podTemplate:
     spec:
       containers:
