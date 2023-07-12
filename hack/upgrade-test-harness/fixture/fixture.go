@@ -175,19 +175,17 @@ func replaceManifests(path string) func(ctx *TestContext) error {
 			return err
 		}
 		ctx.AddCleanupFunc(deleteResources(manifests))
-		return ctx.Replace(manifests)
+		return ctx.ReplaceOrCreate(manifests)
 	}
 }
 
-// deleteManifests is a convenience test function that deletes the provided manifests to the cluster.
-func deleteManifests(path string) func(*TestContext) error {
+func deleteResourcesOfKind(path string, kinds ...string) func(ctx *TestContext) error {
 	return func(ctx *TestContext) error {
 		manifests, err := ctx.LoadResources(path)
 		if err != nil {
 			return err
 		}
-
-		return ctx.Delete(manifests, deleteTimeout)
+		return ctx.Delete(manifests, deleteTimeout, kinds...)
 	}
 }
 

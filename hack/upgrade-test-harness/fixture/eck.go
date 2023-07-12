@@ -30,14 +30,21 @@ const (
 	apmName           = "apm"
 	beatName          = "heartbeat"
 	entName           = "ent"
+	logstashName      = "ls"
 	wantHealth        = "green"
 )
 
 // TestParam holds parameters for a test.
 type TestParam struct {
-	Name            string `json:"name"`
-	OperatorVersion string `json:"operatorVersion"`
-	StackVersion    string `json:"stackVersion"`
+	Name            string               `json:"name"`
+	OperatorVersion string               `json:"operatorVersion"`
+	StackVersion    string               `json:"stackVersion"`
+	Exceptions      map[string]Exception `json:"exceptions"`
+}
+
+type Exception struct {
+	Upgrade bool   `json:"upgrade"`
+	Status  Status `json:"status"`
 }
 
 // Path returns the full path to the given filename from the test data files.
@@ -121,6 +128,27 @@ func TestStatusOfResources(param TestParam) (*Fixture, error) {
 	}, nil
 }
 
+// TestExcludeFromUpgrade allows to exclude resourcesfrom the upgrade by deleting them before moving to the next version.
+// Intendend for breaking changes between versions for non-GA controllers.
+func TestExcludeFromUpgrade(param TestParam) *Fixture {
+	var kindsExcluded []string
+	for kind, exc := range param.Exceptions {
+		if !exc.Upgrade {
+			kindsExcluded = append(kindsExcluded, kind)
+		}
+	}
+
+	return &Fixture{
+		Name: param.Suffixed("TestExcludeFromUpgrade"),
+		Steps: []*TestStep{
+			retryRetriable(
+				param.Suffixed(fmt.Sprintf("Exclude%v", kindsExcluded)),
+				deleteResourcesOfKind(param.Path("stack.yaml"), kindsExcluded...),
+			),
+		},
+	}
+}
+
 // createResourcesTestSteps generate the TestSteps from the manifest used to deploy the stack.
 func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 	yamlFiles, err := os.Open(param.Path("stack.yaml"))
@@ -138,26 +166,35 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		var wantNodes int64 = 1
 		if r.Kind == "Elasticsearch" {
 			wantNodes = 3
 		}
+
+		status := Status{Health: wantHealth, Nodes: wantNodes, Version: param.StackVersion}
+		// check for exceptions for resources that have non-standard status sub-resources
+		exception, exists := param.Exceptions[r.Kind]
+		if exists {
+			status = exception.Status
+		}
+
 		result = append(result,
 			retryRetriable(
 				param.Suffixed(fmt.Sprintf("Check%s", r.Kind)),
 				checkStatus(
 					strings.ToLower(r.Kind),
 					r.Metadata.Name,
-					status{health: wantHealth, nodes: wantNodes, version: param.StackVersion},
+					status,
 				),
 			))
 	}
 }
 
-type status struct {
-	health  string
-	nodes   int64
-	version string
+type Status struct {
+	Health  string
+	Nodes   int64
+	Version string
 }
 
 type Resource struct {
@@ -167,7 +204,7 @@ type Resource struct {
 	} `yaml:"metadata"`
 }
 
-func checkStatus(kind, name string, want status) func(*TestContext) error {
+func checkStatus(kind, name string, want Status) func(*TestContext) error {
 	return func(ctx *TestContext) error {
 		have, err := getStatus(ctx, kind, name)
 		if err != nil {
@@ -183,8 +220,8 @@ func checkStatus(kind, name string, want status) func(*TestContext) error {
 	}
 }
 
-func getStatus(ctx *TestContext, kind, name string) (status, error) {
-	s := status{}
+func getStatus(ctx *TestContext, kind, name string) (Status, error) {
+	s := Status{}
 	resources := ctx.GetResources(ctx.Namespace(), kind, name)
 
 	runtimeObj, err := resources.Object()
@@ -197,12 +234,12 @@ func getStatus(ctx *TestContext, kind, name string) (status, error) {
 		return s, err
 	}
 
-	s.health, _, err = unstructured.NestedString(obj, "status", "health")
+	s.Health, _, err = unstructured.NestedString(obj, "status", "health")
 	if err != nil {
 		return s, fmt.Errorf("failed to get health from status: %w", err)
 	}
 
-	s.nodes, _, err = unstructured.NestedInt64(obj, "status", "availableNodes")
+	s.Nodes, _, err = unstructured.NestedInt64(obj, "status", "availableNodes")
 	if err != nil {
 		return s, fmt.Errorf("failed to get nodes from status: %w", err)
 	}
@@ -214,7 +251,7 @@ func getStatus(ctx *TestContext, kind, name string) (status, error) {
 	if err != nil || minVersion == nil {
 		return s, err
 	}
-	s.version = minVersion.String()
+	s.Version = minVersion.String()
 
 	return s, nil
 }
@@ -263,6 +300,8 @@ func labelSelectorFor(kind string) (string, error) {
 		return "enterprisesearch.k8s.elastic.co/name=" + entName, nil
 	case "beat":
 		return "beat.k8s.elastic.co/name=" + beatName, nil
+	case "logstash":
+		return "logstash.k8s.elastic.co/name=" + logstashName, nil
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)
@@ -276,7 +315,7 @@ func TestScaleElasticsearch(param TestParam, count int) *Fixture {
 			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(param, int64(count))),
 			pause(30 * time.Second),
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, Status{Health: wantHealth, Nodes: int64(count), Version: param.StackVersion})),
 		},
 	}
 }

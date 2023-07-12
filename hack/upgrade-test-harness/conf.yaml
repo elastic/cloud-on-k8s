@@ -32,6 +32,19 @@ testParams:
   - name: v280
     operatorVersion: 2.8.0
     stackVersion: 8.8.0
+    exceptions:
+      Logstash:
+        upgrade: false
+        status:
+          health: ""
+          nodes: 1
+          version: 8.8.0
   - name: upcoming
     operatorVersion: 2.10.0-SNAPSHOT
     stackVersion: 8.10.0-SNAPSHOT
+    exceptions:
+      Logstash:
+        status:
+          health: ""
+          nodes: 1
+          version: 8.10.0-SNAPSHOT

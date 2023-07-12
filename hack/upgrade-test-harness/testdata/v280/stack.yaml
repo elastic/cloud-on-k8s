@@ -77,7 +77,7 @@ spec:
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
-  name: logstash-sample
+  name: ls
 spec:
   count: 1
   version: 8.8.0
