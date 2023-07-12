@@ -23,7 +23,8 @@ func TestAPMServerVersionUpgradeToLatest8x(t *testing.T) {
 	name := "apmserver-upgrade"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(srcVersion).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		TolerateMutationChecksFailures(10)
 
 	apmServerBuilder := apmserver.NewBuilder(name).WithVersion(srcVersion).WithElasticsearchRef(esBuilder.Ref()).WithoutIntegrationCheck()
 

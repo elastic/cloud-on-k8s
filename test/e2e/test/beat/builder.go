@@ -8,9 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -101,12 +98,8 @@ type ValidationFunc func(client.Client) error
 
 func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
-	// for Beats we have to use the specific type as there are different Beats images within the one CRD kind.
-	// capitalize the Beat name to be consistent in spelling with the other CRD kinds.
-	def := test.Ctx().ImageDefinitionFor(cases.Title(language.Und).String(typeStr))
 	b.Beat.Spec.Type = typeStr
-	b.Beat.Spec.Version = def.Version
-	b.Beat.Spec.Image = def.Image
+	b.Beat.Spec.Version = test.Ctx().ElasticStackVersion
 	return b
 }
 

@@ -52,6 +52,8 @@ type Builder struct {
 	expectedElasticsearch *esv1.Elasticsearch
 
 	GlobalCA bool
+
+	mutationToleratedChecksFailureCount int
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -96,24 +98,14 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-	def := test.Ctx().ImageDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
 		},
 	}.
-		WithVersion(def.Version).
-		WithImage(def.Image).
+		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
-}
-
-func (b Builder) WithImage(image string) Builder {
-	// do not override images set e.g. by WithVersion with empty strings
-	if len(image) > 0 {
-		b.Elasticsearch.Spec.Image = image
-	}
-	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {
@@ -173,6 +165,9 @@ func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
 		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	} else {
+		// reset the image in case the builder was set to a SNAPSHOT version at some point
+		b.Elasticsearch.Spec.Image = ""
 	}
 	return b
 }
@@ -543,6 +538,15 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+// TolerateMutationChecksFailures relaxes the continuous health check performed during a mutation by accepting a given number of failures.
+// When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
+// which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
+// https://github.com/elastic/cloud-on-k8s/issues/5795.
+func (b Builder) TolerateMutationChecksFailures(c int) Builder {
+	b.mutationToleratedChecksFailureCount = c
+	return b
 }
 
 // -- Helper functions
