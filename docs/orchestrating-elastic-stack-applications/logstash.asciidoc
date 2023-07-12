@@ -290,7 +290,7 @@ added:[2.9.0]
 
 WARNING: Volume support for Logstash is a breaking change to earlier versions of ECK and requires you to recreate your Logstash objects.
 
-By default, a PersistentVolume called `logstash-data` is created, that maps to `/usr/share/logstash/data`` for persistent storage, typically used for storage from plugins. The `logstash-data` volume claim is, by default, a small (1Gi) volume, using the standard StorageClass of your Kubernetes cluster, but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data`.
+By default, a PersistentVolume called `logstash-data` is created, that maps to `/usr/share/logstash/data` for persistent storage, typically used for storage from plugins. The `logstash-data` volume claim is, by default, a small (1Gi) volume, using the standard StorageClass of your Kubernetes cluster, but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data`.
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
