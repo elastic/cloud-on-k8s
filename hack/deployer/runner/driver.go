@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/imdario/mergo"
 )
@@ -31,7 +32,7 @@ type Driver interface {
 	Execute() error
 	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
-	Cleanup() ([]string, error)
+	Cleanup(time.Duration, string) ([]string, error)
 }
 
 func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {

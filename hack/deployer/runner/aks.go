@@ -194,14 +194,15 @@ func (d *AKSDriver) delete() error {
 		Run()
 }
 
-func (d *AKSDriver) Cleanup() ([]string, error) {
+func (d *AKSDriver) Cleanup(cleanupDuration time.Duration, _ string) ([]string, error) {
 	// Do not use docker in the cleanup steps
 	d.withoutDocker = true
 	if err := d.auth(); err != nil {
 		return nil, err
 	}
-	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
-	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	// daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	duration := time.Now().Add(-cleanupDuration)
+	d.ctx["Date"] = duration.Format(time.RFC3339)
 	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select(.createdTime | . <= $d))|.[].name'`
 	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {

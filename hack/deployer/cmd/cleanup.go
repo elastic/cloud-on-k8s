@@ -8,10 +8,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner"
+)
+
+var (
+	cleanupDuration time.Duration
+	clusterPrefix   string
 )
 
 func CleanupCommand() *cobra.Command {
@@ -43,6 +50,8 @@ func CleanupCommand() *cobra.Command {
 
 	cleanupCmd.Flags().StringVar(&plansFile, "plans-file", "config/plans.yml", "File containing execution plans.")
 	cleanupCmd.Flags().StringVar(&provider, "provider", "gke", "Provider to use.")
+	cleanupCmd.Flags().StringVar(&clusterPrefix, "cluster-prefix", "eck-e2e", "Cluster prefix to cleanup")
+	cleanupCmd.Flags().DurationVar(&cleanupDuration, "cleanup-duration", 3*24*time.Hour, "Duration outside of which to search for clusters to delete")
 
 	return cleanupCmd
 }
@@ -68,7 +77,16 @@ func cleanup(plansFile string, planNames []string, driverFactory runner.DriverFa
 		if err != nil {
 			return err
 		}
-		clusters, err := client.Cleanup()
+		if os.Getenv("CLUSTER_PREFIX") != "" {
+			clusterPrefix = os.Getenv("CLUSTER_PREFIX")
+		}
+		if os.Getenv("CLEANUP_DURATION") != "" {
+			cleanupDuration, err = time.ParseDuration(os.Getenv("CLEANUP_DURATION"))
+			if err != nil {
+				return fmt.Errorf("while parsing cleanup_duration: %s: %w", os.Getenv("CLEANUP_DURATION"), err)
+			}
+		}
+		clusters, err := client.Cleanup(cleanupDuration, clusterPrefix)
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/blang/semver/v4"
 
@@ -276,7 +277,7 @@ func (k *KindDriver) ensureClientImage() error {
 	return nil
 }
 
-func (k *KindDriver) Cleanup() ([]string, error) {
+func (k *KindDriver) Cleanup(_ time.Duration, _ string) ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 

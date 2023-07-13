@@ -463,6 +463,6 @@ func (d *OCPDriver) baseDomain() string {
 	return baseDomain
 }
 
-func (d *OCPDriver) Cleanup() ([]string, error) {
+func (d *OCPDriver) Cleanup(_ time.Duration, _ string) ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
