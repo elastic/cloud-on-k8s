@@ -21,6 +21,7 @@ This section describes how to configure and deploy Logstash with ECK.
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
 ** <<{p}-logstash-jvm-options,Setting JVM Options>>
+** <<{p}-logstash-volume-claim-templates,Configuring Volumes>>
 ** <<{p}-logstash-scaling-logstash,Scaling Logstash>>
 * <<{p}-logstash-technical-preview-limitations,Technical Preview Limitations>>
 
@@ -369,6 +370,7 @@ NOTE: The `clusterName` value should be unique across all referenced Elasticsear
 [NOTE]
 --
 The Logstash ECK operator creates a user called `eck_logstash_user_role` when an `elasticsearchRef` is specified. This user has the following permissions:
+
 ```
   "cluster": ["monitor", "manage_ilm", "read_ilm", "manage_logstash_pipelines", "manage_index_templates", "cluster:admin/ingest/pipeline/get",],
   "indices": [
@@ -378,6 +380,8 @@ The Logstash ECK operator creates a user called `eck_logstash_user_role` when an
     }
 
 ```
+
+
 You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See the <<{p}-logstash-configuration-custom-index, Logstash configuration with a custom index>> sample configuration that creates a user that writes to a custom index.
 --
 
@@ -597,6 +601,16 @@ kubectl apply -f {logstash_recipes}/logstash-es-role.yaml
 
 Deploys Logstash and Elasticsearch, and creates an updated version of the `eck_logstash_user_role` to write to a user specified index.
 
+[id="{p}-logstash-configuration-pq-dlq"]
+=== Creating persitent volumes for PQ and DLQ
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {logstash_recipes}/logstash-volumes.yaml
+----
+
+Deploys Logstash, Beats and Elasticsearch. Logstash is configured with two pipelines - a main pipeline for reading from the beats instance, which will send to the DLQ if it is unable to write to Elasticsearch, and a second pipeline, that will read from the DLQ. In addition, persistent queues are set up. This example shows how to configure persistent volumes outside of the default `logstash-data` persistent volume.
+
 
 [id="{p}-logstash-configuration-stack-monitoring"]
 === Elasticsearch and Kibana Stack Monitoring
@@ -646,6 +660,205 @@ spec:
 ----
 <1> This will change the maximum and minimum heap size of the JVM on each pod to 2GB
 
+
+[id="{p}-logstash-volume-claim-templates"]
+= Logstash Volume claim templates
+
+[float]
+== Specifying the volume claim settings
+
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each Logstash pod to store Logstash data that would normally be placed in the `data` folder. This typically includes data files used by logstash and its plugins for any persistence needs.
+
+For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. To override this volume claim for `data` usages, the name of this volume claim must be `logtash-data`.
+
+
+This example updates the default data template to increase the storage to `5Gi` for the logstash data folder.
+
+[source,yaml]
+----
+spec:
+  count: 3
+  volumeClaimTemplates:
+  - metadata:
+    name: logstash-data # Do not change this name unless you set up a volume mount for the data path.
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+            storageClassName: standard
+----
+
+Additional volume claims can be configured for data that you may want to keep outside of the `data` folder, such as persistent queues, and dead letter queues.
+
+The following example shows how to configure logstash with a separate volume for a persistent queue:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  count: 1
+  version: {version}
+  volumeClaimTemplates:
+    - metadata:
+        name: pq <1>
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        volumeMounts:
+        - mountPath: /usr/share/logstash/pq <2>
+          name: pq  <1>
+          readOnly: false
+  config:
+    log.level: info
+    queue.type: persisted
+    path.queue: /usr/share/logstash/pq <2>
+----
+<1> The `name` values in the `volumeMount` for the container in the podTemplate section and the name of the `volumeClaimTemplate` must match
+<2> Set the `path.queue` setting in the configuration to match the `mountPath` in the `volumeMount`.
+
+The following example shows how to configure Logstash with a Dead Letter Queue setup on the main pipeline, and a separate pipeline to read items from the DLQ.
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  count: 1
+  version: {version}
+   elasticsearchRefs:
+   - clusterName: eck
+     name: elasticsearch
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        volumeMounts:
+        - mountPath: /usr/share/logstash/dlq <2>
+          name: dlq  <1>
+          readOnly: false
+  volumeClaimTemplates:
+    - metadata:
+      name: dlq <1>
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  pipelines:
+    - pipeline.id: beats
+      dead_letter_queue.enable: true
+      path.dead_letter_queue: /usr/share/logstash/dlq <2>
+      config.string: |
+        input {
+          beats {
+            port => 5044
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+        }
+    - pipeline.id: dlq_read
+      dead_letter_queue.enable: false
+      config.string: |
+        input {
+          dead_letter_queue {
+            path => "/usr/share/logstash/dlq" <2>
+            commit_offsets => true
+            pipeline_id => "beats"
+            clean_consumed => true
+          }
+        }
+        filter {
+          mutate {
+            remove_field => "[geoip][location]"
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+        }
+----
+<1> The `name` values in the `volumeMount` for the container in the podTemplate section and the name of the `volumeClaimTemplate` must match
+<2> Set the `path.dead_letter_queue` setting in the pipeline config to match the `mountPath` in the `volumeMount` for pipelines that are writing to the Dead Letter Queue, and set the `path` setting of the `dead_letter_queue` plugin for the pipeline that will read from the Dead Letter Queue.
+
+
+[float]
+== Updating the volume claim settings
+
+Changes are currently forbidden in the volumeClaimTemplates, such as changing the storage class or changing the volume size. To make these changes, you have to fully delete the Logstash object, delete and recreate or resize the volume and create a new Logstash object.
+
+Before deleting or resizing a persistent queue volume, ensure that the queue is empty. When using the persistent queue, we recommend setting `queue.drain: true` on the logstash pods to ensure that the persistent queue is drained when pods are shutdown. In conjunction with this, note that you should also increase the `terminationGracePeriodSeconds` to a large enough value to drain your queue.
+
+
+
+Example:
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  config:
+    queue.drain: true
+  podTemplate:
+    spec:
+      terminationGracePeriodSeconds: 604800
+----
+
+NOTE: When used in conjunction with an autoscaler, such as the Horizontal Pod Autoscaler, Kubernetes may not honor  `terminationGracePeriodSeconds` settings greater than 600. This may mean that a queue of a terminated pod may not be fully drained, even when `queue.drain: true` is set and a high `terminationGracePeriodSeconds` is configured.
+
+[NOTE]
+--
+In the technical preview, there is currently no way to drain a dead letter queue automatically before Logstash shuts down. To manually drain a Dead Letter Queue, first stop sending data to it, by either disabling the DLQ feature, or disabling any pipelines that send to a DLQ, and wait for events to stop flowing through any pipelines reading from the input.
+
+[float]
+== EmptyDir
+
+If you are not concerned about data loss, you can use an `emptyDir` volume for Logstash data.
+
+CAUTION: The use of `emptyDir` in a production environment may generate permanent data loss. Do not use with persistent queues, or dead letter queues, or when using any plugin that requires persistent storage to keep track of state between restarts of Logstash.
+
+
+[source,yaml]
+----
+spec:
+  count: 5
+  podTemplate:
+    spec:
+      volumeClaimTemplates:
+      - name: logstash-data
+        emptyDir: {}
+----
+
+
+
+
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
 
@@ -684,8 +897,12 @@ experimental[]
 Note that this release is a technical preview. It is still under active development and has additional limitations:
 
 [id="{p}-logstash-technical-preview-persistence"]
-=== No integrated support for persistence
-The operator provides no integrated support for persistence, including PQ, DLQ support and plugins that may require persistent storage to keep track of state - any persistence should be added manually.
+=== Experimental support for persistence
+NOTE: This is a breaking change from  version 2.8.0 of the ECK operator and requires re-creation of existing Logstash objects.
+
+The operator now includes support for persistence, with a small (`1Gi`) default `PersistentVolume` called `logstash-data` created, that maps to `/usr/share/logstash/data`, which should be typically used for storage from plugins, which can be overridden but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or do use a different `storageClass` from the default, for example. Additional `persistentVolumeClaims` can also be defined in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
+
+ The current implementation does not allow resizing of volumes even if your chosen storage class would support it. To resize a volume you have to fully delete the Logstash object, delete and recreate or resize the volume and create a new Logstash object. Also note that volume claims will not be deleted when you delete the Logstash object and have to be deleted manually. This behaviour might change in future versions of the ECK operator.
 
 [id="{p}-logstash-technical-preview-elasticsearchref"]
 === `ElasticsearchRef` implementation in plugins is in preview mode
