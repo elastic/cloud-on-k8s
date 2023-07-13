@@ -421,7 +421,7 @@ func (d *GKEDriver) Cleanup(cleanupDuration time.Duration, clusterPrefix string)
 	// daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	duration := time.Now().Add(-cleanupDuration)
 	d.ctx["Date"] = duration.Format(time.RFC3339)
-	cmd := fmt.Sprintf(`gcloud container clusters list --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~%s.*"`, clusterPrefix)
+	cmd := fmt.Sprintf(`gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~%s.*"`, clusterPrefix)
 	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, err
