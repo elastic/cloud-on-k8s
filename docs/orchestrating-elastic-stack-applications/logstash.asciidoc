@@ -62,7 +62,7 @@ spec:
             hosts => [ "${QS_ES_HOSTS}" ]
             user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
-            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
   services:
@@ -204,7 +204,7 @@ spec:
             hosts => [ "${QS_ES_HOSTS}" ]
             user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
-            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 ----
@@ -243,7 +243,7 @@ stringData:
             hosts => [ "${QS_ES_HOSTS}" ]
             user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
-            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 
@@ -278,7 +278,7 @@ spec:
             hosts => [ "${QS_ES_HOSTS}" ]
             user => "${QS_ES_USER}"
             password => "${QS_ES_PASSWORD}"
-            cacert => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${QS_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 ----
@@ -416,13 +416,13 @@ spec:
             hosts => [ "${PROD_ES_ES_HOSTS}" ]
             user => "${PROD_ES_ES_USER}"
             password => "${PROD_ES_ES_PASSWORD}"
-            cacert => "${PROD_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${PROD_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
           elasticsearch {   <4>
             hosts => [ "${QA_ES_ES_HOSTS}" ]
             user => "${QA_ES_ES_USER}"
             password => "${QA_ES_ES_PASSWORD}"
-            cacert => "${QA_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${QA_ES_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
 
