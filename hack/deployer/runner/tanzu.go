@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -443,7 +442,7 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		WithoutStreaming().Run()
 }
 
-func (t *TanzuDriver) Cleanup(_ time.Duration, _ string) ([]string, error) {
+func (t *TanzuDriver) Cleanup() ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 

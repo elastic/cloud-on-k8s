@@ -246,14 +246,13 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
-func (e *EKSDriver) Cleanup(cleanupDuration time.Duration, clusterPrefix string) ([]string, error) {
+func (e *EKSDriver) Cleanup() ([]string, error) {
 	if err := e.auth(); err != nil {
 		return nil, err
 	}
-	// daysAgo := time.Now().Add(-24 * 3 * time.Hour)
-	duration := time.Now().Add(-cleanupDuration)
-	e.ctx["Date"] = duration.Format(time.RFC3339)
-	allClustersCmd := fmt.Sprintf(`eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("%s")))| .[].Name'`, clusterPrefix)
+	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("eck-e2e")))| .[].Name'`
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
 		return nil, err

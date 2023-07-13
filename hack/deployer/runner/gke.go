@@ -402,7 +402,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
-func (d *GKEDriver) Cleanup(cleanupDuration time.Duration, clusterPrefix string) ([]string, error) {
+func (d *GKEDriver) Cleanup() ([]string, error) {
 	if val, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
 		log.Printf("found missing %s key in context", GoogleCloudProjectCtxKey)
 		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
@@ -418,10 +418,9 @@ func (d *GKEDriver) Cleanup(cleanupDuration time.Duration, clusterPrefix string)
 	); err != nil {
 		return nil, err
 	}
-	// daysAgo := time.Now().Add(-24 * 3 * time.Hour)
-	duration := time.Now().Add(-cleanupDuration)
-	d.ctx["Date"] = duration.Format(time.RFC3339)
-	cmd := fmt.Sprintf(`gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~%s.*"`, clusterPrefix)
+	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~eck-e2e.*"`
 	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, err

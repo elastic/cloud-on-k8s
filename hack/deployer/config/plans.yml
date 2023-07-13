@@ -96,9 +96,7 @@ plans:
   kubernetesVersion: 1.25
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
-    # temporary change for testing
-    # region: ap-northeast-3
-    region: us-east-1
+    region: ap-northeast-3
     nodeCount: 3
     nodeAMI: auto
 - id: eks-arm-ci
