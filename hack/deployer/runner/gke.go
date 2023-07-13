@@ -77,18 +77,18 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
-			GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
-			"ClusterName":            plan.ClusterName,
-			"PVCPrefix":              pvcPrefix,
-			"PlanId":                 plan.Id,
-			"Region":                 plan.Gke.Region,
-			"KubernetesVersion":      plan.KubernetesVersion,
-			"MachineType":            plan.MachineType,
-			"LocalSsdCount":          plan.Gke.LocalSsdCount,
-			"GcpScopes":              plan.Gke.GcpScopes,
-			"NodeCountPerZone":       plan.Gke.NodeCountPerZone,
-			"ClusterIPv4CIDR":        clusterIPv4CIDR,
-			"ServicesIPv4CIDR":       servicesIPv4CIDR,
+			// GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
+			"ClusterName":       plan.ClusterName,
+			"PVCPrefix":         pvcPrefix,
+			"PlanId":            plan.Id,
+			"Region":            plan.Gke.Region,
+			"KubernetesVersion": plan.KubernetesVersion,
+			"MachineType":       plan.MachineType,
+			"LocalSsdCount":     plan.Gke.LocalSsdCount,
+			"GcpScopes":         plan.Gke.GcpScopes,
+			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
+			"ClusterIPv4CIDR":   clusterIPv4CIDR,
+			"ServicesIPv4CIDR":  servicesIPv4CIDR,
 		},
 		vaultClient: c,
 	}, nil
@@ -343,8 +343,7 @@ func (d *GKEDriver) GetCredentials() error {
 
 func (d *GKEDriver) delete() error {
 	log.Println("Deleting cluster...")
-	log.Printf("dump of context: %+v", d.ctx)
-	cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err
 	}
