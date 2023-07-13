@@ -343,6 +343,7 @@ func (d *GKEDriver) GetCredentials() error {
 
 func (d *GKEDriver) delete() error {
 	log.Println("Deleting cluster...")
+	log.Printf("dump of context: %+v", d.ctx)
 	cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err
@@ -402,8 +403,14 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) Cleanup(cleanupDuration time.Duration, clusterPrefix string) ([]string, error) {
-	if _, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
+	if val, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
+		log.Printf("found missing %s key in context", GoogleCloudProjectCtxKey)
 		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
+	} else if ok {
+		if s, ok := val.(string); ok && s == "" {
+			log.Printf("found empty %s key in context", GoogleCloudProjectCtxKey)
+			d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
+		}
 	}
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
