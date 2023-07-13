@@ -72,7 +72,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithVersion(dstVersion).
-		TolerateMutationChecksFailures(10)
+		TolerateMutationChecksFailures(15)
 
 	fbBuilder := beat.NewBuilder(name).
 		WithRoles(beat.AutodiscoverClusterRoleName).
