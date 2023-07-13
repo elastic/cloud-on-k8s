@@ -153,8 +153,6 @@ func (c *Command) output() (string, error) {
 		c.variables = append(c.variables, strings.Split(string(bytes), "\n")...)
 	}
 
-	log.Printf("About to run command: %v", cmd.Args)
-
 	cmd.Env = append(os.Environ(), c.variables...)
 
 	b := bytes.Buffer{}
