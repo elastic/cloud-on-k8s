@@ -257,9 +257,6 @@ func (e *EKSDriver) Cleanup() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(allClusters) == 0 {
-		return nil, nil
-	}
 	var deletedClusters []string
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
 	for _, cluster := range allClusters {

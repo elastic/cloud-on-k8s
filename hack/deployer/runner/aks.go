@@ -187,15 +187,15 @@ func (d *AKSDriver) GetCredentials() error {
 
 func (d *AKSDriver) delete() error {
 	log.Print("Deleting cluster...")
+	args := []string{"aks",
+		"delete", "--yes",
+		"--name", d.plan.ClusterName,
+		"--resource-group", d.plan.Aks.ResourceGroup}
 	if !d.withoutDocker {
-		return azure.Cmd("aks",
-			"delete", "--yes",
-			"--name", d.plan.ClusterName,
-			"--resource-group", d.plan.Aks.ResourceGroup).
+		return azure.Cmd(args...).
 			Run()
 	}
-	command := fmt.Sprintf(`az aks delete --yes --name %s --resource-group %s`, d.plan.ClusterName, d.plan.Aks.ResourceGroup)
-	_, err := exec.NewCommand(command).Output()
+	_, err := exec.NewCommand(fmt.Sprintf("az %s", strings.Join(args, ""))).Output()
 	return err
 }
 
@@ -212,20 +212,19 @@ func (d *AKSDriver) Cleanup() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while running az resource list command: %w", err)
 	}
-	if len(clustersToDelete) == 0 {
-		return nil, nil
-	}
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
-		rg, ok := d.ctx["ResourceGroup"]
-		if !ok {
-			return nil, fmt.Errorf("while retrieving azure resource group from context: missing 'ResourceGroup'")
+		if d.plan.Aks.ResourceGroup == "" {
+			c, err := vault.NewClient()
+			if err != nil {
+				return nil, err
+			}
+			resourceGroup, err := vault.Get(c, azure.AKSVaultPath, AKSResourceGroupVaultFieldName)
+			if err != nil {
+				return nil, err
+			}
+			d.plan.Aks.ResourceGroup = resourceGroup
 		}
-		var val string
-		if val, ok = rg.(string); !ok {
-			return nil, fmt.Errorf("couldn't convert %T into string", rg)
-		}
-		d.plan.Aks.ResourceGroup = val
 		log.Printf("deleting cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err
