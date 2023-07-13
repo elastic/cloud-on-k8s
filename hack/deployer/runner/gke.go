@@ -343,7 +343,7 @@ func (d *GKEDriver) GetCredentials() error {
 
 func (d *GKEDriver) delete() error {
 	log.Println("Deleting cluster...")
-	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+	cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err
 	}
