@@ -19,8 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-const APMServerDataStreamsWaitForIntegration = "apm-server.data_streams.wait_for_integration"
-
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmv1.ApmServer
@@ -32,11 +30,6 @@ var _ test.Builder = Builder{}
 var _ test.Subject = Builder{}
 
 func (b Builder) SkipTest() bool {
-	// https://github.com/elastic/cloud-on-k8s/issues/6947
-	if test.Ctx().ElasticStackVersion == "8.9.0-SNAPSHOT" && !b.HasIntegration() {
-		return true
-	}
-
 	// APM doesn't work in 8.5.3, see https://github.com/elastic/apm-server/issues/10089.
 	return test.Ctx().ElasticStackVersion == "8.5.3"
 }
@@ -183,26 +176,8 @@ func (b Builder) WithoutIntegrationCheck() Builder {
 	}
 
 	return b.WithConfig(map[string]interface{}{
-		APMServerDataStreamsWaitForIntegration: false,
+		"apm-server.data_streams.wait_for_integration": false,
 	})
-}
-
-// HasIntegration returns true if the APM Server uses the APM integration through Kibana to setup the index templates.
-// The detection is based on a setting that we set to disable the integration check.
-func (b Builder) HasIntegration() bool {
-	if b.ApmServer.Spec.Config != nil || b.ApmServer.Spec.Config.Data != nil {
-		v, ok := b.ApmServer.Spec.Config.Data[APMServerDataStreamsWaitForIntegration]
-		if !ok {
-			// integration is used if no setting
-			return true
-		}
-		if value, ok := v.(bool); ok {
-			// integration if the setting value is true
-			return value
-		}
-		return ok
-	}
-	return true
 }
 
 func (b Builder) WithMutatedFrom(builder *Builder) Builder {
