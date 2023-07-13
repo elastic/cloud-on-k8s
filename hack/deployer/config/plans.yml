@@ -52,7 +52,10 @@ plans:
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   aks:
     nodeCount: 3
+    # Temp set for testing
     location: northeurope
+    # Temp set for testing.
+    resourceGroup: mmontgomery-dev
     zones: "1 2 3"
 - id: aks-dev
   operation: create
