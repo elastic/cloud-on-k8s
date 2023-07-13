@@ -26,6 +26,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
+// defaultMutationToleratedFailures is the number of continuous health checks failures tolerated during a mutation.
+const defaultMutationToleratedFailures = 15
+
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -544,8 +547,8 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 // When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
 // which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
 // https://github.com/elastic/cloud-on-k8s/issues/5795.
-func (b Builder) TolerateMutationChecksFailures(c int) Builder {
-	b.mutationToleratedChecksFailureCount = c
+func (b Builder) TolerateMutationChecksFailures() Builder {
+	b.mutationToleratedChecksFailureCount = defaultMutationToleratedFailures
 	return b
 }
 

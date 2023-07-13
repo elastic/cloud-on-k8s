@@ -143,7 +143,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithVersion(srcVersion).
-		TolerateMutationChecksFailures(15)
+		TolerateMutationChecksFailures()
 
 	srcNodeCount := 3
 	kbBuilder := kibana.NewBuilder(name).
