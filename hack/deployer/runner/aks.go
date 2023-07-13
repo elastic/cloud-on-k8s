@@ -187,11 +187,16 @@ func (d *AKSDriver) GetCredentials() error {
 
 func (d *AKSDriver) delete() error {
 	log.Print("Deleting cluster...")
-	return azure.Cmd("aks",
-		"delete", "--yes",
-		"--name", d.plan.ClusterName,
-		"--resource-group", d.plan.Aks.ResourceGroup).
-		Run()
+	if !d.withoutDocker {
+		return azure.Cmd("aks",
+			"delete", "--yes",
+			"--name", d.plan.ClusterName,
+			"--resource-group", d.plan.Aks.ResourceGroup).
+			Run()
+	}
+	command := fmt.Sprintf(`az aks delete --yes --name %s --resource-group %s`, d.plan.ClusterName, d.plan.Aks.ResourceGroup)
+	_, err := exec.NewCommand(command).Output()
+	return err
 }
 
 func (d *AKSDriver) Cleanup(cleanupDuration time.Duration, _ string) ([]string, error) {
@@ -212,7 +217,16 @@ func (d *AKSDriver) Cleanup(cleanupDuration time.Duration, _ string) ([]string, 
 		return nil, nil
 	}
 	for _, cluster := range clustersToDelete {
-		d.ctx["ClusterName"] = cluster
+		d.plan.ClusterName = cluster
+		rg, ok := d.ctx["ResourceGroup"]
+		if !ok {
+			return nil, fmt.Errorf("while retrieving azure resource group from context: missing 'ResourceGroup'")
+		}
+		var val string
+		if val, ok = rg.(string); !ok {
+			return nil, fmt.Errorf("couldn't convert %T into string", rg)
+		}
+		d.plan.Aks.ResourceGroup = val
 		log.Printf("deleting cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err
