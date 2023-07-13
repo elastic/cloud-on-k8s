@@ -34,6 +34,23 @@ To make use of your mirrored images you can either set the image for each applic
 
 
 [float]
+[id="{p}-use-internal-operator-image"]
+== Use an internal image of the ECK operator
+
+To deploy the ECK operator in an air-gapped environment, you first have to mirror the operator image itself from `docker.elastic.co` to a private container registry, for example `my-registry`.
+
+Once the ECK operator image has been copied, you have to replace the original image name `docker.elastic.co/eck/eck-operator:{eck_version}` with the private name of the image, for example `my-registry/eck/eck-operator:{eck_version}`, in the <<{p}-install-yaml-manifests,operator manifests>>. When using <<{p}-install-helm,Helm charts>>, you have to replace the `image.repository` Helm value with, for example, `my-registry/eck/eck-operator`.
+
+Container registry vendors generally offer native solutions to mirror container images internally. As an alternative, you can use a Docker client which has access to both the public `docker.elastic.co` registry and to the private container registry as follows:
+
+[source,sh]
+----
+docker pull docker.elastic.co/eck/eck-operator:{eck_version}
+docker tag docker.elastic.co/eck/eck-operator:{eck_version} my-registry/eck/eck-operator:{eck_version}
+docker push my-registry/eck/eck-operator:{eck_version}
+----
+
+[float]
 [id="{p}-container-registry-override"]
 == Override the default container registry
 
