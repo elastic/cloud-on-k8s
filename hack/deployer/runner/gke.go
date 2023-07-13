@@ -402,14 +402,8 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 }
 
 func (d *GKEDriver) Cleanup() ([]string, error) {
-	if val, ok := d.ctx[GoogleCloudProjectCtxKey]; !ok {
-		log.Printf("found missing %s key in context", GoogleCloudProjectCtxKey)
+	if d.ctx[GoogleCloudProjectCtxKey] == "" {
 		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
-	} else if ok {
-		if s, ok := val.(string); ok && s == "" {
-			log.Printf("found empty %s key in context", GoogleCloudProjectCtxKey)
-			d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
-		}
 	}
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
