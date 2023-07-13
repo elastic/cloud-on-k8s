@@ -52,10 +52,7 @@ plans:
   diskSetup: kubectl apply -k hack/deployer/config/local-disks
   aks:
     nodeCount: 3
-    # Temp set for testing
-    location: northeurope
-    # Temp set for testing.
-    resourceGroup: mmontgomery-dev
+    location: westeurope
     zones: "1 2 3"
 - id: aks-dev
   operation: create
@@ -99,7 +96,9 @@ plans:
   kubernetesVersion: 1.25
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
-    region: ap-northeast-3
+    # temporary change for testing
+    # region: ap-northeast-3
+    region: us-east-1
     nodeCount: 3
     nodeAMI: auto
 - id: eks-arm-ci
