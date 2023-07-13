@@ -7,14 +7,14 @@ steps:
   - label: ":go: build deployer"
     key: "build-deployer"
     if: |
-      build.message == "buildkite run e2e test cleanup"
+      build.message == "run ECK e2e test cleanup"
     commands:
       - make build-deployer
       - buildkite-agent artifact upload hack/deployer/deployer
 
   - label: ":broom: e2e test cluster cleanup gke"
     if: |
-      build.message == "buildkite run e2e test cleanup"
+      build.message == "run ECK e2e test cleanup"
     depends_on:
       - "build-deployer"
     commands:
@@ -24,7 +24,7 @@ steps:
 
   - label: ":broom: e2e test cluster cleanup aks"
     if: |
-      build.message == "buildkite run e2e test cleanup"
+      build.message == "run ECK e2e test cleanup"
     depends_on:
       - "build-deployer"
     commands:
@@ -34,7 +34,7 @@ steps:
 
   - label: ":broom: e2e test cluster cleanup eks"
     if: |
-      build.message == "buildkite run e2e test cleanup"
+      build.message == "run ECK e2e test cleanup"
     depends_on:
       - "build-deployer"
     commands:
