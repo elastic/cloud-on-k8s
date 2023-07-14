@@ -53,7 +53,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 		return nil, err
 	} else if keystoreResources != nil {
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
-		// Logstash requires keystore password in environment variable
+		// Logstash requires keystore password in environment variable to bypass the prompt
 		keystoreResources.InitContainer.Env = append(keystoreResources.InitContainer.Env, getKeystorePass(params.Logstash))
 		return keystoreResources, nil
 	}
