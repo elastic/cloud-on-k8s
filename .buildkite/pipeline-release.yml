@@ -10,6 +10,9 @@ steps:
         commands:
           - make generate-manifests
           - .buildkite/scripts/release/k8s-manifests.sh
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+          memory: "2G"
 
       - label: "copy images to dockerhub"
         if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
@@ -31,4 +34,3 @@ steps:
         build:
           env:
             HELM_DRY_RUN: false
-
