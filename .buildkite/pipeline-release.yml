@@ -25,9 +25,6 @@ steps:
                   IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
                   IMAGES_TAG: "$${BUILDKITE_TAG#v}"
           YAML
-        agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-          memory: "2G"
 
       - label: ":buildkite: helm charts release"
         if: | # merge-main or tags
@@ -37,7 +34,3 @@ steps:
         build:
           env:
             HELM_DRY_RUN: false
-        agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-          memory: "2G"
-
