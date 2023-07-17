@@ -1,0 +1,16 @@
+[[release-highlights-2.9.0]]
+== 2.9.0 release highlights
+
+[float]
+[id="{p}-290-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.9.0 of {n}. Check <<release-notes-2.9.0>> for the full list of changes.
+
+[float]
+[id="{p}-290-logstash"]
+=== Logstash support for persistent volumes
+
+ECK 2.9.0 includes a technical preview for persistent volumes for link:https://www.elastic.co/logstash/[Logstash] resources. A default data volume is now created for each Logstash and additional volumes can be defined for example for Logstash's persistent queue feature. This is a breaking change from  version 2.8.0 of the ECK operator and requires re-creation of existing Logstash objects.
+
+Refer to the <<{p}-logstash-volumes>> for more information.
