@@ -439,9 +439,9 @@ spec:
 
 Changes are currently forbidden in `spec.volumeClaimTemplates`, such as changing the storage class or volume size. To make these changes, you have to fully delete the Logstash object, delete and recreate or resize the volume and create a new Logstash object.
 
-Before deleting or resizing a persistent queue volume, ensure that the queue is empty. When using the persistent queue, we recommend setting `queue.drain: true` on the logstash pods to ensure that the persistent queue is drained when pods are shutdown. In conjunction with this, note that you should also increase the `terminationGracePeriodSeconds` to a large enough value to drain your queue.
+Before deleting or resizing a persistent queue volume, ensure that the queue is empty. When using the persistent queue, we recommend setting `queue.drain: true` on the Logstash Pods to ensure that the persistent queue is drained when Pods are shutdown. In conjunction with this, note that you should also increase the `terminationGracePeriodSeconds` to a large enough value to drain your queue.
 
-The following is example shows how to configure a logstash resource to drain the queue and increase the termination grace period:
+The following example shows how to configure a Logstash resource to drain the queue and increase the termination grace period:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -743,7 +743,7 @@ Deploys Logstash and Elasticsearch, and creates an updated version of the `eck_l
 kubectl apply -f {logstash_recipes}/logstash-volumes.yaml
 ----
 
-Deploys Logstash, Beats and Elasticsearch. Logstash is configured with two pipelines - a main pipeline for reading from the beats instance, which will send to the DLQ if it is unable to write to Elasticsearch, and a second pipeline, that will read from the DLQ. In addition, persistent queues are set up. This example shows how to configure persistent volumes outside of the default `logstash-data` persistent volume.
+Deploys Logstash, Beats and Elasticsearch. Logstash is configured with two pipelines - a main pipeline for reading from the Beats instance, which will send to the DLQ if it is unable to write to Elasticsearch, and a second pipeline, that will read from the DLQ. In addition, persistent queues are set up. This example shows how to configure persistent volumes outside of the default `logstash-data` persistent volume.
 
 
 [id="{p}-logstash-configuration-stack-monitoring"]
@@ -836,9 +836,9 @@ Note that this release is a technical preview. It is still under active developm
 === Experimental support for persistence
 NOTE: This is a breaking change from  version 2.8.0 of the ECK operator and requires re-creation of existing Logstash objects.
 
-The operator now includes support for persistence, with a small (`1Gi`) default `PersistentVolume` called `logstash-data` created, that maps to `/usr/share/logstash/data`, which should be typically used for storage from plugins, which can be overridden but can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or do use a different `storageClass` from the default, for example. Additional `persistentVolumeClaims` can also be defined in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
+The operator now includes support for persistence, with a small (`1Gi`) default `PersistentVolume` called `logstash-data` created, that maps to `/usr/share/logstash/data`, which should be typically used for storage from plugins. The default volume can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or to use a different `storageClass` from the default, for example. Additional `persistentVolumeClaims` can also be defined in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
 
- The current implementation does not allow resizing of volumes even if your chosen storage class would support it. To resize a volume you have to fully delete the Logstash object, delete and recreate or resize the volume and create a new Logstash object. Also note that volume claims will not be deleted when you delete the Logstash object and have to be deleted manually. This behaviour might change in future versions of the ECK operator.
+The current implementation does not allow resizing of volumes even if your chosen storage class would support it. To resize a volume you have to fully delete the Logstash object, delete and recreate or resize the volume and create a new Logstash object. Also note that volume claims will not be deleted when you delete the Logstash object and have to be deleted manually. This behaviour might change in future versions of the ECK operator.
 
 [id="{p}-logstash-technical-preview-elasticsearchref"]
 === `ElasticsearchRef` implementation in plugins is in preview mode
