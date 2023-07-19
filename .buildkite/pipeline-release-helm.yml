@@ -18,7 +18,6 @@ steps:
       || build.message == "release eck-operator dev helm charts"
       || build.message == "release eck-operator helm charts"
       || build.message == "release all helm charts"
-      || true
     depends_on:
       - "build-helm-releaser-tool"
     key: "eck-operator-dev-helm"
@@ -40,7 +39,6 @@ steps:
       || build.message == "release eck-stack dev helm charts"
       || build.message == "release eck-stack helm charts"
       || build.message == "release all helm charts"
-      || true
     depends_on:
       - "build-helm-releaser-tool"
     key: "eck-stack-dev-helm"

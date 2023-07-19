@@ -30,7 +30,6 @@ steps:
         if: | # merge-main or tags
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
-          || true
         trigger: cloud-on-k8s-operator-helm-release
         build:
           message: "${BUILDKITE_MESSAGE}"
