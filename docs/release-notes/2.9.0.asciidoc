@@ -1,0 +1,54 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.9.0]]
+== {n} version 2.9.0
+
+
+[[breaking-2.9.0]]
+[float]
+=== Breaking changes
+
+* Add Support for volumeClaimTemplates for Logstash controller {pull}6884[#6884]
+
+[[enhancement-2.9.0]]
+[float]
+=== Enhancements
+
+* Enable runAsNonRoot=true for Beats >= 8.8.x {pull}6793[#6793]
+
+[[bug-2.9.0]]
+[float]
+=== Bug fixes
+
+* Validating policy ID only when running in Fleet mode for Elastic Agent {pull}6938[#6938] (issue: {issue}6903[#6903])
+* Add Selector to Logstash status {pull}6854[#6854]
+
+[[docs-2.9.0]]
+[float]
+=== Documentation improvements
+
+* Document Logstash connection to external Elasticsearch {pull}6895[#6895]
+
+[[nogroup-2.9.0]]
+[float]
+=== Misc
+
+* Update module golang.org/x/text to v0.11.0 {pull}6976[#6976]
+* Update registry.access.redhat.com/ubi8/ubi-minimal Docker tag to v8.8-1014 {pull}6962[#6962]
+* Disable test agent with fleet mode in 8.0.1 {pull}6957[#6957] (issues: {issue}6331[#6331], {issue}6956[#6956])
+* Update module go.elastic.co/apm/v2 to v2.4.3 {pull}6942[#6942]
+* Update module github.com/hashicorp/golang-lru/v2 to v2.0.4 {pull}6935[#6935]
+* Update module github.com/imdario/mergo to v1 {pull}6925[#6925]
+* Update module github.com/prometheus/client_golang to v1.16.0 {pull}6909[#6909]
+* Update k8s to v0.27.3 {pull}6908[#6908]
+* Update module golang.org/x/crypto to v0.10.0 {pull}6900[#6900]
+* Update docker.io/library/golang Docker tag to v1.20.5 {pull}6887[#6887]
+* Update module github.com/spf13/viper to v1.16.0 {pull}6867[#6867]
+* Update module github.com/stretchr/testify to v1.8.4 {pull}6866[#6866]
+* Update module sigs.k8s.io/controller-runtime to v0.15.0 {pull}6847[#6847]
+* Update module github.com/prometheus/common to v0.44.0 {pull}6835[#6835]
+* Update module github.com/google/go-containerregistry to v0.15.2 {pull}6817[#6817]
+* Update module golang.org/x/oauth2 to v0.8.0 {pull}6771[#6771]
+* Update module golang.org/x/net to v0.10.0 {pull}6770[#6770]
+
