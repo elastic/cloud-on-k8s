@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/set"
@@ -161,7 +160,7 @@ type fakeSecurityClient struct {
 
 var _ esclient.SecurityClient = &fakeSecurityClient{}
 
-func (f *fakeSecurityClient) GetServiceAccountCredentials(_ context.Context, namespacedService string) (client.ServiceAccountCredential, error) {
+func (f *fakeSecurityClient) GetServiceAccountCredentials(_ context.Context, namespacedService string) (esclient.ServiceAccountCredential, error) {
 	serviceAccountCredential := f.serviceAccountCredentials[namespacedService]
 	return serviceAccountCredential, nil
 }
