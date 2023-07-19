@@ -74,63 +74,63 @@ steps:
           DRIVAH_BUILD_PATH: "build"
           RECURSIVE: true
 
-  - group: build e2e-tests
-    key: "e2e-tests-image-build"
-    steps:
-      - label: ":buildkite:"
-        agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.6"
-        commands: make -C /agent generate-docker-images
-        env:
-          DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
-          DRIVAH_BUILD_PATH: "test/e2e"
+  # - group: build e2e-tests
+  #   key: "e2e-tests-image-build"
+  #   steps:
+  #     - label: ":buildkite:"
+  #       agents:
+  #         image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.0.6"
+  #       commands: make -C /agent generate-docker-images
+  #       env:
+  #         DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
+  #         DRIVAH_BUILD_PATH: "test/e2e"
 
   # -- e2e-tests
   # run the tests in an optimistic way without dependency with the images build
   # step to run e2e-tests for PR are inlined for speed
 
   # for commits in all branches (PR, release) except main
-  - label: ":buildkite:"
-    if: |
-        ( build.branch != "main" )
-        && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this -[fm]/
-        && ( build.message !~ /^buildkite test .*e2e.*/ || build.message !~ /^buildkite test .*release.*/ )
-    command: |
-      set -euo pipefail
-      .buildkite/scripts/build/set-images.sh
-      cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
-      cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
-      - label: "kind/TestSmoke"
-        fixed:
-          E2E_PROVIDER: kind
-          TESTS_MATCH: TestSmoke
-          E2E_TAGS: "e2e,mixed"
-          MONITORING_SECRETS: ""
-          E2E_SKIP_CLEANUP: true
-      DEF
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-      memory: "2G"
+  # - label: ":buildkite:"
+  #   if: |
+  #       ( build.branch != "main" )
+  #       && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this -[fm]/
+  #       && ( build.message !~ /^buildkite test .*e2e.*/ || build.message !~ /^buildkite test .*release.*/ )
+  #   command: |
+  #     set -euo pipefail
+  #     .buildkite/scripts/build/set-images.sh
+  #     cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+  #     cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
+  #     - label: "kind/TestSmoke"
+  #       fixed:
+  #         E2E_PROVIDER: kind
+  #         TESTS_MATCH: TestSmoke
+  #         E2E_TAGS: "e2e,mixed"
+  #         MONITORING_SECRETS: ""
+  #         E2E_SKIP_CLEANUP: true
+  #     DEF
+  #   agents:
+  #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  #     memory: "2G"
 
-  # for PR comment
-  - label: ":buildkite:"
-    if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this -[fm]/
-    command: |
-      set -euo pipefail
-      .buildkite/scripts/build/set-images.sh
-      cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
-      $$(echo ./pipeline-gen $$GITHUB_PR_COMMENT_VAR_ARGS) \
-        | buildkite-agent pipeline upload
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-      memory: "2G"
+  # # for PR comment
+  # - label: ":buildkite:"
+  #   if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this -[fm]/
+  #   command: |
+  #     set -euo pipefail
+  #     .buildkite/scripts/build/set-images.sh
+  #     cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
+  #     $$(echo ./pipeline-gen $$GITHUB_PR_COMMENT_VAR_ARGS) \
+  #       | buildkite-agent pipeline upload
+  #   agents:
+  #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  #     memory: "2G"
 
-  # for the main branch (merge and nightly) and tags
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
-      memory: "2G"
+  # # for the main branch (merge and nightly) and tags
+  # - label: ":buildkite:"
+  #   command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
+  #   agents:
+  #     image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+  #     memory: "2G"
 
   # ----------
 
