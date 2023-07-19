@@ -32,7 +32,7 @@ require (
 	go.elastic.co/apm/module/apmhttp/v2 v2.4.3
 	go.elastic.co/apm/module/apmzap/v2 v2.4.3
 	go.elastic.co/apm/v2 v2.4.3
-	go.uber.org/automaxprocs v1.5.2
+	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
