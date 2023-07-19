@@ -646,6 +646,62 @@ spec:
 ----
 <1> This will change the maximum and minimum heap size of the JVM on each pod to 2GB
 
+[id="{p}-logstash-keystore"]
+=== Setting keystore
+
+You can specify sensitive settings with Kubernetes secrets. ECK automatically injects these settings into the keystore on each Logstash before it starts Logstash. The ingestion process could extend the startup time of Logstash pod significantly.
+The ECK operator continues to watch the secrets for changes and will restart Logstash pods when it detects a change.
+
+Logstash keystore requires a password in an environment variable called `LOGSTASH_KEYSTORE_PASS`.
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: logstash-keystore-pass
+stringData:
+  LOGSTASH_KEYSTORE_PASS: changed   <1>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: logstash-secure-settings
+stringData:
+  HELLO: Hallo
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  version: 8.8.0
+  count: 1
+  pipelines:
+    - pipeline.id: main
+      config.string: |-
+        input { exec { command => 'uptime' interval => 10 } }
+        filter {
+          if ("${HELLO:}" != "") {   <2>
+            mutate { add_tag => ["awesome"] }
+          }
+        }
+  secureSettings:
+    - secretName: logstash-secure-settings
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+          env:
+            - name: LOGSTASH_KEYSTORE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: logstash-keystore-pass
+                  key: LOGSTASH_KEYSTORE_PASS
+----
+<1> If no password is specified, ECK gives a default value "changeit" to `LOGSTASH_KEYSTORE_PASS`
+<2> The syntax for referencing keys is identical to the syntax for environment variables
+
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
 
