@@ -45,7 +45,7 @@ IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
 REGISTRY_NAMESPACE  ?= eck-dev
 OPERATOR_NAME       ?= eck-operator$(IMAGE_SUFFIX)
 
-export IMAGE_NAME   := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
+export IMAGE_NAME   ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
 export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
 OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
@@ -117,7 +117,7 @@ generate-manifests: controller-gen
 	# -- generate  crds manifest
 	@ ./hack/manifest-gen/manifest-gen.sh -c -g > config/crds.yaml
 	# -- generate  operator manifest
-	@ ./hack/manifest-gen/manifest-gen.sh -g \
+	./hack/manifest-gen/manifest-gen.sh -g \
 		--namespace=$(OPERATOR_NAMESPACE) \
 		--profile=global \
 		--set=installCRDs=false \
