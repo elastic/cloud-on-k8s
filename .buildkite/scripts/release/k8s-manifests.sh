@@ -14,14 +14,21 @@ set -eu
 
 ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
 
+source "$ROOT/.buildkite/scripts/common/trigger.sh"
+source "$ROOT/.buildkite/scripts/common/operator-image.sh"
+
 retry() { "$ROOT/hack/retry.sh" 5 "$@"; }
 
-get_image_tag() {
-  buildkite-agent meta-data get operator-image --default "" | cut -d':' -f2
-}
-
 main() {
-  local version=${BUILDKITE_TAG:-$(get_image_tag)}
+  echo "--- generate-manifests"
+
+  # set IMAGE_NAME and IMAGE_TAG before generating manifests
+  operator::set_image_vars "${TRIGGER:-$(trigger::set_from_env)}"
+  make generate-manifests
+
+  echo "--- upload-manifests"
+
+  local version=${BUILDKITE_TAG:-$IMAGE_TAG}
   version=${version#v} # remove v prefix
 
   if [[ "$version" == "" ]]; then
