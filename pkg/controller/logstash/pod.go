@@ -83,7 +83,6 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 
 	if params.KeystoreResources != nil {
 		builder = builder.
-			WithEnv(DefaultKeystorePass).
 			WithVolumes(params.KeystoreResources.Volume).
 			WithInitContainers(params.KeystoreResources.InitContainer)
 	}

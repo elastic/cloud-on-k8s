@@ -45,8 +45,8 @@ filter {
 	}
 )
 
-// TestKeystoreLogstash Logstash should resolve ${VAR} in pipelines.yml using keystore key value
-func TestKeystoreLogstash(t *testing.T) {
+// TestLogstashKeystoreWithoutPassword Logstash should resolve ${VAR} in pipelines.yml using keystore key value
+func TestLogstashKeystoreWithoutPassword(t *testing.T) {
 	secretName := "ls-keystore-secure-settings"
 
 	secureSecret := corev1.Secret{
@@ -88,9 +88,9 @@ func TestKeystoreLogstash(t *testing.T) {
 	test.Sequence(before, steps, b).RunSequential(t)
 }
 
-// TestKeystoreWithPasswordLogstash Logstash with customized keystore password
+// TestLogstashKeystoreWithPassword Logstash with customized keystore password
 // should resolve ${VAR} in pipelines.yml using keystore key value
-func TestKeystoreWithPasswordLogstash(t *testing.T) {
+func TestLogstashKeystoreWithPassword(t *testing.T) {
 	secureSettingSecretName := "ls-keystore-pw-secure-settings"
 
 	secureSecret := corev1.Secret{

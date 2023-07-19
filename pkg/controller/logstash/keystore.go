@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	keystoreCommand          = "/usr/share/logstash/bin/logstash-keystore"
+	keystoreCommand          = "echo 'y' | /usr/share/logstash/bin/logstash-keystore"
 	initContainersParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         keystoreCommand + " create",
 		KeystoreAddCommand:            keystoreCommand + ` add "$key" --stdin < "$filename"`,
@@ -37,8 +37,6 @@ var (
 			},
 		},
 	}
-
-	DefaultKeystorePass = corev1.EnvVar{Name: KeystorePassKey, Value: "changeit"}
 )
 
 func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources, error) {
@@ -53,8 +51,11 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 		return nil, err
 	} else if keystoreResources != nil {
 		_, _ = configHash.Write([]byte(keystoreResources.Version))
-		// Logstash requires keystore password in environment variable to bypass the prompt
-		keystoreResources.InitContainer.Env = append(keystoreResources.InitContainer.Env, getKeystorePass(params.Logstash))
+		// set keystore password in init container
+		if env := getKeystorePass(params.Logstash); env != nil {
+			keystoreResources.InitContainer.Env = append(keystoreResources.InitContainer.Env, *env)
+		}
+
 		return keystoreResources, nil
 	}
 
@@ -62,17 +63,16 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 }
 
 // getKeystorePass return env LOGSTASH_KEYSTORE_PASS from main container if sets
-// otherwise, return default keystore password
-func getKeystorePass(logstash logstashv1alpha1.Logstash) corev1.EnvVar {
+func getKeystorePass(logstash logstashv1alpha1.Logstash) *corev1.EnvVar {
 	for _, c := range logstash.Spec.PodTemplate.Spec.Containers {
 		if c.Name == logstashv1alpha1.LogstashContainerName {
 			for _, env := range c.Env {
 				if env.Name == KeystorePassKey {
-					return env
+					return &env
 				}
 			}
 		}
 	}
 
-	return DefaultKeystorePass
+	return nil
 }
