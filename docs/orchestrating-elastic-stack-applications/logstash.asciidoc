@@ -701,7 +701,7 @@ spec:
                   name: logstash-keystore-pass
                   key: LOGSTASH_KEYSTORE_PASS
 ----
-<1> The keystore password you set.
+<1> Value of password to protect the Logstash keystore
 <2> The syntax for referencing keys is identical to the syntax for environment variables
 
 [id="{p}-logstash-scaling-logstash"]
