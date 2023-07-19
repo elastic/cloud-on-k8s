@@ -458,7 +458,7 @@ spec:
       terminationGracePeriodSeconds: 604800
 ----
 
-NOTE: When used in conjunction with an autoscaler, such as the Horizontal Pod Autoscaler, Kubernetes may not honor  `terminationGracePeriodSeconds` settings greater than 600. This may mean that a queue of a terminated pod may not be fully drained, even when `queue.drain: true` is set and a high `terminationGracePeriodSeconds` is configured.
+NOTE: A https://github.com/kubernetes/kubernetes/issues/94435[known issue] in Kubernetes, means that Kubernetes may not honor  `terminationGracePeriodSeconds` settings greater than 600. This may mean that a queue of a terminated Pod may not be fully drained, even when `queue.drain: true` is set and a high `terminationGracePeriodSeconds` is configured.
 
 NOTE: In the technical preview, there is currently no way to drain a dead letter queue automatically before Logstash shuts down. To manually drain a Dead Letter Queue, first stop sending data to it, by either disabling the DLQ feature, or disabling any pipelines that send to a DLQ, and wait for events to stop flowing through any pipelines reading from the input.
 
