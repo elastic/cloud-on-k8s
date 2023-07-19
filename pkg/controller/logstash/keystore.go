@@ -62,7 +62,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 	return nil, nil
 }
 
-// getKeystorePass return env LOGSTASH_KEYSTORE_PASS from main container if sets
+// getKeystorePass return env LOGSTASH_KEYSTORE_PASS from main container if set
 func getKeystorePass(logstash logstashv1alpha1.Logstash) *corev1.EnvVar {
 	for _, c := range logstash.Spec.PodTemplate.Spec.Containers {
 		if c.Name == logstashv1alpha1.LogstashContainerName {
