@@ -34,8 +34,8 @@ To make use of your mirrored images you can either set the image for each applic
 
 
 [float]
-[id="{p}-use-internal-operator-image"]
-== Use an internal image of the ECK operator
+[id="{p}-use-mirrored-operator-image"]
+== Use a mirrored image of the ECK operator
 
 To deploy the ECK operator in an air-gapped environment, you first have to mirror the operator image itself from `docker.elastic.co` to a private container registry, for example `my.registry`.
 
