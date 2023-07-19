@@ -43,9 +43,8 @@ export ARCH         ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|"
 # for dev, suffix image name with current user name
 IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
 REGISTRY_NAMESPACE  ?= eck-dev
-OPERATOR_NAME       ?= eck-operator$(IMAGE_SUFFIX)
 
-export IMAGE_NAME   ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(OPERATOR_NAME)
+export IMAGE_NAME   ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/eck-operator$(IMAGE_SUFFIX)
 export IMAGE_TAG    ?= $(VERSION)-$(SHA1)
 OPERATOR_IMAGE      ?= $(IMAGE_NAME):$(IMAGE_TAG)
 
