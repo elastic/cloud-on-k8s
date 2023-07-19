@@ -32,5 +32,8 @@ steps:
           || build.tag != null
         trigger: cloud-on-k8s-operator-helm-release
         build:
+          message: "${BUILDKITE_MESSAGE}"
+          commit: "${BUILDKITE_COMMIT}"
+          branch: "${BUILDKITE_BRANCH}"
           env:
             HELM_DRY_RUN: false
