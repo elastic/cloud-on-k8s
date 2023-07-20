@@ -93,7 +93,7 @@ spec:
             hosts => [ "${ECK_ES_HOSTS}" ]
             user => "${ECK_ES_USER}"
             password => "${ECK_ES_PASSWORD}"
-            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
   services:
