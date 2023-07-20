@@ -378,7 +378,7 @@ The Logstash ECK operator creates a user called `eck_logstash_user_role` when an
     }
 
 ```
-You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. See the <<{p}-logstash-configuration-custom-index, Logstash configuration with a custom index>> sample configuration that creates a user that writes to a custom index.
+You can <<{p}-users-and-roles,update user permissions>> to include more indices if the Elasticsearch plugin is expected to use indices other than the default. Check out <<{p}-logstash-configuration-custom-index, Logstash configuration with a custom index>> sample configuration that creates a user that writes to a custom index.
 --
 
 This example demonstrates how to create a Logstash deployment that connects to
@@ -654,7 +654,7 @@ The ECK operator continues to watch the secrets for changes and will restart Log
 
 NOTE: For the technical preview, the use of settings in the Logstash keystore may impact startup time for Logstash Pods. Startup time will increase linearly for each entry added to the keystore, and this could extend startup time significantly.
 
-The Logstash Keystore can be password protected by setting an environment variable called `LOGSTASH_KEYSTORE_PASS`. See the https://www.elastic.co/guide/en/logstash/current/keystore.html#keystore-password[Logstash Keystore] documentation for details.
+The Logstash Keystore can be password protected by setting an environment variable called `LOGSTASH_KEYSTORE_PASS`. Check out https://www.elastic.co/guide/en/logstash/current/keystore.html#keystore-password[Logstash Keystore] documentation for details.
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
