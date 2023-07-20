@@ -3912,11 +3912,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.27.3
-Time    : 2023-06-15T01:11:15Z
+Version : v0.27.4
+Time    : 2023-07-19T22:25:29Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.27.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.27.4/LICENSE:
 
 
                                  Apache License
@@ -4124,11 +4124,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.27.3/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.27.3
-Time    : 2023-06-12T17:13:06Z
+Version : v0.27.4
+Time    : 2023-07-16T20:19:07Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.27.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.27.4/LICENSE:
 
 
                                  Apache License
@@ -4336,11 +4336,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.27.3/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.27.3
-Time    : 2023-06-15T01:17:41Z
+Version : v0.27.4
+Time    : 2023-07-19T22:42:57Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.27.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.27.4/LICENSE:
 
 
                                  Apache License
@@ -15137,11 +15137,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.10
 
 --------------------------------------------------------------------------------
 Module  : github.com/rogpeppe/go-internal
-Version : v1.10.0
-Time    : 2023-03-27T09:34:06Z
+Version : v1.11.0
+Time    : 2023-05-24T17:50:51Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.10.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/rogpeppe/go-internal@v1.11.0/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
