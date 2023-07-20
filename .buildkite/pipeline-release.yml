@@ -29,7 +29,6 @@ steps:
         if: | # merge-main or tags
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
-          || true
         command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
         env:
           HELM_DRY_RUN: false
