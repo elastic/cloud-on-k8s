@@ -169,7 +169,7 @@ roleRef:
 EOF
 ----
 +
-<1> The root user is required to persist state in a hostPath volume and to trust the Elasticsearc CA in Fleet mode. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
+<1> The root user is required to persist state in a hostPath volume and to trust the Elasticsearch CA in Fleet mode. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 +
 Check <<{p}-elastic-agent-fleet-configuration-examples>> for more ready-to-use manifests.
 
