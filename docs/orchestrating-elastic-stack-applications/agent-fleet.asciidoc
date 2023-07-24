@@ -559,9 +559,8 @@ spec:
           # Gid 1000 is the default group at which the Agent container runs.
           # Adjust as necessary if `runAsGroup` has been modified.
           fsGroup: 1000
-        # runAsUser: 0 can be disabled when running with an `emptyDir`
-        # as opposed to a `hostPath` volume.
-        # securityContext:
+          # runAsUser: 0 can be disabled when running with an `emptyDir`
+          # as opposed to a `hostPath` volume.
           # runAsUser: 0
         volumes:
         - name: agent-data
