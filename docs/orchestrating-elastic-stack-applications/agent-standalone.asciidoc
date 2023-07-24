@@ -170,7 +170,7 @@ spec:
             period: 10s
 ----
 
-<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
+<1> The root user is required to persist state in a `hostPath` volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 
 Alternatively, it can be provided through a Secret specified in the `configRef` element. The Secret must have an `agent.yml` entry with this configuration:
 [source,yaml,subs="attributes,+macros"]
