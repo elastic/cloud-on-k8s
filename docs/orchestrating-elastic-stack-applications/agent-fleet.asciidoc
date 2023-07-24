@@ -542,7 +542,7 @@ Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
 
 1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
-2. If local state storage is still desired but running the Agent container as root is not allowed, then you can can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*
+2. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*.
 
 [source,yaml]
 ----
