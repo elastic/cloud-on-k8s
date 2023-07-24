@@ -12,7 +12,7 @@ spec:
       labels:
         name: manage-agent-hostpath-permissions
     spec:
-      # This is only required when running in an selinux-enabled/Openshift environment.
+      # This is only required when running in an SELinux-enabled/OpenShift environment.
       # Ensure this user has been added to the privileged scc in the correct namespace.
       # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
       # serviceAccountName: elastic-agent
