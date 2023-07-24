@@ -525,7 +525,7 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 == Known limitations
 
 === Running as root and within a single namespace (ECK < 2.8.0 and Agent < 7.14.0)
-Until version 7.14.0 and ECK 2.8.0, Elastic Agent in Fleet mode has to run as root and in the same namespace as the Elasticsearch cluster it connects to. Since ECK 2.8.0 Agent in fleet mode is required to be greater than version 7.14.0. Both the Fleet Server and the Elastic Agent are not required to run as root but there are some known issues when <<{p}_storing_local_state_in_host_path_volume>> that must be noted.
+Until version 7.14.0 and ECK 2.8.0, Elastic Agent in Fleet mode has to run as root and in the same namespace as the Elasticsearch cluster it connects to. Since ECK 2.8.0, Agent in Fleet mode is required to be greater than version 7.14.0. Both the Fleet Server and the Elastic Agent are not required to run as root but there are some known issues when <<{p}_storing_local_state_in_host_path_volume>> that must be noted.
 
 Due to current configuration limitations on Fleet/Elastic Agent side prior to version 7.14.0, ECK prior to version 2.8.0 needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
 To establish trust, the Pod needs to update the CA store through a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
