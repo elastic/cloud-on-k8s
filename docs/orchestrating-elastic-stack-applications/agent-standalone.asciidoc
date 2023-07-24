@@ -63,7 +63,7 @@ spec:
 EOF
 ----
 +
-<1> The root user is required to persist state in a hostPath volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
+<1> The root user is required to persist state in a `hostPath` volume. See <<{p}_storing_local_state_in_host_path_volume>> for options to not run the Agent container as root.
 +
 Check <<{p}-elastic-agent-configuration-examples>> for more ready-to-use manifests.
 
