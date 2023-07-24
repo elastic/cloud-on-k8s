@@ -478,7 +478,7 @@ Then wait for events to stop flowing through any pipelines reading from the inpu
 If you are not concerned about data loss, you can use an `emptyDir` volume for Logstash data.
 
 CAUTION: The use of `emptyDir` in a production environment may cause permanent data loss. 
-Do not use with persistent queues (PQs), dead letter queues (DLQs), or with any plugin that requires persistent storage to keep track of state between restarts of {ls].
+Do not use with persistent queues (PQs), dead letter queues (DLQs), or with any plugin that requires persistent storage to keep track of state between restarts of {ls}.
 
 
 [source,yaml]
