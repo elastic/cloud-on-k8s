@@ -440,7 +440,7 @@ spec:
 == Updating the volume claim settings
 
 Changes, such as storage class or volume size, are currently forbidden in `spec.volumeClaimTemplates`.
-To make these changes, you have to fully delete the {ls} object, delete and recreate or resize the volume, and create a new {ls} resource.
+To make these changes, you have to fully delete the {ls} resource, delete and recreate or resize the volume, and create a new {ls} resource.
 
 Before deleting or resizing a persistent queue (PQ) volume, ensure that the queue is empty. 
 When using the PQ, we recommend setting `queue.drain: true` on the {ls} Pods to ensure that the queue is drained when Pods are shutdown. 
