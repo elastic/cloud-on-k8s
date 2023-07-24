@@ -161,12 +161,18 @@ spec:
     kind: Pipeline
     metadata:
       name: cloud-on-k8s-operator-e2e-cluster-cleanup
-      description: Cleanup Elastic Cloud on Kubernetes (ECK) e2e tests
+      description: Cleanup Elastic Cloud on Kubernetes (ECK) e2e-tests k8s clusters
     spec:
       repository: elastic/cloud-on-k8s
       pipeline_file: .buildkite/pipeline-e2e-test-cleanup.yml
       provider_settings:
         trigger_mode: none
+      schedules:
+        Every day:
+          branch: main
+          # start at 20:00 UTC, which is about an hour prior to the nightly e2e tests.
+          cronline: '00 20 * * *'
+          message: Nightly e2e tests cleanup of k8s clusters
       teams:
         cloud-k8s-operator: {}
         everyone:

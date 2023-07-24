@@ -7,7 +7,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"log"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +17,7 @@ import (
 func CleanupCommand() *cobra.Command {
 	var (
 		errUnimplemented = errors.New("unimplemented")
+		olderThan        time.Duration
 		provider         string
 		plansFile        string
 	)
@@ -43,6 +44,7 @@ func CleanupCommand() *cobra.Command {
 
 	cleanupCmd.Flags().StringVar(&plansFile, "plans-file", "config/plans.yml", "File containing execution plans.")
 	cleanupCmd.Flags().StringVar(&provider, "provider", "gke", "Provider to use.")
+	cleanupCmd.Flags().DurationVar(&olderThan, "older-than", 72*time.Hour, `The minimum age of the clusters to be deleted (valid time units are "s", "m", "h"`)
 
 	return cleanupCmd
 }
@@ -68,12 +70,9 @@ func cleanup(plansFile string, planNames []string, driverFactory runner.DriverFa
 		if err != nil {
 			return err
 		}
-		clusters, err := client.Cleanup()
+		_, err = client.Cleanup()
 		if err != nil {
 			return err
-		}
-		for _, cluster := range clusters {
-			log.Printf("deleted cluster: %s", cluster)
 		}
 	}
 	return nil
