@@ -535,11 +535,7 @@ spec:
               "/var/lib/elastic-agent/default/elastic-agent/state"
               )
             for dir in ${dirs[@]}; do
-              if [[ ! -d "${dir}" ]]
-              then
-                echo "creating ${dir} directory"
-                mkdir -p "${dir}"
-              fi
+              mkdir -p "${dir}"
               # chcon is only required when running an an selinux-enabled/OpenShift environment.
               # chcon -Rt svirt_sandbox_file_t "${dir}"
               chmod g+rw "${dir}"
