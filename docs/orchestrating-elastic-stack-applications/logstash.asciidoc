@@ -753,7 +753,8 @@ Deploys Logstash and Elasticsearch, and creates an updated version of the `eck_l
 kubectl apply -f {logstash_recipes}/logstash-volumes.yaml
 ----
 
-Deploys {ls], [beats] and {es]. {ls] is configured with two pipelines: 
+Deploys Logstash, Beats and Elasticsearch. Logstash is configured with two pipelines:
+
 * a main pipeline for reading from the {beats} instance, which will send to the DLQ if it is unable to write to Elasticsearch
 * a second pipeline, that will read from the DLQ. 
 In addition, persistent queues are set up. 
