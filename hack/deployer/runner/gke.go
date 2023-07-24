@@ -413,14 +413,13 @@ func (d *GKEDriver) Cleanup() ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~eck-e2e.*"`
-	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
+	cmd := fmt.Sprintf(`gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~%s.*"`, e2eClusterNamePrefix)
+	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputList()
 	if err != nil {
 		return nil, err
 	}
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
-		log.Printf("deleting cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err
 		}

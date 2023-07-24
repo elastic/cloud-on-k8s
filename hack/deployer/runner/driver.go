@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	CreateAction = "create"
-	DeleteAction = "delete"
+	CreateAction         = "create"
+	DeleteAction         = "delete"
+	e2eClusterNamePrefix = "eck-e2e"
 )
 
 var (

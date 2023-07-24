@@ -110,9 +110,9 @@ func (e *EKSDriver) Execute() error {
 	switch e.plan.Operation {
 	case DeleteAction:
 		if exists {
-			log.Printf("Deleting cluster ...")
-			// --wait to surface failures to delete all resources in the Cloud formation
-			return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
+			if err = e.delete(); err != nil {
+				return err
+			}
 		}
 		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:
@@ -252,7 +252,7 @@ func (e *EKSDriver) Cleanup() ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("eck-e2e")))| .[].Name'`
+	allClustersCmd := fmt.Sprintf(`eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("%s")))| .[].Name'`, e2eClusterNamePrefix)
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
 		return nil, err
@@ -261,20 +261,27 @@ func (e *EKSDriver) Cleanup() ([]string, error) {
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
 	for _, cluster := range allClusters {
 		e.ctx["ClusterName"] = cluster
-		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).Output()
+		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()
 		if err != nil {
 			return nil, fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
 			deletedClusters = append(deletedClusters, cluster)
-			log.Printf("deleting cluster %s", cluster)
-			if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
+			if err = e.delete(); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	return deletedClusters, nil
+}
+
+func (e *EKSDriver) delete() error {
+	log.Printf("deleting cluster %s", e.ctx["ClusterName"])
+	if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ Driver = &EKSDriver{}
