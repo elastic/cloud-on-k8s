@@ -300,7 +300,7 @@ spec:
               name: system
 ----
 
-*  `xpack.fleet.agents.elasticsearch.hosts`  must point to the Elasticsearch cluster where Elastic Agents should send data. For ECK-managed Elasticsearch clusters ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed within. See <<{p}_storing_local_state_in_host_path_volume>> for details on adjusting this field when running agent as non-root as it is required when running as non-root.
+*  `xpack.fleet.agents.elasticsearch.hosts` must point to the Elasticsearch cluster where Elastic Agents should send data. For ECK-managed Elasticsearch clusters ECK creates a Service accessible through `https://ES_RESOURCE_NAME-es-http.ES_RESOURCE_NAMESPACE.svc:9200` URL, where `ES_RESOURCE_NAME` is the name of Elasticsearch resource and `ES_RESOURCE_NAMESPACE` is the namespace it was deployed within. See <<{p}_storing_local_state_in_host_path_volume>> for details on adjusting this field when running agent as non-root as it becomes required.
 
 *  `xpack.fleet.agents.fleet_server.hosts` must point to Fleet Server that Elastic Agents should connect to. For ECK-managed Fleet Server instances, ECK creates a Service accessible through `https://FS_RESOURCE_NAME-agent-http.FS_RESOURCE_NAMESPACE.svc:8220` URL, where `FS_RESOURCE_NAME` is the name of Elastic Agent resource with Fleet Server enabled and `FS_RESOURCE_NAMESPACE` is the namespace it was deployed in.
 
