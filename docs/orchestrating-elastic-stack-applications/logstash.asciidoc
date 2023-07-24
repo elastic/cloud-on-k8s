@@ -857,7 +857,7 @@ The default volume can be overridden by adding a `spec.volumeClaimTemplate` sect
 You can define additional `persistentVolumeClaims` in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
 
 The current implementation does not allow resizing of volumes, even if your chosen storage class would support it. 
-To resize a volume, delete the {ls] object, delete and recreate (or resize) the volume, and create a new {ls} object. 
+To resize a volume, delete the {ls] resource, delete and recreate (or resize) the volume, and create a new {ls} resource. 
 Note that volume claims will not be deleted when you delete the {ls} resource, and must be deleted manually. 
 This behavior might change in future versions of the ECK operator.
 
