@@ -854,7 +854,7 @@ NOTE: Persistence (experimental) is a breaking change from version 2.8.0 of the 
 The operator now includes support for persistence.
 It creates a small (`1Gi`) default `PersistentVolume` called `logstash-data` that maps to `/usr/share/logstash/data`, typically used for storage from plugins. 
 The default volume can be overridden by adding a `spec.volumeClaimTemplate` section named `logstash-data` to add more storage, or to use a different `storageClass` from the default, for example. 
-You can define additional `persistentVolumeClaims`  in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
+You can define additional `persistentVolumeClaims` in `spec.volumeClaimTemplate` for use with PQ, or DLQ, for example.
 
 The current implementation does not allow resizing of volumes, even if your chosen storage class would support it. 
 To resize a volume, delete the {ls] object, delete and recreate (or resize) the volume, and create a new {ls} object. 
