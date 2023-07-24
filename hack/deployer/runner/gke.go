@@ -24,6 +24,7 @@ const (
 	GKEDriverID                     = "gke"
 	GKEVaultPath                    = "ci-gcp-k8s-operator"
 	GKEServiceAccountVaultFieldName = "service-account"
+	GKEProjectVaultFieldName        = "gcloud-project"
 	GoogleCloudProjectCtxKey        = "GCloudProject"
 	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
@@ -403,7 +404,11 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 
 func (d *GKEDriver) Cleanup() ([]string, error) {
 	if d.ctx[GoogleCloudProjectCtxKey] == "" {
-		d.ctx[GoogleCloudProjectCtxKey] = "elastic-cloud-dev"
+		gCloudProject, err := vault.Get(d.vaultClient, GKEVaultPath, GKEProjectVaultFieldName)
+		if err != nil {
+			return nil, err
+		}
+		d.ctx[GoogleCloudProjectCtxKey] = gCloudProject
 	}
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
@@ -414,7 +419,7 @@ func (d *GKEDriver) Cleanup() ([]string, error) {
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	cmd := fmt.Sprintf(`gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~%s.*"`, e2eClusterNamePrefix)
-	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputList()
+	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, err
 	}

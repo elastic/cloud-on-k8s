@@ -46,7 +46,10 @@ func authToGCP(
 		}
 
 		if gCloudProject == "" {
-			gCloudProject = "elastic-cloud-dev"
+			gCloudProject, err = vault.Get(client, vaultPath, GKEProjectVaultFieldName)
+			if err != nil {
+				return err
+			}
 		}
 
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
