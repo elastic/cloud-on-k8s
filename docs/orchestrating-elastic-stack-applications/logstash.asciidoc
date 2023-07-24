@@ -849,7 +849,7 @@ Note that this release is a technical preview. It is still under active developm
 
 [id="{p}-logstash-technical-preview-persistence"]
 === Experimental support for persistence
-NOTE: Persistence (experimental) is a breaking change from version 2.8.0 of the ECK operator and requires re-creation of existing {ls} objects.
+NOTE: Persistence (experimental) is a breaking change from version 2.8.0 of the ECK operator and requires re-creation of existing {ls} resources.
 
 The operator now includes support for persistence.
 It creates a small (`1Gi`) default `PersistentVolume` called `logstash-data` that maps to `/usr/share/logstash/data`, typically used for storage from plugins. 
