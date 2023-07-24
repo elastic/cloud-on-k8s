@@ -651,7 +651,7 @@ spec:
                 echo "creating ${dir} directory"
                 mkdir -p "${dir}"
               fi
-              # chcon is only required when running an an selinux-enabled/Openshift environment.
+              # chcon is only required when running an an SELinux-enabled/OpenShift environment.
               # chcon -Rt svirt_sandbox_file_t "${dir}"
               chmod g+rw "${dir}"
               # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
