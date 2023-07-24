@@ -627,7 +627,7 @@ spec:
               cpu: 100m
               memory: 32Mi
           securityContext:
-            # privileged is only required when running in an selinux-enabled/Openshift environment.
+            # privileged is only required when running in an SElinux-enabled/OpenShift environment.
             # privileged: true
             runAsUser: 0
           volumeMounts:
