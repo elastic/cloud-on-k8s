@@ -638,7 +638,7 @@ spec:
           - '-e'
           - '-c'
           - |-
-            # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
+            # Adjust this with /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
             # Multiple directories are supported for the fleet-server + agent use case.
             dirs=(
               "/var/lib/elastic-agent/default/elastic-agent/state"
