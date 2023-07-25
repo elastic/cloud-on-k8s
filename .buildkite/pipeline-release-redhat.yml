@@ -60,7 +60,6 @@ steps:
       - |
         cd hack/operatorhub
         operatorhub generate-manifests
-        operatorhub bundle generate
         operatorhub bundle create-pr
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
