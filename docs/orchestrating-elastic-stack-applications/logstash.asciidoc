@@ -289,7 +289,7 @@ NOTE: Logstash persistent queues (PQs) and dead letter queues (DLQs) are not cur
 === Defining data volumes for Logstash
 added:[2.9.0]
 
-WARNING: Volume support for Logstash is a breaking change to earlier versions of ECK and requires you to recreate your Logstash objects.
+WARNING: Volume support for Logstash is a breaking change to earlier versions of ECK and requires you to recreate your Logstash resources.
 
 
 [id="{p}-volume-claim-settings"]
