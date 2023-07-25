@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/storage v1.31.0
-	github.com/elastic/cloud-on-k8s/v2 v2.8.0
+	github.com/elastic/cloud-on-k8s/v2 v2.9.0
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
