@@ -6,34 +6,21 @@ package bundle
 
 import (
 	"fmt"
-	"path"
-	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/cmd/flags"
 	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/github"
-	"github.com/elastic/cloud-on-k8s/v2/hack/operatorhub/internal/opm"
 )
 
 // Command will return the bundle command
 func Command() *cobra.Command {
 	bundleCmd := &cobra.Command{
 		Use:   "bundle",
-		Short: "generate operator bundle metadata/create pull requests for new operator versions",
+		Short: "create pull requests for new operator versions",
 		Long: `Bundle and build operator metadata for publishing on openshift operator hub, and create pull requests to
 certified-operators, and community-operators repositories.`,
 		SilenceUsage: true,
-	}
-
-	generateCmd := &cobra.Command{
-		Use:          "generate",
-		Short:        "generate operator bundle metadata",
-		Long:         "Bundle and build operator metadata for publishing on openshift operator hub",
-		SilenceUsage: true,
-		PreRunE:      generateCmdPreRunE,
-		RunE:         doGenerate,
 	}
 
 	createPRCmd := &cobra.Command{
@@ -94,22 +81,9 @@ certified-operators and community-operators repositories.`,
 		"delete git temporary directory after script completes (OHUB_DELETE_TEMP_DIRECTORY)",
 	)
 
-	bundleCmd.AddCommand(generateCmd, createPRCmd)
+	bundleCmd.AddCommand(createPRCmd)
 
 	return bundleCmd
-}
-
-// generateCmdPreRunE are pre-run operations for the generate command
-func generateCmdPreRunE(cmd *cobra.Command, args []string) error {
-	if flags.Dir == "" {
-		return fmt.Errorf("directory containing output from operator hub release generator is required (%s)", flags.DirFlag)
-	}
-	if flags.Conf.MinSupportedOpenshiftVersion == "" {
-		return fmt.Errorf("minimum supported openshift version is required in configuration file")
-	} else if strings.Contains(flags.Conf.MinSupportedOpenshiftVersion, "-") {
-		return fmt.Errorf("minimum supported openshift version in configuration file should not be a range")
-	}
-	return nil
 }
 
 // createPRPreRunE are pre-run operations for the create pull request command
@@ -132,23 +106,6 @@ func createPRPreRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// doGenerate will generate the operator bundle metadata
-func doGenerate(_ *cobra.Command, _ []string) error {
-	dir := filepath.Join(flags.Dir, "certified-operators", flags.Conf.NewVersion)
-	err := opm.GenerateBundle(opm.GenerateConfig{
-		LocalDirectory:  dir,
-		OutputDirectory: dir,
-	})
-	if err != nil {
-		return err
-	}
-	err = opm.EnsureAnnotations(path.Join(dir, "metadata", "annotations.yaml"), flags.Conf.MinSupportedOpenshiftVersion)
-	if err != nil {
-		return err
-	}
-	return opm.EnsureLabels(path.Join(flags.Dir, "bundle.Dockerfile"), flags.Conf.MinSupportedOpenshiftVersion)
 }
 
 // doCreatePR will execute a number of local, and potentially remote github operations

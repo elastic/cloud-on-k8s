@@ -1,7 +1,6 @@
 newVersion: 2.9.0
 prevVersion: 2.8.0
 stackVersion: 8.9.0
-minSupportedOpenshiftVersion: v4.9
 crds:
   - name: elasticsearches.elasticsearch.k8s.elastic.co
     displayName: Elasticsearch Cluster
@@ -39,14 +38,10 @@ packages:
     distributionChannel: community-operators
     operatorRepo: docker.elastic.co/eck/eck-operator
     ubiOnly: false
-  - outputPath: upstream-community-operators
-    packageName: elastic-cloud-eck
-    distributionChannel: upstream-community-operators
-    operatorRepo: docker.elastic.co/eck/eck-operator
-    ubiOnly: false
   - outputPath: certified-operators
     packageName: elasticsearch-eck-operator-certified
     distributionChannel: certified-operators
+    minSupportedOpenshiftVersion: v4.9
     operatorRepo: registry.connect.redhat.com/elastic/eck-operator
     ubiOnly: true
     ## digestPinning should only be set to true for certified operator.
