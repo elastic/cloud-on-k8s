@@ -479,6 +479,7 @@ If you are not concerned about data loss, you can use an `emptyDir` volume for L
 
 CAUTION: The use of `emptyDir` in a production environment may cause permanent data loss. 
 Do not use with persistent queues (PQs), dead letter queues (DLQs), or with any plugin that requires persistent storage to keep track of state between restarts of {ls}.
+Plugins that require persistent storage include any plugin that store state locally. Typically this will include a configuration parameter that includes the name `path` or `directory` - not including paths to static content, such as certificates or keystores. For example the `sincedb_path` setting for the `file`, `dead_letter_queue` and `s3` inputs, the `last_run_metadata_path` for the `JDBC` input, `aggregate_maps_path` for the `aggregate` filter and `temporary_directory` for the `s3` output, which is used to aggregate content before uploading to s3.
 
 
 [source,yaml]
