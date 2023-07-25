@@ -522,7 +522,7 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 		return err
 	}
 
-	// annotations file is written to a separate directory called metadta
+	// annotations file is written to a separate directory called metadata
 	return renderAnnotationsFile(params, templatesDir, metadataDir)
 }
 
