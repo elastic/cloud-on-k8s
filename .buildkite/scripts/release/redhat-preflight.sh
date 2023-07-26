@@ -9,6 +9,8 @@
 
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")"; pwd)/../../.."
+
 VAULT_ROOT_PATH=${VAULT_ROOT_PATH:-secret/ci/elastic-cloud-on-k8s}
 
 tmpDir=$(mktemp -d)
@@ -20,7 +22,8 @@ container_already_verified() {
 }
 
 main() {
-    local tag="${1#v}"
+    local tag
+    tag=$(cat "$ROOT"/VERSION)
 
     API_KEY=$(vault read -field=api-key "$VAULT_ROOT_PATH/operatorhub-release-redhat")
     export API_KEY
