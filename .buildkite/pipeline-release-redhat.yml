@@ -30,7 +30,7 @@ steps:
       - "build-operatorhub-tool"
       - "redhat-container-push"
     commands:
-      - .buildkite/scripts/release/redhat-preflight.sh $$BUILDKITE_TAG
+      - .buildkite/scripts/release/redhat-preflight.sh
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
       memory: "2G"
