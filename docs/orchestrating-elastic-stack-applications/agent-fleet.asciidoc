@@ -542,7 +542,6 @@ Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
 
 1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
-2. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*.
 
 [source,yaml]
 ----
@@ -555,18 +554,18 @@ spec:
   deployment:
     podTemplate:
       spec:
-        securityContext:
-          # Gid 1000 is the default group at which the Agent container runs.
-          # Adjust as necessary if `runAsGroup` has been modified.
+        securityContext: <1>
           fsGroup: 1000
-          # runAsUser: 0 can be disabled when running with an `emptyDir`
-          # as opposed to a `hostPath` volume.
-          # runAsUser: 0
+          # runAsUser: 0 <2>
         volumes:
         - name: agent-data
           emptyDir: {}
 ...
 ----
+<1> Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
+<2> runAsUser: 0 can be disabled when running with an `emptyDir` as opposed to a `hostPath` volume.
+
+1. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*.
 
 
 [source,yaml]
@@ -606,10 +605,7 @@ spec:
       labels:
         name: manage-agent-hostpath-permissions
     spec:
-      # This is only required when running in an SElinux-enabled/OpenShift environment.
-      # Ensure this user has been added to the privileged scc in the correct namespace.
-      # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
-      # serviceAccountName: elastic-agent
+      # serviceAccountName: elastic-agent <1>
       volumes:
         - hostPath:
             path: /var/lib/elastic-agent
@@ -617,18 +613,14 @@ spec:
           name: "agent-data"
       initContainers:
         - name: manage-agent-hostpath-permissions
-          # UBI is only required when needing the `chcon` binary when running
-          # in an SELinux-enabled/OpenShift environment. If that
-          # is not required then the following smaller image can be used instead:
-          # image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+          # image: registry.access.redhat.com/ubi8/ubi-minimal:latest <2>
           image: docker.io/bash:5.2.15
           resources:
             limits:
               cpu: 100m
               memory: 32Mi
           securityContext:
-            # privileged is only required when running in an SElinux-enabled/OpenShift environment.
-            # privileged: true
+            # privileged: true <3>
             runAsUser: 0
           volumeMounts:
             - mountPath: /var/lib/elastic-agent
@@ -669,7 +661,7 @@ metadata:
   name: kibana-sample
 spec:
   config:
-    # xpack.fleet.agents.elasticsearch.hosts: <== This entry must not exist when running agent+fleet as non-root.
+    # xpack.fleet.agents.elasticsearch.hosts: <4>
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-sample-agent-http.default.svc:8220"]
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
@@ -677,9 +669,14 @@ spec:
       name: eck-elasticsearch
       type: elasticsearch
       hosts:
-      # Note that the correct URL for Elasticsearch is https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200
-      - "https://elasticsearch-sample-es-http.default.svc:9200"
+      - "https://elasticsearch-sample-es-http.default.svc:9200" <5>
       ssl:
-        # Note the correct path for this is /mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt
-        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"]
+        certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"] <6>
 ----
+
+<1> This is only required when running in an SElinux-enabled/OpenShift environment. Ensure this user has been added to the privileged scc in the correct namespace. `oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps`
+<2> UBI is only required when needing the `chcon` binary when running in an SELinux-enabled/OpenShift environment. If that is not required then the following smaller image can be used instead: `docker.io/bash:5.2.15`
+<3> Privileged is only required when running in an SElinux-enabled/OpenShift environment.
+<4> This entry must not exist when running agent+fleet as non-root.
+<5> That the correct URL for Elasticsearch is https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200
+<6> The correct path for this is /mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt
