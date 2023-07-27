@@ -207,7 +207,8 @@ func (d *AKSDriver) Cleanup() ([]string, error) {
 	}
 	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	clustersCmd := fmt.Sprintf(`az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("%s"))))|.[].name'`, e2eClusterNamePrefix)
+	d.ctx["E2EClusterNamePrefix"] = e2eClusterNamePrefix
+	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}"))))|.[].name'`
 	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, fmt.Errorf("while running az resource list command: %w", err)

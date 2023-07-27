@@ -12,9 +12,8 @@ import (
 )
 
 const (
-	CreateAction         = "create"
-	DeleteAction         = "delete"
-	e2eClusterNamePrefix = "eck-e2e"
+	CreateAction = "create"
+	DeleteAction = "delete"
 )
 
 var (
@@ -32,7 +31,7 @@ type Driver interface {
 	Execute() error
 	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
-	Cleanup() ([]string, error)
+	Cleanup(string) ([]string, error)
 }
 
 func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {

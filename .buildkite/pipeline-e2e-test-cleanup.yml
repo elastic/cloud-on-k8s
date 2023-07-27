@@ -2,6 +2,9 @@ agents:
   image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:9203b231
   memory: 2G
 
+env:
+  E2E_TEST_CLUSTER_PREFIX: "eck-e2e"
+
 steps:
 
   - label: ":go: build deployer"
@@ -16,7 +19,7 @@ steps:
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
       - chmod u+x /usr/local/hack/deployer/deployer
-      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
 
   - label: ":broom: e2e test cluster cleanup aks"
     depends_on:
@@ -24,7 +27,7 @@ steps:
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /tmp
       - chmod u+x /tmp/hack/deployer/deployer
-      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks
+      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
 
   - label: ":broom: e2e test cluster cleanup eks"
     depends_on:
@@ -32,4 +35,4 @@ steps:
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /tmp
       - chmod u+x /tmp/hack/deployer/deployer
-      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks
+      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}

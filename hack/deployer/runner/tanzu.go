@@ -442,7 +442,7 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		WithoutStreaming().Run()
 }
 
-func (t *TanzuDriver) Cleanup() ([]string, error) {
+func (t *TanzuDriver) Cleanup(string) ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
