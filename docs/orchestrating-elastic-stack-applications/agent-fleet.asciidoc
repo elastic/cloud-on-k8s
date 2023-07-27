@@ -539,6 +539,7 @@ When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during
 Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 
 tag::elastic-agent-fleet-known-limitations-local-state[]
+
 === Storing local state in host path volume
 Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
 
