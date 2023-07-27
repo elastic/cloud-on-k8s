@@ -538,7 +538,7 @@ When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during
 
 Solution: enable CNI when starting minikube: `minikube start --cni=true`.
 
-tag::elastic-agent-fleet-known-limitations-local-state[]
+// tag::elastic-agent-fleet-known-limitations-local-state[]
 
 === Storing local state in host path volume
 Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
@@ -567,9 +567,10 @@ spec:
 <1> Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
 <2> runAsUser: 0 can be disabled when running with an `emptyDir` as opposed to a `hostPath` volume.
 
+[.text-left]
 1. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*.
 
-end::elastic-agent-fleet-known-limitations-local-state[]
+// end::elastic-agent-fleet-known-limitations-local-state[]
 
 [source,yaml]
 ----
@@ -595,7 +596,7 @@ spec:
 ...
 ----
 
-tag::elastic-agent-fleet-non-root-daemonset-example[]
+// tag::elastic-agent-fleet-non-root-daemonset-example[]
 
 [source,yaml]
 ----
@@ -667,7 +668,7 @@ spec:
 <2> UBI is only required when needing the `chcon` binary when running in an SELinux-enabled/OpenShift environment. If that is not required then the following smaller image can be used instead: `docker.io/bash:5.2.15`
 <3> Privileged is only required when running in an SElinux-enabled/OpenShift environment.
 
-end::elastic-agent-fleet-non-root-daemonset-example[]
+// end::elastic-agent-fleet-non-root-daemonset-example[]
 
 [source,yaml]
 ----
@@ -692,5 +693,5 @@ spec:
 ----
 
 <1> This entry must not exist when running agent+fleet as non-root.
-<2> That the correct URL for Elasticsearch is https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200
-<3> The correct path for this is /mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt
+<2> That the correct URL for Elasticsearch is `https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200`
+<3> The correct path for this is `/mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt`
