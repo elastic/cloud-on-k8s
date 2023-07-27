@@ -373,30 +373,24 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 
 func runningAsRoot(agent agentv1alpha1.Agent) bool {
 	if agent.Spec.DaemonSet != nil {
-		if agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext != nil &&
-			agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext.RunAsUser != nil &&
-			*agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext.RunAsUser == 0 {
-			return true
-		}
-		for _, container := range agent.Spec.DaemonSet.PodTemplate.Spec.Containers {
-			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
-				if *container.SecurityContext.RunAsUser == 0 {
-					return true
-				}
-			}
-		}
+		return runningContainerAsRoot(agent.Spec.DaemonSet.PodTemplate)
 	}
 	if agent.Spec.Deployment != nil {
-		if agent.Spec.Deployment.PodTemplate.Spec.SecurityContext != nil &&
-			agent.Spec.Deployment.PodTemplate.Spec.SecurityContext.RunAsUser != nil &&
-			*agent.Spec.Deployment.PodTemplate.Spec.SecurityContext.RunAsUser == 0 {
-			return true
-		}
-		for _, container := range agent.Spec.Deployment.PodTemplate.Spec.Containers {
-			if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
-				if *container.SecurityContext.RunAsUser == 0 {
-					return true
-				}
+		return runningContainerAsRoot(agent.Spec.Deployment.PodTemplate)
+	}
+	return false
+}
+
+func runningContainerAsRoot(podTemplate corev1.PodTemplateSpec) bool {
+	if podTemplate.Spec.SecurityContext != nil &&
+		podTemplate.Spec.SecurityContext.RunAsUser != nil &&
+		*podTemplate.Spec.SecurityContext.RunAsUser == 0 {
+		return true
+	}
+	for _, container := range podTemplate.Spec.Containers {
+		if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+			if *container.SecurityContext.RunAsUser == 0 {
+				return true
 			}
 		}
 	}
