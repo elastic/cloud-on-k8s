@@ -440,36 +440,8 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
 
-=== Storing local state in host path volume
-Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. There are 2 options for managing this feature:
 
-1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
-2. If local state storage is still desired but running the Agent container as root is not allowed, then you can can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*.
-
-[source,yaml]
-----
-# Using an emptyDir instead of a hostPath volume.
-apiVersion: agent.k8s.elastic.co/v1alpha1
-kind: Agent
-metadata:
-  name: elastic-agent
-spec:
-  deployment:
-    podTemplate:
-      spec:
-        securityContext:
-          # Gid 1000 is the default group at which the Agent container runs.
-          # Adjust as necessary if `runAsGroup` has been modified.
-          fsGroup: 1000
-          # runAsUser: 0 can be disabled when running with an `emptyDir`
-          # as opposed to a `hostPath` volume.
-          # runAsUser: 0
-        volumes:
-        - name: agent-data
-          emptyDir: {}
-...
-----
-
+include::agent-fleet.asciidoc[tags=elastic-agent-fleet-known-limitations-local-state]
 
 [source,yaml]
 ----
@@ -482,73 +454,7 @@ metadata:
 spec:
   daemonSet: {}
 ...
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: manage-agent-hostpath-permissions
-  namespace: elastic-apps
-spec:
-  selector:
-    matchLabels:
-      name: manage-agent-hostpath-permissions
-  template:
-    metadata:
-      labels:
-        name: manage-agent-hostpath-permissions
-    spec:
-      # This is only required when running in an selinux-enabled/Openshift environment.
-      # Ensure this user has been added to the privileged scc in the correct namespace.
-      # oc adm policy add-scc-to-user privileged -z elastic-agent -n elastic-apps
-      # serviceAccountName: elastic-agent
-      volumes:
-        - hostPath:
-            path: /var/lib/elastic-agent
-            type: DirectoryOrCreate
-          name: "agent-data"
-      initContainers:
-        - name: manage-agent-hostpath-permissions
-          # UBI is only required when needing the `chcon` binary when running
-          # in an SELinux-enabled/OpenShift environment. If that
-          # is not required then the following smaller image can be used instead:
-          # image: registry.access.redhat.com/ubi8/ubi-minimal:latest
-          image: docker.io/bash:5.2.15
-          resources:
-            limits:
-              cpu: 100m
-              memory: 32Mi
-          securityContext:
-            # privileged is only required when running in an selinux-enabled/Openshift environment.
-            # privileged: true
-            runAsUser: 0
-          volumeMounts:
-            - mountPath: /var/lib/elastic-agent
-              name: agent-data
-          command:
-          - 'bash'
-          - '-e'
-          - '-c'
-          - |-
-            # Adjust this be /var/lib/elastic-agent/YOUR-NAMESPACE/YOUR-AGENT-NAME/state
-            # Multiple directories are supported for the fleet-server + agent use case.
-            dirs=(
-              "/var/lib/elastic-agent/default/elastic-agent/state"
-              )
-            for dir in ${dirs[@]}; do
-              mkdir -p "${dir}"
-              # chcon is only required when running an an selinux-enabled/OpenShift environment.
-              # chcon -Rt svirt_sandbox_file_t "${dir}"
-              chmod g+rw "${dir}"
-              # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
-              chgrp 1000 "${dir}"
-              if [ -n "$(ls -A ${dir} 2>/dev/null)" ]
-              then
-                # Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
-                chgrp 1000 "${dir}"/*
-                chmod g+rw "${dir}"/*
-              fi
-            done
-      containers:
-        - name: sleep
-          image: gcr.io/google-containers/pause-amd64:3.2
 ----
+
+include::agent-fleet.asciidoc[tags=elastic-agent-fleet-non-root-daemonset-example]
+
