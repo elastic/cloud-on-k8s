@@ -358,24 +358,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			decodedObj.Name = name
 			decodedObj.Spec.Selector.MatchLabels["name"] = name
 			decodedObj.Spec.Template.ObjectMeta.Labels["name"] = name
-			for i, init := range decodedObj.Spec.Template.Spec.InitContainers {
-				if init.Name == "manage-agent-hostpath-permissions" {
-					for j, cmd := range decodedObj.Spec.Template.Spec.InitContainers[i].Command {
-						updatedCmd := strings.Replace(
-							cmd,
-							"/var/lib/elastic-agent/default/elastic-agent/state",
-							fmt.Sprintf("/var/lib/elastic-agent/%s/elastic-agent-%s/state", namespace, suffix),
-							1,
-						)
-						decodedObj.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
-							updatedCmd,
-							"/var/lib/elastic-agent/default/fleet-server/state",
-							fmt.Sprintf("/var/lib/elastic-agent/%s/fleet-server-%s/state", namespace, suffix),
-							1,
-						)
-					}
-				}
-			}
+			maybeMutateForAgentNonRootTests(decodedObj, namespace, suffix)
 		}
 
 		if builder != nil {
@@ -398,6 +381,30 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 	sortBuilders(builders)
 
 	return builders, otherObjects
+}
+
+// maybeMutateForAgentNonRootTests will possibly mutate the given daemonset when
+// running tests for Elastic Agent running as non-root. This is required as the
+// directories depend on both the namespace and the random suffix of the e2e tests.
+func maybeMutateForAgentNonRootTests(ds *appsv1.DaemonSet, namespace, suffix string) {
+	for i, init := range ds.Spec.Template.Spec.InitContainers {
+		if init.Name == "manage-agent-hostpath-permissions" {
+			for j, cmd := range ds.Spec.Template.Spec.InitContainers[i].Command {
+				updatedCmd := strings.Replace(
+					cmd,
+					"/var/lib/elastic-agent/default/elastic-agent/state",
+					fmt.Sprintf("/var/lib/elastic-agent/%s/elastic-agent-%s/state", namespace, suffix),
+					1,
+				)
+				ds.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
+					updatedCmd,
+					"/var/lib/elastic-agent/default/fleet-server/state",
+					fmt.Sprintf("/var/lib/elastic-agent/%s/fleet-server-%s/state", namespace, suffix),
+					1,
+				)
+			}
+		}
+	}
 }
 
 // sortBuilders mutates the given builder slice to sort them by test priority:
