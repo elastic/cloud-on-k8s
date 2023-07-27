@@ -92,8 +92,7 @@ spec:
           command: ['/usr/local/bin/bash', '-e', '-c', 'echo 262144 > /proc/sys/vm/max_map_count']
       containers:
         - name: sleep
-          image: docker.io/bash:5.2.15
-          command: ['sleep', 'infinity']
+          image: gcr.io/google-containers/pause-amd64:3.2
 EOF
 ----
 

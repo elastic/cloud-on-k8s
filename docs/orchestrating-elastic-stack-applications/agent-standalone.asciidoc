@@ -550,6 +550,5 @@ spec:
             done
       containers:
         - name: sleep
-          image: docker.io/bash:5.2.15
-          command: ['sleep', 'infinity']
+          image: gcr.io/google-containers/pause-amd64:3.2
 ----
