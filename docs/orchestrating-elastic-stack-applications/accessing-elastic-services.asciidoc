@@ -148,7 +148,7 @@ spec:
 
 You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the Elastic Stack application is encrypted.
 
-WARNING: If your `tls.crt` is signed by an intermediate CA you will need both the Root CA, and the intermediate CA combined within the `ca.crt` file.
+WARNING: If your `tls.crt` is signed by an intermediate CA you may need both the Root CA and the intermediate CA combined within the `ca.crt` file depending on whether the Root CA is globally trusted.
 
 Create a Kubernetes secret with:
 
