@@ -39,7 +39,6 @@ type TestParam struct {
 	Name            string               `json:"name"`
 	OperatorVersion string               `json:"operatorVersion"`
 	StackVersion    string               `json:"stackVersion"`
-	Exceptions      map[string]Exception `json:"exceptions"`
 }
 
 type Exception struct {
@@ -128,27 +127,6 @@ func TestStatusOfResources(param TestParam) (*Fixture, error) {
 	}, nil
 }
 
-// TestExcludeFromUpgrade allows to exclude resourcesfrom the upgrade by deleting them before moving to the next version.
-// Intendend for breaking changes between versions for non-GA controllers.
-func TestExcludeFromUpgrade(param TestParam) *Fixture {
-	var kindsExcluded []string
-	for kind, exc := range param.Exceptions {
-		if !exc.Upgrade {
-			kindsExcluded = append(kindsExcluded, kind)
-		}
-	}
-
-	return &Fixture{
-		Name: param.Suffixed("TestExcludeFromUpgrade"),
-		Steps: []*TestStep{
-			retryRetriable(
-				param.Suffixed(fmt.Sprintf("Exclude%v", kindsExcluded)),
-				deleteResourcesOfKind(param.Path("stack.yaml"), kindsExcluded...),
-			),
-		},
-	}
-}
-
 // createResourcesTestSteps generate the TestSteps from the manifest used to deploy the stack.
 func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 	yamlFiles, err := os.Open(param.Path("stack.yaml"))
@@ -173,11 +151,6 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 		}
 
 		status := Status{Health: wantHealth, Nodes: wantNodes, Version: param.StackVersion}
-		// check for exceptions for resources that have non-standard status sub-resources
-		exception, exists := param.Exceptions[r.Kind]
-		if exists {
-			status = exception.Status
-		}
 
 		result = append(result,
 			retryRetriable(
