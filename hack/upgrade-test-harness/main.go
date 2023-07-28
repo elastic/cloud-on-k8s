@@ -183,7 +183,7 @@ func buildUpgradeFixtures(from *fixture.TestParam, to fixture.TestParam) ([]*fix
 		if err != nil {
 			return nil, err
 		}
-		fixtures = append(fixtures, testStatusOfResources, fixture.TestExcludeFromUpgrade(*from))
+		fixtures = append(fixtures, testStatusOfResources)
 	}
 
 	testStatusOfResources, err := fixture.TestStatusOfResources(to)

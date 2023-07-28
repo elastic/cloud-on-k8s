@@ -41,11 +41,6 @@ type TestParam struct {
 	StackVersion    string               `json:"stackVersion"`
 }
 
-type Exception struct {
-	Upgrade bool   `json:"upgrade"`
-	Status  Status `json:"status"`
-}
-
 // Path returns the full path to the given filename from the test data files.
 func (tp TestParam) Path(fileName string) string {
 	return filepath.Join("testdata", tp.Name, fileName)
@@ -150,7 +145,7 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 			wantNodes = 3
 		}
 
-		status := Status{Health: wantHealth, Nodes: wantNodes, Version: param.StackVersion}
+		status := status{health: wantHealth, nodes: wantNodes, version: param.StackVersion}
 
 		result = append(result,
 			retryRetriable(
@@ -164,10 +159,10 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 	}
 }
 
-type Status struct {
-	Health  string
-	Nodes   int64
-	Version string
+type status struct {
+	health  string
+	nodes   int64
+	version string
 }
 
 type Resource struct {
@@ -177,7 +172,7 @@ type Resource struct {
 	} `yaml:"metadata"`
 }
 
-func checkStatus(kind, name string, want Status) func(*TestContext) error {
+func checkStatus(kind, name string, want status) func(*TestContext) error {
 	return func(ctx *TestContext) error {
 		have, err := getStatus(ctx, kind, name)
 		if err != nil {
@@ -193,8 +188,8 @@ func checkStatus(kind, name string, want Status) func(*TestContext) error {
 	}
 }
 
-func getStatus(ctx *TestContext, kind, name string) (Status, error) {
-	s := Status{}
+func getStatus(ctx *TestContext, kind, name string) (status, error) {
+	s := status{}
 	resources := ctx.GetResources(ctx.Namespace(), kind, name)
 
 	runtimeObj, err := resources.Object()
@@ -207,12 +202,12 @@ func getStatus(ctx *TestContext, kind, name string) (Status, error) {
 		return s, err
 	}
 
-	s.Health, _, err = unstructured.NestedString(obj, "status", "health")
+	s.health, _, err = unstructured.NestedString(obj, "status", "health")
 	if err != nil {
 		return s, fmt.Errorf("failed to get health from status: %w", err)
 	}
 
-	s.Nodes, _, err = unstructured.NestedInt64(obj, "status", "availableNodes")
+	s.nodes, _, err = unstructured.NestedInt64(obj, "status", "availableNodes")
 	if err != nil {
 		return s, fmt.Errorf("failed to get nodes from status: %w", err)
 	}
@@ -224,7 +219,7 @@ func getStatus(ctx *TestContext, kind, name string) (Status, error) {
 	if err != nil || minVersion == nil {
 		return s, err
 	}
-	s.Version = minVersion.String()
+	s.version = minVersion.String()
 
 	return s, nil
 }
@@ -288,7 +283,7 @@ func TestScaleElasticsearch(param TestParam, count int) *Fixture {
 			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(param, int64(count))),
 			pause(30 * time.Second),
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
-				checkStatus("elasticsearch", esName, Status{Health: wantHealth, Nodes: int64(count), Version: param.StackVersion})),
+				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
 		},
 	}
 }
