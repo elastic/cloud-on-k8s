@@ -486,68 +486,21 @@ spec:
 Please note that the environment variables related to policy selection mentioned in the Elastic Agent link:https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html[docs] like `FLEET_SERVER_POLICY_ID` will be managed by the ECK operator.
 
 
-[id="{p}-elastic-agent-fleet-configuration-examples"]
-== Configuration Examples
+[id="{p}-elastic-agent-running-as-a-non-root-user"]
+// tag::configuration-example-elastic-agent-running-as-a-non-root-user[]
+=== Running as a non-root user
 
-This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster, a single Kibana instance and a single Fleet Server instance.
+In order to run Elastic Agent as a non-root user you must choose how you want to persist data to the Agent's volume.
 
-CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+1. Run Elastic Agent with an `emptyDir` volume. This has the downside of not persisting data between restarts of the Elastic Agent which can duplicate work done by the previous running Agent.
+2. Run Elastic Agent with a `hostPath` volume in addition to a `Daemonset` running as `root` that maintains permissions for the `agent` user.
 
+In addition to these decisions, if you are running Elastic Agent in Fleet mode as a non-root user you must configure Kibana to accept the CA of the Elasticsearch Cluster.
 
-=== System and Kubernetes integrations
-
-[source,sh,subs="attributes"]
-----
-kubectl apply -f {agent_recipes}/fleet-kubernetes-integration.yaml
-----
-Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
-
-=== Custom logs integration with autodiscover
-
-[source,sh,subs="attributes"]
-----
-kubectl apply -f {agent_recipes}/fleet-custom-logs-integration.yaml
-----
-
-Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
-
-
-=== APM integration
-
-[source,sh,subs="attributes"]
-----
-kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
-----
-
-Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
-
-[id="{p}-elastic-agent-fleet-known-limitations"]
-== Known limitations
-
-=== Running as root and within a single namespace (ECK < 2.10.0 and Agent < 7.14.0)
-Until version 7.14.0 and ECK 2.10.0, Elastic Agent in Fleet mode has to run as root and in the same namespace as the Elasticsearch cluster it connects to. Since ECK 2.10.0, Agent in Fleet mode is required to be greater than version 7.14.0. Both the Fleet Server and the Elastic Agent are not required to run as root but there are some known issues when <<{p}_storing_local_state_in_host_path_volume>> that must be noted.
-
-Due to current configuration limitations on Fleet/Elastic Agent side prior to version 7.14.0, ECK prior to version 2.10.0 needs to establish trust between Elastic Agents and Elasticsearch. ECK can fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
-To establish trust, the Pod needs to update the CA store through a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
-
-=== Running Endpoint Security integration
-Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
-
-=== Fleet Server initialization fails on minikube when CNI is disabled
-When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during Fleet initialization using its Service. Since a link:https://github.com/kubernetes/minikube/issues/1568[Pod cannot reach itself through its Service on minikube] when CNI is disabled, the call hangs until the connection times out and the Pod enters a crash loop.
-
-Solution: enable CNI when starting minikube: `minikube start --cni=true`.
-
-// tag::elastic-agent-fleet-known-limitations-local-state[]
-
-=== Storing local state in host path volume
-Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
-
-1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
+To run Elastic Agent with an `emptyDir` volume.
 
 [source,yaml]
 ----
-# Using an emptyDir instead of a hostPath volume.
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
@@ -558,23 +511,17 @@ spec:
       spec:
         securityContext: <1>
           fsGroup: 1000
-          # runAsUser: 0 <2>
         volumes:
         - name: agent-data
           emptyDir: {}
 ...
 ----
 <1> Gid 1000 is the default group at which the Agent container runs. Adjust as necessary if `runAsGroup` has been modified.
-<2> runAsUser: 0 can be disabled when running with an `emptyDir` as opposed to a `hostPath` volume.
 
-[.text-left]
-1. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA*.
-
-// end::elastic-agent-fleet-known-limitations-local-state[]
+To run Elastic Agent with a `hostPath` volume and a `Daemonset` to maintain permissions.
 
 [source,yaml]
 ----
-# Using a DaemonSet to manage permissions for Elastic Agent using hostPath volume.
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
 metadata:
@@ -594,12 +541,6 @@ metadata:
 spec:
   daemonSet: {}
 ...
-----
-
-// tag::elastic-agent-fleet-non-root-daemonset-example[]
-
-[source,yaml]
-----
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -668,7 +609,7 @@ spec:
 <2> UBI is only required when needing the `chcon` binary when running in an SELinux-enabled/OpenShift environment. If that is not required then the following smaller image can be used instead: `docker.io/bash:5.2.15`
 <3> Privileged is only required when running in an SElinux-enabled/OpenShift environment.
 
-// end::elastic-agent-fleet-non-root-daemonset-example[]
+When running Agent in fleet mode as a non-root user Kibana must be configured in order to properly accept the CA of the Elasticsearch cluster.
 
 [source,yaml]
 ----
@@ -692,6 +633,73 @@ spec:
         certificate_authorities: ["/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"] <3>
 ----
 
-<1> This entry must not exist when running agent+fleet as non-root.
-<2> That the correct URL for Elasticsearch is `https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200`
-<3> The correct path for this is `/mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt`
+<1> This entry must not exist when running agent in fleet mode as a non-root user.
+<2> Note that the correct URL for Elasticsearch is `https://ELASTICSEARCH_NAME-es-http.YOUR-NAMESPACE.svc:9200`
+<3> Note that the correct path for Elasticsearch `certificate_authorities` is `/mnt/elastic-internal/elasticsearch-association/YOUR-NAMESPACE/ELASTICSEARCH-NAME/certs/ca.crt`
+
+// end::configuration-example-elastic-agent-running-as-a-non-root-user[]
+
+[id="{p}-elastic-agent-fleet-configuration-examples"]
+== Configuration Examples
+
+This section contains manifests that illustrate common use cases, and can be your starting point in exploring Elastic Agent deployed with ECK. These manifests are self-contained and work out-of-the-box on any non-secured Kubernetes cluster. They all contain a three-node Elasticsearch cluster, a single Kibana instance and a single Fleet Server instance.
+
+CAUTION: The examples in this section are for illustration purposes only and should not be considered to be production-ready. Some of these examples use the `node.store.allow_mmap: false` setting which has performance implications and should be tuned for production workloads, as described in <<{p}-virtual-memory>>.
+
+
+=== System and Kubernetes integrations
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-kubernetes-integration.yaml
+----
+Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
+
+=== Custom logs integration with autodiscover
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-custom-logs-integration.yaml
+----
+
+Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.
+
+
+=== APM integration
+
+[source,sh,subs="attributes"]
+----
+kubectl apply -f {agent_recipes}/fleet-apm-integration.yaml
+----
+
+Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
+
+[id="{p}-elastic-agent-fleet-known-limitations"]
+== Known limitations
+
+=== Running as root and within a single namespace (ECK < 2.10.0 and Agent < 7.14.0)
+Until version 7.14.0 and ECK version 2.10.0, Elastic Agent in Fleet mode has to run as root and in the same namespace as the Elasticsearch cluster it connects to. 
+
+This was due to configuration limitations in Fleet/Elastic Agent. ECK needed to establish trust between Elastic Agents and Elasticsearch. ECK was only able to fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
+As of Elastic Stack version 7.14.0 and ECK version 2.10.0 it is also possible to run Elastic Agent and Fleet as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
+To establish trust, the Pod needs to update the CA store through a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
+
+=== Running Endpoint Security integration
+Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
+
+=== Fleet Server initialization fails on minikube when CNI is disabled
+When deployed with ECK, the Fleet Server Pod makes an HTTP call to itself during Fleet initialization using its Service. Since a link:https://github.com/kubernetes/minikube/issues/1568[Pod cannot reach itself through its Service on minikube] when CNI is disabled, the call hangs until the connection times out and the Pod enters a crash loop.
+
+Solution: enable CNI when starting minikube: `minikube start --cni=true`.
+
+// tag::elastic-agent-fleet-known-limitations-local-state[]
+
+=== Storing local state in host path volume
+Elastic Agent managed by ECK stores local state in a host path volume by default. This ensures that integrations run by the agent can continue their work without duplicating work that has already been done after the Pod has been recreated for example because of a Pod configuration change. Multiple replicas of an agent, for example Fleet Servers, can not be deployed on the same underlying Kubernetes node as they would try to use the same host path. There are 2 options for managing this feature:
+
+1. If local state storage in `hostPath` volumes is not desired this can be turned off by configuring an `emptyDir` volume instead.
+2. If local state storage is still desired but running the Agent container as root is not allowed, then you can run a `DaemonSet` that adjusts the permissions for the Agent local state on each Node prior to running Elastic Agent. *Note that this `DaemonSet` must be `runAsUser: 0` and possibly `privileged: true`*. *Also note the Kibana changes required to trust the Elasticsearch CA when running in fleet mode*.
+
+Full configuration examples exist in  <<{p}-elastic-agent-running-as-a-non-root-user>>.
+
+// end::elastic-agent-fleet-known-limitations-local-state[]

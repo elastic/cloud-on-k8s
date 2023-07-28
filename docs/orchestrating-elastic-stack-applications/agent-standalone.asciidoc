@@ -404,6 +404,7 @@ roleRef:
 
 To deploy Elastic Agent in clusters with the Pod Security Policy admission controller enabled, or in <<{p}-openshift-agent,OpenShift>> clusters, you might need to grant additional permissions to the Service Account used by the Elastic Agent Pods. Those Service Accounts must be bound to a Role or ClusterRole that has `use` permission for the required Pod Security Policy or Security Context Constraints. Different Elastic Agent integrations might require different settings set in their PSP/link:{p}-openshift-agent.html[SCC].
 
+include::agent-fleet.asciidoc[tags=configuration-example-elastic-agent-running-as-a-non-root-user]
 
 [id="{p}-elastic-agent-configuration-examples"]
 == Configuration examples
@@ -440,21 +441,4 @@ kubectl apply -f {agent_recipes}/multi-output.yaml
 
 Deploys two Elasticsearch clusters and two Kibana instances together with single Elastic Agent DaemonSet in standalone mode with System integration enabled. System metrics are sent to the `elasticsearch` cluster. Elastic Agent monitoring data is sent to `elasticsearch-mon` cluster.
 
-
 include::agent-fleet.asciidoc[tags=elastic-agent-fleet-known-limitations-local-state]
-
-[source,yaml]
-----
-# Using a DaemonSet to manage permissions for Elastic Agent using hostPath volume.
-apiVersion: agent.k8s.elastic.co/v1alpha1
-kind: Agent
-metadata:
-  name: elastic-agent
-  namespace: elastic-apps
-spec:
-  daemonSet: {}
-...
-----
-
-include::agent-fleet.asciidoc[tags=elastic-agent-fleet-non-root-daemonset-example]
-
