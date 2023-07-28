@@ -36,9 +36,9 @@ const (
 
 // TestParam holds parameters for a test.
 type TestParam struct {
-	Name            string               `json:"name"`
-	OperatorVersion string               `json:"operatorVersion"`
-	StackVersion    string               `json:"stackVersion"`
+	Name            string `json:"name"`
+	OperatorVersion string `json:"operatorVersion"`
+	StackVersion    string `json:"stackVersion"`
 }
 
 // Path returns the full path to the given filename from the test data files.
