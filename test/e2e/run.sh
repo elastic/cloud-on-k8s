@@ -7,6 +7,7 @@
 set -uo pipefail
 
 chaos=${CHAOS:-"false"}
+E2E_TAGS=${E2E_TAGS:-"e2e"}
 
 ARTEFACTS_DIR=${ARTEFACTS_DIR:-.}
 CLUSTER_NAME=${CLUSTER_NAME:-local}

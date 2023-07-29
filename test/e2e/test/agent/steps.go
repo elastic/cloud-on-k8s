@@ -7,6 +7,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"testing"
 
@@ -179,20 +180,24 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					}
 
 					if esNsName.Namespace == "" && esNsName.Name == "" {
+						log.Printf("agent %s doesn't have output %s", b.Agent.Name, expectedOutputName)
 						return fmt.Errorf("agent %s doesn't have output %s", b.Agent.Name, expectedOutputName)
 					}
 
 					var es esv1.Elasticsearch
 					if err := k.Client.Get(context.Background(), esNsName, &es); err != nil {
+						log.Printf("failed getting es cluster: %s: %s", esNsName, err)
 						return err
 					}
 
 					esClient, err := elasticsearch.NewElasticsearchClient(es, k)
 					if err != nil {
+						log.Printf("while getting es client: %s", err)
 						return err
 					}
 
 					if err := validation(esClient); err != nil {
+						log.Printf("validation failed: %s", err)
 						return err
 					}
 				}
