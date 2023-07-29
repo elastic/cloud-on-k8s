@@ -201,7 +201,7 @@ func (d *AKSDriver) delete() error {
 
 func (d *AKSDriver) Cleanup(prefix string) ([]string, error) {
 	// Do not use docker in the cleanup steps
-	d.withoutDocker = true
+	d.withoutDocker = false
 	if err := d.auth(); err != nil {
 		return nil, err
 	}

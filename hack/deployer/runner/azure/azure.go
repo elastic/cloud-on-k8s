@@ -7,6 +7,7 @@ package azure
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
@@ -41,6 +42,7 @@ func NewCredentials(c vault.Client) (Credentials, error) {
 
 func Login(creds Credentials, withoutDocker bool) error {
 	args := []string{"login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID}
+	log.Printf("logging into azure with args: %v", args)
 	cmd := Cmd(args...)
 	if withoutDocker {
 		cmd = exec.NewCommand(fmt.Sprintf("az %s", strings.Join(args, " ")))

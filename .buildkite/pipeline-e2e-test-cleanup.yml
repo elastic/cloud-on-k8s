@@ -24,10 +24,14 @@ steps:
   - label: ":broom: e2e test cluster cleanup aks"
     depends_on:
       - "build-deployer"
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
     commands:
-      - buildkite-agent artifact download "hack/deployer/deployer" /tmp
-      - chmod u+x /tmp/hack/deployer/deployer
-      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
+      # - buildkite-agent artifact download "hack/deployer/deployer" /tmp
+      # - chmod u+x /tmp/hack/deployer/deployer
+      - make -C .buildkite TARGET="run-deployer-cleanup-aks" ci
+      # - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
 
   - label: ":broom: e2e test cluster cleanup eks"
     depends_on:
