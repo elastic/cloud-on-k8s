@@ -76,7 +76,7 @@ spec:
                 - "local-path-storage"
           - resources:
               kinds:
-                - Daemonset
+                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
       match:
@@ -137,7 +137,7 @@ spec:
                 - "local-path-storage"
           - resources:
               kinds:
-                - Daemonset
+                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
       match:
@@ -185,7 +185,7 @@ spec:
                 - "local-path-storage"
           - resources:
               kinds:
-                - Daemonset
+                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
       match:
