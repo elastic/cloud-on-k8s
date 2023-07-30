@@ -74,6 +74,11 @@ spec:
               namespaces:
                 - "*-system"
                 - "local-path-storage"
+          - resources:
+              kinds:
+                - Daemonset
+              names:
+                - "manage-agent-hostpath-permissions-*"
       match:
         any:
         - resources:
@@ -130,6 +135,11 @@ spec:
                 - 'default' # default namespace may hold local volume provisioner Pods on GKE
                 - "*-system"
                 - "local-path-storage"
+          - resources:
+              kinds:
+                - Daemonset
+              names:
+                - "manage-agent-hostpath-permissions-*"
       match:
         any:
           - resources:
@@ -173,6 +183,11 @@ spec:
                 - 'default' # default namespace may hold local volume provisioner Pods on GKE
                 - "*-system"
                 - "local-path-storage"
+          - resources:
+              kinds:
+                - Daemonset
+              names:
+                - "manage-agent-hostpath-permissions-*"
       match:
         any:
           - resources:
