@@ -75,10 +75,10 @@ spec:
                 - "*-system"
                 - "local-path-storage"
           - resources:
-              kinds:
-                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
+              kinds:
+                - Pod
       match:
         any:
         - resources:
@@ -136,10 +136,10 @@ spec:
                 - "*-system"
                 - "local-path-storage"
           - resources:
-              kinds:
-                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
+              kinds:
+                - Pod
       match:
         any:
           - resources:
@@ -184,10 +184,10 @@ spec:
                 - "*-system"
                 - "local-path-storage"
           - resources:
-              kinds:
-                - apps/v1/DaemonSet
               names:
                 - "manage-agent-hostpath-permissions-*"
+              kinds:
+                - Pod
       match:
         any:
           - resources:
