@@ -7,7 +7,6 @@ package azure
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
