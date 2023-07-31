@@ -20,10 +20,14 @@ steps:
       - "build-deployer"
     if: |
       build.message == "buildkite run e2e test cleanup"
+    env:
+      E2E_PROVIDER: "gke"
+      CLUSTER_NAME: "none"
     commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
       - chmod u+x /usr/local/hack/deployer/deployer
-      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
       memory: 2G
@@ -31,7 +35,11 @@ steps:
   - label: ":broom: e2e test cluster cleanup aks"
     if: |
       build.message == "buildkite run e2e test cleanup"
+    env:
+      E2E_PROVIDER: "aks"
+      CLUSTER_NAME: "none"
     commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
       - make -C .buildkite TARGET="run-deployer-cleanup-aks" ci
     agents:
       provider: "gcp"
@@ -42,10 +50,31 @@ steps:
       build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
+    env:
+      E2E_PROVIDER: "eks"
+      CLUSTER_NAME: "none"
     commands:
-      - buildkite-agent artifact download "hack/deployer/deployer" /tmp
-      - chmod u+x /tmp/hack/deployer/deployer
-      - /tmp/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup eks-arm"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    depends_on:
+      - "build-deployer"
+    env:
+      E2E_PROVIDER: "eks-arm"
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
       memory: 2G

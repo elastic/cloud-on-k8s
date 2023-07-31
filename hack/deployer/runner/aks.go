@@ -34,10 +34,9 @@ type AKSDriverFactory struct {
 }
 
 type AKSDriver struct {
-	plan          Plan
-	ctx           map[string]interface{}
-	vaultClient   vault.Client
-	withoutDocker bool
+	plan        Plan
+	ctx         map[string]interface{}
+	vaultClient vault.Client
 }
 
 func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
@@ -124,7 +123,7 @@ func (d *AKSDriver) auth() error {
 		if err != nil {
 			return fmt.Errorf("while getting new credentials: %w", err)
 		}
-		err = azure.Login(credentials, d.withoutDocker)
+		err = azure.Login(credentials)
 		if err != nil {
 			return fmt.Errorf("while logging into azure: %w", err)
 		}
@@ -191,21 +190,15 @@ func (d *AKSDriver) delete() error {
 		"delete", "--yes",
 		"--name", d.plan.ClusterName,
 		"--resource-group", d.plan.Aks.ResourceGroup}
-	if !d.withoutDocker {
-		return azure.Cmd(args...).
-			Run()
-	}
-	_, err := exec.NewCommand(fmt.Sprintf("az %s", strings.Join(args, ""))).Output()
-	return err
+	return azure.Cmd(args...).
+		Run()
 }
 
-func (d *AKSDriver) Cleanup(prefix string) ([]string, error) {
-	// Do not use docker in the cleanup steps
-	d.withoutDocker = false
+func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
 	if err := d.auth(); err != nil {
 		return nil, err
 	}
-	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	daysAgo := time.Now().Add(-olderThan)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	d.ctx["E2EClusterNamePrefix"] = prefix
 	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}"))))|.[].name'`

@@ -301,13 +301,13 @@ run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 run-deployer-cleanup-aks: build-deployer
-	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX) --config-file deployer-config.yml
 
 run-deployer-cleanup-gke: build-deployer
-	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX) --config-file deployer-config.yml
 
 run-deployer-cleanup-eks: build-deployer
-	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX) --config-file deployer-config.yml
 
 set-kubeconfig: build-deployer
 	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml

@@ -429,7 +429,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
-func (d *GKEDriver) Cleanup(prefix string) ([]string, error) {
+func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
 	if d.ctx[GoogleCloudProjectCtxKey] == "" {
 		gCloudProject, err := vault.Get(d.vaultClient, GKEVaultPath, GKEProjectVaultFieldName)
 		if err != nil {
@@ -443,7 +443,7 @@ func (d *GKEDriver) Cleanup(prefix string) ([]string, error) {
 	); err != nil {
 		return nil, err
 	}
-	daysAgo := time.Now().Add(-24 * 3 * time.Hour)
+	daysAgo := time.Now().Add(-olderThan)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	d.ctx["E2EClusterNamePrefix"] = prefix
 	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`

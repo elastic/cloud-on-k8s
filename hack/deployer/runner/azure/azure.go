@@ -7,7 +7,6 @@ package azure
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/env"
@@ -39,12 +38,9 @@ func NewCredentials(c vault.Client) (Credentials, error) {
 	}, nil
 }
 
-func Login(creds Credentials, withoutDocker bool) error {
+func Login(creds Credentials) error {
 	args := []string{"login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID}
 	cmd := Cmd(args...)
-	if withoutDocker {
-		cmd = exec.NewCommand(fmt.Sprintf("az %s", strings.Join(args, " ")))
-	}
 	return cmd.WithoutStreaming().Run()
 }
 

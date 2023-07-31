@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -341,7 +342,7 @@ func (t *TanzuDriver) suspend() {
 // loginToAzure we use Azure as the infrastructure provider for Tanzu testing.
 func (t *TanzuDriver) loginToAzure() error {
 	log.Println("Logging in to Azure")
-	return azure.Login(t.azureCredentials, false)
+	return azure.Login(t.azureCredentials)
 }
 
 // loginToContainerRegistry we use a private container registry to make the Tanzu CLI available in CI.
@@ -442,7 +443,7 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		WithoutStreaming().Run()
 }
 
-func (t *TanzuDriver) Cleanup(string) ([]string, error) {
+func (t *TanzuDriver) Cleanup(string, time.Duration) ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
