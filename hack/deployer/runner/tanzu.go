@@ -450,7 +450,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 	daysAgo := time.Now().Add(-olderThan)
 	params := map[string]interface{}{
 		"Date":                 daysAgo.Format(time.RFC3339),
-		"Location":             t.plan.Tanzu.Location
+		"Location":             t.plan.Tanzu.Location,
 		"E2EClusterNamePrefix": prefix,
 	}
 	clustersCmd := `az resource list -l {{.Location}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
