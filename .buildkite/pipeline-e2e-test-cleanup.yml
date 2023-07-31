@@ -9,6 +9,8 @@ steps:
 
   - label: ":go: build deployer"
     key: "build-deployer"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
     commands:
       - make build-deployer
       - buildkite-agent artifact upload hack/deployer/deployer
@@ -16,12 +18,16 @@ steps:
   - label: ":broom: e2e test cluster cleanup gke"
     depends_on:
       - "build-deployer"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
     commands:
       - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
       - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX}
 
   - label: ":broom: e2e test cluster cleanup aks"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
     agents:
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -29,6 +35,8 @@ steps:
       - make -C .buildkite TARGET="run-deployer-cleanup-aks" ci
 
   - label: ":broom: e2e test cluster cleanup eks"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
     commands:
