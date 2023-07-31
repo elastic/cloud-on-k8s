@@ -300,6 +300,15 @@ build-deployer:
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
+run-deployer-cleanup-aks: build-deployer
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider aks --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+
+run-deployer-cleanup-gke: build-deployer
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider gke --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+
+run-deployer-cleanup-eks: build-deployer
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --provider eks --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX)
+
 set-kubeconfig: build-deployer
 	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
