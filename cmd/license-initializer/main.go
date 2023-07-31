@@ -32,8 +32,7 @@ var Cmd = &cobra.Command{
 			handleErr(fmt.Errorf("%s is a required environment variable pointing to a DER encoded public key", pubKeyFlag))
 		}
 
-		c, err := vault.NewClient()
-		handleErr(err)
+		c := vault.NewClientProvider()
 
 		bytes, err := vault.ReadFile(c, vault.SecretFile{
 			Name:          pubkeyFile,

@@ -38,12 +38,11 @@ const (
 	operatorManifestURL = "https://download.elastic.co/downloads/eck/%s/operator.yaml"
 	operatorName        = "elastic-operator"
 
-	csvTemplateFile     = "csv.tpl"
-	packageTemplateFile = "package.tpl"
+	csvTemplateFile         = "csv.tpl"
+	annotationsTemplateFile = "annotations.tpl"
 
-	crdFileSuffix     = "crd.yaml"
-	csvFileSuffix     = "clusterserviceversion.yaml"
-	packageFileSuffix = "package.yaml"
+	crdFileSuffix = "crd.yaml"
+	csvFileSuffix = "clusterserviceversion.yaml"
 
 	yamlSeparator = "---\n"
 
@@ -373,18 +372,19 @@ func normalizeTrailingNewlines(yamlBytes []byte) []byte {
 
 // RenderParams are the parameters sent to the render operation
 type RenderParams struct {
-	NewVersion       string
-	ShortVersion     string
-	PrevVersion      string
-	StackVersion     string
-	OperatorRepo     string
-	OperatorRBAC     string
-	AdditionalArgs   []string
-	CRDList          []*CRD
-	OperatorWebhooks string
-	PackageName      string
-	Tag              string
-	UbiOnly          bool
+	NewVersion                   string
+	ShortVersion                 string
+	PrevVersion                  string
+	StackVersion                 string
+	OperatorRepo                 string
+	OperatorRBAC                 string
+	AdditionalArgs               []string
+	CRDList                      []*CRD
+	OperatorWebhooks             string
+	PackageName                  string
+	Tag                          string
+	UbiOnly                      bool
+	MinSupportedOpenShiftVersion string
 }
 
 func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtracts, imageDigest string) (*RenderParams, error) {
@@ -449,18 +449,19 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 	}
 
 	return &RenderParams{
-		NewVersion:       conf.NewVersion,
-		ShortVersion:     strings.Join(versionParts[:2], "."),
-		PrevVersion:      conf.PrevVersion,
-		StackVersion:     conf.StackVersion,
-		OperatorRepo:     conf.Packages[packageIndex].OperatorRepo,
-		AdditionalArgs:   additionalArgs,
-		CRDList:          crdList,
-		OperatorWebhooks: string(webhooks),
-		OperatorRBAC:     string(rbac),
-		PackageName:      conf.Packages[packageIndex].PackageName,
-		Tag:              tag,
-		UbiOnly:          conf.Packages[packageIndex].UbiOnly,
+		NewVersion:                   conf.NewVersion,
+		ShortVersion:                 strings.Join(versionParts[:2], "."),
+		PrevVersion:                  conf.PrevVersion,
+		StackVersion:                 conf.StackVersion,
+		OperatorRepo:                 conf.Packages[packageIndex].OperatorRepo,
+		AdditionalArgs:               additionalArgs,
+		CRDList:                      crdList,
+		OperatorWebhooks:             string(webhooks),
+		OperatorRBAC:                 string(rbac),
+		PackageName:                  conf.Packages[packageIndex].PackageName,
+		Tag:                          tag,
+		UbiOnly:                      conf.Packages[packageIndex].UbiOnly,
+		MinSupportedOpenShiftVersion: conf.Packages[packageIndex].MinSupportedOpenShiftVersion,
 	}, nil
 }
 
@@ -502,35 +503,38 @@ func render(params *RenderParams, templatesDir, outDir string) error {
 		}
 	}
 
-	if err := os.MkdirAll(versionDir, 0o766); err != nil {
-		return fmt.Errorf("while creating directory %s: %w", versionDir, err)
+	manifestDir := filepath.Join(versionDir, "manifests")
+	metadataDir := filepath.Join(versionDir, "metadata")
+
+	if err := os.MkdirAll(manifestDir, 0o766); err != nil {
+		return fmt.Errorf("while creating directory %s: %w", manifestDir, err)
 	}
 
-	if err := renderCSVFile(params, templatesDir, versionDir); err != nil {
+	if err := os.MkdirAll(metadataDir, 0o766); err != nil {
+		return fmt.Errorf("while creating directory %s: %w", metadataDir, err)
+	}
+
+	if err := renderCSVFile(params, templatesDir, manifestDir); err != nil {
 		return err
 	}
 
-	if err := renderCRDs(params, versionDir); err != nil {
+	if err := renderCRDs(params, manifestDir); err != nil {
 		return err
 	}
 
-	// package file is written outside the version directory
-	return renderPackageFile(params, templatesDir, outDir)
+	// annotations file is written to a separate directory called metadata
+	return renderAnnotationsFile(params, templatesDir, metadataDir)
 }
 
 func renderCSVFile(params *RenderParams, templatesDir, outDir string) error {
 	templateFile := filepath.Join(templatesDir, csvTemplateFile)
-	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.v%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
-	if strings.HasPrefix(params.NewVersion, "v") {
-		csvFile = filepath.Join(outDir, fmt.Sprintf("%s.%s.%s", params.PackageName, params.NewVersion, csvFileSuffix))
-	}
-
+	csvFile := filepath.Join(outDir, fmt.Sprintf("%s.%s", params.PackageName, csvFileSuffix))
 	return renderTemplate(params, templateFile, csvFile)
 }
 
-func renderPackageFile(params *RenderParams, templatesDir, outDir string) error {
-	templateFile := filepath.Join(templatesDir, packageTemplateFile)
-	pkgFile := filepath.Join(outDir, fmt.Sprintf("%s.%s", params.PackageName, packageFileSuffix))
+func renderAnnotationsFile(params *RenderParams, templatesDir, outDir string) error {
+	templateFile := filepath.Join(templatesDir, annotationsTemplateFile)
+	pkgFile := filepath.Join(outDir, "annotations.yaml")
 
 	return renderTemplate(params, templateFile, pkgFile)
 }

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 )
 
 const (

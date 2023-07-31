@@ -33,4 +33,3 @@ spec:
             password => "${PRODUCTION_ES_PASSWORD}"
           } 
         }
----

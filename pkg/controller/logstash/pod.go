@@ -20,18 +20,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 const (
-	ConfigVolumeName = "config"
-	ConfigMountPath  = "/usr/share/logstash/config"
-
-	LogstashConfigVolumeName = "logstash"
-	LogstashConfigFileName   = "logstash.yml"
-
-	PipelineVolumeName = "pipeline"
-	PipelineFileName   = "pipelines.yml"
+	defaultFsGroup = 1000
 
 	// ConfigHashAnnotationName is an annotation used to store the Logstash config hash.
 	ConfigHashAnnotationName = "logstash.k8s.elastic.co/config-hash"
@@ -51,6 +46,10 @@ var (
 			corev1.ResourceCPU:    resource.MustParse("1000m"),
 		},
 	}
+
+	DefaultSecurityContext = corev1.PodSecurityContext{
+		FSGroup: pointer.Int64(defaultFsGroup),
+	}
 )
 
 func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
@@ -58,7 +57,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	vols, err := buildVolumes(params)
+	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -90,10 +89,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).
-		WithVolumeLikes(vols...).
-		WithInitContainers(initConfigContainer(params.Logstash)).
 		WithEnv(envs...).
-		WithInitContainerDefaults()
+		WithVolumes(volumes...).
+		WithVolumeMounts(volumeMounts...).
+		WithInitContainers(initConfigContainer(params.Logstash)).
+		WithInitContainerDefaults().
+		WithPodSecurityContext(DefaultSecurityContext)
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash)
 	if err != nil {

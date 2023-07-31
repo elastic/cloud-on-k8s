@@ -49,6 +49,7 @@ type GKESettings struct {
 	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
 	Private          bool   `yaml:"private"`
 	NetworkPolicy    bool   `yaml:"networkPolicy"`
+	Autopilot        bool   `yaml:"autopilot"`
 }
 
 // AKSSettings encapsulates settings specific to AKS

@@ -32,9 +32,9 @@ type Job struct {
 	logStreamWg        *sync.WaitGroup // wait for the log stream goroutines to be over
 	writer             io.Writer       // where to stream the logs in "realtime"
 
-	// Job result file to download when the pod is ready
-	resultFile           string
-	resultFileDownloaded bool // keep track of download attempts
+	// Job artefacts directory that contains files to download when the pod is ready
+	artefactsDir        string
+	artefactsDownloaded bool // keep track of download attempts
 }
 
 func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
@@ -68,8 +68,8 @@ func (j *Job) WithDependency(dependency *Job) *Job {
 	return j
 }
 
-func (j *Job) WithResultFile(f string) *Job {
-	j.resultFile = f
+func (j *Job) WithArtefactsDir(d string) *Job {
+	j.artefactsDir = d
 	return j
 }
 

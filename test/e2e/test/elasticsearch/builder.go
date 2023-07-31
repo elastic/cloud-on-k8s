@@ -26,11 +26,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-const (
-	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
-	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
-	DefaultStorageClass = "e2e-default"
-)
+// defaultMutationToleratedFailures is the number of continuous health checks failures tolerated during a mutation.
+const defaultMutationToleratedFailures = 15
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
@@ -58,6 +55,8 @@ type Builder struct {
 	expectedElasticsearch *esv1.Elasticsearch
 
 	GlobalCA bool
+
+	mutationToleratedChecksFailureCount int
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -102,21 +101,14 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
-	def := test.Ctx().ImageDefinitionFor(esv1.Kind)
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
 		},
 	}.
-		WithVersion(def.Version).
-		WithImage(def.Image).
+		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
-}
-
-func (b Builder) WithImage(image string) Builder {
-	b.Elasticsearch.Spec.Image = image
-	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {
@@ -176,6 +168,9 @@ func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
 		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+	} else {
+		// reset the image in case the builder was set to a SNAPSHOT version at some point
+		b.Elasticsearch.Spec.Image = ""
 	}
 	return b
 }
@@ -335,6 +330,18 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	return b.WithDefaultPersistentVolumes().WithPreStopAdditionalWaitSeconds(0)
 }
 
+func (b Builder) WithoutAllowMMAP() Builder {
+	builderCopy := b.DeepCopy()
+	for i := range builderCopy.Elasticsearch.Spec.NodeSets {
+		if builderCopy.Elasticsearch.Spec.NodeSets[i].Config == nil {
+			builderCopy.Elasticsearch.Spec.NodeSets[i].Config = &commonv1.Config{}
+			continue
+		}
+		delete(builderCopy.Elasticsearch.Spec.NodeSets[i].Config.Data, "node.store.allow_mmap")
+	}
+	return *builderCopy
+}
+
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 	refs := make([]commonv1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
@@ -367,7 +374,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 }
 
 func (b Builder) WithDefaultPersistentVolumes() Builder {
-	storageClass := DefaultStorageClass
+	storageClass := test.DefaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
 			if existing.Name == volume.ElasticsearchDataVolumeName {
@@ -534,6 +541,15 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	}
 	metricsCluster := b.Elasticsearch.Spec.Monitoring.Metrics.ElasticsearchRefs[0].NamespacedName()
 	return &metricsCluster
+}
+
+// TolerateMutationChecksFailures relaxes the continuous health check performed during a mutation by accepting a given number of failures.
+// When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
+// which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
+// https://github.com/elastic/cloud-on-k8s/issues/5795.
+func (b Builder) TolerateMutationChecksFailures() Builder {
+	b.mutationToleratedChecksFailureCount = defaultMutationToleratedFailures
+	return b
 }
 
 // -- Helper functions

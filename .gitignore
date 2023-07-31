@@ -26,6 +26,7 @@ vendor/
 
 # Elastic license keys
 license.key
+dev-license.key
 dev-private.key
 
 # test licenses used in the E2E tests
@@ -37,9 +38,6 @@ monitoring-secrets.json
 # generated from merging multiple files in the Makefile
 config/operator.yaml
 config/crds.yaml
-
-# ignore generated configuration
-config/eck.yaml
 
 # ignore all generated docs HTML
 docs/html/*
@@ -53,7 +51,6 @@ hack/deployer/config/provider
 deployer-config.yml
 .env
 .registry.env
-stack-versions-def.json
 
 # ignore test output
 integration-tests.json
@@ -73,3 +70,6 @@ pkg/controller/common/license/zz_generated.pubkey.go
 # ignore Helm lock file
 Chart.lock
 
+# build
+build/dev*
+build/eck*

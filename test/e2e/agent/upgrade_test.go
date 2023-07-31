@@ -9,7 +9,6 @@ package agent
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -17,26 +16,14 @@ import (
 )
 
 func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
-
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
-
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
-
-	sv := version.MustParse(srcVersion)
-	dv := version.MustParse(dstVersion)
-
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if sv.LT(version.MinFor(8, 7, 0)) && sv.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
-	if dv.LT(version.MinFor(8, 7, 0)) && dv.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
 
 	name := "test-agent-upgrade"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithVersion(srcVersion).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		TolerateMutationChecksFailures()
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithVersion(srcVersion).

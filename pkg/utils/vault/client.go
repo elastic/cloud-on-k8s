@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
@@ -25,6 +26,20 @@ const (
 
 type Client interface {
 	Read(path string) (*api.Secret, error)
+}
+
+type ClientProvider func() (Client, error)
+
+func NewClientProvider() func() (Client, error) {
+	var err error
+	var client Client
+	var once sync.Once
+	return func() (Client, error) {
+		once.Do(func() {
+			client, err = NewClient()
+		})
+		return client, err
+	}
 }
 
 func NewClient() (Client, error) {

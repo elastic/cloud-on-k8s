@@ -13,20 +13,18 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
 	// cfgHashAnnotation is used to store a hash of the Metricbeat and Filebeat configurations.
 	cfgHashAnnotation = "logstash.k8s.elastic.co/monitoring-config-hash"
-
-	logstashLogsVolumeName = "logstash-logs"
-	logstashLogsMountPath  = "/usr/share/logstash/logs"
 )
 
 func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash) (stackmon.BeatSidecar, error) {
@@ -88,14 +86,9 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 			return nil, err
 		}
 
-		// create a logs volume shared between Logstash and Filebeat
-		// TODO: revisit log volume when persistent storage is added
-		logsVolume := volume.NewEmptyDirVolume(logstashLogsVolumeName, logstashLogsMountPath)
-		volumes = append(volumes, logsVolume.Volume())
 		filebeat := b.Container
-		filebeat.VolumeMounts = append(filebeat.VolumeMounts, logsVolume.VolumeMount())
-		builder.WithVolumeMounts(logsVolume.VolumeMount())
-
+		// Add the logs volume mount from the logstash container
+		filebeat.VolumeMounts = append(filebeat.VolumeMounts, volume.DefaultLogsVolume.VolumeMount())
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(filebeat)
 		configHash.Write(b.ConfigHash.Sum(nil))

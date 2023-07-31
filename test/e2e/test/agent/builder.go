@@ -53,12 +53,22 @@ type Builder struct {
 }
 
 func (b Builder) SkipTest() bool {
+	ver := version.MustParse(b.Agent.Spec.Version)
 	supportedVersions := version.SupportedAgentVersions
+
 	if b.Agent.Spec.FleetModeEnabled() {
 		supportedVersions = version.SupportedFleetModeAgentVersions
+
+		// Kibana bug "index conflict on install policy", https://github.com/elastic/kibana/issues/126611
+		if ver.GTE(version.MinFor(8, 0, 0)) && ver.LT(version.MinFor(8, 1, 0)) {
+			return true
+		}
+		// Elastic agent bug "deadlock on startup", https://github.com/elastic/cloud-on-k8s/issues/6331#issuecomment-1478320487
+		if ver.GE(version.MinFor(8, 6, 0)) && ver.LT(version.MinFor(8, 7, 0)) {
+			return true
+		}
 	}
 
-	ver := version.MustParse(b.Agent.Spec.Version)
 	return supportedVersions.WithinRange(ver) != nil
 }
 
@@ -86,17 +96,15 @@ func NewBuilder(name string) Builder {
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
 
-	def := test.Ctx().ImageDefinitionFor(agentv1alpha1.Kind)
 	return Builder{
 		Agent: agentv1alpha1.Agent{
 			ObjectMeta: meta,
 			Spec: agentv1alpha1.AgentSpec{
-				Version: def.Version,
+				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 		Suffix: suffix,
 	}.
-		WithImage(def.Image).
 		WithSuffix(suffix).
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
@@ -168,11 +176,6 @@ func (b Builder) WithElasticsearchRefs(refs ...agentv1alpha1.Output) Builder {
 
 func (b Builder) WithConfig(config *commonv1.Config) Builder {
 	b.Agent.Spec.Config = config
-	return b
-}
-
-func (b Builder) WithImage(image string) Builder {
-	b.Agent.Spec.Image = image
 	return b
 }
 
@@ -319,16 +322,6 @@ func (b Builder) WithFleetMode() Builder {
 
 func (b Builder) WithFleetServer() Builder {
 	b.Agent.Spec.FleetServerEnabled = true
-	return b.WithFleetImage()
-}
-
-func (b Builder) WithFleetImage() Builder {
-	// do not override image or version unless an explicit override exists as builder might already have been configured
-	// with a specific version which we do want to preserve.
-	if def := test.Ctx().ImageDefinitionOrNil(FleetServerPseudoKind); def != nil {
-		b.Agent.Spec.Image = def.Image
-		b.Agent.Spec.Version = def.Version
-	}
 	return b
 }
 

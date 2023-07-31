@@ -22,36 +22,34 @@ import (
 )
 
 type runFlags struct {
-	managedNamespaces      []string
-	e2eImage               string
-	elasticStackVersion    string
-	elasticStackImagesPath string
-	kubeConfig             string
-	operatorImage          string
-	testLicensePKeyPath    string
-	testContextOutPath     string
-	testLicense            string
-	scratchDirRoot         string
-	testRegex              string
-	testRunName            string
-	monitoringSecrets      string
-	pipeline               string
-	buildNumber            string
-	provider               string
-	clusterName            string
-	operatorReplicas       int
-	commandTimeout         time.Duration
-	logVerbosity           int
-	testTimeout            time.Duration
-	autoPortForwarding     bool
-	skipCleanup            bool
-	local                  bool
-	logToFile              bool
-	ignoreWebhookFailures  bool
-	deployChaosJob         bool
-	e2eTags                string
-	testEnvTags            []string
-	gsBucketName           string
+	managedNamespaces     []string
+	e2eImage              string
+	elasticStackVersion   string
+	kubeConfig            string
+	operatorImage         string
+	testLicensePKeyPath   string
+	testContextOutPath    string
+	testLicense           string
+	scratchDirRoot        string
+	testRegex             string
+	testRunName           string
+	monitoringSecrets     string
+	pipeline              string
+	buildNumber           string
+	provider              string
+	clusterName           string
+	operatorReplicas      int
+	commandTimeout        time.Duration
+	logVerbosity          int
+	testTimeout           time.Duration
+	autoPortForwarding    bool
+	skipCleanup           bool
+	local                 bool
+	logToFile             bool
+	ignoreWebhookFailures bool
+	deployChaosJob        bool
+	e2eTags               string
+	testEnvTags           []string
 }
 
 var log logr.Logger
@@ -85,7 +83,6 @@ func Command() *cobra.Command {
 	cmd.Flags().DurationVar(&flags.commandTimeout, "command-timeout", 90*time.Second, "Timeout for commands executed")
 	cmd.Flags().StringVar(&flags.e2eImage, "e2e-image", "", "E2E test image")
 	cmd.Flags().StringVar(&flags.elasticStackVersion, "elastic-stack-version", test.LatestReleasedVersion7x, "Elastic Stack version")
-	cmd.Flags().StringVar(&flags.elasticStackImagesPath, "elastic-stack-images", "", "Path to config file declaring images for individual Elastic Stack applications")
 	cmd.Flags().StringVar(&flags.kubeConfig, "kubeconfig", "", "Path to kubeconfig")
 	cmd.Flags().BoolVar(&flags.local, "local", false, "Create the environment for running tests locally")
 	cmd.Flags().StringSliceVar(&flags.managedNamespaces, "managed-namespaces", []string{"mercury", "venus"}, "List of managed namespaces")
@@ -99,7 +96,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
-	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 30*time.Minute, "Timeout before failing a test")
+	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 15*time.Minute, "Timeout before failing a test")
 	cmd.Flags().StringVar(&flags.pipeline, "pipeline", "", "E2E test pipeline name")
 	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
 	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
@@ -109,7 +106,6 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
 	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
-	cmd.Flags().StringVar(&flags.gsBucketName, "gs-bucket-name", "eck-e2e-buildkite-artifacts", "E2E test Google storage bucket name")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

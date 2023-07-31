@@ -1,76 +1,87 @@
-
-env:
-  DRY_RUN: true
-
 steps:
-  - group: helm-release
-    steps:
 
-      - label: ":go: helm releaser tool"
-        key: "build-helm-releaser-tool"
-        commands:
-          - cd hack/helm/release
-          - make build
-          - buildkite-agent artifact upload bin/releaser
+  - label: ":go: helm releaser tool"
+    key: "build-helm-releaser-tool"
+    commands:
+      - cd hack/helm/release
+      - make build
+      - buildkite-agent artifact upload bin/releaser
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"
 
-      - label: "operator dev helm chart"
-        if: |
-          ( build.branch == "main" && build.source != "schedule" )
-          || build.tag != null
-          || build.message =~ /^buildkite test .*release.*/
-          || build.message == "release eck-operator helm charts"
-          || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-        key: "eck-operator-dev-helm"
-        commands:
-          - buildkite-agent artifact download "bin/releaser" /usr/local/
-          - chmod u+x /usr/local/bin/releaser
-          - releaser --env=dev --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+  - label: "operator dev helm chart"
+    if: |
+      ( build.branch == "main" && build.source != "schedule" )
+      || build.tag != null
+      || build.message =~ /^buildkite test .*release.*/
+      || build.message == "release eck-operator dev helm charts"
+      || build.message == "release eck-operator helm charts"
+      || build.message == "release all helm charts"
+    depends_on:
+      - "build-helm-releaser-tool"
+    key: "eck-operator-dev-helm"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - chmod u+x /usr/local/bin/releaser
+      - releaser --env=dev --charts-dir=deploy/eck-operator
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"
 
-      - wait
+  - wait
 
-      - label: "eck-resources dev helm charts"
-        if: |
-          ( build.branch == "main" && build.source != "schedule" )
-          || build.tag != null
-          || build.message =~ /^buildkite test .*release.*/
-          || build.message == "release eck-resources helm charts"
-          || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-        key: "eck-resources-dev-helm"
-        commands:
-          - buildkite-agent artifact download "bin/releaser" /usr/local/
-          - chmod u+x /usr/local/bin/releaser
-          - releaser --env=dev --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
+  - label: "eck-stack dev helm charts"
+    if: |
+      ( build.branch == "main" && build.source != "schedule" )
+      || build.tag != null
+      || build.message =~ /^buildkite test .*release.*/
+      || build.message == "release eck-stack dev helm charts"
+      || build.message == "release eck-stack helm charts"
+      || build.message == "release all helm charts"
+    depends_on:
+      - "build-helm-releaser-tool"
+    key: "eck-stack-dev-helm"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - chmod u+x /usr/local/bin/releaser
+      - releaser --env=dev --charts-dir=deploy/eck-stack
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"
 
-      - wait
+  - wait
 
-      - label: "operator prod helm chart"
-        if: |
-          build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
-          || build.message == "release eck-operator helm charts"
-          || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "eck-operator-dev-helm"
-        commands:
-          - buildkite-agent artifact download "bin/releaser" /usr/local/
-          - chmod u+x /usr/local/bin/releaser
-          - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=\$DRY_RUN
+  - label: "operator prod helm chart"
+    if: |
+      build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+      || build.message == "release eck-operator helm charts"
+      || build.message == "release all helm charts"
+    depends_on:
+      - "build-helm-releaser-tool"
+      - "eck-operator-dev-helm"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - chmod u+x /usr/local/bin/releaser
+      - releaser --env=prod --charts-dir=deploy/eck-operator
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"
 
-      - wait
+  - wait
 
-      - label: "eck-resources prod helm charts"
-        if: |
-          build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
-          || build.message == "release eck-resources helm charts"
-          || build.message == "release all helm charts"
-        depends_on:
-          - "build-helm-releaser-tool"
-          - "eck-resources-dev-helm"
-        commands:
-          - buildkite-agent artifact download "bin/releaser" /usr/local/
-          - chmod u+x /usr/local/bin/releaser
-          - releaser --env=prod --charts-dir=deploy/eck-stack --dry-run=\$DRY_RUN
+  - label: "eck-stack prod helm charts"
+    if: |
+      build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
+      || build.message == "release eck-stack helm charts"
+      || build.message == "release all helm charts"
+    depends_on:
+      - "build-helm-releaser-tool"
+      - "eck-stack-dev-helm"
+    commands:
+      - buildkite-agent artifact download "bin/releaser" /usr/local/
+      - chmod u+x /usr/local/bin/releaser
+      - releaser --env=prod --charts-dir=deploy/eck-stack
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"

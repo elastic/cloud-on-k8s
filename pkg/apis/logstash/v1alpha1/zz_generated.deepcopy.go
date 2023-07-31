@@ -11,6 +11,7 @@ package v1alpha1
 
 import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -208,6 +209,13 @@ func (in *LogstashSpec) DeepCopyInto(out *LogstashSpec) {
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
 		*out = make([]v1.SecretSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.VolumeClaimTemplates != nil {
+		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
+		*out = make([]corev1.PersistentVolumeClaim, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

@@ -6,8 +6,7 @@ These commands include
 
 - Pushing operator image to Quay.io
 - Publishing eck operator container image within redhat catalog
-- Generate Operator Lifecycle Manager format files
-- Generate Operator bundle metadata (wrapper for [OPM](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command)
+- Generate Operator Lifecycle Manager registry bundle files
 - Publish draft pull requests to both https://github.com/redhat-openshift-ecosystem/certified-operators and https://github.com/k8s-operatorhub/community-operators
 
 ## Configuration
@@ -28,7 +27,6 @@ All commands require the configuration file `config.yaml` to be modified prior t
   * publish - publish operator container within redhat certification API
 * generate-manifests - generate operator lifecycle manager format files
 * bundle - parent command
-  * generate - generate operator metadata for publishing on openshift operator hub
   * create-pr - perform all git operations and create pull requests for community and certified operator repositories
 
 ## Vault Details
@@ -121,7 +119,6 @@ The `generate-manifests` command will extracts CRDs and RBAC definitions from di
 a new release to OperatorHub.  These files are written within the following 3 directories:
 
 - community-operators
-- upstream-community-operators
 - certified-operators
 
 ### Usage
@@ -152,28 +149,6 @@ To generate configuration based on yet unreleased YAML manifests:
 ## Bundle Command
 
 *This command's sub-commands all requires the output of the `generate-manifests` command to be run*
-
-### Generate sub-command
-
-The `bundle generate` command will perform the following tasks:
-1. Run the [opm](https://github.com/operator-framework/operator-registry/tree/master/cmd/opm) command on the output of `operatorhub` command to generate the operator metadata for operator hub publishing
-
-#### Usage
-
-- Ensure that the `generate-manifests` command has successfully ran
-- Run the `bundle generate` command, pointing to the output directory of the `generate-manifests` command
-
-With and without vault
-```shell
-./operatorhub bundle generate -d .
-```
-
-#### Flags
-
-| Parameter                        | Description                                                                                                                               | Environment Variable                | Default           |
-|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|-------------------|
-| `--dir`                          | Directory containing the output of the `generate-manifests` command.                                                                      | `OHUB_DIR`                          | `"./"`            |
-| `--conf`                         | Path to config.yaml file.                                                                                                                 | `OHUB_CONF`                         | `"./config.yaml"` |
 
 ### Create-PR sub-command
 

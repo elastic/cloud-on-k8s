@@ -8,6 +8,7 @@ steps:
 
   {{- if $test.RemoteKubeconfig }}
 
+  # create k8s cluster
   - label: ":k8s: {{ $test.Name }}"
     key: "e2e-cluster-{{ $test.SlugName }}"
 
@@ -25,17 +26,21 @@ steps:
       - make run-deployer
       {{- end }}
 
-    {{- if $test.Dind }}
     agents:
+      {{- if $test.Dind }}
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ .KindAgentsMachineType }}"
       {{- end }}
-    {{- end }}
+      {{- else }}
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "4G"
+      {{- end }}
 
   {{- end }}
 
+  # create k8s cluster and run e2e tests, or just run e2e tests (if RemoteKubeconfig)
   {{- if $test.RemoteKubeconfig }}
   - label: ":go: {{ $test.Name }}"
   {{- else }}
@@ -46,6 +51,7 @@ steps:
     {{- if $test.RemoteKubeconfig }}
     depends_on:
       - "e2e-cluster-{{ $test.SlugName }}"
+      # let's be optimistic and run the tests without dependency on the images build
     {{- end }}
 
     env:
@@ -79,6 +85,7 @@ steps:
       machineType: "{{ $.KindAgentsMachineType }}"
       {{- end }}
       {{- else }}
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
       memory: "4G"
       {{- end }}
 
@@ -98,6 +105,7 @@ steps:
 {{- range $test := .Tests }}
     {{- if $test.Cleanup }}
 
+      # delete k8s cluster
       - label: ":broom: {{ $test.Name }}"
         depends_on:
           - step: "e2e-{{ $test.SlugName }}"
@@ -110,10 +118,12 @@ steps:
 
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
-          - .buildkite/scripts/common/cp-diagnostics.sh
 
         {{- if not $test.Dind }}
           - make run-deployer
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+          memory: "4G"
         {{- else }}
           - make -C .buildkite TARGET="run-deployer" ci
         agents:
@@ -124,16 +134,19 @@ steps:
           automatic:
             - limit: 5
 
-
-
     {{- end }}
 {{- end }}
 
-  - wait: ~
-    continue_on_failure: true
-
   - label: "aggregate tests-results"
+    depends_on:
+      {{- range $test := .Tests }}
+      - step: "e2e-{{ $test.SlugName }}"
+        allow_failure: true
+      {{- end }}
     command: .buildkite/scripts/test/report-tests-results.sh
     artifact_paths:
       - ".buildkite/e2e/reporter/*.md"
       - ".buildkite/e2e/reporter/*.yml"
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: "2G"

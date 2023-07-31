@@ -3,7 +3,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 8.6.1
+  version: 8.8.0
   nodeSets:
     - name: default
       count: 3
@@ -16,7 +16,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 2
-  version: 8.6.1
+  version: 8.8.0
   config:
     log.level: info
     api.http.host: "0.0.0.0"
