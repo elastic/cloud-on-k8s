@@ -417,9 +417,6 @@ drivah-build-e2e:
 
 # -- run
 
-
-E2E_IMG_TAG                ?= $(IMG_VERSION)
-E2E_IMG                    ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(E2E_IMG_TAG)
 E2E_STACK_VERSION          ?= 8.8.0
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
