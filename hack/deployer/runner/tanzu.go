@@ -444,33 +444,35 @@ func (t *TanzuDriver) restoreInstallerState() error {
 }
 
 func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
-	if err := t.loginToAzure(); err != nil {
-		return nil, err
-	}
-	daysAgo := time.Now().Add(-olderThan)
-	params := map[string]interface{}{
-		"Date":                 daysAgo.Format(time.RFC3339),
-		"Location":             t.plan.Tanzu.Location,
-		"E2EClusterNamePrefix": prefix,
-	}
-	clustersCmd := `az resource list -l {{.Location}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
-	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).OutputList()
-	if err != nil {
-		return nil, fmt.Errorf("while running az resource list command: %w", err)
-	}
-	for _, cluster := range clustersToDelete {
-		t.plan.ClusterName = cluster
-		// we use the Azure resource group to simplify garbage collecting the created resources on delete, if users set this
-		// value they have to be aware that the referenced resource group will be deleted.
-		if t.plan.Tanzu.ResourceGroup == "" {
-			t.plan.Tanzu.ResourceGroup = cluster
-		}
-		log.Printf("deleting cluster: %s", cluster)
-		if err = t.delete(); err != nil {
-			return nil, err
-		}
-	}
-	return clustersToDelete, nil
+	return nil, nil
+	// if err := t.loginToAzure(); err != nil {
+	// 	return nil, err
+	// }
+	// daysAgo := time.Now().Add(-olderThan)
+	// params := map[string]interface{}{
+	// 	"Date":                 daysAgo.Format(time.RFC3339),
+	// 	"Location":             t.plan.Tanzu.Location,
+	// 	"E2EClusterNamePrefix": prefix,
+	// }
+	// // Resource group is equal to cluster here, so you need to loop across these in some way, and search for each ???
+	// clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
+	// clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).OutputList()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("while running az resource list command: %w", err)
+	// }
+	// for _, cluster := range clustersToDelete {
+	// 	t.plan.ClusterName = cluster
+	// 	// we use the Azure resource group to simplify garbage collecting the created resources on delete, if users set this
+	// 	// value they have to be aware that the referenced resource group will be deleted.
+	// 	if t.plan.Tanzu.ResourceGroup == "" {
+	// 		t.plan.Tanzu.ResourceGroup = cluster
+	// 	}
+	// 	log.Printf("deleting cluster: %s", cluster)
+	// 	if err = t.delete(); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+	// return clustersToDelete, nil
 }
 
 var _ Driver = &TanzuDriver{}

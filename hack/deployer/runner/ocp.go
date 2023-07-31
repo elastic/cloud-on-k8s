@@ -472,7 +472,7 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	params["Date"] = daysAgo.Format(time.RFC3339)
 	params["E2EClusterNamePrefix"] = prefix
 	params["Region"] = d.plan.Ocp.Region
-	cmd := `gcloud compute instances list --verbosity error --zones={{.Region}}-a,{{.Region}}-b,{{.Region}}-c --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*-master.*' AND status=RUNNING" --format=json | jq -r '.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
+	cmd := `gcloud compute instances list --verbosity error --zones={{.Region}}-a,{{.Region}}-b,{{.Region}}-c --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*-master.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
 	clusters, err := exec.NewCommand(cmd).AsTemplate(params).OutputList()
 	if err != nil {
 		return nil, err
