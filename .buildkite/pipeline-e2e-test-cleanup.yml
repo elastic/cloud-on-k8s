@@ -40,7 +40,7 @@ steps:
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
-      - make -C .buildkite TARGET="run-deployer-cleanup-aks" ci
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
     agents:
       provider: "gcp"
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
@@ -78,3 +78,29 @@ steps:
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
       memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup ocp"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    env:
+      E2E_PROVIDER: "ocp"
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+
+  - label: ":broom: e2e test cluster cleanup tanzu"
+    if: |
+      build.message == "buildkite run e2e test cleanup"
+    env:
+      E2E_PROVIDER: "tanzu"
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"

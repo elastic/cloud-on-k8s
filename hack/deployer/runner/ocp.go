@@ -463,6 +463,25 @@ func (d *OCPDriver) baseDomain() string {
 	return baseDomain
 }
 
-func (d *OCPDriver) Cleanup(string, time.Duration) ([]string, error) {
-	return nil, fmt.Errorf("unimplemented")
+func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
+	if err := d.authToGCP(); err != nil {
+		return nil, err
+	}
+	daysAgo := time.Now().Add(-olderThan)
+	params := d.bucketParams()
+	params["Date"] = daysAgo.Format(time.RFC3339)
+	params["E2EClusterNamePrefix"] = prefix
+	params["Region"] = d.plan.Ocp.Region
+	cmd := `gcloud compute instances list --verbosity error --zones={{.Region}}-a,{{.Region}}-b,{{.Region}}-c --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*-master.*' AND status=RUNNING" --format=json | jq -r '.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*-[a-z0-9]*' | sort | uniq`
+	clusters, err := exec.NewCommand(cmd).AsTemplate(params).OutputList()
+	if err != nil {
+		return nil, err
+	}
+	for _, cluster := range clusters {
+		d.plan.ClusterName = cluster
+		if err = d.delete(); err != nil {
+			return nil, err
+		}
+	}
+	return clusters, nil
 }
