@@ -141,10 +141,3 @@ steps:
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
       memory: "2G"
-
-  # For testing purposes TODO: remove me
-  - label: ":buildkite:"
-    command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-test-cleanup.yml
-    agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
-      memory: "2G"

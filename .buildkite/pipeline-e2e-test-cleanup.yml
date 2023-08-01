@@ -6,8 +6,6 @@ steps:
 
   - label: ":go: build deployer"
     key: "build-deployer"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     commands:
       - make build-deployer
       - buildkite-agent artifact upload hack/deployer/deployer
@@ -18,8 +16,6 @@ steps:
   - label: ":broom: e2e test cluster cleanup gke"
     depends_on:
       - "build-deployer"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     env:
       E2E_PROVIDER: "gke"
       CLUSTER_NAME: "none"
@@ -33,8 +29,6 @@ steps:
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup aks"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     env:
       E2E_PROVIDER: "aks"
       CLUSTER_NAME: "none"
@@ -46,8 +40,6 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
 
   - label: ":broom: e2e test cluster cleanup eks"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
     env:
@@ -63,8 +55,6 @@ steps:
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup eks-arm"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     depends_on:
       - "build-deployer"
     env:
@@ -80,8 +70,6 @@ steps:
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup ocp"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     env:
       E2E_PROVIDER: "ocp"
       CLUSTER_NAME: "none"
@@ -93,8 +81,6 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
 
   - label: ":broom: e2e test cluster cleanup tanzu"
-    if: |
-      build.message == "buildkite run e2e test cleanup"
     env:
       E2E_PROVIDER: "tanzu"
       CLUSTER_NAME: "none"
