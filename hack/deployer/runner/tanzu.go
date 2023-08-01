@@ -466,7 +466,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 		params["ResourceGroup"] = rg
 
 		clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
-		clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).OutputList()
+		clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).WithoutStreaming().OutputList()
 		if err != nil {
 			return nil, fmt.Errorf("while running az resource list command: %w", err)
 		}
