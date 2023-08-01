@@ -395,7 +395,7 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 }
 
 func (t *TanzuDriver) deleteResourceGroup() error {
-	log.Println("Deleting Azure resource group")
+	log.Printf("Deleting Azure resource group %s\n", t.plan.Tanzu.ResourceGroup)
 	return azure.Cmd("group", "delete", "--name", t.plan.Tanzu.ResourceGroup, "-y").
 		Run()
 }
@@ -473,7 +473,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 			if t.plan.Tanzu.ResourceGroup == "" {
 				t.plan.Tanzu.ResourceGroup = cluster
 			}
-			log.Printf("deleting cluster: %s", cluster)
+			log.Printf("deleting cluster '%s' and resource group '%s'", cluster, t.plan.Tanzu.ResourceGroup)
 			if err = t.delete(); err != nil {
 				return nil, err
 			}
