@@ -453,8 +453,8 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 		"Location":             t.plan.Tanzu.Location,
 		"E2EClusterNamePrefix": prefix,
 	}
-	resourceListCmd := `az group list --query "[?location=='{{.Location}}']" --query "[?contains(name,'{{.E2EClusterNamePrefix}}-tanzu')]"`
-	resourceGroups, err := exec.NewCommand(resourceListCmd).AsTemplate(params).OutputList()
+	resourceGroupListCmd := `az group list --query "[?location=='{{.Location}}']" --query "[?contains(name,'{{.E2EClusterNamePrefix}}-tanzu')]" | jq -r '.[].name'`
+	resourceGroups, err := exec.NewCommand(resourceGroupListCmd).AsTemplate(params).OutputList()
 	if err != nil {
 		return nil, err
 	}
