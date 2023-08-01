@@ -33,7 +33,7 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes in
 
 ===== System and Kubernetes integrations running as non-root - `fleet-kubernetes-integration-nonroot.yaml`
 
-The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a Daemonset to ensure directory and file permissions. *Note* The Daemonset itself must run as root to set up permissions.
+The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a Daemonset to ensure directory and file permissions. *Note* The Daemonset itself must run as root to set up permissions and ECK >= 2.10.0 is required.
 
 ===== Custom logs integration with autodiscover - `fleet-custom-logs-integration.yaml`
 
