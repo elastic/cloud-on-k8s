@@ -18,6 +18,7 @@ steps:
       - "build-deployer"
     env:
       E2E_PROVIDER: "gke"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -29,8 +30,10 @@ steps:
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup aks"
+    # this does not depend on building deployer as the make target handles the building.
     env:
       E2E_PROVIDER: "aks"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -44,6 +47,7 @@ steps:
       - "build-deployer"
     env:
       E2E_PROVIDER: "eks"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -59,6 +63,7 @@ steps:
       - "build-deployer"
     env:
       E2E_PROVIDER: "eks-arm"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -70,8 +75,10 @@ steps:
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup ocp"
+    # this does not depend on building deployer as the make target handles the building.
     env:
       E2E_PROVIDER: "ocp"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
@@ -81,8 +88,10 @@ steps:
       image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
 
   - label: ":broom: e2e test cluster cleanup tanzu"
+    # this does not depend on building deployer as the make target handles the building.
     env:
       E2E_PROVIDER: "tanzu"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
       CLUSTER_NAME: "none"
     commands:
       - .buildkite/scripts/test/set-deployer-config.sh
