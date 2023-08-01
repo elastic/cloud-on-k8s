@@ -448,38 +448,40 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 		return nil, err
 	}
 	daysAgo := time.Now().Add(-olderThan)
+
 	params := map[string]interface{}{
 		"Date":                 daysAgo.Format(time.RFC3339),
 		"Location":             t.plan.Tanzu.Location,
 		"E2EClusterNamePrefix": prefix,
 	}
+
 	resourceGroupListCmd := `az group list --query "[?location=='{{.Location}}']" --query "[?contains(name,'{{.E2EClusterNamePrefix}}-tanzu')]" | jq -r '.[].name'`
-	resourceGroups, err := exec.NewCommand(resourceGroupListCmd).AsTemplate(params).OutputList()
+	resourceGroups, err := exec.NewCommand(resourceGroupListCmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
 		return nil, err
 	}
-	var clustersToDelete []string
+
+	var deletedClusters []string
 	for _, rg := range resourceGroups {
 		params["ResourceGroup"] = rg
+
 		clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
-		clustersToDeleteInRG, err := exec.NewCommand(clustersCmd).AsTemplate(params).OutputList()
+		clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).OutputList()
 		if err != nil {
 			return nil, fmt.Errorf("while running az resource list command: %w", err)
 		}
-		for _, cluster := range clustersToDeleteInRG {
+
+		for _, cluster := range clustersToDelete {
 			t.plan.ClusterName = cluster
-			// Checking for 'none' as well here as historically seeing resourcegroup set to 'none' and deletes failing.
-			if t.plan.Tanzu.ResourceGroup == "" || t.plan.Tanzu.ResourceGroup == "none" {
-				t.plan.Tanzu.ResourceGroup = cluster
-			}
-			log.Printf("deleting cluster '%s' and resource group '%s'", cluster, t.plan.Tanzu.ResourceGroup)
+			t.plan.Tanzu.ResourceGroup = cluster
+			log.Printf("deleting cluster %s\n", cluster)
 			if err = t.delete(); err != nil {
 				return nil, err
 			}
-			clustersToDelete = append(clustersToDelete, cluster)
+			deletedClusters = append(deletedClusters, cluster)
 		}
 	}
-	return clustersToDelete, nil
+	return deletedClusters, nil
 }
 
 var _ Driver = &TanzuDriver{}
