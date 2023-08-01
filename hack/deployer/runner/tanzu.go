@@ -468,9 +468,8 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 		}
 		for _, cluster := range clustersToDeleteInRG {
 			t.plan.ClusterName = cluster
-			// we use the Azure resource group to simplify garbage collecting the created resources on delete, if users set this
-			// value they have to be aware that the referenced resource group will be deleted.
-			if t.plan.Tanzu.ResourceGroup == "" {
+			// Checking for 'none' as well here as historically seeing resourcegroup set to 'none' and deletes failing.
+			if t.plan.Tanzu.ResourceGroup == "" || t.plan.Tanzu.ResourceGroup == "none" {
 				t.plan.Tanzu.ResourceGroup = cluster
 			}
 			log.Printf("deleting cluster '%s' and resource group '%s'", cluster, t.plan.Tanzu.ResourceGroup)
