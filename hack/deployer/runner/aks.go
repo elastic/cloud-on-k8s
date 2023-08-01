@@ -185,27 +185,28 @@ func (d *AKSDriver) GetCredentials() error {
 }
 
 func (d *AKSDriver) delete() error {
-	log.Print("Deleting cluster...")
-	args := []string{"aks",
+	log.Printf("Deleting cluster %s ...\n", d.plan.ClusterName)
+	return azure.Cmd("aks",
 		"delete", "--yes",
 		"--name", d.plan.ClusterName,
-		"--resource-group", d.plan.Aks.ResourceGroup}
-	return azure.Cmd(args...).
-		Run()
+		"--resource-group", d.plan.Aks.ResourceGroup).Run()
 }
 
 func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
 	if err := d.auth(); err != nil {
 		return nil, err
 	}
+
 	daysAgo := time.Now().Add(-olderThan)
 	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	d.ctx["E2EClusterNamePrefix"] = prefix
+
 	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}"))))|.[].name'`
 	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return nil, fmt.Errorf("while running az resource list command: %w", err)
 	}
+
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
 		if d.plan.Aks.ResourceGroup == "" {
@@ -219,7 +220,6 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 			}
 			d.plan.Aks.ResourceGroup = resourceGroup
 		}
-		log.Printf("deleting cluster: %s", cluster)
 		if err = d.delete(); err != nil {
 			return nil, err
 		}

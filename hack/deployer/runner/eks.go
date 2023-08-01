@@ -250,16 +250,20 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	if err := e.auth(); err != nil {
 		return nil, err
 	}
+
 	daysAgo := time.Now().Add(-olderThan)
 	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
 	e.ctx["E2EClusterNamePrefix"] = prefix
+
 	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("{{.E2EClusterNamePrefix}}")))| .[].Name'`
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
 		return nil, err
 	}
+
 	var deletedClusters []string
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
+
 	for _, cluster := range allClusters {
 		e.ctx["ClusterName"] = cluster
 		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()

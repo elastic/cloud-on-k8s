@@ -35,7 +35,7 @@ func CleanupCommand() *cobra.Command {
 	return cleanupCmd
 }
 
-// cleanup will attempt to cleanup any clusters older than 3 days
+// cleanup will attempt to cleanup any clusters older than given 'olderThan' duration.
 func cleanup(configFile, plansFile, clusterPrefix, clientBuildDefDir string, olderThan time.Duration) error {
 	plans, runConfig, err := runner.ParseFiles(plansFile, configFile)
 	if err != nil {
