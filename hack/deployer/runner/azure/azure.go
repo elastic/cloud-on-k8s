@@ -39,9 +39,9 @@ func NewCredentials(c vault.Client) (Credentials, error) {
 }
 
 func Login(creds Credentials) error {
-	args := []string{"login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID}
-	cmd := Cmd(args...)
-	return cmd.WithoutStreaming().Run()
+	return Cmd("login", "--service-principal", "-u", creds.ClientID, "-p", creds.ClientSecret, "--tenant", creds.TenantID).
+		WithoutStreaming().
+		Run()
 }
 
 func ExistsCmd(cmd *exec.Command) (bool, error) {

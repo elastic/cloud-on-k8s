@@ -191,7 +191,7 @@ func (d *OCPDriver) create() error {
 }
 
 func (d *OCPDriver) delete() error {
-	log.Printf("Deleting cluster %s ...", d.plan.ClusterName)
+	log.Printf("Deleting cluster %s ...\n", d.plan.ClusterName)
 
 	err := d.runInstallerCommand("destroy")
 	if err != nil {

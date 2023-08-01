@@ -189,7 +189,8 @@ func (d *AKSDriver) delete() error {
 	return azure.Cmd("aks",
 		"delete", "--yes",
 		"--name", d.plan.ClusterName,
-		"--resource-group", d.plan.Aks.ResourceGroup).Run()
+		"--resource-group", d.plan.Aks.ResourceGroup).
+		Run()
 }
 
 func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
