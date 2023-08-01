@@ -146,6 +146,7 @@ spec:
   - name: elasticsearch
   mode: fleet
   fleetServerEnabled: true
+  policyID: eck-fleet-server
   deployment:
     replicas: 1
     podTemplate:
@@ -164,6 +165,7 @@ spec:
   fleetServerRef: 
     name: fleet-server
   mode: fleet
+  policyID: eck-agent
   daemonSet:
     podTemplate:
       spec:
