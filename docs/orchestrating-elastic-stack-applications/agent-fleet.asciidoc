@@ -495,7 +495,7 @@ In order to run Elastic Agent as a non-root user you must choose how you want to
 1. Run Elastic Agent with an `emptyDir` volume. This has the downside of not persisting data between restarts of the Elastic Agent which can duplicate work done by the previous running Agent.
 2. Run Elastic Agent with a `hostPath` volume in addition to a `Daemonset` running as `root` that maintains permissions for the `agent` user.
 
-In addition to these decisions, if you are running Elastic Agent in Fleet mode as a non-root user you must configure Kibana to accept the CA of the Elasticsearch Cluster.
+In addition to these decisions, if you are running Elastic Agent in Fleet mode as a non-root user, you must configure `certificate_authorities.ssl` in each `xpack.fleet.outputs` to trust the CA of the Elasticsearch Cluster.
 
 To run Elastic Agent with an `emptyDir` volume.
 
@@ -661,7 +661,9 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes in
 ----
 kubectl apply -f {agent_recipes}/fleet-kubernetes-integration-nonroot.yaml
 ----
-The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a Daemonset to ensure directory and file permissions. *Note* The Daemonset itself must run as root to set up permissions.
+The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a Daemonset to ensure directory and file permissions.
+
+NOTE: The Daemonset itself must run as root to set up permissions.
 
 === Custom logs integration with autodiscover
 

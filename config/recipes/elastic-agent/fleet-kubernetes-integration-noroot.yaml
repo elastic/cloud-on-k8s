@@ -1,3 +1,4 @@
+# The following example manifest is only functional using ECK 2.10.0+.
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -79,7 +80,6 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
-      is_default: true
       name: eck-elasticsearch
       type: elasticsearch
       hosts: ["https://elasticsearch-es-http.default.svc:9200"]
@@ -102,7 +102,6 @@ spec:
       - logs
       - metrics
       unenroll_timeout: 900
-      is_default_fleet_server: true
       package_policies:
       - name: fleet_server-1
         id: fleet_server-1
@@ -115,7 +114,6 @@ spec:
       - logs
       - metrics
       unenroll_timeout: 900
-      is_default: true
       package_policies:
       - package:
           name: system
