@@ -14,22 +14,21 @@ import (
 
 func CleanupCommand() *cobra.Command {
 	var (
-		configFile, clientBuildDefDir *string
-		olderThan                     time.Duration
-		plansFile, clusterPrefix      string
+		configFile, clientBuildDefDir, plansFile *string
+		olderThan                                time.Duration
+		clusterPrefix                            string
 	)
 
 	var cleanupCmd = &cobra.Command{
 		Use:   "cleanup",
 		Short: "Runs the cleanup operation to cleanup clusters older than 3 days in the given provider.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cleanup(*configFile, plansFile, clusterPrefix, *clientBuildDefDir, olderThan)
+			return cleanup(*configFile, *plansFile, clusterPrefix, *clientBuildDefDir, olderThan)
 		},
 	}
 
-	_, configFile, clientBuildDefDir = registerFileFlags(cleanupCmd)
+	plansFile, configFile, clientBuildDefDir = registerFileFlags(cleanupCmd)
 
-	cleanupCmd.Flags().StringVar(&plansFile, "plans-file", "config/plans.yml", "File containing execution plans.")
 	cleanupCmd.Flags().DurationVar(&olderThan, "older-than", 72*time.Hour, `The minimum age of the clusters to be deleted (valid time units are "s", "m", "h"`)
 	cleanupCmd.Flags().StringVar(&clusterPrefix, "cluster-prefix", "eck-e2e", "The E2E Cluster prefix to use for querying for clusters to cleanup.")
 
