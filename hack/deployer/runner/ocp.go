@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -474,7 +475,23 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	params["E2EClusterNamePrefix"] = prefix
 	params["Region"] = d.plan.Ocp.Region
 
-	cmd := `gcloud compute instances list --verbosity error --zones={{.Region}}-a,{{.Region}}-b,{{.Region}}-c --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
+	if d.plan.Ocp.GCloudProject == "" {
+		gCloudProject, err := vault.Get(d.vaultClient, OCPVaultPath, GKEProjectVaultFieldName)
+		if err != nil {
+			return nil, err
+		}
+		d.plan.Ocp.GCloudProject = gCloudProject
+	}
+	params["GCloudProject"] = d.plan.Ocp.GCloudProject
+
+	zonesCmd := `gcloud compute zones list --verbosity error --filter='region:https://www.googleapis.com/compute/v1/projects/{{.GCloudProject}}/regions/{{.Region}}' --format="value(selfLink.name())"`
+	zones, err := exec.NewCommand(zonesCmd).AsTemplate(params).WithoutStreaming().OutputList()
+	if err != nil {
+		return nil, err
+	}
+	params["Zones"] = strings.Join(zones, ",")
+
+	cmd := `gcloud compute instances list --verbosity error --zones={{.Zones}} --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*-master.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
 	clustersToDelete, err := exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
 		return nil, err
