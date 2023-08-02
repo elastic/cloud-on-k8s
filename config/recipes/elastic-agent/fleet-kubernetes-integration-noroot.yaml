@@ -79,6 +79,7 @@ spec:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
+      is_default: true
       name: eck-elasticsearch
       type: elasticsearch
       hosts: ["https://elasticsearch-es-http.default.svc:9200"]
