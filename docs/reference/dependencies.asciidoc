@@ -49,7 +49,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/apm/module/apmzap/v2[$$go.elastic.co/apm/module/apmzap/v2$$] | v2.4.3 | Apache-2.0
 | link:https://go.elastic.co/apm/v2[$$go.elastic.co/apm/v2$$] | v2.4.3 | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.5.3 | MIT
-| link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.24.0 | MIT
+| link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.25.0 | MIT
 | link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.11.0 | BSD-3-Clause
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.1 | MIT
 | link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.27.4 | Apache-2.0
@@ -74,7 +74,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver/v3$$] | v3.2.0 | MIT
 | link:https://github.com/armon/go-radix[$$github.com/armon/go-radix$$] | v1.0.0 | MIT
 | link:https://github.com/armon/go-socks5[$$github.com/armon/go-socks5$$] | v0.0.0-20160902184237-e75332964ef5 | MIT
-| link:https://github.com/benbjohnson/clock[$$github.com/benbjohnson/clock$$] | v1.1.0 | MIT
+| link:https://github.com/benbjohnson/clock[$$github.com/benbjohnson/clock$$] | v1.3.0 | MIT
 | link:https://github.com/beorn7/perks[$$github.com/beorn7/perks$$] | v1.0.1 | MIT
 | link:https://github.com/cenkalti/backoff[$$github.com/cenkalti/backoff/v3$$] | v3.0.0 | MIT
 | link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash/v2$$] | v2.2.0 | MIT
@@ -153,9 +153,8 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/subosito/gotenv[$$github.com/subosito/gotenv$$] | v1.4.2 | MIT
 | link:https://github.com/vbatts/tar-split[$$github.com/vbatts/tar-split$$] | v0.11.3 | BSD-3-Clause
 | link:https://go.elastic.co/fastjson[$$go.elastic.co/fastjson$$] | v1.1.0 | MIT
-| link:https://go.uber.org/atomic[$$go.uber.org/atomic$$] | v1.9.0 | MIT
 | link:https://go.uber.org/goleak[$$go.uber.org/goleak$$] | v1.2.1 | MIT
-| link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.8.0 | MIT
+| link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.10.0 | MIT
 | link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.10.0 | BSD-3-Clause
 | link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.10.0 | BSD-3-Clause
 | link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.8.0 | BSD-3-Clause
