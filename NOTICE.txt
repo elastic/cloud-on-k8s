@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.15.2
-Time    : 2023-05-16T20:57:44Z
+Version : v0.16.1
+Time    : 2023-08-02T20:59:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.15.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.16.1/LICENSE:
 
 
                                  Apache License
@@ -6025,11 +6025,11 @@ Contents of probable licence file $GOMODCACHE/github.com/containerd/stargz-snaps
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/cli
-Version : v23.0.5+incompatible
-Time    : 2023-04-26T14:46:06Z
+Version : v24.0.0+incompatible
+Time    : 2023-05-12T14:10:05Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v23.0.5+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/cli@v24.0.0+incompatible/LICENSE:
 
 
                                  Apache License
@@ -6438,11 +6438,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/docker/docker
-Version : v23.0.5+incompatible
-Time    : 2023-04-26T15:29:05Z
+Version : v24.0.0+incompatible
+Time    : 2023-05-15T14:40:33Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v23.0.5+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/docker/docker@v24.0.0+incompatible/LICENSE:
 
 
                                  Apache License
@@ -15260,11 +15260,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/sirupsen/logrus
-Version : v1.9.0
-Time    : 2022-07-19T07:08:54Z
+Version : v1.9.1
+Time    : 2023-05-15T10:31:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/sirupsen/logrus@v1.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/sirupsen/logrus@v1.9.1/LICENSE:
 
 The MIT License (MIT)
 
