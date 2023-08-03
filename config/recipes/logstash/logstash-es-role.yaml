@@ -42,8 +42,8 @@ spec:
         output { 
           elasticsearch {
             hosts => [ "${ECK_ES_HOSTS}" ]
-            ssl => true
-            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_enabled => true
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
             user => "${ECK_ES_USER}"
             password => "${ECK_ES_PASSWORD}"
             index => "my-index"

@@ -14,7 +14,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -40,7 +39,7 @@ type OnObservation func(cluster types.NamespacedName, previousHealth, newHealth 
 // in a thread-safe way
 type Observer struct {
 	cluster       types.NamespacedName
-	esClient      client.Client
+	esClient      esclient.Client
 	settings      Settings
 	creationTime  time.Time
 	stopChan      chan struct{}
@@ -51,7 +50,7 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient esclient.Client, settings Settings, onObservation OnObservation) *Observer {
 	observer := Observer{
 		cluster:       cluster,
 		esClient:      esClient,

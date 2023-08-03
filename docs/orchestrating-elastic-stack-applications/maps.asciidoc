@@ -41,9 +41,18 @@ kind: ElasticMapsServer
 metadata:
   name: quickstart
 spec:
+ifeval::["{version}"=="8.8.2"]
+  version: 8.8.1
+endif::[]
+ifeval::["{version}"!="8.8.2"]
   version: {version}
+endif::[]
   count: 1
 ----
+
+ifeval::["{version}"=="8.8.2"]
+WARNING: {ems} `8.8.2` was released with a bug that prevents the Docker image to start. Please use the `8.8.1` tag instead indicated in the snippet above.
+endif::[]
 
 Versions of {ems} prior to 7.14 need a connection to Elasticseach to verify the installed license. You define the connection with the `elasticsearchRef` attribute:
 

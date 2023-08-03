@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
-	ptr "k8s.io/utils/pointer"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
@@ -88,9 +87,9 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:               ptr.Bool(false),
-				ReadOnlyRootFilesystem:   ptr.Bool(true),
-				AllowPrivilegeEscalation: ptr.Bool(false),
+				Privileged:               pointer.Bool(false),
+				ReadOnlyRootFilesystem:   pointer.Bool(true),
+				AllowPrivilegeEscalation: pointer.Bool(false),
 			},
 		},
 		{
@@ -100,10 +99,10 @@ func TestDefaultBeatSecurityContext(t *testing.T) {
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{"ALL"},
 				},
-				Privileged:               ptr.Bool(false),
-				ReadOnlyRootFilesystem:   ptr.Bool(true),
-				RunAsNonRoot:             ptr.Bool(true),
-				AllowPrivilegeEscalation: ptr.Bool(false),
+				Privileged:               pointer.Bool(false),
+				ReadOnlyRootFilesystem:   pointer.Bool(true),
+				RunAsNonRoot:             pointer.Bool(true),
+				AllowPrivilegeEscalation: pointer.Bool(false),
 			},
 		},
 	}

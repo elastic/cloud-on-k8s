@@ -22,7 +22,6 @@ import (
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/strings/slices"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -72,12 +71,12 @@ func Test_buildPodTemplate(t *testing.T) {
 		},
 	)
 	httpPortCfg := &commonv1.Config{Data: map[string]interface{}{"http.port": 3033}}
-	beatWithMonitoring := v1beta1.Beat{
+	beatWithMonitoring := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "beat-name",
 			Namespace: "ns",
 		},
-		Spec: v1beta1.BeatSpec{
+		Spec: beatv1beta1.BeatSpec{
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
 			Type:             "filebeat",
@@ -170,15 +169,15 @@ func Test_buildPodTemplate(t *testing.T) {
 				params: DriverParams{
 					Watches: watches.NewDynamicWatches(),
 					Client:  k8s.NewFakeClient(),
-					Beat: v1beta1.Beat{
+					Beat: beatv1beta1.Beat{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "beat-name",
 							Namespace: "beat-namespace",
 						},
-						Spec: v1beta1.BeatSpec{
+						Spec: beatv1beta1.BeatSpec{
 							Type:    "filebeat",
 							Version: "7.15.0",
-							Deployment: &v1beta1.DeploymentSpec{
+							Deployment: &beatv1beta1.DeploymentSpec{
 								PodTemplate: corev1.PodTemplateSpec{
 									Spec: corev1.PodSpec{
 										InitContainers: []corev1.Container{
@@ -234,12 +233,12 @@ func Test_buildPodTemplate(t *testing.T) {
 							Data: map[string][]byte{"key": []byte("value2")},
 						},
 					),
-					Beat: v1beta1.Beat{
+					Beat: beatv1beta1.Beat{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "beat-name",
 							Namespace: "beat-namespace",
 						},
-						Spec: v1beta1.BeatSpec{
+						Spec: beatv1beta1.BeatSpec{
 							Type:    "filebeat",
 							Version: "7.15.0",
 							SecureSettings: []commonv1.SecretSource{
@@ -247,7 +246,7 @@ func Test_buildPodTemplate(t *testing.T) {
 									SecretName: "foo",
 								},
 							},
-							Deployment: &v1beta1.DeploymentSpec{
+							Deployment: &beatv1beta1.DeploymentSpec{
 								PodTemplate: corev1.PodTemplateSpec{
 									Spec: corev1.PodSpec{
 										InitContainers: []corev1.Container{
@@ -334,7 +333,7 @@ func assertConfiguration(t *testing.T, pod corev1.PodTemplateSpec) {
 	assert.Equal(t, expectedConfigVolumeMode, *configVolume.DefaultMode)
 }
 
-func assertMonitoring(t *testing.T, client k8s.Client, beat v1beta1.Beat, pod corev1.PodTemplateSpec) {
+func assertMonitoring(t *testing.T, client k8s.Client, beat beatv1beta1.Beat, pod corev1.PodTemplateSpec) {
 	t.Helper()
 	var monitoringVolume *corev1.Volume
 	// Validate that the Pod's volumes contain a Secret as a monitoring CA volume.
