@@ -650,7 +650,7 @@ spec:
 === Setting keystore
 
 You can specify sensitive settings with Kubernetes secrets. ECK automatically injects these settings into the keystore before it starts Logstash.
-The ECK operator continues to watch the secrets for changes and will restart Logstash pods when it detects a change.
+The ECK operator continues to watch the secrets for changes and will restart Logstash Pods when it detects a change.
 
 NOTE: For the technical preview, the use of settings in the Logstash keystore may impact startup time for Logstash Pods. Startup time will increase linearly for each entry added to the keystore, and this could extend startup time significantly.
 
