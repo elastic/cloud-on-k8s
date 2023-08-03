@@ -179,16 +179,6 @@ func replaceManifests(path string) func(ctx *TestContext) error {
 	}
 }
 
-func deleteResourcesOfKind(path string, kinds ...string) func(ctx *TestContext) error {
-	return func(ctx *TestContext) error {
-		manifests, err := ctx.LoadResources(path)
-		if err != nil {
-			return err
-		}
-		return ctx.Delete(manifests, deleteTimeout, kinds...)
-	}
-}
-
 // ifExists runs a test action if the given path exists in the filesystem.
 func ifExists(path string, fn func(ctx *TestContext) error) func(ctx *TestContext) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {

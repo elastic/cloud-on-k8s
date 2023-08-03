@@ -254,7 +254,7 @@ func (h *Kubectl) ReplaceOrCreate(resources resource.Visitor) error {
 }
 
 // Delete the given set of resources from the cluster. Restrict to kinds if given otherwise delete all.
-func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration, kinds ...string) error {
+func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) error {
 	resources = resources.IgnoreErrors(errors.IsNotFound)
 
 	dynamicClient, err := h.DynamicClient()
@@ -268,12 +268,6 @@ func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration, kind
 	err = resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
-		}
-
-		for _, k := range kinds {
-			if k != info.Object.GetObjectKind().GroupVersionKind().Kind {
-				return nil
-			}
 		}
 
 		deletedInfos = append(deletedInfos, info)
