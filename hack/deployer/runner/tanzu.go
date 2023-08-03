@@ -444,10 +444,6 @@ func (t *TanzuDriver) restoreInstallerState() error {
 }
 
 func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	if err := run(t.setup()); err != nil {
-		return err
-	}
-
 	daysAgo := time.Now().Add(-olderThan)
 
 	params := map[string]interface{}{
@@ -482,6 +478,9 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		for _, cluster := range clustersToDelete {
 			t.plan.ClusterName = cluster
 			t.plan.Tanzu.ResourceGroup = cluster
+			if err := run(t.setup()); err != nil {
+				return err
+			}
 			log.Printf("deleting cluster %s\n", cluster)
 			if err = t.delete(); err != nil {
 				return err

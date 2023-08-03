@@ -465,17 +465,6 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	// client image requires a plan which we don't have in GetCredentials
-	setup := append(d.setup(), d.ensureClientImage)
-
-	if err := run(setup); err != nil {
-		return err
-	}
-
-	defer func() {
-		_ = d.removeWorkDir()
-	}()
-
 	daysAgo := time.Now().Add(-olderThan)
 
 	params := d.bucketParams()
@@ -507,6 +496,16 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
+		// client image requires a plan which we don't have in GetCredentials
+		setup := append(d.setup(), d.ensureClientImage)
+
+		if err := run(setup); err != nil {
+			return err
+		}
+
+		defer func() {
+			_ = d.removeWorkDir()
+		}()
 		if err = d.delete(); err != nil {
 			return err
 		}
