@@ -464,9 +464,9 @@ func (d *OCPDriver) baseDomain() string {
 	return baseDomain
 }
 
-func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
+func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := d.authToGCP(); err != nil {
-		return nil, err
+		return err
 	}
 	daysAgo := time.Now().Add(-olderThan)
 
@@ -478,7 +478,7 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	if d.plan.Ocp.GCloudProject == "" {
 		gCloudProject, err := vault.Get(d.vaultClient, OCPVaultPath, GKEProjectVaultFieldName)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		d.plan.Ocp.GCloudProject = gCloudProject
 	}
@@ -487,21 +487,21 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	zonesCmd := `gcloud compute zones list --verbosity error --filter='region:https://www.googleapis.com/compute/v1/projects/{{.GCloudProject}}/regions/{{.Region}}' --format="value(selfLink.name())"`
 	zones, err := exec.NewCommand(zonesCmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	params["Zones"] = strings.Join(zones, ",")
 
 	cmd := `gcloud compute instances list --verbosity error --zones={{.Zones}} --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
 	clustersToDelete, err := exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
 		if err = d.delete(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return clustersToDelete, nil
+	return nil
 }

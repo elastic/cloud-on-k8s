@@ -193,9 +193,9 @@ func (d *AKSDriver) delete() error {
 		Run()
 }
 
-func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
+func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := d.auth(); err != nil {
-		return nil, err
+		return err
 	}
 
 	daysAgo := time.Now().Add(-olderThan)
@@ -205,7 +205,7 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}"))))|.[].name'`
 	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
-		return nil, fmt.Errorf("while running az resource list command: %w", err)
+		return fmt.Errorf("while running az resource list command: %w", err)
 	}
 
 	for _, cluster := range clustersToDelete {
@@ -213,17 +213,17 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 		if d.plan.Aks.ResourceGroup == "" {
 			c, err := vault.NewClient()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			resourceGroup, err := vault.Get(c, azure.AKSVaultPath, AKSResourceGroupVaultFieldName)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			d.plan.Aks.ResourceGroup = resourceGroup
 		}
 		if err = d.delete(); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return clustersToDelete, nil
+	return nil
 }

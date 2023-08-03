@@ -33,7 +33,7 @@ type Driver interface {
 	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
 	// Cleanup will attempt to delete e2e test clusters older than the given time.Duration in a cloud provider.
-	Cleanup(string, time.Duration) ([]string, error)
+	Cleanup(string, time.Duration) error
 }
 
 func GetPlan(plans []Plan, config RunConfig, clientBuildDefDir string) (Plan, error) {

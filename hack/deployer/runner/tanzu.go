@@ -443,9 +443,9 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		WithoutStreaming().Run()
 }
 
-func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
+func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := t.loginToAzure(); err != nil {
-		return nil, err
+		return err
 	}
 	daysAgo := time.Now().Add(-olderThan)
 
@@ -458,17 +458,16 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 	resourceGroupListCmd := `az group list --query "[?location=='{{.Location}}']" --query "[?contains(name,'{{.E2EClusterNamePrefix}}-tanzu')]" | jq -r '.[].name'`
 	resourceGroups, err := exec.NewCommand(resourceGroupListCmd).AsTemplate(params).WithoutStreaming().OutputList()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var deletedClusters []string
 	for _, rg := range resourceGroups {
 		params["ResourceGroup"] = rg
 
 		clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
 		clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).WithoutStreaming().OutputList()
 		if err != nil {
-			return nil, fmt.Errorf("while running az resource list command: %w", err)
+			return fmt.Errorf("while running az resource list command: %w", err)
 		}
 
 		for _, cluster := range clustersToDelete {
@@ -476,12 +475,11 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) ([]string,
 			t.plan.Tanzu.ResourceGroup = cluster
 			log.Printf("deleting cluster %s\n", cluster)
 			if err = t.delete(); err != nil {
-				return nil, err
+				return err
 			}
-			deletedClusters = append(deletedClusters, cluster)
 		}
 	}
-	return deletedClusters, nil
+	return nil
 }
 
 var _ Driver = &TanzuDriver{}

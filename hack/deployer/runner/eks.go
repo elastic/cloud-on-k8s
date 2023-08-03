@@ -246,9 +246,9 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	return os.WriteFile(file, []byte(fileContents), 0600)
 }
 
-func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, error) {
+func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := e.auth(); err != nil {
-		return nil, err
+		return err
 	}
 
 	daysAgo := time.Now().Add(-olderThan)
@@ -258,27 +258,25 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) ([]string, e
 	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("{{.E2EClusterNamePrefix}}")))| .[].Name'`
 	allClusters, err := exec.NewCommand(allClustersCmd).AsTemplate(e.ctx).OutputList()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var deletedClusters []string
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'map(select(.cluster.createdAt | . <= $d))|.[].cluster.name'`
 
 	for _, cluster := range allClusters {
 		e.ctx["ClusterName"] = cluster
 		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()
 		if err != nil {
-			return nil, fmt.Errorf("while describing cluster %s: %w", cluster, err)
+			return fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
-			deletedClusters = append(deletedClusters, cluster)
 			if err = e.delete(); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	return deletedClusters, nil
+	return nil
 }
 
 func (e *EKSDriver) delete() error {

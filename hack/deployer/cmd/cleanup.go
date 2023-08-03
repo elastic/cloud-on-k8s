@@ -45,7 +45,7 @@ func cleanup(configFile, plansFile, clusterPrefix, clientBuildDefDir string, old
 	if err != nil {
 		return err
 	}
-	_, err = driver.Cleanup(clusterPrefix, olderThan)
+	err = driver.Cleanup(clusterPrefix, olderThan)
 	if err != nil {
 		return err
 	}
