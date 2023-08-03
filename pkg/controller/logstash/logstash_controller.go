@@ -26,10 +26,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/pipelines"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	logconf "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
 const (
@@ -124,7 +125,7 @@ type ReconcileLogstash struct {
 // +kubebuilder:rbac:groups=logstash.k8s.elastic.co,resources=logstashes/status,verbs=get;update;patch
 func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "logstash_name", request)
-	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
+	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
 
 	logstash := &logstashv1alpha1.Logstash{}
@@ -136,7 +137,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	}
 
 	if common.IsUnmanaged(ctx, logstash) {
-		logconf.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -161,6 +162,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 
 func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1alpha1.Logstash) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {
 	defer tracing.Span(&ctx)()
+	logger := ulog.FromContext(ctx)
 	results := reconciler.NewResult(ctx)
 	status := newStatus(logstash)
 
@@ -170,6 +172,18 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 	}
 	if !areAssocsConfigured {
 		return results, status
+	}
+
+	logstashVersion, err := version.Parse(logstash.Spec.Version)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	assocAllowed, err := association.AllowVersion(logstashVersion, &logstash, logger, r.recorder)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !assocAllowed {
+		return results, status // will eventually retry
 	}
 
 	// Run basic validations as a fallback in case webhook is disabled.
@@ -194,7 +208,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 
 	// Run create validations only as update validations require old object which we don't have here.
 	if _, err := logstash.ValidateCreate(); err != nil {
-		logconf.FromContext(ctx).Error(err, "Validation failed")
+		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}

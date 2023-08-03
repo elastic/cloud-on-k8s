@@ -1,28 +1,31 @@
 # Build the operator binary
-FROM --platform=$TARGETPLATFORM docker.io/library/golang:1.20.5 as builder
+FROM docker.io/library/golang:1.20.7 as builder
 
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
-ARG GO_LDFLAGS
+ARG VERSION
+ARG SHA1
+ARG SNAPSHOT
 ARG GO_TAGS
+ARG LICENSE_PUBKEY
+
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
-COPY ["go.mod", "go.sum", "./"]
+# Cache go dependencies
+COPY Makefile go.mod go.sum ./
 RUN --mount=type=cache,mode=0755,target=/go/pkg/mod go mod download
 
-# Copy the go source
-COPY pkg/    pkg/
-COPY cmd/    cmd/
+# Copy default eck config
+COPY config/eck.yaml .
+
+# Copy the sources
+COPY pkg/ pkg/
+COPY cmd/ cmd/
+COPY build/$LICENSE_PUBKEY /$LICENSE_PUBKEY
 
 # Build
-RUN --mount=type=cache,mode=0755,target=/go/pkg/mod CGO_ENABLED=0 GOOS=linux \
-      go build \
-      -mod readonly \
-      -ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
-      -o elastic-operator github.com/elastic/cloud-on-k8s/v2/cmd
+RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
+      CGO_ENABLED=0 GOOS=linux LICENSE_PUBKEY=/$LICENSE_PUBKEY make go-build
 
+# ---------------------------------------------
 # Copy the operator binary into a lighter image
 FROM gcr.io/distroless/static:nonroot
 
@@ -43,7 +46,7 @@ LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, 
       org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
-COPY config/eck.yaml /conf/eck.yaml
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
 
 # Copy NOTICE.txt and LICENSE.txt into the image
 COPY *.txt /licenses/

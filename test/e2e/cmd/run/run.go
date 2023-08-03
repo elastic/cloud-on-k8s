@@ -35,12 +35,12 @@ import (
 )
 
 const (
-	jobTimeout           = 600 * time.Minute // time to wait for the test job to finish
+	jobTimeout           = 900 * time.Minute // time to wait for the test job to finish
 	kubePollInterval     = 10 * time.Second  // Kube API polling interval
 	testRunLabel         = "test-run"        // name of the label applied to resources
 	logStreamLabel       = "stream-logs"     // name of the label enabling log streaming to e2e runner
 	testsLogFilePattern  = "job-%s.json"     // name of file to keep all test logs in JSON format
-	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
+	operatorReadyTimeout = 12 * time.Minute  // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 
@@ -92,8 +92,10 @@ func doRun(flags runFlags) error {
 
 	for _, step := range steps {
 		if err := step(); err != nil {
-			helper.dumpEventLog()
-			helper.runECKDiagnostics()
+			if !flags.local {
+				helper.dumpEventLog()
+				helper.runECKDiagnostics()
+			}
 			return err
 		}
 	}
@@ -146,25 +148,12 @@ func (h *helper) initTestContext() error {
 		return fmt.Errorf("invalid operator image: %s", h.operatorImage)
 	}
 
-	var stackImages test.ElasticStackImages
-	if h.elasticStackImagesPath != "" {
-		bytes, err := os.ReadFile(h.elasticStackImagesPath)
-		if err != nil {
-			return fmt.Errorf("unable to read Elastic Stack images config file: %w", err)
-		}
-		err = json.Unmarshal(bytes, &stackImages)
-		if err != nil {
-			return fmt.Errorf("unable to parse Elastic Stack images config file: %w", err)
-		}
-	}
-
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
 		E2ENamespace:        fmt.Sprintf("%s-system", h.testRunName),
 		E2EServiceAccount:   h.testRunName,
 		ElasticStackVersion: h.elasticStackVersion,
-		ElasticStackImages:  stackImages,
 		Local:               h.local,
 		LogVerbosity:        h.logVerbosity,
 		Operator: test.NamespaceOperator{

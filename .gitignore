@@ -26,6 +26,7 @@ vendor/
 
 # Elastic license keys
 license.key
+dev-license.key
 dev-private.key
 
 # test licenses used in the E2E tests
@@ -50,7 +51,6 @@ hack/deployer/config/provider
 deployer-config.yml
 .env
 .registry.env
-stack-versions-def.json
 
 # ignore test output
 integration-tests.json
@@ -70,3 +70,6 @@ pkg/controller/common/license/zz_generated.pubkey.go
 # ignore Helm lock file
 Chart.lock
 
+# build
+build/dev*
+build/eck*

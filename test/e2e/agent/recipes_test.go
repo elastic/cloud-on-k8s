@@ -88,13 +88,6 @@ func TestMultiOutputRecipe(t *testing.T) {
 }
 
 func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
-
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
@@ -197,11 +190,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 		t.Skip("Disabled since 8.8.0, refer to https://github.com/elastic/cloud-on-k8s/issues/5105")
 	}
 
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.Skip("Disabled for 8.6.x, refer to https://github.com/elastic/cloud-on-k8s/issues/6331")
-	}
-
 	notLoggingPod := beat.NewPodBuilder("test")
 	loggingPod := beat.NewPodBuilder("test")
 	loggingPod.Pod.Namespace = "default"
@@ -228,13 +216,6 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
-
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder

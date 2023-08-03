@@ -25,6 +25,7 @@ type Params struct {
 	Selector             map[string]string
 	Labels               map[string]string
 	PodTemplateSpec      corev1.PodTemplateSpec
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim
 	Replicas             int32
 	RevisionHistoryLimit *int32
 }
@@ -50,8 +51,9 @@ func New(params Params) appsv1.StatefulSet {
 				MatchLabels: params.Selector,
 			},
 
-			Replicas: &params.Replicas,
-			Template: params.PodTemplateSpec,
+			Replicas:             &params.Replicas,
+			Template:             params.PodTemplateSpec,
+			VolumeClaimTemplates: params.VolumeClaimTemplates,
 		},
 	}
 

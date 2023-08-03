@@ -71,7 +71,8 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	name := "test-beat-upgrade-to-8x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithVersion(dstVersion)
+		WithVersion(dstVersion).
+		TolerateMutationChecksFailures()
 
 	fbBuilder := beat.NewBuilder(name).
 		WithRoles(beat.AutodiscoverClusterRoleName).

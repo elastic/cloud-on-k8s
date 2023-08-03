@@ -278,7 +278,7 @@ spec:
 
     * Kubernetes 1.24-1.27
 
-    * OpenShift 4.8-4.12
+    * OpenShift 4.9-4.13
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 

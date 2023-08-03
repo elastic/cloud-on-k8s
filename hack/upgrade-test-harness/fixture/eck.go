@@ -30,6 +30,7 @@ const (
 	apmName           = "apm"
 	beatName          = "heartbeat"
 	entName           = "ent"
+	logstashName      = "ls"
 	wantHealth        = "green"
 )
 
@@ -138,17 +139,21 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		var wantNodes int64 = 1
 		if r.Kind == "Elasticsearch" {
 			wantNodes = 3
 		}
+
+		status := status{health: wantHealth, nodes: wantNodes, version: param.StackVersion}
+
 		result = append(result,
 			retryRetriable(
 				param.Suffixed(fmt.Sprintf("Check%s", r.Kind)),
 				checkStatus(
 					strings.ToLower(r.Kind),
 					r.Metadata.Name,
-					status{health: wantHealth, nodes: wantNodes, version: param.StackVersion},
+					status,
 				),
 			))
 	}
@@ -263,6 +268,8 @@ func labelSelectorFor(kind string) (string, error) {
 		return "enterprisesearch.k8s.elastic.co/name=" + entName, nil
 	case "beat":
 		return "beat.k8s.elastic.co/name=" + beatName, nil
+	case "logstash":
+		return "logstash.k8s.elastic.co/name=" + logstashName, nil
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)

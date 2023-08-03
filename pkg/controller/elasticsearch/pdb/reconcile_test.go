@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -155,7 +154,7 @@ func withHashLabel(pdb *policyv1.PodDisruptionBudget) *policyv1.PodDisruptionBud
 }
 
 func withOwnerRef(pdb *policyv1.PodDisruptionBudget, es esv1.Elasticsearch) *policyv1.PodDisruptionBudget {
-	if err := controllerutil.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, pdb, clientgoscheme.Scheme); err != nil {
 		panic(err)
 	}
 	return pdb

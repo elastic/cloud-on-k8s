@@ -7,11 +7,16 @@ package v1alpha1
 import (
 	"fmt"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+)
+
+const (
+	pvcImmutableMsg = "Volume claim templates cannot be modified"
 )
 
 var (
@@ -33,6 +38,7 @@ var (
 
 	updateChecks = []func(old, curr *Logstash) field.ErrorList{
 		checkNoDowngrade,
+		checkPVCchanges,
 	}
 )
 
@@ -104,4 +110,19 @@ func checkESRefsNamed(l *Logstash) field.ErrorList {
 		}
 	}
 	return errorList
+}
+
+// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+func checkPVCchanges(current, proposed *Logstash) field.ErrorList {
+	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
+
+	// checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
+	if !apiequality.Semantic.DeepEqual(current.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, pvcImmutableMsg))
+	}
+
+	return errs
 }

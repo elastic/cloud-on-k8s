@@ -10,6 +10,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
+const (
+	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
+	// reference in the VolumeClaimTemplates section of the Elasticsearch and Logstash specs
+	DefaultStorageClass = "e2e-default"
+)
+
 // DefaultSecurityContext returns a minimalist, restricted, security context.
 func DefaultSecurityContext() *corev1.PodSecurityContext {
 	// OpenShift sets the security context automatically

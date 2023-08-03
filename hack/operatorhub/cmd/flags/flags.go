@@ -76,22 +76,22 @@ var (
 
 // Config is the configuration that matches the config.yaml
 type Config struct {
-	NewVersion                   string `json:"newVersion"`
-	PrevVersion                  string `json:"prevVersion"`
-	StackVersion                 string `json:"stackVersion"`
-	MinSupportedOpenshiftVersion string `json:"minSupportedOpenShiftVersion"`
-	CRDs                         []struct {
+	NewVersion   string `json:"newVersion"`
+	PrevVersion  string `json:"prevVersion"`
+	StackVersion string `json:"stackVersion"`
+	CRDs         []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`
 	} `json:"crds"`
 	Packages []struct {
-		OutputPath          string `json:"outputPath"`
-		PackageName         string `json:"packageName"`
-		DistributionChannel string `json:"distributionChannel"`
-		OperatorRepo        string `json:"operatorRepo"`
-		UbiOnly             bool   `json:"ubiOnly"`
-		DigestPinning       bool   `json:"digestPinning"`
+		OutputPath                   string `json:"outputPath"`
+		PackageName                  string `json:"packageName"`
+		DistributionChannel          string `json:"distributionChannel"`
+		MinSupportedOpenShiftVersion string `json:"minSupportedOpenShiftVersion"`
+		OperatorRepo                 string `json:"operatorRepo"`
+		UbiOnly                      bool   `json:"ubiOnly"`
+		DigestPinning                bool   `json:"digestPinning"`
 	} `json:"packages"`
 }
 

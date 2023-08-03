@@ -1,0 +1,37 @@
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: d
+spec:
+  count: 1
+  version: 8.8.0
+  config:
+    queue.type: persisted
+  pipelines:
+    - pipeline.id: main
+      config.string: input { exec { command => 'uptime' interval => 10 } } output { stdout{} }
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        volumeMounts:
+          - mountPath: /usr/share/logstash/data/queue
+            name: pq
+            readOnly: false
+  volumeClaimTemplates:
+    - metadata:
+        name: logstash-data # Do not change this name unless you set up a volume mount for the data path.
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: pq
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

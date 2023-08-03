@@ -8,23 +8,27 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
         commands:
-          - make generate-manifests
           - .buildkite/scripts/release/k8s-manifests.sh
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+          memory: "2G"
 
       - label: "copy images to dockerhub"
         if: build.tag =~ /^v[0-9]+\.[0-9]+\.[0-9]+\$/
-        trigger: unified-release-copy-elastic-images-to-dockerhub
-        build:
-          env:
-            IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
-            IMAGES_TAG: "${BUILDKITE_TAG}"
+        command: |
+          cat <<- YAML | buildkite-agent pipeline upload
+          steps:
+            - trigger: unified-release-copy-elastic-images-to-dockerhub
+              build:
+                env:
+                  IMAGES_NAMES: "eck/eck-operator,eck/eck-operator-fips,eck/eck-operator-ubi8,eck/eck-operator-ubi8-fips"
+                  IMAGES_TAG: "$${BUILDKITE_TAG#v}"
+          YAML
 
       - label: ":buildkite: helm charts release"
         if: | # merge-main or tags
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
-        trigger: cloud-on-k8s-operator-helm-release
-        build:
-          env:
-            HELM_DRY_RUN: false
-
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+        env:
+          HELM_DRY_RUN: false
