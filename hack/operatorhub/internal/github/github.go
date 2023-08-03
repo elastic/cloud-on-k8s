@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -81,14 +80,12 @@ func New(config Config) *Client {
 }
 
 type githubRepository struct {
-	organization           string
-	repository             string
-	mainBranchName         string
-	directoryName          string
-	url                    string
-	tempDir                string
-	extraSteps             func() error
-	additionalChangedFiles []string
+	organization   string
+	repository     string
+	mainBranchName string
+	directoryName  string
+	url            string
+	tempDir        string
 }
 
 // CloneRepositoryAndCreatePullRequest will execute a number of local, and potentially remote github operations
@@ -125,29 +122,6 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  communityOperatorDirectoryName,
 			mainBranchName: communityOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
-			// Each repository (community/certified) has a set of steps
-			// that differ slightly between each repo, and this function
-			// contains those steps to be run prior to adding the data
-			// to the git repository, creating the commit, and submitting
-			// the pull request.
-			//
-			// This step simply copies the 'elastic-cloud-eck.package.yaml'
-			// file that already exists within the community-operators
-			// directory into the directory to be added to the git commit.
-			extraSteps: func() error {
-				fileName := "elastic-cloud-eck.package.yaml"
-				fileSrc := filepath.Join(c.PathToNewVersion, communityOperatorRepository, fileName)
-				fileDst := filepath.Join(tempDir, communityOperatorRepository, "operators", communityOperatorDirectoryName, fileName)
-				log.Printf("copying (%s) to (%s)", fileSrc, fileDst)
-				err := copy.Copy(fileSrc, fileDst)
-				if err != nil {
-					return fmt.Errorf("while copying (%s) to (%s)", fileSrc, fileDst)
-				}
-				return nil
-			},
-			additionalChangedFiles: []string{
-				filepath.Join("operators", communityOperatorDirectoryName, "elastic-cloud-eck.package.yaml"),
-			},
 		},
 		{
 			organization:   certifiedOperatorOrganization,
@@ -156,54 +130,6 @@ func (c *Client) CloneRepositoryAndCreatePullRequest() error {
 			directoryName:  certifiedOperatorDirectoryName,
 			mainBranchName: certifiedOperatorsRepositoryMainBranchName,
 			tempDir:        tempDir,
-			// Each repository (community/certified) has a set of steps
-			// that differ slightly between each repo, and this function
-			// contains those steps to be run prior to adding the data
-			// to the git repository, creating the commit, and submitting
-			// the pull request.
-			//
-			// This step:
-			// 1. renames the elasticsearch-eck-operator-certified.{TAG}.clusterserviceversion.yaml to
-			//    elasticsearch-eck-operator-certified.clusterserviceversion.yaml.
-			// 2. replaces the container tag with the image SHA within the CSV.yaml.
-			extraSteps: func() error {
-				// ensure git tag has a preceeding 'v'.
-				gitTag := c.GitTag
-				if !strings.HasPrefix(gitTag, "v") {
-					gitTag = fmt.Sprintf("v%s", gitTag)
-				}
-				fileSrc := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", fmt.Sprintf("elasticsearch-eck-operator-certified.%s.clusterserviceversion.yaml", gitTag))
-				fileDst := filepath.Join(tempDir, certifiedOperatorRepository, "operators", certifiedOperatorDirectoryName, c.GitTag, "manifests", "elasticsearch-eck-operator-certified.clusterserviceversion.yaml")
-				log.Printf("copying (%s) to (%s)", fileSrc, fileDst)
-				if err := copy.Copy(fileSrc, fileDst); err != nil {
-					return fmt.Errorf("while copying (%s) to (%s)", fileSrc, fileDst)
-				}
-				log.Printf("removing file (%s)", fileSrc)
-				if err := os.Remove(fileSrc); err != nil {
-					return fmt.Errorf("while removing file (%s)", fileSrc)
-				}
-
-				log.Printf("reading (%s) to replace git tag with container image SHA", fileDst)
-				input, err := os.ReadFile(fileDst)
-				if err != nil {
-					return fmt.Errorf("while reading file (%s)", fileDst)
-				}
-
-				lines := strings.Split(string(input), "\n")
-
-				find := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator:%s`, c.GitTag)
-				replace := fmt.Sprintf(`registry.connect.redhat.com/elastic/eck-operator@%s`, c.ContainerImageSHA)
-				for i, line := range lines {
-					lines[i] = strings.ReplaceAll(line, find, replace)
-				}
-				output := strings.Join(lines, "\n")
-				log.Printf("rewriting (%s) with container image SHA", fileDst)
-				err = os.WriteFile(fileDst, []byte(output), 0644)
-				if err != nil {
-					return fmt.Errorf("while writing updated file (%s)", fileDst)
-				}
-				return nil
-			},
 		},
 	} {
 		if err := c.cloneAndCreate(repository); err != nil {
@@ -306,19 +232,12 @@ func (c *Client) cloneAndCreate(repo githubRepository) error {
 		return fmt.Errorf("while copying source dir (%s) to new git cloned dir (%s): %w", srcDir, destDir, err)
 	}
 
-	if err := repo.extraSteps(); err != nil {
-		return err
-	}
-
 	log.Printf("Adding new data to git working tree ")
 	pathToAdd := filepath.Join("operators", repo.directoryName, c.GitTag)
 
-	for _, file := range append([]string{pathToAdd}, repo.additionalChangedFiles...) {
-		_, err = w.Add(file)
-		if err != nil {
-			log.Println("ⅹ")
-			return fmt.Errorf("while adding destination directory (%s) to git working tree: %w", file, err)
-		}
+	if _, err = w.Add(pathToAdd); err != nil {
+		log.Println("ⅹ")
+		return fmt.Errorf("while adding destination directory (%s) to git working tree: %w", pathToAdd, err)
 	}
 	log.Println("✓")
 

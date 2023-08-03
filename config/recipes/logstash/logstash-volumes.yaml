@@ -12,16 +12,6 @@ spec:
         # This setting has performance implications. See the README for more details.
         node.store.allow_mmap: false
 ---
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kibana
-spec:
-  version: 8.9.0
-  count: 1
-  elasticsearchRef:
-    name: elasticsearch
----
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
@@ -71,26 +61,62 @@ spec:
   elasticsearchRefs:
     - clusterName: eck
       name: elasticsearch
-  pipelinesRef:
-    secretName: logstash-pipeline
-  services:
-    - name: beats
-      service:
-        spec:
-          type: ClusterIP
-          ports:
-            - port: 5044
-              name: "filebeat"
-              protocol: TCP
-              targetPort: 5044
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: logstash-pipeline
-stringData:
-  pipelines.yml: |-
-    - pipeline.id: main
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+          volumeMounts:
+            - mountPath: /usr/share/logstash/pq
+              name: pq
+              readOnly: false
+            - mountPath: /usr/share/logstash/dlq
+              name: dlq
+              readOnly: false
+  volumeClaimTemplates:
+    - metadata:
+        name: pq
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: dlq
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+  pipelines:
+    - pipeline.id: dlq_read
+      dead_letter_queue.enable: false
+      config.string: |
+        input {
+          dead_letter_queue {
+            path => "/usr/share/logstash/dlq"
+            commit_offsets => true
+            pipeline_id => "beats"
+            clean_consumed => true
+          }
+        }
+        filter {
+          mutate {
+            remove_field => "[geoip][location]"
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => [ "${ECK_ES_HOSTS}" ]
+            user => "${ECK_ES_USER}"
+            password => "${ECK_ES_PASSWORD}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          }
+        }
+    - pipeline.id: beats
+      dead_letter_queue.enable: true
+      path.dead_letter_queue: /usr/share/logstash/dlq
       config.string: |
         input {
           beats {
@@ -114,3 +140,17 @@ stringData:
             ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
+  config:
+    log.level: info
+    queue.type: persisted
+    path.queue: /usr/share/logstash/pq
+  services:
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044

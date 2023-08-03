@@ -66,6 +66,9 @@ spec:
         automountServiceAccountToken: true
         securityContext:
           runAsUser: 0
+        volumes:
+        - name: agent-data
+          emptyDir: {}
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana

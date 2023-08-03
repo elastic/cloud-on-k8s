@@ -17,7 +17,7 @@ steps:
               E2E_PROVIDER: gke
           DEF
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
           memory: "2G"
 
       # for all tags
@@ -32,5 +32,5 @@ steps:
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
           memory: "2G"

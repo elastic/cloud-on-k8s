@@ -4,7 +4,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.8.0
+  version: 8.9.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -28,7 +28,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 8.8.0
+  version: 8.9.0
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:

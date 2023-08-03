@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.8.0
+  version: 8.9.0
   nodeSets:
     - name: default
       count: 3
@@ -17,7 +17,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.8.0
+  version: 8.9.0
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -28,7 +28,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 8.8.0
+  version: 8.9.0
   config:
     filebeat.inputs:
       - type: log
@@ -67,7 +67,7 @@ metadata:
   name: logstash
 spec:
   count: 1
-  version: 8.8.0
+  version: 8.9.0
   elasticsearchRefs:
     - clusterName: eck
       name: elasticsearch
@@ -93,7 +93,7 @@ spec:
             hosts => [ "${ECK_ES_HOSTS}" ]
             user => "${ECK_ES_USER}"
             password => "${ECK_ES_PASSWORD}"
-            cacert => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
   services:

@@ -8,10 +8,9 @@ steps:
           || build.tag != null
           || build.message =~ /^buildkite test .*release.*/
         commands:
-          - make generate-manifests
           - .buildkite/scripts/release/k8s-manifests.sh
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:abaeba8c
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
           memory: "2G"
 
       - label: "copy images to dockerhub"
@@ -30,10 +29,6 @@ steps:
         if: | # merge-main or tags
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
-        trigger: cloud-on-k8s-operator-helm-release
-        build:
-          message: "${BUILDKITE_MESSAGE}"
-          commit: "${BUILDKITE_COMMIT}"
-          branch: "${BUILDKITE_BRANCH}"
-          env:
-            HELM_DRY_RUN: false
+        command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
+        env:
+          HELM_DRY_RUN: false
