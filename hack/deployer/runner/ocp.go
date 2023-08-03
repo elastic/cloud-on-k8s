@@ -465,9 +465,17 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	if err := d.authToGCP(); err != nil {
+	// client image requires a plan which we don't have in GetCredentials
+	setup := append(d.setup(), d.ensureClientImage)
+
+	if err := run(setup); err != nil {
 		return err
 	}
+
+	defer func() {
+		_ = d.removeWorkDir()
+	}()
+
 	daysAgo := time.Now().Add(-olderThan)
 
 	params := d.bucketParams()

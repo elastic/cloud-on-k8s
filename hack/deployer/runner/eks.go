@@ -282,10 +282,7 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 func (e *EKSDriver) delete() error {
 	log.Printf("deleting cluster %s", e.ctx["ClusterName"])
 	// --wait to surface failures to delete all resources in the Cloud formation
-	if err := e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run(); err != nil {
-		return err
-	}
-	return nil
+	return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
 }
 
 var _ Driver = &EKSDriver{}

@@ -199,11 +199,14 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	}
 
 	daysAgo := time.Now().Add(-olderThan)
-	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
-	d.ctx["E2EClusterNamePrefix"] = prefix
 
-	clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.ContainerService/managedClusters" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}"))))|.[].name'`
-	clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(d.ctx).OutputList()
+	clustersToDelete, err := azure.Cmd("resource", "list",
+		"-l", d.plan.Aks.Location,
+		"-g", d.plan.Aks.ResourceGroup,
+		`--resource-type "Microsoft.ContainerService/managedClusters"`,
+		`--query "[?tags.project == 'eck-ci']"`,
+		`| jq -r --arg d`, daysAgo.Format(time.RFC3339),
+		fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s"))))|.[].name'`, prefix)).OutputList()
 	if err != nil {
 		return fmt.Errorf("while running az resource list command: %w", err)
 	}

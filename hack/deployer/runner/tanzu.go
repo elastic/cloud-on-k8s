@@ -444,9 +444,10 @@ func (t *TanzuDriver) restoreInstallerState() error {
 }
 
 func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	if err := t.loginToAzure(); err != nil {
+	if err := run(t.setup()); err != nil {
 		return err
 	}
+
 	daysAgo := time.Now().Add(-olderThan)
 
 	params := map[string]interface{}{
@@ -455,8 +456,10 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		"E2EClusterNamePrefix": prefix,
 	}
 
-	resourceGroupListCmd := `az group list --query "[?location=='{{.Location}}']" --query "[?contains(name,'{{.E2EClusterNamePrefix}}-tanzu')]" | jq -r '.[].name'`
-	resourceGroups, err := exec.NewCommand(resourceGroupListCmd).AsTemplate(params).WithoutStreaming().OutputList()
+	resourceGroups, err := azure.Cmd("group", "list",
+		"--query", fmt.Sprintf("[?location=='%s']", t.plan.Tanzu.Location),
+		"--query", fmt.Sprintf("[?contains(name,'%s-tanzu')]", prefix),
+		"| jq -r '.[].name'").OutputList()
 	if err != nil {
 		return err
 	}
@@ -464,8 +467,14 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	for _, rg := range resourceGroups {
 		params["ResourceGroup"] = rg
 
-		clustersCmd := `az resource list -l {{.Location}} -g {{.ResourceGroup}} --resource-type "Microsoft.Compute/virtualMachines" --query "[?tags.project == 'eck-ci']" | jq -r --arg d "{{.Date}}" 'map(select((.createdTime | . <= $d) and (.name|test("{{.E2EClusterNamePrefix}}-tanzu"))))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-tanzu-[a-z]*-[0-9]*' | sort | uniq`
-		clustersToDelete, err := exec.NewCommand(clustersCmd).AsTemplate(params).WithoutStreaming().OutputList()
+		clustersToDelete, err := azure.Cmd("resource", "list",
+			"-l", t.plan.Tanzu.Location,
+			"-g", rg,
+			`--resource-type "Microsoft.Compute/virtualMachines"`,
+			"--query", "[?tags.project == 'eck-ci']",
+			"| jq -r --arg d", daysAgo.Format(time.RFC3339),
+			fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s-tanzu"))))|.[].name'`, prefix),
+			fmt.Sprintf("| grep -o '%s-tanzu-[a-z]*-[0-9]*' | sort | uniq", prefix)).OutputList()
 		if err != nil {
 			return fmt.Errorf("while running az resource list command: %w", err)
 		}
