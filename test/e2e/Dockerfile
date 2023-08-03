@@ -1,5 +1,5 @@
 # Docker image for the E2E tests runner
-FROM docker.io/library/golang:1.20.6
+FROM docker.io/library/golang:1.20.7
 
 ARG GO_TAGS
 
