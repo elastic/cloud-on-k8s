@@ -253,7 +253,7 @@ func (h *Kubectl) ReplaceOrCreate(resources resource.Visitor) error {
 	})
 }
 
-// Delete the given set of resources from the cluster. Restrict to kinds if given otherwise delete all.
+// Delete the given set of resources from the cluster.
 func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) error {
 	resources = resources.IgnoreErrors(errors.IsNotFound)
 
