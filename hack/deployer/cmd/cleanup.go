@@ -21,7 +21,7 @@ func CleanupCommand() *cobra.Command {
 
 	var cleanupCmd = &cobra.Command{
 		Use:   "cleanup",
-		Short: "Runs the cleanup operation to cleanup clusters older than 'older-than flag' days in the given provider.",
+		Short: "Runs the cleanup operation to cleanup clusters older than the given duration in the given provider.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cleanup(*configFile, *plansFile, clusterPrefix, *clientBuildDefDir, olderThan)
 		},
