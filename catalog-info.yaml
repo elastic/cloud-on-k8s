@@ -177,6 +177,9 @@ spec:
       pipeline_file: .buildkite/pipeline-e2e-test-cleanup.yml
       provider_settings:
         trigger_mode: none
+        build_pull_requests: true
+        build_branches: true
+        build_tags: true
       schedules:
         Every day:
           branch: main
