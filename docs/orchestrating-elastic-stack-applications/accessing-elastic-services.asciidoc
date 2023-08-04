@@ -154,6 +154,8 @@ Create a Kubernetes secret with:
 - `tls.crt`: The certificate.
 - `tls.key`: The private key to the first certificate in the certificate chain.
 
+WARNING: If your `tls.crt` is signed by an intermediate CA you may need both the Root CA and the intermediate CA combined within the `ca.crt` file depending on whether the Root CA is globally trusted.
+
 [source,sh]
 ----
 kubectl create secret generic my-cert --from-file=ca.crt --from-file=tls.crt --from-file=tls.key

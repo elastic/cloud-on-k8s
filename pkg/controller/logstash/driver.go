@@ -6,7 +6,6 @@ package logstash
 
 import (
 	"context"
-
 	"hash/fnv"
 
 	"github.com/go-logr/logr"
@@ -14,6 +13,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
@@ -35,7 +35,8 @@ type Params struct {
 	Logstash logstashv1alpha1.Logstash
 	Status   logstashv1alpha1.LogstashStatus
 
-	OperatorParams operator.Parameters
+	OperatorParams    operator.Parameters
+	KeystoreResources *keystore.Resources
 }
 
 // K8sClient returns the Kubernetes client.
@@ -98,6 +99,12 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	params.Logstash.Spec.VolumeClaimTemplates = volume.AppendDefaultPVCs(params.Logstash.Spec.VolumeClaimTemplates,
 		params.Logstash.Spec.PodTemplate.Spec)
+
+	if keystoreResources, err := reconcileKeystore(params, configHash); err != nil {
+		return results.WithError(err), params.Status
+	} else if keystoreResources != nil {
+		params.KeystoreResources = keystoreResources
+	}
 
 	podTemplate, err := buildPodTemplate(params, configHash)
 	if err != nil {

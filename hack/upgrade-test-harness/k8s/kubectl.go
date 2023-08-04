@@ -152,20 +152,7 @@ func (h *Kubectl) CreateOrUpdate(resources resource.Visitor) error {
 			if !errors.IsNotFound(err) {
 				return err
 			}
-
-			if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
-				return cmdutil.AddSourceToErr("creating", info.Source, err)
-			}
-
-			obj, err := helper.Create(info.Namespace, true, info.Object)
-			if err != nil {
-				return cmdutil.AddSourceToErr("creating", info.Source, err)
-			}
-
-			_ = info.Refresh(obj, true)
-
-			h.print("created", info.Object)
-			return nil
+			return h.create(info)
 		}
 
 		// otherwise, try to patch the existing object
@@ -195,6 +182,23 @@ func (h *Kubectl) CreateOrUpdate(resources resource.Visitor) error {
 	})
 }
 
+func (h *Kubectl) create(info *resource.Info) error {
+	if err := util.CreateApplyAnnotation(info.Object, unstructured.UnstructuredJSONScheme); err != nil {
+		return cmdutil.AddSourceToErr("creating", info.Source, err)
+	}
+
+	obj, err := resource.NewHelper(info.Client, info.Mapping).
+		Create(info.Namespace, true, info.Object)
+	if err != nil {
+		return cmdutil.AddSourceToErr("creating", info.Source, err)
+	}
+
+	_ = info.Refresh(obj, true)
+
+	h.print("created", info.Object)
+	return nil
+}
+
 // DynamicClient returns a dynamic client.
 func (h *Kubectl) DynamicClient() (dynamic.Interface, error) {
 	return h.factory.DynamicClient()
@@ -219,12 +223,22 @@ func (h *Kubectl) K8SClient() (*kubernetes.Clientset, error) {
 	return h.factory.KubernetesClientSet()
 }
 
-// Replace the given set of resources.
-func (h *Kubectl) Replace(resources resource.Visitor) error {
+// ReplaceOrCreate the given set of resources.
+func (h *Kubectl) ReplaceOrCreate(resources resource.Visitor) error {
 	return resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
+
+		// if the object does not exist, create it.
+		if err := info.Get(); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			}
+
+			return h.create(info)
+		}
+
 		if err := util.CreateOrUpdateAnnotation(false, info.Object, scheme.DefaultJSONEncoder()); err != nil {
 			return cmdutil.AddSourceToErr("replacing", info.Source, err)
 		}
