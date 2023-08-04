@@ -198,14 +198,14 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		return err
 	}
 
-	daysAgo := time.Now().Add(-olderThan)
+	sinceDate := time.Now().Add(-olderThan)
 
 	clustersToDelete, err := azure.Cmd("resource", "list",
 		"-l", d.plan.Aks.Location,
 		"-g", d.plan.Aks.ResourceGroup,
 		`--resource-type "Microsoft.ContainerService/managedClusters"`,
 		`--query "[?tags.project == 'eck-ci']"`,
-		`| jq -r --arg d`, daysAgo.Format(time.RFC3339),
+		`| jq -r --arg d`, sinceDate.Format(time.RFC3339),
 		fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s"))))|.[].name'`, prefix)).OutputList()
 	if err != nil {
 		return fmt.Errorf("while running az resource list command: %w", err)

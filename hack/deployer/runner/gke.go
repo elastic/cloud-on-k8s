@@ -445,8 +445,8 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		return err
 	}
 
-	daysAgo := time.Now().Add(-olderThan)
-	d.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	sinceDate := time.Now().Add(-olderThan)
+	d.ctx["Date"] = sinceDate.Format(time.RFC3339)
 	d.ctx["E2EClusterNamePrefix"] = prefix
 
 	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`

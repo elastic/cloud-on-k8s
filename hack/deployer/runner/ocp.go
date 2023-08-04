@@ -401,7 +401,7 @@ func (d *OCPDriver) downloadClusterState() error {
 }
 
 func (d *OCPDriver) copyKubeconfig() error {
-	log.Printf("Copying  credentials")
+	log.Printf("Copying credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
 	// 1. merge or create kubeconfig
@@ -465,10 +465,13 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	daysAgo := time.Now().Add(-olderThan)
+	if err := d.authToGCP(); err != nil {
+		return err
+	}
+	sinceDate := time.Now().Add(-olderThan)
 
 	params := d.bucketParams()
-	params["Date"] = daysAgo.Format(time.RFC3339)
+	params["Date"] = sinceDate.Format(time.RFC3339)
 	params["E2EClusterNamePrefix"] = prefix
 	params["Region"] = d.plan.Ocp.Region
 

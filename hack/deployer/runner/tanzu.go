@@ -444,10 +444,13 @@ func (t *TanzuDriver) restoreInstallerState() error {
 }
 
 func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	daysAgo := time.Now().Add(-olderThan)
+	if err := t.loginToAzure(); err != nil {
+		return err
+	}
+	sinceDate := time.Now().Add(-olderThan)
 
 	params := map[string]interface{}{
-		"Date":                 daysAgo.Format(time.RFC3339),
+		"Date":                 sinceDate.Format(time.RFC3339),
 		"Location":             t.plan.Tanzu.Location,
 		"E2EClusterNamePrefix": prefix,
 	}
@@ -468,7 +471,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			"-g", rg,
 			`--resource-type "Microsoft.Compute/virtualMachines"`,
 			"--query", "[?tags.project == 'eck-ci']",
-			"| jq -r --arg d", daysAgo.Format(time.RFC3339),
+			"| jq -r --arg d", sinceDate.Format(time.RFC3339),
 			fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s-tanzu"))))|.[].name'`, prefix),
 			fmt.Sprintf("| grep -o '%s-tanzu-[a-z]*-[0-9]*' | sort | uniq", prefix)).OutputList()
 		if err != nil {
@@ -481,7 +484,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			if err := run(t.setup()); err != nil {
 				return err
 			}
-			log.Printf("deleting cluster %s\n", cluster)
+			log.Printf("Deleting cluster %s\n", cluster)
 			if err = t.delete(); err != nil {
 				return err
 			}

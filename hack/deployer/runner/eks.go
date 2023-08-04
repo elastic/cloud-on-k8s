@@ -251,8 +251,8 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		return err
 	}
 
-	daysAgo := time.Now().Add(-olderThan)
-	e.ctx["Date"] = daysAgo.Format(time.RFC3339)
+	sinceDate := time.Now().Add(-olderThan)
+	e.ctx["Date"] = sinceDate.Format(time.RFC3339)
 	e.ctx["E2EClusterNamePrefix"] = prefix
 
 	allClustersCmd := `eksctl get cluster -r "{{.Region}}" -o json | jq -r 'map(select(.Name|test("{{.E2EClusterNamePrefix}}")))| .[].Name'`
@@ -280,7 +280,7 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 }
 
 func (e *EKSDriver) delete() error {
-	log.Printf("deleting cluster %s", e.ctx["ClusterName"])
+	log.Printf("Deleting cluster %s", e.ctx["ClusterName"])
 	// --wait to surface failures to delete all resources in the Cloud formation
 	return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait").Run()
 }
