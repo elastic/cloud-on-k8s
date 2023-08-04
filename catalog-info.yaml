@@ -157,11 +157,11 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Resource
 metadata:
-  name: cloud-on-k8s-operator-e2e-cluster-cleanup
-  description: Buildkite Pipeline cloud-on-k8s-operator-e2e-cluster-cleanup
+  name: cloud-on-k8s-operator-e2e-clusters-cleanup
+  description: Buildkite Pipeline cloud-on-k8s-operator-e2e-clusters-cleanup
   links:
   - title: Pipeline
-    url: https://buildkite.com/elastic/cloud-on-k8s-operator-e2e-cluster-cleanup
+    url: https://buildkite.com/elastic/cloud-on-k8s-operator-e2e-clusters-cleanup
 spec:
   type: buildkite-pipeline
   owner: group:cloud-k8s-operator
@@ -170,11 +170,11 @@ spec:
     apiVersion: buildkite.elastic.dev/v1
     kind: Pipeline
     metadata:
-      name: cloud-on-k8s-operator-e2e-cluster-cleanup
+      name: cloud-on-k8s-operator-e2e-clusters-cleanup
       description: Cleanup Elastic Cloud on Kubernetes (ECK) e2e-tests k8s clusters
     spec:
       repository: elastic/cloud-on-k8s
-      pipeline_file: .buildkite/pipeline-e2e-test-cleanup.yml
+      pipeline_file: .buildkite/pipeline-e2e-clusters-cleanup.yml
       provider_settings:
         trigger_mode: none
         build_pull_requests: true
