@@ -81,6 +81,12 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 
 	ports := getDefaultContainerPorts()
 
+	if params.KeystoreResources != nil {
+		builder = builder.
+			WithVolumes(params.KeystoreResources.Volume).
+			WithInitContainers(params.KeystoreResources.InitContainer)
+	}
+
 	builder = builder.
 		WithResources(DefaultResources).
 		WithLabels(labels).

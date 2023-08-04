@@ -190,6 +190,16 @@ func (b Builder) WithConfig(config map[string]interface{}) Builder {
 	return b
 }
 
+func (b Builder) WithSecureSettings(secretSource ...commonv1.SecretSource) Builder {
+	b.Logstash.Spec.SecureSettings = append(b.Logstash.Spec.SecureSettings, secretSource...)
+	return b
+}
+
+func (b Builder) WithPodTemplate(podTemplate corev1.PodTemplateSpec) Builder {
+	b.Logstash.Spec.PodTemplate = podTemplate
+	return b
+}
+
 func (b Builder) Name() string {
 	return b.Logstash.Name
 }
