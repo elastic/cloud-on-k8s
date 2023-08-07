@@ -31,6 +31,10 @@ Deploys two Elasticsearch clusters and two Kibana instances together with single
 
 Deploys Elastic Agent as a DaemonSet in Fleet mode with System and Kubernetes integrations enabled. System integration collects syslog logs, auth logs and system metrics (for CPU, I/O, filesystem, memory, network, process and others). Kubernetes integrations collects API server, Container, Event, Node, Pod, Volume and system metrics.
 
+===== System and Kubernetes integrations running as non-root - `fleet-kubernetes-integration-nonroot.yaml`
+
+The provided example is functionally identical to the previous section but runs the Elastic Agent processes (both the Elastic Agent running as the Fleet server and the Elastic Agent connected to Fleet) as a non-root user by utilizing a DaemonSet to ensure directory and file permissions. *Note* The DaemonSet itself must run as root to set up permissions and ECK >= 2.10.0 is required.
+
 ===== Custom logs integration with autodiscover - `fleet-custom-logs-integration.yaml`
 
 Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration enabled. Collects logs from all Pods in the `default` namespace using autodiscover feature.

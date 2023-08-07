@@ -353,8 +353,12 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		case *appsv1.DaemonSet:
+			name := decodedObj.Name + "-" + suffix
 			decodedObj.Namespace = namespace
-			decodedObj.Name = decodedObj.Name + "-" + suffix
+			decodedObj.Name = name
+			decodedObj.Spec.Selector.MatchLabels["name"] = name
+			decodedObj.Spec.Template.ObjectMeta.Labels["name"] = name
+			maybeMutateForAgentNonRootTests(decodedObj, namespace, suffix)
 		}
 
 		if builder != nil {
@@ -377,6 +381,30 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 	sortBuilders(builders)
 
 	return builders, otherObjects
+}
+
+// maybeMutateForAgentNonRootTests will possibly mutate the given daemonset when
+// running tests for Elastic Agent running as non-root. This is required as the
+// directories depend on both the namespace and the random suffix of the e2e tests.
+func maybeMutateForAgentNonRootTests(ds *appsv1.DaemonSet, namespace, suffix string) {
+	for i, init := range ds.Spec.Template.Spec.InitContainers {
+		if init.Name == "manage-agent-hostpath-permissions" {
+			for j, cmd := range ds.Spec.Template.Spec.InitContainers[i].Command {
+				updatedCmd := strings.Replace(
+					cmd,
+					"/var/lib/elastic-agent/default/elastic-agent/state",
+					fmt.Sprintf("/var/lib/elastic-agent/%s/elastic-agent-%s/state", namespace, suffix),
+					1,
+				)
+				ds.Spec.Template.Spec.InitContainers[i].Command[j] = strings.Replace(
+					updatedCmd,
+					"/var/lib/elastic-agent/default/fleet-server/state",
+					fmt.Sprintf("/var/lib/elastic-agent/%s/fleet-server-%s/state", namespace, suffix),
+					1,
+				)
+			}
+		}
+	}
 }
 
 // sortBuilders mutates the given builder slice to sort them by test priority:
@@ -459,6 +487,48 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 						"fleet-server-agent-http.default",
 						fmt.Sprintf("fleet-server-%s-agent-http.%s", suffix, namespace),
 					)
+				}
+			}
+		}
+	}
+
+	fleetOutputsKey := "xpack.fleet.outputs"
+
+	// This is only used when testing Agent+Fleet running as non-root. (config/recipes/elastic-agent/fleet-kubernetes-integration-noroot.yaml)
+	//
+	// Adjust the Kibana's spec.config.xpack.fleet.outputs section to both
+	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
+	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
+	if untypedOutputs, ok := data[fleetOutputsKey]; ok { //nolint:nestif
+		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
+			for _, untypedOutputMap := range untypedXpackOutputsSlice {
+				if outputMap, ok := untypedOutputMap.(map[string]interface{}); ok {
+					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
+						if outputSlice, ok := outputMap["hosts"].([]interface{}); ok {
+							for j, untypedHost := range outputSlice {
+								if host, ok := untypedHost.(string); ok {
+									outputSlice[j] = strings.ReplaceAll(
+										host,
+										"elasticsearch-es-http.default",
+										fmt.Sprintf("elasticsearch-%s-es-http.%s", suffix, namespace),
+									)
+								}
+							}
+						}
+						if untypedSSL, ok := outputMap["ssl"].(map[string]interface{}); ok {
+							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]interface{}); ok {
+								for k, untypedCA := range untypedCAs {
+									if ca, ok := untypedCA.(string); ok {
+										untypedCAs[k] = strings.ReplaceAll(
+											ca,
+											"elasticsearch-association/default/elasticsearch/",
+											fmt.Sprintf("elasticsearch-association/%s/elasticsearch-%s/", namespace, suffix),
+										)
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}

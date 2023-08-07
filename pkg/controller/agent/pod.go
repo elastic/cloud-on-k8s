@@ -357,13 +357,44 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		certificatesDir(esAssociation),
 	))
 
-	// Beats managed by the Elastic Agent don't trust the Elasticsearch CA that Elastic Agent itself is configured
-	// to trust. There is currently no way to configure those Beats to trust a particular CA. The intended way to handle
-	// it is to allow Fleet to provide Beat output settings, but due to https://github.com/elastic/kibana/issues/102794
-	// this is not supported outside of UI. To workaround this limitation the Agent is going to update Pod-wide CA store
-	// before starting Elastic Agent.
-	cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
-	return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
+	// If agent is set to run as root, then we will add the Elasticsearch CA to the
+	// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
+	// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
+	// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
+	//
+	// For historic purposes (https://github.com/elastic/beats/pull/26529). Agent didn't respect
+	// FLEET_CA until 7.14.0, which is the lowest valid version we support of Agent + Fleet.
+	if runningAsRoot(agent) {
+		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
+		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
+	}
+	return builder, nil
+}
+
+func runningAsRoot(agent agentv1alpha1.Agent) bool {
+	if agent.Spec.DaemonSet != nil {
+		return runningContainerAsRoot(agent.Spec.DaemonSet.PodTemplate)
+	}
+	if agent.Spec.Deployment != nil {
+		return runningContainerAsRoot(agent.Spec.Deployment.PodTemplate)
+	}
+	return false
+}
+
+func runningContainerAsRoot(podTemplate corev1.PodTemplateSpec) bool {
+	if podTemplate.Spec.SecurityContext != nil &&
+		podTemplate.Spec.SecurityContext.RunAsUser != nil &&
+		*podTemplate.Spec.SecurityContext.RunAsUser == 0 {
+		return true
+	}
+	for _, container := range podTemplate.Spec.Containers {
+		if container.SecurityContext != nil && container.SecurityContext.RunAsUser != nil {
+			if *container.SecurityContext.RunAsUser == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association, configHash hash.Hash) error {
