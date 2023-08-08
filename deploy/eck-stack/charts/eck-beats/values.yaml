@@ -27,7 +27,7 @@ labels: {}
 # Annotations that will be applied to Elastic Beats.
 #
 annotations: {}
-  #eckLicense: "basic"
+  #licenseType: "basic"
 
 spec:
   # Type of Elastic Beats. Standard types of Beat are [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat].

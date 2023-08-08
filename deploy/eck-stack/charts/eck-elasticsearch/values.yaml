@@ -31,7 +31,7 @@ labels: {}
 # Annotations that will be applied to Elasticsearch.
 #
 annotations: {}
-  #eckLicense: "basic"
+  #licenseType: "basic"
 
 # Settings for configuring Elasticsearch users and roles.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-users-and-roles.html

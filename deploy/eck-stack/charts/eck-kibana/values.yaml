@@ -27,7 +27,7 @@ labels: {}
 # Annotations that will be applied to Kibana.
 #
 annotations: {}
-  #eckLicense: "basic"
+  #licenseType: "basic"
 
 spec:
   # Count of Kibana replicas to create.
