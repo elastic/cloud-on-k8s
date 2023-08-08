@@ -27,7 +27,8 @@ labels: {}
 # Annotations that will be applied to Elastic Agent.
 #
 annotations: {}
-
+  #eckLicense: "basic"
+  
 spec:
   # policyID determines into which Agent Policy this Agent will be enrolled.
   # policyID: eck-agent

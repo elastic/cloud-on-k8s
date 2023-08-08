@@ -27,6 +27,7 @@ labels: {}
 # Annotations that will be applied to Elastic Fleet Server.
 #
 annotations: {}
+  #eckLicense: "basic"
 
 spec:
   # policyID determines into which Agent Policy this Fleet Server will be enrolled.
