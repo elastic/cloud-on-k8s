@@ -6,9 +6,9 @@ metadata:
   labels:
     {{- include "elasticagent.labels" $ | nindent 4 }}
   annotations:
-    eck.k8s.elastic.co/license: enterprise
-    {{- with .Values.annotations }}
-    {{- toYaml . | nindent 4 }}
+    eck.k8s.elastic.co/license: {{ default "enterprise" .Values.annotations.eckLicense }}
+    {{- if .Values.annotations }}
+    {{- toYaml .Values.annotations | indent 4 }}
     {{- end }}
 spec:
   version: {{ required "An Elastic Agent version is required" .Values.version }}
