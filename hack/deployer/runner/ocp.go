@@ -499,18 +499,10 @@ func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
-		// client image requires a plan which we don't have in GetCredentials
-		setup := append(d.setup(), d.ensureClientImage)
-
-		if err := run(setup); err != nil {
-			return err
-		}
-
-		defer func() {
-			_ = d.removeWorkDir()
-		}()
-		if err = d.delete(); err != nil {
-			return err
+		d.plan.Operation = DeleteAction
+		if err = d.Execute(); err != nil {
+			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+			continue
 		}
 	}
 	return nil

@@ -480,13 +480,14 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 		for _, cluster := range clustersToDelete {
 			t.plan.ClusterName = cluster
-			t.plan.Tanzu.ResourceGroup = cluster
+			t.plan.Tanzu.ResourceGroup = rg
 			if err := run(t.setup()); err != nil {
 				return err
 			}
 			log.Printf("Deleting cluster %s\n", cluster)
 			if err = t.delete(); err != nil {
-				return err
+				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+				continue
 			}
 		}
 	}

@@ -458,7 +458,8 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
 		if err = d.delete(); err != nil {
-			return err
+			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+			continue
 		}
 	}
 	return nil

@@ -271,7 +271,8 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		}
 		if clustersToDelete != "" {
 			if err = e.delete(); err != nil {
-				return err
+				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+				continue
 			}
 		}
 	}
