@@ -20,6 +20,8 @@ const (
 )
 
 // authToGCP authenticates the deployer to the Google Cloud Platform as a service account or as a user.
+//
+//nolint:unparam
 func authToGCP(
 	client vault.Client, vaultPath string, serviceAccountVaultFieldName string,
 	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
@@ -42,6 +44,13 @@ func authToGCP(
 		})
 		if err != nil {
 			return err
+		}
+
+		if gCloudProject == "" {
+			gCloudProject, err = vault.Get(client, vaultPath, GKEProjectVaultFieldName)
+			if err != nil {
+				return err
+			}
 		}
 
 		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it

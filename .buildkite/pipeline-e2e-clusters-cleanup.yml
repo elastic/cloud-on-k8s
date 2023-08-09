@@ -1,0 +1,101 @@
+
+env:
+  E2E_TEST_CLUSTER_PREFIX: "eck-e2e"
+
+steps:
+
+  - label: ":go: build deployer"
+    key: "build-deployer"
+    commands:
+      - make build-deployer
+      - buildkite-agent artifact upload hack/deployer/deployer
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup gke"
+    depends_on:
+      - "build-deployer"
+    env:
+      E2E_PROVIDER: "gke"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup aks"
+    # this does not depend on building deployer as the make target handles the building.
+    env:
+      E2E_PROVIDER: "aks"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+
+  - label: ":broom: e2e test cluster cleanup eks"
+    depends_on:
+      - "build-deployer"
+    env:
+      E2E_PROVIDER: "eks"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup eks-arm"
+    depends_on:
+      - "build-deployer"
+    env:
+      E2E_PROVIDER: "eks-arm"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - buildkite-agent artifact download "hack/deployer/deployer" /usr/local/
+      - chmod u+x /usr/local/hack/deployer/deployer
+      - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      memory: 2G
+
+  - label: ":broom: e2e test cluster cleanup ocp"
+    # this does not depend on building deployer as the make target handles the building.
+    env:
+      E2E_PROVIDER: "ocp"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+
+  - label: ":broom: e2e test cluster cleanup tanzu"
+    # this does not depend on building deployer as the make target handles the building.
+    env:
+      E2E_PROVIDER: "tanzu"
+      # allows set-deployer-config.sh to set a sane default for cluster name in this operation.
+      CLUSTER_NAME: "none"
+    commands:
+      - .buildkite/scripts/test/set-deployer-config.sh
+      - make -C .buildkite TARGET="run-deployer-cleanup" ci
+    agents:
+      provider: "gcp"
+      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
