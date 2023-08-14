@@ -62,16 +62,16 @@ spec:
         #        elasticsearch.k8s.elastic.co/statefulset-name: elasticsearch-sample-es-default
     count: 3
   #   # request 2Gi of persistent data storage for pods in this topology element
-    volumeClaimTemplates:
-    - metadata:
-        name: elasticsearch-data # Do not change this name unless you set up a volume mount for the data path.
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 2Gi
-        storageClassName: standard
+  #   volumeClaimTemplates:
+  #   - metadata:
+  #       name: elasticsearch-data # Do not change this name unless you set up a volume mount for the data path.
+  #     spec:
+  #       accessModes:
+  #       - ReadWriteOnce
+  #       resources:
+  #         requests:
+  #           storage: 2Gi
+  #       storageClassName: standard
   # # inject secure settings into Elasticsearch nodes from k8s secrets references
   # secureSettings:
   # - secretName: ref-to-secret
