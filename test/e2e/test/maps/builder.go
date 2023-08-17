@@ -40,11 +40,11 @@ func newBuilder(name, randSuffix string) Builder {
 		EMS: v1alpha1.ElasticMapsServer{
 			ObjectMeta: meta,
 			Spec: v1alpha1.MapsSpec{
-				Count:   1,
-				Version: test.Ctx().ElasticStackVersion,
+				Count: 1,
 			},
 		},
 	}.
+		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name).
 		WithPodLabel(run.TestNameLabel, name)
@@ -83,6 +83,9 @@ func (b Builder) WithNamespace(namespace string) Builder {
 }
 
 func (b Builder) WithVersion(version string) Builder {
+	if version == "8.8.2" {
+		version = "8.8.1" // 8.8.2 is defective and won't start see: https://github.com/elastic/cloud-on-k8s/pull/7005
+	}
 	b.EMS.Spec.Version = version
 	return b
 }

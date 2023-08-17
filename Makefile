@@ -300,6 +300,9 @@ build-deployer:
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
+run-deployer-cleanup: build-deployer
+	./hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $(E2E_TEST_CLUSTER_PREFIX) --config-file deployer-config.yml
+
 set-kubeconfig: build-deployer
 	./hack/deployer/deployer get credentials --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
@@ -398,6 +401,7 @@ switch-registry-dev: # just use the default values of variables
 # -- build
 
 E2E_REGISTRY_NAMESPACE     ?= eck-dev
+E2E_TEST_CLUSTER_PREFIX    ?= "eck-e2e"
 export E2E_IMAGE_NAME      ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests
 export E2E_IMAGE_TAG       ?= $(SHA1)
 

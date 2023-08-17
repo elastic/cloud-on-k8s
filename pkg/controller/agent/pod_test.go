@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
 var (
@@ -898,6 +899,20 @@ fi
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "7.16.2",
 					FleetServerEnabled: false,
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "agent",
+										SecurityContext: &corev1.SecurityContext{
+											RunAsUser: pointer.Int64(0),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			assoc:   assocToSameNs,
@@ -910,7 +925,7 @@ fi
 			}),
 		},
 		{
-			name: "fleet server enabled 8x",
+			name: "fleet server enabled 8x has volumes and volumeMount but no ca-init command",
 			agent: agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "agent",
@@ -926,7 +941,7 @@ fi
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
 				ps.Volumes = expectedCAVolume
 				ps.Containers[0].VolumeMounts = expectedCAVolumeMount
-				ps.Containers[0].Command = expectedCmd
+				ps.Containers[0].Command = nil
 				return ps
 			}),
 		},

@@ -129,6 +129,60 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 	runAgentRecipe(t, "fleet-kubernetes-integration.yaml", customize)
 }
 
+func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
+	// https://github.com/elastic/cloud-on-k8s/issues/6331
+	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
+		t.SkipNow()
+	}
+
+	// The recipe does not work fully within an openshift cluster without modifications.
+	if test.Ctx().OcpCluster {
+		t.SkipNow()
+	}
+
+	customize := func(builder agent.Builder) agent.Builder {
+		if !builder.Agent.Spec.FleetServerEnabled {
+			return builder
+		}
+
+		return builder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
+			// see https://github.com/elastic/cloud-on-k8s/issues/4092
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.container", "default")).
+			// Might not generate an event in time for this check to succeed in all environments
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.event", "k8s")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.node", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.pod", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.proxy", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.system", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.volume", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
+			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
+			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process.summary", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
+	}
+
+	runAgentRecipe(t, "fleet-kubernetes-integration-noroot.yaml", customize)
+}
+
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 

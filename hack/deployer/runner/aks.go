@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -120,9 +121,13 @@ func (d *AKSDriver) auth() error {
 		log.Print("Authenticating as service account...")
 		credentials, err := azure.NewCredentials(d.vaultClient)
 		if err != nil {
-			return err
+			return fmt.Errorf("while getting new credentials: %w", err)
 		}
-		return azure.Login(credentials)
+		err = azure.Login(credentials)
+		if err != nil {
+			return fmt.Errorf("while logging into azure: %w", err)
+		}
+		return nil
 	}
 
 	log.Print("Authenticating as user...")
@@ -180,10 +185,49 @@ func (d *AKSDriver) GetCredentials() error {
 }
 
 func (d *AKSDriver) delete() error {
-	log.Print("Deleting cluster...")
+	log.Printf("Deleting cluster %s ...\n", d.plan.ClusterName)
 	return azure.Cmd("aks",
 		"delete", "--yes",
 		"--name", d.plan.ClusterName,
 		"--resource-group", d.plan.Aks.ResourceGroup).
 		Run()
+}
+
+func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
+	if err := d.auth(); err != nil {
+		return err
+	}
+
+	sinceDate := time.Now().Add(-olderThan)
+
+	clustersToDelete, err := azure.Cmd("resource", "list",
+		"-l", d.plan.Aks.Location,
+		"-g", d.plan.Aks.ResourceGroup,
+		`--resource-type "Microsoft.ContainerService/managedClusters"`,
+		`--query "[?tags.project == 'eck-ci']"`,
+		`| jq -r --arg d`, sinceDate.Format(time.RFC3339),
+		fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s"))))|.[].name'`, prefix)).OutputList()
+	if err != nil {
+		return fmt.Errorf("while running az resource list command: %w", err)
+	}
+
+	for _, cluster := range clustersToDelete {
+		d.plan.ClusterName = cluster
+		if d.plan.Aks.ResourceGroup == "" {
+			c, err := vault.NewClient()
+			if err != nil {
+				return err
+			}
+			resourceGroup, err := vault.Get(c, azure.AKSVaultPath, AKSResourceGroupVaultFieldName)
+			if err != nil {
+				return err
+			}
+			d.plan.Aks.ResourceGroup = resourceGroup
+		}
+		if err = d.delete(); err != nil {
+			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+			continue
+		}
+	}
+	return nil
 }

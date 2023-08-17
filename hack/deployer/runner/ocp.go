@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -191,7 +192,7 @@ func (d *OCPDriver) create() error {
 }
 
 func (d *OCPDriver) delete() error {
-	log.Println("Deleting cluster...")
+	log.Printf("Deleting cluster %s ...\n", d.plan.ClusterName)
 
 	err := d.runInstallerCommand("destroy")
 	if err != nil {
@@ -400,7 +401,7 @@ func (d *OCPDriver) downloadClusterState() error {
 }
 
 func (d *OCPDriver) copyKubeconfig() error {
-	log.Printf("Copying  credentials")
+	log.Printf("Copying credentials")
 	kubeConfig := filepath.Join(d.runtimeState.ClusterStateDir, "auth", "kubeconfig")
 
 	// 1. merge or create kubeconfig
@@ -461,4 +462,48 @@ func (d *OCPDriver) baseDomain() string {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return baseDomain
+}
+
+func (d *OCPDriver) Cleanup(prefix string, olderThan time.Duration) error {
+	if err := d.authToGCP(); err != nil {
+		return err
+	}
+	sinceDate := time.Now().Add(-olderThan)
+
+	params := d.bucketParams()
+	params["Date"] = sinceDate.Format(time.RFC3339)
+	params["E2EClusterNamePrefix"] = prefix
+	params["Region"] = d.plan.Ocp.Region
+
+	if d.plan.Ocp.GCloudProject == "" {
+		gCloudProject, err := vault.Get(d.vaultClient, OCPVaultPath, GKEProjectVaultFieldName)
+		if err != nil {
+			return err
+		}
+		d.plan.Ocp.GCloudProject = gCloudProject
+	}
+	params["GCloudProject"] = d.plan.Ocp.GCloudProject
+
+	zonesCmd := `gcloud compute zones list --verbosity error --filter='region:https://www.googleapis.com/compute/v1/projects/{{.GCloudProject}}/regions/{{.Region}}' --format="value(selfLink.name())"`
+	zones, err := exec.NewCommand(zonesCmd).AsTemplate(params).WithoutStreaming().OutputList()
+	if err != nil {
+		return err
+	}
+	params["Zones"] = strings.Join(zones, ",")
+
+	cmd := `gcloud compute instances list --verbosity error --zones={{.Zones}} --filter="name~'^{{.E2EClusterNamePrefix}}-ocp.*' AND status=RUNNING" --format=json | jq -r --arg d "{{.Date}}" 'map(select(.creationTimestamp | . <= $d))|.[].name' | grep -o '{{.E2EClusterNamePrefix}}-ocp-[a-z]*-[0-9]*' | sort | uniq`
+	clustersToDelete, err := exec.NewCommand(cmd).AsTemplate(params).WithoutStreaming().OutputList()
+	if err != nil {
+		return err
+	}
+
+	for _, cluster := range clustersToDelete {
+		d.plan.ClusterName = cluster
+		d.plan.Operation = DeleteAction
+		if err = d.Execute(); err != nil {
+			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+			continue
+		}
+	}
+	return nil
 }

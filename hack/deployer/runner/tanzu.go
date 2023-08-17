@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v2/hack/deployer/runner/azure"
@@ -394,7 +395,7 @@ func (t *TanzuDriver) ensureResourceGroup() (bool, error) {
 }
 
 func (t *TanzuDriver) deleteResourceGroup() error {
-	log.Println("Deleting Azure resource group")
+	log.Printf("Deleting Azure resource group %s\n", t.plan.Tanzu.ResourceGroup)
 	return azure.Cmd("group", "delete", "--name", t.plan.Tanzu.ResourceGroup, "-y").
 		Run()
 }
@@ -440,6 +441,57 @@ func (t *TanzuDriver) restoreInstallerState() error {
 		"-c", t.plan.ClusterName, "--account-name", t.azureStorageAccount,
 		"-s", "'*'", "-d", t.installerStateDirBasename).
 		WithoutStreaming().Run()
+}
+
+func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
+	if err := t.loginToAzure(); err != nil {
+		return err
+	}
+	sinceDate := time.Now().Add(-olderThan)
+
+	params := map[string]interface{}{
+		"Date":                 sinceDate.Format(time.RFC3339),
+		"Location":             t.plan.Tanzu.Location,
+		"E2EClusterNamePrefix": prefix,
+	}
+
+	resourceGroups, err := azure.Cmd("group", "list",
+		"--query", fmt.Sprintf("[?location=='%s']", t.plan.Tanzu.Location),
+		"--query", fmt.Sprintf("[?contains(name,'%s-tanzu')]", prefix),
+		"| jq -r '.[].name'").OutputList()
+	if err != nil {
+		return err
+	}
+
+	for _, rg := range resourceGroups {
+		params["ResourceGroup"] = rg
+
+		clustersToDelete, err := azure.Cmd("resource", "list",
+			"-l", t.plan.Tanzu.Location,
+			"-g", rg,
+			`--resource-type "Microsoft.Compute/virtualMachines"`,
+			"--query", "[?tags.project == 'eck-ci']",
+			"| jq -r --arg d", sinceDate.Format(time.RFC3339),
+			fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s-tanzu"))))|.[].name'`, prefix),
+			fmt.Sprintf("| grep -o '%s-tanzu-[a-z]*-[0-9]*' | sort | uniq", prefix)).OutputList()
+		if err != nil {
+			return fmt.Errorf("while running az resource list command: %w", err)
+		}
+
+		for _, cluster := range clustersToDelete {
+			t.plan.ClusterName = cluster
+			t.plan.Tanzu.ResourceGroup = rg
+			if err := run(t.setup()); err != nil {
+				return err
+			}
+			log.Printf("Deleting cluster %s\n", cluster)
+			if err = t.delete(); err != nil {
+				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+				continue
+			}
+		}
+	}
+	return nil
 }
 
 var _ Driver = &TanzuDriver{}

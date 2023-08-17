@@ -21,6 +21,7 @@ func Execute() {
 	rootCmd.AddCommand(ExecuteCommand())
 	rootCmd.AddCommand(CreateCommand())
 	rootCmd.AddCommand(GetCommand())
+	rootCmd.AddCommand(CleanupCommand())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
