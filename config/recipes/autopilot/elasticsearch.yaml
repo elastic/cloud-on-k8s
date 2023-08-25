@@ -4,15 +4,16 @@ kind: DaemonSet
 metadata:
   name: max-map-count-setter
   labels:
-    k8s-app: max-map-count-setter
+    app.kubernetes.io/name: max-map-count-setter
 spec:
   selector:
     matchLabels:
-      name: max-map-count-setter
+      app.kubernetes.io/instance: max-map-count-setter
   template:
     metadata:
       labels:
-        name: max-map-count-setter
+        app.kubernetes.io/instance: max-map-count-setter
+        app.kubernetes.io/name: max-map-count-setter
     spec:
       nodeSelector:
         cloud.google.com/compute-class: "Balanced"

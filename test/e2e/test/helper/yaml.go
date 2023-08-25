@@ -356,8 +356,8 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			name := decodedObj.Name + "-" + suffix
 			decodedObj.Namespace = namespace
 			decodedObj.Name = name
-			decodedObj.Spec.Selector.MatchLabels["name"] = name
-			decodedObj.Spec.Template.ObjectMeta.Labels["name"] = name
+			decodedObj.Spec.Selector.MatchLabels["app.kubernetes.io/instance"] = name
+			decodedObj.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/instance"] = name
 			maybeMutateForAgentNonRootTests(decodedObj, namespace, suffix)
 		}
 
