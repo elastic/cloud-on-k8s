@@ -15,6 +15,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
@@ -142,6 +143,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				[]client.Object{
 					newBuilder("testESwithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
+						// we need two reconciliations here: first sets this annotation second updates status, this simulates that the first has happened
 						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build(),
 				},
@@ -174,6 +176,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				[]client.Object{
 					newBuilder("testeswithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
+						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
 			args: args{
