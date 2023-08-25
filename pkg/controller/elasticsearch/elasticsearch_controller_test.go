@@ -174,6 +174,8 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 				[]client.Object{
 					newBuilder("testeswithtoolongofanamereallylongname", "test").
 						WithGeneration(2).
+						// we need two reconciliations here: first sets this annotation second updates status, this simulates that the first has happened
+						WithAnnotations(map[string]string{hints.OrchestrationsHintsAnnotation: `{"no_transient_settings":false}`}).
 						WithStatus(esv1.ElasticsearchStatus{ObservedGeneration: 1}).Build()},
 			},
 			args: args{

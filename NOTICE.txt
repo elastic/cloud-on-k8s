@@ -926,11 +926,11 @@ Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregi
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/uuid
-Version : v1.3.0
-Time    : 2021-07-12T22:33:52Z
+Version : v1.3.1
+Time    : 2023-08-21T16:29:15Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.3.1/LICENSE:
 
 Copyright (c) 2009,2014 Google Inc. All rights reserved.
 
@@ -4961,11 +4961,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20230406110748
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.15.0
-Time    : 2023-05-23T03:28:21Z
+Version : v0.15.1
+Time    : 2023-08-04T16:02:25Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.15.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.15.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
