@@ -564,3 +564,16 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 		})
 	}
 }
+
+func Test_getScriptsConfigMapContent(t *testing.T) {
+	cm := &corev1.ConfigMap{
+		Data: map[string]string{
+			PreStopHookScriptConfigKey:             "value1#",
+			initcontainer.PrepareFsScriptConfigKey: "value2#",
+			ReadinessProbeScriptConfigKey:          "value3#",
+			initcontainer.SuspendScriptConfigKey:   "value4#",
+			initcontainer.SuspendedHostsFile:       "value5#",
+		},
+	}
+	assert.Equal(t, "value1#value2#value3#value4#", getScriptsConfigMapContent(cm))
+}
