@@ -32,7 +32,7 @@ spec:
               selector:
                 matchExpressions:
                   - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
-                  - {key: name, operator: NotIn, values: [max-map-count-setter]}
+                  - {key: app.kubernetes.io/name, operator: NotIn, values: [max-map-count-setter]}
       validate:
         message: >-
           Privileged mode is disallowed. The fields spec.containers[*].securityContext.privileged
@@ -87,7 +87,7 @@ spec:
             selector:
               matchExpressions:
                 - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
-                - {key: name, operator: NotIn, values: [max-map-count-setter]}
+                - {key: app.kubernetes.io/name, operator: NotIn, values: [max-map-count-setter]}
       validate:
         message: >-
           Running as root is not allowed. The fields spec.securityContext.runAsUser,
@@ -196,7 +196,7 @@ spec:
               selector:
                 matchExpressions:
                   - {key: common.k8s.elastic.co/type, operator: NotIn, values: [beat, agent]}
-                  - {key: name, operator: NotIn, values: [max-map-count-setter]}
+                  - {key: app.kubernetes.io/name, operator: NotIn, values: [max-map-count-setter]}
       validate:
         message: "Auto-mounting of Service Account tokens is not allowed."
         pattern:
