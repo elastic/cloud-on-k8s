@@ -531,11 +531,13 @@ kind: Logstash
 metadata:
   name: quickstart
 spec:
-  containers:
-    - name: logstash
-      env:
-        - name: LS_JAVA_OPTS   <1>
-          value: "-Xmx2g -Xms2g"
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+          env:
+            - name: LS_JAVA_OPTS   <1>
+              value: "-Xmx2g -Xms2g"
 ----
 <1> This will change the maximum and minimum heap size of the JVM on each pod to 2GB
 
