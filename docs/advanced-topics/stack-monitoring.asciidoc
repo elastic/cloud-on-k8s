@@ -75,7 +75,7 @@ spec:
       - name: monitoring
         namespace: observability <1>
 ---
-apiVersion: logstash.k8s.elastic.co/v1beta1
+apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
     name: monitored-sample
