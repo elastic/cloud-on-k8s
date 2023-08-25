@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: agents.agent.k8s.elastic.co
 spec:
   group: agent.k8s.elastic.co
@@ -513,11 +513,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -536,12 +535,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -866,7 +874,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: apmservers.apm.k8s.elastic.co
 spec:
   group: apm.k8s.elastic.co
@@ -1183,11 +1191,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -1206,12 +1213,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -1817,11 +1833,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -1840,12 +1855,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -2104,7 +2128,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
@@ -2603,7 +2627,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: elasticmapsservers.maps.k8s.elastic.co
 spec:
   group: maps.k8s.elastic.co
@@ -2933,11 +2957,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -2956,12 +2979,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -3206,7 +3238,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
 spec:
   group: autoscaling.k8s.elastic.co
@@ -3555,7 +3587,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
@@ -3863,11 +3895,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -3886,12 +3917,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -4475,6 +4515,54 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                              allocatedResourceStatuses:
+                                additionalProperties:
+                                  description: When a controller receives persistentvolume
+                                    claim update with ClaimResourceStatus for a resource
+                                    that it does not recognizes, then it should ignore
+                                    that update and let other controllers handle it.
+                                  type: string
+                                description: "allocatedResourceStatuses stores status
+                                  of resource being resized for the given PVC. Key
+                                  names follow standard Kubernetes label syntax. Valid
+                                  values are either: * Un-prefixed keys: - storage
+                                  - the capacity of the volume. * Custom resources
+                                  must use implementation-defined prefixed names such
+                                  as \"example.com/my-custom-resource\" Apart from
+                                  above values - keys that are unprefixed or have
+                                  kubernetes.io prefix are considered reserved and
+                                  hence may not be used. \n ClaimResourceStatus can
+                                  be in any of following states: - ControllerResizeInProgress:
+                                  State set when resize controller starts resizing
+                                  the volume in control-plane. - ControllerResizeFailed:
+                                  State set when resize has failed in resize controller
+                                  with a terminal error. - NodeResizePending: State
+                                  set when resize controller has finished resizing
+                                  the volume but further resizing of volume is needed
+                                  on the node. - NodeResizeInProgress: State set when
+                                  kubelet starts resizing the volume. - NodeResizeFailed:
+                                  State set when resizing has failed in kubelet with
+                                  a terminal error. Transient errors don't set NodeResizeFailed.
+                                  For example: if expanding a PVC for more capacity
+                                  - this field can be one of the following states:
+                                  - pvc.status.allocatedResourceStatus['storage']
+                                  = \"ControllerResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"ControllerResizeFailed\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizePending\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizeFailed\" When this field is not set,
+                                  it means that no resize operation is in progress
+                                  for the given PVC. \n A controller that receives
+                                  PVC update with previously unknown resourceName
+                                  or ClaimResourceStatus should ignore the update
+                                  for the purpose it was designed. For example - a
+                                  controller that only is responsible for resizing
+                                  capacity of the volume, should ignore PVC updates
+                                  that change other valid resources associated with
+                                  PVC. \n This is an alpha field and requires enabling
+                                  RecoverVolumeExpansionFailure feature."
+                                type: object
+                                x-kubernetes-map-type: granular
                               allocatedResources:
                                 additionalProperties:
                                   anyOf:
@@ -4482,20 +4570,33 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: allocatedResources is the storage resource
-                                  within AllocatedResources tracks the capacity allocated
-                                  to a PVC. It may be larger than the actual capacity
-                                  when a volume expansion operation is requested.
-                                  For storage quota, the larger value from allocatedResources
-                                  and PVC.spec.resources is used. If allocatedResources
-                                  is not set, PVC.spec.resources alone is used for
-                                  quota calculation. If a volume expansion capacity
-                                  request is lowered, allocatedResources is only lowered
-                                  if there are no expansion operations in progress
-                                  and if the actual volume capacity is equal or lower
-                                  than the requested capacity. This is an alpha field
-                                  and requires enabling RecoverVolumeExpansionFailure
-                                  feature.
+                                description: "allocatedResources tracks the resources
+                                  allocated to a PVC including its capacity. Key names
+                                  follow standard Kubernetes label syntax. Valid values
+                                  are either: * Un-prefixed keys: - storage - the
+                                  capacity of the volume. * Custom resources must
+                                  use implementation-defined prefixed names such as
+                                  \"example.com/my-custom-resource\" Apart from above
+                                  values - keys that are unprefixed or have kubernetes.io
+                                  prefix are considered reserved and hence may not
+                                  be used. \n Capacity reported here may be larger
+                                  than the actual capacity when a volume expansion
+                                  operation is requested. For storage quota, the larger
+                                  value from allocatedResources and PVC.spec.resources
+                                  is used. If allocatedResources is not set, PVC.spec.resources
+                                  alone is used for quota calculation. If a volume
+                                  expansion capacity request is lowered, allocatedResources
+                                  is only lowered if there are no expansion operations
+                                  in progress and if the actual volume capacity is
+                                  equal or lower than the requested capacity. \n A
+                                  controller that receives PVC update with previously
+                                  unknown resourceName should ignore the update for
+                                  the purpose it was designed. For example - a controller
+                                  that only is responsible for resizing capacity of
+                                  the volume, should ignore PVC updates that change
+                                  other valid resources associated with PVC. \n This
+                                  is an alpha field and requires enabling RecoverVolumeExpansionFailure
+                                  feature."
                                 type: object
                               capacity:
                                 additionalProperties:
@@ -4553,14 +4654,6 @@ spec:
                               phase:
                                 description: phase represents the current phase of
                                   PersistentVolumeClaim.
-                                type: string
-                              resizeStatus:
-                                description: resizeStatus stores status of resize
-                                  operation. ResizeStatus is not set by default but
-                                  when expansion is complete resizeStatus is set to
-                                  empty string by resize controller or kubelet. This
-                                  is an alpha field and requires enabling RecoverVolumeExpansionFailure
-                                  feature.
                                 type: string
                             type: object
                         type: object
@@ -5006,11 +5099,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -5029,12 +5121,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -5717,11 +5818,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -5740,12 +5840,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -6224,6 +6333,54 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                              allocatedResourceStatuses:
+                                additionalProperties:
+                                  description: When a controller receives persistentvolume
+                                    claim update with ClaimResourceStatus for a resource
+                                    that it does not recognizes, then it should ignore
+                                    that update and let other controllers handle it.
+                                  type: string
+                                description: "allocatedResourceStatuses stores status
+                                  of resource being resized for the given PVC. Key
+                                  names follow standard Kubernetes label syntax. Valid
+                                  values are either: * Un-prefixed keys: - storage
+                                  - the capacity of the volume. * Custom resources
+                                  must use implementation-defined prefixed names such
+                                  as \"example.com/my-custom-resource\" Apart from
+                                  above values - keys that are unprefixed or have
+                                  kubernetes.io prefix are considered reserved and
+                                  hence may not be used. \n ClaimResourceStatus can
+                                  be in any of following states: - ControllerResizeInProgress:
+                                  State set when resize controller starts resizing
+                                  the volume in control-plane. - ControllerResizeFailed:
+                                  State set when resize has failed in resize controller
+                                  with a terminal error. - NodeResizePending: State
+                                  set when resize controller has finished resizing
+                                  the volume but further resizing of volume is needed
+                                  on the node. - NodeResizeInProgress: State set when
+                                  kubelet starts resizing the volume. - NodeResizeFailed:
+                                  State set when resizing has failed in kubelet with
+                                  a terminal error. Transient errors don't set NodeResizeFailed.
+                                  For example: if expanding a PVC for more capacity
+                                  - this field can be one of the following states:
+                                  - pvc.status.allocatedResourceStatus['storage']
+                                  = \"ControllerResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"ControllerResizeFailed\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizePending\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                                  = \"NodeResizeFailed\" When this field is not set,
+                                  it means that no resize operation is in progress
+                                  for the given PVC. \n A controller that receives
+                                  PVC update with previously unknown resourceName
+                                  or ClaimResourceStatus should ignore the update
+                                  for the purpose it was designed. For example - a
+                                  controller that only is responsible for resizing
+                                  capacity of the volume, should ignore PVC updates
+                                  that change other valid resources associated with
+                                  PVC. \n This is an alpha field and requires enabling
+                                  RecoverVolumeExpansionFailure feature."
+                                type: object
+                                x-kubernetes-map-type: granular
                               allocatedResources:
                                 additionalProperties:
                                   anyOf:
@@ -6231,20 +6388,33 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: allocatedResources is the storage resource
-                                  within AllocatedResources tracks the capacity allocated
-                                  to a PVC. It may be larger than the actual capacity
-                                  when a volume expansion operation is requested.
-                                  For storage quota, the larger value from allocatedResources
-                                  and PVC.spec.resources is used. If allocatedResources
-                                  is not set, PVC.spec.resources alone is used for
-                                  quota calculation. If a volume expansion capacity
-                                  request is lowered, allocatedResources is only lowered
-                                  if there are no expansion operations in progress
-                                  and if the actual volume capacity is equal or lower
-                                  than the requested capacity. This is an alpha field
-                                  and requires enabling RecoverVolumeExpansionFailure
-                                  feature.
+                                description: "allocatedResources tracks the resources
+                                  allocated to a PVC including its capacity. Key names
+                                  follow standard Kubernetes label syntax. Valid values
+                                  are either: * Un-prefixed keys: - storage - the
+                                  capacity of the volume. * Custom resources must
+                                  use implementation-defined prefixed names such as
+                                  \"example.com/my-custom-resource\" Apart from above
+                                  values - keys that are unprefixed or have kubernetes.io
+                                  prefix are considered reserved and hence may not
+                                  be used. \n Capacity reported here may be larger
+                                  than the actual capacity when a volume expansion
+                                  operation is requested. For storage quota, the larger
+                                  value from allocatedResources and PVC.spec.resources
+                                  is used. If allocatedResources is not set, PVC.spec.resources
+                                  alone is used for quota calculation. If a volume
+                                  expansion capacity request is lowered, allocatedResources
+                                  is only lowered if there are no expansion operations
+                                  in progress and if the actual volume capacity is
+                                  equal or lower than the requested capacity. \n A
+                                  controller that receives PVC update with previously
+                                  unknown resourceName should ignore the update for
+                                  the purpose it was designed. For example - a controller
+                                  that only is responsible for resizing capacity of
+                                  the volume, should ignore PVC updates that change
+                                  other valid resources associated with PVC. \n This
+                                  is an alpha field and requires enabling RecoverVolumeExpansionFailure
+                                  feature."
                                 type: object
                               capacity:
                                 additionalProperties:
@@ -6302,14 +6472,6 @@ spec:
                               phase:
                                 description: phase represents the current phase of
                                   PersistentVolumeClaim.
-                                type: string
-                              resizeStatus:
-                                description: resizeStatus stores status of resize
-                                  operation. ResizeStatus is not set by default but
-                                  when expansion is complete resizeStatus is set to
-                                  empty string by resize controller or kubelet. This
-                                  is an alpha field and requires enabling RecoverVolumeExpansionFailure
-                                  feature.
                                 type: string
                             type: object
                         type: object
@@ -6548,7 +6710,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
   group: enterprisesearch.k8s.elastic.co
@@ -6877,11 +7039,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -6900,12 +7061,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -7462,11 +7632,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -7485,12 +7654,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -7720,7 +7898,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: kibanas.kibana.k8s.elastic.co
 spec:
   group: kibana.k8s.elastic.co
@@ -8069,11 +8247,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -8092,12 +8269,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -8774,11 +8960,10 @@ spec:
                               supports specifying the loadBalancerIP when a load balancer
                               is created. This field will be ignored if the cloud-provider
                               does not support the feature. Deprecated: This field
-                              was under-specified and its meaning varies across implementations,
-                              and it cannot support dual-stack. As of Kubernetes v1.24,
-                              users are encouraged to use implementation-specific
-                              annotations when available. This field may be removed
-                              in a future API version.'
+                              was under-specified and its meaning varies across implementations.
+                              Using it is non-portable and it may not support dual-stack.
+                              Users are encouraged to use implementation-specific
+                              annotations when available.'
                             type: string
                           loadBalancerSourceRanges:
                             description: 'If specified and supported by the platform,
@@ -8797,12 +8982,21 @@ spec:
                                 port.
                               properties:
                                 appProtocol:
-                                  description: The application protocol for this port.
-                                    This field follows standard Kubernetes label syntax.
-                                    Un-prefixed names are reserved for IANA standard
-                                    service names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
-                                    Non-standard protocols should use prefixed names
-                                    such as mycompany.com/my-custom-protocol.
+                                  description: "The application protocol for this
+                                    port. This is used as a hint for implementations
+                                    to offer richer behavior for protocols that they
+                                    understand. This field follows standard Kubernetes
+                                    label syntax. Valid values are either: \n * Un-prefixed
+                                    protocol names - reserved for IANA standard service
+                                    names (as per RFC-6335 and https://www.iana.org/assignments/service-names).
+                                    \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                    - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                    * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                    as described in https://www.rfc-editor.org/rfc/rfc6455
+                                    * 'kubernetes.io/wss' - WebSocket over TLS as
+                                    described in https://www.rfc-editor.org/rfc/rfc6455
+                                    \n * Other protocols should use implementation-defined
+                                    prefixed names such as mycompany.com/my-custom-protocol."
                                   type: string
                                 name:
                                   description: The name of this port within the service.
@@ -9050,7 +9244,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: logstashes.logstash.k8s.elastic.co
 spec:
   group: logstash.k8s.elastic.co
@@ -9574,10 +9768,9 @@ spec:
                                 balancer is created. This field will be ignored if
                                 the cloud-provider does not support the feature. Deprecated:
                                 This field was under-specified and its meaning varies
-                                across implementations, and it cannot support dual-stack.
-                                As of Kubernetes v1.24, users are encouraged to use
-                                implementation-specific annotations when available.
-                                This field may be removed in a future API version.'
+                                across implementations. Using it is non-portable and
+                                it may not support dual-stack. Users are encouraged
+                                to use implementation-specific annotations when available.'
                               type: string
                             loadBalancerSourceRanges:
                               description: 'If specified and supported by the platform,
@@ -9596,13 +9789,22 @@ spec:
                                   port.
                                 properties:
                                   appProtocol:
-                                    description: The application protocol for this
-                                      port. This field follows standard Kubernetes
-                                      label syntax. Un-prefixed names are reserved
-                                      for IANA standard service names (as per RFC-6335
+                                    description: "The application protocol for this
+                                      port. This is used as a hint for implementations
+                                      to offer richer behavior for protocols that
+                                      they understand. This field follows standard
+                                      Kubernetes label syntax. Valid values are either:
+                                      \n * Un-prefixed protocol names - reserved for
+                                      IANA standard service names (as per RFC-6335
                                       and https://www.iana.org/assignments/service-names).
-                                      Non-standard protocols should use prefixed names
-                                      such as mycompany.com/my-custom-protocol.
+                                      \n * Kubernetes-defined prefixed names: * 'kubernetes.io/h2c'
+                                      - HTTP/2 over cleartext as described in https://www.rfc-editor.org/rfc/rfc7540
+                                      * 'kubernetes.io/ws'  - WebSocket over cleartext
+                                      as described in https://www.rfc-editor.org/rfc/rfc6455
+                                      * 'kubernetes.io/wss' - WebSocket over TLS as
+                                      described in https://www.rfc-editor.org/rfc/rfc6455
+                                      \n * Other protocols should use implementation-defined
+                                      prefixed names such as mycompany.com/my-custom-protocol."
                                     type: string
                                   name:
                                     description: The name of this port within the
@@ -10043,6 +10245,50 @@ spec:
                           items:
                             type: string
                           type: array
+                        allocatedResourceStatuses:
+                          additionalProperties:
+                            description: When a controller receives persistentvolume
+                              claim update with ClaimResourceStatus for a resource
+                              that it does not recognizes, then it should ignore that
+                              update and let other controllers handle it.
+                            type: string
+                          description: "allocatedResourceStatuses stores status of
+                            resource being resized for the given PVC. Key names follow
+                            standard Kubernetes label syntax. Valid values are either:
+                            * Un-prefixed keys: - storage - the capacity of the volume.
+                            * Custom resources must use implementation-defined prefixed
+                            names such as \"example.com/my-custom-resource\" Apart
+                            from above values - keys that are unprefixed or have kubernetes.io
+                            prefix are considered reserved and hence may not be used.
+                            \n ClaimResourceStatus can be in any of following states:
+                            - ControllerResizeInProgress: State set when resize controller
+                            starts resizing the volume in control-plane. - ControllerResizeFailed:
+                            State set when resize has failed in resize controller
+                            with a terminal error. - NodeResizePending: State set
+                            when resize controller has finished resizing the volume
+                            but further resizing of volume is needed on the node.
+                            - NodeResizeInProgress: State set when kubelet starts
+                            resizing the volume. - NodeResizeFailed: State set when
+                            resizing has failed in kubelet with a terminal error.
+                            Transient errors don't set NodeResizeFailed. For example:
+                            if expanding a PVC for more capacity - this field can
+                            be one of the following states: - pvc.status.allocatedResourceStatus['storage']
+                            = \"ControllerResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                            = \"ControllerResizeFailed\" - pvc.status.allocatedResourceStatus['storage']
+                            = \"NodeResizePending\" - pvc.status.allocatedResourceStatus['storage']
+                            = \"NodeResizeInProgress\" - pvc.status.allocatedResourceStatus['storage']
+                            = \"NodeResizeFailed\" When this field is not set, it
+                            means that no resize operation is in progress for the
+                            given PVC. \n A controller that receives PVC update with
+                            previously unknown resourceName or ClaimResourceStatus
+                            should ignore the update for the purpose it was designed.
+                            For example - a controller that only is responsible for
+                            resizing capacity of the volume, should ignore PVC updates
+                            that change other valid resources associated with PVC.
+                            \n This is an alpha field and requires enabling RecoverVolumeExpansionFailure
+                            feature."
+                          type: object
+                          x-kubernetes-map-type: granular
                         allocatedResources:
                           additionalProperties:
                             anyOf:
@@ -10050,18 +10296,30 @@ spec:
                             - type: string
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
-                          description: allocatedResources is the storage resource
-                            within AllocatedResources tracks the capacity allocated
-                            to a PVC. It may be larger than the actual capacity when
-                            a volume expansion operation is requested. For storage
-                            quota, the larger value from allocatedResources and PVC.spec.resources
-                            is used. If allocatedResources is not set, PVC.spec.resources
-                            alone is used for quota calculation. If a volume expansion
-                            capacity request is lowered, allocatedResources is only
-                            lowered if there are no expansion operations in progress
-                            and if the actual volume capacity is equal or lower than
-                            the requested capacity. This is an alpha field and requires
-                            enabling RecoverVolumeExpansionFailure feature.
+                          description: "allocatedResources tracks the resources allocated
+                            to a PVC including its capacity. Key names follow standard
+                            Kubernetes label syntax. Valid values are either: * Un-prefixed
+                            keys: - storage - the capacity of the volume. * Custom
+                            resources must use implementation-defined prefixed names
+                            such as \"example.com/my-custom-resource\" Apart from
+                            above values - keys that are unprefixed or have kubernetes.io
+                            prefix are considered reserved and hence may not be used.
+                            \n Capacity reported here may be larger than the actual
+                            capacity when a volume expansion operation is requested.
+                            For storage quota, the larger value from allocatedResources
+                            and PVC.spec.resources is used. If allocatedResources
+                            is not set, PVC.spec.resources alone is used for quota
+                            calculation. If a volume expansion capacity request is
+                            lowered, allocatedResources is only lowered if there are
+                            no expansion operations in progress and if the actual
+                            volume capacity is equal or lower than the requested capacity.
+                            \n A controller that receives PVC update with previously
+                            unknown resourceName should ignore the update for the
+                            purpose it was designed. For example - a controller that
+                            only is responsible for resizing capacity of the volume,
+                            should ignore PVC updates that change other valid resources
+                            associated with PVC. \n This is an alpha field and requires
+                            enabling RecoverVolumeExpansionFailure feature."
                           type: object
                         capacity:
                           additionalProperties:
@@ -10115,13 +10373,6 @@ spec:
                           type: array
                         phase:
                           description: phase represents the current phase of PersistentVolumeClaim.
-                          type: string
-                        resizeStatus:
-                          description: resizeStatus stores status of resize operation.
-                            ResizeStatus is not set by default but when expansion
-                            is complete resizeStatus is set to empty string by resize
-                            controller or kubelet. This is an alpha field and requires
-                            enabling RecoverVolumeExpansionFailure feature.
                           type: string
                       type: object
                   type: object
@@ -10185,7 +10436,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co
