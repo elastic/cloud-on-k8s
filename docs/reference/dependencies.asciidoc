@@ -32,7 +32,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/google/go-containerregistry[$$github.com/google/go-containerregistry$$] | v0.16.1 | Apache-2.0
 | link:https://github.com/google/uuid[$$github.com/google/uuid$$] | v1.3.1 | BSD-3-Clause
 | link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.1.1 | MPL-2.0
-| link:https://github.com/hashicorp/golang-lru[$$github.com/hashicorp/golang-lru/v2$$] | v2.0.5 | MPL-2.0
+| link:https://github.com/hashicorp/golang-lru[$$github.com/hashicorp/golang-lru/v2$$] | v2.0.6 | MPL-2.0
 | link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.9.2 | MPL-2.0
 | link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.7 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
