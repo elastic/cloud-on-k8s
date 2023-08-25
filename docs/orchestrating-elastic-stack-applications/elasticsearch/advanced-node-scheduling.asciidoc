@@ -279,7 +279,7 @@ spec:
   - name: hot
     count: 3
     config:
-      node.roles: ["data_hot, "ingest", "master"]
+      node.roles: ["data_hot", "ingest", "master"]
     podTemplate:
       spec:
         containers:
