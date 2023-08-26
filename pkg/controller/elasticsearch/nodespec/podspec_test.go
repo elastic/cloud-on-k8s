@@ -297,7 +297,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3893049321",
+				"elasticsearch.k8s.elastic.co/config-hash": "533641620",
 				"pod-template-annotation-name":             "pod-template-annotation-value",
 				"co.elastic.logs/module":                   "elasticsearch",
 			},
@@ -364,7 +364,7 @@ func Test_buildAnnotations(t *testing.T) {
 		cfg               map[string]interface{}
 		esAnnotations     map[string]string
 		keystoreResources *keystore.Resources
-		scriptsVersion    string
+		scriptsContent    string
 	}
 	tests := []struct {
 		name                string
@@ -410,15 +410,15 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "With keystore and scripts version",
+			name: "With keystore and scripts content",
 			args: args{
 				keystoreResources: &keystore.Resources{
 					Version: "42",
 				},
-				scriptsVersion: "84",
+				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "1607725946",
+				"elasticsearch.k8s.elastic.co/config-hash": "99942575",
 			},
 		},
 		{
@@ -427,10 +427,10 @@ func Test_buildAnnotations(t *testing.T) {
 				keystoreResources: &keystore.Resources{
 					Version: "43",
 				},
-				scriptsVersion: "84",
+				scriptsContent: "scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "1624503565",
+				"elasticsearch.k8s.elastic.co/config-hash": "83164956",
 			},
 		},
 		{
@@ -439,10 +439,10 @@ func Test_buildAnnotations(t *testing.T) {
 				keystoreResources: &keystore.Resources{
 					Version: "42",
 				},
-				scriptsVersion: "85",
+				scriptsContent: "another scripts content",
 			},
 			expectedAnnotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "3194693445",
+				"elasticsearch.k8s.elastic.co/config-hash": "1050348692",
 			},
 		},
 	}
@@ -453,7 +453,7 @@ func Test_buildAnnotations(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config)
 			require.NoError(t, err)
-			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsVersion)
+			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent)
 
 			for expectedAnnotation, expectedValue := range tt.expectedAnnotations {
 				actualValue, exists := got[expectedAnnotation]
@@ -563,4 +563,17 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			assert.Equal(t, tc.expectedEsJavaOptsEnvValue, envMap[settings.EnvEsJavaOpts])
 		})
 	}
+}
+
+func Test_getScriptsConfigMapContent(t *testing.T) {
+	cm := &corev1.ConfigMap{
+		Data: map[string]string{
+			PreStopHookScriptConfigKey:             "value1#",
+			initcontainer.PrepareFsScriptConfigKey: "value2#",
+			ReadinessProbeScriptConfigKey:          "value3#",
+			initcontainer.SuspendScriptConfigKey:   "value4#",
+			initcontainer.SuspendedHostsFile:       "value5#",
+		},
+	}
+	assert.Equal(t, "value1#value2#value3#value4#", getScriptsConfigMapContent(cm))
 }

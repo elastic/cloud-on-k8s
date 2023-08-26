@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -98,7 +99,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, esScripts.ResourceVersion)
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts))
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -189,7 +190,7 @@ func buildAnnotations(
 	es esv1.Elasticsearch,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
-	scriptsVersion string,
+	scriptsContent string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -199,8 +200,8 @@ func buildAnnotations(
 	configHash := fnv.New32a()
 	// hash of the ES config to rotate the pod on config changes
 	hash.WriteHashObject(configHash, cfg)
-	// hash of the scripts' version to rotate the pod if the scripts have changed
-	_, _ = configHash.Write([]byte(scriptsVersion))
+	// hash of the scripts' content to rotate the pod if the scripts have changed
+	_, _ = configHash.Write([]byte(scriptsContent))
 
 	if es.HasDownwardNodeLabels() {
 		// list of node labels expected on the pod to rotate the pod when the list is updated
@@ -244,4 +245,22 @@ func enableLog4JFormatMsgNoLookups(builder *defaults.PodTemplateBuilder) {
 			)
 		}
 	}
+}
+
+// Get contents of the script ConfigMap to generate config hash, excluding the suspended_pods.txt, as it may change over time.
+func getScriptsConfigMapContent(cm *corev1.ConfigMap) string {
+	var builder strings.Builder
+	var keys []string
+
+	for k := range cm.Data {
+		if k != initcontainer.SuspendedHostsFile {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		builder.WriteString(cm.Data[k])
+	}
+	return builder.String()
 }
