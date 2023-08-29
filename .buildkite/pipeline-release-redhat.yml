@@ -7,7 +7,7 @@ steps:
       - make build
       - buildkite-agent artifact upload bin/operatorhub
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
 
   - label: ":docker: push container"
@@ -20,7 +20,7 @@ steps:
         cd hack/operatorhub
         operatorhub container push
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
 
   - label: ":docker: preflight container check"
@@ -32,7 +32,7 @@ steps:
     commands:
       - .buildkite/scripts/release/redhat-preflight.sh
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
 
   - label: ":docker: publish container"
@@ -47,7 +47,7 @@ steps:
         cd hack/operatorhub
         operatorhub container publish
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
 
   - label: ":redhat: generate and create-pr"
@@ -62,5 +62,5 @@ steps:
         operatorhub generate-manifests
         operatorhub bundle create-pr
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:0479a053
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
