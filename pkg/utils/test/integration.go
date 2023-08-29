@@ -11,14 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
-	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/require"
+
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 const (
@@ -73,7 +75,9 @@ func RunWithK8s(m *testing.M) {
 func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
 	t.Helper()
 	mgr, err := manager.New(Config, manager.Options{
-		MetricsBindAddress: "0", // disable
+		Metrics: metricsserver.Options{
+			BindAddress: "0", // disable
+		},
 	})
 	require.NoError(t, err)
 
