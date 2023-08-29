@@ -569,7 +569,10 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache.Namespaces = managedNamespaces
+	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+	for _, ns := range managedNamespaces {
+		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	}
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
