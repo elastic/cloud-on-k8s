@@ -457,7 +457,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	resourceGroups, err := azure.Cmd("group", "list",
 		"--query", fmt.Sprintf("[?location=='%s']", t.plan.Tanzu.Location),
-		"--query", fmt.Sprintf("[?contains(name,'%s-tanzu')]", prefix),
+		"--query", fmt.Sprintf(`"[?contains(name,'%s-tanzu')]"`, prefix),
 		"| jq -r '.[].name'").OutputList()
 	if err != nil {
 		return err
