@@ -5,7 +5,7 @@ ARG GO_TAGS
 
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
-ENV ECK_DIAG_VERSION=1.4.0
+ENV ECK_DIAG_VERSION=1.5.2
 RUN curl -fsSLO https://github.com/elastic/eck-diagnostics/releases/download/${ECK_DIAG_VERSION}/eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
     tar xzf eck-diagnostics_${ECK_DIAG_VERSION}_Linux_x86_64.tar.gz && \
     mv eck-diagnostics /usr/local/bin/eck-diagnostics
