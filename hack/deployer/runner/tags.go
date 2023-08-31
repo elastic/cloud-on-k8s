@@ -8,13 +8,15 @@ import (
 	"fmt"
 )
 
+const ProjectTag = "eck-ci"
+
 var (
 	// elasticTags are tags to apply the Elastic Cloud resources tagging policy
 	elasticTags = map[string]string{
 		"division": "engineering",
 		"org":      "controlplane",
 		"team":     "cloud-k8s-operator",
-		"project":  "eck-ci",
+		"project":  ProjectTag,
 	}
 )
 

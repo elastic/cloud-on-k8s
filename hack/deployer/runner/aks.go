@@ -204,7 +204,7 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		"-l", d.plan.Aks.Location,
 		"-g", d.plan.Aks.ResourceGroup,
 		`--resource-type "Microsoft.ContainerService/managedClusters"`,
-		`--query "[?tags.project == 'eck-ci']"`,
+		"--query", fmt.Sprintf(`"[?tags.project == '%s']"`, ProjectTag),
 		`| jq -r --arg d`, sinceDate.Format(time.RFC3339),
 		fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s"))))|.[].name'`, prefix)).OutputList()
 	if err != nil {
