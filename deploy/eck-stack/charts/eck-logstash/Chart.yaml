@@ -1,0 +1,10 @@
+apiVersion: v2
+name: eck-logstash
+description: Logstash managed by the ECK operator
+kubeVersion: ">= 1.21.0-0"
+type: application
+version: 0.8.0-SNAPSHOT
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+  - https://github.com/elastic/logstash
+icon: https://helm.elastic.co/icons/logstash.png

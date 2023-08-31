@@ -1,0 +1,33 @@
+---
+apiVersion: logstash.k8s.elastic.co/v1
+kind: Logstash
+metadata:
+  name: {{ include "logstash.fullname" . }}
+  labels:
+    {{- include "logstash.labels" . | nindent 4 }}
+  annotations:
+    eck.k8s.elastic.co/license: enterprise
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "A Logstash version is required" .Values.version }}
+  count: {{ required "An amount of pod is required" .Values.count }}
+  elasticsearchRefs:
+    {{ toYaml .Values.elasticsearchRefs | nindent 4 }}
+  {{- with .Values.config }}
+  config:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  pipelines:
+    {{ toYaml .Values.pipelines | nindent 4 }}
+  volumeClaimTemplates:
+    {{ toYaml .Values.volumeClaimTemplates | nindent 4 }}
+  {{- with .Values.podTemplate }}
+  podTemplate:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.monitoring }}
+  monitoring:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

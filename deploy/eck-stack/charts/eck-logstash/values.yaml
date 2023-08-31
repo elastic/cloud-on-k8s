@@ -1,0 +1,58 @@
+---
+# Default values for eck-logstash.
+# This is a YAML-formatted file.
+
+# Overridable names of the Logstash resource.
+# By default, this is the Release name set for the chart,
+# followed by 'eck-logstash'.
+#
+# nameOverride will override the name of the Chart with the name set here,
+# so nameOverride: quickstart, would convert to '{{ Release.name }}-quickstart'
+#
+# nameOverride: "quickstart"
+#
+# fullnameOverride will override both the release name, and the chart name,
+# and will name the Logstash resource exactly as specified.
+#
+# fullnameOverride: "quickstart"
+
+# Version of Logstash.
+#
+version: 8.10.0-SNAPSHOT
+
+# Labels that will be applied to Logstash.
+#
+labels: {}
+
+# Annotations that will be applied to Logstash.
+#
+annotations: {}
+
+# Controlling the number of pods.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-scaling-logstash.html
+#
+count: 1
+
+elasticsearchRefs: []
+
+# The logstash configuration, the ECK equivalent to logstash.yml
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
+#
+config: {}
+
+# The logstash pipelines, the ECK equivalent to pipelines.yml
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
+#
+pipelines: []
+
+# volumeClaimTemplates
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-volume-claim-settings
+#
+volumeClaimTemplates: []
+
+# Set podTemplate to customize the pod used by Logstash
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
+#
+podTemplate: {}
+
+monitoring: {}
