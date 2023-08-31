@@ -470,7 +470,7 @@ func (t *TanzuDriver) Cleanup(prefix string, olderThan time.Duration) error {
 			"-l", t.plan.Tanzu.Location,
 			"-g", rg,
 			`--resource-type "Microsoft.Compute/virtualMachines"`,
-			"--query", "[?tags.project == 'eck-ci']",
+			"--query", fmt.Sprintf(`"[?tags.project == '%s']"`, ProjectTag),
 			"| jq -r --arg d", sinceDate.Format(time.RFC3339),
 			fmt.Sprintf(`'map(select((.createdTime | . <= $d) and (.name|test("%s-tanzu"))))|.[].name'`, prefix),
 			fmt.Sprintf("| grep -o '%s-tanzu-[a-z]*-[0-9]*' | sort | uniq", prefix)).OutputList()

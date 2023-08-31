@@ -22,7 +22,7 @@ import (
 const (
 	dockerRegistry          = "docker.elastic.co"
 	dockerRegistryVaultPath = "docker-registry-elastic"
-	clientBaseImageName     = dockerRegistry + "/eck-ci/deployer"
+	clientBaseImageName     = dockerRegistry + "/" + ProjectTag + "/deployer"
 )
 
 func ensureClientImage(driverID string, vaultClient vault.Client, clientVersion string, clientBuildDefDir string) (string, error) {
