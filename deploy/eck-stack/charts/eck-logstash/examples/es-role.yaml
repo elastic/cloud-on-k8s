@@ -1,0 +1,24 @@
+---
+version: 8.10.0-SNAPSHOT
+
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input { exec { command => "uptime" interval => 10 } } 
+      output { 
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          ssl_enabled => true
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          index => "my-index"
+          data_stream => false
+          ilm_enabled => false
+          manage_template => false
+        } 
+      }

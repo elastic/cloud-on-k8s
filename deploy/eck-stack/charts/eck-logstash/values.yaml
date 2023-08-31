@@ -33,12 +33,17 @@ annotations: {}
 #
 count: 1
 
-elasticsearchRefs: []
-
 # The logstash configuration, the ECK equivalent to logstash.yml
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
 #
 config: {}
+
+# Set podTemplate to customize the pod used by Logstash
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
+#
+podTemplate: {}
+
+monitoring: {}
 
 # The logstash pipelines, the ECK equivalent to pipelines.yml
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
@@ -50,9 +55,6 @@ pipelines: []
 #
 volumeClaimTemplates: []
 
-# Set podTemplate to customize the pod used by Logstash
-# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
-#
-podTemplate: {}
+elasticsearchRefs: []
 
-monitoring: {}
+services: []
