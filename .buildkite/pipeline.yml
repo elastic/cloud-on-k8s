@@ -23,6 +23,7 @@ steps:
       - label: ":go: checks"
         commands:
           - "make check-license-header check-predicates shellcheck reattach-pv"
+          - "make -C hack/helm/release build"
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
           cpu: "4"
