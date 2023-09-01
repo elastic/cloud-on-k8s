@@ -1,10 +1,11 @@
 ---
-# values corresponding to config/recipes/logstash/logstash-eck.yaml
+# values corresponding to config/recipes/logstash/logstash-monitored.yaml
 version: 8.10.0-SNAPSHOT
 
-elasticsearchRefs:
-  - clusterName: eck
-    name: elasticsearch
+monitoring:
+  metrics:
+    elasticsearchRefs:
+      - name: elasticsearch-monitoring
 
 pipelines:
   - pipeline.id: main
@@ -31,6 +32,10 @@ pipelines:
           ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
         }
       }
+
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
 
 services:
   - name: beats

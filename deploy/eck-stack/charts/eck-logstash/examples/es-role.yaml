@@ -1,4 +1,5 @@
 ---
+# values corresponding to config/recipes/logstash/logstash-es-role.yaml
 version: 8.10.0-SNAPSHOT
 
 elasticsearchRefs:

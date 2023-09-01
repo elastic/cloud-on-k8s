@@ -1,0 +1,107 @@
+---
+# values corresponding to config/recipes/logstash/logstash-volumes.yaml
+version: 8.10.0-SNAPSHOT
+
+config:
+  log.level: info
+  queue.type: persisted
+  path.queue: /usr/share/logstash/pq
+
+podTemplate:
+  spec:
+    containers:
+      - name: logstash
+        volumeMounts:
+          - mountPath: /usr/share/logstash/pq
+            name: pq
+            readOnly: false
+          - mountPath: /usr/share/logstash/dlq
+            name: dlq
+            readOnly: false
+
+pipelines:
+  - pipeline.id: dlq_read
+    dead_letter_queue.enable: false
+    config.string: |
+      input {
+        dead_letter_queue {
+          path => "/usr/share/logstash/dlq"
+          commit_offsets => true
+          pipeline_id => "beats"
+          clean_consumed => true
+        }
+      }
+      filter {
+        mutate {
+          remove_field => "[geoip][location]"
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+  - pipeline.id: beats
+    dead_letter_queue.enable: true
+    path.dead_letter_queue: /usr/share/logstash/dlq
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      filter {
+        grok {
+          match => { "message" => "%{HTTPD_COMMONLOG}"}
+        }
+        geoip {
+          source => "[source][address]"
+          target => "[source]"
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+volumeClaimTemplates:
+  - metadata:
+      name: pq
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: dlq
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+
+
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+services:
+  - name: beats
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+          - port: 5044
+            name: "filebeat"
+            protocol: TCP
+            targetPort: 5044
+
