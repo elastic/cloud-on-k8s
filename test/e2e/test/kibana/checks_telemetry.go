@@ -18,7 +18,7 @@ import (
 func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, error) {
 	kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
 	apiVersion, payload := apiVersionAndTelemetryRequestBody(kbVersion)
-	uri := telemetryApiUri(kbVersion, apiVersion)
+	uri := telemetryAPIURI(kbVersion, apiVersion)
 	password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
 	if err != nil {
 		return StackStats{}, err
@@ -36,7 +36,7 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 	return unmarshalTelemetryResponse(bytes, kbVersion)
 }
 
-func telemetryApiUri(kbVersion version.Version, apiVersion string) string {
+func telemetryAPIURI(kbVersion version.Version, apiVersion string) string {
 	uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
 	if kbVersion.GTE(version.From(8, 10, 0)) {
 		uri = "/internal/telemetry/clusters/_stats"
