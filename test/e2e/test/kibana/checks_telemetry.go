@@ -38,7 +38,7 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 
 func telemetryAPIURI(kbVersion version.Version, apiVersion string) string {
 	uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
-	if kbVersion.GTE(version.From(8, 10, 0)) {
+	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
 		uri = "/internal/telemetry/clusters/_stats"
 	}
 	return uri
