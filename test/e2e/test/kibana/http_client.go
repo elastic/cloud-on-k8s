@@ -33,7 +33,7 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 }
 
 // DoRequest executes an HTTP request against a Kibana instance using the given password for the elastic user.
-func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string, pathAndQuery string, body []byte) ([]byte, error) {
+func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string, pathAndQuery string, body []byte, extraHeaders http.Header) ([]byte, error) {
 	scheme := "http"
 	if kb.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
@@ -61,10 +61,19 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	req.Header.Set("Content-Type", "application/json")
 	// send the kbn-version header expected by the Kibana server to protect against xsrf attacks
 	req.Header.Set("kbn-version", kb.Spec.Version)
+
+	// add any extra headers
+	for name, values := range extraHeaders {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+
 	client, err := NewKibanaClient(kb, k)
 	if err != nil {
 		return nil, errors.Wrap(err, "while creating kibana client")
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "while doing request")

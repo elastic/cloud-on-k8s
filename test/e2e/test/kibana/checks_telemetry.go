@@ -7,6 +7,7 @@ package kibana
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/pkg/errors"
 
@@ -27,9 +28,17 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 	if err != nil {
 		return StackStats{}, err
 	}
+
+	// TODO clean this up - verify w/ kibana team
+	extraHeaders := http.Header{}
+	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
+		extraHeaders.Add("elastic-api-version", "2")
+		extraHeaders.Add("kbn-xsrf", "reporting")
+	}
+
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
 	// in which case we'll just retry that test step
-	bytes, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
+	bytes, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes, extraHeaders)
 	if err != nil {
 		return StackStats{}, err
 	}
