@@ -29,11 +29,12 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 		return StackStats{}, err
 	}
 
-	// TODO clean this up - verify w/ kibana team
+	// a few extra headers a required by Kibana for this internal API
 	extraHeaders := http.Header{}
 	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
 		extraHeaders.Add("elastic-api-version", "2")
 		extraHeaders.Add("kbn-xsrf", "reporting")
+		extraHeaders.Add("x-elastic-internal-origin", "eck-e2e-tests")
 	}
 
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
