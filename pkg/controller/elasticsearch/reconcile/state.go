@@ -92,12 +92,17 @@ func (s *State) fetchMinRunningVersion(ctx context.Context, resourcesState Resou
 	return minPodVersion, nil
 }
 
-func (s *State) UpdateClusterHealth(clusterHealth esv1.ElasticsearchHealth) *State {
-	if clusterHealth == "" {
+func (s *State) UpdateClusterHealth(clusterState esv1.ElasticsearchState) *State {
+	if clusterState.ElasticsearchHealth == "" {
 		s.status.Health = esv1.ElasticsearchUnknownHealth
 		return s
 	}
-	s.status.Health = clusterHealth
+	s.status.Health = clusterState.ElasticsearchHealth
+	return s
+}
+
+func (s *State) UpdatePercentDataUsed(clusterState esv1.ElasticsearchState) *State {
+	s.status.PercentDataUsed = clusterState.ComputedPercentDataUsed()
 	return s
 }
 

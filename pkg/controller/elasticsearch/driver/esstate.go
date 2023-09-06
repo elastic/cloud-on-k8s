@@ -21,6 +21,8 @@ type ESState interface {
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
 	Health() (esclient.Health, error)
+	// NodesStats returns the NodesStats of the Elasticsearch cluster.
+	NodesStats() (esclient.NodesStats, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -30,6 +32,7 @@ type MemoizingESState struct {
 	*memoizingNodes
 	*memoizingShardsAllocationEnabled
 	*memoizingHealth
+	*memoizingNodesStats
 }
 
 // NewMemoizingESState returns an initialized MemoizingESState.
@@ -39,6 +42,7 @@ func NewMemoizingESState(ctx context.Context, esClient esclient.Client) ESState 
 		memoizingNodes:                   &memoizingNodes{esClient: esClient, ctx: ctx},
 		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient, ctx: ctx},
 		memoizingHealth:                  &memoizingHealth{esClient: esClient, ctx: ctx},
+		memoizingNodesStats:              &memoizingNodesStats{esClient: esClient, ctx: ctx},
 	}
 }
 
@@ -150,4 +154,32 @@ func (h *memoizingHealth) Health() (esclient.Health, error) {
 		return esclient.Health{}, err
 	}
 	return h.health, nil
+}
+
+// -- NodesStats
+
+// memoizingNodesStats provides cluster data usage information.
+type memoizingNodesStats struct {
+	nodesStats esclient.NodesStats
+	once       sync.Once
+	esClient   esclient.Client
+	ctx        context.Context
+}
+
+// initialize requests Elasticsearch for data usage, only once.
+func (h *memoizingNodesStats) initialize() error {
+	nodesStats, err := h.esClient.GetNodesStats(h.ctx)
+	if err != nil {
+		return err
+	}
+	h.nodesStats = nodesStats
+	return nil
+}
+
+// NodesStats returns the cluster percent data used.
+func (h *memoizingNodesStats) NodesStats() (esclient.NodesStats, error) {
+	if err := initOnce(&h.once, h.initialize); err != nil {
+		return esclient.NodesStats{}, err
+	}
+	return h.nodesStats, nil
 }

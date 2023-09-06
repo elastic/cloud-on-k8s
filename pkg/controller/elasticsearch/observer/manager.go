@@ -50,10 +50,10 @@ func (m *Manager) ObservedStateResolver(
 	cluster esv1.Elasticsearch,
 	esClientProvider func(client.Client) client.Client,
 	isServiceReady bool,
-) func() esv1.ElasticsearchHealth {
+) func() esv1.ElasticsearchState {
 	observer := m.Observe(ctx, cluster, esClientProvider, isServiceReady)
-	return func() esv1.ElasticsearchHealth {
-		return observer.LastHealth()
+	return func() esv1.ElasticsearchState {
+		return observer.LastState()
 	}
 }
 
@@ -167,7 +167,7 @@ func (m *Manager) AddObservationListener(listener OnObservation) {
 }
 
 // notifyListeners notifies all listeners that an observation occurred.
-func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState, newState esv1.ElasticsearchHealth) {
+func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState, newState esv1.ElasticsearchState) {
 	m.listenerLock.RLock()
 	switch len(m.listeners) {
 	case 0:

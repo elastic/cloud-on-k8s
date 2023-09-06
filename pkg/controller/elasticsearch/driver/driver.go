@@ -205,6 +205,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Always update the Elasticsearch state bits with the latest observed state.
 	d.ReconcileState.
 		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
+		UpdatePercentDataUsed(observedState()).       // Elasticsearch Percent Data Used
 		UpdateAvailableNodes(*resourcesState).        // Available nodes
 		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
 
@@ -243,7 +244,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	defer esClient.Close()
 
 	// use unknown health as a proxy for a cluster not responding to requests
-	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
+	hasKnownHealthState := observedState().ElasticsearchHealth != esv1.ElasticsearchUnknownHealth
 	esReachable := isServiceReady && hasKnownHealthState
 	// report condition in Pod status
 	if esReachable {

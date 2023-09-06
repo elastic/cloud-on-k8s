@@ -33,7 +33,7 @@ type Settings struct {
 const defaultObservationTimeout = 10 * time.Second
 
 // OnObservation is a function that gets executed when a new state is observed
-type OnObservation func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth)
+type OnObservation func(cluster types.NamespacedName, previousState, newState esv1.ElasticsearchState)
 
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
@@ -45,7 +45,7 @@ type Observer struct {
 	stopChan      chan struct{}
 	stopOnce      sync.Once
 	onObservation OnObservation
-	lastHealth    esv1.ElasticsearchHealth
+	lastState     esv1.ElasticsearchState
 	mutex         sync.RWMutex
 }
 
@@ -59,7 +59,7 @@ func NewObserver(cluster types.NamespacedName, esClient esclient.Client, setting
 		stopChan:      make(chan struct{}),
 		stopOnce:      sync.Once{},
 		onObservation: onObservation,
-		lastHealth:    esv1.ElasticsearchUnknownHealth, // We don't know the health of the cluster until a first query succeeds
+		lastState:     esv1.ElasticsearchState{ElasticsearchHealth: esv1.ElasticsearchUnknownHealth, NodesStats: esclient.NodesStats{}}, // We don't know the health of the cluster until a first query succeeds
 		mutex:         sync.RWMutex{},
 	}
 
@@ -99,11 +99,11 @@ func (o *Observer) Stop() {
 	})
 }
 
-// LastHealth returns the last observed state
-func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
+// LastState returns the last observed state
+func (o *Observer) LastState() esv1.ElasticsearchState {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
-	return o.lastHealth
+	return o.lastState
 }
 
 // observe retrieves the current ES state, executes onObservation,
@@ -120,19 +120,21 @@ func (o *Observer) observe(ctx context.Context) {
 	}
 	// initialise logger after tracing has been started
 	ctx = ulog.InitInContext(ctx, name)
-	ulog.FromContext(ctx).V(1).Info("Retrieving cluster health", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
+	ulog.FromContext(ctx).V(1).Info("Retrieving cluster health and nodes stats", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
 	newHealth := retrieveHealth(ctx, o.cluster, o.esClient)
+	newNodesStats := retrieveNodeStats(ctx, o.cluster, o.esClient)
+	newState := esv1.ElasticsearchState{ElasticsearchHealth: newHealth, NodesStats: newNodesStats}
 	if o.onObservation != nil {
-		o.onObservation(o.cluster, o.LastHealth(), newHealth)
+		o.onObservation(o.cluster, o.LastState(), newState)
 	}
-	o.updateHealth(newHealth)
+	o.updateClusterObserver(newState)
 }
 
-func (o *Observer) updateHealth(newHealth esv1.ElasticsearchHealth) {
+func (o *Observer) updateClusterObserver(newState esv1.ElasticsearchState) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
-	o.lastHealth = newHealth
+	o.lastState = newState
 }
 
 func nonNegativeTimeout(observationInterval time.Duration) time.Duration {
@@ -159,4 +161,20 @@ func retrieveHealth(ctx context.Context, cluster types.NamespacedName, esClient 
 		return esv1.ElasticsearchUnknownHealth
 	}
 	return health.Status
+}
+
+// retrieveNodeStats returns the current Elasticsearch node stats
+func retrieveNodeStats(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) esclient.NodesStats {
+	log := ulog.FromContext(ctx)
+	nodeStats, err := esClient.GetNodesStats(ctx)
+	if err != nil {
+		log.V(1).Info(
+			"Unable to retrieve node stats",
+			"error", err,
+			"namespace", cluster.Namespace,
+			"es_name", cluster.Name,
+		)
+		return nodeStats
+	}
+	return nodeStats
 }

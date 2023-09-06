@@ -6,12 +6,20 @@ package v1
 
 import (
 	"fmt"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 )
+
+// ElasticsearchState contains info from the cluster API which can be used to update status
+type ElasticsearchState struct {
+	ElasticsearchHealth ElasticsearchHealth
+	NodesStats          client.NodesStats
+}
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
 type ElasticsearchHealth string
@@ -60,9 +68,10 @@ type ElasticsearchStatus struct {
 	AvailableNodes int32 `json:"availableNodes,omitempty"`
 	// Version of the stack resource currently running. During version upgrades, multiple versions may run
 	// in parallel: this value specifies the lowest version currently running.
-	Version string                          `json:"version,omitempty"`
-	Health  ElasticsearchHealth             `json:"health,omitempty"`
-	Phase   ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	Version         string                          `json:"version,omitempty"`
+	Health          ElasticsearchHealth             `json:"health,omitempty"`
+	Phase           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	PercentDataUsed string                          `json:"percentDataUsed,omitempty"`
 
 	MonitoringAssociationsStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
@@ -81,6 +90,28 @@ type ElasticsearchStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elasticsearch
 	// controller has not yet processed the changes contained in the Elasticsearch specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+}
+
+// ComputedPercentDataUsed is computed based on NodesStats
+func (eState ElasticsearchState) ComputedPercentDataUsed() string {
+	// Values we will compute
+	availableInBytes := 0
+	totalInBytes := 0
+	dataNodes := 0
+
+	// Sum all the values only for the data nodes
+	for _, v := range eState.NodesStats.Nodes {
+		for _, r := range v.Roles {
+			if r == "data" {
+				availableInBytes += v.FS.Data.AvailableInBytes
+				totalInBytes += v.FS.Data.TotalInBytes
+				dataNodes += 1
+			}
+		}
+	}
+	// Calculate Percentage
+	percentDataUsed := strconv.Itoa(100 - totalInBytes - (totalInBytes * availableInBytes / 100))
+	return percentDataUsed
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

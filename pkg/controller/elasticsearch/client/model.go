@@ -110,7 +110,14 @@ type NodesStats struct {
 // NodeStats partially models an Elasticsearch node retrieved from /_nodes/stats
 type NodeStats struct {
 	Name string `json:"name"`
-	OS   struct {
+	FS   struct {
+		Data struct {
+			TotalInBytes     int `json:"total_in_bytes"`
+			FreeInBytes      int `json:"free_in_bytes"`
+			AvailableInBytes int `json:"available_in_bytes"`
+		} `json:"data"`
+	} `json:"fs"`
+	OS struct {
 		CGroup struct {
 			Memory struct {
 				LimitInBytes string `json:"limit_in_bytes"`
@@ -121,6 +128,7 @@ type NodeStats struct {
 			} `json:"cpu"`
 		} `json:"cgroup"`
 	} `json:"os"`
+	Roles []string `json:"roles"`
 }
 
 // ClusterStateNode represents an element in the `node` structure in

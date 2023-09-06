@@ -170,7 +170,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateClusterHealth(esv1.ElasticsearchUnknownHealth)
+				s.UpdateClusterHealth(esv1.ElasticsearchState{ElasticsearchHealth: esv1.ElasticsearchUnknownHealth})
 			},
 			wantEvents: []events.Event{},
 			wantStatus: &esv1.ElasticsearchStatus{
@@ -187,7 +187,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchRedHealth)
+				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchState{ElasticsearchHealth: esv1.ElasticsearchRedHealth})
 			},
 			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
 			wantStatus: &esv1.ElasticsearchStatus{
@@ -204,7 +204,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchRedHealth)
+				s.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase).UpdateClusterHealth(esv1.ElasticsearchState{ElasticsearchHealth: esv1.ElasticsearchRedHealth})
 			},
 			wantEvents: []events.Event{},
 			wantStatus: &esv1.ElasticsearchStatus{
@@ -255,7 +255,7 @@ func assertSemanticEqualStatuses(t *testing.T, actual, expected *esv1.Elasticsea
 func TestState_UpdateElasticsearchState(t *testing.T) {
 	type args struct {
 		resourcesState ResourcesState
-		observedHealth esv1.ElasticsearchHealth
+		observedState  esv1.ElasticsearchState
 	}
 	tests := []struct {
 		name            string
@@ -331,7 +331,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			name:    "health is set if returned by Elasticsearch",
 			cluster: esv1.Elasticsearch{},
 			args: args{
-				observedHealth: esv1.ElasticsearchGreenHealth,
+				observedState: esv1.ElasticsearchState{ElasticsearchHealth: esv1.ElasticsearchGreenHealth},
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "green", s.status.Health)
@@ -341,7 +341,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := MustNewState(tt.cluster)
-			s.UpdateClusterHealth(tt.args.observedHealth).UpdateMinRunningVersion(context.Background(), tt.args.resourcesState)
+			s.UpdateClusterHealth(tt.args.observedState).UpdateMinRunningVersion(context.Background(), tt.args.resourcesState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
 			}

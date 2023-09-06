@@ -118,7 +118,7 @@ func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
 func (c *clientV6) GetNodesStats(ctx context.Context) (NodesStats, error) {
 	var nodesStats NodesStats
 	// restrict call to basic node info only
-	err := c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
+	err := c.get(ctx, "/_nodes/_all/stats/os,fs", &nodesStats)
 	return nodesStats, err
 }
 
