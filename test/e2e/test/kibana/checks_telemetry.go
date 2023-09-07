@@ -29,7 +29,7 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 		return StackStats{}, err
 	}
 
-	// a few extra headers a required by Kibana for this internal API
+	// a few extra headers are required by Kibana for this internal API
 	extraHeaders := http.Header{}
 	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
 		extraHeaders.Add("elastic-api-version", "2")
