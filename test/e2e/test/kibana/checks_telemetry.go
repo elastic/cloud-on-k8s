@@ -7,6 +7,7 @@ package kibana
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/pkg/errors"
 
@@ -18,7 +19,7 @@ import (
 func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, error) {
 	kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
 	apiVersion, payload := apiVersionAndTelemetryRequestBody(kbVersion)
-	uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
+	uri := telemetryAPIURI(kbVersion, apiVersion)
 	password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
 	if err != nil {
 		return StackStats{}, err
@@ -27,13 +28,30 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 	if err != nil {
 		return StackStats{}, err
 	}
+
+	// a few extra headers are required by Kibana for this internal API
+	extraHeaders := http.Header{}
+	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
+		extraHeaders.Add("elastic-api-version", "2")
+		extraHeaders.Add("kbn-xsrf", "reporting")
+		extraHeaders.Add("x-elastic-internal-origin", "eck-e2e-tests")
+	}
+
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
 	// in which case we'll just retry that test step
-	bytes, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
+	bytes, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes, extraHeaders)
 	if err != nil {
 		return StackStats{}, err
 	}
 	return unmarshalTelemetryResponse(bytes, kbVersion)
+}
+
+func telemetryAPIURI(kbVersion version.Version, apiVersion string) string {
+	uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
+	if version.WithoutPre(kbVersion).GTE(version.From(8, 10, 0)) {
+		uri = "/internal/telemetry/clusters/_stats"
+	}
+	return uri
 }
 
 func apiVersionAndTelemetryRequestBody(kbVersion version.Version) (string, telemetryRequest) {
