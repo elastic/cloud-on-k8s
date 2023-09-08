@@ -150,6 +150,18 @@ rules:
   - get
   - create
   - update
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs:
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  verbs:
+  - list
+  - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
