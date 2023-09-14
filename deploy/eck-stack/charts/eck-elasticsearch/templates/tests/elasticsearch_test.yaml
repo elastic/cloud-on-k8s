@@ -207,11 +207,11 @@ tests:
           value: my.regis.try/es:8
   - it: should render image properly
     set:
-      image: my.registry.com/elastic/elasticsearch:8.9.0
+      image: my.registry.com/elastic/elasticsearch:8.10.0
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/elasticsearch:8.9.0
+          value: my.registry.com/elastic/elasticsearch:8.10.0
   - it: should render no podDisruptionBudget by default
     set:
     asserts:

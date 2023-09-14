@@ -4,7 +4,7 @@ metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: 8.9.0
+  version: 8.10.0
   count: 1
   config:
     name: elastic-apm
