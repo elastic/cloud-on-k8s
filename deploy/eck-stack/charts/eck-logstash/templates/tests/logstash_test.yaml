@@ -1,0 +1,146 @@
+suite: test logstash
+templates:
+  - templates/logstash.yaml
+tests:
+  - it: should render quickstart properly
+    set:
+      version: 8.2.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Logstash
+      - equal:
+          path: metadata.name
+          value: quickstart-eck-logstash
+      - equal:
+          path: spec.version
+          value: 8.2.0
+  - it: name override should work properly
+    set:
+      nameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Logstash
+      - equal:
+          path: metadata.name
+          value: quickstart-override
+  - it: fullname override should work properly
+    set:
+      fullnameOverride: override
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Logstash
+      - equal:
+          path: metadata.name
+          value: override
+  - it: setting volumeClaimDeletePolicy should work properly
+    set:
+      volumeClaimTemplates:
+      - metadata:
+          name: pq
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Logstash
+      - equal:
+          path: spec.volumeClaimTemplates
+          value:
+          - metadata:
+              name: pq
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
+  - it: should render labels, annotations, and additional custom values properly
+    set:
+      labels:
+        test: label
+      annotations:
+        test: annotation
+      monitoring:
+        metrics:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+        logs:
+          elasticsearchRefs:
+          - name: monitoring
+            namespace: observability
+      services:
+      - name: beats
+        service:
+          spec:
+            type: ClusterIP
+            ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Logstash
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: quickstart
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: eck-logstash
+            helm.sh/chart: eck-logstash-0.8.0-SNAPSHOT
+            test: label
+      - equal:
+          path: metadata.annotations
+          value:
+            eck.k8s.elastic.co/license: enterprise
+            test: annotation
+      - equal:
+          path: spec.services
+          value:
+          - name: beats
+            service:
+              spec:
+                type: ClusterIP
+                ports:
+                - port: 5044
+                  name: "filebeat"
+                  protocol: TCP
+                  targetPort: 5044
+  # Uncomment when image, and serviceAccountName have been added to values/templates.
+  # Also probably want to add checks for configref, and pipelinesRef when they are added.
+  #
+  # - it: should render image properly
+  #   set:
+  #     image: my.regis.try/logstash:8
+  #   asserts:
+  #     - equal:
+  #         path: spec.image
+  #         value: my.regis.try/logstash:8
+  # - it: should render image properly
+  #   set:
+  #     image: my.registry.com/elastic/logstash:8.9.0
+  #   asserts:
+  #     - equal:
+  #         path: spec.image
+  #         value: my.registry.com/elastic/logstash:8.9.0
+  # - it: should render serviceAccountName properly
+  #   set:
+  #     serviceAccountName: my-sa
+  #   asserts:
+  #     - equal:
+  #         path: spec.serviceAccountName
+  #         value: my-sa

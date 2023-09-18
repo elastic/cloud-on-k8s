@@ -21,3 +21,6 @@ dependencies:
   - name: eck-beats
     condition: eck-beats.enabled
     version: "0.8.0-SNAPSHOT"
+  - name: eck-logstash
+    condition: eck-logstash.enabled
+    version: "0.8.0-SNAPSHOT"
