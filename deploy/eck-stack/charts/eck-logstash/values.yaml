@@ -61,7 +61,18 @@ configRef: {}
 #
 podTemplate: {}
 
+# Settings for configuring stack monitoring.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-stack-monitoring.html
+#
 monitoring: {}
+  # metrics:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability 
+  # logs:
+  #   elasticsearchRefs:
+  #   - name: monitoring
+  #     namespace: observability
 
 # The logstash pipelines, the ECK equivalent to pipelines.yml
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
