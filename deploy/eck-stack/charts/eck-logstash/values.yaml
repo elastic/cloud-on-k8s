@@ -20,6 +20,15 @@
 #
 version: 8.10.0-SNAPSHOT
 
+# Logstash Docker image to deploy
+#
+# image:
+
+# Used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
+# Can only be used if ECK is enforcing RBAC on references.
+#
+# serviceAccountName: ""
+
 # Labels that will be applied to Logstash.
 #
 labels: {}
@@ -27,6 +36,11 @@ labels: {}
 # Annotations that will be applied to Logstash.
 #
 annotations: {}
+
+# Number of revisions to retain to allow rollback in the underlying StatefulSets.
+# By default, if not set, Kubernetes sets 10.
+#
+# revisionHistoryLimit: 2
 
 # Controlling the number of pods.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-scaling-logstash.html
@@ -37,6 +51,10 @@ count: 1
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-configuring-logstash
 #
 config: {}
+
+configRef: {}
+#  secretRef:
+#    secretName: ''
 
 # Set podTemplate to customize the pod used by Logstash
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-customize-pods.html
@@ -50,11 +68,24 @@ monitoring: {}
 #
 pipelines: []
 
+pipelineRef: {}
+#  secretRef:
+#    secretName: ''
+
+
 # volumeClaimTemplates
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-volume-claim-settings
 #
 volumeClaimTemplates: []
 
+# ElasticsearchRefs are references to Elasticsearch clusters running in the same Kubernetes cluster.
 elasticsearchRefs: []
+#  - namespace: ''
+#    name: ''
+#    serviceName: ''
+#    secretName: ''
 
 services: []
+
+# SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash
+secureSettings: []

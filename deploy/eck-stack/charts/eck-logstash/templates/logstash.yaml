@@ -13,9 +13,26 @@ metadata:
 spec:
   version: {{ required "A Logstash version is required" .Values.version }}
   count: {{ required "An amount of pod is required" .Values.count }}
+  {{- with .Values.image }}
+  image: {{ . }}
+  {{- end }}
+  {{- with .Values.serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
+  {{- with .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ . }}
+  {{- end }}
 
   {{- with .Values.config }}
   config:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.configRef }}
+  configRef:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.pipelineRef }}
+  pipelineRef:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.podTemplate }}
@@ -35,3 +52,5 @@ spec:
     {{ toYaml .Values.elasticsearchRefs | nindent 4 }}
   services:
     {{ toYaml .Values.services | nindent 4 }}
+  secureSettings:
+    {{ toYaml .Values.secureSettings | nindent 4 }}

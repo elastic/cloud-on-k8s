@@ -120,27 +120,49 @@ tests:
                   name: "filebeat"
                   protocol: TCP
                   targetPort: 5044
-  # Uncomment when image, and serviceAccountName have been added to values/templates.
-  # Also probably want to add checks for configref, and pipelinesRef when they are added.
-  #
-  # - it: should render image properly
-  #   set:
-  #     image: my.regis.try/logstash:8
-  #   asserts:
-  #     - equal:
-  #         path: spec.image
-  #         value: my.regis.try/logstash:8
-  # - it: should render image properly
-  #   set:
-  #     image: my.registry.com/elastic/logstash:8.9.0
-  #   asserts:
-  #     - equal:
-  #         path: spec.image
-  #         value: my.registry.com/elastic/logstash:8.9.0
-  # - it: should render serviceAccountName properly
-  #   set:
-  #     serviceAccountName: my-sa
-  #   asserts:
-  #     - equal:
-  #         path: spec.serviceAccountName
-  #         value: my-sa
+  - it: should render image properly
+    set:
+      image: my.regis.try/logstash:8
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.regis.try/logstash:8
+  - it: should render image properly
+    set:
+      image: my.registry.com/elastic/logstash:8.9.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/logstash:8.9.0
+  - it: should render serviceAccountName properly
+    set:
+      serviceAccountName: my-sa
+    asserts:
+      - equal:
+          path: spec.serviceAccountName
+          value: my-sa
+  - it: should render revisionHistoryLimit properly
+    set:
+      revisionHistoryLimit: 5
+    asserts:
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 5
+  - it: should render configRef properly
+    set:
+      configRef:
+        secretRef:
+          secretName: configLogstashSecretName
+    asserts:
+      - equal:
+          path: spec.configRef.secretRef.secretName
+          value: configLogstashSecretName
+  - it: should render pipelineRef properly
+    set:
+      pipelineRef:
+        secretRef:
+          secretName: pipelineLogstashSecretName
+    asserts:
+      - equal:
+          path: spec.pipelineRef.secretRef.secretName
+          value: pipelineLogstashSecretName
