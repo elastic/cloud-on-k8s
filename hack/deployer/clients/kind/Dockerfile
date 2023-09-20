@@ -1,7 +1,7 @@
 FROM buildpack-deps:bullseye-curl as builder
 
 ARG CLIENT_VERSION
-ENV DOCKER_VERSION=19.03.13
+ENV DOCKER_VERSION=24.0.6
 
 # Docker client to build and push images
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz && \
