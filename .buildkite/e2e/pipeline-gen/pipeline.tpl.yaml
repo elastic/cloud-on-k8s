@@ -29,7 +29,7 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      image: "family/core-ubuntu-2004"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ .KindAgentsMachineType }}"
       {{- end }}
@@ -80,7 +80,7 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      image: "family/core-ubuntu-2004"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ $.KindAgentsMachineType }}"
       {{- end }}
@@ -128,7 +128,7 @@ steps:
           - make -C .buildkite TARGET="run-deployer" ci
         agents:
           provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          image: "family/core-ubuntu-2004"
         {{- end }}
         retry:
           automatic:
