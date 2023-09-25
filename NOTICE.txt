@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.9.2
-Time    : 2023-05-26T00:31:45Z
+Version : v1.10.0
+Time    : 2023-09-05T15:27:46Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.9.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.10.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.12.0
-Time    : 2023-08-04T16:57:07Z
+Version : v0.13.0
+Time    : 2023-09-05T14:51:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3912,11 +3912,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.28.1
-Time    : 2023-08-24T14:32:25Z
+Version : v0.28.2
+Time    : 2023-09-13T18:28:59Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -4124,11 +4124,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.28.1
-Time    : 2023-08-07T20:18:34Z
+Version : v0.28.2
+Time    : 2023-09-04T10:28:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -4336,11 +4336,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.28.1
-Time    : 2023-08-24T14:43:46Z
+Version : v0.28.2
+Time    : 2023-09-13T18:39:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -20146,11 +20146,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.11.0
-Time    : 2023-07-26T11:14:25Z
+Version : v0.12.0
+Time    : 2023-08-25T20:53:44Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.12.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20183,11 +20183,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.11.0
-Time    : 2023-08-04T15:09:51Z
+Version : v0.12.0
+Time    : 2023-09-03T13:08:59Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.12.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -20220,11 +20220,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.12.0
-Time    : 2023-07-21T21:34:41Z
+Version : v0.13.0
+Time    : 2023-08-28T17:26:32Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 

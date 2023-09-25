@@ -165,24 +165,24 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.17.0
+  clientVersion: 0.20.0
   provider: kind
-  kubernetesVersion: 1.27.1
+  kubernetesVersion: 1.28.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
+    nodeImage: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.17.0
+  clientVersion: 0.20.0
   provider: kind
-  kubernetesVersion: 1.27.1
+  kubernetesVersion: 1.28.0
   enforceSecurityPolicies: true
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.27.1@sha256:c44686bf1f422942a21434e5b4070fc47f3c190305be2974f91444cd34909f1b
+    nodeImage: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
     ipFamily: ipv4
 - id: tanzu-ci
   operation: create

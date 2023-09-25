@@ -9,6 +9,7 @@ package beat
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -124,7 +125,7 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 						// name of the beat. This test will obviously break if future versions of Beats abandon this naming convention.
 						query := fmt.Sprintf("/api/saved_objects/_find?type=dashboard&search_fields=title&search=%s", beat)
 						body, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
-							"GET", query, nil,
+							"GET", query, nil, http.Header{},
 						)
 						if err != nil {
 							return err
