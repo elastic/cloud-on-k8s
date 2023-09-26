@@ -35,10 +35,12 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -567,14 +569,19 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache.Namespaces = managedNamespaces
+	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+	for _, ns := range managedNamespaces {
+		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	}
 
 	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(operator.MetricsPortFlag)
 	if metricsPort != 0 {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 	}
-	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
+	opts.Metrics = metricsserver.Options{
+		BindAddress: fmt.Sprintf(":%d", metricsPort), // 0 to disable
+	}
 
 	webhookPort := viper.GetInt(operator.WebhookPortFlag)
 	webhookCertDir := viper.GetString(operator.WebhookCertDirFlag)
