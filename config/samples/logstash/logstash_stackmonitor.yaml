@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: monitoring
 spec:
-  version: 8.10.0
+  version: 8.10.2
   nodeSets:
     - name: default
       count: 3
@@ -17,7 +17,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 8.10.0
+  version: 8.10.2
   config:
     log.level: info
     api.http.host: "0.0.0.0"
@@ -55,7 +55,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 8.10.0
+  version: 8.10.2
   elasticsearchRef:
     name: monitoring
   count: 1

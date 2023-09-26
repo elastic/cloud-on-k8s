@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.10.0
+  version: 8.10.2
   nodeSets:
     - name: default
       count: 3
@@ -17,7 +17,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 8.10.0
+  version: 8.10.2
   count: 1
   elasticsearchRef:
     name: elasticsearch
@@ -28,7 +28,7 @@ metadata:
   name: filebeat
 spec:
   type: filebeat
-  version: 8.10.0
+  version: 8.10.2
   config:
     filebeat.inputs:
       - type: log
@@ -67,7 +67,7 @@ metadata:
   name: logstash
 spec:
   count: 1
-  version: 8.10.0
+  version: 8.10.2
   elasticsearchRefs:
     - clusterName: eck
       name: elasticsearch
@@ -116,7 +116,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-monitoring
 spec:
-  version: 8.10.0
+  version: 8.10.2
   nodeSets:
     - name: default
       count: 3
@@ -128,7 +128,7 @@ kind: Kibana
 metadata:
   name: kibana-monitoring
 spec:
-  version: 8.10.0
+  version: 8.10.2
   count: 1
   elasticsearchRef:
     name: elasticsearch-monitoring

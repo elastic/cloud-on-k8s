@@ -18,7 +18,7 @@
 
 # Version of Elasticsearch.
 #
-version: 8.10.0-SNAPSHOT
+version: 8.10.2-SNAPSHOT
 
 # Elasticsearch Docker image to deploy
 #

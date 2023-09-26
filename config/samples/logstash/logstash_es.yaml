@@ -3,7 +3,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 8.10.0
+  version: 8.10.2
   nodeSets:
     - name: default
       count: 2
@@ -16,7 +16,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 8.10.0
+  version: 8.10.2
   elasticsearchRefs:
     - clusterName: production
       name: elasticsearch-sample

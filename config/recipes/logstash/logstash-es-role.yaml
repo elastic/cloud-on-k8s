@@ -15,7 +15,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 8.10.0
+  version: 8.10.2
   auth:
     roles:
       - secretName: my-roles-secret
@@ -31,7 +31,7 @@ metadata:
   name: logstash
 spec:
   count: 1
-  version: 8.10.0
+  version: 8.10.2
   elasticsearchRefs:
     - name: elasticsearch
       clusterName: eck
