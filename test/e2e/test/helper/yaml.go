@@ -123,6 +123,8 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		builders = append(builders, builder)
 	}
 
+	// sort to make sure the ES builders come first to minimise the chance of test failures as in https://github.com/elastic/cloud-on-k8s/issues/7172
+	sortBuilders(builders)
 	return builders, nil
 }
 
