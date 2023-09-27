@@ -40,7 +40,9 @@ func TestRemoteCluster(t *testing.T) {
 	es1Builder := elasticsearch.NewBuilder(name).
 		WithNamespace(ns1).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		Unhealthy()
+
 	es1LicenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), es1Builder.Elasticsearch)
 
 	ns2 := test.Ctx().ManagedNamespace(1)
