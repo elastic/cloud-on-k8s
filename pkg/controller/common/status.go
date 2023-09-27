@@ -9,8 +9,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -59,28 +57,5 @@ func LowestVersionFromPods(ctx context.Context, currentVersion string, pods []co
 
 // UpdateStatus updates the status sub-resource of the given object.
 func UpdateStatus(ctx context.Context, client k8s.Client, obj client.Object) error {
-	err := client.Status().Update(ctx, obj)
-	return workaroundStatusUpdateError(ctx, err, client, obj)
-}
-
-// workaroundStatusUpdateError handles a bug on k8s < 1.15 that prevents status subresources updates
-// to be performed if the target resource storedVersion does not match the given resource version
-// (eg. storedVersion=v1beta1 vs. resource version=v1).
-// This is fixed by https://github.com/kubernetes/kubernetes/pull/78713 in k8s 1.15.
-// In case that happens here, let's retry the update on the full resource instead of the status subresource.
-func workaroundStatusUpdateError(ctx context.Context, err error, client k8s.Client, obj client.Object) error {
-	if !apierrors.IsInvalid(err) {
-		// not the case we're looking for here
-		return err
-	}
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	ulog.FromContext(ctx).Info(
-		"Status sub-resource update failed, attempting to update the entire resource instead",
-		"namespace", accessor.GetNamespace(),
-		"name", accessor.GetName(),
-	)
-	return client.Update(ctx, obj)
+	return client.Status().Update(ctx, obj)
 }
