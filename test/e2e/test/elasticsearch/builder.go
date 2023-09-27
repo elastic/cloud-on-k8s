@@ -57,7 +57,7 @@ type Builder struct {
 	GlobalCA bool
 
 	mutationToleratedChecksFailureCount int
-	expectUnhealthy                     bool
+	skipImmediateHealthCheck            bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -112,8 +112,8 @@ func newBuilder(name, randSuffix string) Builder {
 		WithLabel(run.TestNameLabel, name)
 }
 
-func (b Builder) Unhealthy() Builder {
-	b.expectUnhealthy = true
+func (b Builder) SkipImmediateHealthCheck() Builder {
+	b.skipImmediateHealthCheck = true
 	return b
 }
 

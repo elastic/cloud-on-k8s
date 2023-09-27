@@ -24,7 +24,7 @@ func TestForceUpgradePendingPods(t *testing.T) {
 	// create a cluster whose Pods will stay Pending forever
 	initial := elasticsearch.NewBuilder("force-upgrade-pending").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		Unhealthy()
+		SkipImmediateHealthCheck()
 	initial.Elasticsearch.Spec.NodeSets[0].PodTemplate.Spec.NodeSelector = map[string]string{
 		"cannot": "be-scheduled",
 	}
@@ -57,7 +57,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 			Count:       1,
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 		}).
-		Unhealthy()
+		SkipImmediateHealthCheck()
 
 	// make Pods of the 2nds NodeSet pending
 	initial.Elasticsearch.Spec.NodeSets[1].PodTemplate.Spec.NodeSelector = map[string]string{
@@ -124,7 +124,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 				"this leads": "to a bootlooping instance",
 			},
 		}).
-		Unhealthy()
+		SkipImmediateHealthCheck()
 
 	// fix that cluster to remove the wrong configuration
 	fixed := initial.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources)

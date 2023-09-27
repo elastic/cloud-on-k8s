@@ -41,7 +41,8 @@ func TestRemoteCluster(t *testing.T) {
 		WithNamespace(ns1).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext().
-		Unhealthy()
+		// TODO figure out why this is necessary
+		SkipImmediateHealthCheck()
 
 	es1LicenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), es1Builder.Elasticsearch)
 
