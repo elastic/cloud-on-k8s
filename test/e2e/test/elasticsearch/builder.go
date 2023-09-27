@@ -57,6 +57,7 @@ type Builder struct {
 	GlobalCA bool
 
 	mutationToleratedChecksFailureCount int
+	expectUnhealthy                     bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -109,6 +110,11 @@ func newBuilder(name, randSuffix string) Builder {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
+}
+
+func (b Builder) Unhealthy() Builder {
+	b.expectUnhealthy = true
+	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {

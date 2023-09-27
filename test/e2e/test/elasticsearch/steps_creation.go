@@ -32,11 +32,13 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					if b.Elasticsearch.Spec.Version != createdEs.Spec.Version {
 						return fmt.Errorf("expected version %s but got %s", b.Elasticsearch.Spec.Version, createdEs.Spec.Version)
 					}
-					return nil
+					if b.expectUnhealthy {
+						return nil
+					}
+					// check cluster health here already during the create steps to make sure any dependent builders can rely on a ready ES
+					// this is special casing Elasticsearch a little bit in the interest of test stability see https://github.com/elastic/cloud-on-k8s/issues/7172
+					return clusterHealthIs(b, k, esv1.ElasticsearchGreenHealth)
 				}),
 			},
-			// check cluster health here already during the create steps to make sure any dependent builders can rely on a ready ES
-			// this is special casing Elasticsearch a little bit in the interest of test stability see https://github.com/elastic/cloud-on-k8s/issues/7172
-			CheckClusterHealth(b, k),
 		})
 }
