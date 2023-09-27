@@ -48,6 +48,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckPodCertificates(b, k),
+		CheckClusterHealth(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
 		CheckContainerSecurityContext(b.Elasticsearch, k),
