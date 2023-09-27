@@ -9,10 +9,11 @@ import (
 	"reflect"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
 func TestLowestVersionFromPods(t *testing.T) {
