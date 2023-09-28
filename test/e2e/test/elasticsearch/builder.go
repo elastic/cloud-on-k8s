@@ -57,7 +57,6 @@ type Builder struct {
 	GlobalCA bool
 
 	mutationToleratedChecksFailureCount int
-	skipImmediateHealthCheck            bool
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -110,11 +109,6 @@ func newBuilder(name, randSuffix string) Builder {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithSuffix(randSuffix).
 		WithLabel(run.TestNameLabel, name)
-}
-
-func (b Builder) SkipImmediateHealthCheck() Builder {
-	b.skipImmediateHealthCheck = true
-	return b
 }
 
 func (b Builder) WithAnnotation(key, value string) Builder {
