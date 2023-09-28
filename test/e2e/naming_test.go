@@ -59,7 +59,7 @@ func testLongestPossibleName(t *testing.T) {
 			Count: 1,
 		}).
 		WithRestrictedSecurityContext().
-		// TODO understand why this is necessary, test passes most of the time but sometimes is takes more than 15 minutes for Kibana to become avaialable
+		// TODO understand why this is necessary, test passes most of the time but sometimes is takes more than 15 minutes for Kibana to become available
 		// and that has knock-on effects on APM
 		SkipImmediateHealthCheck()
 
