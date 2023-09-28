@@ -59,7 +59,7 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	require.NotEqual(t, "", reason)
 	// satisfied now, with matching status.observedGeneration
 	statefulSet.Status.ObservedGeneration = 123
-	require.NoError(t, client.Update(context.Background(), &statefulSet))
+	require.NoError(t, client.Status().Update(context.Background(), &statefulSet))
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
 	require.NoError(t, err)
 	require.True(t, satisfied)
