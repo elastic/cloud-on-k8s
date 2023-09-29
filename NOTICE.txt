@@ -2179,11 +2179,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.16.0
-Time    : 2023-06-15T10:46:32Z
+Version : v1.17.0
+Time    : 2023-09-27T12:41:57Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.17.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14684,11 +14684,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.4.0
-Time    : 2023-05-02T14:20:48Z
+Version : v0.4.1-0.20230718164431-9a2bf3000d16
+Time    : 2023-07-18T16:44:31Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.4.1-0.20230718164431-9a2bf3000d16/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14895,11 +14895,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.10.1
-Time    : 2023-05-28T21:22:15Z
+Version : v0.11.1
+Time    : 2023-07-26T15:19:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.10.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.11.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16460,11 +16460,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/appengine@v1.6.7
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.30.0
-Time    : 2023-03-16T08:32:54Z
+Version : v1.31.0
+Time    : 2023-06-26T11:17:38Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.31.0/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
