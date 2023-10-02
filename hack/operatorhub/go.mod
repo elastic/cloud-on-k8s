@@ -8,7 +8,7 @@ require (
 	github.com/go-git/go-git/v5 v5.9.0
 	github.com/google/go-containerregistry v0.16.1
 	github.com/hashicorp/vault/api v1.10.0
-	github.com/otiai10/copy v1.12.0
+	github.com/otiai10/copy v1.14.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	k8s.io/api v0.26.1
