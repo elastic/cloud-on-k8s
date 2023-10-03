@@ -29,7 +29,7 @@ func CleanupCommand() *cobra.Command {
 
 	plansFile, configFile, clientBuildDefDir = registerFileFlags(cleanupCmd)
 
-	cleanupCmd.Flags().DurationVar(&olderThan, "older-than", 72*time.Hour, `The minimum age of the clusters to be deleted (valid time units are "s", "m", "h")`)
+	cleanupCmd.Flags().DurationVar(&olderThan, "older-than", 24*time.Hour, `The minimum age of the clusters to be deleted (valid time units are "s", "m", "h")`)
 	cleanupCmd.Flags().StringVar(&clusterPrefix, "cluster-prefix", "eck-e2e", "The E2E Cluster prefix to use for querying for clusters to cleanup.")
 
 	return cleanupCmd
