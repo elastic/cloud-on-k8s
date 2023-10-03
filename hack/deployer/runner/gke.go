@@ -452,7 +452,6 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	d.ctx["E2EClusterNamePrefix"] = prefix
 
 	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`
-	fmt.Printf("about to run cmd: %s\n", cmd)
 	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return err

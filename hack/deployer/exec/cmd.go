@@ -168,6 +168,8 @@ func (c *Command) output() (string, error) {
 		cmd.Stderr = nil
 	}
 
+	log.Printf("about to run command: %s", cmd.String())
+
 	err := cmd.Run()
 	return b.String(), err
 }
