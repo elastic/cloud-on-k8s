@@ -435,6 +435,7 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("setting google project to: %s", gCloudProject)
 		d.ctx[GoogleCloudProjectCtxKey] = gCloudProject
 	}
 
@@ -447,9 +448,11 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	sinceDate := time.Now().Add(-olderThan)
 	d.ctx["Date"] = sinceDate.Format(time.RFC3339)
+	fmt.Printf("set date to: %s\n", d.ctx["Date"])
 	d.ctx["E2EClusterNamePrefix"] = prefix
 
 	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`
+	fmt.Printf("about to run cmd: %s\n", cmd)
 	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
 	if err != nil {
 		return err
@@ -457,6 +460,7 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clusters {
 		d.ctx["ClusterName"] = cluster
+		fmt.Printf("about to attempt delete of cluster: %s\n", cluster)
 		if err = d.delete(); err != nil {
 			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 			continue
