@@ -96,8 +96,9 @@ type ElasticsearchSpec struct {
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-	// The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-	// to the empty value (`{}` in YAML).
+	// The default budget doesn't allow any pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
+	// In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
+	// To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
