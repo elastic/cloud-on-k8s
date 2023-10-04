@@ -1326,11 +1326,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/golang-lru/v2
-Version : v2.0.6
-Time    : 2023-08-23T18:07:16Z
+Version : v2.0.7
+Time    : 2023-09-21T18:26:40Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/golang-lru/v2@v2.0.6/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/golang-lru/v2@v2.0.7/LICENSE:
 
 Copyright (c) 2014 HashiCorp, Inc.
 
