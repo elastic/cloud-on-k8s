@@ -4511,9 +4511,9 @@ spec:
                 minItems: 1
                 type: array
               podDisruptionBudget:
-                description: PodDisruptionBudget provides access to the default pod
+                description: PodDisruptionBudget provides access to the default Pod
                   disruption budget for the Elasticsearch cluster. The default budget
-                  doesn't allow any pod to be removed in case the cluster is not green
+                  doesn't allow any Pod to be removed in case the cluster is not green
                   or if there is only one node of type `data` or `master`. In all
                   other cases the default PodDisruptionBudget sets `minUnavailable`
                   equal to the total number of nodes minus 1. To disable, set `PodDisruptionBudget`
@@ -5173,15 +5173,15 @@ spec:
                       when applying changes to the Elasticsearch cluster.
                     properties:
                       maxSurge:
-                        description: MaxSurge is the maximum number of new pods that
-                          can be created exceeding the original number of pods defined
+                        description: MaxSurge is the maximum number of new Pods that
+                          can be created exceeding the original number of Pods defined
                           in the specification. MaxSurge is only taken into consideration
                           when scaling up. Setting a negative value will disable the
                           restriction. Defaults to unbounded if not specified.
                         format: int32
                         type: integer
                       maxUnavailable:
-                        description: MaxUnavailable is the maximum number of pods
+                        description: MaxUnavailable is the maximum number of Pods
                           that can be unavailable (not ready) during the update due
                           to circumstances under the control of the operator. Setting
                           a negative value will disable this restriction. Defaults
