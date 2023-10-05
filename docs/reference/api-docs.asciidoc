@@ -1105,8 +1105,8 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`maxUnavailable`* __integer__ | MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to circumstances under the control of the operator. Setting a negative value will disable this restriction. Defaults to 1 if not specified.
-| *`maxSurge`* __integer__ | MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction. Defaults to unbounded if not specified.
+| *`maxUnavailable`* __integer__ | MaxUnavailable is the maximum number of Pods that can be unavailable (not ready) during the update due to circumstances under the control of the operator. Setting a negative value will disable this restriction. Defaults to 1 if not specified.
+| *`maxSurge`* __integer__ | MaxSurge is the maximum number of new Pods that can be created exceeding the original number of Pods defined in the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction. Defaults to unbounded if not specified.
 |===
 
 
@@ -1212,7 +1212,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`transport`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]__ | Transport holds transport layer settings for Elasticsearch.
 | *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
 | *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
-| *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
+| *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default Pod disruption budget for the Elasticsearch cluster. The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`. In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 | *`auth`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-elasticsearch-v1-auth[$$Auth$$]__ | Auth contains user authentication and authorization security settings for Elasticsearch.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
