@@ -115,8 +115,7 @@ steps:
           {{$key}}: "{{$val}}"
           {{- end }}
           DEPLOYER_OPERATION: delete
-        soft_fail:
-          - exit_status: 1
+        soft_fail: true
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
         {{- if not $test.Dind }}
