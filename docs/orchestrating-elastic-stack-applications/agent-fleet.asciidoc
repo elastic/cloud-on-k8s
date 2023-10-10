@@ -215,7 +215,7 @@ kubectl get pods --selector='agent.k8s.elastic.co/name=elastic-agent-quickstart'
 +
 [source,sh]
 ----
-NAME                        READY   STATUS    RESTARTS   AGE
+NAME                                   READY   STATUS    RESTARTS   AGE
 elastic-agent-quickstart-agent-t49fd   1/1     Running   0          54s
 elastic-agent-quickstart-agent-xbcxr   1/1     Running   0          54s
 elastic-agent-quickstart-agent-zqp55   1/1     Running   0          54s
