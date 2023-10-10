@@ -200,9 +200,9 @@ kubectl get agent
 +
 [source,sh,subs="attributes"]
 ----
-NAME            HEALTH   AVAILABLE   EXPECTED   VERSION      AGE
-elastic-agent   green    3           3          {version}    14s
-fleet-server    green    1           1          {version}    19s
+NAME                       HEALTH   AVAILABLE   EXPECTED   VERSION      AGE
+elastic-agent-quickstart   green    3           3          {version}    14s
+fleet-server-quickstart    green    1           1          {version}    19s
 
 ----
 
@@ -210,22 +210,22 @@ fleet-server    green    1           1          {version}    19s
 +
 [source,sh]
 ----
-kubectl get pods --selector='agent.k8s.elastic.co/name=elastic-agent'
+kubectl get pods --selector='agent.k8s.elastic.co/name=elastic-agent-quickstart'
 ----
 +
 [source,sh]
 ----
-NAME                        READY   STATUS    RESTARTS   AGE
-elastic-agent-agent-t49fd   1/1     Running   0          54s
-elastic-agent-agent-xbcxr   1/1     Running   0          54s
-elastic-agent-agent-zqp55   1/1     Running   0          54s
+NAME                                   READY   STATUS    RESTARTS   AGE
+elastic-agent-quickstart-agent-t49fd   1/1     Running   0          54s
+elastic-agent-quickstart-agent-xbcxr   1/1     Running   0          54s
+elastic-agent-quickstart-agent-zqp55   1/1     Running   0          54s
 ----
 
 . Access logs for one of the Pods.
 +
 [source,sh]
 ----
-kubectl logs -f elastic-agent-agent-xbcxr
+kubectl logs -f elastic-agent-quickstart-agent-xbcxr
 ----
 
 . Configure the policy used by Elastic Agents. Check link:https://www.elastic.co/guide/en/fleet/current/agent-policy.html[Elastic Agent policies] for more details.
