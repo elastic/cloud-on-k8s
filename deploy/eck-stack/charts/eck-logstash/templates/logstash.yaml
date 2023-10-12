@@ -12,7 +12,7 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "A Logstash version is required" .Values.version }}
-  count: {{ required "An amount of pod is required" .Values.count }}
+  count: {{ required "A pod count is required" .Values.count }}
   {{- with .Values.image }}
   image: {{ . }}
   {{- end }}

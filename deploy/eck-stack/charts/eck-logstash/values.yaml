@@ -90,9 +90,13 @@ pipelineRef: {}
 volumeClaimTemplates: []
 
 # ElasticsearchRefs are references to Elasticsearch clusters running in the same Kubernetes cluster.
+# Ensure that the 'clusterName' field matches what is referenced in the pipeline.
+# ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines-es
+#
 elasticsearchRefs: []
 #  - namespace: ''
 #    name: ''
+#    clusterName: ''
 #    serviceName: ''
 #    secretName: ''
 
