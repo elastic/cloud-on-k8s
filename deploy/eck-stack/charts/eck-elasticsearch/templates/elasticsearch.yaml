@@ -51,7 +51,7 @@ spec:
   {{ fail "At least one nodeSet is required" }}
   {{- end }}
   nodeSets:
-{{ toYaml .Values.nodeSets | nindent 4 }}
+    {{ toYaml .Values.nodeSets | nindent 4 }}
   {{- with .Values.image }}
   image: {{ . }}
   {{- end }}

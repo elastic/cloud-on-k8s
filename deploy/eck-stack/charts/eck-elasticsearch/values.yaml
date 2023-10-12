@@ -18,7 +18,7 @@
 
 # Version of Elasticsearch.
 #
-version: 8.10.0-SNAPSHOT
+version: 8.11.0-SNAPSHOT
 
 # Elasticsearch Docker image to deploy
 #
@@ -126,7 +126,8 @@ remoteClusters: {}
 volumeClaimDeletePolicy: ""
 
 # Settings to limit the disruption when pods need to be rescheduled for some reason such as upgrades or routine maintenance.
-# By default, if not set, the operator sets a budget that selects all Elastisearch cluster pods and sets `maxUnavailable` to 1.
+# By default, if not set, the operator sets a budget that doesn't allow any pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
+# In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
 # To completely disable the pod disruption budget set `disabled` to true.
 #
 # podDisruptionBudget:

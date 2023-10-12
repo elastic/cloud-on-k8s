@@ -89,6 +89,25 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}.
 		WithSteps(test.StepList{
 			test.Step{
+				// This is to improve test stability see https://github.com/elastic/cloud-on-k8s/issues/7172
+				Name: "Wait for Elasticsearch to be green",
+				Test: test.Eventually(func() error {
+					for _, ref := range b.Agent.Spec.ElasticsearchRefs {
+						var es esv1.Elasticsearch
+						if err := k.Client.Get(context.Background(), ref.WithDefaultNamespace(b.Agent.Namespace).NamespacedName(), &es); err != nil {
+							return err
+						}
+						if es.Status.Health != esv1.ElasticsearchGreenHealth {
+							return fmt.Errorf("health is not green but %s", es.Status.Health)
+						}
+					}
+					return nil
+				}),
+				Skip: func() bool {
+					return len(b.Agent.Spec.ElasticsearchRefs) == 0
+				},
+			},
+			test.Step{
 				Name: "Creating an Agent should succeed",
 				Test: func(t *testing.T) {
 					for _, obj := range b.RuntimeObjects() {

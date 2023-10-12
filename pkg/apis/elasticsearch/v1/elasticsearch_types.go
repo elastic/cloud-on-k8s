@@ -95,9 +95,10 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
-	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-	// The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-	// to the empty value (`{}` in YAML).
+	// PodDisruptionBudget provides access to the default Pod disruption budget for the Elasticsearch cluster.
+	// The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.
+	// In all other cases the default PodDisruptionBudget sets `minUnavailable` equal to the total number of nodes minus 1.
+	// To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
@@ -339,12 +340,12 @@ type UpdateStrategy struct {
 
 // ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 type ChangeBudget struct {
-	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
+	// MaxUnavailable is the maximum number of Pods that can be unavailable (not ready) during the update due to
 	// circumstances under the control of the operator. Setting a negative value will disable this restriction.
 	// Defaults to 1 if not specified.
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
-	// MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
+	// MaxSurge is the maximum number of new Pods that can be created exceeding the original number of Pods defined in
 	// the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
 	// disable the restriction. Defaults to unbounded if not specified.
 	MaxSurge *int32 `json:"maxSurge,omitempty"`

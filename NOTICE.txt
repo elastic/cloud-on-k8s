@@ -109,11 +109,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/davecgh/go-spew
-Version : v1.1.1
-Time    : 2018-02-21T23:26:28Z
+Version : v1.1.2-0.20180830191138-d8f796af33cc
+Time    : 2018-08-30T19:11:38Z
 Licence : ISC
 
-Contents of probable licence file $GOMODCACHE/github.com/davecgh/go-spew@v1.1.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/davecgh/go-spew@v1.1.2-0.20180830191138-d8f796af33cc/LICENSE:
 
 ISC License
 
@@ -678,11 +678,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.5.9
-Time    : 2022-09-02T22:41:56Z
+Version : v0.6.0
+Time    : 2023-08-31T17:32:40Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.5.9/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.6.0/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
@@ -1326,11 +1326,11 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/golang-lru/v2
-Version : v2.0.6
-Time    : 2023-08-23T18:07:16Z
+Version : v2.0.7
+Time    : 2023-09-21T18:26:40Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/golang-lru/v2@v2.0.6/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/golang-lru/v2@v2.0.7/LICENSE:
 
 Copyright (c) 2014 HashiCorp, Inc.
 
@@ -1700,11 +1700,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/vault/api
-Version : v1.9.2
-Time    : 2023-05-26T00:31:45Z
+Version : v1.10.0
+Time    : 2023-09-05T15:27:46Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.9.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/vault/api@v1.10.0/LICENSE:
 
 Copyright (c) 2015 HashiCorp, Inc.
 
@@ -2142,11 +2142,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/pmezard/go-difflib
-Version : v1.0.0
-Time    : 2016-01-10T10:55:54Z
+Version : v1.0.1-0.20181226105442-5d4384ee4fb2
+Time    : 2018-12-26T10:54:42Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/pmezard/go-difflib@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pmezard/go-difflib@v1.0.1-0.20181226105442-5d4384ee4fb2/LICENSE:
 
 Copyright (c) 2013, Patrick Mezard
 All rights reserved.
@@ -2179,11 +2179,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.16.0
-Time    : 2023-06-15T10:46:32Z
+Version : v1.17.0
+Time    : 2023-09-27T12:41:57Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.17.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2853,11 +2853,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.16.0
-Time    : 2023-05-30T10:07:27Z
+Version : v1.17.0
+Time    : 2023-10-06T12:22:22Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.16.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.17.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -2914,11 +2914,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch/v2
-Version : v2.4.3
-Time    : 2023-06-22T03:40:17Z
+Version : v2.4.5
+Time    : 2023-10-11T01:39:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch/v2@v2.4.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3125,11 +3125,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasti
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp/v2
-Version : v2.4.3
-Time    : 2023-06-22T03:40:17Z
+Version : v2.4.5
+Time    : 2023-10-11T01:39:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v2@v2.4.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3336,11 +3336,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp/v
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmzap/v2
-Version : v2.4.3
-Time    : 2023-06-22T03:40:17Z
+Version : v2.4.5
+Time    : 2023-10-11T01:39:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2@v2.4.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3547,11 +3547,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmzap/v2
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/v2
-Version : v2.4.3
-Time    : 2023-06-22T03:40:17Z
+Version : v2.4.5
+Time    : 2023-10-11T01:39:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.4.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/v2@v2.4.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3786,11 +3786,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.25.0
-Time    : 2023-08-02T05:47:56Z
+Version : v1.26.0
+Time    : 2023-09-14T20:29:58Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.25.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.26.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.12.0
-Time    : 2023-08-04T16:57:07Z
+Version : v0.14.0
+Time    : 2023-10-05T15:12:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.14.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3912,11 +3912,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.28.1
-Time    : 2023-08-24T14:32:25Z
+Version : v0.28.2
+Time    : 2023-09-13T18:28:59Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -4124,11 +4124,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.28.1/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.28.1
-Time    : 2023-08-07T20:18:34Z
+Version : v0.28.2
+Time    : 2023-09-04T10:28:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -4336,11 +4336,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.28.1/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.28.1
-Time    : 2023-08-24T14:43:46Z
+Version : v0.28.2
+Time    : 2023-09-13T18:39:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.28.2/LICENSE:
 
 
                                  Apache License
@@ -4961,11 +4961,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20230406110748
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.15.1
-Time    : 2023-08-04T16:02:25Z
+Version : v0.16.2
+Time    : 2023-09-11T16:24:12Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.15.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.16.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5686,37 +5686,6 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
---------------------------------------------------------------------------------
-Module  : github.com/benbjohnson/clock
-Version : v1.3.0
-Time    : 2021-11-15T23:27:27Z
-Licence : MIT
-
-Contents of probable licence file $GOMODCACHE/github.com/benbjohnson/clock@v1.3.0/LICENSE:
-
-The MIT License (MIT)
-
-Copyright (c) 2014 Ben Johnson
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
 
 --------------------------------------------------------------------------------
@@ -10036,15 +10005,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-hclog
-Version : v1.2.0
-Time    : 2022-03-03T03:51:25Z
+Version : v1.5.0
+Time    : 2023-03-20T20:29:19Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-hclog@v1.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-hclog@v1.5.0/LICENSE:
 
-MIT License
-
-Copyright (c) 2017 HashiCorp
+Copyright (c) 2017 HashiCorp, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -12680,11 +12647,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.16.5
-Time    : 2023-04-13T08:02:38Z
+Version : v1.17.0
+Time    : 2023-09-18T10:42:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.16.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.17.0/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -14190,11 +14157,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/onsi/ginkgo/v2
-Version : v2.9.5
-Time    : 2023-05-15T14:03:02Z
+Version : v2.11.0
+Time    : 2023-06-16T17:12:15Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.9.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/onsi/ginkgo/v2@v2.11.0/LICENSE:
 
 Copyright (c) 2013-2014 Onsi Fakhouri
 
@@ -14653,15 +14620,16 @@ Contents of probable licence file $GOMODCACHE/github.com/opencontainers/image-sp
 
 --------------------------------------------------------------------------------
 Module  : github.com/pelletier/go-toml/v2
-Version : v2.0.8
-Time    : 2023-05-23T22:22:22Z
+Version : v2.1.0
+Time    : 2023-08-29T12:46:34Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.0.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.1.0/LICENSE:
 
 The MIT License (MIT)
 
-Copyright (c) 2013 - 2022 Thomas Pelletier, Eric Anderton
+go-toml v2
+Copyright (c) 2021 - 2023 Thomas Pelletier
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -14715,11 +14683,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.4.0
-Time    : 2023-05-02T14:20:48Z
+Version : v0.4.1-0.20230718164431-9a2bf3000d16
+Time    : 2023-07-18T16:44:31Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.4.1-0.20230718164431-9a2bf3000d16/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14926,11 +14894,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.10.1
-Time    : 2023-05-28T21:22:15Z
+Version : v0.11.1
+Time    : 2023-07-26T15:19:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.10.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.11.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15204,6 +15172,72 @@ SOFTWARE.
 
 
 --------------------------------------------------------------------------------
+Module  : github.com/sagikazarmark/locafero
+Version : v0.3.0
+Time    : 2023-09-13T14:06:36Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/sagikazarmark/locafero@v0.3.0/LICENSE:
+
+Copyright (c) 2023 Márk Sági-Kazár <mark.sagikazar@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/sagikazarmark/slog-shim
+Version : v0.1.0
+Time    : 2023-09-10T13:00:30Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/github.com/sagikazarmark/slog-shim@v0.1.0/LICENSE:
+
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : github.com/shopspring/decimal
 Version : v1.2.0
 Time    : 2020-04-28T21:23:09Z
@@ -15290,12 +15324,43 @@ THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
+Module  : github.com/sourcegraph/conc
+Version : v0.3.0
+Time    : 2023-02-25T04:04:07Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/sourcegraph/conc@v0.3.0/LICENSE:
+
+MIT License
+
+Copyright (c) 2023 Sourcegraph
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
 Module  : github.com/spf13/afero
-Version : v1.9.5
-Time    : 2023-03-06T09:41:24Z
+Version : v1.10.0
+Time    : 2023-09-22T14:18:35Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.9.5/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.10.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -15504,42 +15569,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Module  : github.com/spf13/jwalterweatherman
-Version : v1.1.0
-Time    : 2018-10-28T14:53:47Z
-Licence : MIT
-
-Contents of probable licence file $GOMODCACHE/github.com/spf13/jwalterweatherman@v1.1.0/LICENSE:
-
-The MIT License (MIT)
-
-Copyright (c) 2014 Steve Francia
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
---------------------------------------------------------------------------------
 Module  : github.com/subosito/gotenv
-Version : v1.4.2
-Time    : 2023-01-11T21:45:46Z
+Version : v1.6.0
+Time    : 2023-08-15T12:05:45Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/subosito/gotenv@v1.4.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/subosito/gotenv@v1.6.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -15696,6 +15731,43 @@ THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
+Module  : golang.org/x/exp
+Version : v0.0.0-20230905200255-921286631fa9
+Time    : 2023-09-05T20:02:55Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/golang.org/x/exp@v0.0.0-20230905200255-921286631fa9/LICENSE:
+
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : golang.org/x/mod
 Version : v0.12.0
 Time    : 2023-06-21T11:18:17Z
@@ -15734,11 +15806,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.14.0
-Time    : 2023-08-04T22:30:43Z
+Version : v0.17.0
+Time    : 2023-10-10T15:45:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.14.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.17.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15771,11 +15843,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.8.0
-Time    : 2023-05-08T21:24:50Z
+Version : v0.12.0
+Time    : 2023-09-05T16:42:47Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.8.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.12.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15845,11 +15917,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.11.0
-Time    : 2023-07-26T11:14:25Z
+Version : v0.13.0
+Time    : 2023-09-28T17:55:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15882,11 +15954,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.11.0
-Time    : 2023-08-04T15:09:51Z
+Version : v0.13.0
+Time    : 2023-10-05T14:06:51Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.11.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15919,11 +15991,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.12.0
-Time    : 2023-07-21T21:34:41Z
+Version : v0.13.0
+Time    : 2023-08-28T17:26:32Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15993,11 +16065,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.12.0
-Time    : 2023-08-07T13:23:17Z
+Version : v0.13.0
+Time    : 2023-09-05T16:59:35Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.13.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -16030,11 +16102,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : gomodules.xyz/jsonpatch/v2
-Version : v2.3.0
-Time    : 2023-05-22T15:43:24Z
+Version : v2.4.0
+Time    : 2023-08-14T02:23:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/gomodules.xyz/jsonpatch/v2@v2.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/gomodules.xyz/jsonpatch/v2@v2.4.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16454,11 +16526,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/appengine@v1.6.7
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/protobuf
-Version : v1.30.0
-Time    : 2023-03-16T08:32:54Z
+Version : v1.31.0
+Time    : 2023-06-26T11:17:38Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.30.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.31.0/LICENSE:
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
@@ -17318,11 +17390,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.28.0
-Time    : 2023-08-15T20:24:24Z
+Version : v0.28.1
+Time    : 2023-08-24T14:47:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.28.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.28.1/LICENSE:
 
 
                                  Apache License

@@ -7,6 +7,7 @@ package kibana
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/pkg/errors"
 
@@ -54,7 +55,7 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
-			body, err := DoRequest(check.client, b.Kibana, password, "GET", "/api/status", nil)
+			body, err := DoRequest(check.client, b.Kibana, password, "GET", "/api/status", nil, http.Header{})
 			if err != nil {
 				return err
 			}
@@ -94,7 +95,7 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(7, 16, 0)) {
 				path = "/internal/workplace_search/overview"
 			}
-			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil)
+			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil, http.Header{})
 			return err
 		}),
 	}

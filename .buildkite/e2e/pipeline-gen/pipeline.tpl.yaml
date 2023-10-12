@@ -29,7 +29,7 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      image: "family/core-ubuntu-2004"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ .KindAgentsMachineType }}"
       {{- end }}
@@ -80,7 +80,7 @@ steps:
     agents:
       {{- if $test.Dind }}
       provider: "gcp"
-      image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+      image: "family/core-ubuntu-2004"
       {{- if eq $test.Provider "kind" }}
       machineType: "{{ $.KindAgentsMachineType }}"
       {{- end }}
@@ -115,10 +115,9 @@ steps:
           {{$key}}: "{{$val}}"
           {{- end }}
           DEPLOYER_OPERATION: delete
-
+        soft_fail: true
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
-
         {{- if not $test.Dind }}
           - make run-deployer
         agents:
@@ -128,11 +127,8 @@ steps:
           - make -C .buildkite TARGET="run-deployer" ci
         agents:
           provider: "gcp"
-          image: "family/elastic-buildkite-agent-ubuntu-2004-lts"
+          image: "family/core-ubuntu-2004"
         {{- end }}
-        retry:
-          automatic:
-            - limit: 5
 
     {{- end }}
 {{- end }}
