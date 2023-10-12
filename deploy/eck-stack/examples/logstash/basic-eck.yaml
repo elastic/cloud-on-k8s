@@ -1,6 +1,5 @@
 ---
 eck-elasticsearch:
-  version: 8.9.0
   nodeSets:
   - name: default
     count: 3
@@ -15,9 +14,14 @@ eck-elasticsearch:
               memory: 2Gi
             requests:
               memory: 2Gi
+eck-kibana:
+  enabled: true
+  spec:
+    count: 1
+    elasticsearchRef:
+      name: elasticsearch
 eck-beats:
   enabled: true
-  version: 8.9.0
   spec:
     type: filebeat
     daemonSet: null
@@ -30,7 +34,8 @@ eck-beats:
       - add_host_metadata: {}
       - add_cloud_metadata: {}
       output.logstash:
-        hosts: ["logstash-ls-beats:5044"]
+        # This needs to be {{logstash-name}}-ls-beats:5044
+        hosts: ["logstash-ls-beats-ls-beats:5044"]
     deployment:
       podTemplate:
         spec:
@@ -59,13 +64,14 @@ eck-beats:
               emptydir: {}
 eck-logstash:
   enabled: true
-
-  version: 8.9.0
-
+  # This is required to be able to set the logstash
+  # output of beats in a consistent manner.
+  fullnameOverride: "logstash-ls-beats"
   elasticsearchRefs:
+    # This clusterName is required to match the environment variables
+    # used in the below config.string output section.
     - clusterName: eck
       name: elasticsearch
-
   pipelines:
     - pipeline.id: main
       config.string: |
@@ -91,7 +97,6 @@ eck-logstash:
             ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
           }
         }
-
   services:
     - name: beats
       service:
