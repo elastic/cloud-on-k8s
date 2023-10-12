@@ -15806,11 +15806,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.15.0
-Time    : 2023-09-05T15:09:00Z
+Version : v0.17.0
+Time    : 2023-10-10T15:45:19Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.15.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.17.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
