@@ -12,6 +12,7 @@ The following Elastic Stack resources are currently supported.
 - Elastic Agent
 - Fleet Server
 - Beats
+- Logstash
 
 Additional resources will be supported in future releases of this Helm Chart.
 
@@ -75,6 +76,7 @@ The following table lists the configurable parameters of the eck-stack chart and
 | `eck-kibana.enabled` | If `true`, create a Kibana resource (using the eck-kibana Chart) | `true` |
 | `eck-agent.enabled` | If `true`, create an Elastic Agent resource (using the eck-agent Chart) | `false` |
 | `eck-fleet-server.enabled` | If `true`, create a Fleet Server resource (using the eck-fleet-server Chart) | `false` |
+| `eck-logstash.enabled` | If `true`, create a Logstash resource (using the eck-logstash Chart) | `false` |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
 
