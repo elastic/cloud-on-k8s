@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
@@ -60,6 +61,7 @@ func BuildPodTemplateSpec(
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
 	additionalSecretMounts []policyv1alpha1.SecretMount,
+	stackConfigPolicySecretHash StackConfigPolicySecretHash,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -101,7 +103,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts))
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), stackConfigPolicySecretHash)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -193,6 +195,7 @@ func buildAnnotations(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
+	stackConfigPolicySecretHash StackConfigPolicySecretHash,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -217,6 +220,8 @@ func buildAnnotations(
 
 	// set the annotation in place
 	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
+	annotations[stackconfigpolicy.ElasticsearchConfigHashAnnotation] = stackConfigPolicySecretHash.ElasticsearchConfigHash
+	annotations[stackconfigpolicy.SecretMountsHashAnnotation] = stackConfigPolicySecretHash.SecretMountsHash
 
 	return annotations
 }

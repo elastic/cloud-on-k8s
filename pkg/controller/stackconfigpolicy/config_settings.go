@@ -11,8 +11,8 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -23,8 +23,10 @@ import (
 )
 
 const (
-	elasticSearchConfigKey = "elasticsearch.yml"
-	secretsMountKey        = "secretMounts.json"
+	elasticSearchConfigKey            = "elasticsearch.yml"
+	secretsMountKey                   = "secretMounts.json"
+	ElasticsearchConfigHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-hash"
+	SecretMountsHashAnnotation        = "policy.k8s.elastic.co/secret-mounts-hash"
 )
 
 var (
@@ -36,13 +38,16 @@ func NewElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	if err != nil {
 		return corev1.Secret{}, err
 	}
+	secretsMountHash := hash.HashObject(policy.Spec.Elasticsearch.SecretMounts)
 
 	var configDataJsonBytes []byte
+	var elasticsearchConfigHash string
 	if policy.Spec.Elasticsearch.Config != nil {
 		configDataJsonBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+		elasticsearchConfigHash = hash.HashObject(policy.Spec.Elasticsearch.Config)
 	}
 
 	elasticsearchConfigSecret := corev1.Secret{
@@ -53,6 +58,10 @@ func NewElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 				Name:      es.Name,
 				Namespace: es.Namespace,
 			}),
+			Annotations: map[string]string{
+				ElasticsearchConfigHashAnnotation: elasticsearchConfigHash,
+				SecretMountsHashAnnotation:        secretsMountHash,
+			},
 		},
 		Data: map[string][]byte{
 			elasticSearchConfigKey: configDataJsonBytes,
@@ -64,7 +73,7 @@ func NewElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	setPolicyAsSoftOwner(&elasticsearchConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
-	elasticsearchConfigSecret.Labels[label.StackConfigPolicyOnDeleteLabelName] = "delete"
+	elasticsearchConfigSecret.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
 
 	return elasticsearchConfigSecret, nil
 }

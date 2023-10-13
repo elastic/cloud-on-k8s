@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -335,11 +336,24 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			results.WithResult(defaultRequeue)
 		}
 
+		// Check if required Elasticsearch config and secret mounts are applied.
+		configAndSecretMountsApplied, err := elasticsearchConfigAndSecretMountsApplied(ctx, r.Client, policy, es)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// Config not yet applied, requeue
+		// TODO: maybe add the hash to the status like we do for the file settings
+		if !configAndSecretMountsApplied {
+			status.Phase = policyv1alpha1.ApplyingChangesPhase
+			return results.WithResult(defaultRequeue), status
+		}
+
 		// update the ES resource status for this ES
 		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion))
 	}
 
-	// reset Settings secrets for resources no longer selected by this policy
+	// reset/delete Settings secrets for resources no longer selected by this policy
 	results.WithError(resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
 
 	// requeue if not ready
@@ -590,4 +604,29 @@ func (r *ReconcileStackConfigPolicy) reconcileSecretMountSecretsESNamespace(ctx 
 		}
 	}
 	return nil
+}
+
+// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the elasticsearch cluster.
+func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
+	// Get Pods for the given Elasticsearch
+	podList := corev1.PodList{}
+	if err := c.List(ctx, &podList, client.MatchingLabels{
+		label.ClusterNameLabelName: es.Name,
+	}); err != nil {
+		return false, err
+	}
+
+	var elasticsearchConfigHash string
+	if policy.Spec.Elasticsearch.Config != nil {
+		elasticsearchConfigHash = hash.HashObject(policy.Spec.Elasticsearch.Config)
+	}
+	secretMountsHash := hash.HashObject(policy.Spec.Elasticsearch.SecretMounts)
+
+	for _, esPod := range podList.Items {
+		if esPod.Annotations[ElasticsearchConfigHashAnnotation] != elasticsearchConfigHash || esPod.Annotations[SecretMountsHashAnnotation] != secretMountsHash {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -32,6 +33,11 @@ type Resources struct {
 }
 
 type ResourcesList []Resources
+
+type StackConfigPolicySecretHash struct {
+	ElasticsearchConfigHash string
+	SecretMountsHash        string
+}
 
 func (l ResourcesList) ForStatefulSet(name string) (Resources, error) {
 	for _, resource := range l {
@@ -71,6 +77,10 @@ func BuildExpectedResources(
 		return nil, err
 	}
 
+	stackConfigPolicySecretHash := StackConfigPolicySecretHash{
+		ElasticsearchConfigHash: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.ElasticsearchConfigHashAnnotation],
+		SecretMountsHash:        stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.SecretMountsHashAnnotation],
+	}
 	// Parse Elasticsearch config from the stack config policy secret.
 	var esConfigFromStackConfigPolicy map[string]interface{}
 	if string(stackConfigPolicyConfigSecret.Data["elasticsearch.yml"]) != "" {
@@ -103,7 +113,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, additionalSecretMounts)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, additionalSecretMounts, stackConfigPolicySecretHash)
 		if err != nil {
 			return nil, err
 		}
