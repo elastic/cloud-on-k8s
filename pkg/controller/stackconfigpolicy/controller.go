@@ -38,6 +38,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -416,10 +417,18 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 }
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	return resetOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
+	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
 }
 
-// resetOrphanSoftOwnedSecrets resets the File settings secrets for the Elasticsearch clusters that are no longer configured
+func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
+	err := resetOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
+	if err != nil {
+		return err
+	}
+	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner)
+}
+
+// resetOrphanSoftOwnedSecrets resets secrets for the Elasticsearch clusters that are no longer configured
 // by a given StackConfigPolicy.
 // An optional list of Elasticsearch currently configured by the policy can be provided to filter secrets not to be modified. Without list,
 // all secrets soft owned by the policy are reset.
@@ -434,6 +443,8 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 			reconciler.SoftOwnerNamespaceLabel: softOwner.Namespace,
 			reconciler.SoftOwnerNameLabel:      softOwner.Name,
 			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+			// TODO: make sure this is backwards compatible.
+			label.StackConfigPolicyOnDeleteLabelName: "reset",
 		},
 	); err != nil {
 		return err
@@ -469,16 +480,19 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 	return nil
 }
 
-func deleteElasticsearchConfigSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName) error {
+// deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch clusters that are no longer configured
+// by a given StackConfigPolicy.
+func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName) error {
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
 		&secrets,
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
 		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel: softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:      softOwner.Name,
-			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+			reconciler.SoftOwnerNamespaceLabel:       softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:            softOwner.Name,
+			reconciler.SoftOwnerKindLabel:            policyv1alpha1.Kind,
+			label.StackConfigPolicyOnDeleteLabelName: "delete",
 		},
 	); err != nil {
 		return err
@@ -543,12 +557,15 @@ func (r *ReconcileStackConfigPolicy) reconcileSecretMountSecretsESNamespace(ctx 
 		}
 
 		// Set stackconfigpolicy as a softowner
-		setSoftOwner(&expected, *policy)
+		setPolicyAsSoftOwner(&expected, *policy)
+
+		// Set the secret to be deleted when the stack config policy is deleted.
+		expected.Labels[label.StackConfigPolicyOnDeleteLabelName] = "delete"
 
 		err := reconciler.ReconcileResource(reconciler.Params{
 			Context:    ctx,
 			Client:     r.Client,
-			Owner:      nil,
+			Owner:      &es,
 			Expected:   &expected,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {

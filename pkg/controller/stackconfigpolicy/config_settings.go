@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -60,7 +61,10 @@ func NewElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	}
 
 	// Set the Elasticsearch as the soft owner
-	setSoftOwner(&elasticsearchConfigSecret, policy)
+	setPolicyAsSoftOwner(&elasticsearchConfigSecret, policy)
+
+	// Add label to delete secret on deletion of the stack config policy
+	elasticsearchConfigSecret.Labels[label.StackConfigPolicyOnDeleteLabelName] = "delete"
 
 	return elasticsearchConfigSecret, nil
 }
@@ -97,7 +101,7 @@ func ReconcileElasticsearchConfigSecret(ctx context.Context,
 }
 
 // setSoftOwner sets the given stack config policy as soft owner of the Secret using the "softOwned" labels.
-func setSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
+func setPolicyAsSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
 	if secret.Labels == nil {
 		secret.Labels = map[string]string{}
 	}

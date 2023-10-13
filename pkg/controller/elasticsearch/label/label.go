@@ -52,6 +52,8 @@ const (
 	NodeTypesDataWarmLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_warm"
 	// NodeTypesDataFrozenLabelName is a label set to true on nodes with the data_frozen role.
 	NodeTypesDataFrozenLabelName labels.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data_frozen"
+	//StackConfigPolicyOnDeleteLabelName is a label used to indicate if a secret should be reset or deleted on deletion of it's stack config policy
+	StackConfigPolicyOnDeleteLabelName = "elasticsearch.k8s.elastic.co/stack-config-policy-on-delete"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
