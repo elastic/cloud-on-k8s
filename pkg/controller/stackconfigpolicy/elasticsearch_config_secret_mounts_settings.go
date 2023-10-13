@@ -118,3 +118,69 @@ func setPolicyAsSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConf
 	secret.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
 	secret.Labels[reconciler.SoftOwnerKindLabel] = policy.GetObjectKind().GroupVersionKind().Kind
 }
+
+// reconcileSecretMountSecretsESNamespace creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
+func reconcileSecretMountSecretsESNamespace(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+	for i, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
+		additionalSecret := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name: secretMount.SecretName,
+			// TODO: should this be policy namespace or operator's namespace
+			Namespace: policy.Namespace,
+		}
+		if err := c.Get(ctx, namespacedName, &additionalSecret); err != nil {
+			return err
+		}
+
+		// Recreate it in the Elasticsearch namespace, prefix with es name.
+		secretName := esv1.ESNamer.Suffix(es.Name, additionalSecret.Name)
+		// Replace the name in the policy object as well
+		policy.Spec.Elasticsearch.SecretMounts[i].SecretName = secretName
+		reconciled := &corev1.Secret{}
+		expected := corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      secretName,
+				Labels: eslabel.NewLabels(types.NamespacedName{
+					Name:      es.Name,
+					Namespace: es.Namespace,
+				}),
+			},
+			Data: additionalSecret.Data,
+		}
+
+		// Set stackconfigpolicy as a softowner
+		setPolicyAsSoftOwner(&expected, *policy)
+
+		// Set the secret to be deleted when the stack config policy is deleted.
+		expected.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
+
+		// TODO: code duplication, consolidate the reconcileresource calls
+		err := reconciler.ReconcileResource(reconciler.Params{
+			Context:    ctx,
+			Client:     c,
+			Expected:   &expected,
+			Reconciled: reconciled,
+			NeedsUpdate: func() bool {
+				return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+					!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+					!reflect.DeepEqual(expected.Data, reconciled.Data)
+			},
+			UpdateReconciled: func() {
+				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+				// remove managed labels if they are no longer defined
+				for _, label := range managedLabels {
+					if _, ok := expected.Labels[label]; !ok {
+						delete(reconciled.Labels, label)
+					}
+				}
+				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+				reconciled.Data = expected.Data
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -43,7 +43,6 @@ import (
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -310,7 +309,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// create secrets that are present in the secret mounts
-		err = r.reconcileSecretMountSecretsESNamespace(ctx, es, &policy)
+		err = reconcileSecretMountSecretsESNamespace(ctx, r.Client, es, &policy)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -354,7 +353,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
-	results.WithError(resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
+	results.WithError(handleOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
 
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
@@ -439,7 +438,7 @@ func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner t
 	if err != nil {
 		return err
 	}
-	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner)
+	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
 }
 
 // resetOrphanSoftOwnedSecrets resets secrets for the Elasticsearch clusters that are no longer configured
@@ -496,7 +495,7 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 
 // deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch clusters that are no longer configured
 // by a given StackConfigPolicy.
-func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName) error {
+func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
 		&secrets,
@@ -513,6 +512,16 @@ func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner t
 	}
 
 	for _, secret := range secrets.Items {
+		esNsn := types.NamespacedName{
+			Namespace: secret.Namespace,
+			Name:      secret.Labels[eslabel.ClusterNameLabelName],
+		}
+		_, exist := configuredEs[esNsn]
+		if exist {
+			continue
+		}
+
+		// given elasticsearchcluster is no longer managed by stack config policy, delete secret.
 		err := c.Delete(ctx, &secret)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
@@ -538,72 +547,6 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 
 	return clusterState.Metadata.ReservedState.FileSettings, nil
-}
-
-// reconcileSecretMountSecretsESNamespace creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func (r *ReconcileStackConfigPolicy) reconcileSecretMountSecretsESNamespace(ctx context.Context, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
-	for i, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
-		additionalSecret := corev1.Secret{}
-		namespacedName := types.NamespacedName{
-			Name: secretMount.SecretName,
-			// TODO: should this be policy namespace or operator's namespace
-			Namespace: policy.Namespace,
-		}
-		if err := r.Client.Get(ctx, namespacedName, &additionalSecret); err != nil {
-			return err
-		}
-
-		// Recreate it in the Elasticsearch namespace, prefix with es name.
-		secretName := esv1.ESNamer.Suffix(es.Name, additionalSecret.Name)
-		// Replace the name in the policy object as well
-		policy.Spec.Elasticsearch.SecretMounts[i].SecretName = secretName
-		reconciled := &corev1.Secret{}
-		expected := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      secretName,
-				Labels: eslabel.NewLabels(types.NamespacedName{
-					Name:      es.Name,
-					Namespace: es.Namespace,
-				}),
-			},
-			Data: additionalSecret.Data,
-		}
-
-		// Set stackconfigpolicy as a softowner
-		setPolicyAsSoftOwner(&expected, *policy)
-
-		// Set the secret to be deleted when the stack config policy is deleted.
-		expected.Labels[label.StackConfigPolicyOnDeleteLabelName] = "delete"
-
-		err := reconciler.ReconcileResource(reconciler.Params{
-			Context:    ctx,
-			Client:     r.Client,
-			Owner:      &es,
-			Expected:   &expected,
-			Reconciled: reconciled,
-			NeedsUpdate: func() bool {
-				return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-					!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
-					!reflect.DeepEqual(expected.Data, reconciled.Data)
-			},
-			UpdateReconciled: func() {
-				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-				// remove managed labels if they are no longer defined
-				for _, label := range managedLabels {
-					if _, ok := expected.Labels[label]; !ok {
-						delete(reconciled.Labels, label)
-					}
-				}
-				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-				reconciled.Data = expected.Data
-			},
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the elasticsearch cluster.
