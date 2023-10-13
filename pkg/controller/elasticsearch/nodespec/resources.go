@@ -6,6 +6,7 @@ package nodespec
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -13,6 +14,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -60,6 +62,7 @@ func BuildExpectedResources(
 	existingStatefulSets sset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
+	stackConfigPolicyConfigSecret corev1.Secret,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -68,19 +71,39 @@ func BuildExpectedResources(
 		return nil, err
 	}
 
+	// Parse Elasticsearch config from the stack config policy secret.
+	var esConfigFromStackConfigPolicy map[string]interface{}
+	if string(stackConfigPolicyConfigSecret.Data["elasticsearch.yml"]) != "" {
+		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data["elasticsearch.yml"], &esConfigFromStackConfigPolicy)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var additionalSecretMounts []policyv1alpha1.SecretMount
+	if string(stackConfigPolicyConfigSecret.Data["secretMounts.json"]) != "" {
+		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data["secretMounts.json"], &additionalSecretMounts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Create a New Config from the parsed config
+	esConfigStackConfigPolicy := commonv1.NewConfig(esConfigFromStackConfigPolicy)
+
 	for _, nodeSpec := range es.Spec.NodeSets {
 		// build es config
 		userCfg := commonv1.Config{}
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, esConfigStackConfigPolicy)
 		if err != nil {
 			return nil, err
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, additionalSecretMounts)
 		if err != nil {
 			return nil, err
 		}

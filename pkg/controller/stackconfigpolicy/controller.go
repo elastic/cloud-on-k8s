@@ -41,6 +41,7 @@ import (
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -211,6 +212,21 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		return results.WithError(err), status
 	}
 
+	// Check if the secrets for the additional secret mounts exist
+	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
+		additionalSecret := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name: secretMount.SecretName,
+			// TODO: should this be policy namespace or operator's namespace
+			Namespace: policy.Namespace,
+		}
+		if err = r.Client.Get(ctx, namespacedName, &additionalSecret); err != nil {
+			errmsg := fmt.Sprintf("failed to get secret %s in namespace %s, with error %v", secretMount.SecretName, policy.Namespace, err)
+			status.Phase = policyv1alpha1.InvalidPhase
+			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, errmsg)
+		}
+	}
+
 	// prepare the selector to find Elastic resources to configure
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
@@ -288,6 +304,22 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		if err := filesettings.ReconcileSecret(ctx, r.Client, expectedSecret, es); err != nil {
+			return results.WithError(err), status
+		}
+
+		// create secrets that are present in the secret mounts
+		err = r.reconcileSecretMountSecretsESNamespace(ctx, es, &policy)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// create expected elasticsearch config secret
+		expectedConfigSecret, err := NewElasticsearchConfigSecret(policy, es)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		if err := ReconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es, policy); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -437,6 +469,31 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 	return nil
 }
 
+func deleteElasticsearchConfigSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName) error {
+	var secrets corev1.SecretList
+	if err := c.List(ctx,
+		&secrets,
+		// search in all namespaces
+		// restrict to secrets on which we set the soft owner labels
+		client.MatchingLabels{
+			reconciler.SoftOwnerNamespaceLabel: softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:      softOwner.Name,
+			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+		},
+	); err != nil {
+		return err
+	}
+
+	for _, secret := range secrets.Items {
+		err := c.Delete(ctx, &secret)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // getClusterStateFileSettings gets the file based settings currently configured in an Elasticsearch by calling the /_cluster/state API.
 func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Context, es esv1.Elasticsearch) (esclient.FileSettings, error) {
 	span, _ := apm.StartSpan(ctx, "get_cluster_state", tracing.SpanTypeApp)
@@ -453,4 +510,67 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 
 	return clusterState.Metadata.ReservedState.FileSettings, nil
+}
+
+// reconcileSecretMountSecretsESNamespace creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
+func (r *ReconcileStackConfigPolicy) reconcileSecretMountSecretsESNamespace(ctx context.Context, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+	for i, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
+		additionalSecret := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name: secretMount.SecretName,
+			// TODO: should this be policy namespace or operator's namespace
+			Namespace: policy.Namespace,
+		}
+		if err := r.Client.Get(ctx, namespacedName, &additionalSecret); err != nil {
+			return err
+		}
+
+		// Recreate it in the Elasticsearch namespace, prefix with es name.
+		secretName := esv1.ESNamer.Suffix(es.Name, additionalSecret.Name)
+		// Replace the name in the policy object as well
+		policy.Spec.Elasticsearch.SecretMounts[i].SecretName = secretName
+		reconciled := &corev1.Secret{}
+		expected := corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      secretName,
+				Labels: eslabel.NewLabels(types.NamespacedName{
+					Name:      es.Name,
+					Namespace: es.Namespace,
+				}),
+			},
+			Data: additionalSecret.Data,
+		}
+
+		// Set stackconfigpolicy as a softowner
+		setSoftOwner(&expected, *policy)
+
+		err := reconciler.ReconcileResource(reconciler.Params{
+			Context:    ctx,
+			Client:     r.Client,
+			Owner:      nil,
+			Expected:   &expected,
+			Reconciled: reconciled,
+			NeedsUpdate: func() bool {
+				return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+					!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+					!reflect.DeepEqual(expected.Data, reconciled.Data)
+			},
+			UpdateReconciled: func() {
+				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+				// remove managed labels if they are no longer defined
+				for _, label := range managedLabels {
+					if _, ok := expected.Labels[label]; !ok {
+						delete(reconciled.Labels, label)
+					}
+				}
+				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+				reconciled.Data = expected.Data
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

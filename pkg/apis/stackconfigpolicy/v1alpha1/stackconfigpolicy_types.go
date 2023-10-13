@@ -55,6 +55,7 @@ type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector          `json:"resourceSelector,omitempty"`
 	SecureSettings   []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch    ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
+	Kibana           KibanaConfigPolicySpec        `json:"kibana,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
@@ -79,6 +80,21 @@ type ElasticsearchConfigPolicySpec struct {
 	// IndexTemplates holds the Index and Component Templates settings
 	// +kubebuilder:pruning:PreserveUnknownFields
 	IndexTemplates IndexTemplates `json:"indexTemplates,omitempty"`
+	// Config holds the settings that go into elasticsearch.yml
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+	// SecretMounts holds the additional secrets that need to be mounted into the Elasticsearch pods
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
+}
+
+type KibanaConfigPolicySpec struct {
+	// Config holds the settings that go into kibana.yml
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+	// SecretMounts holds the additional secrets that need to be mounted into the Elasticsearch pods
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
 }
 
 type IndexTemplates struct {
@@ -140,6 +156,11 @@ type ResourcePolicyStatus struct {
 type PolicyStatusError struct {
 	Version int64  `json:"version,omitempty"`
 	Message string `json:"message,omitempty"`
+}
+
+type SecretMount struct {
+	SecretName string `json:"secretName,omitempty"`
+	MountPath  string `json:"mountPath,omitempty"`
 }
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {

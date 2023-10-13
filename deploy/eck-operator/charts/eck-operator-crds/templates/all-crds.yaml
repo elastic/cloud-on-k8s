@@ -10243,6 +10243,10 @@ spec:
                       (/_cluster/settings)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  config:
+                    description: Config holds the settings that go into elasticsearch.yml
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   indexLifecyclePolicies:
                     description: IndexLifecyclePolicies holds the Index Lifecycle
                       policies settings (/_ilm/policy)
@@ -10269,6 +10273,18 @@ spec:
                       (/_ingest/pipeline)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  secretMounts:
+                    description: SecretMounts holds the additional secrets that need
+                      to be mounted into the Elasticsearch pods
+                    items:
+                      properties:
+                        mountPath:
+                          type: string
+                        secretName:
+                          type: string
+                      type: object
+                    type: array
+                    x-kubernetes-preserve-unknown-fields: true
                   securityRoleMappings:
                     description: SecurityRoleMappings holds the Role Mappings settings
                       (/_security/role_mapping)
@@ -10283,6 +10299,25 @@ spec:
                     description: SnapshotRepositories holds the Snapshot Repositories
                       settings (/_snapshot)
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+              kibana:
+                properties:
+                  config:
+                    description: Config holds the settings that go into kibana.yml
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  secretMounts:
+                    description: SecretMounts holds the additional secrets that need
+                      to be mounted into the Elasticsearch pods
+                    items:
+                      properties:
+                        mountPath:
+                          type: string
+                        secretName:
+                          type: string
+                      type: object
+                    type: array
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               resourceSelector:

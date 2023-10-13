@@ -112,6 +112,12 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if policy.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates != nil {
 		settingsCount += len(policy.Spec.Elasticsearch.IndexTemplates.ComposableIndexTemplates.Data)
 	}
+	if policy.Spec.Elasticsearch.Config != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.Config.Data)
+	}
+	if policy.Spec.Elasticsearch.SecretMounts != nil {
+		settingsCount += len(policy.Spec.Elasticsearch.SecretMounts)
+	}
 	if settingsCount == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
 	}

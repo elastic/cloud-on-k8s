@@ -19,6 +19,7 @@ const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
 	fileSettingsSecretSuffix                     = "file-settings"
+	esConfigSecretSuffix                         = "elasticsearch-config"
 	httpServiceSuffix                            = "http"
 	internalHTTPServiceSuffix                    = "internal-http"
 	transportServiceSuffix                       = "transport"
@@ -173,4 +174,8 @@ func RemoteCaSecretName(esName string) string {
 
 func FileSettingsSecretName(esName string) string {
 	return ESNamer.Suffix(esName, fileSettingsSecretSuffix)
+}
+
+func StakConfigElasticsearchConfigSecretName(esName string) string {
+	return ESNamer.Suffix(esName, esConfigSecretSuffix)
 }
