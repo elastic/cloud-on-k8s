@@ -74,7 +74,7 @@ monitoring: {}
   #   - name: monitoring
   #     namespace: observability
 
-# The logstash pipelines, the ECK equivalent to pipelines.yml
+# The Logstash pipelines, the ECK equivalent to pipelines.yml
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-logstash-configuration.html#k8s-logstash-pipelines
 #
 pipelines: []
