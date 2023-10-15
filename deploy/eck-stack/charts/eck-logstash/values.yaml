@@ -79,7 +79,7 @@ monitoring: {}
 #
 pipelines: []
 
-pipelineRef: {}
+pipelinesRef: {}
 #  secretRef:
 #    secretName: ''
 

@@ -31,8 +31,8 @@ spec:
   configRef:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.pipelineRef }}
-  pipelineRef:
+  {{- with .Values.pipelinesRef }}
+  pipelinesRef:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.podTemplate }}
