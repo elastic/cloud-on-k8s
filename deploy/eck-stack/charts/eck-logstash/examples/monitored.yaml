@@ -1,0 +1,49 @@
+---
+# values corresponding to config/recipes/logstash/logstash-monitored.yaml
+version: 8.11.0-SNAPSHOT
+
+monitoring:
+  metrics:
+    elasticsearchRefs:
+      - name: elasticsearch-monitoring
+
+pipelines:
+  - pipeline.id: main
+    config.string: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      filter {
+        grok {
+          match => { "message" => "%{HTTPD_COMMONLOG}"}
+        }
+        geoip {
+          source => "[source][address]"
+          target => "[source]"
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => [ "${ECK_ES_HOSTS}" ]
+          user => "${ECK_ES_USER}"
+          password => "${ECK_ES_PASSWORD}"
+          ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+        }
+      }
+
+elasticsearchRefs:
+  - clusterName: eck
+    name: elasticsearch
+
+services:
+  - name: beats
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+          - port: 5044
+            name: "filebeat"
+            protocol: TCP
+            targetPort: 5044
