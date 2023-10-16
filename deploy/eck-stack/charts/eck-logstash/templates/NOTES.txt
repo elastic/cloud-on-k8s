@@ -1,0 +1,6 @@
+
+1. Check Logstash status
+  $ kubectl get logstash {{ include "logstash.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check Logstash pod status
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l logstash.k8s.elastic.co/name={{ include "logstash.fullname" . }}
