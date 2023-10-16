@@ -35,6 +35,7 @@ ECK Helm charts are grouped under 2 parent charts: `eck-operator` and `eck-stack
 │   │   ├── eck-elasticsearch
 │   │   ├── eck-fleet-server
 │   │   └── eck-kibana
+│   │   └── eck-logstash
 ```
 
 All subcharts are managed locally through their parent's `charts/` directory.

@@ -61,6 +61,19 @@ helm install eck-stack-with-fleet elastic/eck-stack \
 ----
 
 [float]
+[id="{p}-install-logstash-elasticsearch-kibana-helm"]
+== Installing Logstash along with Elasticsearch, Kibana and Beats using the eck-stack Helm Chart
+
+The following section builds upon the previous sections, and allows installing Logstash along with Elasticsearch, Kibana and Beats.
+
+[source,sh,subs="attributes"]
+----
+# Install an eck-managed Elasticsearch, Kibana, Beats and Logstash using custom values.
+helm install eck-stack-with-logstash elastic/eck-stack \
+    --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/logstash/basic-eck.yaml -n elastic-stack
+----
+
+[float]
 [id="{p}-eck-stack-individual-components"]
 === Installing individual components of the Elastic Stack using the Helm Charts
 
