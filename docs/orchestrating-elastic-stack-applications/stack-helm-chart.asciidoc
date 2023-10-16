@@ -68,7 +68,7 @@ The following section builds upon the previous sections, and allows installing L
 
 [source,sh,subs="attributes"]
 ----
-# Install an eck-managed Elasticsearch, Kibana, Fleet Server, and managed Elastic Agents using custom values.
+# Install an eck-managed Elasticsearch, Kibana, Beats and Logstash using custom values.
 helm install eck-stack-with-logstash elastic/eck-stack \
     --values https://raw.githubusercontent.com/elastic/cloud-on-k8s/{eck_release_branch}/deploy/eck-stack/examples/logstash/basic-eck.yaml -n elastic-stack
 ----
