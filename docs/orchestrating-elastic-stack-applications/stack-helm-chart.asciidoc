@@ -62,9 +62,9 @@ helm install eck-stack-with-fleet elastic/eck-stack \
 
 [float]
 [id="{p}-install-logstash-elasticsearch-kibana-helm"]
-== Installing Logstash along with Elasticsearch and Kibana using the eck-stack Helm Chart
+== Installing Logstash along with Elasticsearch, Kibana and Beats using the eck-stack Helm Chart
 
-The following section builds upon the previous sections, and allows installing Logstash along with Elasticsearch and Kibana.
+The following section builds upon the previous sections, and allows installing Logstash along with Elasticsearch, Kibana and Beats.
 
 [source,sh,subs="attributes"]
 ----
