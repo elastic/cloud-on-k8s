@@ -14,7 +14,7 @@ appVersion: 2.10.0-SNAPSHOT
 
 home: https://github.com/elastic/cloud-on-k8s
 
-kubeVersion: ">=1.21.0-0"
+kubeVersion: ">=1.24.0-0"
 
 keywords:
   - Logstash

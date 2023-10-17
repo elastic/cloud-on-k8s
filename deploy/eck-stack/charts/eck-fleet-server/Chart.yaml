@@ -1,7 +1,7 @@
 apiVersion: v2
 name: eck-fleet-server
 description: Elastic Fleet Server as an Agent managed by the ECK operator
-kubeVersion: ">= 1.21.0-0"
+kubeVersion: ">= 1.24.0-0"
 type: application
 version: 0.8.0-SNAPSHOT
 sources:
