@@ -160,6 +160,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
 
+					fmt.Printf("Continuous health checks failures: %d (tolerated: %d)\n", continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
 					assert.LessOrEqual(t, continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
 				},
 			},
@@ -251,7 +252,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
 				client, err := hc.esClientFactory()
 				if err != nil {
-					fmt.Printf("error while creating the Elasticsearch client: %s", err)
+					fmt.Printf("error while creating the Elasticsearch client: %s\n", err)
 					if !errors.As(err, &PotentialNetworkError) {
 						// explicit apiserver error, consider as healthcheck failure
 						hc.AppendErr(err)
