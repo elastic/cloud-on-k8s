@@ -19,11 +19,24 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: {version}
-  # image: docker.elastic.co/elasticsearch/elasticsearch:{version} <1>
-  nodeSets:
-  - name: default
-    count: 1
+  version: 7.6.0
+  count: 1
+  image: my-custom-repo/kibana:7.6.0
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  podTemplate:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      imagePullSecrets:  <<Use this parameter to use credentials for a custom repo 
+      - name: regcred
+      containers:
+      - name: kibana
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 1
 ----
 
 <1> The ECK operator will set this value by default. You can explicitly set it to your mirrored container image when running in an air-gapped environment
@@ -52,6 +65,8 @@ The operator expects container images to be located at specific repositories in 
 * +my.registry/elasticsearch/elasticsearch:{version}+
 * +my.registry/kibana/kibana:{version}+
 * +my.registry/apm/apm-server:{version}+
+
+You can provide credentials to a custom repo by adding the imagePullSecrets parameter to your configuration as shown here - https://github.com/elastic/cloud-on-k8s/issues/2580#issuecomment-589602837
 
 [float]
 [id="{p}-container-repository-override"]
