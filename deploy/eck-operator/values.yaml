@@ -128,6 +128,8 @@ webhook:
   objectSelector: {}
   # port is the port that the validating webhook binds to.
   port: 9443
+  # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
+  secret: ""
 
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
@@ -184,8 +186,14 @@ config:
   # certificatesRotateBefore defines when to rotate a certificate that is due to expire.
   certificatesRotateBefore: 24h
 
+  # disableConfigWatch specifies whether the operator watches the configuration file for changes.
+  disableConfigWatch: false
+
   # exposedNodeLabels is an array of regular expressions of node labels which are allowed to be copied as annotations on Elasticsearch Pods.
   exposedNodeLabels: [ "topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*" ]
+
+  # ipFamily specifies the IP family to use. Possible values: IPv4, IPv6 and "" (auto-detect)
+  ipFamily: ""
 
   # setDefaultSecurityContext determines whether a default security context is set on application containers created by the operator.
   # *note* that the default option now is "auto-detect" to attempt to set this properly automatically when both running
@@ -210,6 +218,10 @@ config:
 
   # Interval between observations of Elasticsearch health, non-positive values disable asynchronous observation.
   elasticsearchObservationInterval: 10s
+
+  # ubiOnly specifies whether the operator will use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward.
+  # Cannot be combined with the containerSuffix value.
+  ubiOnly: false
 
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor

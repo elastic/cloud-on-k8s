@@ -25,8 +25,12 @@ data:
     ca-cert-rotate-before: {{ .Values.config.caRotateBefore }}
     cert-validity: {{ .Values.config.certificatesValidity }}
     cert-rotate-before: {{ .Values.config.certificatesRotateBefore }}
+    disable-config-watch: {{ .Values.config.disableConfigWatch }}
     {{- with .Values.config.exposedNodeLabels }}
     exposed-node-labels: [{{ join "," .  }}]
+    {{- end }}
+    {{- with .Values.config.ipFamily }}
+    ip-family: {{ . }}
     {{- end }}
     set-default-security-context: {{ .Values.config.setDefaultSecurityContext }}
     kube-client-timeout: {{ .Values.config.kubeClientTimeout }}
@@ -58,5 +62,12 @@ data:
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
     {{- end }}
+    operator-namespace: {{ .Release.Namespace }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}
     elasticsearch-observation-interval: {{ .Values.config.elasticsearchObservationInterval }}
+    {{- if not .Values.config.containerSuffix }}
+    ubi-only: {{ .Values.config.ubiOnly }}
+    {{- end }}
+    {{- with .Values.webhook.secret }}
+    webhook-secret: {{ . }}
+    {{- end }}
