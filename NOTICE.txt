@@ -4961,11 +4961,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20230406110748
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.16.2
-Time    : 2023-09-11T16:24:12Z
+Version : v0.16.3
+Time    : 2023-10-18T17:59:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.16.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.16.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7062,11 +7062,11 @@ Contents of probable licence file $GOMODCACHE/github.com/elastic/go-windows@v1.0
 
 --------------------------------------------------------------------------------
 Module  : github.com/emicklei/go-restful/v3
-Version : v3.9.0
-Time    : 2022-07-21T19:07:18Z
+Version : v3.11.0
+Time    : 2023-08-19T06:54:41Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/emicklei/go-restful/v3@v3.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/emicklei/go-restful/v3@v3.11.0/LICENSE:
 
 Copyright (c) 2012,2013 Ernest Micklei
 
@@ -17178,11 +17178,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apiextensions-apiserver
-Version : v0.28.0
-Time    : 2023-08-15T20:58:24Z
+Version : v0.28.3
+Time    : 2023-10-18T15:52:23Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.28.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.28.3/LICENSE:
 
 
                                  Apache License
@@ -17390,11 +17390,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apiextensions-apiserver@v0.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/component-base
-Version : v0.28.1
-Time    : 2023-08-24T14:47:01Z
+Version : v0.28.3
+Time    : 2023-10-18T15:25:27Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.28.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/component-base@v0.28.3/LICENSE:
 
 
                                  Apache License
