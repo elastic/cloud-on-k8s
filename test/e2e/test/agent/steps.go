@@ -116,6 +116,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Creating an Agent should succeed",
 				Test: func(t *testing.T) {
+					t.Helper()
 					for _, obj := range b.RuntimeObjects() {
 						err := k.Client.Create(context.Background(), obj)
 						require.NoError(t, err)
@@ -125,6 +126,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Agent should be created",
 				Test: func(t *testing.T) {
+					t.Helper()
 					var createdAgent agentv1alpha1.Agent
 					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent)
 					require.NoError(t, err)
