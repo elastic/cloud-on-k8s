@@ -308,19 +308,18 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		// create secrets that are present in the secret mounts
-		err = reconcileSecretMountSecretsESNamespace(ctx, r.Client, es, &policy)
-		if err != nil {
+		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
+		if err := reconcileSecretMountSecretsESNamespace(ctx, r.Client, es, &policy); err != nil {
 			return results.WithError(err), status
 		}
 
 		// create expected elasticsearch config secret
-		expectedConfigSecret, err := NewElasticsearchConfigSecret(policy, es)
+		expectedConfigSecret, err := newElasticsearchConfigSecret(policy, es)
 		if err != nil {
 			return results.WithError(err), status
 		}
 
-		if err := ReconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es, policy); err != nil {
+		if err := reconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es, policy); err != nil {
 			return results.WithError(err), status
 		}
 

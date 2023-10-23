@@ -92,8 +92,7 @@ func BuildExpectedResources(
 
 	var additionalSecretMounts []policyv1alpha1.SecretMount
 	if string(stackConfigPolicyConfigSecret.Data["secretMounts.json"]) != "" {
-		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data["secretMounts.json"], &additionalSecretMounts)
-		if err != nil {
+		if err := json.Unmarshal(stackConfigPolicyConfigSecret.Data["secretMounts.json"], &additionalSecretMounts); err != nil {
 			return nil, err
 		}
 	}
