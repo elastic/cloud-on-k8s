@@ -85,13 +85,18 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
+	// increase the test timeout for autopilot clusters because autoscaling k8s nodes time can increase the time
+	// before the elasticsearch container is ready
+	timeout := test.Ctx().TestTimeout
+	if test.Ctx().AutopilotCluster {
+		timeout *= 2
+	}
 	return test.StepList{}.
 		WithSteps(test.StepList{
 			test.Step{
 				// This is to improve test stability see https://github.com/elastic/cloud-on-k8s/issues/7172
 				Name: "Wait for Elasticsearch to be green",
-				Test: test.Eventually(func() error {
+				Test: test.UntilSuccess(func() error {
 					for _, ref := range b.Agent.Spec.ElasticsearchRefs {
 						var es esv1.Elasticsearch
 						if err := k.Client.Get(context.Background(), ref.WithDefaultNamespace(b.Agent.Namespace).NamespacedName(), &es); err != nil {
@@ -102,7 +107,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 					return nil
-				}),
+				}, timeout),
 				Skip: func() bool {
 					return len(b.Agent.Spec.ElasticsearchRefs) == 0
 				},
@@ -110,6 +115,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Creating an Agent should succeed",
 				Test: func(t *testing.T) {
+					t.Helper()
 					for _, obj := range b.RuntimeObjects() {
 						err := k.Client.Create(context.Background(), obj)
 						require.NoError(t, err)
@@ -119,6 +125,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Agent should be created",
 				Test: func(t *testing.T) {
+					t.Helper()
 					var createdAgent agentv1alpha1.Agent
 					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent)
 					require.NoError(t, err)
