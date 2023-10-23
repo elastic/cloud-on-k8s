@@ -213,21 +213,6 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		return results.WithError(err), status
 	}
 
-	// Check if the secrets for the additional secret mounts exist
-	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
-		additionalSecret := corev1.Secret{}
-		namespacedName := types.NamespacedName{
-			Name: secretMount.SecretName,
-			// TODO: should this be policy namespace or operator's namespace
-			Namespace: policy.Namespace,
-		}
-		if err = r.Client.Get(ctx, namespacedName, &additionalSecret); err != nil {
-			errmsg := fmt.Sprintf("failed to get secret %s in namespace %s, with error %v", secretMount.SecretName, policy.Namespace, err)
-			status.Phase = policyv1alpha1.InvalidPhase
-			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, errmsg)
-		}
-	}
-
 	// prepare the selector to find Elastic resources to configure
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
@@ -319,19 +304,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		if err := reconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es, policy); err != nil {
+		if err := reconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es); err != nil {
 			return results.WithError(err), status
-		}
-
-		// get /_cluster/state to get the Settings currently configured in ES
-		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
-		if err != nil {
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
-			if err != nil {
-				return results.WithError(err), status
-			}
-			// requeue if ES not reachable
-			results.WithResult(defaultRequeue)
 		}
 
 		// Check if required Elasticsearch config and secret mounts are applied.
@@ -345,6 +319,17 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		if !configAndSecretMountsApplied {
 			status.Phase = policyv1alpha1.ApplyingChangesPhase
 			return results.WithResult(defaultRequeue), status
+		}
+
+		// get /_cluster/state to get the Settings currently configured in ES
+		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
+		if err != nil {
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
+			if err != nil {
+				return results.WithError(err), status
+			}
+			// requeue if ES not reachable
+			results.WithResult(defaultRequeue)
 		}
 
 		// update the ES resource status for this ES

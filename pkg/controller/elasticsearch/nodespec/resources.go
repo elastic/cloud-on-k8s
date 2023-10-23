@@ -83,16 +83,16 @@ func BuildExpectedResources(
 	}
 	// Parse Elasticsearch config from the stack config policy secret.
 	var esConfigFromStackConfigPolicy map[string]interface{}
-	if string(stackConfigPolicyConfigSecret.Data["elasticsearch.yml"]) != "" {
-		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data["elasticsearch.yml"], &esConfigFromStackConfigPolicy)
+	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey]) != "" {
+		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey], &esConfigFromStackConfigPolicy)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	var additionalSecretMounts []policyv1alpha1.SecretMount
-	if string(stackConfigPolicyConfigSecret.Data["secretMounts.json"]) != "" {
-		if err := json.Unmarshal(stackConfigPolicyConfigSecret.Data["secretMounts.json"], &additionalSecretMounts); err != nil {
+	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.SecretsMountKey]) != "" {
+		if err := json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.SecretsMountKey], &additionalSecretMounts); err != nil {
 			return nil, err
 		}
 	}

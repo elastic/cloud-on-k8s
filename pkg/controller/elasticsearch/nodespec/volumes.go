@@ -124,7 +124,8 @@ func buildVolumes(
 
 	// additional secrets volumes from stack config policy
 	for _, secretMount := range additionalSecretMounts {
-		secretVolumeFromStackConfigPolicy := volume.NewSecretVolumeWithMountPath(secretMount.SecretName, secretMount.SecretName, secretMount.MountPath)
+		secretName := esv1.ESNamer.Suffix(esName, secretMount.SecretName)
+		secretVolumeFromStackConfigPolicy := volume.NewSecretVolumeWithMountPath(secretName, secretName, secretMount.MountPath)
 		volumes = append(volumes, secretVolumeFromStackConfigPolicy.Volume())
 		volumeMounts = append(volumeMounts, secretVolumeFromStackConfigPolicy.VolumeMount())
 	}
