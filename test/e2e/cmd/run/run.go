@@ -294,7 +294,7 @@ func (h *helper) initTestSecrets() error {
 			MonitoringURL  string `json:"monitoring_url"`
 			MonitoringUser string `json:"monitoring_user"`
 			MonitoringPass string `json:"monitoring_pass"`
-			APMSecretToken string `json:"apm_secret_token"`
+			APMApiKey      string `json:"apm_api_key"`
 			APMServerURL   string `json:"apm_server_url"`
 		}{}
 
@@ -308,7 +308,7 @@ func (h *helper) initTestSecrets() error {
 		h.testSecrets["password"] = monitoringSecrets.MonitoringPass
 
 		h.operatorSecrets = map[string]string{}
-		h.operatorSecrets["apm_secret_token"] = monitoringSecrets.APMSecretToken
+		h.operatorSecrets["apm_api_key"] = monitoringSecrets.APMApiKey
 		h.operatorSecrets["apm_server_url"] = monitoringSecrets.APMServerURL
 	}
 

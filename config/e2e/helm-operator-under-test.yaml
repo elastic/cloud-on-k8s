@@ -29,11 +29,11 @@ env:
       secretKeyRef:
         name: "eck-{{ .TestRun }}"
         key: apm_server_url
-  - name: ELASTIC_APM_SECRET_TOKEN
+  - name: ELASTIC_APM_API_KEY
     valueFrom:
       secretKeyRef:
         name: "eck-{{ .TestRun }}"
-        key: apm_secret_token
+        key: apm_api_key
 
 {{ end }}
   
