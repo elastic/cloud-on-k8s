@@ -8,13 +8,14 @@ import (
 	"context"
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/magiconair/properties/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
@@ -112,7 +113,6 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 					}
 
 					assert.Equal(t, expectedSecret.Data, getSecretMountSecret(esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName), "test-ns").Data, "secrets do not match")
-
 				}
 			}
 		})
