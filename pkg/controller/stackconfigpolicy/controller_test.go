@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
@@ -119,6 +120,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				"eck.k8s.elastic.co/owner-kind":             "StackConfigPolicy",
 				"eck.k8s.elastic.co/owner-namespace":        "ns",
 				"eck.k8s.elastic.co/owner-name":             "test-policy",
+				label.StackConfigPolicyOnDeleteLabelName:    "reset",
 			},
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
@@ -205,7 +207,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client: k8s.NewFakeClient(&esFixture, &secretFixture),
 			},
 			pre: func(r ReconcileStackConfigPolicy) {
-				// after the reconciliation, settings are empty
+				// before the reconciliation, settings are not empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings.Data)
 			},
