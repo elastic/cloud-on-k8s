@@ -188,7 +188,7 @@ spec:
       meta:
         package:
           name: system
-          version: 8.10.2
+          version: 8.10.4
       data_stream:
         namespace: default
       processors:
