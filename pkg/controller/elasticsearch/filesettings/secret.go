@@ -84,7 +84,7 @@ func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 
 	if policy != nil {
 		// set this policy as soft owner of this Secret
-		setSoftOwner(settingsSecret, *policy)
+		SetSoftOwner(settingsSecret, *policy)
 
 		// add the Secure Settings Secret sources to the Settings Secret
 		if err := setSecureSettings(settingsSecret, *policy); err != nil {
@@ -118,8 +118,8 @@ func hasChanged(settingsSecret corev1.Secret, newSettings Settings) bool {
 	return settingsSecret.Annotations[settingsHashAnnotationName] != newSettings.hash()
 }
 
-// setSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
-func setSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
+// SetSoftOwner sets the given StackConfigPolicy as soft owner of the Settings Secret using the "softOwned" labels.
+func SetSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
 	if settingsSecret.Labels == nil {
 		settingsSecret.Labels = map[string]string{}
 	}

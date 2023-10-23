@@ -304,7 +304,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		if err := reconcileElasticsearchConfigSecret(ctx, r.Client, expectedConfigSecret, es); err != nil {
+		if err := reconcileSecret(ctx, r.Client, expectedConfigSecret, &es); err != nil {
 			return results.WithError(err), status
 		}
 

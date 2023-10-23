@@ -13,6 +13,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -20,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -27,10 +29,6 @@ const (
 	SecretsMountKey                   = "secretMounts.json"
 	ElasticsearchConfigHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-hash"
 	SecretMountsHashAnnotation        = "policy.k8s.elastic.co/secret-mounts-hash"
-)
-
-var (
-	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -69,8 +67,8 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 		},
 	}
 
-	// Set the Elasticsearch as the soft owner
-	setPolicyAsSoftOwner(&elasticsearchConfigSecret, policy)
+	// Set Elasticsearch as the soft owner
+	filesettings.SetSoftOwner(&elasticsearchConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
 	elasticsearchConfigSecret.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
@@ -78,15 +76,15 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	return elasticsearchConfigSecret, nil
 }
 
-func reconcileElasticsearchConfigSecret(ctx context.Context,
+func reconcileSecret(ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
-	es esv1.Elasticsearch) error {
+	owner client.Object) error {
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
 		Client:     c,
-		Owner:      &es,
+		Owner:      owner,
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
@@ -96,26 +94,10 @@ func reconcileElasticsearchConfigSecret(ctx context.Context,
 		},
 		UpdateReconciled: func() {
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			// remove managed labels if they are no longer defined
-			for _, label := range managedLabels {
-				if _, ok := expected.Labels[label]; !ok {
-					delete(reconciled.Labels, label)
-				}
-			}
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 		},
 	})
-}
-
-// setSoftOwner sets the given stack config policy as soft owner of the Secret using the "softOwned" labels.
-func setPolicyAsSoftOwner(secret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) {
-	if secret.Labels == nil {
-		secret.Labels = map[string]string{}
-	}
-	secret.Labels[reconciler.SoftOwnerNamespaceLabel] = policy.GetNamespace()
-	secret.Labels[reconciler.SoftOwnerNameLabel] = policy.GetName()
-	secret.Labels[reconciler.SoftOwnerKindLabel] = policy.GetObjectKind().GroupVersionKind().Kind
 }
 
 // reconcileSecretMountSecretsESNamespace creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
@@ -132,7 +114,6 @@ func reconcileSecretMountSecretsESNamespace(ctx context.Context, c k8s.Client, e
 
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
 		secretName := esv1.ESNamer.Suffix(es.Name, additionalSecret.Name)
-		reconciled := &corev1.Secret{}
 		expected := corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
@@ -146,34 +127,12 @@ func reconcileSecretMountSecretsESNamespace(ctx context.Context, c k8s.Client, e
 		}
 
 		// Set stackconfigpolicy as a softowner
-		setPolicyAsSoftOwner(&expected, *policy)
+		filesettings.SetSoftOwner(&expected, *policy)
 
 		// Set the secret to be deleted when the stack config policy is deleted.
 		expected.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
 
-		// TODO: code duplication, consolidate the reconcileresource calls
-		err := reconciler.ReconcileResource(reconciler.Params{
-			Context:    ctx,
-			Client:     c,
-			Expected:   &expected,
-			Reconciled: reconciled,
-			NeedsUpdate: func() bool {
-				return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-					!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
-					!reflect.DeepEqual(expected.Data, reconciled.Data)
-			},
-			UpdateReconciled: func() {
-				reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-				// remove managed labels if they are no longer defined
-				for _, label := range managedLabels {
-					if _, ok := expected.Labels[label]; !ok {
-						delete(reconciled.Labels, label)
-					}
-				}
-				reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-				reconciled.Data = expected.Data
-			},
-		})
+		err := reconcileSecret(ctx, c, expected, nil)
 		if err != nil {
 			return err
 		}

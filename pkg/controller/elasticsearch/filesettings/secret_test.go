@@ -133,14 +133,14 @@ func Test_SettingsSecret_setSoftOwner_canBeOwnedBy(t *testing.T) {
 	assert.Equal(t, true, canBeOwned)
 
 	// set a policy soft owner
-	setSoftOwner(&secret, policy)
+	SetSoftOwner(&secret, policy)
 	_, canBeOwned = CanBeOwnedBy(secret, policy)
 	assert.Equal(t, true, canBeOwned)
 	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
 	assert.Equal(t, false, canBeOwned)
 
 	// update the policy soft owner
-	setSoftOwner(&secret, otherPolicy)
+	SetSoftOwner(&secret, otherPolicy)
 	_, canBeOwned = CanBeOwnedBy(secret, policy)
 	assert.Equal(t, false, canBeOwned)
 	_, canBeOwned = CanBeOwnedBy(secret, otherPolicy)
