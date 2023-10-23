@@ -85,7 +85,6 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
-	//nolint:thelper
 	// increase the test timeout for autopilot clusters because autoscaling k8s nodes time can increase the time
 	// before the elasticsearch container is ready
 	timeout := test.Ctx().TestTimeout
