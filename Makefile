@@ -496,7 +496,7 @@ check-license-header:
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
-		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; git --no-pager diff; exit 1 )
 
 # Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
 # defined in the user documentation in orchestration.asciidoc.
