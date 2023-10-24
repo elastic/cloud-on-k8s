@@ -539,7 +539,7 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 	podList := corev1.PodList{}
 	if err := c.List(ctx, &podList, client.MatchingLabels{
 		label.ClusterNameLabelName: es.Name,
-	}); err != nil {
+	}); err != nil || len(podList.Items) == 0 {
 		return false, err
 	}
 

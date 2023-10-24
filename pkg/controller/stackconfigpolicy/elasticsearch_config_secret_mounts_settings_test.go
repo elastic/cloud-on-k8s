@@ -125,6 +125,7 @@ func getSecretMountSecret(t *testing.T, name string, namespace string) *corev1.S
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Labels:    map[string]string{},
 		},
 		Data: map[string][]byte{
 			"idfile.txt": []byte("test id file"),
