@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
@@ -226,11 +228,27 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config, commonv1.Config{})
+	policyEsConfig := commonv1.Config{
+		Data: map[string]interface{}{
+			"logger.org.elasticsearch.discovery": "DEBUG",
+		},
+	}
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *nodeSet.Config, policyEsConfig)
+
+	configSecretHash := hash.HashObject(policyEsConfig)
 	require.NoError(t, err)
+	secretMounts := []policyv1alpha1.SecretMount{{
+		SecretName: "test-es-secretname",
+		MountPath:  "/usr/test",
+	}}
+	secretMountsHash := hash.HashObject(secretMounts)
+	stackConfigPolicySecretHash := StackConfigPolicySecretHash{
+		ElasticsearchConfigHash: configSecretHash,
+		SecretMountsHash:        secretMountsHash,
+	}
 
 	client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-	actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, []policyv1alpha1.SecretMount{}, StackConfigPolicySecretHash{})
+	actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, secretMounts, stackConfigPolicySecretHash)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec
@@ -238,7 +256,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	terminationGracePeriodSeconds := DefaultTerminationGracePeriodSeconds
 	varFalse := false
 
-	volumes, volumeMounts := buildVolumes(sampleES.Name, ver, nodeSet, nil, volume.DownwardAPI{}, []policyv1alpha1.SecretMount{})
+	volumes, volumeMounts := buildVolumes(sampleES.Name, ver, nodeSet, nil, volume.DownwardAPI{}, secretMounts)
 	// should be sorted
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
@@ -298,9 +316,11 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash": "533641620",
-				"pod-template-annotation-name":             "pod-template-annotation-value",
-				"co.elastic.logs/module":                   "elasticsearch",
+				"elasticsearch.k8s.elastic.co/config-hash":          "267866193",
+				"pod-template-annotation-name":                      "pod-template-annotation-value",
+				"co.elastic.logs/module":                            "elasticsearch",
+				stackconfigpolicy.ElasticsearchConfigHashAnnotation: configSecretHash,
+				stackconfigpolicy.SecretMountsHashAnnotation:        secretMountsHash,
 			},
 		},
 		Spec: corev1.PodSpec{

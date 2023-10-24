@@ -37,11 +37,12 @@ func TestNewMergedESConfig(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		version  string
-		ipFamily corev1.IPFamily
-		cfgData  map[string]interface{}
-		assert   func(cfg CanonicalConfig)
+		name          string
+		version       string
+		ipFamily      corev1.IPFamily
+		cfgData       map[string]interface{}
+		policyCfgData commonv1.Config
+		assert        func(cfg CanonicalConfig)
 	}{
 		{
 			name:     "in 6.x, empty config should have the default file and native realm settings configured",
@@ -196,6 +197,31 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
+			name:     "policy Elasticsearch config overrides should have precedence over ECK config",
+			version:  "7.6.0",
+			ipFamily: corev1.IPv4Protocol,
+			cfgData: map[string]interface{}{
+				esv1.DiscoverySeedProviders: "something-else",
+			},
+			policyCfgData: commonv1.Config{
+				Data: map[string]interface{}{
+					esv1.DiscoverySeedProviders: "policy-override",
+				},
+			},
+			assert: func(cfg CanonicalConfig) {
+				cfgBytes, err := cfg.Render()
+				require.NoError(t, err)
+				esCfg := &elasticsearchCfg{}
+				require.NoError(t, yaml.Unmarshal(cfgBytes, &esCfg))
+				// default config is still there
+				require.Equal(t, "${POD_IP}", esCfg.Network.PublishHost)
+				require.Equal(t, "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc", esCfg.HTTP.PublishHost)
+				// but has been overridden
+				require.Equal(t, "policy-override", esCfg.Discovery.SeedProviders)
+				require.Equal(t, 1, bytes.Count(cfgBytes, []byte("seed_providers:")))
+			},
+		},
+		{
 			name:     "configuration is adjusted for IP family",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv6Protocol,
@@ -214,7 +240,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, commonv1.Config{})
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, commonv1.HTTPConfig{}, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData)
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})
