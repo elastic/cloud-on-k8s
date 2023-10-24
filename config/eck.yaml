@@ -6,6 +6,7 @@ ca-cert-validity: 8760h
 ca-cert-rotate-before: 24h
 cert-validity: 8760h
 cert-rotate-before: 24h
+disable-config-watch: false
 exposed-node-labels: [topology.kubernetes.io/.*,failure-domain.beta.kubernetes.io/.*]
 set-default-security-context: auto-detect
 kube-client-timeout: 60s
@@ -14,5 +15,7 @@ disable-telemetry: false
 distribution-channel: image
 validate-storage-class: true
 enable-webhook: false
+operator-namespace: elastic-system
 enable-leader-election: true
 elasticsearch-observation-interval: 10s
+ubi-only: false
