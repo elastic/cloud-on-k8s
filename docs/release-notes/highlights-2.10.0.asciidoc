@@ -1,0 +1,14 @@
+[[release-highlights-2.10.0]]
+== 2.10.0 release highlights
+
+[float]
+[id="{p}-2100-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.10.0 of {n}. Check <<release-notes-2.10.0>> for the full list of changes.
+
+[float]
+[id="{p}-2100-logstash"]
+=== Logstash improvements
+
+ECK 2.10.0 supports managing logstash resources via helm charts, similarly to other components of the Elastic stack (see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-logstash/examples[examples]). 
