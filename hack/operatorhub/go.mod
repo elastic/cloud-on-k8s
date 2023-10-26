@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-git/go-git/v5 v5.9.0
+	github.com/go-git/go-git/v5 v5.10.0
 	github.com/google/go-containerregistry v0.16.1
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/otiai10/copy v1.14.0
