@@ -78,6 +78,9 @@ func newStatusBuilder(log logr.Logger, autoscalingPolicies v1alpha1.AutoscalingP
 	sort.Strings(roles)
 
 	for _, role := range roles {
+		if role == string(esv1.RemoteClusterClientRole) {
+			continue
+		}
 		policies := policiesByRole[role]
 		if len(policies) < 2 {
 			// This role is declared in only one autoscaling policy
