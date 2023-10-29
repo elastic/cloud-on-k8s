@@ -66,7 +66,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Check for stack config policy Elasticsearch config secret
 	stackConfigPolicyConfigSecret := corev1.Secret{}
 	err = d.Client.Get(ctx, types.NamespacedName{
-		Name:      esv1.StakConfigElasticsearchConfigSecretName(d.ES.Name),
+		Name:      esv1.StackConfigElasticsearchConfigSecretName(d.ES.Name),
 		Namespace: d.ES.Namespace,
 	}, &stackConfigPolicyConfigSecret)
 	if err != nil && !apierrors.IsNotFound(err) {

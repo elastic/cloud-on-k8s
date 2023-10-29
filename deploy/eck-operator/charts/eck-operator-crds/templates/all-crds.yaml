@@ -10309,7 +10309,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   secretMounts:
                     description: SecretMounts holds the additional secrets that need
-                      to be mounted into the Elasticsearch pods
+                      to be mounted into the Kibana pods
                     items:
                       properties:
                         mountPath:

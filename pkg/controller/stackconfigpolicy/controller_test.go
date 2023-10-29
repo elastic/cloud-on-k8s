@@ -171,7 +171,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 	orphanElasticsearchConfigSecretFixture := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StakConfigElasticsearchConfigSecretName("another-es"),
+			Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
 			Namespace: "ns",
 			Labels: map[string]string{
 				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
@@ -460,7 +460,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				// Verify the config secret created by the stack config policy controller
 				err = r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
-					Name:      esv1.StakConfigElasticsearchConfigSecretName(esFixture.Name),
+					Name:      esv1.StackConfigElasticsearchConfigSecretName(esFixture.Name),
 				}, &EsSecret)
 				assert.NoError(t, err)
 				elasticSearchConfigJSONData, err := json.Marshal(policy.Spec.Elasticsearch.Config)
@@ -500,7 +500,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				// before the reconciliation, settings exist
 				var configSecret, secretMountsSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
-					Name:      esv1.StakConfigElasticsearchConfigSecretName("another-es"),
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
 					Namespace: "ns",
 				}, &configSecret)
 				assert.NoError(t, err)
@@ -518,7 +518,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				var esConfigSecret, secretMountsSecretInEsNamespace corev1.Secret
 				// after the reconciliation, the config and secret mount secrets do not exist
 				err := r.Client.Get(context.Background(), types.NamespacedName{
-					Name:      esv1.StakConfigElasticsearchConfigSecretName("another-es"),
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
 					Namespace: "ns",
 				}, &esConfigSecret)
 				assert.True(t, apierrors.IsNotFound(err))

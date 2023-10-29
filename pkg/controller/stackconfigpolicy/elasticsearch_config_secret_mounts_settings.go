@@ -51,7 +51,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      esv1.StakConfigElasticsearchConfigSecretName(es.Name),
+			Name:      esv1.StackConfigElasticsearchConfigSecretName(es.Name),
 			Labels: eslabel.NewLabels(types.NamespacedName{
 				Name:      es.Name,
 				Namespace: es.Namespace,
