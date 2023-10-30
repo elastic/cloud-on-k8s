@@ -6,7 +6,7 @@ package test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -49,7 +49,7 @@ func (l StepList) RunSequential(t *testing.T) {
 			continue
 		}
 		if !t.Run(ts.Name, ts.Test) {
-			logf.Log.Error(errors.New("test failure"), "continuing with additional tests")
+			logf.Log.Error(fmt.Errorf("test %s failed", ts.Name), "continuing with additional tests")
 			if ts.OnFailure != nil {
 				ts.OnFailure()
 			}
