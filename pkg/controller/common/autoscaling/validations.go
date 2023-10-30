@@ -140,7 +140,7 @@ func ValidateAutoscalingPolicies(
 		}
 
 		// Machine learning nodes must be in a dedicated tier.
-		if stringsutil.StringInSlice(string(esv1.MLRole), autoscalingSpec.Roles) && len(autoscalingSpec.Roles) > 1 {
+		if stringsutil.StringInSlice(string(esv1.MLRole), autoscalingSpec.Roles) && len(ignoreRemoteClusterClientRole(autoscalingSpec.Roles)) > 1 {
 			errs = append(
 				errs,
 				field.Invalid(
@@ -189,6 +189,17 @@ func ValidateAutoscalingPolicies(
 		errs = validateQuantities(errs, autoscalingSpecPath, autoscalingSpec.StorageRange, i, "storage", minStorage)
 	}
 	return errs
+}
+
+// ignoreRemoteClusterClientRole will ignore the 'remote_cluster_client' role in a given slice of roles.
+func ignoreRemoteClusterClientRole(roles []string) []string {
+	var updatedRoles []string
+	for _, role := range roles {
+		if role != string(esv1.RemoteClusterClientRole) {
+			updatedRoles = append(updatedRoles, role)
+		}
+	}
+	return updatedRoles
 }
 
 // validateQuantities ensures that a quantity range is valid.
