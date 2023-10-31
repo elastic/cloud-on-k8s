@@ -362,6 +362,15 @@ rules:
       - get
       - watch
       - list
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
   - nonResourceURLs:
       - /metrics
     verbs:
