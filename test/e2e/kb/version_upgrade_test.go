@@ -178,7 +178,7 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 	// Skip for 8.10.0-SNAPSHOT because after a few seconds, ES is yellow because of unassigned
 	// fleet-files-agent-000001 and fleet-file-data-agent-000001 shards.
 	// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/7013 is resolved
-	if test.Ctx().ElasticStackVersion == "8.10.0-SNAPSHOT" {
+	if test.Ctx().ElasticStackVersion == "8.10.0-SNAPSHOT" || test.Ctx().ElasticStackVersion == "8.11.0-SNAPSHOT" {
 		t.SkipNow()
 	}
 
