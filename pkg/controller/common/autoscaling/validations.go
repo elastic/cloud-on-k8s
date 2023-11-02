@@ -106,6 +106,7 @@ func ValidateAutoscalingPolicies(
 ) field.ErrorList {
 	var errs field.ErrorList
 	policyNames := set.Make()
+	mlPolicyCount := 0
 	rolesSet := make([][]string, 0, len(autoscalingPolicies))
 	for i, autoscalingSpec := range autoscalingPolicies {
 		// The name field is mandatory.
@@ -137,6 +138,20 @@ func ValidateAutoscalingPolicies(
 			} else {
 				rolesSet = append(rolesSet, autoscalingSpec.Roles)
 			}
+		}
+
+		if stringsutil.StringInSlice(string(esv1.MLRole), autoscalingSpec.Roles) {
+			mlPolicyCount++
+		}
+
+		if mlPolicyCount > 1 {
+			errs = append(
+				errs,
+				field.Invalid(
+					autoscalingSpecPath(i, "name"), strings.Join(autoscalingSpec.Roles, ","),
+					"ML nodes must be in a dedicated NodeSet",
+				),
+			)
 		}
 
 		// Machine learning nodes must be in a dedicated tier.
@@ -188,6 +203,7 @@ func ValidateAutoscalingPolicies(
 		// Validate storage
 		errs = validateQuantities(errs, autoscalingSpecPath, autoscalingSpec.StorageRange, i, "storage", minStorage)
 	}
+
 	return errs
 }
 

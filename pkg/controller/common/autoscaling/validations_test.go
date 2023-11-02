@@ -5,6 +5,7 @@
 package autoscaling
 
 import (
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -75,6 +76,55 @@ func TestValidateAutoscalingPolicies(t *testing.T) {
 				},
 			},
 			want: nil,
+		},
+		{
+			name: "2 ML policies with roles [ml, remote_cluster_client] and [ml] fails",
+			args: args{
+				autoscalingSpecPath: func(index int, child string, more ...string) *field.Path {
+					return field.NewPath("spec").
+						Child("policies").
+						Index(index).
+						Child(child, more...)
+				},
+				autoscalingPolicies: v1alpha1.AutoscalingPolicySpecs{
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
+							Name: "data",
+							AutoscalingPolicy: v1alpha1.AutoscalingPolicy{
+								Roles:    []string{"data", "remote_cluster_client"},
+								Deciders: nil,
+							},
+						},
+						AutoscalingResources: defaultAutoscalingResources,
+					},
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
+							Name: "ml1",
+							AutoscalingPolicy: v1alpha1.AutoscalingPolicy{
+								Roles:    []string{"ml", "remote_cluster_client"},
+								Deciders: nil,
+							},
+						},
+						AutoscalingResources: defaultAutoscalingResources,
+					},
+					{
+						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
+							Name: "ml2",
+							AutoscalingPolicy: v1alpha1.AutoscalingPolicy{
+								Roles:    []string{"ml"},
+								Deciders: nil,
+							},
+						},
+						AutoscalingResources: defaultAutoscalingResources,
+					},
+				},
+			},
+			want: field.ErrorList{
+				field.Invalid(
+					field.NewPath("spec.policies[2].name"), strings.Join([]string{"ml"}, ","),
+					"ML nodes must be in a dedicated NodeSet",
+				),
+			},
 		},
 	}
 	for _, tt := range tests {
