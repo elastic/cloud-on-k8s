@@ -12,8 +12,8 @@
 === Enhancements
 
 * Allow setting additional operator flags via the Helm chart {pull}7252[#7252] (issue: {issue}6091[#6091])
-* Support configuring "ca-dir" operator setting via helm {pull}7243[#7243] (issues: {issue}6091[#6091], {issue}6435[#6435])
-* Support helm chart for Logstash Elastic Stack resource {pull}7143[#7143] (issue: {issue}7128[#7128])
+* Support configuring "ca-dir" operator setting via Helm {pull}7243[#7243] (issues: {issue}6091[#6091], {issue}6435[#6435])
+* Support Helm chart for Logstash Elastic Stack resource {pull}7143[#7143] (issue: {issue}7128[#7128])
 * Support for Logstash secure settings from Kubernetes Secrets using keystore {pull}7024[#7024]
 * Support running Agent as a non-root  {pull}6700[#6700]
 
@@ -21,7 +21,7 @@
 [float]
 === Bug fixes
 
-* Update ECK-Beats default values to not include ElasticsearchRef. {pull}7228[#7228]
+* Update eck-beats Helm chart default values to not include ElasticsearchRef. {pull}7228[#7228]
 * Updating scripts configMap no longer causes Elasticsearch restart {pull}7114[#7114] (issue: {issue}6963[#6963])
 * Remove volumeClaimTemplates status subresource from Elasticsearch CRD {pull}7097[#7097]
 * Fix indentation to specify affinity, nodeSelector and tolerations in operator Helm chart {pull}7084[#7084]
@@ -33,7 +33,7 @@
 * Better sample command outputs in the Agent Fleet documentation {pull}7213[#7213]
 * Improved documentation about how to reset the default user's password {pull}7181[#7181] (issue: {issue}7182[#7182])
 * Removed trailing whitespaces from operator's values.yaml file. {pull}7179[#7179] (issue: {issue}7178[#7178])
-* Update beat/agent doc with missing RBAC rules required from 8.9.0 {pull}7161[#7161] (issue: {issue}6946[#6946])
+* Update Beat/Agent doc with missing RBAC rules required from 8.9.0 {pull}7161[#7161] (issue: {issue}6946[#6946])
 * Better documentation of podDisruptionBudget for Elasticsearch.spec {pull}7155[#7155]
 * Kubernetes 1.28 added to supported versions {pull}7147[#7147]
 * Fix incorrect Pod template spec in Logstash docs (#7113) {pull}7124[#7124]
@@ -41,7 +41,7 @@
 * SAML documentation examples have a trailing slash in sp.entity_id  {pull}7115[#7115] (issue: {issue}7116[#7116])
 * Fix manifest example to update JVM options for Logstash {pull}7113[#7113]
 * Stack monitoring documentation examples updated to use v1alpha1 as Logstash k8s api version {pull}7111[#7111]
-* Update saml-authentication.asciidoc {pull}7101[#7101]
+* SAML documentation examples no longer use a deprecated callback URL {pull}7101[#7101]
 * Fix sed command to use FIPS compatible operator image in FIPS doc {pull}7076[#7076]
 * Update docs concerning intermediate CAs {pull}7066[#7066]
 * Stack config policies are no longer marked as experimental {pull}7044[#7044]
