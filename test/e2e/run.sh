@@ -10,6 +10,7 @@ chaos=${CHAOS:-"false"}
 
 ARTEFACTS_DIR=${ARTEFACTS_DIR:-.}
 CLUSTER_NAME=${CLUSTER_NAME:-local}
+E2E_TAGS=${E2E_TAGS:-e2e}
 
 run_e2e_tests() {
   if [ "${E2E_JSON}" == "true" ]
@@ -37,7 +38,11 @@ main() {
     run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
   fi
   touch /tmp/done
-  sleep infinity
+  if [ $(uname) == "Linux" ] ; then
+    sleep infinity
+  else
+    sleep 86400
+  fi
 }
 
 main "$@"
