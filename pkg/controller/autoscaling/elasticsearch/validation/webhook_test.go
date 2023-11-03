@@ -507,6 +507,92 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 			},
 			wantValidationError: ptr.String("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: Elasticsearch.spec.nodeSets[0]: Invalid value: []string{\"volume1\", \"volume2\"}: autoscaling supports only one volume claim"),
 		},
+		{
+			name: "ML policy with roles [ml, remote_cluster_client] succeeds",
+			args: args{
+				es: es(map[string]string{}, map[string][]string{"nodeset-data-1": {"data", "remote_cluster_client"}, "ml": {"ml", "remote_cluster_client"}}, nil, "8.0.0"),
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name: "data",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
+										Roles:    []string{"data", "remote_cluster_client"},
+										Deciders: nil,
+									},
+								},
+								AutoscalingResources: defaultResources,
+							},
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name: "ml",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
+										Roles:    []string{"ml", "remote_cluster_client"},
+										Deciders: nil,
+									},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+			wantValidationError: nil,
+		},
+		{
+			name: "2 ML policies with roles [ml, remote_cluster_client] and [ml] fails",
+			args: args{
+				es: es(map[string]string{}, map[string][]string{"nodeset-data-1": {"data", "remote_cluster_client"}, "ml1": {"ml", "remote_cluster_client"}, "ml2": {"ml"}}, nil, "8.0.0"),
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name: "data",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
+										Roles:    []string{"data", "remote_cluster_client"},
+										Deciders: nil,
+									},
+								},
+								AutoscalingResources: defaultResources,
+							},
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name: "ml1",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
+										Roles:    []string{"ml", "remote_cluster_client"},
+										Deciders: nil,
+									},
+								},
+								AutoscalingResources: defaultResources,
+							},
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name: "ml2",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
+										Roles:    []string{"ml"},
+										Deciders: nil,
+									},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+			wantValidationError: ptr.String("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: spec.policies[2].name: Invalid value: \"ml\": ML nodes must be in a dedicated NodeSet"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
