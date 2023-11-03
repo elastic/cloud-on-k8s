@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
@@ -212,6 +213,30 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		return results.WithError(err), status
 	}
 
+	// reconcile elasticsearch resources
+	results, status = r.reconcileElasticsearchResources(ctx, policy, status)
+	if results.HasError() {
+		return results, status
+	}
+
+	// requeue if not ready
+	if status.Phase != policyv1alpha1.ReadyPhase {
+		results.WithResult(defaultRequeue)
+		return results, status
+	}
+
+	// reconcile kibana resources
+
+	return results, status
+
+}
+
+func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+	log := ulog.FromContext(ctx)
+	log.V(1).Info("Reconcile Elasticsearch Resources", "namespace", policy.Namespace, "policy_name", policy.Name)
+
+	results := reconciler.NewResult(ctx)
+
 	// prepare the selector to find Elastic resources to configure
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
@@ -339,12 +364,36 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	// reset/delete Settings secrets for resources no longer selected by this policy
 	results.WithError(handleOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
 
-	// requeue if not ready
-	if status.Phase != policyv1alpha1.ReadyPhase {
-		results.WithResult(defaultRequeue)
+	return results, status
+}
+
+func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+	log := ulog.FromContext(ctx)
+	log.V(1).Info("Reconcile Kibana Resources", "namespace", policy.Namespace, "policy_name", policy.Name)
+
+	results := reconciler.NewResult(ctx)
+
+	// prepare the selector to find Elastic resources to configure
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
+		MatchExpressions: policy.Spec.ResourceSelector.MatchExpressions,
+	})
+	if err != nil {
+		return results.WithError(err), status
+	}
+	listOpts := client.ListOptions{LabelSelector: selector}
+
+	// restrict the search to the policy namespace if it is different from the operator namespace
+	if policy.Namespace != r.params.OperatorNamespace {
+		listOpts.Namespace = policy.Namespace
 	}
 
-	return results, status
+	// find the list of Elasticsearch to configure
+	var kibanaList kibanav1.KibanaList
+	if err := r.Client.List(ctx, &kibanaList, &listOpts); err != nil {
+		return results.WithError(err), status
+	}
+	return &reconciler.Results{}, nil
 }
 
 func newResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
