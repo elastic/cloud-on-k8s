@@ -533,7 +533,7 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	return clusterState.Metadata.ReservedState.FileSettings, nil
 }
 
-// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the elasticsearch cluster.
+// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
 func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
 	// Get Pods for the given Elasticsearch
 	podList := corev1.PodList{}

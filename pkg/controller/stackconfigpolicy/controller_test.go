@@ -456,7 +456,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
-				var EsSecret corev1.Secret
+				var esSecret corev1.Secret
 				// Verify the config secret created by the stack config policy controller
 				err = r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",

@@ -197,7 +197,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:     "policy Elasticsearch config overrides should have precedence over ECK config",
+			name:     "Elasticsearch config overrides from policy should have precedence over default config",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv4Protocol,
 			cfgData: map[string]interface{}{
