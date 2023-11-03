@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
 	kibana2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
@@ -175,20 +176,19 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 }
 
 func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
-	// Skip for 8.10.0-SNAPSHOT because after a few seconds, ES is yellow because of unassigned
-	// fleet-files-agent-000001 and fleet-file-data-agent-000001 shards.
-	// TODO: remove once https://github.com/elastic/cloud-on-k8s/issues/7013 is resolved
-	if test.Ctx().ElasticStackVersion == "8.10.0-SNAPSHOT" || test.Ctx().ElasticStackVersion == "8.11.0-SNAPSHOT" {
-		t.SkipNow()
-	}
-
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	name := "test-upgrade-and-respec-to-8x"
+	esNodes := 1
+	// https://github.com/elastic/cloud-on-k8s/issues/7013
+	// Between 8.7 and 8.9 fleet indices are set with a replica which fails with a single node. In 8.10 indices were moved to datastreams.
+	if version.MustParse(test.Ctx().ElasticStackVersion).GTE(version.MinFor(8, 7, 0)) && version.MustParse(test.Ctx().ElasticStackVersion).LT(version.MinFor(8, 10, 0)) {
+		esNodes = 2
+	}
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(esNodes, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
 	srcNodeCount := 3
