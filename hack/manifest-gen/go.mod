@@ -3,7 +3,7 @@ module github.com/elastic/cloud-on-k8s/v2/hack/manifest-gen
 go 1.19
 
 require (
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	helm.sh/helm/v3 v3.13.1
 	sigs.k8s.io/kustomize/kyaml v0.15.0
 )
