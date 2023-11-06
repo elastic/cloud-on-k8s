@@ -1,0 +1,20 @@
+[[release-highlights-2.10.0]]
+== 2.10.0 release highlights
+
+[float]
+[id="{p}-2100-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.10.0 of {n}. Check <<release-notes-2.10.0>> for the full list of changes.
+
+[float]
+[id="{p}-2100-logstash"]
+=== Logstash Helm Chart
+
+ECK 2.10.0 supports managing Logstash resources via Helm charts, similarly to other components of the Elastic stack (see https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-stack/charts/eck-logstash/examples[examples]).
+
+[float]
+[id="{p}-2100-agent-non-root"]
+=== Running Elastic Agent as non-root
+
+ECK 2.10.0 supports running Elastic Agent without running the Pod as the root user (see https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-running-as-a-non-root-user[documentation]).

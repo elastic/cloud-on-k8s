@@ -1,0 +1,72 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-2.10.0]]
+== {n} version 2.10.0
+
+
+
+
+[[enhancement-2.10.0]]
+[float]
+=== Enhancements
+
+* Allow setting additional operator flags via the Helm chart {pull}7252[#7252] (issue: {issue}6091[#6091])
+* Support configuring "ca-dir" operator setting via Helm {pull}7243[#7243] (issues: {issue}6091[#6091], {issue}6435[#6435])
+* Support Helm chart for Logstash Elastic Stack resource {pull}7143[#7143] (issue: {issue}7128[#7128])
+* Support for Logstash secure settings from Kubernetes Secrets using keystore {pull}7024[#7024]
+* Support running Agent as a non-root  {pull}6700[#6700]
+
+[[bug-2.10.0]]
+[float]
+=== Bug fixes
+
+* Update eck-beats Helm chart default values to not include ElasticsearchRef. {pull}7228[#7228]
+* Updating scripts configMap no longer causes Elasticsearch restart {pull}7114[#7114] (issue: {issue}6963[#6963])
+* Remove volumeClaimTemplates status subresource from Elasticsearch CRD {pull}7097[#7097]
+* Fix indentation to specify affinity, nodeSelector and tolerations in operator Helm chart {pull}7084[#7084]
+
+[[docs-2.10.0]]
+[float]
+=== Documentation improvements
+
+* Better sample command outputs in the Agent Fleet documentation {pull}7213[#7213]
+* Improved documentation about how to reset the default user's password {pull}7181[#7181] (issue: {issue}7182[#7182])
+* Removed trailing whitespaces from operator's values.yaml file. {pull}7179[#7179] (issue: {issue}7178[#7178])
+* Update Beat/Agent doc with missing RBAC rules required from 8.9.0 {pull}7161[#7161] (issue: {issue}6946[#6946])
+* Better documentation of podDisruptionBudget for Elasticsearch.spec {pull}7155[#7155]
+* Kubernetes 1.28 added to supported versions {pull}7147[#7147]
+* Fix incorrect Pod template spec in Logstash docs (#7113) {pull}7124[#7124]
+* SAML documentation examples no longer use a deprecated callback URL {pull}7117[#7117] (issue: {issue}7118[#7118])
+* SAML documentation examples have a trailing slash in sp.entity_id  {pull}7115[#7115] (issue: {issue}7116[#7116])
+* Fix manifest example to update JVM options for Logstash {pull}7113[#7113]
+* Stack monitoring documentation examples updated to use v1alpha1 as Logstash k8s api version {pull}7111[#7111]
+* SAML documentation examples no longer use a deprecated callback URL {pull}7101[#7101]
+* Fix sed command to use FIPS compatible operator image in FIPS doc {pull}7076[#7076]
+* Update docs concerning intermediate CAs {pull}7066[#7066]
+* Stack config policies are no longer marked as experimental {pull}7044[#7044]
+* Air-gapped documentation describes how to use a mirrored operator image {pull}7019[#7019]
+* Update Fleet Server quickstart documentation to use emptyDir for agent-data volumes {pull}6563[#6563]
+
+[[nogroup-2.10.0]]
+[float]
+=== Misc
+
+* Update module golang.org/x/net to 0.17.0 {pull}7229[#7229]
+* fix(deps): update module go.elastic.co/apm/v2 to v2.4.5 {pull}7218[#7218]
+* fix(deps): update module github.com/google/go-cmp to v0.6.0 {pull}7216[#7216]
+* chore(deps): update docker.io/library/golang docker tag to v1.21.3 {pull}7215[#7215]
+* fix(deps): update module google.golang.org/api to v0.146.0 {pull}7211[#7211]
+* chore(deps): update registry.access.redhat.com/ubi8/ubi-minimal docker tag to v8.8-1072.1696517598 {pull}7210[#7210]
+* fix(deps): update module github.com/spf13/viper to v1.17.0 {pull}7209[#7209]
+* fix(deps): update module golang.org/x/crypto to v0.14.0 {pull}7203[#7203]
+* fix(deps): update module github.com/hashicorp/golang-lru/v2 to v2.0.7 {pull}7193[#7193]
+* fix(deps): update module github.com/prometheus/client_golang to v1.17.0 {pull}7186[#7186]
+* fix(deps): update module sigs.k8s.io/controller-runtime to v0.16.2 {pull}7185[#7185]
+* fix(deps): update module go.uber.org/zap to v1.26.0 {pull}7169[#7169]
+* fix(deps): update k8s to v0.28.2 {pull}7165[#7165]
+* fix(deps): update module github.com/hashicorp/vault/api to v1.10.0 {pull}7152[#7152]
+* Update module github.com/google/go-containerregistry to v0.16.1 {pull}7073[#7073]
+* Update module go.uber.org/automaxprocs to v1.5.3 {pull}7042[#7042]
+* Update module sigs.k8s.io/controller-tools to v0.12.1 {pull}7011[#7011]
+
