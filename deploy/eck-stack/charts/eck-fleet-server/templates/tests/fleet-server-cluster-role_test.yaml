@@ -28,13 +28,39 @@ tests:
           - list
       - equal:
           path: rules[1].apiGroups[0]
-          value: coordination.k8s.io
+          value: apps
       - equal:
           path: rules[1].resources
           value:
-          - leases
+            - replicasets
       - equal:
           path: rules[1].verbs
+          value:
+            - get
+            - watch
+            - list
+      - equal:
+          path: rules[2].apiGroups[0]
+          value: batch
+      - equal:
+          path: rules[2].resources
+          value:
+            - jobs
+      - equal:
+          path: rules[2].verbs
+          value:
+            - get
+            - watch
+            - list
+      - equal:
+          path: rules[3].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[3].resources
+          value:
+          - leases
+      - equal:
+          path: rules[3].verbs
           value:
           - get
           - create
