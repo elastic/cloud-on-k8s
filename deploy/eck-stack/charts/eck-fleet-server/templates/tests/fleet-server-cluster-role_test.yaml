@@ -24,21 +24,49 @@ tests:
           path: rules[0].verbs
           value:
           - get
-          - watch
           - list
+          - watch
       - equal:
           path: rules[1].apiGroups[0]
-          value: coordination.k8s.io
+          value: apps
       - equal:
           path: rules[1].resources
           value:
-          - leases
+          - deployments
+          - replicasets
+          - statefulsets
       - equal:
           path: rules[1].verbs
           value:
           - get
+          - list
+          - watch
+      - equal:
+          path: rules[2].apiGroups[0]
+          value: coordination.k8s.io
+      - equal:
+          path: rules[2].resources
+          value:
+          - leases
+      - equal:
+          path: rules[2].verbs
+          value:
+          - get
           - create
           - update
+      - equal:
+          path: rules[3].apiGroups[0]
+          value: batch
+      - equal:
+          path: rules[3].resources
+          value:
+          - jobs
+      - equal:
+          path: rules[3].verbs
+          value:
+          - get
+          - list
+          - watch
   - it: should render custom labels and annotations properly.
     set:
       labels:
