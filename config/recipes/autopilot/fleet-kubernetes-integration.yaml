@@ -227,6 +227,20 @@ rules:
   - get
   - watch
   - list
+- apiGroups: ["apps"]
+  resources:
+    - replicasets
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+  verbs:
+    - get
+    - watch
+    - list
 - apiGroups: ["coordination.k8s.io"]
   resources:
   - leases
