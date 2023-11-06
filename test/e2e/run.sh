@@ -38,11 +38,9 @@ main() {
     run_e2e_tests "$@" | tee "$ARTEFACTS_DIR/e2e-tests-$CLUSTER_NAME.json"
   fi
   touch /tmp/done
-  if [ "$(uname)" == "Linux" ] ; then
-    sleep infinity
-  else
-    sleep 86400
-  fi
+  while true; do
+    sleep 60
+  done
 }
 
 main "$@"
