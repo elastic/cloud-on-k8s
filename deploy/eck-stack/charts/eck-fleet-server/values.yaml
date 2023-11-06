@@ -106,6 +106,15 @@ clusterRole:
     - get
     - watch
     - list
+  - apiGroups: ["apps"]
+    resources:
+    - deployments
+    - replicasets
+    - statefulsets
+    verbs:
+    - get
+    - watch
+    - list
   - apiGroups: ["coordination.k8s.io"]
     resources:
     - leases
@@ -113,3 +122,10 @@ clusterRole:
     - get
     - create
     - update
+  - apiGroups: ["batch"]
+    resources:
+    - jobs
+    verbs:
+    - get
+    - list
+    - watch
