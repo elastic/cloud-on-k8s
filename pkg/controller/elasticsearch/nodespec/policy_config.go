@@ -45,7 +45,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 		return policyConfig, err
 	}
 
-	// additional annotations to be applied on the Elasticsearch pods
+	// Additional annotations to be applied on the Elasticsearch pods
 	policyConfig.PolicyAnnotations = map[string]string{
 		stackconfigpolicy.ElasticsearchConfigHashAnnotation: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.ElasticsearchConfigHashAnnotation],
 		stackconfigpolicy.SecretMountsHashAnnotation:        stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.SecretMountsHashAnnotation],

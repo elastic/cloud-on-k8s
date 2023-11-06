@@ -189,8 +189,11 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
-	if status.CurrentVersion == unknownVersion { //nolint:gocritic
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
+	if !elasticsearchConfigAndMountsApplied {
+		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
+		status.Phase = ApplyingChangesPhase
+	} else if status.CurrentVersion == unknownVersion { //nolint:gocritic
 		status.Phase = UnknownPhase
 	} else if status.Error.Message != "" {
 		status.Phase = ErrorPhase

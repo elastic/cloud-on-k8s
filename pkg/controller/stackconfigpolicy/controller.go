@@ -314,13 +314,6 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		// Config not yet applied, requeue
-		// TODO: maybe add the hash to the status like we do for the file settings
-		if !configAndSecretMountsApplied {
-			status.Phase = policyv1alpha1.ApplyingChangesPhase
-			return results.WithResult(defaultRequeue), status
-		}
-
 		// get /_cluster/state to get the Settings currently configured in ES
 		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
 		if err != nil {
@@ -333,7 +326,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion))
+		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied)
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
