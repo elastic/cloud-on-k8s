@@ -18,8 +18,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonlabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -93,7 +93,7 @@ func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 	}
 
 	// Add a label to reset secret on deletion of the stack config policy
-	settingsSecret.Labels[label.StackConfigPolicyOnDeleteLabelName] = "reset"
+	settingsSecret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanObjectResetOnPolicyDelete
 
 	return *settingsSecret, version, nil
 }

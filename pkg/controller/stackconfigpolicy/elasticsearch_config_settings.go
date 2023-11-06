@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -71,7 +72,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	filesettings.SetSoftOwner(&elasticsearchConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
-	elasticsearchConfigSecret.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
+	elasticsearchConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
 
 	return elasticsearchConfigSecret, nil
 }
@@ -100,8 +101,8 @@ func reconcileSecret(ctx context.Context,
 	})
 }
 
-// reconcileSecretMountSecretsESNamespace creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func reconcileSecretMountSecretsESNamespace(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+// reconcileSecreteMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
+func reconcileSecreteMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		additionalSecret := corev1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -130,7 +131,7 @@ func reconcileSecretMountSecretsESNamespace(ctx context.Context, c k8s.Client, e
 		filesettings.SetSoftOwner(&expected, *policy)
 
 		// Set the secret to be deleted when the stack config policy is deleted.
-		expected.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
+		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
 
 		err := reconcileSecret(ctx, c, expected, nil)
 		if err != nil {

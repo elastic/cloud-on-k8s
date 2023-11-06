@@ -14,6 +14,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
@@ -36,12 +37,16 @@ func TestNewMergedESConfig(t *testing.T) {
 		} `yaml:"network"`
 	}
 
+	policyCfg, _ := common.NewCanonicalConfigFrom(map[string]interface{}{
+		esv1.DiscoverySeedProviders: "policy-override",
+	})
+
 	tests := []struct {
 		name          string
 		version       string
 		ipFamily      corev1.IPFamily
 		cfgData       map[string]interface{}
-		policyCfgData commonv1.Config
+		policyCfgData *common.CanonicalConfig
 		assert        func(cfg CanonicalConfig)
 	}{
 		{
@@ -203,11 +208,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			cfgData: map[string]interface{}{
 				esv1.DiscoverySeedProviders: "something-else",
 			},
-			policyCfgData: commonv1.Config{
-				Data: map[string]interface{}{
-					esv1.DiscoverySeedProviders: "policy-override",
-				},
-			},
+			policyCfgData: policyCfg,
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)

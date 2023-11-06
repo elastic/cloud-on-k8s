@@ -12,6 +12,10 @@ import (
 
 const (
 	credentialsLabel = "eck.k8s.elastic.co/credentials" //nolint:gosec
+	// StackConfigPolicyOnDeleteLabelName is a label used to indicate if an object should be reset or deleted on deletion of it's stack config policy
+	StackConfigPolicyOnDeleteLabelName = "asset.policy.k8s.elastic.co/on-delete"
+	OrphanObjectResetOnPolicyDelete    = "reset"
+	OrphanObjectDeleteOnPolicyDelete   = "delete"
 )
 
 // TrueFalseLabel is a label that has a true/false value.

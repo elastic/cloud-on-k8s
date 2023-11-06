@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
@@ -26,7 +25,7 @@ func buildVolumes(
 	nodeSpec esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
-	additionalSecretMounts []policyv1alpha1.SecretMount,
+	additionalMountsFromPolicy []volume.VolumeLike,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
@@ -122,12 +121,10 @@ func buildVolumes(
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
 	}
 
-	// additional secrets volumes from stack config policy
-	for _, secretMount := range additionalSecretMounts {
-		secretName := esv1.ESNamer.Suffix(esName, secretMount.SecretName)
-		secretVolumeFromStackConfigPolicy := volume.NewSecretVolumeWithMountPath(secretName, secretName, secretMount.MountPath)
-		volumes = append(volumes, secretVolumeFromStackConfigPolicy.Volume())
-		volumeMounts = append(volumeMounts, secretVolumeFromStackConfigPolicy.VolumeMount())
+	// additional volumes from stack config policy
+	for _, volume := range additionalMountsFromPolicy {
+		volumes = append(volumes, volume.Volume())
+		volumeMounts = append(volumeMounts, volume.VolumeMount())
 	}
 
 	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)

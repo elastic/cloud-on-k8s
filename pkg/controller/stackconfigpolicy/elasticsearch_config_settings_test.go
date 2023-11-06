@@ -92,7 +92,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := reconcileSecretMountSecretsESNamespace(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
+			err := reconcileSecreteMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return

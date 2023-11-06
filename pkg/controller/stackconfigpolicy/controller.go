@@ -32,6 +32,7 @@ import (
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -39,7 +40,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -294,7 +294,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
-		if err := reconcileSecretMountSecretsESNamespace(ctx, r.Client, es, &policy); err != nil {
+		if err := reconcileSecreteMounts(ctx, r.Client, es, &policy); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -441,7 +441,7 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 			reconciler.SoftOwnerNameLabel:      softOwner.Name,
 			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
 			// TODO: make sure this is backwards compatible.
-			label.StackConfigPolicyOnDeleteLabelName: "reset",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectResetOnPolicyDelete,
 		},
 	); err != nil {
 		return err
@@ -486,10 +486,10 @@ func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner t
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
 		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel:       softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:            softOwner.Name,
-			reconciler.SoftOwnerKindLabel:            policyv1alpha1.Kind,
-			label.StackConfigPolicyOnDeleteLabelName: "delete",
+			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectDeleteOnPolicyDelete,
 		},
 	); err != nil {
 		return err
@@ -538,7 +538,7 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 	// Get Pods for the given Elasticsearch
 	podList := corev1.PodList{}
 	if err := c.List(ctx, &podList, client.MatchingLabels{
-		label.ClusterNameLabelName: es.Name,
+		eslabel.ClusterNameLabelName: es.Name,
 	}); err != nil || len(podList.Items) == 0 {
 		return false, err
 	}

@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
-	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
@@ -66,8 +65,7 @@ func BuildStatefulSet(
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
 	setDefaultSecurityContext bool,
-	additionalSecretMounts []policyv1alpha1.SecretMount,
-	stackConfigPolicySecretHash StackConfigPolicySecretHash,
+	policyConfig PolicyConfig,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
@@ -82,7 +80,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, additionalSecretMounts, stackConfigPolicySecretHash)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

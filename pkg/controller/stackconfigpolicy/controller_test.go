@@ -23,12 +23,12 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
-	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/net"
 )
@@ -87,7 +87,7 @@ func fetchEvents(recorder *record.FakeRecorder) []string {
 	return events
 }
 
-func getEsPods(namespace string, annotations map[string]string) *corev1.Pod {
+func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-es-default-0",
@@ -131,7 +131,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		},
 	}
 	configHash, secretMountsHash := getConfigAndSecretMountHash(policyFixture)
-	esPodFixture := getEsPods("ns", map[string]string{
+	esPodFixture := getEsPod("ns", map[string]string{
 		ElasticsearchConfigHashAnnotation: configHash,
 		SecretMountsHashAnnotation:        secretMountsHash,
 	})
@@ -148,12 +148,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			Namespace: "ns",
 			Name:      "test-es-es-file-settings",
 			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name": "test-es",
-				"eck.k8s.elastic.co/owner-kind":             "StackConfigPolicy",
-				"eck.k8s.elastic.co/owner-namespace":        "ns",
-				"eck.k8s.elastic.co/owner-name":             "test-policy",
-				label.StackConfigPolicyOnDeleteLabelName:    "reset",
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				"elasticsearch.k8s.elastic.co/cluster-name":     "test-es",
+				"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
+				"eck.k8s.elastic.co/owner-namespace":            "ns",
+				"eck.k8s.elastic.co/owner-name":                 "test-policy",
+				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectResetOnPolicyDelete,
 			},
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
@@ -174,18 +174,18 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
 			Namespace: "ns",
 			Labels: map[string]string{
-				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
-				eslabel.StackConfigPolicyOnDeleteLabelName:  "delete",
-				reconciler.SoftOwnerNamespaceLabel:          policyFixture.Namespace,
-				reconciler.SoftOwnerNameLabel:               policyFixture.Name,
-				reconciler.SoftOwnerKindLabel:               policyv1alpha1.Kind,
+				"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
+				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectDeleteOnPolicyDelete,
+				reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
+				reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
+				reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
 			},
 		},
 	}
 
 	orphanSecretMountsSecretFixture := getSecretMountSecret(t, esv1.ESNamer.Suffix("another-es", "test-secret-mount"), "ns")
 	orphanSecretMountsSecretFixture.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "another-es"
-	orphanSecretMountsSecretFixture.Labels[eslabel.StackConfigPolicyOnDeleteLabelName] = "delete"
+	orphanSecretMountsSecretFixture.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
 	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerNamespaceLabel] = policyFixture.Namespace
 	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerNameLabel] = policyFixture.Name
 	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerKindLabel] = policyv1alpha1.Kind
@@ -461,14 +461,14 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				err = r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
 					Name:      esv1.StackConfigElasticsearchConfigSecretName(esFixture.Name),
-				}, &EsSecret)
+				}, &esSecret)
 				assert.NoError(t, err)
 				elasticSearchConfigJSONData, err := json.Marshal(policy.Spec.Elasticsearch.Config)
 				assert.NoError(t, err)
 				secretMountsJSONData, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 				assert.NoError(t, err)
-				assert.Equal(t, EsSecret.Data[ElasticSearchConfigKey], elasticSearchConfigJSONData)
-				assert.Equal(t, EsSecret.Data[SecretsMountKey], secretMountsJSONData)
+				assert.Equal(t, esSecret.Data[ElasticSearchConfigKey], elasticSearchConfigJSONData)
+				assert.Equal(t, esSecret.Data[SecretsMountKey], secretMountsJSONData)
 
 				// Verify the secret mounts secret
 				for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
