@@ -179,3 +179,7 @@ func FileSettingsSecretName(esName string) string {
 func StackConfigElasticsearchConfigSecretName(esName string) string {
 	return ESNamer.Suffix(esName, policyEsConfigSecretSuffix)
 }
+
+func StackConfigAdditionalSecretName(esName string, secretName string) string {
+	return ESNamer.Suffix(esName, "scp", secretName)
+}

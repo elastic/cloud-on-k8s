@@ -72,7 +72,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 		}
 	}
 	for _, secretMount := range additionalSecretMounts {
-		secretName := esv1.ESNamer.Suffix(es.Name, secretMount.SecretName)
+		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		secretVolumeFromStackConfigPolicy := volume.NewSecretVolumeWithMountPath(secretName, secretName, secretMount.MountPath)
 		policyConfig.AdditionalVolumes = append(policyConfig.AdditionalVolumes, secretVolumeFromStackConfigPolicy)
 	}

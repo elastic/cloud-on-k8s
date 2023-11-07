@@ -96,8 +96,8 @@ func reconcileSecret(ctx context.Context,
 	})
 }
 
-// reconcileSecreteMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func reconcileSecreteMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+// reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
+func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		additionalSecret := corev1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -109,7 +109,7 @@ func reconcileSecreteMounts(ctx context.Context, c k8s.Client, es esv1.Elasticse
 		}
 
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
-		secretName := esv1.ESNamer.Suffix(es.Name, additionalSecret.Name)
+		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		expected := corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
