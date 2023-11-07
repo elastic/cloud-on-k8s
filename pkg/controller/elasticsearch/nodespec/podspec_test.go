@@ -232,14 +232,13 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	policyEsConfig, err := common.NewCanonicalConfigFrom(map[string]interface{}{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
-
-	configSecretHash := hash.HashObject(policyEsConfig)
 	require.NoError(t, err)
 	secretMounts := []policyv1alpha1.SecretMount{{
 		SecretName: "test-es-secretname",
 		MountPath:  "/usr/test",
 	}}
-	secretMountsHash := hash.HashObject(secretMounts)
+
+	elasticsearchConfigAndMountsHash := hash.HashObject([]interface{}{policyEsConfig, secretMounts})
 
 	policyConfig := PolicyConfig{
 		ElasticsearchConfig: policyEsConfig,
@@ -247,8 +246,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			volume.NewSecretVolumeWithMountPath("test-es-secretname", "test-es-secretname", "/usr/test"),
 		},
 		PolicyAnnotations: map[string]string{
-			stackconfigpolicy.ElasticsearchConfigHashAnnotation: configSecretHash,
-			stackconfigpolicy.SecretMountsHashAnnotation:        secretMountsHash,
+			stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 		},
 	}
 
@@ -324,11 +322,10 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash":          "267866193",
-				"pod-template-annotation-name":                      "pod-template-annotation-value",
-				"co.elastic.logs/module":                            "elasticsearch",
-				stackconfigpolicy.ElasticsearchConfigHashAnnotation: configSecretHash,
-				stackconfigpolicy.SecretMountsHashAnnotation:        secretMountsHash,
+				"elasticsearch.k8s.elastic.co/config-hash":                         "267866193",
+				"pod-template-annotation-name":                                     "pod-template-annotation-value",
+				"co.elastic.logs/module":                                           "elasticsearch",
+				stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -479,13 +476,11 @@ func Test_buildAnnotations(t *testing.T) {
 			name: "With policy annotations",
 			args: args{
 				policyAnnotations: map[string]string{
-					stackconfigpolicy.ElasticsearchConfigHashAnnotation: "testhash",
-					stackconfigpolicy.SecretMountsHashAnnotation:        "testhash",
+					stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 				},
 			},
 			expectedAnnotations: map[string]string{
-				stackconfigpolicy.ElasticsearchConfigHashAnnotation: "testhash",
-				stackconfigpolicy.SecretMountsHashAnnotation:        "testhash",
+				stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 			},
 		},
 	}

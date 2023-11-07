@@ -87,8 +87,8 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   secretMounts:
-                    description: SecretMounts holds the additional secrets that need
-                      to be mounted into the Elasticsearch pods
+                    description: SecretMounts are additional secrets that need to
+                      be mounted into the Elasticsearch pods
                     items:
                       properties:
                         mountPath:
@@ -121,8 +121,8 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   secretMounts:
-                    description: SecretMounts holds the additional secrets that need
-                      to be mounted into the Kibana pods
+                    description: SecretMounts are additional secrets that need to
+                      be mounted into the Kibana pods
                     items:
                       properties:
                         mountPath:

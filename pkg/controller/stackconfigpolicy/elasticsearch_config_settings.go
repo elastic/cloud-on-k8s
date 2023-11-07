@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
@@ -26,10 +27,9 @@ import (
 )
 
 const (
-	ElasticSearchConfigKey            = "elasticsearch.json"
-	SecretsMountKey                   = "secretMounts.json"
-	ElasticsearchConfigHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-hash"
-	SecretMountsHashAnnotation        = "policy.k8s.elastic.co/secret-mounts-hash"
+	ElasticSearchConfigKey                           = "elasticsearch.json"
+	SecretsMountKey                                  = "secretMounts.json"
+	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash"
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -37,18 +37,14 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	if err != nil {
 		return corev1.Secret{}, err
 	}
-	secretsMountHash := hash.HashObject(policy.Spec.Elasticsearch.SecretMounts)
-
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
 	var configDataJsonBytes []byte
-	var elasticsearchConfigHash string
 	if policy.Spec.Elasticsearch.Config != nil {
 		configDataJsonBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
 		if err != nil {
 			return corev1.Secret{}, err
 		}
-		elasticsearchConfigHash = hash.HashObject(policy.Spec.Elasticsearch.Config)
 	}
-
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
@@ -58,8 +54,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 				Namespace: es.Namespace,
 			}),
 			Annotations: map[string]string{
-				ElasticsearchConfigHashAnnotation: elasticsearchConfigHash,
-				SecretMountsHashAnnotation:        secretsMountHash,
+				ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
 			},
 		},
 		Data: map[string][]byte{
@@ -139,4 +134,12 @@ func reconcileSecreteMounts(ctx context.Context, c k8s.Client, es esv1.Elasticse
 		}
 	}
 	return nil
+}
+
+func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {
+	if elasticsearchConfig != nil {
+		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
+	}
+
+	return hash.HashObject(secretMounts)
 }

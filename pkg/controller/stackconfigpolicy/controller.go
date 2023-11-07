@@ -31,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
@@ -536,14 +535,9 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 		return false, err
 	}
 
-	var elasticsearchConfigHash string
-	if policy.Spec.Elasticsearch.Config != nil {
-		elasticsearchConfigHash = hash.HashObject(policy.Spec.Elasticsearch.Config)
-	}
-	secretMountsHash := hash.HashObject(policy.Spec.Elasticsearch.SecretMounts)
-
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
 	for _, esPod := range podList.Items {
-		if esPod.Annotations[ElasticsearchConfigHashAnnotation] != elasticsearchConfigHash || esPod.Annotations[SecretMountsHashAnnotation] != secretMountsHash {
+		if esPod.Annotations[ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
 			return false, nil
 		}
 	}

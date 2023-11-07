@@ -130,10 +130,9 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			},
 		},
 	}
-	configHash, secretMountsHash := getConfigAndSecretMountHash(policyFixture)
+	elasticsearchConfigAndMountsHash := getElasticsearchConfigAndMountsHash(policyFixture.Spec.Elasticsearch.Config, policyFixture.Spec.Elasticsearch.SecretMounts)
 	esPodFixture := getEsPod("ns", map[string]string{
-		ElasticsearchConfigHashAnnotation: configHash,
-		SecretMountsHashAnnotation:        secretMountsHash,
+		ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 	})
 	esFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 		Namespace: "ns",
@@ -577,8 +576,4 @@ func getSettingsHash(secret corev1.Secret) (string, error) {
 		return "", err
 	}
 	return hash.HashObject(settings.State), nil
-}
-
-func getConfigAndSecretMountHash(policy policyv1alpha1.StackConfigPolicy) (string, string) {
-	return hash.HashObject(policy.Spec.Elasticsearch.Config), hash.HashObject(policy.Spec.Elasticsearch.SecretMounts)
 }
