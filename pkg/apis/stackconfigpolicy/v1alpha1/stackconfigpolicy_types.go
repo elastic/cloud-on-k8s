@@ -190,7 +190,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
-	if !elasticsearchConfigAndMountsApplied {
+	if !elasticsearchConfigAndMountsApplied { //nolint:gocritic
 		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 		status.Phase = ApplyingChangesPhase
 	} else if status.CurrentVersion == unknownVersion { //nolint:gocritic

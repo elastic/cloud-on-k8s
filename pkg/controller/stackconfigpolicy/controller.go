@@ -494,7 +494,8 @@ func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner t
 		return err
 	}
 
-	for _, secret := range secrets.Items {
+	for i := range secrets.Items {
+		secret := secrets.Items[i]
 		esNsn := types.NamespacedName{
 			Namespace: secret.Namespace,
 			Name:      secret.Labels[eslabel.ClusterNameLabelName],

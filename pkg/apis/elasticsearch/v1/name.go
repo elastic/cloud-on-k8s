@@ -20,7 +20,7 @@ const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
 	fileSettingsSecretSuffix                     = "file-settings"
-	policyEsConfigSecretSuffix                   = "policy-config"
+	policyEsConfigSecretSuffix                   = "policy-config" //nolint:gosec
 	httpServiceSuffix                            = "http"
 	internalHTTPServiceSuffix                    = "internal-http"
 	transportServiceSuffix                       = "transport"

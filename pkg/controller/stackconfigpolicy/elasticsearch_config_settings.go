@@ -29,8 +29,8 @@ import (
 const (
 	ElasticSearchConfigKey                           = "elasticsearch.json"
 	SecretsMountKey                                  = "secretMounts.json"
-	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash"
-	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"
+	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
+	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -39,9 +39,9 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 		return corev1.Secret{}, err
 	}
 	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	var configDataJsonBytes []byte
+	var configDataJSONBytes []byte
 	if policy.Spec.Elasticsearch.Config != nil {
-		configDataJsonBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
+		configDataJSONBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
 		if err != nil {
 			return corev1.Secret{}, err
 		}
@@ -59,7 +59,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 			},
 		},
 		Data: map[string][]byte{
-			ElasticSearchConfigKey: configDataJsonBytes,
+			ElasticSearchConfigKey: configDataJSONBytes,
 			SecretsMountKey:        secretMountBytes,
 		},
 	}
