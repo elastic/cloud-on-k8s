@@ -30,6 +30,7 @@ const (
 	ElasticSearchConfigKey                           = "elasticsearch.json"
 	SecretsMountKey                                  = "secretMounts.json"
 	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash"
+	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -118,6 +119,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 					Name:      es.Name,
 					Namespace: es.Namespace,
 				}),
+				Annotations: make(map[string]string),
 			},
 			Data: additionalSecret.Data,
 		}
@@ -127,6 +129,9 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 
 		// Set the secret to be deleted when the stack config policy is deleted.
 		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
+
+		// Set the original secret created by the user as annotation on the new secret
+		expected.Annotations[SourceSecretAnnotationName] = secretMount.SecretName
 
 		err := reconcileSecret(ctx, c, expected, nil)
 		if err != nil {
@@ -140,6 +145,5 @@ func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, s
 	if elasticsearchConfig != nil {
 		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
 	}
-
 	return hash.HashObject(secretMounts)
 }

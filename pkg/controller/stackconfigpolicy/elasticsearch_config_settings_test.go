@@ -92,7 +92,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := reconcileSecreteMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
+			err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -103,7 +103,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 				for _, secretMount := range tt.args.policy.Spec.Elasticsearch.SecretMounts {
 					expectedSecret := &corev1.Secret{}
 					expectedNsn := types.NamespacedName{
-						Name:      esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName),
+						Name:      esv1.StackConfigAdditionalSecretName(tt.args.es.Name, secretMount.SecretName),
 						Namespace: "test-ns",
 					}
 					err := tt.args.client.Get(context.TODO(), expectedNsn, expectedSecret)

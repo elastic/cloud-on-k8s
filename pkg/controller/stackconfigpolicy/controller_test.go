@@ -474,7 +474,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					var secretMountsSecret corev1.Secret
 					err = r.Client.Get(context.Background(), types.NamespacedName{
 						Namespace: "ns",
-						Name:      esv1.ESNamer.Suffix(esFixture.Name, secretMount.SecretName),
+						Name:      esv1.StackConfigAdditionalSecretName(esFixture.Name, secretMount.SecretName),
 					}, &secretMountsSecret)
 					assert.NoError(t, err)
 					assert.Equal(t, secretMountsSecretFixture.Data, secretMountsSecret.Data)

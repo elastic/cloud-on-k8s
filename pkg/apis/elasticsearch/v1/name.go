@@ -12,6 +12,7 @@ import (
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 )
 
@@ -181,5 +182,9 @@ func StackConfigElasticsearchConfigSecretName(esName string) string {
 }
 
 func StackConfigAdditionalSecretName(esName string, secretName string) string {
-	return ESNamer.Suffix(esName, "scp", secretName)
+	// Get hash of the secretName created by the user and add that as a suffix
+	// This is to prevent name clashes with already existing secrets
+	// This also helps keep the secret name size to within kubernetes name limits
+	secretNameHash := hash.HashObject(secretName)
+	return ESNamer.Suffix(esName, "scp", secretNameHash)
 }
