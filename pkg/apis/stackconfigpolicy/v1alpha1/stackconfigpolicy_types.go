@@ -83,7 +83,7 @@ type ElasticsearchConfigPolicySpec struct {
 	// Config holds the settings that go into elasticsearch.yml
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
-	// SecretMounts are additional secrets that need to be mounted into the Elasticsearch pods
+	// SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
 }

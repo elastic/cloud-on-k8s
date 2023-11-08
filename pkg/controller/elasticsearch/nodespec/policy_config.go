@@ -19,11 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type StackConfigPolicySecretHash struct {
-	ElasticsearchConfigHash string
-	SecretMountsHash        string
-}
-
 // PolicyConfig is a structure for storing Elasticsearch config from the StackConfigPolicy
 type PolicyConfig struct {
 	ElasticsearchConfig *common.CanonicalConfig
@@ -58,7 +53,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 			return policyConfig, err
 		}
 	}
-	cannonicalConfig, err := common.NewCanonicalConfigFrom(esConfigFromStackConfigPolicy)
+	canonicalConfig, err := common.NewCanonicalConfigFrom(esConfigFromStackConfigPolicy)
 	if err != nil {
 		return policyConfig, err
 	}
