@@ -135,9 +135,8 @@ func uniqueSecretMountPaths(secretMounts []SecretMount) bool {
 	for _, secretMount := range secretMounts {
 		if _, ok := mountPathMap[secretMount.MountPath]; ok {
 			return false
-		} else {
-			mountPathMap[secretMount.MountPath] = true
 		}
+		mountPathMap[secretMount.MountPath] = true
 	}
 
 	return true
