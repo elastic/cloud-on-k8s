@@ -17,4 +17,4 @@ ECK 2.10.0 supports managing Logstash resources via Helm charts, similarly to ot
 [id="{p}-2100-agent-non-root"]
 === Running Elastic Agent as non-root
 
-ECK 2.10.0 supports running Elastic Agent without running the Pod as the root user (see https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elastic-agent-fleet-configuration.html#k8s-elastic-agent-running-as-a-non-root-user[documentation]).
+ECK 2.10.0 supports running Elastic Agent without running the Pod as the root user (see <<{p}-elastic-agent-running-as-a-non-root-user,documentation>>).
