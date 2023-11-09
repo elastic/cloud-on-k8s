@@ -436,10 +436,9 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
 		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel: softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:      softOwner.Name,
-			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
-			// TODO: make sure this is backwards compatible.
+			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
 			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 	); err != nil {

@@ -291,6 +291,25 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Reset orphan soft owned secrets when the stackconfigpolicy no longer exists",
+			args: args{
+				client:           k8s.NewFakeClient(&esFixture, &secretFixture, orphanSecretFixture, orphanEsFixture, secretMountsSecretFixture, esPodFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
+			},
+			pre: func(r ReconcileStackConfigPolicy) {
+				// before the reconciliation, settings are not empty
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
+				assert.NotEmpty(t, settings.State.ClusterSettings)
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				// after the reconciliation, settings are empty
+				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
+				assert.Empty(t, settings.State.ClusterSettings.Data)
+			},
+			wantErr: false,
+		},
+		{
 			name: "Reconcile policy without Enterprise license",
 			args: args{
 				client:         k8s.NewFakeClient(&policyFixture),
