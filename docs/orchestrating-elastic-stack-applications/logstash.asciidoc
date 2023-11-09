@@ -847,7 +847,7 @@ kind: Logstash
 metadata:
   name: logstash-sample
 spec:
-  version: 8.8.0
+  version: {version}
   count: 1
   pipelines:
     - pipeline.id: main
@@ -873,6 +873,141 @@ spec:
 ----
 <1> Value of password to protect the Logstash keystore
 <2> The syntax for referencing keys is identical to the syntax for environment variables
+
+[id="{p}-logstash-custom-files-plugins"]
+== Adding plugins and files
+
+experimental[]
+
+Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin, or you may wish to use a plugin not included in the default Logstash docker image. To do this, there are two options available - using an `initContainer` to install plugins and add files before the main container start, or creating a custom docker image that includes the installed plugins and additional files. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
+
+=== Adding a plugin
+
+To add plugins, the `bin/logstash-plugin` utility needs to be run to add the plugin to the logstash pod before it starts.
+
+==== Using an initContainer
+
+This example sets up an `initContainer` to install the `logstash-filter-tld` plugin:
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+      - name: install-plugins
+        command: ["/bin/sh"]
+        args: ["-c", "bin/logstash-plugin install logstash-filter-tld"]
+----
+
+The init container inherits:
+
+* The image of the main container image, if one is not explicitly set.
+* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition
+* The Pod name and IP address environment variables.
+
+
+==== Using a custom image
+
+This example installs the same plugin, but uses a custom image, see XXX for more details
+
+First, create a Dockerfile based on the logstash docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s)
+
+[subs="attributes"]
+----
+FROM docker.elastic.co/logstash/logstash:{version}
+
+RUN bin/logstash-plugin install logstash-filter-tld
+----
+
+Then after building and deploying the custom image (see <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+
+[source,yaml]
+----
+spec:
+  count: 1
+  version: {version} <1>
+  image: <CUSTOM_IMAGE>
+----
+<1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
+
+
+[id="({p}-logstash-jar-files"]
+=== Additional files
+
+Some Logstash plugins, such as the JDBC input, JDBC static filter or the JMS input require additional JAR files to be added in order to run.
+
+==== Using an initContainer
+
+This example creates an `initContainer` to download a `postgres` JDBC Driver JAR file, and place it in a volume mount accessible to the main `container`, and then use it in a JDBC input in the pipeline configuration.
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+      - name: download-postgres
+        command: ["/bin/sh"]
+        args: ["-c", "curl -o /data/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar"]
+        volumeMounts:
+          - name: workdir
+            mountPath: /data
+      containers:
+        - name: logstash
+          volumeMounts:
+            - name: workdir
+              mountPath: /usr/share/logstash/jars <1>
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          jdbc {
+             jdbc_driver_library => "/usr/share/logstash/jars/postgresql.jar" <1>
+             jdbc_driver_class => "org.postgresql.Driver"
+                :
+                :
+          }
+        }
+----
+<1> Referring to the external file should match the `mountPath` of the `container`
+
+==== Using a custom image
+
+This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the docker image
+
+First, create a Dockerfile based on the logstash docker image, and download the JDBC driver, storing it alongside the other JAR files in the Logstash classpath:
++
+[subs="attributes"]
+----
+FROM docker.elastic.co/logstash/logstash:{version}
+
+RUN curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https://jdbc.postgresql.org/download/postgresql-42.6.0.jar <1>
+----
+<1> Placing the JAR file in the `/usr/share/logstash/logstash-core/lib/jars` folder places it on Logstash's classpath.
+
+Then after building and deploying the custom image (see <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+
+[source,yaml]
+----
+  count: 1
+  version: {version} <1>
+  image: <CUSTOM_IMAGE>
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          jdbc {
+              <2>
+             jdbc_driver_class => "org.postgresql.Driver"
+                :
+                :
+          }
+        }
+
+----
+<1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
+<2> Note that when you place the JAR file on the Logstash classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
 
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
