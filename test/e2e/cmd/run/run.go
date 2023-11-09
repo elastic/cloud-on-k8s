@@ -282,9 +282,8 @@ func (h *helper) initTestSecrets() error {
 
 	if h.monitoringSecrets != "" {
 		bytes, err := vault.ReadFile(c, vault.SecretFile{
-			Name: h.monitoringSecrets,
-			// This will be reverted back once verification is complete.
-			Path:       "monitoring-cluster-v2",
+			Name:       h.monitoringSecrets,
+			Path:       "monitoring-cluster",
 			FormatJSON: true,
 		})
 		if err != nil {
