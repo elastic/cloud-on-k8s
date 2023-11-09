@@ -28,6 +28,16 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkStackConfigPolicy(uid)
+				m.Spec.Elasticsearch.SecretMounts = []policyv1alpha1.SecretMount{
+					{
+						SecretName: "test1",
+						MountPath:  "/usr/test1",
+					},
+					{
+						SecretName: "test2",
+						MountPath:  "/usr/test2",
+					},
+				}
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -78,6 +88,28 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed(
 				"Elasticsearch settings are mandatory and must not be empty",
+			),
+		},
+		{
+			Name:      "create-duplicate-mountpaths",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.Elasticsearch.SecretMounts = []policyv1alpha1.SecretMount{
+					{
+						SecretName: "test1",
+						MountPath:  "/usr/test",
+					},
+					{
+						SecretName: "test2",
+						MountPath:  "/usr/test",
+					},
+				}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				"SecretMounts cannot have duplicate mount paths",
 			),
 		},
 	}

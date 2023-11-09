@@ -118,8 +118,27 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if policy.Spec.Elasticsearch.SecretMounts != nil {
 		settingsCount += len(policy.Spec.Elasticsearch.SecretMounts)
 	}
+	// Check if mountpaths in the SecretMounts are unique
+	if !uniqueSecretMountPaths(policy.Spec.Elasticsearch.SecretMounts) {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("elasticsearch").Child("secretMounts"), policy.Spec.Elasticsearch.SecretMounts, "SecretMounts cannot have duplicate mount paths")}
+	}
 	if settingsCount == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
 	}
 	return nil
+}
+
+// uniqueSecretMountPaths returns true if all given mountpaths are unique
+func uniqueSecretMountPaths(secretMounts []SecretMount) bool {
+	mountPathMap := make(map[string]bool)
+
+	for _, secretMount := range secretMounts {
+		if _, ok := mountPathMap[secretMount.MountPath]; ok {
+			return false
+		} else {
+			mountPathMap[secretMount.MountPath] = true
+		}
+	}
+
+	return true
 }

@@ -440,7 +440,7 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 			reconciler.SoftOwnerNameLabel:      softOwner.Name,
 			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
 			// TODO: make sure this is backwards compatible.
-			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectResetOnPolicyDelete,
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 	); err != nil {
 		return err

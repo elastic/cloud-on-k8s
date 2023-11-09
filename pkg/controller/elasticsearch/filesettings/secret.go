@@ -93,7 +93,7 @@ func NewSettingsSecret(version int64, es types.NamespacedName, currentSecret *co
 	}
 
 	// Add a label to reset secret on deletion of the stack config policy
-	settingsSecret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanObjectResetOnPolicyDelete
+	settingsSecret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanSecretResetOnPolicyDelete
 
 	return *settingsSecret, version, nil
 }

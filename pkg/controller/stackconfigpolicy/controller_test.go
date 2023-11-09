@@ -152,7 +152,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
 				"eck.k8s.elastic.co/owner-namespace":            "ns",
 				"eck.k8s.elastic.co/owner-name":                 "test-policy",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectResetOnPolicyDelete,
+				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 			},
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},

@@ -57,7 +57,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 	if err != nil {
 		return policyConfig, err
 	}
-	policyConfig.ElasticsearchConfig = cannonicalConfig
+	policyConfig.ElasticsearchConfig = canonicalConfig
 
 	// Construct additional mounts for the Elasticsearch pods
 	var additionalSecretMounts []policyv1alpha1.SecretMount
