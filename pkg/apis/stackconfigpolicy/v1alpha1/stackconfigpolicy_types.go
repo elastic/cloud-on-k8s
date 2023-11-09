@@ -195,13 +195,13 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		s.Update()
 	}()
 
-	if !elasticsearchConfigAndMountsApplied { //nolint:gocritic
+	if !elasticsearchConfigAndMountsApplied { 
 		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 		status.Phase = ApplyingChangesPhase
 		return
 	}
 
-	if status.CurrentVersion == unknownVersion { //nolint:gocritic
+	if status.CurrentVersion == unknownVersion { 
 		status.Phase = UnknownPhase
 		return
 	}
