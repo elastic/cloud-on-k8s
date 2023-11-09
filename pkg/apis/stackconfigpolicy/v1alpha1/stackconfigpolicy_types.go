@@ -190,23 +190,36 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
+	defer func() {
+		s.ResourcesStatuses[resource.String()] = status
+		s.Update()
+	}()
+
 	if !elasticsearchConfigAndMountsApplied { //nolint:gocritic
 		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 		status.Phase = ApplyingChangesPhase
-	} else if status.CurrentVersion == unknownVersion { //nolint:gocritic
+		return
+	}
+
+	if status.CurrentVersion == unknownVersion { //nolint:gocritic
 		status.Phase = UnknownPhase
-	} else if status.Error.Message != "" {
+		return
+	}
+
+	if status.Error.Message != "" {
 		status.Phase = ErrorPhase
 		if status.ExpectedVersion > status.Error.Version {
 			status.Phase = ApplyingChangesPhase
 		}
-	} else if status.CurrentVersion == status.ExpectedVersion {
-		status.Phase = ReadyPhase
-	} else {
-		status.Phase = ApplyingChangesPhase
+		return
 	}
-	s.ResourcesStatuses[resource.String()] = status
-	s.Update()
+
+	if status.CurrentVersion == status.ExpectedVersion {
+		status.Phase = ReadyPhase
+		return
+	}
+
+	status.Phase = ApplyingChangesPhase
 }
 
 // Update updates the policy status from its resources statuses.
