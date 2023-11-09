@@ -24,6 +24,7 @@ What follows is a non-exhaustive list of configuration examples. The first examp
 
 The next two examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
 
+* <<{p}-basic-snapshot-azure>>
 * <<{p}-gke-workload-identiy>>
 * <<{p}-iam-service-accounts>>
 
@@ -438,6 +439,23 @@ Assuming you stored this in a file called `elasticsearch.yaml` you can in both c
 ----
 kubectl apply -f elasticsearch.yaml
 ----
+
+[id="{p}-basic-snapshot-azure"]
+=== Basic snapshot repository setup in azure as an example
+
+. You will need to ensure you have configured a Storage Account in Azure and have created an Access Key for that Storage Account.
++
+. Ensure a Container is also configured in this exaple we will call it `<azuresnaphots>`
++
+. Create a file containing the azure credentials. For this example, name it `azure.client.default.account`. The file name is important as it is reflected in the secure setting. Within this file place your Storage Account name for this example we will use `azurestorageaccount1`.
++
+. Create anouther file containing the azure credentials. For this example, name it `azure.client.default.key`. The file name is important as it is reflected in the secure setting. Within this file place your Storage Account Access Key.
++
+. Now we need to upload this secret into the AKS cluster - you must ensure its in the same namespace as the ECK cluster.
+----
+kubetl create secret generic <snapshot-secret> --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
+----
+
 
 
 
