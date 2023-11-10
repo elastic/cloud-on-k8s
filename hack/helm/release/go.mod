@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/storage v1.35.1
 	github.com/elastic/cloud-on-k8s/v2 v2.10.0
 	github.com/google/go-cmp v0.6.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.17.0
 	google.golang.org/api v0.150.0
 	gopkg.in/yaml.v3 v3.0.1
