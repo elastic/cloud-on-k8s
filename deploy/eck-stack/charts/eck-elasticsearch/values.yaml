@@ -267,7 +267,7 @@ nodeSets:
     # - command:
     #   - sh
     #   - "-c"
-    #   - bin/elasticsearch-plugin remove --purge repository-s3 ; bin/elasticsearch-plugin install --batch repository-s3
+    #   - bin/elasticsearch-plugin remove --purge analysis-icu ; bin/elasticsearch-plugin install --batch analysis-icu
     #   name: install-plugins
     #   securityContext:
     #     privileged: true
