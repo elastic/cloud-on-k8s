@@ -443,9 +443,9 @@ kubectl apply -f elasticsearch.yaml
 [id="{p}-basic-snapshot-azure"]
 === Basic snapshot repository setup for Azure - example
 
-. Ensure there is a configured Storage Account in Azure and have created an Access Key for that Storage Account.
+. Ensure theere is a configured Storage Account in Azure and have created an Access Key for that Storage Account.
 +
-. Ensure a Container is also configured, in this example we will call it `azuresnaphots`
+. Ensure a Container within the Storage Account is also configured, in this example we will call it `azuresnaphots`
 +
 . Now create a file containing the azure credentials. For this example, name it `azure.client.default.account`. The file name is important as it is reflected in the secure setting. Within this file place your Storage Account name for this example we will use `azurestorageaccount1`.
 +
