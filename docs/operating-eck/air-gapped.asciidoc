@@ -19,24 +19,15 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.6.0
-  count: 1
-  image: my-custom-repo/kibana:7.6.0
-  elasticsearchRef:
-    name: "elasticsearch-sample"
+  version: {version}
+  # image: docker.elastic.co/elasticsearch/elasticsearch:{version} <1>
+  nodeSets:
+  - name: default
+    count: 1
   podTemplate:
-    metadata:
-      labels:
-        foo: bar
     spec:
-      imagePullSecrets:  <<Use this parameter to use credentials for a custom repo 
-      - name: regcred
-      containers:
-      - name: kibana
-        resources:
-          limits:
-            memory: 1Gi
-            cpu: 1
+      imagePullSecrets:
+      - name: private-registry-credentials-secret
 ----
 
 <1> The ECK operator will set this value by default. You can explicitly set it to your mirrored container image when running in an air-gapped environment
@@ -66,7 +57,7 @@ The operator expects container images to be located at specific repositories in 
 * +my.registry/kibana/kibana:{version}+
 * +my.registry/apm/apm-server:{version}+
 
-You can provide credentials to a custom repo by adding the imagePullSecrets parameter to your configuration as shown here - https://github.com/elastic/cloud-on-k8s/issues/2580#issuecomment-589602837
+You can provide credentials to your private container registry by setting the `imagePullSecrets` field through the `spec.podTemplate` section of your Elastic resource specification, check <<{p}-customize-pods,how to customize the Elastic resources Pods>> and link:https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/[how to setup a Secret containing your registry credentials].
 
 [float]
 [id="{p}-container-repository-override"]
