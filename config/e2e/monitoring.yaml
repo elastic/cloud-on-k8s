@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 8.4.0 # needs to less or equal to e2e-monitor version
+  version: 8.10.4 # needs to less or equal to e2e-monitor version
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -87,7 +87,7 @@ spec:
       meta:
         package:
           name: kubernetes
-          version: 0.2.8
+          version: 1.49.0
       data_stream:
         namespace: k8s
       processors:
@@ -304,7 +304,7 @@ spec:
       meta:
         package:
           name: log
-          version: 0.4.6
+          version: 2.3.0
       data_stream:
         namespace: default
       processors:
@@ -362,6 +362,22 @@ rules:
       - get
       - watch
       - list
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
   - nonResourceURLs:
       - /metrics
     verbs:

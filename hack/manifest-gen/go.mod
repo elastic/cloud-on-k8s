@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/spf13/cobra v1.8.0
-	helm.sh/helm/v3 v3.13.1
+	helm.sh/helm/v3 v3.13.2
 	sigs.k8s.io/kustomize/kyaml v0.15.0
 )
 

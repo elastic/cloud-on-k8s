@@ -404,6 +404,7 @@ E2E_REGISTRY_NAMESPACE     ?= eck-dev
 E2E_TEST_CLUSTER_PREFIX    ?= "eck-e2e"
 export E2E_IMAGE_NAME      ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests
 export E2E_IMAGE_TAG       ?= $(SHA1)
+E2E_IMG                    ?= $(E2E_IMAGE_NAME):$(E2E_IMAGE_TAG)
 
 # push amd64 image for dev purposes
 docker-push-e2e:
