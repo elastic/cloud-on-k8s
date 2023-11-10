@@ -441,7 +441,7 @@ kubectl apply -f elasticsearch.yaml
 ----
 
 [id="{p}-basic-snapshot-azure"]
-=== Basic snapshot repository setup in azure as an example
+=== Basic snapshot repository setup for Azure - example
 
 . Ensure there is a configured Storage Account in Azure and have created an Access Key for that Storage Account.
 +
