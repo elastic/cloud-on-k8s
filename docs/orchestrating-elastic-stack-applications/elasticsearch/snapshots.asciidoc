@@ -429,6 +429,7 @@ spec:
           - sh
           - -c
           - |
+            bin/elasticsearch-plugin remove --purge repository-gcs
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
@@ -438,7 +439,3 @@ Assuming you stored this in a file called `elasticsearch.yaml` you can in both c
 ----
 kubectl apply -f elasticsearch.yaml
 ----
-
-
-
-

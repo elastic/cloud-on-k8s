@@ -11,7 +11,7 @@ endif::[]
 To run Elasticsearch with specific plugins or configuration files installed on ECK, you have two options. Each option has its own pros and cons.
 
 . Create a custom container image with the required plugins and configuration files.
-+ 
++
 * *Pros*
 ** Deployment is reproducible and reusable.
 ** Does not require internet access at runtime.
@@ -51,6 +51,7 @@ spec:
           - sh
           - -c
           - |
+            bin/elasticsearch-plugin remove --purge repository-azure
             bin/elasticsearch-plugin install --batch repository-azure
 ----
 
@@ -104,6 +105,7 @@ spec:
           - |
             #!/usr/bin/env bash
             set -e
+            bin/elasticsearch-plugin remove --purge repository-s3 || true
             bin/elasticsearch-plugin install --batch repository-s3
             /bin/tini -- /usr/local/bin/docker-entrypoint.sh
 ----
