@@ -913,7 +913,7 @@ This example installs the same plugin, but uses a custom image, see XXX for more
 
 First, create a Dockerfile based on the logstash docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s)
 
-[subs="attributes"]
+[subs="attributes,+macros,callouts"]
 ----
 FROM docker.elastic.co/logstash/logstash:{version}
 
@@ -978,7 +978,7 @@ This example downloads the same `postgres` JDBC driver, and adds it to the Logst
 
 First, create a Dockerfile based on the logstash docker image, and download the JDBC driver, storing it alongside the other JAR files in the Logstash classpath:
 +
-[subs="attributes"]
+[subs="attributes,+macros,callouts"]
 ----
 FROM docker.elastic.co/logstash/logstash:{version}
 
