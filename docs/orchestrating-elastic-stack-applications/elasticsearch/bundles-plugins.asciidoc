@@ -105,6 +105,7 @@ spec:
           - |
             #!/usr/bin/env bash
             set -e
+            bin/elasticsearch-plugin remove --purge repository-s3 || true
             bin/elasticsearch-plugin install --batch repository-s3
             /bin/tini -- /usr/local/bin/docker-entrypoint.sh
 ----
