@@ -481,7 +481,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					Name:      esv1.StackConfigElasticsearchConfigSecretName(esFixture.Name),
 				}, &esSecret)
 				assert.NoError(t, err)
-				elasticSearchConfigJSONData, err := json.Marshal(policy.Spec.Elasticsearch.Config)
+				elasticsearchConfigJSONData, err := json.Marshal(policy.Spec.Elasticsearch.Config)
 				assert.NoError(t, err)
 				secretMountsJSONData, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 				assert.NoError(t, err)

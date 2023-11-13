@@ -80,7 +80,7 @@ type ElasticsearchConfigPolicySpec struct {
 	// IndexTemplates holds the Index and Component Templates settings
 	// +kubebuilder:pruning:PreserveUnknownFields
 	IndexTemplates IndexTemplates `json:"indexTemplates,omitempty"`
-	// Config holds the settings that go into elasticsearch.yml
+	// Config holds the settings that go into elasticsearch.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 	// SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
@@ -89,10 +89,10 @@ type ElasticsearchConfigPolicySpec struct {
 }
 
 type KibanaConfigPolicySpec struct {
-	// Config holds the settings that go into kibana.yml
+	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
-	// SecretMounts are additional secrets that need to be mounted into the Kibana pods
+	// SecretMounts are additional secrets that need to be mounted into the Kibana pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
 }

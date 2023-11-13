@@ -182,7 +182,7 @@ func StackConfigElasticsearchConfigSecretName(esName string) string {
 }
 
 // StackConfigAdditionalSecretName returns the name of the stack config policy Secret suffixed with a hash to prevent conflicts.
-// This also helps keep the secret name size to within kubernetes name limits even if the secretName created by the user is long
+// This also helps keep the secret name size to within kubernetes name limits even if the secret name created by the user is long.
 func StackConfigAdditionalSecretName(esName string, secretName string) string {
 	secretNameHash := hash.HashObject(secretName)
 	return ESNamer.Suffix(esName, "scp", secretNameHash)
