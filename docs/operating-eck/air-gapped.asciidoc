@@ -56,7 +56,6 @@ The operator expects container images to be located at specific repositories in 
 * +my.registry/kibana/kibana:{version}+
 * +my.registry/apm/apm-server:{version}+
 
-
 [float]
 [id="{p}-container-repository-override"]
 == Use a global container repository
