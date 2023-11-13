@@ -119,7 +119,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 	}
 }
 
-func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, OrphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {
+func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, orphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {
 	t.Helper()
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -127,7 +127,7 @@ func getSecretMountSecret(t *testing.T, name string, namespace string, policyNam
 			Namespace: namespace,
 			Labels: map[string]string{
 				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
-				"asset.policy.k8s.elastic.co/on-delete":     OrphanObjectOnPolicyDeleteStratergy,
+				"asset.policy.k8s.elastic.co/on-delete":     orphanObjectOnPolicyDeleteStratergy,
 				"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
 				"eck.k8s.elastic.co/owner-name":             policyName,
 				"eck.k8s.elastic.co/owner-kind":             policyv1alpha1.Kind,
