@@ -33,7 +33,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 		{
 			name: "Create secret mount secrets in ES namespace",
 			args: args{
-				client: k8s.NewFakeClient(getSecretMountSecret(t, "auth-policy-secret", "test-policy-ns")),
+				client: k8s.NewFakeClient(getSecretMountSecret(t, "auth-policy-secret", "test-policy-ns", "test-policy", "test-policy-ns", "delete")),
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-es",
@@ -112,20 +112,26 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 						return
 					}
 
-					assert.Equal(t, expectedSecret.Data, getSecretMountSecret(t, esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName), "test-ns").Data, "secrets do not match")
+					assert.Equal(t, expectedSecret.Data, getSecretMountSecret(t, esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName), "test-ns", "test-policy", "test-policy-ns", "delete").Data, "secrets do not match")
 				}
 			}
 		})
 	}
 }
 
-func getSecretMountSecret(t *testing.T, name string, namespace string) *corev1.Secret {
+func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, OrphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {
 	t.Helper()
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels:    map[string]string{},
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
+				"asset.policy.k8s.elastic.co/on-delete":     OrphanObjectOnPolicyDeleteStratergy,
+				"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
+				"eck.k8s.elastic.co/owner-name":             policyName,
+				"eck.k8s.elastic.co/owner-kind":             policyv1alpha1.Kind,
+			},
 		},
 		Data: map[string][]byte{
 			"idfile.txt": []byte("test id file"),

@@ -37,7 +37,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		} `yaml:"network"`
 	}
 
-	policyCfg, _ := common.NewCanonicalConfigFrom(map[string]interface{}{
+	policyCfg := common.MustCanonicalConfig(map[string]interface{}{
 		esv1.DiscoverySeedProviders: "policy-override",
 	})
 

@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -141,7 +142,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	},
 		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
-	secretMountsSecretFixture := getSecretMountSecret(t, "test-secret-mount", "ns")
+	secretMountsSecretFixture := getSecretMountSecret(t, "test-secret-mount", "ns", "test-policy", "ns", "delete")
 	secretFixture := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -182,12 +183,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		},
 	}
 
-	orphanSecretMountsSecretFixture := getSecretMountSecret(t, esv1.ESNamer.Suffix("another-es", "test-secret-mount"), "ns")
-	orphanSecretMountsSecretFixture.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "another-es"
-	orphanSecretMountsSecretFixture.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
-	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerNamespaceLabel] = policyFixture.Namespace
-	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerNameLabel] = policyFixture.Name
-	orphanSecretMountsSecretFixture.Labels[reconciler.SoftOwnerKindLabel] = policyv1alpha1.Kind
+	orphanSecretMountsSecretFixture := getSecretMountSecret(t, esv1.ESNamer.Suffix("another-es", "test-secret-mount"), "ns", "test-policy", "ns", "delete")
 
 	updatedPolicyFixture := policyFixture.DeepCopy()
 	updatedPolicyFixture.Spec.Elasticsearch.ClusterSettings = &commonv1.Config{Data: map[string]interface{}{
@@ -485,19 +481,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.NoError(t, err)
 				secretMountsJSONData, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 				assert.NoError(t, err)
-				assert.Equal(t, esSecret.Data[ElasticSearchConfigKey], elasticSearchConfigJSONData)
+				assert.Equal(t, esSecret.Data[ElasticSearchConfigKey], elasticsearchConfigJSONData)
 				assert.Equal(t, esSecret.Data[SecretsMountKey], secretMountsJSONData)
 
 				// Verify the secret mounts secret
-				for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
-					var secretMountsSecret corev1.Secret
-					err = r.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: "ns",
-						Name:      esv1.StackConfigAdditionalSecretName(esFixture.Name, secretMount.SecretName),
-					}, &secretMountsSecret)
-					assert.NoError(t, err)
-					assert.Equal(t, secretMountsSecretFixture.Data, secretMountsSecret.Data)
-				}
+				assertExpectedESSecretContent(t, r.Client, esFixture.Name, *secretMountsSecretFixture, policy.Spec.Elasticsearch.SecretMounts)
 			},
 			wantErr:          false,
 			wantRequeue:      false,
@@ -595,4 +583,17 @@ func getSettingsHash(secret corev1.Secret) (string, error) {
 		return "", err
 	}
 	return hash.HashObject(settings.State), nil
+}
+
+func assertExpectedESSecretContent(t *testing.T, c client.Client, esName string, expectedSecret corev1.Secret, actualSecretMounts []policyv1alpha1.SecretMount) {
+	t.Helper()
+	for _, secretMount := range actualSecretMounts {
+		var secretMountsSecret corev1.Secret
+		err := c.Get(context.Background(), types.NamespacedName{
+			Namespace: "ns",
+			Name:      esv1.StackConfigAdditionalSecretName(esName, secretMount.SecretName),
+		}, &secretMountsSecret)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedSecret.Data, secretMountsSecret.Data)
+	}
 }

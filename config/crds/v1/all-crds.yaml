@@ -10184,7 +10184,7 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   config:
-                    description: Config holds the settings that go into elasticsearch.yml
+                    description: Config holds the settings that go into elasticsearch.yml.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   indexLifecyclePolicies:
@@ -10217,10 +10217,16 @@ spec:
                     description: SecretMounts are additional Secrets that need to
                       be mounted into the Elasticsearch pods.
                     items:
+                      description: SecretMount contains information about additional
+                        secrets to be mounted to the elasticsearch pods
                       properties:
                         mountPath:
+                          description: MountPath denotes the path to which the secret
+                            should be mounted to inside the elasticsearch pod
                           type: string
                         secretName:
+                          description: SecretName denotes the name of the secret that
+                            needs to be mounted to the elasticsearch pod
                           type: string
                       type: object
                     type: array
@@ -10244,17 +10250,23 @@ spec:
               kibana:
                 properties:
                   config:
-                    description: Config holds the settings that go into kibana.yml
+                    description: Config holds the settings that go into kibana.yml.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   secretMounts:
                     description: SecretMounts are additional secrets that need to
-                      be mounted into the Kibana pods
+                      be mounted into the Kibana pods.
                     items:
+                      description: SecretMount contains information about additional
+                        secrets to be mounted to the elasticsearch pods
                       properties:
                         mountPath:
+                          description: MountPath denotes the path to which the secret
+                            should be mounted to inside the elasticsearch pod
                           type: string
                         secretName:
+                          description: SecretName denotes the name of the secret that
+                            needs to be mounted to the elasticsearch pod
                           type: string
                       type: object
                     type: array

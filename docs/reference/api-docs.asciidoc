@@ -2077,7 +2077,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`indexLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
 | *`ingestPipelines`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline)
 | *`indexTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]__ | IndexTemplates holds the Index and Component Templates settings
-| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into elasticsearch.yml
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into elasticsearch.yml.
 | *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
 |===
 
@@ -2113,8 +2113,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into kibana.yml
-| *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional secrets that need to be mounted into the Kibana pods
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into kibana.yml.
+| *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional secrets that need to be mounted into the Kibana pods.
 |===
 
 
@@ -2123,7 +2123,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount"]
 === SecretMount 
 
-
+SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
 
 .Appears In:
 ****
@@ -2134,8 +2134,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`secretName`* __string__ | 
-| *`mountPath`* __string__ | 
+| *`secretName`* __string__ | SecretName denotes the name of the secret that needs to be mounted to the elasticsearch pod
+| *`mountPath`* __string__ | MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod
 |===
 
 

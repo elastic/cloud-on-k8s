@@ -229,10 +229,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	policyEsConfig, err := common.NewCanonicalConfigFrom(map[string]interface{}{
+	policyEsConfig := common.MustCanonicalConfig(map[string]interface{}{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
-	require.NoError(t, err)
 	secretMounts := []policyv1alpha1.SecretMount{{
 		SecretName: "test-es-secretname",
 		MountPath:  "/usr/test",
@@ -322,10 +321,10 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/config-hash":                         "267866193",
-				"pod-template-annotation-name":                                     "pod-template-annotation-value",
-				"co.elastic.logs/module":                                           "elasticsearch",
-				stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
+				"elasticsearch.k8s.elastic.co/config-hash":               "267866193",
+				"pod-template-annotation-name":                           "pod-template-annotation-value",
+				"co.elastic.logs/module":                                 "elasticsearch",
+				"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "2095567618",
 			},
 		},
 		Spec: corev1.PodSpec{

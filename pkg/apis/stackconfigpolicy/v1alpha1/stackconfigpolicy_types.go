@@ -158,9 +158,12 @@ type PolicyStatusError struct {
 	Message string `json:"message,omitempty"`
 }
 
+// SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
 type SecretMount struct {
+	// SecretName denotes the name of the secret that needs to be mounted to the elasticsearch pod
 	SecretName string `json:"secretName,omitempty"`
-	MountPath  string `json:"mountPath,omitempty"`
+	// MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod
+	MountPath string `json:"mountPath,omitempty"`
 }
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {

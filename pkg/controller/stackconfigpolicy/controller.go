@@ -310,7 +310,8 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
-		if err := reconcileSecret(ctx, r.Client, expectedConfigSecret, &es); err != nil {
+		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &es)
+		if err != nil {
 			return results.WithError(err), status
 		}
 

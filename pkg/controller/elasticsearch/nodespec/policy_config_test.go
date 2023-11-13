@@ -20,15 +20,15 @@ import (
 )
 
 func Test_getPolicyConfig(t *testing.T) {
-	canonicalConfig, err := common.NewCanonicalConfigFrom(map[string]interface{}{
+	canonicalConfig := common.MustCanonicalConfig(map[string]interface{}{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})
-	require.NoError(t, err)
 	for _, tt := range []struct {
 		name         string
 		es           esv1.Elasticsearch
 		configSecret corev1.Secret
 		want         PolicyConfig
+		wantErr      bool
 	}{
 		{
 			name: "create valid policy config",
@@ -42,18 +42,56 @@ func Test_getPolicyConfig(t *testing.T) {
 			want: PolicyConfig{
 				ElasticsearchConfig: canonicalConfig,
 				PolicyAnnotations: map[string]string{
-					stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
+					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "testhash",
 				},
 				AdditionalVolumes: []volume.VolumeLike{
 					volume.NewSecretVolumeWithMountPath(esv1.StackConfigAdditionalSecretName("test-es", "test1"), esv1.StackConfigAdditionalSecretName("test-es", "test1"), "/usr/test"),
 				},
 			},
 		},
+		{
+			name: "create policy config when secret does not exist",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "test-ns",
+				},
+			},
+			want: PolicyConfig{
+				ElasticsearchConfig: common.MustCanonicalConfig(map[string]interface{}{}),
+				PolicyAnnotations: map[string]string{
+					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "",
+				},
+				AdditionalVolumes: nil,
+			},
+		},
+		{
+			name: "invalid config",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "test-ns",
+				},
+			},
+			configSecret: mkInvalidConfigSecret(esv1.StackConfigElasticsearchConfigSecretName("test-es"), "test-ns"),
+			want: PolicyConfig{
+				ElasticsearchConfig: nil,
+				PolicyAnnotations: map[string]string{
+					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "testhash",
+				},
+				AdditionalVolumes: nil,
+			},
+			wantErr: true,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(&tt.configSecret)
 			got, err := getPolicyConfig(context.Background(), client, tt.es)
-			require.NoError(t, err)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -71,4 +109,11 @@ func mkConfigSecret(name string, namespace string) corev1.Secret {
 		Data: map[string][]byte{stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),
 			stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)},
 	}
+}
+
+func mkInvalidConfigSecret(name string, namespace string) corev1.Secret {
+	secret := mkConfigSecret(name, namespace)
+	secret.Data = map[string][]byte{stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"invalid"}`),
+		stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)}
+	return secret
 }

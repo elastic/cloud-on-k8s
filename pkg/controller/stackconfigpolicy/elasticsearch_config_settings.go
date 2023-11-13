@@ -7,7 +7,6 @@ package stackconfigpolicy
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
@@ -18,12 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -73,30 +70,6 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 	return elasticsearchConfigSecret, nil
 }
 
-func reconcileSecret(ctx context.Context,
-	c k8s.Client,
-	expected corev1.Secret,
-	owner client.Object) error {
-	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(reconciler.Params{
-		Context:    ctx,
-		Client:     c,
-		Owner:      owner,
-		Expected:   &expected,
-		Reconciled: reconciled,
-		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
-				!reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-			reconciled.Data = expected.Data
-		},
-	})
-}
-
 // reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
 func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
@@ -119,7 +92,9 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 					Name:      es.Name,
 					Namespace: es.Namespace,
 				}),
-				Annotations: make(map[string]string),
+				Annotations: map[string]string{
+					SourceSecretAnnotationName: secretMount.SecretName,
+				},
 			},
 			Data: additionalSecret.Data,
 		}
@@ -130,10 +105,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 		// Set the secret to be deleted when the stack config policy is deleted.
 		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
 
-		// Set the original secret created by the user as annotation on the new secret
-		expected.Annotations[SourceSecretAnnotationName] = secretMount.SecretName
-
-		err := reconcileSecret(ctx, c, expected, nil)
+		_, err := reconciler.ReconcileSecret(ctx, c, expected, nil)
 		if err != nil {
 			return err
 		}
