@@ -909,7 +909,7 @@ The init container inherits:
 
 ==== Using a custom image
 
-This example installs the same plugin, but uses a custom image, see XXX for more details
+This example installs the same plugin, but uses a custom image to install the plugin.
 
 First, create a Dockerfile based on the logstash docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s)
 
