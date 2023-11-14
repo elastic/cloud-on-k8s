@@ -443,46 +443,18 @@ kubectl apply -f elasticsearch.yaml
 [id="{p}-basic-snapshot-azure"]
 === Basic snapshot repository setup for Azure
 
-. Ensure there is a configured Storage Account in Azure and have created an Access Key for that Storage Account.
+This is identical to <<{p}-basic-snapshot-gcs>> except for configuring storage account credentials through the Elasticsearch keystore.
+
+. Follow the Microsoft documentation to link:https://docs.microsoft.com/en-us/azure/storage/common/storage-account-create[set up an Azure storage account] with an access key, and then link:https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-portal[create a container].
+
+. Create two files for your Azure storage account credentials: `azure.client.secondary.account` and `azure.client.secondary.key` containing the associated values.
+
+. Next, follow the same steps as in <<{p}-secure-settings>> to create a Kubernetes secret from these files, reference it in the `secureSettings` section of the Elasticsearch resource and apply the modifications.
 +
-. Ensure a Container exists within the Storage Account, in this example we will call it `azuresnaphots`
-+
-. Now create a file containing the azure credentials. For this example, name it `azure.client.default.account`. The file name is important as it is reflected in the secure setting. Within this file place your Storage Account name for this example we will use `azurestorageaccount1`.
-+
-. Create anouther file containing the azure credentials. For this example, name it `azure.client.default.key`. The file name is important as it is reflected in the secure setting. Within this file place your Storage Account Access Key.
-
-. Now we need to upload this secret into the AKS cluster - you must ensure its in the same namespace as the ECK cluster.
+[source,sh]
 ----
-kubetl create secret generic <snapshot-secret> --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
+kubectl create secret generic az-storage-credentials --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
 ----
-
-. Under `podTemplate` place the secret just created into the `- secretName:` field.
-
-[source,yaml,subs="attributes"]
-----
-  nodeSets:
-  - name: elasticsearch
-    count: 3
-    config:
-      node.roles: ["master","data_hot", "data_content", "ingest"]
-      cluster.routing.allocation.awareness.attributes: k8s_node_name,zone
-      node.attr.zone: ${ZONE}
-      # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
-      # For production workloads, it is strongly recommended to increase the kernel setting vm.max_map_count to 262144
-      # and leave node.store.allow_mmap unset.
-      # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
-      node.store.allow_mmap: false
-    podTemplate:
-      spec:
-        secureSettings:
-         - secretName: snapshot-secret
-
-----
-
-. Now upgrade your cluster to the current configuration.
-
-. From within Kibana you are able to access the Azure Blob Storage under Snapshots. Ensure under `client` for this example to use `default` and `container` as `azurestorageaccount1`.
-
 
 
 
