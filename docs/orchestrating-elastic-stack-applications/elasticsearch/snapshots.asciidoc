@@ -430,6 +430,7 @@ spec:
           - sh
           - -c
           - |
+            bin/elasticsearch-plugin remove --purge repository-gcs
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
@@ -455,6 +456,4 @@ This is identical to <<{p}-basic-snapshot-gcs>> except for configuring storage a
 ----
 kubectl create secret generic az-storage-credentials --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
 ----
-
-
 

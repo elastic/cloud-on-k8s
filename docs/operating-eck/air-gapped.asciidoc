@@ -24,14 +24,17 @@ spec:
   nodeSets:
   - name: default
     count: 1
+  # podTemplate:
+  #   spec:
+  #     imagePullSecrets: <2>
+  #     - name: private-registry-credentials-secret
 ----
 
 <1> The ECK operator will set this value by default. You can explicitly set it to your mirrored container image when running in an air-gapped environment
+<2> You can provide credentials to your private container registry by setting the `imagePullSecrets` field through the `spec.podTemplate` section of your Elastic resource specification, check <<{p}-customize-pods,how to customize the Elastic resources Pods>> and link:https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/[how to setup a Secret containing your registry credentials].
 
 ECK will automatically set the correct container image for each application. When running in an air-gapped or offline environment you will have to mirror the official Elastic container images in a private container image registry.
 To make use of your mirrored images you can either set the image for each application explicitly as shown in the preceding example or more conveniently override the default container registry as explained in the next section.
-
-
 
 [float]
 [id="{p}-use-mirrored-operator-image"]

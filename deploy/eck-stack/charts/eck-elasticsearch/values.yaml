@@ -44,7 +44,7 @@ monitoring: {}
   # metrics:
   #   elasticsearchRefs:
   #   - name: monitoring
-  #     namespace: observability 
+  #     namespace: observability
   # logs:
   #   elasticsearchRefs:
   #   - name: monitoring
@@ -176,7 +176,7 @@ nodeSets:
     # https://v1-24.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#podtemplatespec-v1-core
     #
     # Only the commonly overridden/used fields will be noted below.
-    # 
+    #
     spec:
 
     # If specified, the pod's scheduling constraints
@@ -207,7 +207,7 @@ nodeSets:
         resources:
           # Requests describes the minimum amount of compute resources required. If Requests is omitted for a container,
           # it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value.
-          # 
+          #
           # Defaults used by the ECK Operator, if not specified, are below
           limits:
             # cpu: 1
@@ -267,7 +267,7 @@ nodeSets:
     # - command:
     #   - sh
     #   - "-c"
-    #   - bin/elasticsearch-plugin install --batch repository-s3
+    #   - bin/elasticsearch-plugin remove --purge analysis-icu ; bin/elasticsearch-plugin install --batch analysis-icu
     #   name: install-plugins
     #   securityContext:
     #     privileged: true

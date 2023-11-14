@@ -24,6 +24,7 @@ spec:
           - sh
           - -c
           - |
+            bin/elasticsearch-plugin remove --purge analysis-icu
             bin/elasticsearch-plugin install --batch analysis-icu
 ----
 
