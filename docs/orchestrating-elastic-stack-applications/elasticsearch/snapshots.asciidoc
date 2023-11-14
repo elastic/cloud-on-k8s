@@ -22,7 +22,7 @@ What follows is a non-exhaustive list of configuration examples. The first examp
 
 * <<{p}-basic-snapshot-gcs>>
 
-The next three examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
+The following examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
 
 * <<{p}-basic-snapshot-azure>>
 * <<{p}-gke-workload-identiy>>
