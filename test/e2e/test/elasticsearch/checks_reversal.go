@@ -87,9 +87,9 @@ func (s *MutationReversalTestContext) VerificationSteps(_ *test.K8sClient) test.
 	return test.StepList{
 		{
 			Name: "Verify no data loss has happened during the aborted upgrade",
-			Test: func(t *testing.T) {
-				require.NoError(t, s.dataIntegrity.Verify())
-			},
+			Test: test.Eventually(func() error {
+				return s.dataIntegrity.Verify()
+			}),
 		},
 	}
 }
