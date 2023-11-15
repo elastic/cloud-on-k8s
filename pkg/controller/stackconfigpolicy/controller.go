@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
+	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -291,6 +292,35 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 			return results.WithError(err), status
 		}
 
+		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
+		if err := reconcileSecretMounts(ctx, r.Client, es, &policy); err != nil {
+			if apierrors.IsNotFound(err) {
+				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
+				if err != nil {
+					return results.WithError(err), status
+				}
+				results.WithResult(defaultRequeue)
+			}
+			continue
+		}
+
+		// create expected elasticsearch config secret
+		expectedConfigSecret, err := newElasticsearchConfigSecret(policy, es)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &es)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// Check if required Elasticsearch config and secret mounts are applied.
+		configAndSecretMountsApplied, err := elasticsearchConfigAndSecretMountsApplied(ctx, r.Client, policy, es)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
 		// get /_cluster/state to get the Settings currently configured in ES
 		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
 		if err != nil {
@@ -303,11 +333,11 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion))
+		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied)
 	}
 
-	// reset Settings secrets for resources no longer selected by this policy
-	results.WithError(resetOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
+	// reset/delete Settings secrets for resources no longer selected by this policy
+	results.WithError(handleOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
 
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
@@ -384,10 +414,18 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 }
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	return resetOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
+	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
 }
 
-// resetOrphanSoftOwnedSecrets resets the File settings secrets for the Elasticsearch clusters that are no longer configured
+func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
+	err := resetOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
+	if err != nil {
+		return err
+	}
+	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
+}
+
+// resetOrphanSoftOwnedSecrets resets secrets for the Elasticsearch clusters that are no longer configured
 // by a given StackConfigPolicy.
 // An optional list of Elasticsearch currently configured by the policy can be provided to filter secrets not to be modified. Without list,
 // all secrets soft owned by the policy are reset.
@@ -399,9 +437,10 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
 		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel: softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:      softOwner.Name,
-			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 	); err != nil {
 		return err
@@ -437,6 +476,45 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 	return nil
 }
 
+// deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch clusters that are no longer configured
+// by a given StackConfigPolicy.
+func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
+	var secrets corev1.SecretList
+	if err := c.List(ctx,
+		&secrets,
+		// search in all namespaces
+		// restrict to secrets on which we set the soft owner labels
+		client.MatchingLabels{
+			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectDeleteOnPolicyDelete,
+		},
+	); err != nil {
+		return err
+	}
+
+	for i := range secrets.Items {
+		secret := secrets.Items[i]
+		esNsn := types.NamespacedName{
+			Namespace: secret.Namespace,
+			Name:      secret.Labels[eslabel.ClusterNameLabelName],
+		}
+		_, exist := configuredEs[esNsn]
+		if exist {
+			continue
+		}
+
+		// given elasticsearchcluster is no longer managed by stack config policy, delete secret.
+		err := c.Delete(ctx, &secret)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // getClusterStateFileSettings gets the file based settings currently configured in an Elasticsearch by calling the /_cluster/state API.
 func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Context, es esv1.Elasticsearch) (esclient.FileSettings, error) {
 	span, _ := apm.StartSpan(ctx, "get_cluster_state", tracing.SpanTypeApp)
@@ -453,4 +531,24 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 
 	return clusterState.Metadata.ReservedState.FileSettings, nil
+}
+
+// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
+func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
+	// Get Pods for the given Elasticsearch
+	podList := corev1.PodList{}
+	if err := c.List(ctx, &podList, client.MatchingLabels{
+		eslabel.ClusterNameLabelName: es.Name,
+	}); err != nil || len(podList.Items) == 0 {
+		return false, err
+	}
+
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+	for _, esPod := range podList.Items {
+		if esPod.Annotations[ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

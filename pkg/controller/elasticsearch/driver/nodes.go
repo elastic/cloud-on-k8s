@@ -11,6 +11,8 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
@@ -61,6 +63,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithReconciliationState(defaultRequeue.WithReason(reason))
 	}
 
+	// Check for stack config policy Elasticsearch config secret
+	stackConfigPolicyConfigSecret := corev1.Secret{}
+	err = d.Client.Get(ctx, types.NamespacedName{
+		Name:      esv1.StackConfigElasticsearchConfigSecretName(d.ES.Name),
+		Namespace: d.ES.Namespace,
+	}, &stackConfigPolicyConfigSecret)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return results.WithError(err)
+	}
+
 	// recreate any StatefulSet that needs to account for PVC expansion
 	recreations, err := recreateStatefulSets(ctx, d.K8sClient(), d.ES)
 	if err != nil {
@@ -81,7 +93,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext)
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualStatefulSets, d.OperatorParameters.IPFamily, d.OperatorParameters.SetDefaultSecurityContext, stackConfigPolicyConfigSecret)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -55,6 +55,7 @@ type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector          `json:"resourceSelector,omitempty"`
 	SecureSettings   []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch    ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
+	Kibana           KibanaConfigPolicySpec        `json:"kibana,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
@@ -79,6 +80,21 @@ type ElasticsearchConfigPolicySpec struct {
 	// IndexTemplates holds the Index and Component Templates settings
 	// +kubebuilder:pruning:PreserveUnknownFields
 	IndexTemplates IndexTemplates `json:"indexTemplates,omitempty"`
+	// Config holds the settings that go into elasticsearch.yml.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+	// SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
+}
+
+type KibanaConfigPolicySpec struct {
+	// Config holds the settings that go into kibana.yml.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+	// SecretMounts are additional secrets that need to be mounted into the Kibana pods.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
 }
 
 type IndexTemplates struct {
@@ -142,6 +158,14 @@ type PolicyStatusError struct {
 	Message string `json:"message,omitempty"`
 }
 
+// SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
+type SecretMount struct {
+	// SecretName denotes the name of the secret that needs to be mounted to the elasticsearch pod
+	SecretName string `json:"secretName,omitempty"`
+	// MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod
+	MountPath string `json:"mountPath,omitempty"`
+}
+
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
 	status := StackConfigPolicyStatus{
 		ResourcesStatuses:  map[string]ResourcePolicyStatus{},
@@ -168,21 +192,37 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus) {
-	if status.CurrentVersion == unknownVersion { //nolint:gocritic
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
+	defer func() {
+		s.ResourcesStatuses[resource.String()] = status
+		s.Update()
+	}()
+
+	if !elasticsearchConfigAndMountsApplied {
+		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
+		status.Phase = ApplyingChangesPhase
+		return
+	}
+
+	if status.CurrentVersion == unknownVersion {
 		status.Phase = UnknownPhase
-	} else if status.Error.Message != "" {
+		return
+	}
+
+	if status.Error.Message != "" {
 		status.Phase = ErrorPhase
 		if status.ExpectedVersion > status.Error.Version {
 			status.Phase = ApplyingChangesPhase
 		}
-	} else if status.CurrentVersion == status.ExpectedVersion {
-		status.Phase = ReadyPhase
-	} else {
-		status.Phase = ApplyingChangesPhase
+		return
 	}
-	s.ResourcesStatuses[resource.String()] = status
-	s.Update()
+
+	if status.CurrentVersion == status.ExpectedVersion {
+		status.Phase = ReadyPhase
+		return
+	}
+
+	status.Phase = ApplyingChangesPhase
 }
 
 // Update updates the policy status from its resources statuses.

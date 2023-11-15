@@ -60,10 +60,17 @@ func BuildExpectedResources(
 	existingStatefulSets sset.StatefulSetList,
 	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
+	stackConfigPolicyConfigSecret corev1.Secret,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
 	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get policy config from StackConfigPolicy
+	policyConfig, err := getPolicyConfig(ctx, client, es)
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +81,13 @@ func BuildExpectedResources(
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig)
 		if err != nil {
 			return nil, err
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig)
 		if err != nil {
 			return nil, err
 		}

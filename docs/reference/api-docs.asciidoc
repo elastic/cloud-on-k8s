@@ -448,6 +448,7 @@ Config represents untyped YAML configuration.
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec[$$KibanaConfigPolicySpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-logstash-v1alpha1-logstashspec[$$LogstashSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-maps-v1alpha1-mapsspec[$$MapsSpec$$]
@@ -2076,6 +2077,8 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`indexLifecyclePolicies`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy)
 | *`ingestPipelines`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline)
 | *`indexTemplates`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-indextemplates[$$IndexTemplates$$]__ | IndexTemplates holds the Index and Component Templates settings
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into elasticsearch.yml.
+| *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
 |===
 
 
@@ -2097,6 +2100,43 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 |===
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec"]
+=== KibanaConfigPolicySpec 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicyspec[$$StackConfigPolicySpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into kibana.yml.
+| *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional secrets that need to be mounted into the Kibana pods.
+|===
+
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount"]
+=== SecretMount 
+
+SecretMount contains information about additional secrets to be mounted to the elasticsearch pods
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec[$$KibanaConfigPolicySpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`secretName`* __string__ | SecretName denotes the name of the secret that needs to be mounted to the elasticsearch pod
+| *`mountPath`* __string__ | MountPath denotes the path to which the secret should be mounted to inside the elasticsearch pod
+|===
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-stackconfigpolicy"]
@@ -2133,6 +2173,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta[$$LabelSelector$$]__ | 
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | 
 | *`elasticsearch`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]__ | 
+| *`kibana`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec[$$KibanaConfigPolicySpec$$]__ | 
 |===
 
 
