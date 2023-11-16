@@ -80,7 +80,7 @@ If `enable-vault` flag is `true` the following keys will attempt to be read from
 The `container push` sub-command will perform the following tasks:
 1. Determine if there is an image in the [redhat certification API](https://catalog.redhat.com/api/containers/v1) that has the given `tag` associated with `newVersion`, using the provided `project-id`.
 2. If image is already found, nothing is done without using the `force` flag.
-3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi8:$(newVersion)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(newVersion)`.
+3. If image not found, or `force` flag set, will push `docker.elastic.co/eck/eck-operator-ubi:$(newVersion)` to `quay.io` docker registry, tagged as `quay.io/redhat-isv-containers/$(project-id):$(newVersion)`.
 
 ### Publish sub-command
 
