@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 )
@@ -75,7 +76,8 @@ func readinessProbe(useTLS bool) corev1.Probe {
 
 func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
-	labels[KibanaVersionLabelName] = kb.Spec.Version
+	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
+
 	ports := getDefaultContainerPorts(kb)
 	v, err := version.Parse(kb.Spec.Version)
 	if err != nil {

@@ -183,7 +183,11 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 
 // esMap is a type alias for a Map of Elasticsearch indexed by NamespaceName useful to manipulate the Elasticsearch
 // clusters configured by a StackConfigPolicy.
+/*
 type esMap map[types.NamespacedName]esv1.Elasticsearch
+
+type kbMap map[types.NamespacedName]kibanav1.Kibana
+*/
 
 func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
@@ -258,7 +262,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		return results.WithError(err), status
 	}
 
-	configuredResources := esMap{}
+	configuredResources := make(map[types.NamespacedName]esv1.Elasticsearch)
 	for _, es := range esList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
@@ -358,7 +362,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied)
+		status.UpdateResourceStatusPhase(esNsn, newElasticsearchResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied, policyv1alpha1.ElasticsearchResourceType)
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
@@ -373,7 +377,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 
 	results := reconciler.NewResult(ctx)
 
-	// prepare the selector to find Elastic resources to configure
+	// prepare the selector to find Kibana resources to configure
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels:      policy.Spec.ResourceSelector.MatchLabels,
 		MatchExpressions: policy.Spec.ResourceSelector.MatchExpressions,
@@ -388,15 +392,49 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		listOpts.Namespace = policy.Namespace
 	}
 
-	// find the list of Elasticsearch to configure
+	// find the list of Kibana to configure
 	var kibanaList kibanav1.KibanaList
 	if err := r.Client.List(ctx, &kibanaList, &listOpts); err != nil {
 		return results.WithError(err), status
 	}
-	return &reconciler.Results{}, nil
+
+	configuredResources := make(map[types.NamespacedName]kibanav1.Kibana)
+	for _, kibana := range kibanaList.Items {
+		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
+		kibana := kibana
+
+		// keep the list of ES to be configured
+		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
+		configuredResources[kibanaNsn] = kibana
+
+		// create expected kibana config secret
+		expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// Check if required Kibana configs are applied.
+		configApplied, err := kibanaConfigApplied(ctx, r.Client, policy, kibana)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// update the Kibana resource status for this Kibana
+		status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{}, configApplied, policyv1alpha1.KibanaResourceType)
+	}
+
+	// delete Settings secrets for resources no longer selected by this policy
+	results.WithError(deleteOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
+
+	return &reconciler.Results{}, status
 }
 
-func newResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
+func newElasticsearchResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
 	status := policyv1alpha1.ResourcePolicyStatus{
 		CurrentVersion:  currentSettings.Version,
 		ExpectedVersion: expectedVersion,
@@ -466,19 +504,19 @@ func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.Nam
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
 }
 
-func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
-	err := resetOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
+func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs map[types.NamespacedName]esv1.Elasticsearch) error {
+	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredEs)
 	if err != nil {
 		return err
 	}
 	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
 }
 
-// resetOrphanSoftOwnedSecrets resets secrets for the Elasticsearch clusters that are no longer configured
+// resetOrphanSoftOwnedFileSettingSecrets resets secrets for the Elasticsearch clusters that are no longer configured
 // by a given StackConfigPolicy.
 // An optional list of Elasticsearch currently configured by the policy can be provided to filter secrets not to be modified. Without list,
 // all secrets soft owned by the policy are reset.
-func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
+func resetOrphanSoftOwnedFileSettingSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs map[types.NamespacedName]esv1.Elasticsearch) error {
 	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
@@ -497,21 +535,21 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 	for i := range secrets.Items {
 		s := secrets.Items[i]
 
-		esNsn := types.NamespacedName{
+		namespacedName := types.NamespacedName{
 			Namespace: s.Namespace,
 			Name:      s.Labels[eslabel.ClusterNameLabelName],
 		}
-		_, exist := configuredEs[esNsn]
+		_, exist := configuredEs[namespacedName]
 		if exist {
 			continue
 		}
 
 		log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
-			"namespace", esNsn.Namespace, "es_name", esNsn.Name,
+			"namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
 			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
 
 		var es esv1.Elasticsearch
-		err := c.Get(ctx, esNsn, &es)
+		err := c.Get(ctx, namespacedName, &es)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -525,9 +563,9 @@ func resetOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner ty
 	return nil
 }
 
-// deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch clusters that are no longer configured
+// deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch/Kibana clusters that are no longer configured
 // by a given StackConfigPolicy.
-func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs esMap) error {
+func deleteOrphanSoftOwnedSecrets[resourceType esv1.Elasticsearch | kibanav1.Kibana](ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredApplicationMap map[types.NamespacedName]resourceType) error {
 	var secrets corev1.SecretList
 	if err := c.List(ctx,
 		&secrets,
@@ -545,11 +583,11 @@ func deleteOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner t
 
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
-		esNsn := types.NamespacedName{
+		namespacedName := types.NamespacedName{
 			Namespace: secret.Namespace,
 			Name:      secret.Labels[eslabel.ClusterNameLabelName],
 		}
-		_, exist := configuredEs[esNsn]
+		_, exist := configuredApplicationMap[namespacedName]
 		if exist {
 			continue
 		}
@@ -580,24 +618,4 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 
 	return clusterState.Metadata.ReservedState.FileSettings, nil
-}
-
-// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
-func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
-	// Get Pods for the given Elasticsearch
-	podList := corev1.PodList{}
-	if err := c.List(ctx, &podList, client.MatchingLabels{
-		eslabel.ClusterNameLabelName: es.Name,
-	}); err != nil || len(podList.Items) == 0 {
-		return false, err
-	}
-
-	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	for _, esPod := range podList.Items {
-		if esPod.Annotations[ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }

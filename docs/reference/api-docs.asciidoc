@@ -2114,7 +2114,6 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 |===
 | Field | Description
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the settings that go into kibana.yml.
-| *`secretMounts`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-secretmount[$$SecretMount$$] array__ | SecretMounts are additional secrets that need to be mounted into the Kibana pods.
 |===
 
 
@@ -2128,7 +2127,6 @@ SecretMount contains information about additional secrets to be mounted to the e
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec[$$KibanaConfigPolicySpec$$]
 ****
 
 [cols="25a,75a", options="header"]

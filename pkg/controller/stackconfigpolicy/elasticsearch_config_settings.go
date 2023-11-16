@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +62,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 		},
 	}
 
-	// Set Elasticsearch as the soft owner
+	// Set StackConfigPolicy as the soft owner
 	filesettings.SetSoftOwner(&elasticsearchConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
@@ -118,4 +119,24 @@ func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, s
 		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
 	}
 	return hash.HashObject(secretMounts)
+}
+
+// elasticsearchConfigAndSecretMountsApplied checks if the elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
+func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
+	// Get Pods for the given Elasticsearch
+	podList := corev1.PodList{}
+	if err := c.List(ctx, &podList, client.MatchingLabels{
+		eslabel.ClusterNameLabelName: es.Name,
+	}); err != nil || len(podList.Items) == 0 {
+		return false, err
+	}
+
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+	for _, esPod := range podList.Items {
+		if esPod.Annotations[ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

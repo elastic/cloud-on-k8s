@@ -545,7 +545,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily)
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, nil)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -571,7 +571,7 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.NewFakeClient()
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
 		val, err := (*ucfg.Config)(got.CanonicalConfig).String(key, -1, settings.Options...)
@@ -597,7 +597,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -626,7 +626,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -639,7 +639,7 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	kb.Spec.Version = "7.5.0"
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol)
+	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }

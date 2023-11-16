@@ -92,10 +92,14 @@ type KibanaConfigPolicySpec struct {
 	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
-	// SecretMounts are additional secrets that need to be mounted into the Kibana pods.
-	// +kubebuilder:pruning:PreserveUnknownFields
-	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
 }
+
+type ResourceType string
+
+const (
+	ElasticsearchResourceType ResourceType = "Elasticsearch"
+	KibanaResourceType        ResourceType = "Kibana"
+)
 
 type IndexTemplates struct {
 	// ComponentTemplates holds the Component Templates settings (/_component_template)
@@ -192,7 +196,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool, resourceType ResourceType) {
 	defer func() {
 		s.ResourcesStatuses[resource.String()] = status
 		s.Update()
@@ -204,7 +208,7 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		return
 	}
 
-	if status.CurrentVersion == unknownVersion {
+	if resourceType != KibanaResourceType && status.CurrentVersion == unknownVersion {
 		status.Phase = UnknownPhase
 		return
 	}

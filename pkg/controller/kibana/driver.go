@@ -33,10 +33,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -148,7 +150,12 @@ func (d *driver) Reconcile(
 		return results // will eventually retry
 	}
 
-	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily)
+	kibanaPolicyCfg, err := getPolicyConfig(ctx, d.client, *kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -166,7 +173,7 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(ctx, kb)
+	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PolicyAnnotations)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -177,11 +184,11 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	existingPods, err := k8s.PodsMatchingLabels(d.K8sClient(), kb.Namespace, map[string]string{KibanaNameLabelName: kb.Name})
+	existingPods, err := k8s.PodsMatchingLabels(d.K8sClient(), kb.Namespace, map[string]string{kblabel.KibanaNameLabelName: kb.Name})
 	if err != nil {
 		return results.WithError(err)
 	}
-	deploymentStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, KibanaVersionLabelName)
+	deploymentStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, kblabel.KibanaVersionLabelName)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -195,13 +202,13 @@ func (d *driver) Reconcile(
 // running multiple versions simultaneously may lead to concurrency bugs and data corruption.
 func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
-	var labels client.MatchingLabels = map[string]string{KibanaNameLabelName: kb.Name}
+	var labels client.MatchingLabels = map[string]string{kblabel.KibanaNameLabelName: kb.Name}
 	if err := d.client.List(context.Background(), &pods, client.InNamespace(kb.Namespace), labels); err != nil {
 		return "", err
 	}
 
 	for _, pod := range pods.Items {
-		ver, ok := pod.Labels[KibanaVersionLabelName]
+		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
 		// if label is missing we assume that the last reconciliation was done by previous version of the operator
 		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
 		// otherwise we may run into data corruption/data loss.
@@ -213,7 +220,7 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string) (deployment.Params, error) {
 	initContainersParameters, err := newInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -279,6 +286,9 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana) (deploym
 	// add the checksum to an annotation for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
+
+	// add additional annotations related to the StackConfigPolicy
+	kibanaPodSpec.Annotations = maps.Merge(kibanaPodSpec.Annotations, policyAnnotations)
 
 	// decide the strategy type
 	strategyType, err := d.getStrategyType(kb)
