@@ -579,7 +579,7 @@ spec:
           name: "agent-data"
       initContainers:
         - name: manage-agent-hostpath-permissions
-          # image: registry.access.redhat.com/ubi8/ubi-minimal:latest <2>
+          # image: registry.access.redhat.com/ubi9/ubi-minimal:latest <2>
           image: docker.io/bash:5.2.15
           resources:
             limits:
