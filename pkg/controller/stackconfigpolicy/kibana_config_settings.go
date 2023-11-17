@@ -5,8 +5,6 @@
 package stackconfigpolicy
 
 import (
-	"context"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -73,7 +71,7 @@ func GetPolicyConfigSecretName(kibana kibanav1.Kibana) string {
 	return kibana.Name + "-kb-policy-config"
 }
 
-func kibanaConfigApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (bool, error) {
+func kibanaConfigApplied(c k8s.Client, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (bool, error) {
 	existingKibanaPods, err := k8s.PodsMatchingLabels(c, kb.Namespace, map[string]string{"kibana.k8s.elastic.co/name": kb.Name})
 	if err != nil || len(existingKibanaPods) == 0 {
 		return false, err

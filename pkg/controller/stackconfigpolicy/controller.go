@@ -421,7 +421,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		}
 
 		// Check if required Kibana configs are applied.
-		configApplied, err := kibanaConfigApplied(ctx, r.Client, policy, kibana)
+		configApplied, err := kibanaConfigApplied(r.Client, policy, kibana)
 		if err != nil {
 			return results.WithError(err), status
 		}
