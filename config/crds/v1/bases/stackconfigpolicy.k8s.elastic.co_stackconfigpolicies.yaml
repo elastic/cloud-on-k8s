@@ -236,24 +236,34 @@ spec:
                 type: integer
               resourcesStatuses:
                 additionalProperties:
-                  description: ResourcePolicyStatus models the status of the policy
-                    for one resource to be configured.
                   properties:
-                    currentVersion:
-                      format: int64
-                      type: integer
-                    error:
+                    elasticsearchStatus:
+                      description: ResourcePolicyStatus models the status of the policy
+                        for one resource to be configured.
                       properties:
-                        message:
-                          type: string
-                        version:
+                        currentVersion:
                           format: int64
                           type: integer
+                        error:
+                          properties:
+                            message:
+                              type: string
+                            version:
+                              format: int64
+                              type: integer
+                          type: object
+                        expectedVersion:
+                          format: int64
+                          type: integer
+                        phase:
+                          type: string
                       type: object
-                    expectedVersion:
-                      format: int64
-                      type: integer
-                    phase:
+                    kibanaStatus:
+                      properties:
+                        phase:
+                          type: string
+                      type: object
+                    resourceType:
                       type: string
                   type: object
                 description: ResourcesStatuses holds the status for each resource

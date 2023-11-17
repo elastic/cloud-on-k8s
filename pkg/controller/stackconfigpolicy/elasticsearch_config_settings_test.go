@@ -127,6 +127,7 @@ func getSecretMountSecret(t *testing.T, name string, namespace string, policyNam
 			Namespace: namespace,
 			Labels: map[string]string{
 				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
+				"common.k8s.elastic.co/type":                "elasticsearch",
 				"asset.policy.k8s.elastic.co/on-delete":     orphanObjectOnPolicyDeleteStratergy,
 				"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
 				"eck.k8s.elastic.co/owner-name":             policyName,

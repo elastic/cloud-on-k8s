@@ -157,7 +157,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		}
 	}
 
-	// Kibana config from the StackConfigPolicy takes precendence over userSettings, merge it last.
+	// Kibana config from the StackConfigPolicy takes precedence over userSettings, merge it last.
 	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
 	}

@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -41,6 +42,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -183,11 +185,11 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 
 // esMap is a type alias for a Map of Elasticsearch indexed by NamespaceName useful to manipulate the Elasticsearch
 // clusters configured by a StackConfigPolicy.
-/*
 type esMap map[types.NamespacedName]esv1.Elasticsearch
 
+// kbMap is a type alias for a Map of Kibana indexed by NamespaceName useful to manipulate the Kibana
+// clusters configured by a StackConfigPolicy.
 type kbMap map[types.NamespacedName]kibanav1.Kibana
-*/
 
 func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
@@ -219,9 +221,12 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 
 	// reconcile elasticsearch resources
 	results, status = r.reconcileElasticsearchResources(ctx, policy, status)
-	if results.HasError() {
-		return results, status
-	}
+
+	// reconcile kibana resources
+	kibanaResults, status := r.reconcileKibanaResources(ctx, policy, status)
+
+	// Combine results from kibana reconciliation with results from Elasticsearch reconciliation
+	results.WithResults(kibanaResults)
 
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
@@ -229,10 +234,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 		return results, status
 	}
 
-	// reconcile kibana resources
-
 	return results, status
-
 }
 
 func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
@@ -262,7 +264,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		return results.WithError(err), status
 	}
 
-	configuredResources := make(map[types.NamespacedName]esv1.Elasticsearch)
+	configuredResources := esMap{}
 	for _, es := range esList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
@@ -280,7 +282,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			err = fmt.Errorf("invalid version to configure resource Elasticsearch %s/%s: actual %s, expected >= %s", es.Namespace, es.Name, v, filesettings.FileBasedSettingsMinVersion)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 			if err != nil {
 				return results.WithError(err), status
 			}
@@ -304,7 +306,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			err = fmt.Errorf("conflict: resource Elasticsearch %s/%s already configured by StackConfigpolicy %s/%s", es.Namespace, es.Name, currentOwner.Namespace, currentOwner.Name)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 			if err != nil {
 				return results.WithError(err), status
 			}
@@ -324,7 +326,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
 		if err := reconcileSecretMounts(ctx, r.Client, es, &policy); err != nil {
 			if apierrors.IsNotFound(err) {
-				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error())
+				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 				if err != nil {
 					return results.WithError(err), status
 				}
@@ -353,7 +355,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		// get /_cluster/state to get the Settings currently configured in ES
 		currentSettings, err := r.getClusterStateFileSettings(ctx, es)
 		if err != nil {
-			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error())
+			err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.UnknownPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 			if err != nil {
 				return results.WithError(err), status
 			}
@@ -362,11 +364,11 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newElasticsearchResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied, policyv1alpha1.ElasticsearchResourceType)
+		status.UpdateResourceStatusPhase(esNsn, newElasticsearchResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied)
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
-	results.WithError(handleOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
+	results.WithError(handleOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources, nil, policyv1alpha1.ElasticsearchResourceType))
 
 	return results, status
 }
@@ -398,7 +400,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		return results.WithError(err), status
 	}
 
-	configuredResources := make(map[types.NamespacedName]kibanav1.Kibana)
+	configuredResources := kbMap{}
 	for _, kibana := range kibanaList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		kibana := kibana
@@ -425,22 +427,25 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		}
 
 		// update the Kibana resource status for this Kibana
-		status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{}, configApplied, policyv1alpha1.KibanaResourceType)
+		status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{ResourceType: policyv1alpha1.KibanaResourceType}, configApplied)
 	}
 
 	// delete Settings secrets for resources no longer selected by this policy
-	results.WithError(deleteOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), configuredResources))
+	results.WithError(deleteOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), nil, configuredResources, policyv1alpha1.KibanaResourceType))
 
 	return &reconciler.Results{}, status
 }
 
 func newElasticsearchResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
 	status := policyv1alpha1.ResourcePolicyStatus{
-		CurrentVersion:  currentSettings.Version,
-		ExpectedVersion: expectedVersion,
+		ElasticsearchStatus: policyv1alpha1.ElasticsearchPolicyStatus{
+			CurrentVersion:  currentSettings.Version,
+			ExpectedVersion: expectedVersion,
+		},
+		ResourceType: policyv1alpha1.ElasticsearchResourceType,
 	}
 	if currentSettings.Errors != nil {
-		status.Error = policyv1alpha1.PolicyStatusError{
+		status.ElasticsearchStatus.Error = policyv1alpha1.PolicyStatusError{
 			Version: currentSettings.Errors.Version,
 			Message: cleanStackTrace(currentSettings.Errors.Errors),
 		}
@@ -501,82 +506,126 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 }
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil)
+	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
+	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }
 
-func handleOrphanSoftOwnedSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs map[types.NamespacedName]esv1.Elasticsearch) error {
-	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredEs)
+func handleOrphanSoftOwnedSecrets(
+	ctx context.Context,
+	c k8s.Client,
+	softOwner types.NamespacedName,
+	configuredESResources esMap,
+	configuredKibanaResources kbMap,
+	resourceType policyv1alpha1.ResourceType,
+) error {
+	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredESResources, configuredKibanaResources, resourceType)
 	if err != nil {
 		return err
 	}
-	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredEs)
+	return deleteOrphanSoftOwnedSecrets(ctx, c, softOwner, configuredESResources, configuredKibanaResources, resourceType)
 }
 
 // resetOrphanSoftOwnedFileSettingSecrets resets secrets for the Elasticsearch clusters that are no longer configured
 // by a given StackConfigPolicy.
 // An optional list of Elasticsearch currently configured by the policy can be provided to filter secrets not to be modified. Without list,
 // all secrets soft owned by the policy are reset.
-func resetOrphanSoftOwnedFileSettingSecrets(ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredEs map[types.NamespacedName]esv1.Elasticsearch) error {
+func resetOrphanSoftOwnedFileSettingSecrets(
+	ctx context.Context,
+	c k8s.Client,
+	softOwner types.NamespacedName,
+	configuredESResources esMap,
+	configuredKibanaResources kbMap,
+	resourceType policyv1alpha1.ResourceType,
+) error {
 	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
+	matchLabels := client.MatchingLabels{
+		reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+		reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+		reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
+		commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
+	}
+
+	if resourceType != "" {
+		matchLabels[commonv1.TypeLabelName] = string(resourceType)
+	}
+
 	if err := c.List(ctx,
 		&secrets,
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
-		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
-			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
-			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
-		},
+		matchLabels,
 	); err != nil {
 		return err
 	}
 	for i := range secrets.Items {
 		s := secrets.Items[i]
+		configuredApplicationType := s.Labels[commonv1.TypeLabelName]
+		switch configuredApplicationType {
+		case eslabel.Type:
+			namespacedName := types.NamespacedName{
+				Namespace: s.Namespace,
+				Name:      s.Labels[eslabel.ClusterNameLabelName],
+			}
+			_, exist := configuredESResources[namespacedName]
+			if exist {
+				continue
+			}
 
-		namespacedName := types.NamespacedName{
-			Namespace: s.Namespace,
-			Name:      s.Labels[eslabel.ClusterNameLabelName],
-		}
-		_, exist := configuredEs[namespacedName]
-		if exist {
+			log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
+				"namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+				"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
+
+			var es esv1.Elasticsearch
+			err := c.Get(ctx, namespacedName, &es)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+			if apierrors.IsNotFound(err) {
+				// Elasticsearch has just been deleted
+				return nil
+			}
+
+			err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false)
+			if err != nil {
+				return err
+			}
+		case kblabel.Type:
+			// Currently we do not reset labels for kibana, so we shouldn't hit this.
 			continue
+		default:
+			return fmt.Errorf("secret configured for unknown application type %s", configuredApplicationType)
 		}
-
-		log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
-			"namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
-			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
-
-		var es esv1.Elasticsearch
-		err := c.Get(ctx, namespacedName, &es)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		if apierrors.IsNotFound(err) {
-			// Elasticsearch has just been deleted
-			return nil
-		}
-
-		return filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false)
 	}
 	return nil
 }
 
 // deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch/Kibana clusters that are no longer configured
 // by a given StackConfigPolicy.
-func deleteOrphanSoftOwnedSecrets[resourceType esv1.Elasticsearch | kibanav1.Kibana](ctx context.Context, c k8s.Client, softOwner types.NamespacedName, configuredApplicationMap map[types.NamespacedName]resourceType) error {
+func deleteOrphanSoftOwnedSecrets(
+	ctx context.Context,
+	c k8s.Client,
+	softOwner types.NamespacedName,
+	configuredESResources esMap,
+	configuredKibanaResources kbMap,
+	resourceType policyv1alpha1.ResourceType,
+) error {
 	var secrets corev1.SecretList
+	matchLabels := client.MatchingLabels{
+		reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
+		reconciler.SoftOwnerNameLabel:                   softOwner.Name,
+		reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
+		commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
+	}
+
+	if resourceType != "" {
+		matchLabels[commonv1.TypeLabelName] = string(resourceType)
+	}
 	if err := c.List(ctx,
 		&secrets,
 		// search in all namespaces
 		// restrict to secrets on which we set the soft owner labels
-		client.MatchingLabels{
-			reconciler.SoftOwnerNamespaceLabel:              softOwner.Namespace,
-			reconciler.SoftOwnerNameLabel:                   softOwner.Name,
-			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
-			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectDeleteOnPolicyDelete,
-		},
+		matchLabels,
 	); err != nil {
 		return err
 	}
@@ -587,12 +636,28 @@ func deleteOrphanSoftOwnedSecrets[resourceType esv1.Elasticsearch | kibanav1.Kib
 			Namespace: secret.Namespace,
 			Name:      secret.Labels[eslabel.ClusterNameLabelName],
 		}
-		_, exist := configuredApplicationMap[namespacedName]
-		if exist {
-			continue
+
+		exist := false
+		configuredApplicationType := secret.Labels[commonv1.TypeLabelName]
+
+		switch configuredApplicationType {
+		case eslabel.Type:
+			// check if they exist in the es map
+			_, exist = configuredESResources[namespacedName]
+			if exist {
+				continue
+			}
+		case kblabel.Type:
+			// check if they exist in the kb map
+			_, exist = configuredKibanaResources[namespacedName]
+			if exist {
+				continue
+			}
+		default:
+			return fmt.Errorf("secret configured for unknown application type %s", configuredApplicationType)
 		}
 
-		// given elasticsearchcluster is no longer managed by stack config policy, delete secret.
+		// given kibana/elasticsearch cluster is no longer managed by stack config policy, delete secret.
 		err := c.Delete(ctx, &secret)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err

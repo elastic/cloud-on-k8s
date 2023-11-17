@@ -18,11 +18,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	KibanaConfigKey            = "kibana.json"
-	KibanaConfigHashAnnotation = "policy.k8s.elastic.co/kibana-config-hash" //nolint:gosec
+	KibanaConfigHashAnnotation = "policy.k8s.elastic.co/kibana-config-hash"
 )
 
 func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kibanav1.Kibana) (corev1.Secret, error) {
@@ -39,10 +40,10 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kibana.Namespace,
 			Name:      GetPolicyConfigSecretName(kibana),
-			Labels: map[string]string{
-				kblabel.KibanaNameLabelName:      kibana.Name,
-				kblabel.KibanaNamespaceLabelName: kibana.Namespace,
-			},
+			Labels: kblabel.NewLabels(types.NamespacedName{
+				Name:      kibana.Name,
+				Namespace: kibana.Namespace,
+			}),
 			Annotations: map[string]string{
 				KibanaConfigHashAnnotation: kibanaConfigHash,
 			},
@@ -56,7 +57,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 	filesettings.SetSoftOwner(&kibanaConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
-	kibanaConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
+	kibanaConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
 	return kibanaConfigSecret, nil
 }
@@ -73,7 +74,6 @@ func GetPolicyConfigSecretName(kibana kibanav1.Kibana) string {
 }
 
 func kibanaConfigApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (bool, error) {
-
 	existingKibanaPods, err := k8s.PodsMatchingLabels(c, kb.Namespace, map[string]string{"kibana.k8s.elastic.co/name": kb.Name})
 	if err != nil || len(existingKibanaPods) == 0 {
 		return false, err

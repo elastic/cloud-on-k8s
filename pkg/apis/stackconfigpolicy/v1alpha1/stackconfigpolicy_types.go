@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 )
 
 const (
@@ -97,8 +99,8 @@ type KibanaConfigPolicySpec struct {
 type ResourceType string
 
 const (
-	ElasticsearchResourceType ResourceType = "Elasticsearch"
-	KibanaResourceType        ResourceType = "Kibana"
+	ElasticsearchResourceType ResourceType = eslabel.Type
+	KibanaResourceType        ResourceType = kblabel.Type
 )
 
 type IndexTemplates struct {
@@ -150,11 +152,19 @@ var phaseOrder = map[PolicyPhase]int{
 }
 
 // ResourcePolicyStatus models the status of the policy for one resource to be configured.
-type ResourcePolicyStatus struct {
+type ElasticsearchPolicyStatus struct {
 	Phase           PolicyPhase       `json:"phase,omitempty"`
 	CurrentVersion  int64             `json:"currentVersion,omitempty"`
 	ExpectedVersion int64             `json:"expectedVersion,omitempty"`
 	Error           PolicyStatusError `json:"error,omitempty"`
+}
+type KibanaPolicyStatus struct {
+	Phase PolicyPhase `json:"phase,omitempty"`
+}
+type ResourcePolicyStatus struct {
+	ElasticsearchStatus ElasticsearchPolicyStatus `json:"elasticsearchStatus,omitempty"`
+	KibanaStatus        KibanaPolicyStatus        `json:"kibanaStatus,omitempty"`
+	ResourceType        ResourceType              `json:"resourceType,omitempty"`
 }
 
 type PolicyStatusError struct {
@@ -184,49 +194,70 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
-func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string) error {
+func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
 	if _, ok := s.ResourcesStatuses[resource.String()]; ok {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
-	s.ResourcesStatuses[resource.String()] = ResourcePolicyStatus{
-		Phase: phase,
-		Error: PolicyStatusError{Message: msg},
+	resourcePolicyStatus := ResourcePolicyStatus{
+		ResourceType: resourceType,
 	}
+	switch resourceType {
+	case ElasticsearchResourceType:
+		resourcePolicyStatus.ElasticsearchStatus = ElasticsearchPolicyStatus{
+			Phase: phase,
+			Error: PolicyStatusError{Message: msg},
+		}
+	case KibanaResourceType:
+		break
+	default:
+		return fmt.Errorf("unknown resource type %s", resourceType)
+	}
+	s.ResourcesStatuses[resource.String()] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool, resourceType ResourceType) {
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool) {
 	defer func() {
 		s.ResourcesStatuses[resource.String()] = status
 		s.Update()
 	}()
-
-	if !elasticsearchConfigAndMountsApplied {
-		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
-		status.Phase = ApplyingChangesPhase
-		return
-	}
-
-	if resourceType != KibanaResourceType && status.CurrentVersion == unknownVersion {
-		status.Phase = UnknownPhase
-		return
-	}
-
-	if status.Error.Message != "" {
-		status.Phase = ErrorPhase
-		if status.ExpectedVersion > status.Error.Version {
-			status.Phase = ApplyingChangesPhase
+	switch status.ResourceType {
+	case ElasticsearchResourceType:
+		if !applicationConfigsApplied {
+			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
+			status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+			return
 		}
+
+		if status.ElasticsearchStatus.CurrentVersion == unknownVersion {
+			status.ElasticsearchStatus.Phase = UnknownPhase
+			return
+		}
+
+		if status.ElasticsearchStatus.Error.Message != "" {
+			status.ElasticsearchStatus.Phase = ErrorPhase
+			if status.ElasticsearchStatus.ExpectedVersion > status.ElasticsearchStatus.Error.Version {
+				status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+			}
+			return
+		}
+
+		if status.ElasticsearchStatus.CurrentVersion == status.ElasticsearchStatus.ExpectedVersion {
+			status.ElasticsearchStatus.Phase = ReadyPhase
+			return
+		}
+
+		status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+	case KibanaResourceType:
+		if !applicationConfigsApplied {
+			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
+			status.KibanaStatus.Phase = ApplyingChangesPhase
+			return
+		}
+		status.KibanaStatus.Phase = ReadyPhase
 		return
 	}
-
-	if status.CurrentVersion == status.ExpectedVersion {
-		status.Phase = ReadyPhase
-		return
-	}
-
-	status.Phase = ApplyingChangesPhase
 }
 
 // Update updates the policy status from its resources statuses.
@@ -235,7 +266,14 @@ func (s *StackConfigPolicyStatus) Update() {
 	s.Ready = 0
 	s.Errors = 0
 	for _, status := range s.ResourcesStatuses {
-		resourcePhase := status.Phase
+		// The status can either be a Kibana resource type or an Elasticsearch resource type
+		var resourcePhase PolicyPhase
+		if status.ResourceType == ElasticsearchResourceType {
+			resourcePhase = status.ElasticsearchStatus.Phase
+		} else {
+			resourcePhase = status.KibanaStatus.Phase
+		}
+
 		if resourcePhase == ReadyPhase {
 			s.Ready++
 		} else if resourcePhase == ErrorPhase {

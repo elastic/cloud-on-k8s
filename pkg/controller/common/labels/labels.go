@@ -16,8 +16,8 @@ const (
 	StackConfigPolicyOnDeleteLabelName = "asset.policy.k8s.elastic.co/on-delete"
 	// OrphanSecretResetOnPolicyDelete is used to set the data field of a secret to an empty map when the associated StackConfigPolicy or Elasticsearch is deleted.
 	OrphanSecretResetOnPolicyDelete = "reset"
-	// OrphanSecretResetOnPolicyDelete is used to delete the  secret when the associated stackconfigpolicy or Elasticsearch is deleted.
-	OrphanObjectDeleteOnPolicyDelete = "delete"
+	// OrphanSecretDeleteOnPolicyDelete is used to delete the  secret when the associated stackconfigpolicy or Elasticsearch is deleted.
+	OrphanSecretDeleteOnPolicyDelete = "delete"
 )
 
 // TrueFalseLabel is a label that has a true/false value.

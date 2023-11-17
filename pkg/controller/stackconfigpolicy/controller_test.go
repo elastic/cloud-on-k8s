@@ -175,7 +175,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			Namespace: "ns",
 			Labels: map[string]string{
 				"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanObjectDeleteOnPolicyDelete,
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
 				reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
 				reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
 				reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
@@ -372,7 +373,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.ResourcesStatuses["ns/test-es"].Phase)
+				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.ResourcesStatuses["ns/test-es"].ElasticsearchStatus.Phase)
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
@@ -425,7 +426,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
-				assert.Equal(t, "invalid cluster settings", policy.Status.ResourcesStatuses["ns/test-es"].Error.Message)
+				assert.Equal(t, "invalid cluster settings", policy.Status.ResourcesStatuses["ns/test-es"].ElasticsearchStatus.Error.Message)
 			},
 			wantErr:          false,
 			wantRequeue:      true,

@@ -4,6 +4,11 @@
 
 package label
 
+import (
+	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	"k8s.io/apimachinery/pkg/types"
+)
+
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
@@ -17,3 +22,11 @@ const (
 	// Type represents the Kibana type
 	Type = "kibana"
 )
+
+// NewLabels constructs a new set of labels from an Elasticsearch definition.
+func NewLabels(kb types.NamespacedName) map[string]string {
+	return map[string]string{
+		KibanaNameLabelName:    kb.Name,
+		commonv1.TypeLabelName: Type,
+	}
+}
