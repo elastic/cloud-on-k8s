@@ -874,18 +874,16 @@ spec:
 <1> Value of password to protect the Logstash keystore
 <2> The syntax for referencing keys is identical to the syntax for environment variables
 
-[id="{p}-logstash-custom-files-plugins"]
-== Adding plugins and files
+[id="{p}-logstash-custom-plugins"]
+== Working with custom plugins
 
 experimental[]
 
-Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin, or you may wish to use a plugin not included in the default Logstash docker image. To do this, there are two options available - using an `initContainer` to install plugins and add files before the main container start, or creating a custom docker image that includes the installed plugins and additional files. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
+When running {ls} with plugins outside of those included in the standard, distribution, you can install those plugins in one of two ways - either by using an `initContainer` to install plugins before the main container starts, or creating a custom docker image that includes the installed plugins. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
 
-=== Adding a plugin
+To add plugins, both of these options require the `bin/logstash-plugin` utility to be run to add the plugin(s) to the logstash pod before it starts.
 
-To add plugins, the `bin/logstash-plugin` utility needs to be run to add the plugin to the logstash pod before it starts.
-
-==== Using an initContainer
+=== Adding a plugin using an initContainer
 
 This example sets up an `initContainer` to install the `logstash-filter-tld` plugin:
 
@@ -907,7 +905,7 @@ The init container inherits:
 * The Pod name and IP address environment variables.
 
 
-==== Using a custom image
+=== Adding a plugin using a custom image
 
 This example installs the same plugin, but uses a custom image to install the plugin.
 
@@ -933,11 +931,12 @@ spec:
 
 
 [id="({p}-logstash-jar-files"]
-=== Additional files
+== Working with plugins that require additional files
 
-Some Logstash plugins, such as the JDBC input, JDBC static filter or the JMS input require additional JAR files to be added in order to run.
+Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin. To add these files, there are two options available - using an `initContainer` to add files before the main container start, or creating a custom docker image that includes the required files. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
 
-==== Using an initContainer
+
+=== Using an initContainer
 
 This example creates an `initContainer` to download a `postgres` JDBC Driver JAR file, and place it in a volume mount accessible to the main `container`, and then use it in a JDBC input in the pipeline configuration.
 
@@ -972,7 +971,7 @@ spec:
 ----
 <1> Referring to the external file should match the `mountPath` of the `container`
 
-==== Using a custom image
+=== Using a custom image
 
 This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the docker image
 
