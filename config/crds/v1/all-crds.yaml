@@ -10390,6 +10390,14 @@ spec:
                       type: object
                     kibanaStatus:
                       properties:
+                        error:
+                          properties:
+                            message:
+                              type: string
+                            version:
+                              format: int64
+                              type: integer
+                          type: object
                         phase:
                           type: string
                       type: object

@@ -89,6 +89,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 		return err
 	}
 
+	// watch for changes to Kibana and reconcile all StackConfigPolicy
+	if err := c.Watch(source.Kind(mgr.GetCache(), &kibanav1.Kibana{}), r.reconcileRequestForAllPolicies()); err != nil {
+		return err
+	}
+
 	// watch Secrets soft owned by StackConfigPolicy
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy())
 }
@@ -413,6 +418,24 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
 		if err != nil {
 			return results.WithError(err), status
+		}
+
+		// check that there is no other policy that already owns the kibana config secret
+		currentOwner, ok, err := canBeOwned(r.Client, ctx, policy, kibana)
+		if err != nil {
+			return results.WithError(err), status
+		}
+
+		// record error if already owned by another stack config policy
+		if !ok {
+			err = fmt.Errorf("conflict: resource Kibana %s/%s already configured by StackConfigpolicy %s/%s", kibana.Namespace, kibana.Name, currentOwner.Namespace, currentOwner.Name)
+			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+			results.WithError(err)
+			err = status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.KibanaResourceType)
+			if err != nil {
+				return results.WithError(err), status
+			}
+			continue
 		}
 
 		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana)

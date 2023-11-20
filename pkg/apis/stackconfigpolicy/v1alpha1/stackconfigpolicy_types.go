@@ -159,7 +159,8 @@ type ElasticsearchPolicyStatus struct {
 	Error           PolicyStatusError `json:"error,omitempty"`
 }
 type KibanaPolicyStatus struct {
-	Phase PolicyPhase `json:"phase,omitempty"`
+	Phase PolicyPhase       `json:"phase,omitempty"`
+	Error PolicyStatusError `json:"error,omitempty"`
 }
 type ResourcePolicyStatus struct {
 	ElasticsearchStatus ElasticsearchPolicyStatus `json:"elasticsearchStatus,omitempty"`
@@ -208,7 +209,10 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 			Error: PolicyStatusError{Message: msg},
 		}
 	case KibanaResourceType:
-		break
+		resourcePolicyStatus.KibanaStatus = KibanaPolicyStatus{
+			Phase: phase,
+			Error: PolicyStatusError{Message: msg},
+		}
 	default:
 		return fmt.Errorf("unknown resource type %s", resourceType)
 	}
@@ -253,6 +257,10 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		if !applicationConfigsApplied {
 			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 			status.KibanaStatus.Phase = ApplyingChangesPhase
+			return
+		}
+		if status.KibanaStatus.Error.Message != "" {
+			status.KibanaStatus.Phase = ErrorPhase
 			return
 		}
 		status.KibanaStatus.Phase = ReadyPhase

@@ -5,16 +5,20 @@
 package stackconfigpolicy
 
 import (
+	"context"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -29,7 +33,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 	var configDataJSONBytes []byte
 	var err error
 	if policy.Spec.Kibana.Config != nil {
-		configDataJSONBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
+		configDataJSONBytes, err = policy.Spec.Kibana.Config.MarshalJSON()
 		if err != nil {
 			return corev1.Secret{}, err
 		}
@@ -85,4 +89,30 @@ func kibanaConfigApplied(c k8s.Client, policy policyv1alpha1.StackConfigPolicy, 
 	}
 
 	return true, nil
+}
+
+func canBeOwned(c k8s.Client, ctx context.Context, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (reconciler.SoftOwnerRef, bool, error) {
+	// Check if the secret already exists
+	var kibanaConfigSecret corev1.Secret
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      GetPolicyConfigSecretName(kb),
+		Namespace: kb.Namespace,
+	}, &kibanaConfigSecret)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return reconciler.SoftOwnerRef{}, false, err
+	}
+
+	if apierrors.IsNotFound(err) {
+		// Secret does not exist, return true
+		return reconciler.SoftOwnerRef{}, true, nil
+	}
+
+	currentOwner, referenced := reconciler.SoftOwnerRefFromLabels(kibanaConfigSecret.Labels)
+	// either there is no soft owner
+	if !referenced {
+		return currentOwner, true, nil
+	}
+	// or the owner is already the given policy
+	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
+	return currentOwner, canBeOwned, nil
 }

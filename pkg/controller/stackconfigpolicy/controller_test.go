@@ -21,6 +21,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
@@ -129,6 +130,13 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					},
 				},
 			},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]interface{}{
+						"xpack.canvas.enabled": true,
+					},
+				},
+			},
 		},
 	}
 	elasticsearchConfigAndMountsHash := getElasticsearchConfigAndMountsHash(policyFixture.Spec.Elasticsearch.Config, policyFixture.Spec.Elasticsearch.SecretMounts)
@@ -217,6 +225,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			Version: v,
 		}
 	}
+
+	kibanaFixture := kibanav1.Kibana{ObjectMeta: metav1.ObjectMeta{
+		Namespace: "ns",
+		Name:      "test-kb",
+		Labels:    map[string]string{"label": "test"},
+	}}
 
 	type args struct {
 		client           k8s.Client
@@ -457,7 +471,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		{
 			name: "Happy path",
 			args: args{
-				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture),
+				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture, &kibanaFixture, mkKibanaPod("ns", true, "3077592849")),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
@@ -468,8 +482,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					Name:      "test-policy",
 				}, &policy)
 				assert.NoError(t, err)
-				assert.Equal(t, 1, policy.Status.Resources)
-				assert.Equal(t, 1, policy.Status.Ready)
+				assert.Equal(t, 2, policy.Status.Resources)
+				assert.Equal(t, 2, policy.Status.Ready)
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 				var esSecret corev1.Secret
 				// Verify the config secret created by the stack config policy controller
