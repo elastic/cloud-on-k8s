@@ -36,9 +36,7 @@ spec:
                     hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
-                    # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
-                    # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
-                    ssl.verification_mode: "none"
+                    ssl.verification_mode: "certificate"
                     xpack.enabled: true
               - condition:
                   contains:
@@ -51,9 +49,7 @@ spec:
                     hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
                     password: ${MONITORED_ES_PASSWORD}
-                    # WARNING: disables TLS as the default certificate is not valid for the pod FQDN
-                    # TODO: switch this to "certificate" when available: https://github.com/elastic/beats/issues/8164
-                    ssl.verification_mode: "none"
+                    ssl.verification_mode: "certificate"
                     xpack.enabled: true
     processors:
     - add_cloud_metadata: {}
