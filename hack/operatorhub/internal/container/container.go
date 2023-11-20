@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	eckOperatorFormat              = "docker.elastic.co/eck/eck-operator-ubi8:%s"
+	eckOperatorFormat              = "docker.elastic.co/eck/eck-operator-ubi:%s"
 	registryURL                    = "quay.io"
 	httpAcceptHeader               = "Accept"
 	httpContentTypeHeader          = "Content-Type"

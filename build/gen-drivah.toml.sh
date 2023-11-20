@@ -80,9 +80,9 @@ main() {
                 license_pubkey=dev-license.key
                 BUILD_LICENSE_PUBKEY=dev
         fi
-        # UBI8 build
-        if [[ "$flavor" =~ -ubi8 ]]; then
-                name="$name-ubi8"
+        # UBI build
+        if [[ "$flavor" =~ -ubi ]]; then
+                name="$name-ubi"
                 container_file_path=$HERE/Dockerfile-ubi
         fi
         # FIPS build
