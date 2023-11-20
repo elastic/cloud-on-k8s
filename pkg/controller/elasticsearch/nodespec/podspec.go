@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
 
@@ -58,6 +59,7 @@ func BuildPodTemplateSpec(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
+	policyConfig PolicyConfig,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -65,7 +67,7 @@ func BuildPodTemplateSpec(
 	}
 
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume)
+	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes)
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {
@@ -99,7 +101,7 @@ func BuildPodTemplateSpec(
 	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts))
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -191,6 +193,7 @@ func buildAnnotations(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
+	policyAnnotations map[string]string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -215,6 +218,9 @@ func buildAnnotations(
 
 	// set the annotation in place
 	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
+
+	// set policy annotations
+	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
 }

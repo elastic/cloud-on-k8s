@@ -25,6 +25,7 @@ func buildVolumes(
 	nodeSpec esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
+	additionalMountsFromPolicy []volume.VolumeLike,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
@@ -118,6 +119,12 @@ func buildVolumes(
 	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		volumes = append(volumes, fileSettingsVolume.Volume())
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
+	}
+
+	// additional volumes from stack config policy
+	for _, volume := range additionalMountsFromPolicy {
+		volumes = append(volumes, volume.Volume())
+		volumeMounts = append(volumeMounts, volume.VolumeMount())
 	}
 
 	// include the user-provided PodTemplate volumes as the user may have defined the data volume there (e.g.: emptyDir or hostpath volume)

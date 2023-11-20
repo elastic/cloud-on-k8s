@@ -65,6 +65,7 @@ func BuildStatefulSet(
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
 	setDefaultSecurityContext bool,
+	policyConfig PolicyConfig,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
@@ -79,7 +80,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

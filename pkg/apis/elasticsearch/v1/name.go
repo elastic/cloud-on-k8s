@@ -12,6 +12,7 @@ import (
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 )
 
@@ -19,6 +20,7 @@ const (
 	configSecretSuffix                           = "config"
 	secureSettingsSecretSuffix                   = "secure-settings"
 	fileSettingsSecretSuffix                     = "file-settings"
+	policyEsConfigSecretSuffix                   = "policy-config" //nolint:gosec
 	httpServiceSuffix                            = "http"
 	internalHTTPServiceSuffix                    = "internal-http"
 	transportServiceSuffix                       = "transport"
@@ -173,4 +175,15 @@ func RemoteCaSecretName(esName string) string {
 
 func FileSettingsSecretName(esName string) string {
 	return ESNamer.Suffix(esName, fileSettingsSecretSuffix)
+}
+
+func StackConfigElasticsearchConfigSecretName(esName string) string {
+	return ESNamer.Suffix(esName, policyEsConfigSecretSuffix)
+}
+
+// StackConfigAdditionalSecretName returns the name of the stack config policy Secret suffixed with a hash to prevent conflicts.
+// This also helps keep the secret name size to within kubernetes name limits even if the secret name created by the user is long.
+func StackConfigAdditionalSecretName(esName string, secretName string) string {
+	secretNameHash := hash.HashObject(secretName)
+	return ESNamer.Suffix(esName, "scp", secretNameHash)
 }
