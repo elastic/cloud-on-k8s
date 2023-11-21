@@ -233,7 +233,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Labels:    map[string]string{"label": "test"},
 	}}
 
-	kibanaConfigSecretFixture := mkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
+	kibanaConfigSecretFixture := MkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
 
 	type args struct {
 		client           k8s.Client
@@ -348,7 +348,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		{
 			name: "Reconcile Kibana already owned by another policy",
 			args: args{
-				client:         k8s.NewFakeClient(&policyFixture, &kibanaFixture, mkKibanaConfigSecret("ns", "another-policy", "ns", "testvalue")),
+				client:         k8s.NewFakeClient(&policyFixture, &kibanaFixture, MkKibanaConfigSecret("ns", "another-policy", "ns", "testvalue")),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
@@ -632,6 +632,44 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.True(t, apierrors.IsNotFound(err))
 			},
 			wantErr: false,
+		},
+		{
+			name: "Elasticsearch cluster is unreachable and Kibana has reconciled sucessfully",
+			args: args{
+				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture, &kibanaFixture, mkKibanaPod("ns", true, "3077592849")),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(esclient.FileSettings{}, errors.New("elasticsearch client failed")),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, 2, policy.Status.Resources)
+				assert.Equal(t, 1, policy.Status.Ready)
+				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.ResourcesStatuses["ns/test-es"].ElasticsearchStatus.Phase)
+				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.ResourcesStatuses["ns/test-kb"].KibanaStatus.Phase)
+				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
+			},
+			wantErr:          false,
+			wantRequeue:      true,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "Elasticsearch reconciled sucessfully and Kibana config not yet applied",
+			args: args{
+				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture, &kibanaFixture, mkKibanaPod("ns", true, "testhash")),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, 2, policy.Status.Resources)
+				assert.Equal(t, 1, policy.Status.Ready)
+				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.ResourcesStatuses["ns/test-es"].ElasticsearchStatus.Phase)
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.ResourcesStatuses["ns/test-kb"].KibanaStatus.Phase)
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
+			},
+			wantErr:          false,
+			wantRequeue:      true,
+			wantRequeueAfter: true,
 		},
 	}
 

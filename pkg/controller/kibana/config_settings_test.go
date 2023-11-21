@@ -194,9 +194,10 @@ func TestNewConfigSettings(t *testing.T) {
 		},
 	}
 	type args struct {
-		client   k8s.Client
-		kb       func() kbv1.Kibana
-		ipFamily corev1.IPFamily
+		client                 k8s.Client
+		kb                     func() kbv1.Kibana
+		ipFamily               corev1.IPFamily
+		kibanaConfigFromPolicy *settings.CanonicalConfig
 	}
 	tests := []struct {
 		name    string
@@ -496,6 +497,24 @@ func TestNewConfigSettings(t *testing.T) {
 			want: append(defaultConfig, []byte(`foo: bar`)...),
 		},
 		{
+			name: "with kibana config from stackconfigpolicy",
+			args: args{
+				client: k8s.NewFakeClient(existingSecret),
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec.Config = &commonv1.Config{
+						Data: map[string]interface{}{
+							"foo": "bar",
+						},
+					}
+					return kb
+				},
+				ipFamily:               corev1.IPv4Protocol,
+				kibanaConfigFromPolicy: settings.MustCanonicalConfig(map[string]interface{}{"foo": "bars"}),
+			},
+			want: append(defaultConfig, []byte(`foo: bars`)...),
+		},
+		{
 			name: "test existing secret does not prevent updates to config, e.g. spec takes precedence even if there is a secret indicating otherwise",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
@@ -545,7 +564,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, nil)
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
 			if tt.wantErr {
 				require.Error(t, err)
 			}

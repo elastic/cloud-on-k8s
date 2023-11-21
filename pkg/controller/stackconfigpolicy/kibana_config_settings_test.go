@@ -234,7 +234,7 @@ func Test_canBeOwned(t *testing.T) {
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "3077592849")),
+				client: k8s.NewFakeClient(MkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "3077592849")),
 			},
 			wantSecretRef: reconciler.SoftOwnerRef{
 				Namespace: "test-policy-ns",
@@ -270,7 +270,7 @@ func Test_canBeOwned(t *testing.T) {
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-another-policy", "test-policy-ns", "3077592849")),
+				client: k8s.NewFakeClient(MkKibanaConfigSecret("test-ns", "test-another-policy", "test-policy-ns", "3077592849")),
 			},
 			wantSecretRef: reconciler.SoftOwnerRef{
 				Namespace: "test-policy-ns",
@@ -340,7 +340,7 @@ func mkKibanaPod(namespace string, hashapplied bool, hashValue string) *corev1.P
 	return &pod
 }
 
-func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
+func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,

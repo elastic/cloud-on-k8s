@@ -197,8 +197,9 @@ func Test_getStrategyType(t *testing.T) {
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb             func() *kbv1.Kibana
-		initialObjects func() []client.Object
+		kb                func() *kbv1.Kibana
+		initialObjects    func() []client.Object
+		policyAnnotations map[string]string
 	}
 
 	tests := []struct {
@@ -223,6 +224,16 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want:    expectedDeploymentParams(),
+			wantErr: false,
+		},
+		{
+			name: "with policy annotations",
+			args: args{
+				kb:                kibanaFixture,
+				initialObjects:    defaultInitialObjects,
+				policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
+			},
+			want:    expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"}),
 			wantErr: false,
 		},
 		{
@@ -364,7 +375,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, map[string]string{})
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -586,6 +597,15 @@ func expectedDeploymentParams() deployment.Params {
 			},
 		},
 	}
+}
+
+func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string) deployment.Params {
+	deploymentParams := expectedDeploymentParams()
+
+	for k, v := range policyAnnotations {
+		deploymentParams.PodTemplateSpec.Annotations[k] = v
+	}
+	return deploymentParams
 }
 
 func kibanaFixture() *kbv1.Kibana {

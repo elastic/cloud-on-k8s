@@ -38,6 +38,10 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 		return policyConfig, err
 	}
 
+	if apierrors.IsNotFound(err) {
+		return policyConfig, nil
+	}
+
 	// Additional annotations to be applied on the Kibana pods
 	policyConfig.PolicyAnnotations = map[string]string{
 		stackconfigpolicy.KibanaConfigHashAnnotation: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.KibanaConfigHashAnnotation],
@@ -46,7 +50,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 	// Parse Kibana config from the stack config policy secret.
 	var kbConfigFromStackConfigPolicy map[string]interface{}
 	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey]) != "" {
-		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey], &kbConfigFromStackConfigPolicy)
+		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey], &kbConfigFromStackConfigPolicy)
 		if err != nil {
 			return policyConfig, err
 		}
