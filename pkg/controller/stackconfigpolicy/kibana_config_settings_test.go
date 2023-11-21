@@ -48,7 +48,7 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
@@ -68,11 +68,11 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 						"eck.k8s.elastic.co/owner-namespace":    "test-policy-ns",
 					},
 					Annotations: map[string]string{
-						"policy.k8s.elastic.co/kibana-config-hash": "1465921050",
+						"policy.k8s.elastic.co/kibana-config-hash": "3077592849",
 					},
 				},
 				Data: map[string][]byte{
-					"kibana.json": []byte(`{"test.config.kibana":"test"}`),
+					"kibana.json": []byte(`{"xpack.canvas.enabled":true}`),
 				},
 			},
 		},
@@ -117,13 +117,13 @@ func Test_kibanaConfigApplied(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaPod("test-ns", true, "1465921050")),
+				client: k8s.NewFakeClient(mkKibanaPod("test-ns", true, "3077592849")),
 			},
 			want: true,
 		},
@@ -145,13 +145,13 @@ func Test_kibanaConfigApplied(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaPod("test-ns", false, "1465921050")),
+				client: k8s.NewFakeClient(mkKibanaPod("test-ns", false, "3077592849")),
 			},
 			want: false,
 		},
@@ -173,7 +173,7 @@ func Test_kibanaConfigApplied(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
@@ -218,7 +218,7 @@ func Test_canBeOwned(t *testing.T) {
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
 					TypeMeta: metav1.TypeMeta{
-						Kind: "policy",
+						Kind: "StackConfigPolicy",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-policy",
@@ -228,18 +228,18 @@ func Test_canBeOwned(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns")),
+				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "3077592849")),
 			},
 			wantSecretRef: reconciler.SoftOwnerRef{
 				Namespace: "test-policy-ns",
 				Name:      "test-policy",
-				Kind:      "policy",
+				Kind:      "StackConfigPolicy",
 			},
 			wantCanbeOwned: true,
 		},
@@ -254,7 +254,7 @@ func Test_canBeOwned(t *testing.T) {
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
 					TypeMeta: metav1.TypeMeta{
-						Kind: "policy",
+						Kind: "StackConfigPolicy",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-policy",
@@ -264,18 +264,18 @@ func Test_canBeOwned(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
 					},
 				},
-				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-another-policy", "test-policy-ns")),
+				client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-another-policy", "test-policy-ns", "3077592849")),
 			},
 			wantSecretRef: reconciler.SoftOwnerRef{
 				Namespace: "test-policy-ns",
 				Name:      "test-another-policy",
-				Kind:      "policy",
+				Kind:      "StackConfigPolicy",
 			},
 			wantCanbeOwned: false,
 		},
@@ -290,7 +290,7 @@ func Test_canBeOwned(t *testing.T) {
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
 					TypeMeta: metav1.TypeMeta{
-						Kind: "policy",
+						Kind: "StackConfigPolicy",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-policy",
@@ -300,7 +300,7 @@ func Test_canBeOwned(t *testing.T) {
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
 								Data: map[string]interface{}{
-									"test.config.kibana": "test",
+									"xpack.canvas.enabled": true,
 								},
 							},
 						},
@@ -322,7 +322,7 @@ func Test_canBeOwned(t *testing.T) {
 	}
 }
 
-func mkKibanaPod(namespace string, hashapplied bool, hashvalue string) *corev1.Pod {
+func mkKibanaPod(namespace string, hashapplied bool, hashValue string) *corev1.Pod {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-kibana-pod",
@@ -335,12 +335,12 @@ func mkKibanaPod(namespace string, hashapplied bool, hashvalue string) *corev1.P
 	}
 
 	if hashapplied {
-		pod.Annotations["policy.k8s.elastic.co/kibana-config-hash"] = hashvalue
+		pod.Annotations["policy.k8s.elastic.co/kibana-config-hash"] = hashValue
 	}
 	return &pod
 }
 
-func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string) *corev1.Secret {
+func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -349,16 +349,16 @@ func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolic
 				"asset.policy.k8s.elastic.co/on-delete": "delete",
 				"kibana.k8s.elastic.co/name":            "test-kb",
 				"common.k8s.elastic.co/type":            "kibana",
-				"eck.k8s.elastic.co/owner-kind":         "policy",
+				"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
 				"eck.k8s.elastic.co/owner-name":         owningPolicyName,
 				"eck.k8s.elastic.co/owner-namespace":    owningPolicyNamespace,
 			},
 			Annotations: map[string]string{
-				"policy.k8s.elastic.co/kibana-config-hash": "1465921050",
+				"policy.k8s.elastic.co/kibana-config-hash": hashValue,
 			},
 		},
 		Data: map[string][]byte{
-			"kibana.json": []byte(`{"test.config.kibana":"test"}`),
+			"kibana.json": []byte(`{"xpack.canvas.enabled":true}`),
 		},
 	}
 }

@@ -456,7 +456,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 	// delete Settings secrets for resources no longer selected by this policy
 	results.WithError(deleteOrphanSoftOwnedSecrets(ctx, r.Client, k8s.ExtractNamespacedName(&policy), nil, configuredResources, policyv1alpha1.KibanaResourceType))
 
-	return &reconciler.Results{}, status
+	return results, status
 }
 
 func newElasticsearchResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
@@ -655,22 +655,25 @@ func deleteOrphanSoftOwnedSecrets(
 
 	for i := range secrets.Items {
 		secret := secrets.Items[i]
-		namespacedName := types.NamespacedName{
-			Namespace: secret.Namespace,
-			Name:      secret.Labels[eslabel.ClusterNameLabelName],
-		}
-
 		exist := false
 		configuredApplicationType := secret.Labels[commonv1.TypeLabelName]
 
 		switch configuredApplicationType {
 		case eslabel.Type:
+			namespacedName := types.NamespacedName{
+				Namespace: secret.Namespace,
+				Name:      secret.Labels[eslabel.ClusterNameLabelName],
+			}
 			// check if they exist in the es map
 			_, exist = configuredESResources[namespacedName]
 			if exist {
 				continue
 			}
 		case kblabel.Type:
+			namespacedName := types.NamespacedName{
+				Namespace: secret.Namespace,
+				Name:      secret.Labels[kblabel.KibanaNameLabelName],
+			}
 			// check if they exist in the kb map
 			_, exist = configuredKibanaResources[namespacedName]
 			if exist {
