@@ -196,7 +196,7 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 }
 
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
-	if _, ok := s.ResourcesStatuses[resource.String()]; ok {
+	if _, ok := s.ResourcesStatuses[s.getResourceStatusKey(resource, resourceType)]; ok {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
@@ -216,14 +216,14 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	default:
 		return fmt.Errorf("unknown resource type %s", resourceType)
 	}
-	s.ResourcesStatuses[resource.String()] = resourcePolicyStatus
+	s.ResourcesStatuses[s.getResourceStatusKey(resource, resourceType)] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool) {
 	defer func() {
-		s.ResourcesStatuses[resource.String()] = status
+		s.ResourcesStatuses[s.getResourceStatusKey(resource, status.ResourceType)] = status
 		s.Update()
 	}()
 	switch status.ResourceType {
@@ -303,4 +303,8 @@ func (s StackConfigPolicyStatus) IsDegraded(prev StackConfigPolicyStatus) bool {
 // IsMarkedForDeletion returns true if the StackConfigPolicy resource is going to be deleted.
 func (p *StackConfigPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
+}
+
+func (s StackConfigPolicyStatus) getResourceStatusKey(nsn types.NamespacedName, resourceType ResourceType) string {
+	return fmt.Sprintf("%s/%s", string(resourceType), nsn.String())
 }

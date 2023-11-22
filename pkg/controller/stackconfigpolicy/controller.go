@@ -205,6 +205,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	defer status.Update()
 
 	// Enterprise license check
+
 	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
 		return results.WithError(err), status
