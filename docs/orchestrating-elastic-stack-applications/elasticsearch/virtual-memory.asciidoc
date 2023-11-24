@@ -81,7 +81,7 @@ spec:
     spec:
       initContainers:
         - name: max-map-count-setter
-          image: docker.io/bash:5.2.15
+          image: docker.io/bash:5.2.21
           resources:
             limits:
               cpu: 100m
