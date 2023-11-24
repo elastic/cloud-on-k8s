@@ -7259,11 +7259,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-jose/go-jose/v3
-Version : v3.0.0
-Time    : 2021-06-05T21:22:18Z
+Version : v3.0.1
+Time    : 2023-11-08T00:39:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v3@v3.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v3@v3.0.1/LICENSE:
 
 
                                  Apache License
