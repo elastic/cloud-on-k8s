@@ -11,9 +11,8 @@ endif::[]
 In Kubernetes, a https://kubernetes.io/docs/tasks/configure-pod-container/security-context/[`securityContext`] defines privilege and access control settings for a Pod or Container. You can set up it through the `podTemplate` section of an Elastic resource specification.
 
 == Default Elasticsearch security context
-added::[8.8.0]
 
-By default, the Elasticsearch container is run with the following security context:
+As of version 8.8.0, the Elasticsearch container and ECK managed sidecars and init containers are running with the following security context:
 
 [source,yaml,subs="attributes,callouts"]
 ----
@@ -30,7 +29,7 @@ securityContext:
 
 == Running older versions of Elasticsearch as non-root
 
-NOTE: when running on Red Hat OpenShift a random user ID is link:https://cloud.redhat.com/blog/a-guide-to-openshift-and-uids[automatically assigned] and following instructions do not apply.
+NOTE: when running on Red Hat OpenShift a random user ID is link:https://cloud.redhat.com/blog/a-guide-to-openshift-and-uids[automatically assigned] and the following instructions do not apply.
 
 In versions of Elasticsearch before 8.0.0, the Elastisearch container is run as root and its entrypoint is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK uses an `initContainer` to make sure that the data volume is writable for the `elasticsearch` user.
 
