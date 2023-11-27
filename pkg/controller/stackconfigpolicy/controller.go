@@ -432,8 +432,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			err := fmt.Errorf("conflict: resource Kibana %s/%s already configured by StackConfigpolicy %s/%s", kibana.Namespace, kibana.Name, currentOwner.Namespace, currentOwner.Name)
 			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
 			results.WithError(err)
-			err = status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.KibanaResourceType)
-			if err != nil {
+			if err := status.AddPolicyErrorFor(kibanaNsn, policyv1alpha1.ConflictPhase, err.Error(), policyv1alpha1.KibanaResourceType); err != nil {
 				return results.WithError(err), status
 			}
 			continue
