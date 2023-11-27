@@ -205,20 +205,17 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	defer status.Update()
 
 	// Enterprise license check
-
-	/*
-		enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
-		if err != nil {
-			return results.WithError(err), status
-		}
-		if !enabled {
-			msg := "StackConfigPolicy is an enterprise feature. Enterprise features are disabled"
-			log.Info(msg, "namespace", policy.Namespace, "policy_name", policy.Name)
-			r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
-			// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-			return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
-		}
-	*/
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return results.WithError(err), status
+	}
+	if !enabled {
+		msg := "StackConfigPolicy is an enterprise feature. Enterprise features are disabled"
+		log.Info(msg, "namespace", policy.Namespace, "policy_name", policy.Name)
+		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
+		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
+		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
+	}
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
 		status.Phase = policyv1alpha1.InvalidPhase
@@ -371,7 +368,10 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// update the ES resource status for this ES
-		status.UpdateResourceStatusPhase(esNsn, newElasticsearchResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied, policyv1alpha1.ElasticsearchResourceType)
+		err = status.UpdateResourceStatusPhase(esNsn, newElasticsearchResourceStatus(currentSettings, expectedVersion), configAndSecretMountsApplied, policyv1alpha1.ElasticsearchResourceType)
+		if err != nil {
+			return results.WithError(err), status
+		}
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
@@ -451,7 +451,10 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		}
 
 		// update the Kibana resource status for this Kibana
-		status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{}, configApplied, policyv1alpha1.KibanaResourceType)
+		err = status.UpdateResourceStatusPhase(kibanaNsn, policyv1alpha1.ResourcePolicyStatus{}, configApplied, policyv1alpha1.KibanaResourceType)
+		if err != nil {
+			return results.WithError(err), status
+		}
 	}
 
 	// delete Settings secrets for resources no longer selected by this policy

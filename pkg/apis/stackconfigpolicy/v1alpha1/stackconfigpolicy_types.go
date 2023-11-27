@@ -209,7 +209,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) {
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) error {
 	defer func() {
 		if val, ok := s.ResourcesStatuses[resourceType]; !ok || val == nil {
 			s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
@@ -222,12 +222,12 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		if !applicationConfigsApplied {
 			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 			status.Phase = ApplyingChangesPhase
-			return
+			return nil
 		}
 
 		if status.CurrentVersion == unknownVersion {
 			status.Phase = UnknownPhase
-			return
+			return nil
 		}
 
 		if status.Error.Message != "" {
@@ -235,28 +235,30 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 			if status.ExpectedVersion > status.Error.Version {
 				status.Phase = ApplyingChangesPhase
 			}
-			return
+			return nil
 		}
 
 		if status.CurrentVersion == status.ExpectedVersion {
 			status.Phase = ReadyPhase
-			return
+			return nil
 		}
-
 		status.Phase = ApplyingChangesPhase
 	case KibanaResourceType:
 		if !applicationConfigsApplied {
 			// New KibanaConfig not yet applied to the Elasticsearch pod
 			status.Phase = ApplyingChangesPhase
-			return
+			return nil
 		}
 		if status.Error.Message != "" {
 			status.Phase = ErrorPhase
-			return
+			return nil
 		}
 		status.Phase = ReadyPhase
-		return
+		return nil
+	default:
+		return fmt.Errorf("unknown resource type %s", resourceType)
 	}
+	return nil
 }
 
 // Update updates the policy status from its resources statuses.
