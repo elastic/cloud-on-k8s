@@ -423,7 +423,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		}
 
 		// check that there is no other policy that already owns the kibana config secret
-		currentOwner, ok, err := canBeOwned(r.Client, ctx, policy, kibana)
+		currentOwner, ok, err := canBeOwned(ctx, r.Client, policy, kibana)
 		if err != nil {
 			return results.WithError(err), status
 		}
@@ -543,7 +543,7 @@ func handleOrphanSoftOwnedSecrets(
 	configuredKibanaResources kbMap,
 	resourceType policyv1alpha1.ResourceType,
 ) error {
-	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredESResources, configuredKibanaResources, resourceType)
+	err := resetOrphanSoftOwnedFileSettingSecrets(ctx, c, softOwner, configuredESResources, resourceType)
 	if err != nil {
 		return err
 	}
@@ -559,7 +559,6 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 	c k8s.Client,
 	softOwner types.NamespacedName,
 	configuredESResources esMap,
-	configuredKibanaResources kbMap,
 	resourceType policyv1alpha1.ResourceType,
 ) error {
 	log := ulog.FromContext(ctx)
@@ -617,6 +616,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 			}
 		case kblabel.Type:
 			// Currently we do not reset labels for kibana, so we shouldn't hit this.
+			// Implement if needed in the future
 			continue
 		default:
 			return fmt.Errorf("secret configured for unknown application type %s", configuredApplicationType)

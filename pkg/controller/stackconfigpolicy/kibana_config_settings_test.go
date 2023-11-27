@@ -314,7 +314,7 @@ func Test_canBeOwned(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secretRef, canBeOwned, err := canBeOwned(tt.args.client, context.Background(), *tt.args.policy, tt.args.kb)
+			secretRef, canBeOwned, err := canBeOwned(context.Background(), tt.args.client, *tt.args.policy, tt.args.kb)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecretRef, secretRef)
 			require.Equal(t, tt.wantCanbeOwned, canBeOwned)

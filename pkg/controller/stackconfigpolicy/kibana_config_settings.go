@@ -91,7 +91,7 @@ func kibanaConfigApplied(c k8s.Client, policy policyv1alpha1.StackConfigPolicy, 
 	return true, nil
 }
 
-func canBeOwned(c k8s.Client, ctx context.Context, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (reconciler.SoftOwnerRef, bool, error) {
+func canBeOwned(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (reconciler.SoftOwnerRef, bool, error) {
 	// Check if the secret already exists
 	var kibanaConfigSecret corev1.Secret
 	err := c.Get(ctx, types.NamespacedName{
