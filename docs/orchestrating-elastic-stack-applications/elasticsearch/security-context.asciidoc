@@ -10,9 +10,28 @@ endif::[]
 
 In Kubernetes, a https://kubernetes.io/docs/tasks/configure-pod-container/security-context/[`securityContext`] defines privilege and access control settings for a Pod or Container. You can set up it through the `podTemplate` section of an Elastic resource specification.
 
-== Run as non-root Elasticsearch
+== Default Elasticsearch security context
 
-By default, the Elastisearch container is run as root and its entrypoint is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK uses an `initContainer` to make sure that the data volume is writable for the `elasticsearch` user.
+As of version 8.8.0, the Elasticsearch container and ECK managed sidecars and init containers are running with the following security context:
+
+[source,yaml,subs="attributes,callouts"]
+----
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  privileged: false
+  readOnlyRootFilesystem: true <1>
+----
+
+<1> `readOnlyRootFilesystem` is only enabled if the `elasticsearch-data` directory is mounted in a volume.
+
+== Running older versions of Elasticsearch as non-root
+
+NOTE: when running on Red Hat OpenShift a random user ID is link:https://cloud.redhat.com/blog/a-guide-to-openshift-and-uids[automatically assigned] and the following instructions do not apply.
+
+In versions of Elasticsearch before 8.0.0, the Elastisearch container is run as root and its entrypoint is responsible to run the Elasticsearch process with the `elasticsearch` user (defined with ID 1000). In the background, ECK uses an `initContainer` to make sure that the data volume is writable for the `elasticsearch` user.
 
 To run the Elastisearch container as a non-root user, you need to configure the Elasticsearch manifest with an appropriate security context to make the data volume writable to the `elasticsearch` user by specifying the right group ID through the `fsGroup`.
 
