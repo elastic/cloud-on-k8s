@@ -162,6 +162,7 @@ type KibanaPolicyStatus struct {
 	Phase PolicyPhase       `json:"phase,omitempty"`
 	Error PolicyStatusError `json:"error,omitempty"`
 }
+// ResourcePolicyStatus models the status of the policy for one resource to be configured.
 type ResourcePolicyStatus struct {
 	ElasticsearchStatus ElasticsearchPolicyStatus `json:"elasticsearchStatus,omitempty"`
 	KibanaStatus        KibanaPolicyStatus        `json:"kibanaStatus,omitempty"`
@@ -196,7 +197,8 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 }
 
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
-	if _, ok := s.ResourcesStatuses[s.getResourceStatusKey(resource, resourceType)]; ok {
+	resourceStatusKey := s.getResourceStatusKey(resource, resourceType)
+	if _, ok := s.ResourcesStatuses[resourceStatusKey]; ok {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
@@ -216,7 +218,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	default:
 		return fmt.Errorf("unknown resource type %s", resourceType)
 	}
-	s.ResourcesStatuses[s.getResourceStatusKey(resource, resourceType)] = resourcePolicyStatus
+	s.ResourcesStatuses[resourceStatusKey] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
