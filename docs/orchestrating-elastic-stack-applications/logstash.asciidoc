@@ -976,8 +976,8 @@ spec:
 This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the docker image
 
 First, create a Dockerfile based on the logstash docker image, and download the JDBC driver, storing it alongside the other JAR files in the Logstash classpath:
-+
-[subs="attributes,+macros,callouts"]
+
+[source,subs="attributes,+macros,callouts"]
 ----
 FROM docker.elastic.co/logstash/logstash:{version}
 
