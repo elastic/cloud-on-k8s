@@ -114,7 +114,7 @@ type IndexTemplates struct {
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.
-	ResourcesStatuses map[string]ResourcePolicyStatus `json:"resourcesStatuses"`
+	ResourcesStatuses map[ResourceType]map[string]ResourcePolicyStatus `json:"resourcesStatuses"`
 	// Resources is the number of resources to be configured.
 	Resources int `json:"resources,omitempty"`
 	// Ready is the number of resources successfully configured.
@@ -152,21 +152,15 @@ var phaseOrder = map[PolicyPhase]int{
 }
 
 // ResourcePolicyStatus models the status of the policy for one resource to be configured.
-type ElasticsearchPolicyStatus struct {
-	Phase           PolicyPhase       `json:"phase,omitempty"`
-	CurrentVersion  int64             `json:"currentVersion,omitempty"`
+type ResourcePolicyStatus struct {
+	Phase PolicyPhase `json:"phase,omitempty"`
+	// CurrentVersion denotes the current version of filesettings applied to the Elasticsearch cluster
+	// This field does not apply to Kibana resources
+	CurrentVersion int64 `json:"currentVersion,omitempty"`
+	// ExpectedVersion denotes the expected version of filesettings that should beapplied to the Elasticsearch cluster
+	// This field does not apply to Kibana resources
 	ExpectedVersion int64             `json:"expectedVersion,omitempty"`
 	Error           PolicyStatusError `json:"error,omitempty"`
-}
-type KibanaPolicyStatus struct {
-	Phase PolicyPhase       `json:"phase,omitempty"`
-	Error PolicyStatusError `json:"error,omitempty"`
-}
-// ResourcePolicyStatus models the status of the policy for one resource to be configured.
-type ResourcePolicyStatus struct {
-	ElasticsearchStatus ElasticsearchPolicyStatus `json:"elasticsearchStatus,omitempty"`
-	KibanaStatus        KibanaPolicyStatus        `json:"kibanaStatus,omitempty"`
-	ResourceType        ResourceType              `json:"resourceType,omitempty"`
 }
 
 type PolicyStatusError struct {
@@ -184,7 +178,7 @@ type SecretMount struct {
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
 	status := StackConfigPolicyStatus{
-		ResourcesStatuses:  map[string]ResourcePolicyStatus{},
+		ResourcesStatuses:  map[ResourceType]map[string]ResourcePolicyStatus{},
 		Phase:              ReadyPhase,
 		ObservedGeneration: scp.Generation,
 	}
@@ -196,102 +190,95 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
+// AddPolicyErrorFor adds given error message to status of a resource, only one error be reported for a resource
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
-	resourceStatusKey := s.getResourceStatusKey(resource, resourceType)
-	if _, ok := s.ResourcesStatuses[resourceStatusKey]; ok {
-		return fmt.Errorf("policy error already exists for resource %q", resource)
+	resourceStatusKey := s.getResourceStatusKey(resource)
+	if resourceStatusMap, ok := s.ResourcesStatuses[resourceType]; ok {
+		if _, exists := resourceStatusMap[resourceStatusKey]; exists {
+			return fmt.Errorf("policy error already exists for resource %q", resource)
+		}
+	} else if !ok || resourceStatusMap == nil {
+		s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
-		ResourceType: resourceType,
+		Phase: phase,
+		Error: PolicyStatusError{Message: msg},
 	}
-	switch resourceType {
-	case ElasticsearchResourceType:
-		resourcePolicyStatus.ElasticsearchStatus = ElasticsearchPolicyStatus{
-			Phase: phase,
-			Error: PolicyStatusError{Message: msg},
-		}
-	case KibanaResourceType:
-		resourcePolicyStatus.KibanaStatus = KibanaPolicyStatus{
-			Phase: phase,
-			Error: PolicyStatusError{Message: msg},
-		}
-	default:
-		return fmt.Errorf("unknown resource type %s", resourceType)
-	}
-	s.ResourcesStatuses[resourceStatusKey] = resourcePolicyStatus
+	s.ResourcesStatuses[resourceType][resourceStatusKey] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool) {
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) {
 	defer func() {
-		s.ResourcesStatuses[s.getResourceStatusKey(resource, status.ResourceType)] = status
+		if val, ok := s.ResourcesStatuses[resourceType]; !ok || val == nil {
+			s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+		}
+		s.ResourcesStatuses[resourceType][s.getResourceStatusKey(resource)] = status
 		s.Update()
 	}()
-	switch status.ResourceType {
+	switch resourceType {
 	case ElasticsearchResourceType:
 		if !applicationConfigsApplied {
 			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
-			status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+			status.Phase = ApplyingChangesPhase
 			return
 		}
 
-		if status.ElasticsearchStatus.CurrentVersion == unknownVersion {
-			status.ElasticsearchStatus.Phase = UnknownPhase
+		if status.CurrentVersion == unknownVersion {
+			status.Phase = UnknownPhase
 			return
 		}
 
-		if status.ElasticsearchStatus.Error.Message != "" {
-			status.ElasticsearchStatus.Phase = ErrorPhase
-			if status.ElasticsearchStatus.ExpectedVersion > status.ElasticsearchStatus.Error.Version {
-				status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+		if status.Error.Message != "" {
+			status.Phase = ErrorPhase
+			if status.ExpectedVersion > status.Error.Version {
+				status.Phase = ApplyingChangesPhase
 			}
 			return
 		}
 
-		if status.ElasticsearchStatus.CurrentVersion == status.ElasticsearchStatus.ExpectedVersion {
-			status.ElasticsearchStatus.Phase = ReadyPhase
+		if status.CurrentVersion == status.ExpectedVersion {
+			status.Phase = ReadyPhase
 			return
 		}
 
-		status.ElasticsearchStatus.Phase = ApplyingChangesPhase
+		status.Phase = ApplyingChangesPhase
 	case KibanaResourceType:
 		if !applicationConfigsApplied {
-			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
-			status.KibanaStatus.Phase = ApplyingChangesPhase
+			// New KibanaConfig not yet applied to the Elasticsearch pod
+			status.Phase = ApplyingChangesPhase
 			return
 		}
-		if status.KibanaStatus.Error.Message != "" {
-			status.KibanaStatus.Phase = ErrorPhase
+		if status.Error.Message != "" {
+			status.Phase = ErrorPhase
 			return
 		}
-		status.KibanaStatus.Phase = ReadyPhase
+		status.Phase = ReadyPhase
 		return
 	}
 }
 
 // Update updates the policy status from its resources statuses.
 func (s *StackConfigPolicyStatus) Update() {
-	s.Resources = len(s.ResourcesStatuses)
+	s.Resources = 0
 	s.Ready = 0
 	s.Errors = 0
-	for _, status := range s.ResourcesStatuses {
-		// The status can either be a Kibana resource type or an Elasticsearch resource type
-		var resourcePhase PolicyPhase
-		if status.ResourceType == ElasticsearchResourceType {
-			resourcePhase = status.ElasticsearchStatus.Phase
-		} else {
-			resourcePhase = status.KibanaStatus.Phase
-		}
+	for _, resourceStatusMap := range s.ResourcesStatuses {
+		for _, status := range resourceStatusMap {
+			s.Resources++
+			// The status can either be a Kibana resource type or an Elasticsearch resource type
+			resourcePhase := status.Phase
 
-		if resourcePhase == ReadyPhase {
-			s.Ready++
-		} else if resourcePhase == ErrorPhase {
-			s.Errors++
-		}
-		// update phase if that of the resource status is worse
-		if phaseOrder[resourcePhase] > phaseOrder[s.Phase] {
-			s.Phase = resourcePhase
+			if resourcePhase == ReadyPhase {
+				s.Ready++
+			} else if resourcePhase == ErrorPhase {
+				s.Errors++
+			}
+			// update phase if that of the resource status is worse
+			if phaseOrder[resourcePhase] > phaseOrder[s.Phase] {
+				s.Phase = resourcePhase
+			}
 		}
 	}
 	s.setReadyCount()
@@ -307,6 +294,6 @@ func (p *StackConfigPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
 }
 
-func (s StackConfigPolicyStatus) getResourceStatusKey(nsn types.NamespacedName, resourceType ResourceType) string {
-	return fmt.Sprintf("%s/%s", string(resourceType), nsn.String())
+func (s StackConfigPolicyStatus) getResourceStatusKey(nsn types.NamespacedName) string {
+	return nsn.String()
 }

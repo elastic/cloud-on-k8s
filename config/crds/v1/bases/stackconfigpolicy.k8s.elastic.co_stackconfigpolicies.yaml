@@ -236,43 +236,33 @@ spec:
                 type: integer
               resourcesStatuses:
                 additionalProperties:
-                  properties:
-                    elasticsearchStatus:
-                      description: ResourcePolicyStatus models the status of the policy
-                        for one resource to be configured.
-                      properties:
-                        currentVersion:
-                          format: int64
-                          type: integer
-                        error:
-                          properties:
-                            message:
-                              type: string
-                            version:
-                              format: int64
-                              type: integer
-                          type: object
-                        expectedVersion:
-                          format: int64
-                          type: integer
-                        phase:
-                          type: string
-                      type: object
-                    kibanaStatus:
-                      properties:
-                        error:
-                          properties:
-                            message:
-                              type: string
-                            version:
-                              format: int64
-                              type: integer
-                          type: object
-                        phase:
-                          type: string
-                      type: object
-                    resourceType:
-                      type: string
+                  additionalProperties:
+                    description: ResourcePolicyStatus models the status of the policy
+                      for one resource to be configured.
+                    properties:
+                      currentVersion:
+                        description: CurrentVersion denotes the current version of
+                          filesettings applied to the Elasticsearch cluster This field
+                          does not apply to Kibana resources
+                        format: int64
+                        type: integer
+                      error:
+                        properties:
+                          message:
+                            type: string
+                          version:
+                            format: int64
+                            type: integer
+                        type: object
+                      expectedVersion:
+                        description: ExpectedVersion denotes the expected version
+                          of filesettings that should beapplied to the Elasticsearch
+                          cluster This field does not apply to Kibana resources
+                        format: int64
+                        type: integer
+                      phase:
+                        type: string
+                    type: object
                   type: object
                 description: ResourcesStatuses holds the status for each resource
                   to be configured.

@@ -122,8 +122,11 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if !uniqueSecretMountPaths(policy.Spec.Elasticsearch.SecretMounts) {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("elasticsearch").Child("secretMounts"), policy.Spec.Elasticsearch.SecretMounts, "SecretMounts cannot have duplicate mount paths")}
 	}
+	if policy.Spec.Kibana.Config != nil {
+		settingsCount += len(policy.Spec.Kibana.Config.Data)
+	}
 	if settingsCount == 0 {
-		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
 	}
 	return nil
 }
