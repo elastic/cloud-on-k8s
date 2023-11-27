@@ -100,7 +100,7 @@ func Test_kibanaConfigApplied(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "config applied sucessfully",
+			name: "config applied successfully",
 			args: args{
 				kb: kibanav1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{

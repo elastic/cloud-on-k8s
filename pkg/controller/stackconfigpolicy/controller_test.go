@@ -634,7 +634,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Elasticsearch cluster is unreachable and Kibana has reconciled sucessfully",
+			name: "Elasticsearch cluster is unreachable and Kibana has reconciled successfully",
 			args: args{
 				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture, &kibanaFixture, mkKibanaPod("ns", true, "3077592849")),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
@@ -653,7 +653,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantRequeueAfter: true,
 		},
 		{
-			name: "Elasticsearch reconciled sucessfully and Kibana config not yet applied",
+			name: "Elasticsearch reconciled successfully and Kibana config not yet applied",
 			args: args{
 				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture, &kibanaFixture, mkKibanaPod("ns", true, "testhash")),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
