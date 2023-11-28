@@ -24,7 +24,7 @@ const (
 	Type = "kibana"
 )
 
-// NewLabels constructs a new set of labels from an Elasticsearch definition.
+// NewLabels constructs a new set of labels from Kibana definition.
 func NewLabels(kb types.NamespacedName) map[string]string {
 	return map[string]string{
 		KibanaNameLabelName:    kb.Name,

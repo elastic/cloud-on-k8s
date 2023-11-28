@@ -10446,7 +10446,7 @@ spec:
                         type: object
                       expectedVersion:
                         description: ExpectedVersion denotes the expected version
-                          of filesettings that should beapplied to the Elasticsearch
+                          of filesettings that should be applied to the Elasticsearch
                           cluster This field does not apply to Kibana resources
                         format: int64
                         type: integer

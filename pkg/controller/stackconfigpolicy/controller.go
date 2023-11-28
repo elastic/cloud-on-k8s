@@ -439,8 +439,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			continue
 		}
 
-		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana)
-		if err != nil {
+		if _, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
 			return results.WithError(err), status
 		}
 
