@@ -10,6 +10,8 @@ endif::[]
 
 Any setting defined in the `elasticsearch.yml` configuration file can also be defined for a set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
+Some settings cannot be changed and should not be changed see https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-reserved-settings.html
+
 [source,yaml]
 ----
 spec:
