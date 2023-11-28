@@ -157,7 +157,7 @@ type ResourcePolicyStatus struct {
 	// CurrentVersion denotes the current version of filesettings applied to the Elasticsearch cluster
 	// This field does not apply to Kibana resources
 	CurrentVersion int64 `json:"currentVersion,omitempty"`
-	// ExpectedVersion denotes the expected version of filesettings that should beapplied to the Elasticsearch cluster
+	// ExpectedVersion denotes the expected version of filesettings that should be applied to the Elasticsearch cluster
 	// This field does not apply to Kibana resources
 	ExpectedVersion int64             `json:"expectedVersion,omitempty"`
 	Error           PolicyStatusError `json:"error,omitempty"`
@@ -190,7 +190,7 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
-// AddPolicyErrorFor adds given error message to status of a resource, only one error be reported for a resource
+// AddPolicyErrorFor adds given error message to status of a resource. Only one error can be reported per resource
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
 	resourceStatusKey := s.getResourceStatusKey(resource)
 	if resourceStatusMap, ok := s.ResourcesStatuses[resourceType]; ok {
@@ -245,7 +245,7 @@ func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.Names
 		status.Phase = ApplyingChangesPhase
 	case KibanaResourceType:
 		if !applicationConfigsApplied {
-			// New KibanaConfig not yet applied to the Elasticsearch pod
+			// New KibanaConfig not yet applied to the Elasticsearch instance
 			status.Phase = ApplyingChangesPhase
 			return nil
 		}
