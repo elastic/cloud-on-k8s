@@ -333,7 +333,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
-	esRef := esAssociation.AssociationRef()
+	// esRef := esAssociation.AssociationRef()
 	// if !esRef.IsExternal() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
 	// 	// check agent and ES share the same namespace
 	// 	return nil, fmt.Errorf(
