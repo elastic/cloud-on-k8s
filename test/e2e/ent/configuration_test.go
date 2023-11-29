@@ -108,7 +108,7 @@ email:
 			WithStep(test.Step{
 				Name: "Config file in the Pod should contain the additional config & configRef",
 				Test: test.Eventually(func() error {
-					return CheckPartialConfig(k, entWithConfig.EnterpriseSearch, expectedAdditionalConfig)
+					return CheckPartialConfig(k, entWithConfigRef.EnterpriseSearch, expectedAdditionalCfgRef)
 				}),
 			})
 	}
