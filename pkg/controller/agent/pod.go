@@ -333,16 +333,6 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
-	// esRef := esAssociation.AssociationRef()
-	// if !esRef.IsExternal() && !agent.Spec.FleetServerEnabled && agent.Namespace != esRef.Namespace {
-	// 	// check agent and ES share the same namespace
-	// 	return nil, fmt.Errorf(
-	// 		"agent namespace %s is different than referenced Elasticsearch namespace %s, this is not supported yet",
-	// 		agent.Namespace,
-	// 		esAssociation.AssociationRef().Namespace,
-	// 	)
-	// }
-
 	// no ES CA to configure, skip
 	assocConf, err := esAssociation.AssociationConf()
 	if err != nil {
