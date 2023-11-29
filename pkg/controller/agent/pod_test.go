@@ -958,7 +958,13 @@ fi
 				},
 			},
 			assoc:   assocToOtherNs,
-			wantErr: true,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = nil
+				ps.Containers[0].VolumeMounts = nil
+				ps.Containers[0].Command = nil
+				return ps
+			}),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
