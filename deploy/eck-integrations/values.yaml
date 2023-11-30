@@ -1,0 +1,93 @@
+
+
+elasticsearch:
+  host: ""
+  user: ""
+  pass: ""
+
+cloudDefend:
+  enabled: false
+
+kubernetes: 
+  version: 1.51.0
+  enabled: false
+  namespace: "default"
+      
+  system:
+    metrics:
+      enabled: true
+
+  containers:
+    metrics:
+      enabled: true
+    state:
+      enabled: true
+    logs:
+      enabled: true
+  
+  objects:
+    pods:
+      metrics:
+        enabled: true
+      state:
+        enabled: true
+    deployments:
+      state:
+        enabled: true
+    statefulsets:
+      state:
+        enabled: true
+    daemonsets:
+      state:
+        enabled: true
+    replicasets:
+      state:
+        enabled: true
+    volumes:
+      metrics:
+        enabled: true
+    nodes:
+      metrics:
+        enabled: true
+      state:
+        enabled: true
+    storageclasses:
+      state:
+        enabled: true
+    jobs:
+      state:
+        enabled: true
+    cronjobs:
+      state:
+        enabled: true
+    persistentvolumes:
+      state:
+        enabled: true
+    persistentvolumeclaims:
+      state:
+        enabled: true
+    resourcequotas:
+      state:
+        enabled: true
+    services:
+      state:
+        enabled: true
+  
+  control_plane:
+    apiserver:
+      enabled: true
+    proxy:
+      enabled: false
+    scheduler:
+      enabled: false
+    controller_manager:
+      enabled: false
+    audit_logs_filestream:
+      enabled: false
+
+eck_agent:
+  enabled: true
+  version: 8.11.0
+  labels: {}
+  annotations:
+    eck.k8s.elastic.co/license: basic

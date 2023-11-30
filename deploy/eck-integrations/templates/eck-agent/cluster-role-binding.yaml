@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eck-agent
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $.Values.eck_agent.annotations .eck_agent.annotations }}
+  annotations:
+    {{- with $.Values.eck_agent.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+subjects:
+- kind: ServiceAccount
+  name: eck-agent
+  namespace: {{ .namespace | default $.Release.Namespace | quote }}
+roleRef:
+  kind: ClusterRole
+  name: eck-agent
+  apiGroup: rbac.authorization.k8s.io
