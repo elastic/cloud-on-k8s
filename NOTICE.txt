@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.16.1
-Time    : 2023-08-02T20:59:06Z
+Version : v0.17.0
+Time    : 2023-11-29T21:32:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.16.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.17.0/LICENSE:
 
 
                                  Apache License
