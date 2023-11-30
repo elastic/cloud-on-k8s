@@ -84,3 +84,178 @@ rules:
   - get
   - list
   - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: eck-agent-deployment
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $.Values.eck_agent.annotations .annotations }}
+  annotations:
+    {{- with $.Values.eck_agent.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources:
+      - namespaces
+      - pods
+      - persistentvolumes
+      - persistentvolumeclaims
+      - persistentvolumeclaims/status
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - nodes/stats
+      - services
+      - events
+      - configmaps
+      - secrets
+      - nodes
+      - pods
+      - services
+      - serviceaccounts
+      - resourcequotas
+      - replicationcontrollers
+      - limitranges
+      - endpoints
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+      - volumeattachments
+    verbs:
+      - get
+      - watch
+      - list
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+      - watch
+      - list
+  - nonResourceURLs:
+      - /healthz
+      - /healthz/*
+      - /livez
+      - /livez/*
+      - /metrics
+      - /metrics/slis
+      - /readyz
+      - /readyz/*
+    verbs:
+      - get
+  - apiGroups: ["apps"]
+    resources:
+      - replicasets
+      - deployments
+      - daemonsets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+      - ingressclasses
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - update
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+      - clusterroles
+      - rolebindings
+      - roles
+    verbs:
+      - get
+      - list
+      - watch
+

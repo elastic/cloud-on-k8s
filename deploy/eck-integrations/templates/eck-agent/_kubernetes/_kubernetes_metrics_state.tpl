@@ -167,7 +167,7 @@ Defaults for kube_state input streams
 {{- define "kubernetes.config.kube_state.defaults" -}}
 add_metadata: {{ dig "vars" "add_metadata" true . }}
 hosts:
-{{- range dig "vars" "hosts" (list "kube-state-metrics:8080") . }}
+{{- range dig "vars" "hosts" (list "localhost:8080") . }}
 - {{. | quote}}
 {{- end }}
 period: {{ dig "vars" "period" "10s" . }}
