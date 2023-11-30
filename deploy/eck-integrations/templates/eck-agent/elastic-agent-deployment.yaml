@@ -1,0 +1,36 @@
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: eck-agent-deployment
+  namespace: {{ .namespace | default $.Release.Namespace | quote }}
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+  annotations:
+    {{- with .Values.eck_agent.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  version: {{ required "An Elastic Agent version is required" .Values.eck_agent.version }}
+  configRef:
+    secretName: eck-agent-deployment
+  deployment:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: eck-agent
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0
+          resources:
+            limits:
+              memory: 700Mi
+            requests:
+              cpu: 100m
+              memory: 400Mi
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName

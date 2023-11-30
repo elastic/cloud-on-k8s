@@ -1,0 +1,86 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: eck-agent
+  labels:
+    {{- include "elasticagent.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $.Values.eck_agent.annotations .annotations }}
+  annotations:
+    {{- with $.Values.eck_agent.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - persistentvolumes
+  - persistentvolumeclaims
+  - persistentvolumeclaims/status
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - services
+  - events
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - watch
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- nonResourceURLs:
+  - /healthz
+  - /healthz/*
+  - /livez
+  - /livez/*
+  - /metrics
+  - /metrics/slis
+  - /readyz
+  - /readyz/*
+  verbs:
+  - get
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  - deployments
+  - daemonsets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
