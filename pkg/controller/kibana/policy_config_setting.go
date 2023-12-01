@@ -20,7 +20,7 @@ import (
 
 // PolicyConfig is a structure for storing Kibana config from the StackConfigPolicy
 type PolicyConfig struct {
-	KibanaConfig      *common.CanonicalConfig
+	KibanaConfig   *common.CanonicalConfig
 	PodAnnotations map[string]string
 }
 
@@ -43,7 +43,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 	}
 
 	// Additional annotations to be applied on the Kibana pods
-	policyConfig.PolicyAnnotations = map[string]string{
+	policyConfig.PodAnnotations = map[string]string{
 		stackconfigpolicy.KibanaConfigHashAnnotation: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.KibanaConfigHashAnnotation],
 	}
 

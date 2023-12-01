@@ -33,8 +33,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 	var configDataJSONBytes []byte
 	var err error
 	if policy.Spec.Kibana.Config != nil {
-		configDataJSONBytes, err = policy.Spec.Kibana.Config.MarshalJSON()
-		if err != nil {
+		if configDataJSONBytes, err = policy.Spec.Kibana.Config.MarshalJSON(); err != nil {
 			return corev1.Secret{}, err
 		}
 	}

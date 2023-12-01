@@ -38,11 +38,11 @@ func Test_getPolicyConfig(t *testing.T) {
 			},
 			want: PolicyConfig{
 				KibanaConfig: canonicalConfig,
-				PolicyAnnotations: map[string]string{
+				PodAnnotations: map[string]string{
 					"policy.k8s.elastic.co/kibana-config-hash": "123456",
 				},
 			},
-			client: k8s.NewFakeClient(MkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "123456")),
+			client: k8s.NewFakeClient(mkKibanaConfigSecret("test-ns", "test-policy", "test-policy-ns", "123456")),
 		},
 		{
 			name: "create invalid policy config",
@@ -53,12 +53,12 @@ func Test_getPolicyConfig(t *testing.T) {
 				},
 			},
 			want: PolicyConfig{
-				PolicyAnnotations: map[string]string{
+				PodAnnotations: map[string]string{
 					"policy.k8s.elastic.co/kibana-config-hash": "123456",
 				},
 			},
 			wantErr: true,
-			client:  k8s.NewFakeClient(mkInvalidCluster("test-ns", "test-policy", "test-policy-ns", "123456")),
+			client:  k8s.NewFakeClient(mkInvalidConfigSecret("test-ns", "test-policy", "test-policy-ns", "123456")),
 		},
 		{
 			name: "policy kibana config secret not present",
@@ -108,8 +108,8 @@ func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolic
 	}
 }
 
-func mkInvalidCluster(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
-	secret := MkKibanaConfigSecret(namespace, owningPolicyName, owningPolicyNamespace, hashValue)
+func mkInvalidConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
+	secret := mkKibanaConfigSecret(namespace, owningPolicyName, owningPolicyNamespace, hashValue)
 	secret.Data = map[string][]byte{
 		"kibana.json": []byte(`test`),
 	}

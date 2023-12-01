@@ -235,7 +235,6 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	// requeue if not ready
 	if status.Phase != policyv1alpha1.ReadyPhase {
 		results.WithResult(defaultRequeue)
-		return results, status
 	}
 
 	return results, status
@@ -464,7 +463,6 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 
 func newElasticsearchResourceStatus(currentSettings esclient.FileSettings, expectedVersion int64) policyv1alpha1.ResourcePolicyStatus {
 	status := policyv1alpha1.ResourcePolicyStatus{
-
 		CurrentVersion:  currentSettings.Version,
 		ExpectedVersion: expectedVersion,
 	}
@@ -664,8 +662,7 @@ func deleteOrphanSoftOwnedSecrets(
 				Name:      secret.Labels[eslabel.ClusterNameLabelName],
 			}
 			// check if they exist in the es map
-			_, exist = configuredESResources[namespacedName]
-			if exist {
+			if _, exist = configuredESResources[namespacedName]; exist {
 				continue
 			}
 		case kblabel.Type:
@@ -674,8 +671,7 @@ func deleteOrphanSoftOwnedSecrets(
 				Name:      secret.Labels[kblabel.KibanaNameLabelName],
 			}
 			// check if they exist in the kb map
-			_, exist = configuredKibanaResources[namespacedName]
-			if exist {
+			if _, exist = configuredKibanaResources[namespacedName]; exist {
 				continue
 			}
 		default:

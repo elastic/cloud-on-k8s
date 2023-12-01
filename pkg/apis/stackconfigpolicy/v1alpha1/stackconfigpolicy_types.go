@@ -196,7 +196,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 	if s.ResourcesStatuses[resourceType] == nil {
 		s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
 	}
-	if _, exists := s.ResourcesStatuses[resourceType][resourceKey]; exists {
+	if status, exists := s.ResourcesStatuses[resourceType][resourceStatusKey]; exists && status.Error.Message != "" {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
