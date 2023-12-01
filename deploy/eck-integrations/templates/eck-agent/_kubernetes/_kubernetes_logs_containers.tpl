@@ -1,16 +1,13 @@
 {{/*
 Config input for container logs
 */}}
-{{- define "kubernetes.config.container_logs.input" -}}
-{{- if default .containers.logs.enabled false -}}
+{{- define "agent.kubernetes.config.container_logs.input" -}}
+{{- if default false .containers.logs.enabled -}}
 - id: filestream-container-logs
-  revision: 1
-  name: kubernetes
   type: filestream
   data_stream:
     namespace: {{ .namespace }}
   use_output: default
-  package_policy_id: {{.integrationID}}
   streams:
   - id: kubernetes-container-logs-${kubernetes.pod.name}-${kubernetes.container.id}
     data_stream:
