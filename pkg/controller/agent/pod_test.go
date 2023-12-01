@@ -59,7 +59,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		name        string
 		params      Params
 		fleetCerts  *certificates.CertificatesSecret
-		wantPodSpec corev1.PodSpec
+		wantPodSpec *corev1.PodSpec
 	}{
 		{
 			name: "running elastic agent, with fleet server, without es/kb association",
@@ -387,7 +387,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
-			require.Equal(t, tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
+			if tt.wantPodSpec != nil {
+				require.Equal(t, *tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
+			} else {
+				require.Nil(t, gotBuilder)
+			}
 		})
 	}
 }
@@ -881,12 +885,12 @@ fi
 		name        string
 		agent       agentv1alpha1.Agent
 		assoc       commonv1.Association
-		wantPodSpec corev1.PodSpec
+		wantPodSpec *corev1.PodSpec
 		wantErr     bool
 	}{
 		{
 			name:        "nil es association",
-			wantPodSpec: generateBuilder().PodTemplate.Spec,
+			wantPodSpec: &generateBuilder().PodTemplate.Spec,
 			wantErr:     false,
 		},
 		{
@@ -966,6 +970,47 @@ fi
 				return ps
 			}),
 		},
+		{
+			name: "fleet server disabled, fleet reference in place in same namespace, esref in different namespace",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Mode:               agentv1alpha1.AgentFleetMode,
+					FleetServerEnabled: false,
+					FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: agentNs},
+					Version:            "7.16.2",
+				},
+			},
+			assoc:   assocToOtherNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = nil
+				ps.Containers[0].VolumeMounts = nil
+				ps.Containers[0].Command = nil
+				return ps
+			}),
+		},
+		{
+			name: "fleet server disabled, fleet reference in place in different namespace, esref in different namespace",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Mode:               agentv1alpha1.AgentFleetMode,
+					FleetServerEnabled: false,
+					FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "other-ns"},
+					Version:            "7.16.2",
+				},
+			},
+			assoc:       assocToOtherNs,
+			wantErr:     true,
+			wantPodSpec: nil,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
@@ -973,7 +1018,11 @@ fi
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
-				require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
+				if gotBuilder != nil {
+					require.Nil(t, deep.Equal(*tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
+				} else {
+					require.Nil(t, tt.wantPodSpec)
+				}
 			}
 		})
 	}
@@ -1485,7 +1534,8 @@ func generateBuilder() *defaults.PodTemplateBuilder {
 	return defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, "agent")
 }
 
-func generatePodSpec(f func(spec corev1.PodSpec) corev1.PodSpec) corev1.PodSpec {
+func generatePodSpec(f func(spec corev1.PodSpec) corev1.PodSpec) *corev1.PodSpec {
 	builder := generateBuilder()
-	return f(builder.PodTemplate.Spec)
+	ret := f(builder.PodTemplate.Spec)
+	return &ret
 }

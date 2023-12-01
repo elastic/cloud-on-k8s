@@ -333,6 +333,23 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
+	// If the Agent is associated with a Fleet Server, they are required to be in the same namespace as the Secret
+	// containing the Elasticsearch CA is created in the same namespace as the Fleet Server.
+	if agent.Spec.FleetServerRef.IsDefined() {
+		fsAssociation, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
+		if err != nil {
+			return nil, err
+		}
+		if fsAssociation.AssociationRef().Namespace != agent.Namespace {
+			// check Elastic Agent and Fleet Server share the same namespace
+			return nil, fmt.Errorf(
+				"agent namespace %s is different than referenced Fleet Server namespace %s, this is not supported yet",
+				agent.Namespace,
+				fsAssociation.GetNamespace(),
+			)
+		}
+	}
+
 	// no ES CA to configure, skip
 	assocConf, err := esAssociation.AssociationConf()
 	if err != nil {

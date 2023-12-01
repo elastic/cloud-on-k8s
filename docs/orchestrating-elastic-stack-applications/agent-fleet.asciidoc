@@ -702,12 +702,13 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 [id="{p}-elastic-agent-fleet-known-limitations"]
 == Known limitations
 
-=== Running as root and within a single namespace (ECK < 2.10.0 and Agent < 7.14.0)
-Until version 7.14.0 and ECK version 2.10.0, Elastic Agent in Fleet mode has to run as root and in the same namespace as the Elasticsearch cluster it connects to. 
+=== Running as root (ECK < 2.10.0 and Agent < 7.14.0)
+Until version 7.14.0 and ECK version 2.10.0, Elastic Agent and Fleet are required to run as root.
 
-This was due to configuration limitations in Fleet/Elastic Agent. ECK needed to establish trust between Elastic Agents and Elasticsearch. ECK was only able to fetch the required Elasticsearch CA correctly if both resources are in the same namespace.
 As of Elastic Stack version 7.14.0 and ECK version 2.10.0 it is also possible to run Elastic Agent and Fleet as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
-To establish trust, the Pod needs to update the CA store through a call to `update-ca-trust` before Elastic Agent runs. To call it successfully, the Pod needs to run with elevated privileges.
+
+=== Elastic Agent running in the same namespace as Elastic Fleet Server
+Elastic Agent in Fleet mode can only be deployed in the same namespace as the Fleet Server it is connecting to. This is due to the fact that the Elastic Agent does not have access to the Secret that contains the Elasticsearch CA when it is not running within the same namespace.
 
 === Running Endpoint Security integration
 Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
