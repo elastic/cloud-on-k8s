@@ -1,16 +1,13 @@
 {{/*
 Config input for kube apiserver
 */}}
-{{- define "kubernetes.config.kube_apiserver.input" -}}
+{{- define "agent.kubernetes.config.kube_apiserver.input" -}}
 {{- if default .control_plane.apiserver.enabled false -}}
 - id: kubernetes/kubernetes/metrics-kube-apiserver
-  revision: 1
-  name: kubernetes
   type: kubernetes/metrics
   data_stream:
       namespace: {{ .namespace }}
   use_output: default
-  package_policy_id: {{.integrationID}}
   streams:
   - id: kubernetes/metrics-kubernetes.apiserver
     data_stream:
@@ -18,7 +15,7 @@ Config input for kube apiserver
         dataset: kubernetes.apiserver
     metricsets:
         - apiserver
-{{- include "kubernetes.config.kube_apiserver.defaults" .control_plane.apiserver | nindent 4 }} 
+{{- include "agent.kubernetes.config.kube_apiserver.defaults" .control_plane.apiserver | nindent 4 }}
   meta:
     package:
       name: kubernetes
@@ -30,7 +27,7 @@ Config input for kube apiserver
 {{/*
 Defaults for kube_apiserver input streams
 */}}
-{{- define "kubernetes.config.kube_apiserver.defaults" -}}
+{{- define "agent.kubernetes.config.kube_apiserver.defaults" -}}
 hosts:
 {{- range dig "vars" "hosts" (list "https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}") . }}
 - {{. | quote}}

@@ -1,16 +1,13 @@
 {{/*
 Config input for kube audit_logs_filestream
 */}}
-{{- define "kubernetes.config.audit_logs_filestream.input" -}}
-{{- if default .control_plane.audit_logs_filestream.enabled false -}}
+{{- define "agent.kubernetes.config.audit_logs_filestream.input" -}}
+{{- if default false .control_plane.audit_logs_filestream.enabled -}}
 - id: filestream-audit-logs
-  revision: 1
-  name: kubernetes
   type: filestream
   data_stream:
     namespace: {{.namespace}}
   use_output: default
-  package_policy_id: {{.integrationID}}
   streams:
   - id: filestream-kubernetes.audit_logs
     data_stream:

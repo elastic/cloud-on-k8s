@@ -1,16 +1,13 @@
 {{/*
 Config input for kube proxy
 */}}
-{{- define "kubernets.config.kube_proxy.input" -}}
+{{- define "agent.kubernetes.config.kube_proxy.input" -}}
 {{- if default .control_plane.proxy.enabled false -}}
 - id: kubernetes/metrics-kube-proxy
-  revision: 1
-  name: kubernetes
   type: kubernetes/metrics
   data_stream:
     namespace: {{ .namespace }}
   use_output: default
-  package_policy_id: {{.integrationID}}
   streams:
     - id: kubernetes/metrics-kubernetes.proxy
       data_stream:
@@ -18,7 +15,7 @@ Config input for kube proxy
         dataset: kubernetes.proxy
       metricsets:
         - proxy
-{{- include "kubernets.config.kube_proxy.defaults" .control_plane.proxy | nindent 4 }} 
+{{- include "agent.kubernetes.config.kube_proxy.defaults" .control_plane.proxy | nindent 4 }}
   meta:
     package:
       name: kubernetes
@@ -30,7 +27,7 @@ Config input for kube proxy
 {{/*
 Defaults for kube_proxy input streams
 */}}
-{{- define "kubernets.config.kube_proxy.defaults" -}}
+{{- define "agent.kubernetes.config.kube_proxy.defaults" -}}
 hosts:
 {{- range dig "vars" "hosts" (list "localhost:10249") . }}
 - {{. | quote}}
