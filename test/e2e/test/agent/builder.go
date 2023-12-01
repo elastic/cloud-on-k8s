@@ -187,15 +187,6 @@ func (b Builder) WithDeploymentStrategy(s appsv1.DeploymentStrategy) Builder {
 	return modifiedBuilder
 }
 
-func (b Builder) WithStatefulSetUpdateStrategy(s appsv1.StatefulSetUpdateStrategy) Builder {
-	modifiedBuilder := b
-	if b.Agent.Spec.StatefulSet == nil {
-		modifiedBuilder = b.WithStatefulSet()
-	}
-	modifiedBuilder.Agent.Spec.StatefulSet.Strategy = s
-	return modifiedBuilder
-}
-
 func (b Builder) WithDefaultESValidation(validation ValidationFunc) Builder {
 	return b.WithESValidation(validation, "default")
 }
