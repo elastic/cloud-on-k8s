@@ -193,7 +193,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 type esMap map[types.NamespacedName]esv1.Elasticsearch
 
 // kbMap is a type alias for a Map of Kibana indexed by NamespaceName useful to manipulate the Kibana
-// clusters configured by a StackConfigPolicy.
+// instances configured by a StackConfigPolicy.
 type kbMap map[types.NamespacedName]kibanav1.Kibana
 
 func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
@@ -412,7 +412,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		kibana := kibana
 
-		// keep the list of ES to be configured
+		// keep the list of Kibana to be configured
 		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
 		configuredResources[kibanaNsn] = kibana
 
@@ -590,8 +590,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 				Namespace: s.Namespace,
 				Name:      s.Labels[eslabel.ClusterNameLabelName],
 			}
-			_, exist := configuredESResources[namespacedName]
-			if exist {
+			if _, exists := configuredESResources[namespacedName]; exists {
 				continue
 			}
 
@@ -609,8 +608,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 				return nil
 			}
 
-			err = filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false)
-			if err != nil {
+			if err := filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false); err != nil {
 				return err
 			}
 		case kblabel.Type:
