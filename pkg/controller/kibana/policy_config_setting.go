@@ -21,7 +21,7 @@ import (
 // PolicyConfig is a structure for storing Kibana config from the StackConfigPolicy
 type PolicyConfig struct {
 	KibanaConfig      *common.CanonicalConfig
-	PolicyAnnotations map[string]string
+	PodAnnotations map[string]string
 }
 
 // getPolicyConfig parses the StackConfigPolicy secret and returns a PolicyConfig struct
@@ -50,8 +50,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 	// Parse Kibana config from the stack config policy secret.
 	var kbConfigFromStackConfigPolicy map[string]interface{}
 	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey]) != "" {
-		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey], &kbConfigFromStackConfigPolicy)
-		if err != nil {
+		if err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.KibanaConfigKey], &kbConfigFromStackConfigPolicy); err != nil {
 			return policyConfig, err
 		}
 	}

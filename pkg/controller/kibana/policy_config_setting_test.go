@@ -85,7 +85,7 @@ func Test_getPolicyConfig(t *testing.T) {
 	}
 }
 
-func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
+func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,

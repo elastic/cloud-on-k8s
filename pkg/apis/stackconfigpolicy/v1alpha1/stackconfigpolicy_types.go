@@ -193,12 +193,11 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 // AddPolicyErrorFor adds given error message to status of a resource. Only one error can be reported per resource
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
 	resourceStatusKey := s.getResourceStatusKey(resource)
-	if resourceStatusMap, ok := s.ResourcesStatuses[resourceType]; ok {
-		if _, exists := resourceStatusMap[resourceStatusKey]; exists {
-			return fmt.Errorf("policy error already exists for resource %q", resource)
-		}
-	} else if !ok || resourceStatusMap == nil {
+	if s.ResourcesStatuses[resourceType] == nil {
 		s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+	}
+	if _, exists := s.ResourcesStatuses[resourceType][resourceKey]; exists {
+		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
 		Phase: phase,
@@ -211,7 +210,7 @@ func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedNam
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) error {
 	defer func() {
-		if val, ok := s.ResourcesStatuses[resourceType]; !ok || val == nil {
+		if s.ResourcesStatuses[resourceType] == nil {
 			s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
 		}
 		s.ResourcesStatuses[resourceType][s.getResourceStatusKey(resource)] = status
@@ -269,7 +268,7 @@ func (s *StackConfigPolicyStatus) Update() {
 	for _, resourceStatusMap := range s.ResourcesStatuses {
 		for _, status := range resourceStatusMap {
 			s.Resources++
-			// The status can either be a Kibana resource type or an Elasticsearch resource type
+			// Resource status can be for Kibana or Elasticsearch resources
 			resourcePhase := status.Phase
 
 			if resourcePhase == ReadyPhase {
