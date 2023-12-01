@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -27,8 +26,6 @@ import (
 const (
 	continuousHealthCheckTimeout = 5 * time.Second
 )
-
-var log logr.Logger
 
 // clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
 // (eg. during leader elections in the middle of a rolling upgrade).
@@ -158,13 +155,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
-
-					log.Info("ContinuousHealthChecks failures",
-						"count", continuousHealthChecks.FailureCount,
-						"tolerance", b.mutationToleratedChecksFailureCount,
-						"detail", continuousHealthChecks.FailuresAsString())
-
-					require.LessOrEqual(t, continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
+					if continuousHealthChecks.FailureCount > b.mutationToleratedChecksFailureCount {
+						t.Errorf("ContinuousHealthChecks failures count (%d) is above the tolerance (%d): %s",
+							continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount, continuousHealthChecks.FailuresAsString())
+					}
 				},
 			},
 			test.Step{
