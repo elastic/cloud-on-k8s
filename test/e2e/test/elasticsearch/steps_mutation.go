@@ -159,10 +159,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
 
-					log.Info("continuousHealthChecks %d failures (tolerated %d)",
-						continuousHealthChecks.FailureCount,
-						b.mutationToleratedChecksFailureCount,
-						continuousHealthChecks.FailuresAsString())
+					log.Info("ContinuousHealthChecks failures",
+						"count", continuousHealthChecks.FailureCount,
+						"tolerance", b.mutationToleratedChecksFailureCount,
+						"detail", continuousHealthChecks.FailuresAsString())
 
 					require.LessOrEqual(t, continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
 				},
