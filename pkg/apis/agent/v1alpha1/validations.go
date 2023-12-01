@@ -7,6 +7,7 @@ package v1alpha1
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -70,12 +71,25 @@ func checkPolicyID(a *Agent) field.ErrorList {
 }
 
 func checkAtMostOneDeploymentOption(a *Agent) field.ErrorList {
-	if a.Spec.DaemonSet != nil && a.Spec.Deployment != nil {
-		msg := "Specify either daemonSet or deployment, not both"
-		return field.ErrorList{
-			field.Forbidden(field.NewPath("spec").Child("daemonSet"), msg),
-			field.Forbidden(field.NewPath("spec").Child("deployment"), msg),
+	var enabledSpecsNames []string
+
+	if a.Spec.DaemonSet != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "daemonSet")
+	}
+	if a.Spec.Deployment != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "deployment")
+	}
+	if a.Spec.StatefulSet != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "statefulSet")
+	}
+
+	if enabledSpecsLen := len(enabledSpecsNames); enabledSpecsLen > 1 {
+		msg := fmt.Sprintf("Specify at most one of [%s]", strings.Join(enabledSpecsNames, ", "))
+		errList := make(field.ErrorList, enabledSpecsLen)
+		for index, specName := range enabledSpecsNames {
+			errList[index] = field.Forbidden(field.NewPath("spec").Child(specName), msg)
 		}
+		return errList
 	}
 
 	return nil
@@ -136,9 +150,20 @@ func checkSingleConfigSource(a *Agent) field.ErrorList {
 }
 
 func checkSpec(a *Agent) field.ErrorList {
-	if (a.Spec.DaemonSet == nil && a.Spec.Deployment == nil) || (a.Spec.DaemonSet != nil && a.Spec.Deployment != nil) {
+	enabledSpecs := 0
+	if a.Spec.DaemonSet != nil {
+		enabledSpecs++
+	}
+	if a.Spec.Deployment != nil {
+		enabledSpecs++
+	}
+	if a.Spec.StatefulSet != nil {
+		enabledSpecs++
+	}
+
+	if enabledSpecs != 1 {
 		return field.ErrorList{
-			field.Invalid(field.NewPath("spec"), a.Spec, "either daemonset or deployment must be specified"),
+			field.Invalid(field.NewPath("spec"), a.Spec, "either daemonSet or deployment or statefulSet must be specified"),
 		}
 	}
 	return nil

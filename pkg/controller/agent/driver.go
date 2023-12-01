@@ -67,11 +67,14 @@ func (p Params) DynamicWatches() watches.DynamicWatches {
 
 // GetPodTemplate returns the configured pod template for the associated Elastic Agent.
 func (p *Params) GetPodTemplate() corev1.PodTemplateSpec {
-	if p.Agent.Spec.DaemonSet != nil {
+	switch {
+	case p.Agent.Spec.DaemonSet != nil:
 		return p.Agent.Spec.DaemonSet.PodTemplate
+	case p.Agent.Spec.StatefulSet != nil:
+		return p.Agent.Spec.StatefulSet.PodTemplate
+	default:
+		return p.Agent.Spec.Deployment.PodTemplate
 	}
-
-	return p.Agent.Spec.Deployment.PodTemplate
 }
 
 // Logger returns the configured logger for use during reconciliation.

@@ -76,10 +76,14 @@ func (b Builder) SkipTest() bool {
 // appropriately.
 func NewBuilderFromAgent(agent *agentv1alpha1.Agent) Builder {
 	var podTemplate *corev1.PodTemplateSpec
-	if agent.Spec.DaemonSet != nil {
+
+	switch {
+	case agent.Spec.DaemonSet != nil:
 		podTemplate = &agent.Spec.DaemonSet.PodTemplate
-	} else if agent.Spec.Deployment != nil {
+	case agent.Spec.Deployment != nil:
 		podTemplate = &agent.Spec.Deployment.PodTemplate
+	case agent.Spec.StatefulSet != nil:
+		podTemplate = &agent.Spec.StatefulSet.PodTemplate
 	}
 
 	return Builder{
@@ -125,10 +129,14 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 func (b Builder) WithDaemonSet() Builder {
 	b.Agent.Spec.DaemonSet = &agentv1alpha1.DaemonSetSpec{}
 
-	// if it exists, move PodTemplate from Deployment to DaemonSet
-	if b.Agent.Spec.Deployment != nil {
+	// if other types exist, move PodTemplate from them to DaemonSet
+	switch {
+	case b.Agent.Spec.Deployment != nil:
 		b.Agent.Spec.DaemonSet.PodTemplate = b.Agent.Spec.Deployment.PodTemplate
 		b.Agent.Spec.Deployment = nil
+	case b.Agent.Spec.StatefulSet != nil:
+		b.Agent.Spec.DaemonSet.PodTemplate = b.Agent.Spec.StatefulSet.PodTemplate
+		b.Agent.Spec.StatefulSet = nil
 	}
 
 	b.PodTemplate = &b.Agent.Spec.DaemonSet.PodTemplate
@@ -139,12 +147,33 @@ func (b Builder) WithDaemonSet() Builder {
 func (b Builder) WithDeployment() Builder {
 	b.Agent.Spec.Deployment = &agentv1alpha1.DeploymentSpec{}
 
-	// if it exists, move PodTemplate from DaemonSet to Deployment
-	if b.Agent.Spec.DaemonSet != nil {
+	// if other types exist, move PodTemplate from them to Deployment
+	switch {
+	case b.Agent.Spec.DaemonSet != nil:
 		b.Agent.Spec.Deployment.PodTemplate = b.Agent.Spec.DaemonSet.PodTemplate
 		b.Agent.Spec.DaemonSet = nil
+	case b.Agent.Spec.StatefulSet != nil:
+		b.Agent.Spec.Deployment.PodTemplate = b.Agent.Spec.StatefulSet.PodTemplate
+		b.Agent.Spec.StatefulSet = nil
 	}
 	b.PodTemplate = &b.Agent.Spec.Deployment.PodTemplate
+
+	return b
+}
+
+func (b Builder) WithStatefulSet() Builder {
+	b.Agent.Spec.StatefulSet = &agentv1alpha1.StatefulSetSpec{}
+
+	// if other types exist, move PodTemplate from them to StatefulSet
+	switch {
+	case b.Agent.Spec.DaemonSet != nil:
+		b.Agent.Spec.StatefulSet.PodTemplate = b.Agent.Spec.DaemonSet.PodTemplate
+		b.Agent.Spec.DaemonSet = nil
+	case b.Agent.Spec.Deployment != nil:
+		b.Agent.Spec.StatefulSet.PodTemplate = b.Agent.Spec.Deployment.PodTemplate
+		b.Agent.Spec.Deployment = nil
+	}
+	b.PodTemplate = &b.Agent.Spec.StatefulSet.PodTemplate
 
 	return b
 }
@@ -155,6 +184,15 @@ func (b Builder) WithDeploymentStrategy(s appsv1.DeploymentStrategy) Builder {
 		modifiedBuilder = b.WithDeployment()
 	}
 	modifiedBuilder.Agent.Spec.Deployment.Strategy = s
+	return modifiedBuilder
+}
+
+func (b Builder) WithStatefulSetUpdateStrategy(s appsv1.StatefulSetUpdateStrategy) Builder {
+	modifiedBuilder := b
+	if b.Agent.Spec.StatefulSet == nil {
+		modifiedBuilder = b.WithStatefulSet()
+	}
+	modifiedBuilder.Agent.Spec.StatefulSet.Strategy = s
 	return modifiedBuilder
 }
 
@@ -378,13 +416,16 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 }
 
 func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
-	if b.Agent.Spec.Deployment != nil {
+	switch {
+	case b.Agent.Spec.Deployment != nil:
 		return b.Agent.Spec.Deployment.PodTemplate.Spec.SecurityContext
-	}
-	if b.Agent.Spec.DaemonSet != nil {
+	case b.Agent.Spec.DaemonSet != nil:
 		return b.Agent.Spec.DaemonSet.PodTemplate.Spec.SecurityContext
+	case b.Agent.Spec.StatefulSet != nil:
+		return b.Agent.Spec.StatefulSet.PodTemplate.Spec.SecurityContext
+	default:
+		return nil
 	}
-	return nil
 }
 
 var _ test.Builder = Builder{}

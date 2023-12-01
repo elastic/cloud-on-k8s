@@ -132,7 +132,7 @@ func Test_checkSpec(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "deployment absent, dset present",
+			name: "deployment absent, statefulSet absent, daemonSet present",
 			beat: Agent{
 				Spec: AgentSpec{
 					DaemonSet: &DaemonSetSpec{},
@@ -141,10 +141,19 @@ func Test_checkSpec(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "deployment present, dset absent",
+			name: "deployment present, statefulSet absent, daemonSet absent",
 			beat: Agent{
 				Spec: AgentSpec{
 					Deployment: &DeploymentSpec{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment absent, statefulSet present, daemonSet absent",
+			beat: Agent{
+				Spec: AgentSpec{
+					StatefulSet: &StatefulSetSpec{},
 				},
 			},
 			wantErr: false,
@@ -157,11 +166,42 @@ func Test_checkSpec(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "both present",
+			name: "both daemonSet and deployment present",
 			beat: Agent{
 				Spec: AgentSpec{
 					Deployment: &DeploymentSpec{},
 					DaemonSet:  &DaemonSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "both daemonSet and statefulSet present",
+			beat: Agent{
+				Spec: AgentSpec{
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "both statefulSet and deployment present",
+			beat: Agent{
+				Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "all statefulSet, daemonSet and deployment present",
+			beat: Agent{
+				Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+					DaemonSet:   &DaemonSetSpec{},
 				},
 			},
 			wantErr: true,
