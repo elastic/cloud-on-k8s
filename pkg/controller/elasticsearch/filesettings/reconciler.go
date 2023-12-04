@@ -24,7 +24,7 @@ var (
 	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
 	// managedAnnotations are the annotations managed by the operator for the file settings Secret, which means that the operator
 	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
+	managedAnnotations = []string{SecureSettingsSecretsAnnotationName, settingsHashAnnotationName}
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.

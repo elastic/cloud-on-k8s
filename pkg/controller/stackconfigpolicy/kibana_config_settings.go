@@ -6,6 +6,12 @@ package stackconfigpolicy
 
 import (
 	"context"
+	"encoding/json"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
@@ -16,11 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -40,7 +41,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 	kibanaConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kibana.Namespace,
-			Name:      GetPolicyConfigSecretName(kibana),
+			Name:      GetPolicyConfigSecretName(kibana.Name),
 			Labels: kblabel.NewLabels(types.NamespacedName{
 				Name:      kibana.Name,
 				Namespace: kibana.Namespace,
@@ -60,6 +61,11 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 	// Add label to delete secret on deletion of the stack config policy
 	kibanaConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
+	// Add SecureSettings as annotation
+	if err = setKibanaSecureSettings(&kibanaConfigSecret, policy); err != nil {
+		return kibanaConfigSecret, err
+	}
+
 	return kibanaConfigSecret, nil
 }
 
@@ -70,8 +76,8 @@ func getKibanaConfigHash(kibanaConfig *commonv1.Config) string {
 	return ""
 }
 
-func GetPolicyConfigSecretName(kibana kibanav1.Kibana) string {
-	return kibana.Name + "-kb-policy-config"
+func GetPolicyConfigSecretName(kibanaName string) string {
+	return kibanaName + "-kb-policy-config"
 }
 
 func kibanaConfigApplied(c k8s.Client, policy policyv1alpha1.StackConfigPolicy, kb kibanav1.Kibana) (bool, error) {
@@ -94,7 +100,7 @@ func canBeOwned(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackCo
 	// Check if the secret already exists
 	var kibanaConfigSecret corev1.Secret
 	err := c.Get(ctx, types.NamespacedName{
-		Name:      GetPolicyConfigSecretName(kb),
+		Name:      GetPolicyConfigSecretName(kb.Name),
 		Namespace: kb.Namespace,
 	}, &kibanaConfigSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -114,4 +120,24 @@ func canBeOwned(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackCo
 	// or the owner is already the given policy
 	canBeOwned := currentOwner.Kind == policy.Kind && currentOwner.Namespace == policy.Namespace && currentOwner.Name == policy.Name
 	return currentOwner, canBeOwned, nil
+}
+
+// setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
+func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
+	if len(policy.Spec.Kibana.SecureSettings) == 0 {
+		return nil
+	}
+
+	secretSources := make([]commonv1.NamespacedSecretSource, len(policy.Spec.SecureSettings))
+	// SecureSettings field under Kibana in the StackConfigPolicy
+	for _, src := range policy.Spec.Kibana.SecureSettings {
+		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
+	}
+
+	bytes, err := json.Marshal(secretSources)
+	if err != nil {
+		return err
+	}
+	settingsSecret.Annotations[filesettings.SecureSettingsSecretsAnnotationName] = string(bytes)
+	return nil
 }

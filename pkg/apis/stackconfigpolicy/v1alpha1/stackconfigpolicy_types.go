@@ -54,10 +54,12 @@ type StackConfigPolicyList struct {
 }
 
 type StackConfigPolicySpec struct {
-	ResourceSelector metav1.LabelSelector          `json:"resourceSelector,omitempty"`
-	SecureSettings   []commonv1.SecretSource       `json:"secureSettings,omitempty"`
-	Elasticsearch    ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
-	Kibana           KibanaConfigPolicySpec        `json:"kibana,omitempty"`
+	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
+	// SecureSettings applies only to Elasticsearch
+	// TODO: do we deprecate this and remove it in the future ?
+	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
+	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
+	Kibana         KibanaConfigPolicySpec        `json:"kibana,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
@@ -88,12 +90,18 @@ type ElasticsearchConfigPolicySpec struct {
 	// SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
+	// SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 type KibanaConfigPolicySpec struct {
 	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
+	// SecureSettings are additional Secrets that contain data to be configured to Kibana's keystore.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 type ResourceType string

@@ -10234,6 +10234,43 @@ spec:
                       type: object
                     type: array
                     x-kubernetes-preserve-unknown-fields: true
+                  secureSettings:
+                    description: SecureSettings are additional Secrets that contain
+                      data to be configured to Elasticsearch's keystore.
+                    items:
+                      description: SecretSource defines a data source based on a Kubernetes
+                        Secret.
+                      properties:
+                        entries:
+                          description: Entries define how to project each key-value
+                            pair in the secret to filesystem paths. If not defined,
+                            all keys will be projected to similarly named paths in
+                            the filesystem. If defined, only the specified keys will
+                            be projected to the corresponding paths.
+                          items:
+                            description: KeyToPath defines how to map a key in a Secret
+                              object to a filesystem path.
+                            properties:
+                              key:
+                                description: Key is the key contained in the secret.
+                                type: string
+                              path:
+                                description: Path is the relative file path to map
+                                  the key to. Path must not be an absolute file path
+                                  and must not contain any ".." components.
+                                type: string
+                            required:
+                            - key
+                            type: object
+                          type: array
+                        secretName:
+                          description: SecretName is the name of the secret.
+                          type: string
+                      required:
+                      - secretName
+                      type: object
+                    type: array
+                    x-kubernetes-preserve-unknown-fields: true
                   securityRoleMappings:
                     description: SecurityRoleMappings holds the Role Mappings settings
                       (/_security/role_mapping)
@@ -10255,6 +10292,43 @@ spec:
                   config:
                     description: Config holds the settings that go into kibana.yml.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  secureSettings:
+                    description: SecureSettings are additional Secrets that contain
+                      data to be configured to Kibana's keystore.
+                    items:
+                      description: SecretSource defines a data source based on a Kubernetes
+                        Secret.
+                      properties:
+                        entries:
+                          description: Entries define how to project each key-value
+                            pair in the secret to filesystem paths. If not defined,
+                            all keys will be projected to similarly named paths in
+                            the filesystem. If defined, only the specified keys will
+                            be projected to the corresponding paths.
+                          items:
+                            description: KeyToPath defines how to map a key in a Secret
+                              object to a filesystem path.
+                            properties:
+                              key:
+                                description: Key is the key contained in the secret.
+                                type: string
+                              path:
+                                description: Path is the relative file path to map
+                                  the key to. Path must not be an absolute file path
+                                  and must not contain any ".." components.
+                                type: string
+                            required:
+                            - key
+                            type: object
+                          type: array
+                        secretName:
+                          description: SecretName is the name of the secret.
+                          type: string
+                      required:
+                      - secretName
+                      type: object
+                    type: array
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               resourceSelector:
@@ -10306,6 +10380,8 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               secureSettings:
+                description: 'SecureSettings applies only to Elasticsearch TODO: do
+                  we deprecate this and remove it in the future ?'
                 items:
                   description: SecretSource defines a data source based on a Kubernetes
                     Secret.

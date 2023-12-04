@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	secureSettingsSecretsAnnotationName = "policy.k8s.elastic.co/secure-settings-secrets" //nolint:gosec
+	SecureSettingsSecretsAnnotationName = "policy.k8s.elastic.co/secure-settings-secrets" //nolint:gosec
 	settingsHashAnnotationName          = "policy.k8s.elastic.co/settings-hash"
 	SettingsSecretKey                   = "settings.json"
 )
@@ -130,20 +130,26 @@ func SetSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConf
 
 // setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
 func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
-	if len(policy.Spec.SecureSettings) == 0 {
+	if len(policy.Spec.SecureSettings) == 0 && len(policy.Spec.Elasticsearch.SecureSettings) == 0 {
 		return nil
 	}
 
 	secretSources := make([]commonv1.NamespacedSecretSource, len(policy.Spec.SecureSettings))
+	// Common secureSettings field, this is mainly there to maintain backwards compatability
 	for i, src := range policy.Spec.SecureSettings {
 		secretSources[i] = commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries}
+	}
+
+	// SecureSettings field under Elasticsearch in the StackConfigPolicy
+	for _, src := range policy.Spec.Elasticsearch.SecureSettings {
+		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 	}
 
 	bytes, err := json.Marshal(secretSources)
 	if err != nil {
 		return err
 	}
-	settingsSecret.Annotations[secureSettingsSecretsAnnotationName] = string(bytes)
+	settingsSecret.Annotations[SecureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
 }
 
@@ -162,7 +168,7 @@ func CanBeOwnedBy(settingsSecret corev1.Secret, policy policyv1alpha1.StackConfi
 
 // getSecureSettings returns the SecureSettings Secret sources stores in an annotation of the given file settings Secret.
 func getSecureSettings(settingsSecret corev1.Secret) ([]commonv1.NamespacedSecretSource, error) {
-	rawString, ok := settingsSecret.Annotations[secureSettingsSecretsAnnotationName]
+	rawString, ok := settingsSecret.Annotations[SecureSettingsSecretsAnnotationName]
 	if !ok {
 		return []commonv1.NamespacedSecretSource{}, nil
 	}

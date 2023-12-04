@@ -31,7 +31,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 	// Check for stack config policy Kibana config secret
 	stackConfigPolicyConfigSecret := corev1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
-		Name:      stackconfigpolicy.GetPolicyConfigSecretName(kibana),
+		Name:      stackconfigpolicy.GetPolicyConfigSecretName(kibana.Name),
 		Namespace: kibana.Namespace,
 	}, &stackConfigPolicyConfigSecret)
 	if err != nil && !apierrors.IsNotFound(err) {
