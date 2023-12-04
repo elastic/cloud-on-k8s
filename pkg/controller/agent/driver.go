@@ -108,30 +108,13 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 
 	configHash := fnv.New32a()
 	var fleetCerts *certificates.CertificatesSecret
-	fleetAgent := (params.Agent.Spec.FleetServerEnabled || params.Agent.Spec.FleetServerRef.IsDefined())
-	if params.Agent.Spec.HTTP.TLS.Enabled() && fleetAgent {
-		// shouldReconcileFleetCerts := true
-		// // If the Agent is associated with a Fleet Server we need to only create the CA Secret if the Fleet Server is in a different namespace.
-		// if params.Agent.Spec.FleetServerRef.IsDefined() {
-		// 	fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
-		// 	if err != nil {
-		// 		return results.WithError(err), params.Status
-		// 	}
-		// 	// VERIFY THIS!! With the upcoming changes I think the controller will need to reconcile this secret even if it's
-		// 	// in the same namespace!!
-		// 	if fsAssociation.AssociationRef().Namespace == params.Agent.Namespace {
-		// 		// If this fleet-enabled Agent and the Fleet Server are in the same namespace, we do not need to reconcile the CA Secret
-		// 		// as the Fleet Server already handles the Secret reconciliation.
-		// 		shouldReconcileFleetCerts = false
-		// 	}
-		// }
+	if params.Agent.Spec.HTTP.TLS.Enabled() && params.Agent.Spec.FleetModeEnabled() {
 		// Only Fleet Server has a Service associated with it,
 		// Fleet-enabled Agents do not have a Service.
 		var services []corev1.Service
 		if svc != nil {
 			services = append(services, *svc)
 		}
-		// if shouldReconcileFleetCerts {
 		var caResults *reconciler.Results
 		fleetCerts, caResults = certificates.Reconciler{
 			K8sClient:                   params.Client,
@@ -152,7 +135,6 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			return results.WithResults(caResults), params.Status
 		}
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
-		// }
 	}
 
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
