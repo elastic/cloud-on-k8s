@@ -73,7 +73,8 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 }
 
 // reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
+func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) ([]commonv1.NamespacedSecretSource, error) {
+	var additionalSecretMountsSource []commonv1.NamespacedSecretSource
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		additionalSecret := corev1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -81,7 +82,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			Namespace: policy.Namespace,
 		}
 		if err := c.Get(ctx, namespacedName, &additionalSecret); err != nil {
-			return err
+			return additionalSecretMountsSource, err
 		}
 
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
@@ -109,10 +110,15 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 
 		_, err := reconciler.ReconcileSecret(ctx, c, expected, nil)
 		if err != nil {
-			return err
+			return additionalSecretMountsSource, err
 		}
+
+		additionalSecretMountsSource = append(additionalSecretMountsSource, commonv1.NamespacedSecretSource{
+			SecretName: additionalSecret.Name,
+			Namespace:  policy.Namespace,
+		})
 	}
-	return nil
+	return additionalSecretMountsSource, nil
 }
 
 func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {

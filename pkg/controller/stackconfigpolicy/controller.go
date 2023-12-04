@@ -39,6 +39,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -75,6 +76,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 		recorder:         mgr.GetEventRecorderFor(controllerName),
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 		params:           params,
+		dynamicWatches:   watches.NewDynamicWatches(),
 	}
 }
 
@@ -137,6 +139,7 @@ type ReconcileStackConfigPolicy struct {
 	recorder         record.EventRecorder
 	licenseChecker   license.Checker
 	params           operator.Parameters
+	dynamicWatches   watches.DynamicWatches
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -268,6 +271,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 	}
 
 	configuredResources := esMap{}
+	var additionalSecretMountsSources []commonv1.NamespacedSecretSource
 	for _, es := range esList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
@@ -327,7 +331,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
-		if err := reconcileSecretMounts(ctx, r.Client, es, &policy); err != nil {
+		secretSources, err := reconcileSecretMounts(ctx, r.Client, es, &policy)
+		if err != nil {
 			if apierrors.IsNotFound(err) {
 				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 				if err != nil {
@@ -337,6 +342,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			}
 			continue
 		}
+
+		additionalSecretMountsSources = append(additionalSecretMountsSources, secretSources...)
 
 		// create expected elasticsearch config secret
 		expectedConfigSecret, err := newElasticsearchConfigSecret(policy, es)
@@ -371,6 +378,12 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		if err != nil {
 			return results.WithError(err), status
 		}
+	}
+
+	// Add dynamic watches on the additional secret mounts
+	// This will also remove dynamic watches for secrets that belong to Elasticsearch clusters that are not managed by the policy anymore
+	if err = r.addDynamicWatchesOnAdditionalSecretMounts(additionalSecretMountsSources, policy); err != nil {
+		return results.WithError(err), status
 	}
 
 	// reset/delete Settings secrets for resources no longer selected by this policy
@@ -528,6 +541,8 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 }
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	// Remove dynamic watches on secrets
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }
@@ -704,4 +719,25 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 
 	return clusterState.Metadata.ReservedState.FileSettings, nil
+}
+
+func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(secretSources []commonv1.NamespacedSecretSource, policy policyv1alpha1.StackConfigPolicy) error {
+
+	// Add watches if there are additional secrets to be mounted
+	watcher := types.NamespacedName{
+		Name:      policy.Name,
+		Namespace: policy.Namespace,
+	}
+
+	// Add dynamic watches on the secrets
+	return watches.WatchUserProvidedNamespacedSecrets(
+		watcher,
+		r.dynamicWatches,
+		additionalSecretMountsWatcherName(watcher),
+		secretSources,
+	)
+}
+
+func additionalSecretMountsWatcherName(watcher types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-additional-secret-mounts-watcher", watcher.Name, watcher.Namespace)
 }

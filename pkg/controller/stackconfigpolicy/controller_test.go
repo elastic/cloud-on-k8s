@@ -29,6 +29,7 @@ import (
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -528,6 +529,9 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				// Verify the secret mounts secret
 				assertExpectedESSecretContent(t, r.Client, esFixture.Name, *secretMountsSecretFixture, policy.Spec.Elasticsearch.SecretMounts)
 				assertKibanaConfigSecret(t, r.Client, kibanaFixture.Name, *kibanaConfigSecretFixture)
+
+				// Verify dynamic watches are added
+				assert.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 			},
 			wantErr:          false,
 			wantRequeue:      false,
@@ -681,6 +685,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				esClientProvider: tt.args.esClientProvider,
 				recorder:         fakeRecorder,
 				licenseChecker:   tt.args.licenseChecker,
+				dynamicWatches:   watches.NewDynamicWatches(),
 			}
 			if tt.pre != nil {
 				tt.pre(reconciler)
