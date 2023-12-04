@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -29,7 +28,6 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []commonv1.NamespacedSecretSource
 		wantErr bool
 	}{
 		{
@@ -57,12 +55,6 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 							},
 						},
 					},
-				},
-			},
-			want: []commonv1.NamespacedSecretSource{
-				{
-					SecretName: "auth-policy-secret",
-					Namespace:  "test-policy-ns",
 				},
 			},
 			wantErr: false,
@@ -100,12 +92,11 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
+			err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.Equal(t, got, tt.want)
 
 			// Verify secret was created in es namespace
 			if err == nil {

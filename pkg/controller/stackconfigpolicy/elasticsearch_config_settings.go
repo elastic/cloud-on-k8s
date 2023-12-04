@@ -73,8 +73,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 }
 
 // reconcileSecretMounts creates the secrets in SecretMounts to the respective Elasticsearch namespace where they should be mounted to.
-func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) ([]commonv1.NamespacedSecretSource, error) {
-	var additionalSecretMountsSource []commonv1.NamespacedSecretSource
+func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, policy *policyv1alpha1.StackConfigPolicy) error {
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		additionalSecret := corev1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -82,7 +81,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			Namespace: policy.Namespace,
 		}
 		if err := c.Get(ctx, namespacedName, &additionalSecret); err != nil {
-			return additionalSecretMountsSource, err
+			return err
 		}
 
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
@@ -108,17 +107,11 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 		// Set the secret to be deleted when the stack config policy is deleted.
 		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
-		_, err := reconciler.ReconcileSecret(ctx, c, expected, nil)
-		if err != nil {
-			return additionalSecretMountsSource, err
+		if _, err := reconciler.ReconcileSecret(ctx, c, expected, nil); err != nil {
+			return err
 		}
-
-		additionalSecretMountsSource = append(additionalSecretMountsSource, commonv1.NamespacedSecretSource{
-			SecretName: additionalSecret.Name,
-			Namespace:  policy.Namespace,
-		})
 	}
-	return additionalSecretMountsSource, nil
+	return nil
 }
 
 func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {

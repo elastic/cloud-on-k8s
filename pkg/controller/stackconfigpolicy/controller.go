@@ -271,7 +271,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 	}
 
 	configuredResources := esMap{}
-	var additionalSecretMountsSources []commonv1.NamespacedSecretSource
 	for _, es := range esList.Items {
 		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
@@ -331,8 +330,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// Copy all the Secrets that are present in spec.elasticsearch.secretMounts
-		secretSources, err := reconcileSecretMounts(ctx, r.Client, es, &policy)
-		if err != nil {
+		if err := reconcileSecretMounts(ctx, r.Client, es, &policy); err != nil {
 			if apierrors.IsNotFound(err) {
 				err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType)
 				if err != nil {
@@ -342,8 +340,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			}
 			continue
 		}
-
-		additionalSecretMountsSources = append(additionalSecretMountsSources, secretSources...)
 
 		// create expected elasticsearch config secret
 		expectedConfigSecret, err := newElasticsearchConfigSecret(policy, es)
@@ -381,8 +377,8 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 	}
 
 	// Add dynamic watches on the additional secret mounts
-	// This will also remove dynamic watches for secrets that belong to Elasticsearch clusters that are not managed by the policy anymore
-	if err = r.addDynamicWatchesOnAdditionalSecretMounts(additionalSecretMountsSources, policy); err != nil {
+	// This will also remove dynamic watches for secrets that no longer are refrenced in the stackconfigpolicy
+	if err = r.addDynamicWatchesOnAdditionalSecretMounts(policy); err != nil {
 		return results.WithError(err), status
 	}
 
@@ -721,12 +717,20 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	return clusterState.Metadata.ReservedState.FileSettings, nil
 }
 
-func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(secretSources []commonv1.NamespacedSecretSource, policy policyv1alpha1.StackConfigPolicy) error {
+func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {
 
 	// Add watches if there are additional secrets to be mounted
 	watcher := types.NamespacedName{
 		Name:      policy.Name,
 		Namespace: policy.Namespace,
+	}
+
+	var secretSources []commonv1.NamespacedSecretSource
+	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
+		secretSources = append(secretSources, commonv1.NamespacedSecretSource{
+			SecretName: secretMount.SecretName,
+			Namespace:  policy.Namespace,
+		})
 	}
 
 	// Add dynamic watches on the secrets
