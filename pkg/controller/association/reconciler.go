@@ -84,6 +84,8 @@ type AssociationInfo struct { //nolint:revive
 	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
+
+	TransientAssociations func(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error)
 }
 
 type ElasticsearchUserCreation struct {
@@ -281,6 +283,30 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		CASecretName:   caSecret.Name,
 		URL:            url,
 		Version:        ver,
+	}
+
+	if r.AssociationInfo.TransientAssociations != nil {
+		transients, err := r.AssociationInfo.TransientAssociations(r.Client, association)
+		if err != nil {
+			return commonv1.AssociationPending, err
+		}
+		for _, transient := range transients {
+			for _, transientAssociation := range transient.GetAssociations() {
+				assocRef := transientAssociation.AssociationRef()
+				if transientAssociation.AssociationType() != commonv1.ElasticsearchAssociationType {
+					continue
+				}
+				_, err := r.ReconcileCASecret(
+					ctx,
+					transientAssociation,
+					esv1.ESNamer,
+					assocRef.NamespacedName(),
+				)
+				if err != nil {
+					return commonv1.AssociationPending, err // maybe not created yet
+				}
+			}
+		}
 	}
 
 	if r.ElasticsearchUserCreation == nil {

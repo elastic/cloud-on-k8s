@@ -302,6 +302,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 			return nil, err
 		}
 	} else if params.Agent.Spec.FleetServerRef.IsDefined() {
+		agent := params.Agent
 		// As the reference chain is: Elastic Agent ---> Fleet Server ---> Elasticsearch,
 		// we need first to identify the Fleet Server and then identify its reference to Elasticsearch.
 		fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
@@ -320,7 +321,9 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 			return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
 		}
 
-		esAssociation, err = association.SingleAssociationOfType(fs.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		agent.Spec.ElasticsearchRefs = fs.Spec.ElasticsearchRefs
+
+		esAssociation, err = association.SingleAssociationOfType(agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
 		if err != nil {
 			return nil, err
 		}
@@ -333,33 +336,23 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder, nil
 	}
 
-	// If the Agent is associated with a Fleet Server, they are required to be in the same namespace as the Secret
-	// containing the Elasticsearch CA is created in the same namespace as the Fleet Server.
-	if agent.Spec.FleetServerRef.IsDefined() {
-		fsAssociation, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.FleetServerAssociationType)
-		if err != nil {
-			return nil, err
-		}
-		if fsAssociation.AssociationRef().Namespace != agent.Namespace {
-			// check Elastic Agent and Fleet Server share the same namespace
-			return nil, fmt.Errorf(
-				"agent namespace %s is different than referenced Fleet Server namespace %s, this is not supported yet",
-				agent.Namespace,
-				fsAssociation.GetNamespace(),
-			)
-		}
-	}
-
 	// no ES CA to configure, skip
 	assocConf, err := esAssociation.AssociationConf()
 	if err != nil {
 		return nil, err
 	}
-	if !assocConf.CAIsConfigured() {
+
+	transitiveAssociation := isTransitiveAssociation(esAssociation)
+	if !assocConf.CAIsConfigured() && !transitiveAssociation {
 		return builder, nil
 	}
+	caSecretName := assocConf.GetCASecretName()
+	if transitiveAssociation {
+		caSecretName = association.CACertSecretName(esAssociation, "agent-fleetserver")
+	}
+
 	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
-		assocConf.GetCASecretName(),
+		caSecretName,
 		fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
 		certificatesDir(esAssociation),
 	))
@@ -376,6 +369,10 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
 	}
 	return builder, nil
+}
+
+func isTransitiveAssociation(association commonv1.Association) bool {
+	return association.AssociationType() == commonv1.ElasticsearchAssociationType && association.Associated().GetObjectKind().GroupVersionKind().Kind == "Agent"
 }
 
 func runningAsRoot(agent agentv1alpha1.Agent) bool {

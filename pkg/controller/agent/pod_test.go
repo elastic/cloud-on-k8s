@@ -1008,7 +1008,7 @@ fi
 				},
 			},
 			assoc:       assocToOtherNs,
-			wantErr:     true,
+			wantErr:     false,
 			wantPodSpec: nil,
 		},
 	} {
@@ -1018,7 +1018,7 @@ fi
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
-				if gotBuilder != nil {
+				if gotBuilder != nil && tt.wantPodSpec != nil {
 					require.Nil(t, deep.Equal(*tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
 				} else {
 					require.Nil(t, tt.wantPodSpec)

@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,7 +43,31 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationResourceNamespaceLabelName: agent.NamespaceLabelName,
 
 		ElasticsearchUserCreation: nil,
+
+		TransientAssociations: getFleetAssociatedResources,
 	})
+}
+
+func getFleetAssociatedResources(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error) {
+	associated := assoc.Associated()
+	agent := agentv1alpha1.Agent{}
+	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
+	if err := c.Get(context.Background(), nsn, &agent); err != nil {
+		return nil, err
+	}
+	fleetServerRef := assoc.AssociationRef()
+	if !fleetServerRef.IsDefined() {
+		return nil, nil
+	}
+	fleetServer := agentv1alpha1.Agent{}
+	if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+		return nil, err
+	}
+	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+		return nil, fmt.Errorf("no Elasticsearch reference found in fleet server %s/%s", fleetServer.Namespace, fleetServer.Name)
+	}
+	agent.Spec.ElasticsearchRefs = fleetServer.Spec.ElasticsearchRefs
+	return []commonv1.Associated{&agent}, nil
 }
 
 func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
