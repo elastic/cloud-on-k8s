@@ -342,12 +342,19 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 		return nil, err
 	}
 
+	// A transitive association is an association that is not directly configured by the user but is created
+	// by associating a Fleet-enabled Agent with a Fleet Server. The transitive association in that case
+	// will be Fleet => Fleet-Server => Elasticsearch.
 	transitiveAssociation := isTransitiveAssociation(esAssociation)
 	if !assocConf.CAIsConfigured() && !transitiveAssociation {
 		return builder, nil
 	}
+	// If the association configuration has the CA configuration directly in the annotation
+	// then we can simply use the secret specified in the annotation.
 	caSecretName := assocConf.GetCASecretName()
 	if transitiveAssociation {
+		// In the case of a transitive association, no CA is configured in the annotation, so we need to
+		// use the method used within the Association controller to generate the expected secret name.
 		caSecretName = association.CACertSecretName(esAssociation, "agent-fleetserver")
 	}
 
@@ -371,6 +378,9 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 	return builder, nil
 }
 
+// isTransitiveAssociation returns true if the given association is a transitive association, which is defined
+// as an association that is not directly configured by the user but is created by associating a Fleet-enabled
+// Agent with a Fleet Server which indirectly associates Elastic Agent with Elasticsearch.
 func isTransitiveAssociation(association commonv1.Association) bool {
 	return association.AssociationType() == commonv1.ElasticsearchAssociationType && association.Associated().GetObjectKind().GroupVersionKind().Kind == "Agent"
 }
