@@ -16,6 +16,9 @@ spec:
     secretName: eck-agent-deployment
   deployment:
     podTemplate:
+      metadata:
+        annotations:
+          checksum/config: {{ include (print $.Template.BasePath "/eck-agent/elastic-agent-deployment-secret.yaml") . | sha256sum }}
       spec:
         automountServiceAccountToken: true
         nodeSelector:

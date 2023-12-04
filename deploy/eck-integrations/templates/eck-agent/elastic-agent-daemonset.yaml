@@ -16,6 +16,9 @@ spec:
     secretName: eck-agent-daemonset
   daemonSet:
     podTemplate:
+      metadata:
+        annotations:
+          checksum/config: {{ include (print $.Template.BasePath "/eck-agent/elastic-agent-daemonset-secret.yaml") . | sha256sum }}
       spec:
         automountServiceAccountToken: true
         serviceAccountName: eck-agent
