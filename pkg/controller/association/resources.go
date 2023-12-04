@@ -48,10 +48,10 @@ func deleteOrphanedResources(
 			if isSecretForAssociation(info, secret, association) {
 				goto nextSecret
 			}
-			if info.TransientAssociations != nil {
-				// Check if the secret is still needed by a transient association.
+			if info.TransitivelyAssociated != nil {
+				// Check if the secret is still needed by a transitive association.
 				// If so, skip deletion.
-				associatedResources, err := info.TransientAssociations(c, association)
+				associatedResources, err := info.TransitivelyAssociated(c, association)
 				if err != nil {
 					return err
 				}

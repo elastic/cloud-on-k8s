@@ -85,7 +85,7 @@ type AssociationInfo struct { //nolint:revive
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
 
-	TransientAssociations func(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error)
+	TransitivelyAssociated func(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error)
 }
 
 type ElasticsearchUserCreation struct {
@@ -285,20 +285,20 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		Version:        ver,
 	}
 
-	if r.AssociationInfo.TransientAssociations != nil {
-		transients, err := r.AssociationInfo.TransientAssociations(r.Client, association)
+	if r.AssociationInfo.TransitivelyAssociated != nil {
+		associated, err := r.AssociationInfo.TransitivelyAssociated(r.Client, association)
 		if err != nil {
 			return commonv1.AssociationPending, err
 		}
-		for _, transient := range transients {
-			for _, transientAssociation := range transient.GetAssociations() {
-				assocRef := transientAssociation.AssociationRef()
-				if transientAssociation.AssociationType() != commonv1.ElasticsearchAssociationType {
+		for _, transitivelyAssociated := range associated {
+			for _, transitiveAssociation := range transitivelyAssociated.GetAssociations() {
+				assocRef := transitiveAssociation.AssociationRef()
+				if transitiveAssociation.AssociationType() != commonv1.ElasticsearchAssociationType {
 					continue
 				}
 				_, err := r.ReconcileCASecret(
 					ctx,
-					transientAssociation,
+					transitiveAssociation,
 					esv1.ESNamer,
 					assocRef.NamespacedName(),
 				)

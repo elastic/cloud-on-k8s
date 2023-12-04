@@ -44,7 +44,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 
 		ElasticsearchUserCreation: nil,
 
-		TransientAssociations: getFleetAssociatedResources,
+		TransitivelyAssociated: getFleetAssociatedResources,
 	})
 }
 
