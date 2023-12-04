@@ -134,10 +134,10 @@ func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.Stac
 		return nil
 	}
 
-	secretSources := make([]commonv1.NamespacedSecretSource, len(policy.Spec.SecureSettings))
+	var secretSources []commonv1.NamespacedSecretSource
 	// Common secureSettings field, this is mainly there to maintain backwards compatability
-	for i, src := range policy.Spec.SecureSettings {
-		secretSources[i] = commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries}
+	for _, src := range policy.Spec.SecureSettings {
+		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 	}
 
 	// SecureSettings field under Elasticsearch in the StackConfigPolicy

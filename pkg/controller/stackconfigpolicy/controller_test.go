@@ -116,6 +116,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
+			SecureSettings: []commonv1.SecretSource{
+				{
+					SecretName: "shared-secret1",
+				},
+			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
 					"indices.recovery.max_bytes_per_sec": "42mb",
@@ -124,6 +129,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 					{
 						SecretName: "test-secret-mount",
 						MountPath:  "/usr/test",
+					},
+				},
+				SecureSettings: []commonv1.SecretSource{
+					{
+						SecretName: "shared-secret",
 					},
 				},
 				Config: &commonv1.Config{
@@ -136,6 +146,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"xpack.canvas.enabled": true,
+					},
+				},
+				SecureSettings: []commonv1.SecretSource{
+					{
+						SecretName: "shared-secret",
 					},
 				},
 			},
@@ -170,7 +185,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	}
 	secretHash, err := getSettingsHash(secretFixture)
 	assert.NoError(t, err)
-	secretFixture.Annotations = map[string]string{"policy.k8s.elastic.co/settings-hash": secretHash}
+	secretFixture.Annotations = map[string]string{"policy.k8s.elastic.co/settings-hash": secretHash,
+		"policy.k8s.elastic.co/secure-settings-secrets": `[{"namespace":"ns","secretName":"shared-secret"},{"namespace":"ns","secretName":"shared-secret1"}]`}
 
 	conflictingSecretFixture := secretFixture.DeepCopy()
 	conflictingSecretFixture.Labels["eck.k8s.elastic.co/owner-name"] = "another-policy"
@@ -235,6 +251,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	}}
 
 	kibanaConfigSecretFixture := MkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
+	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns")
 
 	type args struct {
 		client           k8s.Client

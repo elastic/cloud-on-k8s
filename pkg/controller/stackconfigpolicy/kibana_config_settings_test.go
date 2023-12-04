@@ -51,6 +51,11 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 									"xpack.canvas.enabled": true,
 								},
 							},
+							SecureSettings: []commonv1.SecretSource{
+								{
+									SecretName: "shared-secret",
+								},
+							},
 						},
 					},
 				},
@@ -68,7 +73,8 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 						"eck.k8s.elastic.co/owner-namespace":    "test-policy-ns",
 					},
 					Annotations: map[string]string{
-						"policy.k8s.elastic.co/kibana-config-hash": "3077592849",
+						"policy.k8s.elastic.co/kibana-config-hash":      "3077592849",
+						"policy.k8s.elastic.co/secure-settings-secrets": `[{"namespace":"test-policy-ns","secretName":"shared-secret"}]`,
 					},
 				},
 				Data: map[string][]byte{

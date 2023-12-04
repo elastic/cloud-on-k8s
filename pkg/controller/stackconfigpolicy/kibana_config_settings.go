@@ -122,13 +122,13 @@ func canBeOwned(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackCo
 	return currentOwner, canBeOwned, nil
 }
 
-// setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
+// setKibanaSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy for Kibana in the annotation of the Kibana config Secret.
 func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
 	if len(policy.Spec.Kibana.SecureSettings) == 0 {
 		return nil
 	}
 
-	secretSources := make([]commonv1.NamespacedSecretSource, len(policy.Spec.SecureSettings))
+	var secretSources []commonv1.NamespacedSecretSource
 	// SecureSettings field under Kibana in the StackConfigPolicy
 	for _, src := range policy.Spec.Kibana.SecureSettings {
 		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
