@@ -97,7 +97,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy())
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), reconcileRequestForSoftOwnerPolicy()); err != nil {
+		return err
+	}
+
+	// watch dynamically refrenced secrets
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), r.dynamicWatches.Secrets)
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.EventHandler {
