@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -59,7 +60,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 		name        string
 		params      Params
 		fleetCerts  *certificates.CertificatesSecret
-		wantPodSpec *corev1.PodSpec
+		wantPodSpec corev1.PodSpec
 	}{
 		{
 			name: "running elastic agent, with fleet server, without es/kb association",
@@ -387,11 +388,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
-			if tt.wantPodSpec != nil {
-				require.Equal(t, *tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
-			} else {
-				require.Nil(t, gotBuilder)
-			}
+			require.Equal(t, tt.wantPodSpec, gotBuilder.PodTemplate.Spec)
 		})
 	}
 }
@@ -838,6 +835,10 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 	})
 
 	assocToOtherNs := (&agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-agent",
+			Namespace: agentNs,
+		},
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
@@ -861,11 +862,29 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 			},
 		},
 	}
+	expectedFleetCAVolume := []corev1.Volume{
+		{
+			Name: "elasticsearch-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "es-agent-agent-fleetserver-elasticsearch-ns-elasticsearch-ca",
+					Optional:   &optional,
+				},
+			},
+		},
+	}
 	expectedCAVolumeMount := []corev1.VolumeMount{
 		{
 			Name:      "elasticsearch-certs",
 			ReadOnly:  true,
 			MountPath: "/mnt/elastic-internal/elasticsearch-association/agent-ns/elasticsearch/certs",
+		},
+	}
+	expectedFleetCAVolumeMount := []corev1.VolumeMount{
+		{
+			Name:      "elasticsearch-certs",
+			ReadOnly:  true,
+			MountPath: "/mnt/elastic-internal/elasticsearch-association/elasticsearch-ns/elasticsearch/certs",
 		},
 	}
 	expectedCmd := []string{"/usr/bin/env", "bash", "-c", `#!/usr/bin/env bash
@@ -885,12 +904,12 @@ fi
 		name        string
 		agent       agentv1alpha1.Agent
 		assoc       commonv1.Association
-		wantPodSpec *corev1.PodSpec
+		wantPodSpec corev1.PodSpec
 		wantErr     bool
 	}{
 		{
 			name:        "nil es association",
-			wantPodSpec: &generateBuilder().PodTemplate.Spec,
+			wantPodSpec: generateBuilder().PodTemplate.Spec,
 			wantErr:     false,
 		},
 		{
@@ -987,8 +1006,8 @@ fi
 			assoc:   assocToOtherNs,
 			wantErr: false,
 			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
-				ps.Volumes = nil
-				ps.Containers[0].VolumeMounts = nil
+				ps.Volumes = expectedFleetCAVolume
+				ps.Containers[0].VolumeMounts = expectedFleetCAVolumeMount
 				ps.Containers[0].Command = nil
 				return ps
 			}),
@@ -1007,9 +1026,14 @@ fi
 					Version:            "7.16.2",
 				},
 			},
-			assoc:       assocToOtherNs,
-			wantErr:     false,
-			wantPodSpec: nil,
+			assoc:   assocToOtherNs,
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = expectedFleetCAVolume
+				ps.Containers[0].VolumeMounts = expectedFleetCAVolumeMount
+				ps.Containers[0].Command = nil
+				return ps
+			}),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1018,11 +1042,7 @@ fi
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
-				if gotBuilder != nil && tt.wantPodSpec != nil {
-					require.Nil(t, deep.Equal(*tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
-				} else {
-					require.Nil(t, tt.wantPodSpec)
-				}
+				require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec), "wantPodSpec != got, diff: %s", cmp.Diff(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
 			}
 		})
 	}
@@ -1534,8 +1554,7 @@ func generateBuilder() *defaults.PodTemplateBuilder {
 	return defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, "agent")
 }
 
-func generatePodSpec(f func(spec corev1.PodSpec) corev1.PodSpec) *corev1.PodSpec {
+func generatePodSpec(f func(spec corev1.PodSpec) corev1.PodSpec) corev1.PodSpec {
 	builder := generateBuilder()
-	ret := f(builder.PodTemplate.Spec)
-	return &ret
+	return f(builder.PodTemplate.Spec)
 }
