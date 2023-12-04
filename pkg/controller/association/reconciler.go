@@ -85,6 +85,9 @@ type AssociationInfo struct { //nolint:revive
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
 
+	// TransitivelyAssociated returns all resources that are transitively associated with the given association.
+	// This is currently only used in the Agent => FleetServer association to retrieve the full
+	// Agent => FleetServer => Elasticsearch association as the CAis needed for Agent to communicate with Elasticsearch.
 	TransitivelyAssociated func(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error)
 }
 
