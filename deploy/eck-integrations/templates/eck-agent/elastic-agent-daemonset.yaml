@@ -22,6 +22,8 @@ spec:
       spec:
         automountServiceAccountToken: true
         serviceAccountName: eck-agent
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
         containers:
         - name: agent
           securityContext:
@@ -44,7 +46,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
-        {{- if eq .Values.cloudDefend.enabled true}}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         volumeMounts:
         - name: proc
           mountPath: /hostfs/proc
@@ -64,12 +69,12 @@ spec:
         - name: var-lib
           mountPath: /hostfs/var/lib
           readOnly: true
-        - name: sys-kernel-debug
-          mountPath: /sys/kernel/debug
         - name: elastic-agent-state
           mountPath: /usr/share/elastic-agent/state
-        {{- end}}
         {{- if eq .Values.cloudDefend.enabled true}}
+        - name: sys-kernel-debug
+          mountPath: /sys/kernel/debug
+        {{- end}}
         volumes:
         - name: proc
           hostPath:
@@ -89,6 +94,11 @@ spec:
         - name: var-lib
           hostPath:
             path: /var/lib
+        - name: elastic-agent-state
+          hostPath:
+            path: /var/lib/elastic-agent-managed/elastic-system/state
+            type: DirectoryOrCreate
+        {{- if eq .Values.cloudDefend.enabled true}}
         - name: sys-kernel-debug
           hostPath:
             path: /sys/kernel/debug
