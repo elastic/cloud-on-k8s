@@ -50,31 +50,31 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-        volumeMounts:
-        - name: proc
-          mountPath: /hostfs/proc
-          readOnly: true
-        - name: cgroup
-          mountPath: /hostfs/sys/fs/cgroup
-          readOnly: true
-        - name: varlibdockercontainers
-          mountPath: /var/lib/docker/containers
-          readOnly: true
-        - name: varlog
-          mountPath: /var/log
-          readOnly: true
-        - name: etc-full
-          mountPath: /hostfs/etc
-          readOnly: true
-        - name: var-lib
-          mountPath: /hostfs/var/lib
-          readOnly: true
-        - name: elastic-agent-state
-          mountPath: /usr/share/elastic-agent/state
-        {{- if eq .Values.cloudDefend.enabled true}}
-        - name: sys-kernel-debug
-          mountPath: /sys/kernel/debug
-        {{- end}}
+          volumeMounts:
+          - name: proc
+            mountPath: /hostfs/proc
+            readOnly: true
+          - name: cgroup
+            mountPath: /hostfs/sys/fs/cgroup
+            readOnly: true
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+            readOnly: true
+          - name: varlog
+            mountPath: /var/log
+            readOnly: true
+          - name: etc-full
+            mountPath: /hostfs/etc
+            readOnly: true
+          - name: var-lib
+            mountPath: /hostfs/var/lib
+            readOnly: true
+          - name: elastic-agent-state
+            mountPath: /usr/share/elastic-agent/state
+          {{- if eq .Values.cloudDefend.enabled true}}
+          - name: sys-kernel-debug
+            mountPath: /sys/kernel/debug
+          {{- end}}
         volumes:
         - name: proc
           hostPath:
