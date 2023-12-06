@@ -7,6 +7,8 @@ package container
 import (
 	"fmt"
 	"strings"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 const DefaultContainerRegistry = "docker.elastic.co"
@@ -15,6 +17,12 @@ var (
 	containerRegistry   = DefaultContainerRegistry
 	containerRepository = ""
 	containerSuffix     = ""
+
+	major7UbiSuffixMinVersion = version.MinFor(7, 17, 16) // min 7.x to use UBISuffix
+	major8UbiSuffixMinVersion = version.MinFor(8, 12, 0)  // min 8.x to use UBISuffix
+
+	UBISuffix    = "-ubi"  // suffix to use when --ubi-only
+	OldUBISuffix = "-ubi8" // old suffix to use when --ubi-only
 )
 
 // SetContainerRegistry sets the global container registry used to download Elastic stack images.
@@ -53,11 +61,15 @@ const (
 	JournalbeatImage      Image = "beats/journalbeat"
 	PacketbeatImage       Image = "beats/packetbeat"
 	AgentImage            Image = "beats/elastic-agent"
-	MapsImage             Image = "elastic-maps-service/elastic-maps-server-ubi8"
+	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
 )
 
+var ()
+
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
+// A UBI suffix (-ubi8 or -ubi suffix depending on the version) is prepended to the image name for the maps image,
+// or any image if the operator is configured with --ubi-only.
 func ImageRepository(img Image, version string) string {
 	// replace repository if defined
 	image := img
@@ -66,9 +78,28 @@ func ImageRepository(img Image, version string) string {
 		image = Image(fmt.Sprintf("%s/%s", containerRepository, img.Name()))
 	}
 
-	// don't double append suffix if already contained as e.g. the case for maps
-	if strings.HasSuffix(string(img), containerSuffix) {
-		return fmt.Sprintf("%s/%s:%s", containerRegistry, image, version)
+	suffix := ""
+	UBIOnly := containerSuffix == UBISuffix
+	// use an UBI suffix for maps server image or any image in UBI mode
+	if UBIOnly || img == MapsImage {
+		suffix = getUBISuffix(version)
 	}
-	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, containerSuffix, version)
+	// use the global container suffix in non-UBI mode
+	if !UBIOnly {
+		suffix += containerSuffix
+	}
+
+	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, version)
+}
+
+// getUBISuffix returns the UBI suffix to use depending on the given version
+func getUBISuffix(v string) string {
+	ver := version.MustParse(v)
+	if ver.Major == 7 && ver.LT(major7UbiSuffixMinVersion) {
+		return OldUBISuffix
+	}
+	if ver.Major == 8 && ver.LT(major8UbiSuffixMinVersion) {
+		return OldUBISuffix
+	}
+	return UBISuffix
 }
