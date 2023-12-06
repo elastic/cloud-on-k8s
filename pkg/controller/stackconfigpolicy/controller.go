@@ -330,7 +330,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		if err := filesettings.ReconcileSecret(ctx, r.Client, expectedSecret, es); err != nil {
+		if err := filesettings.ReconcileSecret(ctx, r.Client, expectedSecret, &es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -352,8 +352,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		_, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &es)
-		if err != nil {
+		if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -452,7 +451,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			continue
 		}
 
-		if _, err = reconciler.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
+		if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
 			return results.WithError(err), status
 		}
 

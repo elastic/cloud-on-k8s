@@ -197,7 +197,7 @@ func TestReconcileSecret(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ReconcileSecret(context.Background(), tt.c, *tt.expected, *owner)
+			err := ReconcileSecret(context.Background(), tt.c, *tt.expected, owner)
 			require.NoError(t, err)
 
 			var secret corev1.Secret

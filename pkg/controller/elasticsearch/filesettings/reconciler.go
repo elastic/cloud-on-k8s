@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -51,7 +52,7 @@ func ReconcileEmptyFileSettingsSecret(
 		return err
 	}
 
-	return ReconcileSecret(ctx, c, expectedSecret, es)
+	return ReconcileSecret(ctx, c, expectedSecret, &es)
 }
 
 // ReconcileSecret reconciles the given file settings Secret for the given Elasticsearch.
@@ -60,18 +61,18 @@ func ReconcileSecret(
 	ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
-	es esv1.Elasticsearch,
+	owner client.Object,
 ) error {
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
 		Client:     c,
-		Owner:      &es,
+		Owner:      owner,
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+			return !reflect.DeepEqual(expected.Labels, reconciled.Labels) ||
+				!reflect.DeepEqual(expected.Annotations, reconciled.Annotations) ||
 				!reflect.DeepEqual(expected.Data, reconciled.Data)
 		},
 		UpdateReconciled: func() {
