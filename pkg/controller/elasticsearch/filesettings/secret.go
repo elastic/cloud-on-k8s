@@ -130,12 +130,14 @@ func SetSoftOwner(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConf
 
 // setSecureSettings stores the SecureSettings Secret sources referenced in the given StackConfigPolicy in the annotation of the Settings Secret.
 func setSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha1.StackConfigPolicy) error {
+	//nolint:staticcheck
 	if len(policy.Spec.SecureSettings) == 0 && len(policy.Spec.Elasticsearch.SecureSettings) == 0 {
 		return nil
 	}
 
-	var secretSources []commonv1.NamespacedSecretSource
+	var secretSources []commonv1.NamespacedSecretSource //nolint:prealloc
 	// Common secureSettings field, this is mainly there to maintain backwards compatability
+	//nolint:staticcheck
 	for _, src := range policy.Spec.SecureSettings {
 		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})
 	}

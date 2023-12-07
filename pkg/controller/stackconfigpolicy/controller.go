@@ -729,7 +729,7 @@ func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(p
 		Namespace: policy.Namespace,
 	}
 
-	var secretSources []commonv1.NamespacedSecretSource
+	var secretSources []commonv1.NamespacedSecretSource //nolint:prealloc
 	for _, secretMount := range policy.Spec.Elasticsearch.SecretMounts {
 		secretSources = append(secretSources, commonv1.NamespacedSecretSource{
 			SecretName: secretMount.SecretName,

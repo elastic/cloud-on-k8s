@@ -128,7 +128,7 @@ func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha
 		return nil
 	}
 
-	var secretSources []commonv1.NamespacedSecretSource
+	var secretSources []commonv1.NamespacedSecretSource //nolint:prealloc
 	// SecureSettings field under Kibana in the StackConfigPolicy
 	for _, src := range policy.Spec.Kibana.SecureSettings {
 		secretSources = append(secretSources, commonv1.NamespacedSecretSource{Namespace: policy.GetNamespace(), SecretName: src.SecretName, Entries: src.Entries})

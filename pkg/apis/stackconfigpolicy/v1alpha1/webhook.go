@@ -81,6 +81,16 @@ func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 	return nil, nil
 }
 
+func (p *StackConfigPolicy) GetWarnings() []string {
+	if p == nil {
+		return nil
+	}
+	if len(p.Spec.SecureSettings) > 0 {
+		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, p.Namespace, p.Name, SpecSecureSettingsDeprecated)}
+	}
+	return nil
+}
+
 func checkNoUnknownFields(policy *StackConfigPolicy) field.ErrorList {
 	return commonv1.NoUnknownFields(policy, policy.ObjectMeta)
 }
@@ -130,16 +140,6 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	}
 	if settingsCount == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
-	}
-	return nil
-}
-
-func (s *StackConfigPolicy) GetWarnings() []string {
-	if s == nil {
-		return nil
-	}
-	if len(s.Spec.SecureSettings) > 0 {
-		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, s.Namespace, s.Name, SpecSecureSettingsDeprecated)}
 	}
 	return nil
 }
