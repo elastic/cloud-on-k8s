@@ -65,10 +65,8 @@ const (
 	LogstashImage         Image = "logstash/logstash"
 )
 
-var ()
-
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
-// A UBI suffix (-ubi8 or -ubi suffix depending on the version) is prepended to the image name for the maps image,
+// A UBI suffix (-ubi8 or -ubi suffix depending on the version) is appended to the image name for the maps image,
 // or any image if the operator is configured with --ubi-only.
 func ImageRepository(img Image, version string) string {
 	// replace repository if defined
@@ -92,7 +90,7 @@ func ImageRepository(img Image, version string) string {
 	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, version)
 }
 
-// getUBISuffix returns the UBI suffix to use depending on the given version
+// getUBISuffix returns the UBI suffix to use depending on the given version.
 func getUBISuffix(v string) string {
 	ver := version.MustParse(v)
 	if ver.Major == 7 && ver.LT(major7UbiSuffixMinVersion) {
