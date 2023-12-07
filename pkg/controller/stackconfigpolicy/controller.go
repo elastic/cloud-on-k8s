@@ -722,7 +722,6 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 }
 
 func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {
-
 	// Add watches if there are additional secrets to be mounted
 	watcher := types.NamespacedName{
 		Name:      policy.Name,
