@@ -31,7 +31,7 @@ func TestKBStackMonitoring(t *testing.T) {
 	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources) // TODO .ds-metrics-fleet_server.agent_status-default index is created with a replica
 	monitored := kibana.NewBuilder("test-kb-mon-a").
 		WithElasticsearchRef(assocEs.Ref()).
 		WithNodeCount(1).
