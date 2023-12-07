@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
@@ -62,7 +63,12 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 	}
 
 	// watch the CA secret of the referenced resource in the referenced resource namespace
-	if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+	// and potentially the CA secret of the transitively associated resources.
+	managedElasticRefWithTransitives, err := r.maybeAddTransitiveAssociations(managedElasticRef, associations)
+	if err != nil {
+		return err
+	}
+	if err := ReconcileWatch(associated, managedElasticRefWithTransitives, r.watches.Secrets, referencedResourceCASecretWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
@@ -94,6 +100,37 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 	}
 
 	return nil
+}
+
+// maybeAddTransitiveAssociations potentially adds the Elasticsearch instance's association associated with the Fleet Server
+// so we can watch the CA secret of the Elasticsearch instance and reconcile if it changes.
+func (r *Reconciler) maybeAddTransitiveAssociations(managedElasticRef []commonv1.Association, associations []commonv1.Association) ([]commonv1.Association, error) {
+	managedElasticRefWithTransitives := make([]commonv1.Association, len(managedElasticRef))
+	for i, assoc := range managedElasticRef {
+		managedElasticRefWithTransitives[i] = assoc
+	}
+	if r.AssociationInfo.AssociationType == commonv1.FleetServerAssociationType {
+		// add the ES instance's CAs associated with the fleet server
+		for _, assoc := range associations {
+			associatedFleetResources, err := r.AssociationInfo.TransitivelyAssociated(r.Client, assoc)
+			if err != nil {
+				return nil, err
+			}
+			if len(associatedFleetResources) == 0 {
+				continue
+			}
+			agent, ok := associatedFleetResources[0].(*agentv1alpha1.Agent)
+			if !ok {
+				continue
+			}
+			esAssociation, err := SingleAssociationOfType(agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
+			if err != nil {
+				return nil, err
+			}
+			managedElasticRefWithTransitives = append(managedElasticRefWithTransitives, esAssociation)
+		}
+	}
+	return managedElasticRefWithTransitives, nil
 }
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
