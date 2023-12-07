@@ -7,6 +7,7 @@ package container
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -155,7 +156,7 @@ func TestImageRepository(t *testing.T) {
 			SetContainerRepository(tc.repository)
 			SetContainerSuffix(tc.suffix)
 
-			have := ImageRepository(tc.image, tc.version)
+			have := ImageRepository(tc.image, version.MustParse(tc.version))
 			assert.Equal(t, tc.want, have)
 		})
 	}

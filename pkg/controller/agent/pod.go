@@ -153,7 +153,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
 	}
 
-	v, err := version.Parse(params.Agent.Spec.Version)
+	v, err := version.Parse(spec.Version)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
 	}
@@ -180,7 +180,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	builder = builder.
 		WithLabels(labels).
 		WithAnnotations(annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, spec.Version)).
+		WithDockerImage(spec.Image, container.ImageRepository(container.AgentImage, v)).
 		WithAutomountServiceAccountToken().
 		WithVolumeLikes(vols...).
 		WithEnv(

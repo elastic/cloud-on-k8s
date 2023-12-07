@@ -68,7 +68,7 @@ const (
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.
 // A UBI suffix (-ubi8 or -ubi suffix depending on the version) is appended to the image name for the maps image,
 // or any image if the operator is configured with --ubi-only.
-func ImageRepository(img Image, version string) string {
+func ImageRepository(img Image, ver version.Version) string {
 	// replace repository if defined
 	image := img
 
@@ -80,19 +80,18 @@ func ImageRepository(img Image, version string) string {
 	UBIOnly := containerSuffix == UBISuffix
 	// use an UBI suffix for maps server image or any image in UBI mode
 	if UBIOnly || img == MapsImage {
-		suffix = getUBISuffix(version)
+		suffix = getUBISuffix(ver)
 	}
 	// use the global container suffix in non-UBI mode
 	if !UBIOnly {
 		suffix += containerSuffix
 	}
 
-	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, version)
+	return fmt.Sprintf("%s/%s%s:%s", containerRegistry, image, suffix, ver)
 }
 
 // getUBISuffix returns the UBI suffix to use depending on the given version.
-func getUBISuffix(v string) string {
-	ver := version.MustParse(v)
+func getUBISuffix(ver version.Version) string {
 	if ver.Major == 7 && ver.LT(major7UbiSuffixMinVersion) {
 		return OldUBISuffix
 	}

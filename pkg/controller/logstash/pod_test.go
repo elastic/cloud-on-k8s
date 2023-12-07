@@ -20,6 +20,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -45,7 +46,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				logstashContainer := GetLogstashContainer(pod.Spec)
 				require.NotNil(t, logstashContainer)
 				assert.Equal(t, 4, len(logstashContainer.VolumeMounts))
-				assert.Equal(t, container.ImageRepository(container.LogstashImage, "8.6.1"), logstashContainer.Image)
+				assert.Equal(t, container.ImageRepository(container.LogstashImage, version.MustParse("8.6.1")), logstashContainer.Image)
 				assert.NotNil(t, logstashContainer.ReadinessProbe)
 				assert.NotEmpty(t, logstashContainer.Ports)
 			},
@@ -99,6 +100,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		{
 			name: "with user-provided init containers",
 			logstash: logstashv1alpha1.Logstash{Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						InitContainers: []corev1.Container{
@@ -144,6 +146,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		{
 			name: "with user-provided ENV variable",
 			logstash: logstashv1alpha1.Logstash{Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
@@ -238,6 +241,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		{
 			name: "with user-provided volumes and volume mounts",
 			logstash: logstashv1alpha1.Logstash{Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{

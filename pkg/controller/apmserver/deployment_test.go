@@ -75,7 +75,7 @@ func (tp testParams) withInitContainer() testParams {
 				},
 			},
 			Name:      "",
-			Image:     "docker.elastic.co/apm/apm-server:1.0",
+			Image:     "docker.elastic.co/apm/apm-server:1.0.0",
 			Env:       defaults.PodDownwardEnvVars(),
 			Resources: DefaultResources, // inherited from main container
 		},
@@ -101,7 +101,7 @@ func expectedDeploymentParams() testParams {
 					Labels: map[string]string{
 						"common.k8s.elastic.co/type": "apm-server",
 						"apm.k8s.elastic.co/name":    "test-apm-server",
-						"apm.k8s.elastic.co/version": "1.0",
+						"apm.k8s.elastic.co/version": "1.0.0",
 					},
 					Annotations: map[string]string{
 						"apm.k8s.elastic.co/config-hash": "2166136261",
@@ -153,7 +153,7 @@ func expectedDeploymentParams() testParams {
 							},
 						},
 						Name:  apmv1.ApmServerContainerName,
-						Image: "docker.elastic.co/apm/apm-server:1.0",
+						Image: "docker.elastic.co/apm/apm-server:1.0.0",
 						Command: []string{
 							"apm-server",
 							"run",
@@ -224,7 +224,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 		},
 	}
 	defaultPodSpecParams := PodSpecParams{
-		Version: "1.0",
+		Version: "1.0.0",
 		TokenSecret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-apm-server-apm-token",

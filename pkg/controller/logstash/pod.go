@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
@@ -87,11 +88,16 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 			WithInitContainers(params.KeystoreResources.InitContainer)
 	}
 
+	v, err := version.Parse(spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+
 	builder = builder.
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, spec.Version)).
+		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, v)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params.Logstash)).

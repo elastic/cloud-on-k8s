@@ -18,6 +18,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -46,7 +47,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				require.NotNil(t, kibanaContainer)
 				assert.Equal(t, 0, len(kibanaContainer.VolumeMounts))
-				assert.Equal(t, container.ImageRepository(container.KibanaImage, "7.1.0"), kibanaContainer.Image)
+				assert.Equal(t, container.ImageRepository(container.KibanaImage, version.MustParse("7.1.0")), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
 			},
@@ -128,6 +129,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 						},
 					},
 				},
+				Version: "8.12.0",
 			}},
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
@@ -182,6 +184,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 						},
 					},
 				},
+				Version: "8.12.0",
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, GetKibanaContainer(pod.Spec).Env, 1)
@@ -209,6 +212,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 						},
 					},
 				},
+				Version: "8.12.0",
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
