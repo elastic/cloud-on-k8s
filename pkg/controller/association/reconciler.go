@@ -87,7 +87,9 @@ type AssociationInfo struct { //nolint:revive
 
 	// TransitivelyAssociated returns all resources that are transitively associated with the given association.
 	// This is currently only used in the Agent => FleetServer association to retrieve the full
-	// Agent => FleetServer => Elasticsearch association as the CAis needed for Agent to communicate with Elasticsearch.
+	// Agent => FleetServer => Elasticsearch association as the CA is needed for Agent to communicate with Elasticsearch.
+	// All associations other than Agent => commonv1.FleetServerAssociationType => commonv1.ElasticsearchAssociationType
+	// will be ignored.
 	TransitivelyAssociated func(c k8s.Client, assoc commonv1.Association) ([]commonv1.Associated, error)
 }
 

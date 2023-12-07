@@ -126,6 +126,9 @@ func TestMultipleOutputConfig(t *testing.T) {
 func TestFleetMode(t *testing.T) {
 	name := "test-agent-fleet"
 
+	agentNS := test.Ctx().ManagedNamespace(0)
+	fleetNS := test.Ctx().ManagedNamespace(1)
+
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
@@ -133,32 +136,67 @@ func TestFleetMode(t *testing.T) {
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
-	fleetServerBuilder := agent.NewBuilder(name + "-fs").
-		WithRoles(agent.AgentFleetModeRoleName).
-		WithDeployment().
-		WithFleetMode().
-		WithFleetServer().
-		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
-		WithKibanaRef(kbBuilder.Ref()).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+	t.Run("Fleet in same namespace as Agent", func(t *testing.T) {
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
+		fleetServerBuilder := agent.NewBuilder(name + "-fs").
+			WithNamespace(agentNS).
+			WithRoles(agent.AgentFleetModeRoleName).
+			WithDeployment().
+			WithFleetMode().
+			WithFleetServer().
+			WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+			WithKibanaRef(kbBuilder.Ref()).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
 
-	agentBuilder := agent.NewBuilder(name + "-ea").
-		WithRoles(agent.AgentFleetModeRoleName).
-		WithFleetMode().
-		WithKibanaRef(kbBuilder.Ref()).
-		WithFleetServerRef(fleetServerBuilder.Ref())
+		kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
 
-	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
-	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
+		agentBuilder := agent.NewBuilder(name + "-ea").
+			WithRoles(agent.AgentFleetModeRoleName).
+			WithFleetMode().
+			WithKibanaRef(kbBuilder.Ref()).
+			WithFleetServerRef(fleetServerBuilder.Ref())
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+		fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+		agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
+
+		test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+	})
+
+	t.Run("Fleet in different namespace than Agent", func(t *testing.T) {
+
+		fleetServerBuilder := agent.NewBuilder(name + "-fs").
+			WithNamespace(fleetNS).
+			WithRoles(agent.AgentFleetModeRoleName).
+			WithDeployment().
+			WithFleetMode().
+			WithFleetServer().
+			WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+			WithKibanaRef(kbBuilder.Ref()).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.fleet_server", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+
+		kbBuilder = kbBuilder.WithConfig(fleetConfigForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), true))
+
+		agentBuilder := agent.NewBuilder(name + "-ea").
+			WithRoles(agent.AgentFleetModeRoleName).
+			WithFleetMode().
+			WithKibanaRef(kbBuilder.Ref()).
+			WithFleetServerRef(fleetServerBuilder.Ref())
+
+		fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+		agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
+
+		test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
+	})
 }
 
 func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector, tlsEnabled bool) map[string]interface{} {

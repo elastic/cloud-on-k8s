@@ -99,6 +99,8 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				Test: test.UntilSuccess(func() error {
 					for _, ref := range b.Agent.Spec.ElasticsearchRefs {
 						var es esv1.Elasticsearch
+						// This WithDefaultNamespace call is required as some of the yaml manifests we use for testing
+						// don't have a namespace set on the ElasticsearchRef.
 						if err := k.Client.Get(context.Background(), ref.WithDefaultNamespace(b.Agent.Namespace).NamespacedName(), &es); err != nil {
 							return err
 						}
