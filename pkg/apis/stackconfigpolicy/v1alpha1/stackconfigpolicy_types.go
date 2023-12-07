@@ -55,8 +55,7 @@ type StackConfigPolicyList struct {
 
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
-	// SecureSettings applies only to Elasticsearch
-	// TODO: do we deprecate this and remove it in the future ?
+	// Deprecated: SecureSettings only applies to Elasticsearch and will be removed in a future release. It must be set per application instead.
 	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
 	Kibana         KibanaConfigPolicySpec        `json:"kibana,omitempty"`

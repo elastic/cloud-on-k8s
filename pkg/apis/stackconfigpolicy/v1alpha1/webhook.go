@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,7 +20,8 @@ import (
 
 const (
 	// webhookPath is the HTTP path for the StackConfigPolicy validating webhook.
-	webhookPath = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
+	webhookPath                  = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
+	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated and will be removed in a future release, secure settings must be set per application"
 )
 
 var (
@@ -127,6 +130,16 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	}
 	if settingsCount == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
+	}
+	return nil
+}
+
+func (s *StackConfigPolicy) GetWarnings() []string {
+	if s == nil {
+		return nil
+	}
+	if len(s.Spec.SecureSettings) > 0 {
+		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, s.Namespace, s.Name, SpecSecureSettingsDeprecated)}
 	}
 	return nil
 }

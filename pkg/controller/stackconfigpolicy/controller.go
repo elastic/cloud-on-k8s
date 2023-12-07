@@ -250,7 +250,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 
 func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconcile Elasticsearch Resources", "namespace", policy.Namespace, "policy_name", policy.Name)
+	log.V(1).Info("Reconcile Elasticsearch Resources")
 
 	results := reconciler.NewResult(ctx)
 
@@ -277,7 +277,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 
 	configuredResources := esMap{}
 	for _, es := range esList.Items {
-		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "es_namespace", es.Namespace, "es_name", es.Name)
+		log.V(1).Info("Reconcile StackConfigPolicy", "es_namespace", es.Namespace, "es_name", es.Name)
 		es := es
 
 		// keep the list of ES to be configured
@@ -394,7 +394,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 
 func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconcile Kibana Resources", "namespace", policy.Namespace, "policy_name", policy.Name)
+	log.V(1).Info("Reconcile Kibana Resources")
 
 	results := reconciler.NewResult(ctx)
 
@@ -421,7 +421,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 
 	configuredResources := kbMap{}
 	for _, kibana := range kibanaList.Items {
-		log.V(1).Info("Reconcile StackConfigPolicy", "policy_namespace", policy.Namespace, "policy_name", policy.Name, "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
+		log.V(1).Info("Reconcile StackConfigPolicy", "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		kibana := kibana
 
 		// keep the list of Kibana to be configured
