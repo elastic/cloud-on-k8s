@@ -6,7 +6,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,8 +62,10 @@ func getFleetAssociatedResources(c k8s.Client, assoc commonv1.Association) ([]co
 	if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 		return nil, err
 	}
+	// If the Fleet Server Agent is not associated with an Elasticsearch cluster
+	// (potentially because of a manual setup) we should do nothing.
 	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
-		return nil, fmt.Errorf("no Elasticsearch reference found in fleet server %s/%s", fleetServer.Namespace, fleetServer.Name)
+		return []commonv1.Associated{}, nil
 	}
 	agent.Spec.ElasticsearchRefs = fleetServer.Spec.ElasticsearchRefs
 	return []commonv1.Associated{&agent}, nil
