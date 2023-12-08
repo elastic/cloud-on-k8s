@@ -2,6 +2,14 @@
 == 2.10.0 release highlights
 
 [float]
+[id="{p}-2100-known-issues"]
+=== Known issues
+- Upgrading Kibana configured with <<{p}-kibana-secure-settings,secure settings>> to version `8.11.2` lead to Kibana pods in Error
+The underlying link:https://github.com/elastic/cloud-on-k8s/issues/6303[issue] shows a workaround if you are in this situation.
+Upgrade directly to `8.11.3` to avoid this.
+
+
+[float]
 [id="{p}-2100-new-and-notable"]
 === New and notable
 
