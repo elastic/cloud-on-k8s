@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/hints"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -106,26 +107,33 @@ type ElasticsearchUserCreation struct {
 // AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource
 // (ie. Kibana for Kibana-ES association) and its Association resource (ie. ES for APM-ES association).
 func (a AssociationInfo) AssociationResourceLabels(
-	associated types.NamespacedName,
-	association types.NamespacedName,
+	association commonv1.Association,
 ) client.MatchingLabels {
+	associationResourceNameLabelName := a.AssociationResourceNameLabelName
+	associationResourceNamespaceLabelName := a.AssociationResourceNamespaceLabelName
+	associatedLabels := a.Labels(k8s.ExtractNamespacedName(association.Associated()))
+	if a.AssociationType == commonv1.FleetServerAssociationType && association.AssociationType() == commonv1.ElasticsearchAssociationType {
+		// we are dealing with a transitive association, the labels are different
+		associationResourceNameLabelName = eslabel.ClusterNameLabelName
+		associationResourceNamespaceLabelName = eslabel.ClusterNamespaceLabelName
+		associatedLabels["agentassociation.k8s.elastic.co/type"] = commonv1.ElasticsearchAssociationType
+	}
 	return maps.Merge(
 		map[string]string{
-			a.AssociationResourceNameLabelName:      association.Name,
-			a.AssociationResourceNamespaceLabelName: association.Namespace,
+			associationResourceNameLabelName:      association.AssociationRef().NamespacedName().Name,
+			associationResourceNamespaceLabelName: association.AssociationRef().NamespacedName().Namespace,
 		},
-		a.Labels(associated),
+		associatedLabels,
 	)
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.
 func (a AssociationInfo) userLabelSelector(
-	associated types.NamespacedName,
-	association types.NamespacedName,
+	association commonv1.Association,
 ) client.MatchingLabels {
 	return maps.Merge(
 		map[string]string{commonv1.TypeLabelName: user.AssociatedUserType},
-		a.AssociationResourceLabels(associated, association),
+		a.AssociationResourceLabels(association),
 	)
 }
 
@@ -165,7 +173,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	associatedKey := k8s.ExtractNamespacedName(associated)
 
 	if common.IsUnmanaged(ctx, associated) {
-		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -369,7 +376,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	// If it is the case create the related Secrets and update the association configuration on the associated resource.
-	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association.Associated()), assocRef.NamespacedName())
+	assocLabels := r.AssociationResourceLabels(association)
 	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
 		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
 		log.V(1).Info("Ensure service account exists", "sa", serviceAccount)
@@ -453,10 +460,7 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 	if err := k8s.DeleteSecretMatching(
 		ctx,
 		r.Client,
-		r.userLabelSelector(
-			k8s.ExtractNamespacedName(association),
-			association.AssociationRef().NamespacedName(),
-		)); err != nil {
+		r.userLabelSelector(association)); err != nil {
 		return err
 	}
 	// Also remove the association configuration

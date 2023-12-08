@@ -34,44 +34,63 @@ func deleteOrphanedResources(
 	span, ctx := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 
-	var associatedLabels client.MatchingLabels = info.Labels(associated)
+	// Define a set of labels to match the secrets we want to delete.
+	// There are multiple label sets because of transitive associations,
+	// such as Agent => Fleet Server => Elasticsearch.
+	var labelSets []client.MatchingLabels
 
-	// List all the Secrets involved in an association (users and ca)
-	var secrets corev1.SecretList
-	if err := c.List(ctx, &secrets, associatedLabels); err != nil {
-		return err
+	// The standard labels for associations are defined first.
+	var associatedLabels client.MatchingLabels = info.Labels(associated)
+	labelSets = append(labelSets, associatedLabels)
+
+	// We potentially add another set of labels when we are dealing with a transitive association.
+	if info.AssociationType == commonv1.FleetServerAssociationType {
+		transitiveAssociatedLabels := make(map[string]string, len(associatedLabels))
+		for k, v := range associatedLabels {
+			transitiveAssociatedLabels[k] = v
+		}
+		transitiveAssociatedLabels["agentassociation.k8s.elastic.co/type"] = commonv1.ElasticsearchAssociationType
+		labelSets = append(labelSets, transitiveAssociatedLabels)
 	}
 
-	for _, secret := range secrets.Items {
-		secret := secret
-		for _, association := range associations {
-			if isSecretForAssociation(info, secret, association) {
-				goto nextSecret
-			}
-			if info.TransitivelyAssociated != nil {
-				// Check if the secret is still needed by a transitive association.
-				// If so, skip deletion.
-				associatedResources, err := info.TransitivelyAssociated(c, association)
-				if err != nil {
-					return err
+	for _, labels := range labelSets {
+		// List all the Secrets involved in an association (users and ca)
+		var secrets corev1.SecretList
+		if err := c.List(ctx, &secrets, labels); err != nil {
+			return err
+		}
+
+		for _, secret := range secrets.Items {
+			secret := secret
+			for _, association := range associations {
+				if isSecretForAssociation(info, secret, association) {
+					goto nextSecret
 				}
-				for _, associatedResource := range associatedResources {
-					for _, association := range associatedResource.GetAssociations() {
-						if isSecretForAssociation(info, secret, association) {
-							goto nextSecret
+				if info.TransitivelyAssociated != nil {
+					// Check if the secret is still needed by a transitive association.
+					// If so, skip deletion.
+					associatedResources, err := info.TransitivelyAssociated(c, association)
+					if err != nil {
+						return err
+					}
+					for _, associatedResource := range associatedResources {
+						for _, association := range associatedResource.GetAssociations() {
+							if isSecretForAssociation(info, secret, association) {
+								goto nextSecret
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
-		ulog.FromContext(ctx).Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
-		if err := c.Delete(ctx, &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
+			// Secret for the `associated` resource doesn't match any `association` - it's not needed anymore and should be deleted.
+			ulog.FromContext(ctx).Info("Deleting secret", "namespace", secret.Namespace, "secret_name", secret.Name, "associated_name", associated.Name)
+			if err := c.Delete(ctx, &secret, &client.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
 
-	nextSecret:
+		nextSecret:
+		}
 	}
 
 	return nil

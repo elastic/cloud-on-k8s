@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
 // CASecret is a container to hold information about the Elasticsearch CA secret.
@@ -46,7 +45,7 @@ func (r *Reconciler) ReconcileCASecret(ctx context.Context, association commonv1
 		return CASecret{}, err
 	}
 
-	labels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
+	labels := r.AssociationResourceLabels(association)
 
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{
