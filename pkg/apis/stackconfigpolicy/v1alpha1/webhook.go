@@ -21,7 +21,7 @@ import (
 const (
 	// webhookPath is the HTTP path for the StackConfigPolicy validating webhook.
 	webhookPath                  = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
-	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated and will be removed in a future release, secure settings must be set per application"
+	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated, secure settings must be set per application"
 )
 
 var (

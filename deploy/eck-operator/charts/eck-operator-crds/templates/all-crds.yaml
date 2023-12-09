@@ -10440,9 +10440,8 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               secureSettings:
-                description: 'Deprecated: SecureSettings only applies to Elasticsearch
-                  and will be removed in a future release. It must be set per application
-                  instead.'
+                description: 'Deprecated: SecureSettings only applies to Elasticsearch.
+                  It must be set per application instead.'
                 items:
                   description: SecretSource defines a data source based on a Kubernetes
                     Secret.
