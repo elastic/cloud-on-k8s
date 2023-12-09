@@ -2173,7 +2173,7 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 |===
 | Field | Description
 | *`resourceSelector`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta[$$LabelSelector$$]__ | 
-| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | Deprecated: SecureSettings only applies to Elasticsearch. It must be set per application instead.
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-common-v1-secretsource[$$SecretSource$$] array__ | Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead.
 | *`elasticsearch`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-elasticsearchconfigpolicyspec[$$ElasticsearchConfigPolicySpec$$]__ | 
 | *`kibana`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-v2-pkg-apis-stackconfigpolicy-v1alpha1-kibanaconfigpolicyspec[$$KibanaConfigPolicySpec$$]__ | 
 |===
