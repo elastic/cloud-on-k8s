@@ -19,6 +19,16 @@ func IsSubset(toCheck, fullSet map[string]string) bool {
 	return true
 }
 
+// ManagedKeysChanged compares the values of the given keys managed by the elasticsearch operator between two maps and returns true if they are not equal.
+func ManagedKeysChanged(toCheck, fullset map[string]string, managedkeysToCompare []string) bool {
+	for _, key := range managedkeysToCompare {
+		if toCheck[key] != fullset[key] {
+			return true
+		}
+	}
+	return false
+}
+
 // Merge merges source into destination, overwriting existing values if necessary.
 func Merge(dest, src map[string]string) map[string]string {
 	if dest == nil {

@@ -169,6 +169,29 @@ func TestReconcileSecret(t *testing.T) {
 			),
 		},
 		{
+			name: "remove secure settings from expected",
+			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{"existing": "existing"},
+				map[string]string{
+					"policy.k8s.elastic.co/secure-settings-secrets": `[{"secretName":"secret-1"}]`,
+					"policy.k8s.elastic.co/settings-hash":           "hash-1",
+					"existing":                                      "existing",
+				}),
+			)),
+			expected: createSecret("s", sampleData, sampleLabels, map[string]string{
+				"policy.k8s.elastic.co/settings-hash": "hash-1",
+			}),
+			want: withOwnerRef(t, createSecret("s", sampleData,
+				map[string]string{
+					"existing": "existing",                   // keep existing
+					"label1":   "value1", "label2": "value2", // add expected
+				}, map[string]string{
+					"policy.k8s.elastic.co/settings-hash": "hash-1",
+					"existing":                            "existing",
+				}),
+			),
+		},
+		{
 			name: "override soft owner labels",
 			c: k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData,
 				map[string]string{
