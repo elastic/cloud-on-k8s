@@ -105,7 +105,7 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 // maybeAddTransitiveAssociations potentially adds the Elasticsearch instance's association associated with the Fleet Server
 // so we can watch the CA secret of the Elasticsearch instance and reconcile if it changes.
 func (r *Reconciler) maybeAddTransitiveAssociations(managedElasticRef []commonv1.Association, associations []commonv1.Association) ([]commonv1.Association, error) {
-	var managedElasticRefWithTransitives []commonv1.Association
+	managedElasticRefWithTransitives := make([]commonv1.Association, len(managedElasticRef))
 	copy(managedElasticRefWithTransitives, managedElasticRef)
 	if r.AssociationInfo.AssociationType == commonv1.FleetServerAssociationType {
 		// add the ES instance's CAs associated with the fleet server
@@ -125,7 +125,7 @@ func (r *Reconciler) maybeAddTransitiveAssociations(managedElasticRef []commonv1
 			if err != nil {
 				return nil, err
 			}
-			managedElasticRefWithTransitives = append(managedElasticRefWithTransitives, esAssociation)
+			managedElasticRefWithTransitives = append(managedElasticRefWithTransitives, esAssociation) //nolint:makezero
 		}
 	}
 	return managedElasticRefWithTransitives, nil
