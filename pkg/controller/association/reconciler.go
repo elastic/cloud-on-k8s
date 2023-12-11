@@ -116,6 +116,7 @@ func (a AssociationInfo) AssociationResourceLabels(
 		// we are dealing with a transitive association, the labels are different
 		associationResourceNameLabelName = eslabel.ClusterNameLabelName
 		associationResourceNamespaceLabelName = eslabel.ClusterNamespaceLabelName
+		// unfortunately the constant cannot be used here as it would create a dependency cycle.
 		associatedLabels["agentassociation.k8s.elastic.co/type"] = commonv1.ElasticsearchAssociationType
 	}
 	return maps.Merge(
@@ -173,6 +174,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	associatedKey := k8s.ExtractNamespacedName(associated)
 
 	if common.IsUnmanaged(ctx, associated) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
