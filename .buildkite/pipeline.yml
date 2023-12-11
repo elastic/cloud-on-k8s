@@ -11,7 +11,7 @@ steps:
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
           cpu: "6"
-          memory: "6G"
+          memory: "7G"
 
       - label: ":go: generate"
         command: "make generate check-local-changes"
