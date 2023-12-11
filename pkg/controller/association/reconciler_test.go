@@ -1171,7 +1171,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		},
 	}
 
-	// Set Agent, two ES resources and their public cert Secrets
+	// Set Agent, Fleet Server Agent, ES resource and their associated secrets.
 	r := Reconciler{
 		AssociationInfo: agentAssociationInfo,
 		Client: k8s.NewFakeClient(
@@ -1231,7 +1231,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		},
 	}
 
-	// Secrets created for the Fleet ref and Fleet => ES ref
+	// Secrets created for the Agent => Fleet ref and Fleet => ES ref
 	ref1ExpectedSecrets := []corev1.Secret{
 		mkAgentSecret(
 			"agent1-agent-fleetserver-ca",
