@@ -321,6 +321,8 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 			return nil, pkgerrors.Wrap(err, "while fetching associated fleet server")
 		}
 
+		// We copy the Fleet Server Refs to the Agent so that the association appears to come from
+		// the Elastic Agent, not the Fleet Server and is named appropriately.
 		agent.Spec.ElasticsearchRefs = fs.Spec.ElasticsearchRefs
 
 		esAssociation, err = association.SingleAssociationOfType(agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
