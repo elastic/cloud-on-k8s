@@ -346,7 +346,7 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 
 	// A transitive association is an association that is not directly configured by the user but is created
 	// by associating a Fleet-enabled Agent with a Fleet Server. The transitive association in that case
-	// will be Fleet => Fleet-Server => Elasticsearch.
+	// will be Elastic Agent => Fleet-Server => Elasticsearch.
 	transitiveAssociation := isTransitiveAssociation(agent, esAssociation)
 	if !assocConf.CAIsConfigured() && !transitiveAssociation {
 		return builder, nil
