@@ -703,7 +703,7 @@ Deploys single instance Elastic Agent Deployment in Fleet mode with APM integrat
 == Known limitations
 
 === Running as root (ECK < 2.10.0 and Agent < 7.14.0)
-Until version 7.14.0 and ECK version 2.10.0, Elastic Agent and Fleet are required to run as root.
+Until version 7.14.0 and ECK version 2.10.0, Elastic Agent and Fleet Server were required to run as root.
 
 As of Elastic Stack version 7.14.0 and ECK version 2.10.0 it is also possible to run Elastic Agent and Fleet as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
 
