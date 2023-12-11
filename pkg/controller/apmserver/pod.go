@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -130,11 +131,16 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams) (corev1.PodT
 		initContainers = append(initContainers, p.keystoreResources.InitContainer)
 	}
 
+	v, err := version.Parse(p.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+
 	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
 		WithLabels(labels).
 		WithAnnotations(annotations).
 		WithResources(DefaultResources).
-		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
+		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, v)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithCommand(command).

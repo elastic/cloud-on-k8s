@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
 func TestImageRepository(t *testing.T) {
@@ -27,29 +29,16 @@ func TestImageRepository(t *testing.T) {
 			want:    testRegistry + "/apm/apm-server:7.5.2",
 		},
 		{
-			name:    "Elasticsearch image",
-			image:   ElasticsearchImage,
-			version: "7.5.2",
-			want:    testRegistry + "/elasticsearch/elasticsearch:7.5.2",
-		},
-		{
 			name:    "Kibana image",
 			image:   KibanaImage,
 			version: "7.5.2",
 			want:    testRegistry + "/kibana/kibana:7.5.2",
 		},
 		{
-			name:    "Maps image",
-			image:   MapsImage,
-			version: "7.12.0",
-			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.12.0",
-		},
-		{
-			name:    "Maps image with custom suffix",
-			image:   MapsImage,
-			version: "7.12.0",
-			suffix:  "-ubi8",
-			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.12.0",
+			name:    "Elasticsearch image",
+			image:   ElasticsearchImage,
+			version: "7.5.2",
+			want:    testRegistry + "/elasticsearch/elasticsearch:7.5.2",
 		},
 		{
 			name:       "Elasticsearch image with custom repository",
@@ -65,6 +54,92 @@ func TestImageRepository(t *testing.T) {
 			repository: "elastic",
 			suffix:     "-obi1",
 			want:       testRegistry + "/elastic/elasticsearch-obi1:42.0.0",
+		},
+		{
+			name:       "Elasticsearch 8 image in ubi mode",
+			image:      ElasticsearchImage,
+			version:    "8.12.0",
+			repository: "elastic",
+			suffix:     "-ubi",
+			want:       testRegistry + "/elastic/elasticsearch-ubi:8.12.0",
+		},
+		{
+			name:    "Elasticsearch old 8 image in ubi mode uses old -ubi8 suffix",
+			image:   ElasticsearchImage,
+			version: "8.11.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elasticsearch/elasticsearch-ubi8:8.11.0",
+		},
+		{
+			name:       "Elasticsearch 7 image in ubi mode",
+			image:      ElasticsearchImage,
+			version:    "7.17.16",
+			repository: "elastic",
+			suffix:     "-ubi",
+			want:       testRegistry + "/elastic/elasticsearch-ubi:7.17.16",
+		},
+		{
+			name:    "Elasticsearch old 7 image in ubi mode uses old -ubi8 suffix",
+			image:   ElasticsearchImage,
+			version: "7.17.15",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elasticsearch/elasticsearch-ubi8:7.17.15",
+		},
+		{
+			name:       "Maps 7 image with custom repository always uses -ubi suffix",
+			image:      MapsImage,
+			repository: "elastic",
+			version:    "7.17.16",
+			want:       testRegistry + "/elastic/elastic-maps-server-ubi:7.17.16",
+		},
+		{
+			name:       "Maps old 7 image with custom repository always uses -ubi8 suffix",
+			image:      MapsImage,
+			repository: "elastic",
+			version:    "7.17.15",
+			want:       testRegistry + "/elastic/elastic-maps-server-ubi8:7.17.15",
+		},
+		{
+			name:    "Maps 8 image in ubi mode ignores the -ubi suffix",
+			image:   MapsImage,
+			version: "8.12.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi:8.12.0",
+		},
+		{
+			name:    "Maps old 8 image in ubi mode ignores the -ubi suffix",
+			image:   MapsImage,
+			version: "8.11.0",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:8.11.0",
+		},
+		{
+			name:    "Maps 7 image in ubi mode ignores the -ubi suffix",
+			image:   MapsImage,
+			version: "7.17.16",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi:7.17.16",
+		},
+		{
+			name:    "Maps old 7 image in ubi mode ignores the -ubi suffix",
+			image:   MapsImage,
+			version: "7.17.15",
+			suffix:  "-ubi",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8:7.17.15",
+		},
+		{
+			name:    "Maps 8 image with custom suffix",
+			image:   MapsImage,
+			version: "8.12.0",
+			suffix:  "-obi1",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi-obi1:8.12.0",
+		},
+		{
+			name:    "Maps old 8 image with custom suffix",
+			image:   MapsImage,
+			version: "8.11.0",
+			suffix:  "-obi1",
+			want:    testRegistry + "/elastic-maps-service/elastic-maps-server-ubi8-obi1:8.11.0",
 		},
 	}
 
@@ -82,7 +157,7 @@ func TestImageRepository(t *testing.T) {
 			SetContainerRepository(tc.repository)
 			SetContainerSuffix(tc.suffix)
 
-			have := ImageRepository(tc.image, tc.version)
+			have := ImageRepository(tc.image, version.MustParse(tc.version))
 			assert.Equal(t, tc.want, have)
 		})
 	}

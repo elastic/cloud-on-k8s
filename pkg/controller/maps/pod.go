@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
 
@@ -67,17 +68,22 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string) (corev1.Po
 	cfgVolume := configSecretVolume(ems)
 	logsVolume := volume.NewEmptyDirVolume("logs", logVolumeMountPath)
 
+	v, err := version.Parse(ems.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
 		WithAnnotations(annotations).
 		WithResources(DefaultResources).
-		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, ems.Spec.Version)).
+		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
 		WithVolumes(cfgVolume.Volume(), logsVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
 
-	builder, err := withESCertsVolume(builder, ems)
+	builder, err = withESCertsVolume(builder, ems)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

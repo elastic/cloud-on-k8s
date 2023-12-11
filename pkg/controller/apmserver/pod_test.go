@@ -15,6 +15,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -94,7 +95,7 @@ func TestNewPodSpec(t *testing.T) {
 					Containers: []corev1.Container{
 						{
 							Name:  apmv1.ApmServerContainerName,
-							Image: container.ImageRepository(container.APMServerImage, "7.0.1"),
+							Image: container.ImageRepository(container.APMServerImage, version.MustParse("7.0.1")),
 							Env: []corev1.EnvVar{
 								{
 									Name: settings.EnvPodIP,
@@ -206,6 +207,7 @@ func Test_newPodSpec_withInitContainers(t *testing.T) {
 			as: apmv1.ApmServer{
 				ObjectMeta: testAgentNsn,
 				Spec: apmv1.ApmServerSpec{
+					Version: "8.12.0",
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{

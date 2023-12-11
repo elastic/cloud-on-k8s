@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -24,7 +25,7 @@ func NewMetricBeatSidecar(
 	client k8s.Client,
 	associationType commonv1.AssociationType,
 	resource monitoring.HasMonitoring,
-	version string,
+	imageVersion string,
 	baseConfigTemplate string,
 	namer name.Namer,
 	url string,
@@ -46,15 +47,24 @@ func NewMetricBeatSidecar(
 	if err != nil {
 		return BeatSidecar{}, err
 	}
-	image := container.ImageRepository(container.MetricbeatImage, version)
+
+	v, err := version.Parse(imageVersion)
+	if err != nil {
+		return BeatSidecar{}, err // error unlikely and should have been caught during validation
+	}
+	image := container.ImageRepository(container.MetricbeatImage, v)
 
 	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
 	emptyDir := volume.NewEmptyDirVolume("metricbeat-data", "/usr/share/metricbeat/data")
 	return NewBeatSidecar(ctx, client, "metricbeat", image, resource, monitoring.GetMetricsAssociation(resource), baseConfig, sourceCaVolume, emptyDir)
 }
 
-func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, version string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
-	image := container.ImageRepository(container.FilebeatImage, version)
+func NewFileBeatSidecar(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, imageVersion string, baseConfig string, additionalVolume volume.VolumeLike) (BeatSidecar, error) {
+	v, err := version.Parse(imageVersion)
+	if err != nil {
+		return BeatSidecar{}, err // error unlikely and should have been caught during validation
+	}
+	image := container.ImageRepository(container.FilebeatImage, v)
 	// EmptyDir volume so that FileBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
 	emptyDir := volume.NewEmptyDirVolume("filebeat-data", "/usr/share/filebeat/data")
 	return NewBeatSidecar(ctx, client, "filebeat", image, resource, monitoring.GetLogsAssociation(resource), baseConfig, additionalVolume, emptyDir)
