@@ -11,7 +11,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 )
 
-const DefaultContainerRegistry = "docker.elastic.co"
+const (
+	DefaultContainerRegistry = "docker.elastic.co"
+
+	UBISuffix    = "-ubi"  // suffix to use when --ubi-only
+	OldUBISuffix = "-ubi8" // old suffix to use when --ubi-only
+)
 
 var (
 	containerRegistry   = DefaultContainerRegistry
@@ -20,9 +25,6 @@ var (
 
 	major7UbiSuffixMinVersion = version.MinFor(7, 17, 16) // min 7.x to use UBISuffix
 	major8UbiSuffixMinVersion = version.MinFor(8, 12, 0)  // min 8.x to use UBISuffix
-
-	UBISuffix    = "-ubi"  // suffix to use when --ubi-only
-	OldUBISuffix = "-ubi8" // old suffix to use when --ubi-only
 )
 
 // SetContainerRegistry sets the global container registry used to download Elastic stack images.
@@ -77,13 +79,13 @@ func ImageRepository(img Image, ver version.Version) string {
 	}
 
 	suffix := ""
-	UBIOnly := containerSuffix == UBISuffix
+	useUBISuffix := containerSuffix == UBISuffix
 	// use an UBI suffix for maps server image or any image in UBI mode
-	if UBIOnly || img == MapsImage {
+	if useUBISuffix || img == MapsImage {
 		suffix = getUBISuffix(ver)
 	}
 	// use the global container suffix in non-UBI mode
-	if !UBIOnly {
+	if !useUBISuffix {
 		suffix += containerSuffix
 	}
 
