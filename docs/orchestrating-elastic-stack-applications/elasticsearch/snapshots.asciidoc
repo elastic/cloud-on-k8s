@@ -22,8 +22,9 @@ What follows is a non-exhaustive list of configuration examples. The first examp
 
 * <<{p}-basic-snapshot-gcs>>
 
-The next two examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
+The following examples cover approaches that use Cloud-provider specific means to leverage Kubernetes service accounts to avoid having to configure snapshot repository credentials in Elasticsearch:
 
+* <<{p}-basic-snapshot-azure>>
 * <<{p}-gke-workload-identiy>>
 * <<{p}-iam-service-accounts>>
 
@@ -439,3 +440,20 @@ Assuming you stored this in a file called `elasticsearch.yaml` you can in both c
 ----
 kubectl apply -f elasticsearch.yaml
 ----
+
+[id="{p}-basic-snapshot-azure"]
+=== Basic snapshot repository setup for Azure
+
+This is identical to <<{p}-basic-snapshot-gcs>> except for configuring storage account credentials through the Elasticsearch keystore.
+
+. Follow the Microsoft documentation to link:https://docs.microsoft.com/en-us/azure/storage/common/storage-account-create[set up an Azure storage account] with an access key, and then link:https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-portal[create a container].
+
+. Create two files for your Azure storage account credentials: `azure.client.secondary.account` and `azure.client.secondary.key` containing the associated values.
+
+. Next, follow the same steps as in <<{p}-secure-settings>> to create a Kubernetes secret from these files, reference it in the `secureSettings` section of the Elasticsearch resource and apply the modifications.
++
+[source,sh]
+----
+kubectl create secret generic az-storage-credentials --from-file=azure.client.default.account --from-file=azure.client.default.key -n <namespace>
+----
+
