@@ -71,8 +71,8 @@ func ReconcileSecret(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			return !maps.ManagedKeysChanged(expected.Labels, reconciled.Labels, managedLabels) ||
-				!maps.ManagedKeysChanged(expected.Annotations, reconciled.Annotations, managedAnnotations) ||
+			return !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels) ||
+				!maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations) ||
 				!reflect.DeepEqual(expected.Data, reconciled.Data)
 		},
 		UpdateReconciled: func() {

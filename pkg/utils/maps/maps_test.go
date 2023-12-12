@@ -279,7 +279,7 @@ func TestContainsKeys(t *testing.T) {
 	}
 }
 
-func TestManagedKeysChanged(t *testing.T) {
+func TestIsEqualSubset(t *testing.T) {
 	tests := []struct {
 		name string
 		map1 map[string]string
@@ -340,7 +340,7 @@ func TestManagedKeysChanged(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			have := ManagedKeysChanged(tc.map1, tc.map2, tc.keys)
+			have := IsEqualSubset(tc.map1, tc.map2, tc.keys)
 			require.Equal(t, tc.want, have)
 		})
 	}

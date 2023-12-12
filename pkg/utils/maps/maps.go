@@ -19,9 +19,9 @@ func IsSubset(toCheck, fullSet map[string]string) bool {
 	return true
 }
 
-// ManagedKeysChanged compares the values of the given keys managed by the elasticsearch operator between two maps and returns true if they are not equal.
-func ManagedKeysChanged(map1, map2 map[string]string, managedkeysToCompare []string) bool {
-	for _, key := range managedkeysToCompare {
+// IsEqualSubset compares the values of the given subset of keys between two maps and returns true if they are not equal.
+func IsEqualSubset(map1, map2 map[string]string, keySubSet []string) bool {
+	for _, key := range keySubSet {
 		if map1[key] != map2[key] {
 			return true
 		}
