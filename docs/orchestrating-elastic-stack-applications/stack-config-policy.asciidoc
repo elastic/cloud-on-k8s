@@ -9,7 +9,7 @@ endif::[]
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration policies allow you to configure the following settings:
+Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration policies allow you to configure the following settings for Elasticsearch:
 
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Cluster Settings]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/put-snapshot-repo-api.html[Snapshot Repositories]
@@ -20,18 +20,32 @@ Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html[Components templates]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
 
-A policy can be applied to one or more Elasticsearch clusters in any namespace managed by the ECK operator.
+Starting from ECK `2.11.0`, Elastic Stack configuration policies allow you to configure the following settings as well for Elasticsearch:
+
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Elasticsearch Configuration] (configuration settings for Elasticsearch that will go into `elasticsearch.yml`)
+- <<{p}-custom-images,Elasticsearch Secure Settings>>
+- <<{p}-{page_id}-specifics-secret-mounts,Secret Mounts>>
+
+Additionally with ECK `2.11.0` it is posssible to configure Kibana as well using Elastic Stack configuration policies, the following settings can be configured for Kibana:
+
+- link:https://www.elastic.co/guide/en/kibana/current/settings.html[Kibana Configuration] (configuration settings for Kibana that will go into `kibana.yml`)
+- link:https://www.elastic.co/guide/en/kibana/current/secure-settings.html[Kibana Secure Settings]
+
+A policy can be applied to one or more Elasticsearch clusters or Kibana instances in any namespace managed by the ECK operator.
 Configuration policy settings applied by the ECK operator are immutable through the Elasticsearch REST API.
-It is currently not allowed to configure an Elasticsearch cluster with more than one policy.
+It is currently not allowed to configure an Elasticsearch cluster or Kibana instance with more than one policy.
 
 [float]
 [id="{p}-{page_id}-definition"]
 == Define Elastic Stack configuration policies
 
-Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following fields:
+Elastic Stack configuration policies can be defined in a `StackConfigPolicy` resource. Each `StackConfigPolicy` must have the following field:
 
 * `name` is a unique name used to identify the policy.
-* `spec.elasticsearch` describes the settings to configure and at least one setting must be defined. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
+
+One out the following two fields and one of the resprective sub fields must be present as well:
+
+* `spec.elasticsearch` describes the settings to configure for elasticsearch. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
   ** `clusterSettings` are the settings that go into the elasticsearch.yml file.
   ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots. Check <<{p}-{page_id}-specifics-snap-repo>> for more information.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
@@ -40,12 +54,18 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
   ** `indexLifecyclePolicies` are index lifecycle policies, to automatically manage the index lifecycle.
   ** `indexTemplates.componentTemplates` are component templates that are building blocks for constructing index templates that specify index mappings, settings, and aliases.
   ** `indexTemplates.composableIndexTemplates` are index templates to define settings, mappings, and aliases that can be applied automatically to new indices.
+  ** `config` are the settings that go into the elasticsearch.yml file.
+  ** `secretMounts` are the additional user created secrets that need to be mounted to the Elasticsearch Pods.
+  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-custom-images,Elasticsearch Secure Settings>>.
+* `spec.kibana` describes the settings to configure for kibana.
+  ** `config` are the settings that go into the kibana.yml file.
+  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the link:https://www.elastic.co/guide/en/kibana/current/secure-settings.html[Kibana Secure Settings].
 
 The following fields are optional:
 
 * `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, the policy applies to all namespaces managed by the operator, otherwise the policy only applies to the namespace of the policy.
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
-* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>.
+* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>. (This field is deprecated with ECK `2.11.0`, it is preferred to set this under the elasticsearch or kibana fields)
 
 Secure settings may be required to configure Cloud snapshot repositories (Azure, GCS, S3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
 (<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
@@ -62,12 +82,12 @@ metadata:
 spec:
   resourceSelector:
     matchLabels:
-      env: my-label
-  secureSettings:
-  - secretName: "my-secure-settings"
+      env: my-label 
   elasticsearch:
     clusterSettings:
       indices.recovery.max_bytes_per_sec: "100mb"
+    secureSettings:
+    - secretName: "my-secure-settings"
     snapshotRepositories:
       test-repo:
         type: gcs
@@ -174,6 +194,52 @@ spec:
           version: 1
 ----
 
+Example of configuring Elasticsearch and Kibana using Elastic Stack configuration policy:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+metadata:
+  name: test-stack-config-policy
+spec:
+  resourceSelector:
+    matchLabels:
+      env: my-label
+  elasticsearch:
+    secureSettings:
+    - secretName: shared-secret
+    securityRoleMappings:
+      jwt1-elastic-agent:
+        roles: [ "remote_monitoring_collector" ]
+        rules:
+          all:
+            - field: { realm.name: "jwt1" }
+            - field: { username: "elastic-agent" }
+        enabled: true
+    config:
+       logger.org.elasticsearch.discovery: DEBUG
+       xpack.security.authc.realms.jwt.jwt1:
+         order: -98
+         token_type: id_token
+         client_authentication.type: shared_secret
+         allowed_issuer: "https://es.credentials.controller.k8s.elastic.co"
+         allowed_audiences: [ "elasticsearch" ]
+         allowed_subjects: ["elastic-agent"]
+         allowed_signature_algorithms: [RS512]
+         pkc_jwkset_path: jwks/jwkset.json
+         claims.principal: sub
+    secretMounts:
+    - secretName: "testMountSecret"
+      mountPath: "/usr/share/testmount"
+    - secretName: jwks-secret
+      mountPath: "/usr/share/elasticsearch/config/jwks"
+  kibana:
+    config:
+      "xpack.canvas.enabled": true
+    secureSettings:
+    - secretName: kibana-shared-secret
+----
+
 [float]
 [id="{p}-{page_id}-monitoring"]
 == Monitor Elastic Stack configuration policies
@@ -205,17 +271,25 @@ kubectl get -n b scp test-err-stack-config-policy -o jsonpath="{.status}" | jq .
   "errors": 1,
   "observedGeneration": 3,
   "phase": "Error",
-  "readyCount": "0/1",
-  "resources": 1,
+  "readyCount": "1/2",
+  "resources": 2,
   "resourcesStatuses": {
-    "b/banana-staging": {
-      "currentVersion": 1670342369361604600,
-      "error": {
-        "message": "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [es-snapshots]",
-        "version": 1670342482739637500
-      },
-      "expectedVersion": 1670342482739637500,
-      "phase": "Error"
+    "elasticsearch": {
+      "b/banana-staging": {
+        "currentVersion": 1670342369361604600,
+        "error": {
+          "message": "Error processing slm state change: java.lang.IllegalArgumentException: Error on validating SLM requests\n\tSuppressed: java.lang.IllegalArgumentException: no such repository [es-snapshots]",
+          "version": 1670342482739637500
+        },
+        "expectedVersion": 1670342482739637500,
+        "phase": "Error"
+      }
+    },
+    "kibana": {
+      "b/banana-kb-staging": {
+        "error": {},
+        "phase": "Ready"
+      }
     }
   }
 }
@@ -242,3 +316,24 @@ In order to avoid a conflict between multiple Elasticsearch clusters writing the
 - sets the `base_path` to `snapshots/<namespace>-<esName>` when it is not provided, for Azure, GCS and S3 repositories
 - appends `<namespace>-<esName>` to `location` for a FS repository
 - appends `<namespace>-<esName>` to `path` for an HDFS repository
+
+[float]
+[id="{p}-{page_id}-specifics-secret-mounts"]
+== Specifics for secret mounts
+
+In ECK `2.11.0` a new field was introduced to the Elastic Stack configuration policy under the `elasticsearch` field called `secretMounts`.
+This field allows users to specify a user created secret and a mountPath to indicate where this secret should be mounted in the Elasticsearch Pods that are managed by the Elastic Stack configuration policy.
+This field can be used to add additional secrets to the Elasticsearch Pods that might be needed to configure things like Authorization Configurations.
+The secret should be created by the user is the same namespace as the operator.
+The operator will read this secret and copy it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
+Example of configuring secret mounts in the Elastic Stack configuration policy
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+secretMounts:
+  - secretName: jwks-secret <1>
+    mountPath: "/usr/share/elasticsearch/config/jwks" <2>
+----
+
+<1> name of the secret created by the user in the operator namespace.
+<2> mount path where the secret must be mounted to inside the Elasticsearch Pod.
