@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -996,8 +995,7 @@ fi
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
-				require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec), "wantPodSpec != got, diff: %s", cmp.Diff(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
-				// require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
+				require.Nil(t, deep.Equal(tt.wantPodSpec, gotBuilder.PodTemplate.Spec))
 			}
 		})
 	}

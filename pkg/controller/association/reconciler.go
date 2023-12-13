@@ -61,6 +61,9 @@ type AssociationInfo struct { //nolint:revive
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
 
+	// AdditionalSecrets are additional secrets to copy from an association's namespace to the associated resource namespace.
+	// Currently this is only used for copying the CA from an Elasticsearch association to the same namespace as
+	// an Agent referencing a Fleet Server.
 	AdditionalSecrets func(c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error)
 	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any

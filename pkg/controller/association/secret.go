@@ -193,6 +193,7 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
+// copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
 func copySecret(ctx context.Context, client k8s.Client, info AssociationInfo, associated types.NamespacedName, targetNamespace string, source types.NamespacedName) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
@@ -200,6 +201,8 @@ func copySecret(ctx context.Context, client k8s.Client, info AssociationInfo, as
 	}
 	var expected corev1.Secret
 	expected.Data = original.Data
+	// We merge the original labels with the associated object's association labels to ensure
+	// that this secret is garbage collected when the associated object is deleted.
 	expected.Labels = maps.Merge(original.Labels, info.Labels(associated))
 	expected.Annotations = original.Annotations
 	expected.Name = original.Name

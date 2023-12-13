@@ -35,8 +35,8 @@ func serviceWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
 }
 
-// serviceWatchName returns the name of the watch setup on the custom service to be used to make requests to the
-// referenced resource.
+// additionalSecretWatchName returns the name of the watch setup on any additional secrets that
+// are copied during the association reconciliation.
 func additionalSecretWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
 }
