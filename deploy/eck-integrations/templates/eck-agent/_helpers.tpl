@@ -49,3 +49,26 @@ Selector labels
 app.kubernetes.io/name: {{ include "elasticagent.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{- define "elasticagent.elasticOutput" -}}
+{{- $host := trim .Values.elasticsearch.host -}}
+{{- $_ := required "Specifying an elastic search host is required!" $host }}
+default:
+  type: elasticsearch
+  hosts:
+    - {{ $host | quote }}
+{{- $found := "" -}}
+{{- $user := trim .Values.elasticsearch.user -}}
+{{- $pass := trim .Values.elasticsearch.pass -}}
+{{- if and $user $pass -}}
+{{- $found = "true" }}
+  username: {{ $user | quote  }}
+  password: {{ $pass | quote  }}
+{{- end -}}
+{{ $apiKey := trim .Values.elasticsearch.apiKey -}}
+{{- if and (empty $found) $apiKey -}}
+{{- $found = "true" }}
+  api_key: {{ .Values.elasticsearch.apiKey | quote  }}
+{{- end -}}
+{{- $_ := required "Specifying either user,pass or api_key for elastic search is required!" $found -}}
+{{- end }}

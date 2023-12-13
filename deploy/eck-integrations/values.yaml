@@ -2,6 +2,7 @@ elasticsearch:
   host: ""
   user: ""
   pass: ""
+  apiKey: ""
 
 cloudDefend:
   enabled: false
