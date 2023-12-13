@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -49,7 +50,7 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 // * if there's an ES user to create, watch the user Secret in ES namespace
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
-func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associations []commonv1.Association) error {
+func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
 	managedElasticRef := filterManagedElasticRef(associations)
 	unmanagedElasticRef := filterUnmanagedElasticRef(associations)
 
@@ -103,7 +104,7 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		if err := ReconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, additionalSecretWatchName(associated), func() ([]types.NamespacedName, error) {
 			var toWatch []types.NamespacedName
 			for _, association := range associations {
-				secs, err := r.AdditionalSecrets(r.Client, association)
+				secs, err := r.AdditionalSecrets(ctx, r.Client, association)
 				if err != nil {
 					return nil, err
 				}

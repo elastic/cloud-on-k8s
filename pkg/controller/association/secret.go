@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,11 +20,11 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	commonhash "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -194,16 +195,15 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 }
 
 // copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
-func copySecret(ctx context.Context, client k8s.Client, info AssociationInfo, associated types.NamespacedName, targetNamespace string, source types.NamespacedName) error {
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
 	}
 	var expected corev1.Secret
 	expected.Data = original.Data
-	// We merge the original labels with the associated object's association labels to ensure
-	// that this secret is garbage collected when the associated object is deleted.
-	expected.Labels = maps.Merge(original.Labels, info.Labels(associated))
+	commonhash.WriteHashObject(secHash, original.Data)
+	expected.Labels = original.Labels
 	expected.Annotations = original.Annotations
 	expected.Name = original.Name
 	expected.Namespace = targetNamespace

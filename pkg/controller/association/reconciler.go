@@ -7,6 +7,7 @@ package association
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"time"
 
@@ -64,7 +65,7 @@ type AssociationInfo struct { //nolint:revive
 	// AdditionalSecrets are additional secrets to copy from an association's namespace to the associated resource namespace.
 	// Currently this is only used for copying the CA from an Elasticsearch association to the same namespace as
 	// an Agent referencing a Fleet Server.
-	AdditionalSecrets func(c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error)
+	AdditionalSecrets func(context.Context, k8s.Client, commonv1.Association) ([]types.NamespacedName, error)
 	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
@@ -191,7 +192,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	// reconcile watches for all associations of this type
-	if err := r.reconcileWatches(associatedKey, associations); err != nil {
+	if err := r.reconcileWatches(ctx, associatedKey, associations); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
@@ -263,13 +264,14 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
 
+	secretsHash := fnv.New32a()
 	if r.AdditionalSecrets != nil {
-		additionalSecrets, err := r.AdditionalSecrets(r.Client, association)
+		additionalSecrets, err := r.AdditionalSecrets(ctx, r.Client, association)
 		if err != nil {
 			return commonv1.AssociationPending, err // maybe not created yet
 		}
 		for _, sec := range additionalSecrets {
-			if err := copySecret(ctx, r.Client, r.AssociationInfo, k8s.ExtractNamespacedName(association.Associated()), association.GetNamespace(), sec); err != nil {
+			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec); err != nil {
 				return commonv1.AssociationPending, err
 			}
 		}
@@ -294,10 +296,11 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// construct the expected association configuration
 	expectedAssocConf := &commonv1.AssociationConf{
-		CACertProvided: caSecret.CACertProvided,
-		CASecretName:   caSecret.Name,
-		URL:            url,
-		Version:        ver,
+		CACertProvided:        caSecret.CACertProvided,
+		CASecretName:          caSecret.Name,
+		AdditionalSecretsHash: fmt.Sprint(secretsHash.Sum32()),
+		URL:                   url,
+		Version:               ver,
 	}
 
 	if r.ElasticsearchUserCreation == nil {

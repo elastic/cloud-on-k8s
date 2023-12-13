@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
@@ -30,7 +31,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationName:           "agent-fleetserver",
 		AssociatedShortName:       "agent",
 		AssociationType:           commonv1.FleetServerAssociationType,
-		AdditionalSecrets:         addtionalSecrets,
+		AdditionalSecrets:         additionalSecrets,
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
@@ -46,11 +47,12 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 	})
 }
 
-func addtionalSecrets(c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+	log := ulog.FromContext(ctx)
 	associated := assoc.Associated()
 	var agent agentv1alpha1.Agent
 	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
-	if err := c.Get(context.Background(), nsn, &agent); err != nil {
+	if err := c.Get(ctx, nsn, &agent); err != nil {
 		return nil, err
 	}
 	fleetServerRef := assoc.AssociationRef()
@@ -58,7 +60,7 @@ func addtionalSecrets(c k8s.Client, assoc commonv1.Association) ([]types.Namespa
 		return nil, nil
 	}
 	fleetServer := agentv1alpha1.Agent{}
-	if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+	if err := c.Get(ctx, fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 		return nil, err
 	}
 
@@ -74,14 +76,17 @@ func addtionalSecrets(c k8s.Client, assoc commonv1.Association) ([]types.Namespa
 
 	// if both agent and ES are same namespace no copying needed
 	if agent.GetNamespace() == esAssociation.GetNamespace() {
+		log.V(1).Info("no additional secrets because same namespace")
 		return nil, nil
 	}
 
 	conf, err := esAssociation.AssociationConf()
 	if err != nil {
+		log.V(1).Info("no additional secrets because no assoc conf")
 		return nil, err
 	}
 	if conf == nil || !conf.CACertProvided {
+		log.V(1).Info("no additional secrets because conf nil or no CA provided")
 		return nil, nil
 	}
 	return []types.NamespacedName{{
