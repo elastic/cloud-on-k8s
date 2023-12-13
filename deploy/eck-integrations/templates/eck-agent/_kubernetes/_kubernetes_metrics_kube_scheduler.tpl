@@ -2,7 +2,7 @@
 Config input for kube_scheduler
 */}}
 {{- define "agent.kubernetes.config.kube_scheduler.input" -}}
-{{- if default .control_plane.scheduler.enabled false -}}
+{{- if default .scheduler.metrics.enabled false -}}
 - id: kubernetes/metrics-kube-scheduler
   type: kubernetes/metrics
   data_stream:
@@ -15,7 +15,7 @@ Config input for kube_scheduler
         dataset: kubernetes.scheduler
       metricsets:
         - scheduler
-{{- include "agent.kubernetes.config.kube_scheduler.defaults" .control_plane.scheduler | nindent 4 }}
+{{- include "agent.kubernetes.config.kube_scheduler.defaults" .scheduler | nindent 4 }}
   meta:
     package:
       name: kubernetes

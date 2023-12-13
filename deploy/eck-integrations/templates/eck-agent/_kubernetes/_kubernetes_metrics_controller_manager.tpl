@@ -2,7 +2,7 @@
 Config input for kube_controllermanage
 */}}
 {{- define "agent.kubernetes.config.kube_controller.input" -}}
-{{- if default false .control_plane.controller_manager.enabled -}}
+{{- if default false .controller_manager.metrics.enabled -}}
 - id: kubernetes/metrics-kube-controllermanage
   type: kubernetes/metrics
   data_stream:
@@ -15,7 +15,7 @@ Config input for kube_controllermanage
         dataset: kubernetes.controllermanager
       metricsets:
         - controllermanager
-{{- include "agent.kubernetes.config.kube_controller.defaults" .control_plane.controller_manager | nindent 4 }}
+{{- include "agent.kubernetes.config.kube_controller.defaults" .controller_manager | nindent 4 }}
   meta:
     package:
       name: kubernetes

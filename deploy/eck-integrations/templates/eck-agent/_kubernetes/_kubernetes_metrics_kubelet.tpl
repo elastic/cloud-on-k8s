@@ -4,9 +4,9 @@ Config input for kubelet metrics
 {{- define "agent.kubernetes.config.kubelet.input" -}}
 {{- $metricSet := (list) }}
 {{- $metricSet = append $metricSet (default false .containers.metrics.enabled) -}}
-{{- $metricSet = append $metricSet (default false .objects.nodes.metrics.enabled) -}}
-{{- $metricSet = append $metricSet (default false .objects.pods.metrics.enabled) -}}
-{{- $metricSet = append $metricSet (default false .objects.volumes.metrics.enabled) -}}
+{{- $metricSet = append $metricSet (default false .nodes.metrics.enabled) -}}
+{{- $metricSet = append $metricSet (default false .pods.metrics.enabled) -}}
+{{- $metricSet = append $metricSet (default false .volumes.metrics.enabled) -}}
 {{- $metricSet = append $metricSet (default false .system.metrics.enabled) -}}
 {{- if has true $metricSet -}}
 - id: kubernetes/metrics-kubelet
@@ -24,32 +24,32 @@ Config input for kubelet metrics
       - container
 {{- include "agent.kubernetes.config.kubelet.defaults" .containers.metrics | nindent 4 -}}
 {{- end -}}
-{{- if default false .objects.nodes.metrics.enabled }}
+{{- if default false .nodes.metrics.enabled }}
   - id: kubernetes/metrics-kubernetes.node
     data_stream:
       type: metrics
       dataset: kubernetes.node
     metricsets:
       - node
-{{- include "agent.kubernetes.config.kubelet.defaults" .objects.nodes.metrics | nindent 4 -}}
+{{- include "agent.kubernetes.config.kubelet.defaults" .nodes.metrics | nindent 4 -}}
 {{- end -}}
-{{- if default false .objects.pods.metrics.enabled }}
+{{- if default false .pods.metrics.enabled }}
   - id: kubernetes/metrics-kubernetes.pod
     data_stream:
       type: metrics
       dataset: kubernetes.pod
     metricsets:
       - pod
-{{- include "agent.kubernetes.config.kubelet.defaults" .objects.pods.metrics | nindent 4 -}}
+{{- include "agent.kubernetes.config.kubelet.defaults" .pods.metrics | nindent 4 -}}
 {{- end -}}
-{{- if default false .objects.volumes.metrics.enabled }}
+{{- if default false .volumes.metrics.enabled }}
   - id: kubernetes/metrics-kubernetes.volume
     data_stream:
       type: metrics
       dataset: kubernetes.volume
     metricsets:
       - volume
-{{- include "agent.kubernetes.config.kubelet.defaults" .objects.volumes.metrics | nindent 4 -}}
+{{- include "agent.kubernetes.config.kubelet.defaults" .volumes.metrics | nindent 4 -}}
 {{- end -}}
 {{- if default false .system.metrics.enabled }}
   - id: kubernetes/metrics-kubernetes.system

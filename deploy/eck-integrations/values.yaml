@@ -1,5 +1,3 @@
-
-
 elasticsearch:
   host: ""
   user: ""
@@ -11,15 +9,12 @@ cloudDefend:
 kubernetes: 
   version: 1.51.0
   enabled: false
-  namespace: "default"
-
+  namespace: default
   hints:
     enabled: true
-
   system:
     metrics:
       enabled: true
-
   containers:
     metrics:
       enabled: true
@@ -27,65 +22,65 @@ kubernetes:
       enabled: true
     logs:
       enabled: true
-  
-  objects:
-    pods:
-      metrics:
-        enabled: true
-      state:
-        enabled: true
-    deployments:
-      state:
-        enabled: true
-    statefulsets:
-      state:
-        enabled: true
-    daemonsets:
-      state:
-        enabled: true
-    replicasets:
-      state:
-        enabled: true
-    volumes:
-      metrics:
-        enabled: true
-    nodes:
-      metrics:
-        enabled: true
-      state:
-        enabled: true
-    storageclasses:
-      state:
-        enabled: true
-    jobs:
-      state:
-        enabled: true
-    cronjobs:
-      state:
-        enabled: true
-    persistentvolumes:
-      state:
-        enabled: true
-    persistentvolumeclaims:
-      state:
-        enabled: true
-    resourcequotas:
-      state:
-        enabled: true
-    services:
-      state:
-        enabled: true
-  
-  control_plane:
-    apiserver:
+    audit_logs:
       enabled: true
-    proxy:
+  pods:
+    metrics:
+      enabled: true
+    state:
+      enabled: true
+  deployments:
+    state:
+      enabled: true
+  statefulsets:
+    state:
+      enabled: true
+  daemonsets:
+    state:
+      enabled: true
+  replicasets:
+    state:
+      enabled: true
+  volumes:
+    metrics:
+      enabled: true
+  nodes:
+    metrics:
+      enabled: true
+    state:
+      enabled: true
+  storageclasses:
+    state:
+      enabled: true
+  jobs:
+    state:
+      enabled: true
+  cronjobs:
+    state:
+      enabled: true
+  persistentvolumes:
+    state:
+      enabled: true
+  persistentvolumeclaims:
+    state:
+      enabled: true
+  resourcequotas:
+    state:
+      enabled: true
+  services:
+    state:
+      enabled: true
+  apiserver:
+    metrics:
+      enabled: true
+  proxy:
+    metrics:
       enabled: false
-    scheduler:
+  scheduler:
+    metrics:
       enabled: false
-    controller_manager:
-      enabled: false
-    audit_logs_filestream:
+  controller_manager:
+    metrics:
       enabled: false
 
 eck_agent:

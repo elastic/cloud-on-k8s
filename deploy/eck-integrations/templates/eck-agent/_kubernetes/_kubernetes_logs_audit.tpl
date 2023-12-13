@@ -1,8 +1,8 @@
 {{/*
 Config input for kube audit_logs_filestream
 */}}
-{{- define "agent.kubernetes.config.audit_logs_filestream.input" -}}
-{{- if default false .control_plane.audit_logs_filestream.enabled -}}
+{{- define "agent.kubernetes.config.audit_logs.input" -}}
+{{- if default false .containers.audit_logs.enabled -}}
 - id: filestream-audit-logs
   type: filestream
   data_stream:

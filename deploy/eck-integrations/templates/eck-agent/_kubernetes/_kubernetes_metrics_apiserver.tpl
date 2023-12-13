@@ -2,7 +2,7 @@
 Config input for kube apiserver
 */}}
 {{- define "agent.kubernetes.config.kube_apiserver.input" -}}
-{{- if default .control_plane.apiserver.enabled false -}}
+{{- if default .apiserver.metrics.enabled false -}}
 - id: kubernetes/kubernetes/metrics-kube-apiserver
   type: kubernetes/metrics
   data_stream:
@@ -15,7 +15,7 @@ Config input for kube apiserver
         dataset: kubernetes.apiserver
     metricsets:
         - apiserver
-{{- include "agent.kubernetes.config.kube_apiserver.defaults" .control_plane.apiserver | nindent 4 }}
+{{- include "agent.kubernetes.config.kube_apiserver.defaults" .apiserver | nindent 4 }}
   meta:
     package:
       name: kubernetes

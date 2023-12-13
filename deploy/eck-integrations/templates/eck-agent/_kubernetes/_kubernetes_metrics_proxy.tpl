@@ -2,7 +2,7 @@
 Config input for kube proxy
 */}}
 {{- define "agent.kubernetes.config.kube_proxy.input" -}}
-{{- if default .control_plane.proxy.enabled false -}}
+{{- if default .proxy.metrics.enabled false -}}
 - id: kubernetes/metrics-kube-proxy
   type: kubernetes/metrics
   data_stream:
@@ -15,7 +15,7 @@ Config input for kube proxy
         dataset: kubernetes.proxy
       metricsets:
         - proxy
-{{- include "agent.kubernetes.config.kube_proxy.defaults" .control_plane.proxy | nindent 4 }}
+{{- include "agent.kubernetes.config.kube_proxy.defaults" .proxy | nindent 4 }}
   meta:
     package:
       name: kubernetes
