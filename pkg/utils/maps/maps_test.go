@@ -298,7 +298,7 @@ func TestIsEqualSubset(t *testing.T) {
 				"b": "y",
 			},
 			keys: []string{"a"},
-			want: true,
+			want: false,
 		},
 		{
 			name: "when a given key to compare does not exist in one of the maps",
@@ -310,7 +310,7 @@ func TestIsEqualSubset(t *testing.T) {
 				"b": "y",
 			},
 			keys: []string{"a"},
-			want: true,
+			want: false,
 		},
 		{
 			name: "when a given key to compare does not exist in both maps",
@@ -321,7 +321,7 @@ func TestIsEqualSubset(t *testing.T) {
 				"b": "y",
 			},
 			keys: []string{"a"},
-			want: false,
+			want: true,
 		},
 		{
 			name: "when a key not in the keys to be compared list is changed",
@@ -334,7 +334,7 @@ func TestIsEqualSubset(t *testing.T) {
 				"b": "w",
 			},
 			keys: []string{"a"},
-			want: false,
+			want: true,
 		},
 	}
 

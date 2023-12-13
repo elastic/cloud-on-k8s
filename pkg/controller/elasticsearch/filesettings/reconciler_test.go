@@ -175,19 +175,16 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"policy.k8s.elastic.co/secure-settings-secrets": `[{"secretName":"secret-1"}]`,
 					"policy.k8s.elastic.co/settings-hash":           "hash-1",
-					"existing":                                      "existing",
 				}),
 			)),
-			expected: createSecret("s", sampleData, sampleLabels, map[string]string{
+			expected: createSecret("s", sampleData, map[string]string{"existing": "existing"}, map[string]string{
 				"policy.k8s.elastic.co/settings-hash": "hash-1",
 			}),
 			want: withOwnerRef(t, createSecret("s", sampleData,
 				map[string]string{
-					"existing": "existing",                   // keep existing
-					"label1":   "value1", "label2": "value2", // add expected
+					"existing": "existing", // keep existing
 				}, map[string]string{
 					"policy.k8s.elastic.co/settings-hash": "hash-1",
-					"existing":                            "existing",
 				}),
 			),
 		},

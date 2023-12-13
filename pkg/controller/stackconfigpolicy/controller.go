@@ -172,8 +172,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 
 	// skip unmanaged resources
 	if common.IsUnmanaged(ctx, &policy) {
-		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation",
-			"namespace", policy.Namespace, "policy_name", policy.Name)
+		ulog.FromContext(ctx).Info("Object is currently not managed by this controller. Skipping reconciliation")
 		return reconcile.Result{}, nil
 	}
 
@@ -206,7 +205,7 @@ type kbMap map[types.NamespacedName]kibanav1.Kibana
 
 func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy policyv1alpha1.StackConfigPolicy) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
 	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconcile StackConfigPolicy", "namespace", policy.Namespace, "policy_name", policy.Name)
+	log.V(1).Info("Reconcile StackConfigPolicy")
 
 	results := reconciler.NewResult(ctx)
 	status := policyv1alpha1.NewStatus(policy)
@@ -219,7 +218,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 	}
 	if !enabled {
 		msg := "StackConfigPolicy is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg, "namespace", policy.Namespace, "policy_name", policy.Name)
+		log.Info(msg)
 		r.recorder.Eventf(&policy, corev1.EventTypeWarning, events.EventReconciliationError, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
 		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Minute}), status
@@ -532,8 +531,6 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
-		"namespace", scp.Namespace,
-		"policy_name", scp.Name,
 		"status", status,
 	)
 	scp.Status = status
@@ -608,7 +605,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 			}
 
 			log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
-				"namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+				"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
 				"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
 
 			var es esv1.Elasticsearch

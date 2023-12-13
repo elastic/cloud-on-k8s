@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -25,13 +26,12 @@ import (
 )
 
 const (
-	KibanaConfigKey            = "kibana.json"
-	KibanaConfigHashAnnotation = "policy.k8s.elastic.co/kibana-config-hash"
+	KibanaConfigKey = "kibana.json"
 )
 
 func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kibanav1.Kibana) (corev1.Secret, error) {
 	kibanaConfigHash := getKibanaConfigHash(policy.Spec.Kibana.Config)
-	var configDataJSONBytes []byte
+	configDataJSONBytes := []byte("")
 	var err error
 	if policy.Spec.Kibana.Config != nil {
 		if configDataJSONBytes, err = policy.Spec.Kibana.Config.MarshalJSON(); err != nil {
@@ -47,7 +47,7 @@ func newKibanaConfigSecret(policy policyv1alpha1.StackConfigPolicy, kibana kiban
 				Namespace: kibana.Namespace,
 			}),
 			Annotations: map[string]string{
-				KibanaConfigHashAnnotation: kibanaConfigHash,
+				commonannotation.KibanaConfigHashAnnotation: kibanaConfigHash,
 			},
 		},
 		Data: map[string][]byte{
@@ -88,7 +88,7 @@ func kibanaConfigApplied(c k8s.Client, policy policyv1alpha1.StackConfigPolicy, 
 
 	kibanaConfigHash := getKibanaConfigHash(policy.Spec.Kibana.Config)
 	for _, kbPod := range existingKibanaPods {
-		if kbPod.Annotations[KibanaConfigHashAnnotation] != kibanaConfigHash {
+		if kbPod.Annotations[commonannotation.KibanaConfigHashAnnotation] != kibanaConfigHash {
 			return false, nil
 		}
 	}
@@ -138,6 +138,6 @@ func setKibanaSecureSettings(settingsSecret *corev1.Secret, policy policyv1alpha
 	if err != nil {
 		return err
 	}
-	settingsSecret.Annotations[filesettings.SecureSettingsSecretsAnnotationName] = string(bytes)
+	settingsSecret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName] = string(bytes)
 	return nil
 }

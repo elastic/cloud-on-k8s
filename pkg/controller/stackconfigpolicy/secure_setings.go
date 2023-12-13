@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
@@ -42,7 +43,7 @@ func getKibanaSecureSettingsSecretSources(ctx context.Context, kubeClient k8s.Cl
 		return nil, err
 	}
 
-	rawString, ok := secret.Annotations[filesettings.SecureSettingsSecretsAnnotationName]
+	rawString, ok := secret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName]
 	if !ok {
 		return []commonv1.NamespacedSecretSource{}, nil
 	}

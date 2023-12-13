@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
@@ -103,7 +104,7 @@ func mkConfigSecret(name string, namespace string) corev1.Secret {
 			Name:      name,
 			Namespace: namespace,
 			Annotations: map[string]string{
-				stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
+				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 			},
 		},
 		Data: map[string][]byte{stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),

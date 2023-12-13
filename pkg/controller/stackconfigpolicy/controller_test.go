@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	commonesclient "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
@@ -158,7 +159,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	}
 	elasticsearchConfigAndMountsHash := getElasticsearchConfigAndMountsHash(policyFixture.Spec.Elasticsearch.Config, policyFixture.Spec.Elasticsearch.SecretMounts)
 	esPodFixture := getEsPod("ns", map[string]string{
-		ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
+		commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 	})
 	esFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 		Namespace: "ns",

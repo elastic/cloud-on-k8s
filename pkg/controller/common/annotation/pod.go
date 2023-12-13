@@ -16,16 +16,6 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
 
-const (
-	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
-	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
-
-	// FilebeatModuleAnnotation is the name of the annotation applied to pods to give a hint to filebeat so that it
-	// uses the appropriate module to analyze the logs of the container.
-	// https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover-hints.html#_co_elastic_logsmodule
-	FilebeatModuleAnnotation = "co.elastic.logs/module"
-)
-
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(
 	ctx context.Context,

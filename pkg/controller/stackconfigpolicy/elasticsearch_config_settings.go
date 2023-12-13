@@ -13,6 +13,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -26,10 +27,8 @@ import (
 )
 
 const (
-	ElasticSearchConfigKey                           = "elasticsearch.json"
-	SecretsMountKey                                  = "secretMounts.json"
-	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
-	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
+	ElasticSearchConfigKey = "elasticsearch.json"
+	SecretsMountKey        = "secretMounts.json"
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -54,7 +53,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 				Namespace: es.Namespace,
 			}),
 			Annotations: map[string]string{
-				ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
+				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
 			},
 		},
 		Data: map[string][]byte{
@@ -95,7 +94,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 					Namespace: es.Namespace,
 				}),
 				Annotations: map[string]string{
-					SourceSecretAnnotationName: secretMount.SecretName,
+					commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
 				},
 			},
 			Data: additionalSecret.Data,
@@ -133,7 +132,7 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 
 	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
 	for _, esPod := range podList.Items {
-		if esPod.Annotations[ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
+		if esPod.Annotations[commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
 			return false, nil
 		}
 	}

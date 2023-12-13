@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	kibanav1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -44,7 +45,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, kibana kibanav1.Kib
 
 	// Additional annotations to be applied on the Kibana pods
 	policyConfig.PodAnnotations = map[string]string{
-		stackconfigpolicy.KibanaConfigHashAnnotation: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.KibanaConfigHashAnnotation],
+		commonannotation.KibanaConfigHashAnnotation: stackConfigPolicyConfigSecret.Annotations[commonannotation.KibanaConfigHashAnnotation],
 	}
 
 	// Parse Kibana config from the stack config policy secret.

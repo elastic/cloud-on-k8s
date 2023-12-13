@@ -20,6 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
@@ -30,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
 )
@@ -245,7 +245,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			volume.NewSecretVolumeWithMountPath("test-es-secretname", "test-es-secretname", "/usr/test"),
 		},
 		PolicyAnnotations: map[string]string{
-			stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
+			commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 		},
 	}
 
@@ -475,11 +475,11 @@ func Test_buildAnnotations(t *testing.T) {
 			name: "With policy annotations",
 			args: args{
 				policyAnnotations: map[string]string{
-					stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
+					commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 				},
 			},
 			expectedAnnotations: map[string]string{
-				stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
+				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 			},
 		},
 	}
