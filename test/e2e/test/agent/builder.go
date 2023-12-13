@@ -161,23 +161,6 @@ func (b Builder) WithDeployment() Builder {
 	return b
 }
 
-func (b Builder) WithStatefulSet() Builder {
-	b.Agent.Spec.StatefulSet = &agentv1alpha1.StatefulSetSpec{}
-
-	// if other types exist, move PodTemplate from them to StatefulSet
-	switch {
-	case b.Agent.Spec.DaemonSet != nil:
-		b.Agent.Spec.StatefulSet.PodTemplate = b.Agent.Spec.DaemonSet.PodTemplate
-		b.Agent.Spec.DaemonSet = nil
-	case b.Agent.Spec.Deployment != nil:
-		b.Agent.Spec.StatefulSet.PodTemplate = b.Agent.Spec.Deployment.PodTemplate
-		b.Agent.Spec.Deployment = nil
-	}
-	b.PodTemplate = &b.Agent.Spec.StatefulSet.PodTemplate
-
-	return b
-}
-
 func (b Builder) WithDeploymentStrategy(s appsv1.DeploymentStrategy) Builder {
 	modifiedBuilder := b
 	if b.Agent.Spec.Deployment == nil {
