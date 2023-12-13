@@ -35,6 +35,12 @@ func serviceWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
 }
 
+// serviceWatchName returns the name of the watch setup on the custom service to be used to make requests to the
+// referenced resource.
+func additionalSecretWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches for:
 // * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
@@ -93,7 +99,47 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		}
 	}
 
+	if r.AdditionalSecrets != nil {
+		if err := ReconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, additionalSecretWatchName(associated), func() ([]types.NamespacedName, error) {
+			var toWatch []types.NamespacedName
+			for _, association := range associations {
+				secs, err := r.AdditionalSecrets(r.Client, association)
+				if err != nil {
+					return nil, err
+				}
+				toWatch = append(toWatch, secs...)
+			}
+			return toWatch, nil
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func ReconcileGenericWatch(
+	associated types.NamespacedName,
+	associations []commonv1.Association,
+	dynamicRequest *watches.DynamicEnqueueRequest,
+	watchName string,
+	watchedFunc func() ([]types.NamespacedName, error),
+) error {
+	if len(associations) == 0 {
+		// clean up if there are none
+		RemoveWatch(dynamicRequest, watchName)
+		return nil
+	}
+
+	watched, err := watchedFunc()
+	if err != nil {
+		return err
+	}
+	return dynamicRequest.AddHandler(watches.NamedWatch{
+		Name:    watchName,
+		Watched: watched,
+		Watcher: associated,
+	})
 }
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
@@ -105,26 +151,17 @@ func ReconcileWatch(
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
-	if len(associations) == 0 {
-		// clean up if there are none
-		RemoveWatch(dynamicRequest, watchName)
-		return nil
-	}
+	return ReconcileGenericWatch(associated, associations, dynamicRequest, watchName, func() ([]types.NamespacedName, error) {
+		emptyNamespacedName := types.NamespacedName{}
 
-	emptyNamespacedName := types.NamespacedName{}
-
-	toWatch := make([]types.NamespacedName, 0, len(associations))
-	for _, association := range associations {
-		watchedNamespacedName := watchedFunc(association)
-		if watchedNamespacedName != emptyNamespacedName {
-			toWatch = append(toWatch, watchedFunc(association))
+		toWatch := make([]types.NamespacedName, 0, len(associations))
+		for _, association := range associations {
+			watchedNamespacedName := watchedFunc(association)
+			if watchedNamespacedName != emptyNamespacedName {
+				toWatch = append(toWatch, watchedFunc(association))
+			}
 		}
-	}
-
-	return dynamicRequest.AddHandler(watches.NamedWatch{
-		Name:    watchName,
-		Watched: toWatch,
-		Watcher: associated,
+		return toWatch, nil
 	})
 }
 
@@ -142,4 +179,6 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Services, serviceWatchName(associated))
 	// - ES user secret
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
+	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
+	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
 }

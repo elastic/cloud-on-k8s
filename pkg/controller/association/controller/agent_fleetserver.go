@@ -30,6 +30,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationName:           "agent-fleetserver",
 		AssociatedShortName:       "agent",
 		AssociationType:           commonv1.FleetServerAssociationType,
+		AdditionalSecrets:         addtionalSecrets,
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
@@ -43,6 +44,50 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 
 		ElasticsearchUserCreation: nil,
 	})
+}
+
+func addtionalSecrets(c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+	associated := assoc.Associated()
+	var agent agentv1alpha1.Agent
+	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
+	if err := c.Get(context.Background(), nsn, &agent); err != nil {
+		return nil, err
+	}
+	fleetServerRef := assoc.AssociationRef()
+	if !fleetServerRef.IsDefined() {
+		return nil, nil
+	}
+	fleetServer := agentv1alpha1.Agent{}
+	if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+		return nil, err
+	}
+
+	// If the Fleet Server Agent is not associated with an Elasticsearch cluster
+	// (potentially because of a manual setup) we should do nothing.
+	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+		return nil, nil
+	}
+	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
+	if err != nil {
+		return nil, err
+	}
+
+	// if both agent and ES are same namespace no copying needed
+	if agent.GetNamespace() == esAssociation.GetNamespace() {
+		return nil, nil
+	}
+
+	conf, err := esAssociation.AssociationConf()
+	if err != nil {
+		return nil, err
+	}
+	if conf == nil || !conf.CACertProvided {
+		return nil, nil
+	}
+	return []types.NamespacedName{{
+		Namespace: fleetServer.Namespace,
+		Name:      conf.CASecretName,
+	}}, nil
 }
 
 func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {

@@ -14,13 +14,16 @@ import (
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/jsonpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
 
 const (
@@ -188,4 +191,20 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 		}
 	}
 	return r
+}
+
+func copySecret(ctx context.Context, client k8s.Client, info AssociationInfo, associated types.NamespacedName, targetNamespace string, source types.NamespacedName) error {
+	var original corev1.Secret
+	if err := client.Get(ctx, source, &original); err != nil {
+		return err
+	}
+	var expected corev1.Secret
+	expected.Data = original.Data
+	expected.Labels = maps.Merge(original.Labels, info.Labels(associated))
+	expected.Annotations = original.Annotations
+	expected.Name = original.Name
+	expected.Namespace = targetNamespace
+
+	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil)
+	return err
 }

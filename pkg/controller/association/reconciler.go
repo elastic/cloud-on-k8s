@@ -60,6 +60,8 @@ type AssociationInfo struct { //nolint:revive
 	AssociationName string
 	// AssociatedShortName is the short name of the associated resource type (eg. "kb").
 	AssociatedShortName string
+
+	AdditionalSecrets func(c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error)
 	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
@@ -256,6 +258,18 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	)
 	if err != nil {
 		return commonv1.AssociationPending, err // maybe not created yet
+	}
+
+	if r.AdditionalSecrets != nil {
+		additionalSecrets, err := r.AdditionalSecrets(r.Client, association)
+		if err != nil {
+			return commonv1.AssociationPending, err // maybe not created yet
+		}
+		for _, sec := range additionalSecrets {
+			if err := copySecret(ctx, r.Client, r.AssociationInfo, k8s.ExtractNamespacedName(association.Associated()), association.GetNamespace(), sec); err != nil {
+				return commonv1.AssociationPending, err
+			}
+		}
 	}
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
