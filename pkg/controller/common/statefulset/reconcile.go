@@ -58,7 +58,7 @@ func New(params Params) appsv1.StatefulSet {
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			// consider the pod available as soon as it is ready
 			MinReadySeconds: 0,
-			// agent in statefulSet requires no vc retention policies
+			// agent in statefulSet requires no PVC retention policies
 			PersistentVolumeClaimRetentionPolicy: nil,
 			// agent in statefulSet requires no ordinals
 			Ordinals: nil,
