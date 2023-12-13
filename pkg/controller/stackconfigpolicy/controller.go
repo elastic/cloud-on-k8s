@@ -425,13 +425,6 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 
 		// keep the list of Kibana to be configured
 		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
-		configuredResources[kibanaNsn] = kibana
-
-		// create expected kibana config secret
-		expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
-		if err != nil {
-			return results.WithError(err), status
-		}
 
 		// check that there is no other policy that already owns the kibana config secret
 		currentOwner, ok, err := canBeOwned(ctx, r.Client, policy, kibana)
@@ -450,8 +443,19 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			continue
 		}
 
-		if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
-			return results.WithError(err), status
+		// create expected kibana config secret
+		if policy.Spec.Kibana.Config != nil {
+			// Only add to configured resources if kibana config is set
+			// This will help clean up the config secret if config gets removed from the stack config policy
+			configuredResources[kibanaNsn] = kibana
+			expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
+			if err != nil {
+				return results.WithError(err), status
+			}
+
+			if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
+				return results.WithError(err), status
+			}
 		}
 
 		// Check if required Kibana configs are applied.
