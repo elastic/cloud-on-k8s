@@ -50,6 +50,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          - name: ELASTIC_NETINFO
+            value: {{ .Values.eck_agent.netinfo | quote }}
           volumeMounts:
           - name: proc
             mountPath: /hostfs/proc

@@ -88,5 +88,6 @@ eck_agent:
   enabled: true
   version: 8.11.0
   labels: {}
+  netinfo: false
   annotations:
     eck.k8s.elastic.co/license: basic

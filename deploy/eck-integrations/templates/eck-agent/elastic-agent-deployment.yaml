@@ -88,6 +88,8 @@ spec:
                 fieldPath: metadata.name
           - name: STATE_PATH
             value: "/etc/elastic-agent"
+          - name: ELASTIC_NETINFO
+            value: {{ .Values.eck_agent.netinfo | quote }}
           volumeMounts:
             {{- if default false .Values.kubernetes.hints.enabled }}
             - name: external-inputs
