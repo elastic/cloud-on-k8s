@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"testing"
@@ -134,6 +135,7 @@ var (
 				"kbname-kibana-user", "kbns-kbname-kibana-user",
 				true, "kbname-kb-es-ca",
 				fmt.Sprintf("https://%s.esns.svc:9200", svcName),
+				"2166136261",
 			),
 		}
 		return *kb
@@ -249,9 +251,20 @@ var (
 	}
 )
 
-func assocConf(authSecretName string, authSecretKey string, caCertProvided bool, caSecretName string, url string) string {
-	return fmt.Sprintf("{\"authSecretName\":\"%s\",\"authSecretKey\":\"%s\",\"isServiceAccount\":false,\"caCertProvided\":%t,\"caSecretName\":\"%s\",\"url\":\"%s\",\"version\":\"%s\"}",
-		authSecretName, authSecretKey, caCertProvided, caSecretName, url, stackVersion)
+func assocConf(authSecretName, authSecretKey string, caCertProvided bool, caSecretName, url, additionalSecretsHash string) string {
+	b, err := json.Marshal(commonv1.AssociationConf{
+		AuthSecretName:        authSecretName,
+		AuthSecretKey:         authSecretKey,
+		CASecretName:          caSecretName,
+		CACertProvided:        caCertProvided,
+		URL:                   url,
+		AdditionalSecretsHash: additionalSecretsHash,
+		Version:               "7.16.0",
+	})
+	if err != nil {
+		panic(fmt.Sprintf("while marshaling associationConf: %s", err))
+	}
+	return string(b)
 }
 
 type denyAllAccessReviewer struct{}
@@ -610,7 +623,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
 	// association conf should be set
-	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"additionalSecretsHash\":\"2166136261\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
 		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
 	// ent association status should be established
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
@@ -1545,7 +1558,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	expectedAssocConf := assocConf(
 		"sample-es-ref-secret", "password",
 		false, "",
-		"https://es.io:9243")
+		"https://es.io:9243", "")
 	require.Equal(t, expectedAssocConf, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
@@ -1562,7 +1575,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	expectedAssocConf = assocConf(
 		"sample-es-ref-secret", "password",
 		true, "sample-es-ref-secret",
-		"https://es.io:9243")
+		"https://es.io:9243", "")
 	require.Equal(t, expectedAssocConf, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
