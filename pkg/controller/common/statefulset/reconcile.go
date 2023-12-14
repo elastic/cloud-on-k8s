@@ -28,6 +28,7 @@ type Params struct {
 	PodTemplateSpec      corev1.PodTemplateSpec
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim
 	Replicas             int32
+	PodManagementPolicy  appsv1.PodManagementPolicyType
 	RevisionHistoryLimit *int32
 }
 
@@ -48,14 +49,13 @@ func New(params Params) appsv1.StatefulSet {
 			VolumeClaimTemplates: params.VolumeClaimTemplates,
 			ServiceName:          params.ServiceName,
 			RevisionHistoryLimit: params.RevisionHistoryLimit,
+			PodManagementPolicy:  params.PodManagementPolicy,
 			// always RollingUpdate strategy as OnDelete would require the user
 			// to delete pods and this is not fully with the operator reconcile logic.
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type:          appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: nil,
 			},
-			// default statefulSet behaviour
-			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			// consider the pod available as soon as it is ready
 			MinReadySeconds: 0,
 			// agent in statefulSet requires no PVC retention policies

@@ -154,6 +154,7 @@ func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
 		PodTemplateSpec:      rp.podTemplate,
 		VolumeClaimTemplates: rp.agent.Spec.StatefulSet.VolumeClaimTemplates,
 		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.StatefulSet.Replicas, int32(1)),
+		PodManagementPolicy:  rp.agent.Spec.StatefulSet.PodManagementPolicy,
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 	})
 	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
