@@ -271,7 +271,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			return commonv1.AssociationPending, err // maybe not created yet
 		}
 		for _, sec := range additionalSecrets {
-			if err := copySecret(ctx, r.Client, secretsHash, k8s.ExtractNamespacedName(association.Associated()), association.GetNamespace(), sec); err != nil {
+			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec); err != nil {
 				return commonv1.AssociationPending, err
 			}
 		}

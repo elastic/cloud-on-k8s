@@ -196,7 +196,7 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 }
 
 // copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
-func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, associated types.NamespacedName, targetNamespace string, source types.NamespacedName) error {
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
