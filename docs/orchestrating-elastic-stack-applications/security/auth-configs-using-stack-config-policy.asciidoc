@@ -1,0 +1,20 @@
+:page_id: auth-config-using-stack-config-policy
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Configuring Authentication policies using Elastic Stack configuration policy
+
+NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+Starting from ECK `2.11.0` new options were added that enable adding configurations that go into `elasticsearch.yml` and `kibana.yml` to the Elastic Stack configuration Policy.
+There is also an option to add additional secrets that will be mounted to the Elasticsearch Pods managed by the Elastic Stack configuration policy. This can be used to configure authorization policies in Elastic Stack configuration Policy. 
+The authorization policy will apply to all the Elasticsearch clusters and Kibana instances managed by the Elastic Stack configuration policy.
+
+Examples for configuring some of the authentication policies can be found below:
+
+** <<{p}-LDAP-using-stack-config-policy,LDAP using Elastic Stack configuration policy>>
+**
+**
