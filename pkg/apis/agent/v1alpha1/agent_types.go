@@ -147,6 +147,7 @@ type StatefulSetSpec struct {
 	// (pod-0, then pod-1, etc.) and the controller will wait until each pod is ready before
 	// continuing. When scaling down, the pods are removed in the opposite order.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=OrderedReady;Parallel
 	// +kubebuilder:default:=Parallel
 	PodManagementPolicy appsv1.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 

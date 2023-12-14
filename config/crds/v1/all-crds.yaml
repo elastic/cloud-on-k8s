@@ -834,6 +834,9 @@ spec:
                       increasing order (pod-0, then pod-1, etc.) and the controller
                       will wait until each pod is ready before continuing. When scaling
                       down, the pods are removed in the opposite order.
+                    enum:
+                    - OrderedReady
+                    - Parallel
                     type: string
                   podTemplate:
                     description: PodTemplateSpec describes the data a pod should have
