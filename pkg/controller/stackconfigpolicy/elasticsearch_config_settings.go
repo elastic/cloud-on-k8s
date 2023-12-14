@@ -32,17 +32,22 @@ const (
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
-	secretMountBytes, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
-	if err != nil {
-		return corev1.Secret{}, err
-	}
-	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	var configDataJSONBytes []byte
-	if policy.Spec.Elasticsearch.Config != nil {
-		configDataJSONBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
+	data := make(map[string][]byte)
+	if len(policy.Spec.Elasticsearch.SecretMounts) > 0 {
+		secretMountBytes, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+		data[SecretsMountKey] = secretMountBytes
+	}
+
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+	if policy.Spec.Elasticsearch.Config != nil {
+		configDataJSONBytes, err := policy.Spec.Elasticsearch.Config.MarshalJSON()
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		data[ElasticSearchConfigKey] = configDataJSONBytes
 	}
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -56,10 +61,7 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
 			},
 		},
-		Data: map[string][]byte{
-			ElasticSearchConfigKey: configDataJSONBytes,
-			SecretsMountKey:        secretMountBytes,
-		},
+		Data: data,
 	}
 
 	// Set StackConfigPolicy as the soft owner
