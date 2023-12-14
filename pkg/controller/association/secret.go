@@ -201,6 +201,9 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, assoc
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
 	}
+	// update the hash if there are additional secrets event if
+	// they are in the same namespace to ensure that the pods are
+	// rotated when the original CA secret is updated.
 	commonhash.WriteHashObject(secHash, original.Data)
 	if targetNamespace == original.Namespace {
 		return nil
