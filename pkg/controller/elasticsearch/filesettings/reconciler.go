@@ -73,12 +73,10 @@ func ReconcileSecret(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			/*
-				log := ulog.FromContext(ctx)
-				log.Info("Reconciled is", "reconciled", *reconciled)
-				log.Info("Expected is", "expected", expected)
-			*/
-			// needs update if expected labels/annotations are not a subset of the existing labels/annotions or if managed labels/annotations have been removed/changed or if the data itself has changed.
+			// Secrets must be updated in the following cases:
+			// * the expected labels/annotations are not a subset of the existing labels/annotations,
+			// * the managed labels/annotations have been removed/changed,
+			// * the data itself has changed.
 			return (!maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)) ||
 				(!maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)) ||
 				!reflect.DeepEqual(expected.Data, reconciled.Data)

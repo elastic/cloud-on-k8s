@@ -48,8 +48,7 @@ func getKibanaSecureSettingsSecretSources(ctx context.Context, kubeClient k8s.Cl
 		return []commonv1.NamespacedSecretSource{}, nil
 	}
 	var secretSources []commonv1.NamespacedSecretSource
-	err := json.Unmarshal([]byte(rawString), &secretSources)
-	if err != nil {
+	if err := json.Unmarshal([]byte(rawString), &secretSources); err != nil {
 		return nil, err
 	}
 

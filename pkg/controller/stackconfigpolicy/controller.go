@@ -199,7 +199,7 @@ func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reco
 // clusters configured by a StackConfigPolicy.
 type esMap map[types.NamespacedName]esv1.Elasticsearch
 
-// kbMap is a type alias for a Map of Kibana indexed by NamespaceName useful to manipulate the Kibana
+// kbMap is a type alias for a Map of Kibana indexed by NamespacedName useful to manipulate the Kibana
 // instances configured by a StackConfigPolicy.
 type kbMap map[types.NamespacedName]kibanav1.Kibana
 
@@ -248,8 +248,9 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, policy pol
 }
 
 func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
-	log.V(1).Info("Reconcile Elasticsearch Resources")
+	log.V(1).Info("Reconcile Elasticsearch resources")
 
 	results := reconciler.NewResult(ctx)
 
@@ -392,6 +393,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 }
 
 func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Context, policy policyv1alpha1.StackConfigPolicy, status policyv1alpha1.StackConfigPolicyStatus) (*reconciler.Results, policyv1alpha1.StackConfigPolicyStatus) {
+	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.V(1).Info("Reconcile Kibana Resources")
 
@@ -443,10 +445,10 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 			continue
 		}
 
-		// create expected kibana config secret
+		// Create the Secret that holds the Kibana configuration.
 		if policy.Spec.Kibana.Config != nil {
-			// Only add to configured resources if kibana config is set
-			// This will help clean up the config secret if config gets removed from the stack config policy
+			// Only add to configured resources if Kibana config is set.
+			// This will help clean up the config secret if config gets removed from the stack config policy.
 			configuredResources[kibanaNsn] = kibana
 			expectedConfigSecret, err := newKibanaConfigSecret(policy, kibana)
 			if err != nil {
@@ -542,6 +544,7 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 }
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	defer tracing.Span(&ctx)()
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
