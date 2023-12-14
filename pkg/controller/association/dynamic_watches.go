@@ -101,7 +101,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	}
 
 	if r.AdditionalSecrets != nil {
-		if err := ReconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, additionalSecretWatchName(associated), func() ([]types.NamespacedName, error) {
+		if err := reconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, additionalSecretWatchName(associated), func() ([]types.NamespacedName, error) {
 			var toWatch []types.NamespacedName
 			for _, association := range associations {
 				secs, err := r.AdditionalSecrets(ctx, r.Client, association)
@@ -119,7 +119,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	return nil
 }
 
-func ReconcileGenericWatch(
+func reconcileGenericWatch(
 	associated types.NamespacedName,
 	associations []commonv1.Association,
 	dynamicRequest *watches.DynamicEnqueueRequest,
@@ -152,7 +152,7 @@ func ReconcileWatch(
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
-	return ReconcileGenericWatch(associated, associations, dynamicRequest, watchName, func() ([]types.NamespacedName, error) {
+	return reconcileGenericWatch(associated, associations, dynamicRequest, watchName, func() ([]types.NamespacedName, error) {
 		emptyNamespacedName := types.NamespacedName{}
 
 		toWatch := make([]types.NamespacedName, 0, len(associations))

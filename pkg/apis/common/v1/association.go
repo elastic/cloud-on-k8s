@@ -204,7 +204,7 @@ type AssociationConf struct {
 	IsServiceAccount      bool   `json:"isServiceAccount"`
 	CACertProvided        bool   `json:"caCertProvided"`
 	CASecretName          string `json:"caSecretName"`
-	AdditionalSecretsHash string `json:"additionalSecretsHash"`
+	AdditionalSecretsHash string `json:"additionalSecretsHash,omitempty"`
 	URL                   string `json:"url"`
 	// Version of the referenced resource. If a version upgrade is in progress,
 	// matches the lowest running version. May be empty if unknown.

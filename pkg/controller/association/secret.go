@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/jsonpath"
 
@@ -195,18 +196,26 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 }
 
 // copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
-func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, associated types.NamespacedName, targetNamespace string, source types.NamespacedName) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
 	}
-	var expected corev1.Secret
-	expected.Data = original.Data
 	commonhash.WriteHashObject(secHash, original.Data)
-	expected.Labels = original.Labels
-	expected.Annotations = original.Annotations
-	expected.Name = original.Name
-	expected.Namespace = targetNamespace
+	if targetNamespace == original.Namespace {
+		return nil
+	}
+
+	expected := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        original.Name,
+			Namespace:   targetNamespace,
+			Labels:      original.Labels,
+			Annotations: original.Annotations,
+		},
+		Data: original.Data,
+		Type: original.Type,
+	}
 
 	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil)
 	return err

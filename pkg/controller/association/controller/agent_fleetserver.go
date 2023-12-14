@@ -74,12 +74,6 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		return nil, err
 	}
 
-	// if both agent and ES are same namespace no copying needed
-	if agent.GetNamespace() == esAssociation.GetNamespace() {
-		log.V(1).Info("no additional secrets because same namespace")
-		return nil, nil
-	}
-
 	conf, err := esAssociation.AssociationConf()
 	if err != nil {
 		log.V(1).Info("no additional secrets because no assoc conf")
