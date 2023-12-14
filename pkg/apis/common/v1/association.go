@@ -199,11 +199,13 @@ func FormatNameWithID(template string, id string) string {
 
 // AssociationConf holds the association configuration of a referenced resource in an association.
 type AssociationConf struct {
-	AuthSecretName        string `json:"authSecretName"`
-	AuthSecretKey         string `json:"authSecretKey"`
-	IsServiceAccount      bool   `json:"isServiceAccount"`
-	CACertProvided        bool   `json:"caCertProvided"`
-	CASecretName          string `json:"caSecretName"`
+	AuthSecretName   string `json:"authSecretName"`
+	AuthSecretKey    string `json:"authSecretKey"`
+	IsServiceAccount bool   `json:"isServiceAccount"`
+	CACertProvided   bool   `json:"caCertProvided"`
+	CASecretName     string `json:"caSecretName"`
+	// AdditionalSecretsHash is a hash of additional secrets such that when any of the underlying
+	// secrets change, the CRD annotation is updated and the pods are restarted.
 	AdditionalSecretsHash string `json:"additionalSecretsHash,omitempty"`
 	URL                   string `json:"url"`
 	// Version of the referenced resource. If a version upgrade is in progress,
