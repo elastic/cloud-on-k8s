@@ -42,46 +42,52 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	switch {
 	case spec.DaemonSet != nil:
 		reconciliationFunc = reconcileDaemonSet
-		toDelete = append(toDelete, &v1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+		toDelete = append(toDelete,
+			&v1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
-		toDelete = append(toDelete, &v1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+			&v1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
+		)
 	case spec.Deployment != nil:
 		reconciliationFunc = reconcileDeployment
-		toDelete = append(toDelete, &v1.DaemonSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+		toDelete = append(toDelete,
+			&v1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
-		toDelete = append(toDelete, &v1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+			&v1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
+		)
 	case spec.StatefulSet != nil:
 		reconciliationFunc = reconcileStatefulSet
-		toDelete = append(toDelete, &v1.DaemonSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+		toDelete = append(toDelete,
+			&v1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
-		toDelete = append(toDelete, &v1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+			&v1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		})
+		)
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
