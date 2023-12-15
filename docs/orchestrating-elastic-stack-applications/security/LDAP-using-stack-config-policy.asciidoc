@@ -1,12 +1,12 @@
-:parent_page_id: elasticsearch-specification
-:page_id: LDAP-using-stack-config-policy
+:parent_page_id: auth-config-using-stack-config-policy
+:page_id: ldap-using-stack-config-policy
 ifdef::env-github[]
 ****
 link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-{page_id}"]
-= LDAP using Elastic stack configuration policy.
+= LDAP using Elastic stack configuration policy
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 

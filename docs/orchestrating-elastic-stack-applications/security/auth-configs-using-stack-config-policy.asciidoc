@@ -15,6 +15,6 @@ The authorization policy will apply to all the Elasticsearch clusters and Kibana
 
 Examples for configuring some of the authentication policies can be found below:
 
-** <<{p}-LDAP-using-stack-config-policy,LDAP using Elastic Stack configuration policy>>
-**
-**
+** <<{p}-ldap-using-stack-config-policy,LDAP authentication using Elastic Stack configuration policy>>
+** <<{p}-oidc-stack-config-policy,OpenID Connect authentication using Elastic Stack configuration policy>>
+** <<{p}-jwt-stack-config-policy,JWT authentication using Elastic Stack configuration policy>>

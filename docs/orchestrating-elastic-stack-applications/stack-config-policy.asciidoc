@@ -337,3 +337,9 @@ secretMounts:
 
 <1> name of the secret created by the user in the operator namespace.
 <2> mount path where the secret must be mounted to inside the Elasticsearch Pod.
+
+[float]
+[id="{p}-{page_id}-configuring-authentication-policies"]
+== Configuring authentication policies using Elastic Stack configuration policy.
+
+In ECK `2.11.0` with the introduction of the `config` field for `elasticsearch` and `kibana`, `secretMounts` field for `elasticsearch`, Elastic Stack configuration policy can be used to configure authentication for Elasticsearch clusters. For some examples for the various authentication configurations that can be used refer to <<{p}-auth-config-using-stack-config-policy>>
