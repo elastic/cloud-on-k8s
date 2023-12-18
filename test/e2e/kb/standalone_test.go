@@ -68,7 +68,7 @@ func TestKibanaStandalone(t *testing.T) {
 	// set up a 1-node Kibana deployment manually connected to Elasticsearch
 	name := "test-kb-standalone"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO .ds-metrics-fleet_server.agent_status-default index is created with a replica
 		WithRestrictedSecurityContext()
 	esBuilder.Elasticsearch.Spec.Auth = esv1.Auth{
 		FileRealm: []esv1.FileRealmSource{
