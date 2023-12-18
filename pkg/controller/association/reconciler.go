@@ -7,6 +7,7 @@ package association
 import (
 	"context"
 	"fmt"
+	"hash"
 	"hash/fnv"
 	"reflect"
 	"time"
@@ -264,8 +265,9 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, err // maybe not created yet
 	}
 
-	secretsHash := fnv.New32a()
+	var secretsHash hash.Hash32
 	if r.AdditionalSecrets != nil {
+		secretsHash = fnv.New32a()
 		additionalSecrets, err := r.AdditionalSecrets(ctx, r.Client, association)
 		if err != nil {
 			return commonv1.AssociationPending, err // maybe not created yet
@@ -296,11 +298,14 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 
 	// construct the expected association configuration
 	expectedAssocConf := &commonv1.AssociationConf{
-		CACertProvided:        caSecret.CACertProvided,
-		CASecretName:          caSecret.Name,
-		AdditionalSecretsHash: fmt.Sprint(secretsHash.Sum32()),
-		URL:                   url,
-		Version:               ver,
+		CACertProvided: caSecret.CACertProvided,
+		CASecretName:   caSecret.Name,
+		URL:            url,
+		Version:        ver,
+	}
+
+	if secretsHash != nil {
+		expectedAssocConf.AdditionalSecretsHash = fmt.Sprint(secretsHash.Sum32())
 	}
 
 	if r.ElasticsearchUserCreation == nil {
