@@ -342,4 +342,4 @@ secretMounts:
 [id="{p}-{page_id}-configuring-authentication-policies"]
 == Configuring authentication policies using Elastic Stack configuration policy.
 
-In ECK `2.11.0` with the introduction of the `config` field for `elasticsearch` and `kibana`, `secretMounts` field for `elasticsearch`, Elastic Stack configuration policy can be used to configure authentication for Elasticsearch clusters. For some examples for the various authentication configurations that can be used refer to <<{p}-auth-config-using-stack-config-policy>>
+In ECK `2.11.0` with the introduction of the `config` field for `elasticsearch` and `kibana`, `secretMounts` field for `elasticsearch`, Elastic Stack configuration policy can be used to configure authentication for Elasticsearch clusters. For some examples of the various authentication configurations that can be used refer to <<{p}-auth-config-using-stack-config-policy>>

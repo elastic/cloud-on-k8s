@@ -9,9 +9,9 @@ endif::[]
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-Starting from ECK `2.11.0` new options were added that enable adding configurations that go into `elasticsearch.yml` and `kibana.yml` to the Elastic Stack configuration Policy.
-There is also an option to add additional secrets that will be mounted to the Elasticsearch Pods managed by the Elastic Stack configuration policy. This can be used to configure authorization policies in Elastic Stack configuration Policy. 
-The authorization policy will apply to all the Elasticsearch clusters and Kibana instances managed by the Elastic Stack configuration policy.
+Starting from ECK `2.11.0` new options were added that enable adding configurations that go into `elasticsearch.yml` and `kibana.yml` to the Elastic Stack configuration policy.
+There is also an option to add additional secrets that will be mounted to the Elasticsearch Pods managed by the Elastic Stack configuration policy. This can be used to configure authorization policies in Elastic Stack configuration policy. 
+The authorization policy will apply to all Elasticsearch clusters and Kibana instances managed by the Elastic Stack configuration policy.
 
 Examples for configuring some of the authentication policies can be found below:
 
