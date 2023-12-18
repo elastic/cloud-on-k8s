@@ -11,8 +11,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -22,9 +24,10 @@ var (
 	// managedLabels are the labels managed by the operator for the file settings Secret, which means that the operator
 	// will always take precedence to update or remove these labels.
 	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
-	// managedAnnotations are the annotations managed by the operator for the file settings Secret, which means that the operator
+
+	// managedAnnotations are the annotations managed by the operator for the stack config policy related secrets, which means that the operator
 	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{secureSettingsSecretsAnnotationName, settingsHashAnnotationName}
+	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation}
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
@@ -51,27 +54,31 @@ func ReconcileEmptyFileSettingsSecret(
 		return err
 	}
 
-	return ReconcileSecret(ctx, c, expectedSecret, es)
+	return ReconcileSecret(ctx, c, expectedSecret, &es)
 }
 
-// ReconcileSecret reconciles the given file settings Secret for the given Elasticsearch.
+// ReconcileSecret reconciles the given Secret.
 // This implementation is slightly different from reconciler.ReconcileSecret to allow resetting managed annotations.
 func ReconcileSecret(
 	ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
-	es esv1.Elasticsearch,
+	owner client.Object,
 ) error {
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
 		Client:     c,
-		Owner:      &es,
+		Owner:      owner,
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
-				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+			// Secrets must be updated in the following cases:
+			// * the expected labels/annotations are not a subset of the existing labels/annotations,
+			// * the managed labels/annotations have been removed/changed,
+			// * the data itself has changed.
+			return (!maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)) ||
+				(!maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)) ||
 				!reflect.DeepEqual(expected.Data, reconciled.Data)
 		},
 		UpdateReconciled: func() {

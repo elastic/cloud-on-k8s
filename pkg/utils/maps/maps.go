@@ -19,6 +19,16 @@ func IsSubset(toCheck, fullSet map[string]string) bool {
 	return true
 }
 
+// IsEqualSubset compares the values of the given subset of keys between two maps and returns true if they are equal.
+func IsEqualSubset(map1, map2 map[string]string, keySubSet []string) bool {
+	for _, key := range keySubSet {
+		if map1[key] != map2[key] {
+			return false
+		}
+	}
+	return true
+}
+
 // Merge merges source into destination, overwriting existing values if necessary.
 func Merge(dest, src map[string]string) map[string]string {
 	if dest == nil {

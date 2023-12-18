@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -50,7 +50,7 @@ func secureSettingsVolume(
 	// user-provided Secrets referenced in the resource
 	secretSources := WatchedSecretNames(hasKeystore)
 	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
-	policySecretSources, err := filesettings.GetSecureSettingsSecretSources(ctx, r.K8sClient(), hasKeystore)
+	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind)
 	if err != nil {
 		return nil, "", pkgerrors.Wrap(err, "fail to get secure settings secret sources")
 	}

@@ -104,6 +104,43 @@ spec:
                       type: object
                     type: array
                     x-kubernetes-preserve-unknown-fields: true
+                  secureSettings:
+                    description: SecureSettings are additional Secrets that contain
+                      data to be configured to Elasticsearch's keystore.
+                    items:
+                      description: SecretSource defines a data source based on a Kubernetes
+                        Secret.
+                      properties:
+                        entries:
+                          description: Entries define how to project each key-value
+                            pair in the secret to filesystem paths. If not defined,
+                            all keys will be projected to similarly named paths in
+                            the filesystem. If defined, only the specified keys will
+                            be projected to the corresponding paths.
+                          items:
+                            description: KeyToPath defines how to map a key in a Secret
+                              object to a filesystem path.
+                            properties:
+                              key:
+                                description: Key is the key contained in the secret.
+                                type: string
+                              path:
+                                description: Path is the relative file path to map
+                                  the key to. Path must not be an absolute file path
+                                  and must not contain any ".." components.
+                                type: string
+                            required:
+                            - key
+                            type: object
+                          type: array
+                        secretName:
+                          description: SecretName is the name of the secret.
+                          type: string
+                      required:
+                      - secretName
+                      type: object
+                    type: array
+                    x-kubernetes-preserve-unknown-fields: true
                   securityRoleMappings:
                     description: SecurityRoleMappings holds the Role Mappings settings
                       (/_security/role_mapping)
@@ -126,21 +163,40 @@ spec:
                     description: Config holds the settings that go into kibana.yml.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
-                  secretMounts:
-                    description: SecretMounts are additional secrets that need to
-                      be mounted into the Kibana pods.
+                  secureSettings:
+                    description: SecureSettings are additional Secrets that contain
+                      data to be configured to Kibana's keystore.
                     items:
-                      description: SecretMount contains information about additional
-                        secrets to be mounted to the elasticsearch pods
+                      description: SecretSource defines a data source based on a Kubernetes
+                        Secret.
                       properties:
-                        mountPath:
-                          description: MountPath denotes the path to which the secret
-                            should be mounted to inside the elasticsearch pod
-                          type: string
+                        entries:
+                          description: Entries define how to project each key-value
+                            pair in the secret to filesystem paths. If not defined,
+                            all keys will be projected to similarly named paths in
+                            the filesystem. If defined, only the specified keys will
+                            be projected to the corresponding paths.
+                          items:
+                            description: KeyToPath defines how to map a key in a Secret
+                              object to a filesystem path.
+                            properties:
+                              key:
+                                description: Key is the key contained in the secret.
+                                type: string
+                              path:
+                                description: Path is the relative file path to map
+                                  the key to. Path must not be an absolute file path
+                                  and must not contain any ".." components.
+                                type: string
+                            required:
+                            - key
+                            type: object
+                          type: array
                         secretName:
-                          description: SecretName denotes the name of the secret that
-                            needs to be mounted to the elasticsearch pod
+                          description: SecretName is the name of the secret.
                           type: string
+                      required:
+                      - secretName
                       type: object
                     type: array
                     x-kubernetes-preserve-unknown-fields: true
@@ -194,6 +250,8 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               secureSettings:
+                description: 'Deprecated: SecureSettings only applies to Elasticsearch
+                  and is deprecated. It must be set per application instead.'
                 items:
                   description: SecretSource defines a data source based on a Kubernetes
                     Secret.
@@ -254,25 +312,33 @@ spec:
                 type: integer
               resourcesStatuses:
                 additionalProperties:
-                  description: ResourcePolicyStatus models the status of the policy
-                    for one resource to be configured.
-                  properties:
-                    currentVersion:
-                      format: int64
-                      type: integer
-                    error:
-                      properties:
-                        message:
-                          type: string
-                        version:
-                          format: int64
-                          type: integer
-                      type: object
-                    expectedVersion:
-                      format: int64
-                      type: integer
-                    phase:
-                      type: string
+                  additionalProperties:
+                    description: ResourcePolicyStatus models the status of the policy
+                      for one resource to be configured.
+                    properties:
+                      currentVersion:
+                        description: CurrentVersion denotes the current version of
+                          filesettings applied to the Elasticsearch cluster This field
+                          does not apply to Kibana resources
+                        format: int64
+                        type: integer
+                      error:
+                        properties:
+                          message:
+                            type: string
+                          version:
+                            format: int64
+                            type: integer
+                        type: object
+                      expectedVersion:
+                        description: ExpectedVersion denotes the expected version
+                          of filesettings that should be applied to the Elasticsearch
+                          cluster This field does not apply to Kibana resources
+                        format: int64
+                        type: integer
+                      phase:
+                        type: string
+                    type: object
                   type: object
                 description: ResourcesStatuses holds the status for each resource
                   to be configured.

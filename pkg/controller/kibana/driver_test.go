@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/settings"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -49,8 +50,8 @@ func Test_getStrategyType(t *testing.T) {
 					Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
 					Namespace: "default",
 					Labels: map[string]string{
-						KibanaNameLabelName:    kbName,
-						KibanaVersionLabelName: version,
+						kblabel.KibanaNameLabelName:    kbName,
+						kblabel.KibanaVersionLabelName: version,
 					},
 				},
 			})
@@ -65,7 +66,7 @@ func Test_getStrategyType(t *testing.T) {
 				t.FailNow()
 			}
 
-			delete(pod.Labels, KibanaVersionLabelName)
+			delete(pod.Labels, kblabel.KibanaVersionLabelName)
 		}
 
 		return objects
@@ -196,8 +197,9 @@ func Test_getStrategyType(t *testing.T) {
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb             func() *kbv1.Kibana
-		initialObjects func() []client.Object
+		kb                func() *kbv1.Kibana
+		initialObjects    func() []client.Object
+		policyAnnotations map[string]string
 	}
 
 	tests := []struct {
@@ -222,6 +224,16 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjects,
 			},
 			want:    expectedDeploymentParams(),
+			wantErr: false,
+		},
+		{
+			name: "with policy annotations",
+			args: args{
+				kb:                kibanaFixture,
+				initialObjects:    defaultInitialObjects,
+				policyAnnotations: map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"},
+			},
+			want:    expectedDeploymentWithPolicyAnnotations(map[string]string{"policy.k8s.elastic.co/kibana-config-hash": "2123345"}),
 			wantErr: false,
 		},
 		{
@@ -363,7 +375,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb)
+			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -587,6 +599,15 @@ func expectedDeploymentParams() deployment.Params {
 	}
 }
 
+func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string) deployment.Params {
+	deploymentParams := expectedDeploymentParams()
+
+	for k, v := range policyAnnotations {
+		deploymentParams.PodTemplateSpec.Annotations[k] = v
+	}
+	return deploymentParams
+}
+
 func kibanaFixture() *kbv1.Kibana {
 	kbFixture := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
@@ -769,8 +790,8 @@ func mkService() corev1.Service {
 			Name:      "kibana-test-kb-http",
 			Namespace: "test",
 			Labels: map[string]string{
-				KibanaNameLabelName:    "kibana-test",
-				commonv1.TypeLabelName: Type,
+				kblabel.KibanaNameLabelName: "kibana-test",
+				commonv1.TypeLabelName:      kblabel.Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -782,8 +803,8 @@ func mkService() corev1.Service {
 				},
 			},
 			Selector: map[string]string{
-				KibanaNameLabelName:    "kibana-test",
-				commonv1.TypeLabelName: Type,
+				kblabel.KibanaNameLabelName: "kibana-test",
+				commonv1.TypeLabelName:      kblabel.Type,
 			},
 		},
 	}

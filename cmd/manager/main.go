@@ -1012,6 +1012,7 @@ func setupWebhook(
 		&kbv1beta1.Kibana{},
 		&emsv1alpha1.ElasticMapsServer{},
 		&logstashv1alpha1.Logstash{},
+		&policyv1alpha1.StackConfigPolicy{},
 	}
 	for _, obj := range webhookObjects {
 		if err := commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{

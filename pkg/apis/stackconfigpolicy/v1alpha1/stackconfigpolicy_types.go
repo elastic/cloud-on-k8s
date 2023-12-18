@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
+	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 )
 
 const (
@@ -52,10 +54,11 @@ type StackConfigPolicyList struct {
 }
 
 type StackConfigPolicySpec struct {
-	ResourceSelector metav1.LabelSelector          `json:"resourceSelector,omitempty"`
-	SecureSettings   []commonv1.SecretSource       `json:"secureSettings,omitempty"`
-	Elasticsearch    ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
-	Kibana           KibanaConfigPolicySpec        `json:"kibana,omitempty"`
+	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
+	// Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead.
+	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
+	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
+	Kibana         KibanaConfigPolicySpec        `json:"kibana,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
@@ -86,16 +89,26 @@ type ElasticsearchConfigPolicySpec struct {
 	// SecretMounts are additional Secrets that need to be mounted into the Elasticsearch pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
+	// SecureSettings are additional Secrets that contain data to be configured to Elasticsearch's keystore.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 type KibanaConfigPolicySpec struct {
 	// Config holds the settings that go into kibana.yml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
-	// SecretMounts are additional secrets that need to be mounted into the Kibana pods.
+	// SecureSettings are additional Secrets that contain data to be configured to Kibana's keystore.
 	// +kubebuilder:pruning:PreserveUnknownFields
-	SecretMounts []SecretMount `json:"secretMounts,omitempty"`
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 }
+
+type ResourceType string
+
+const (
+	ElasticsearchResourceType ResourceType = eslabel.Type
+	KibanaResourceType        ResourceType = kblabel.Type
+)
 
 type IndexTemplates struct {
 	// ComponentTemplates holds the Component Templates settings (/_component_template)
@@ -108,7 +121,7 @@ type IndexTemplates struct {
 
 type StackConfigPolicyStatus struct {
 	// ResourcesStatuses holds the status for each resource to be configured.
-	ResourcesStatuses map[string]ResourcePolicyStatus `json:"resourcesStatuses"`
+	ResourcesStatuses map[ResourceType]map[string]ResourcePolicyStatus `json:"resourcesStatuses"`
 	// Resources is the number of resources to be configured.
 	Resources int `json:"resources,omitempty"`
 	// Ready is the number of resources successfully configured.
@@ -147,8 +160,12 @@ var phaseOrder = map[PolicyPhase]int{
 
 // ResourcePolicyStatus models the status of the policy for one resource to be configured.
 type ResourcePolicyStatus struct {
-	Phase           PolicyPhase       `json:"phase,omitempty"`
-	CurrentVersion  int64             `json:"currentVersion,omitempty"`
+	Phase PolicyPhase `json:"phase,omitempty"`
+	// CurrentVersion denotes the current version of filesettings applied to the Elasticsearch cluster
+	// This field does not apply to Kibana resources
+	CurrentVersion int64 `json:"currentVersion,omitempty"`
+	// ExpectedVersion denotes the expected version of filesettings that should be applied to the Elasticsearch cluster
+	// This field does not apply to Kibana resources
 	ExpectedVersion int64             `json:"expectedVersion,omitempty"`
 	Error           PolicyStatusError `json:"error,omitempty"`
 }
@@ -168,7 +185,7 @@ type SecretMount struct {
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
 	status := StackConfigPolicyStatus{
-		ResourcesStatuses:  map[string]ResourcePolicyStatus{},
+		ResourcesStatuses:  map[ResourceType]map[string]ResourcePolicyStatus{},
 		Phase:              ReadyPhase,
 		ObservedGeneration: scp.Generation,
 	}
@@ -180,66 +197,96 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 	s.ReadyCount = fmt.Sprintf("%d/%d", s.Ready, s.Resources)
 }
 
-func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string) error {
-	if _, ok := s.ResourcesStatuses[resource.String()]; ok {
+// AddPolicyErrorFor adds given error message to status of a resource. Only one error can be reported per resource
+func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
+	resourceStatusKey := s.getResourceStatusKey(resource)
+	if s.ResourcesStatuses[resourceType] == nil {
+		s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+	}
+	if status, exists := s.ResourcesStatuses[resourceType][resourceStatusKey]; exists && status.Error.Message != "" {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
-	s.ResourcesStatuses[resource.String()] = ResourcePolicyStatus{
+	resourcePolicyStatus := ResourcePolicyStatus{
 		Phase: phase,
 		Error: PolicyStatusError{Message: msg},
 	}
+	s.ResourcesStatuses[resourceType][resourceStatusKey] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
 
-func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, elasticsearchConfigAndMountsApplied bool) {
+func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) error {
 	defer func() {
-		s.ResourcesStatuses[resource.String()] = status
+		if s.ResourcesStatuses[resourceType] == nil {
+			s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+		}
+		s.ResourcesStatuses[resourceType][s.getResourceStatusKey(resource)] = status
 		s.Update()
 	}()
-
-	if !elasticsearchConfigAndMountsApplied {
-		// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
-		status.Phase = ApplyingChangesPhase
-		return
-	}
-
-	if status.CurrentVersion == unknownVersion {
-		status.Phase = UnknownPhase
-		return
-	}
-
-	if status.Error.Message != "" {
-		status.Phase = ErrorPhase
-		if status.ExpectedVersion > status.Error.Version {
+	switch resourceType {
+	case ElasticsearchResourceType:
+		if !applicationConfigsApplied {
+			// New ElasticsearchConfig and Additional secrets not yet applied to the Elasticsearch pod
 			status.Phase = ApplyingChangesPhase
+			return nil
 		}
-		return
-	}
 
-	if status.CurrentVersion == status.ExpectedVersion {
+		if status.CurrentVersion == unknownVersion {
+			status.Phase = UnknownPhase
+			return nil
+		}
+
+		if status.Error.Message != "" {
+			status.Phase = ErrorPhase
+			if status.ExpectedVersion > status.Error.Version {
+				status.Phase = ApplyingChangesPhase
+			}
+			return nil
+		}
+
+		if status.CurrentVersion == status.ExpectedVersion {
+			status.Phase = ReadyPhase
+			return nil
+		}
+		status.Phase = ApplyingChangesPhase
+	case KibanaResourceType:
+		if !applicationConfigsApplied {
+			// New KibanaConfig not yet applied to the Elasticsearch instance
+			status.Phase = ApplyingChangesPhase
+			return nil
+		}
+		if status.Error.Message != "" {
+			status.Phase = ErrorPhase
+			return nil
+		}
 		status.Phase = ReadyPhase
-		return
+		return nil
+	default:
+		return fmt.Errorf("unknown resource type %s", resourceType)
 	}
-
-	status.Phase = ApplyingChangesPhase
+	return nil
 }
 
 // Update updates the policy status from its resources statuses.
 func (s *StackConfigPolicyStatus) Update() {
-	s.Resources = len(s.ResourcesStatuses)
+	s.Resources = 0
 	s.Ready = 0
 	s.Errors = 0
-	for _, status := range s.ResourcesStatuses {
-		resourcePhase := status.Phase
-		if resourcePhase == ReadyPhase {
-			s.Ready++
-		} else if resourcePhase == ErrorPhase {
-			s.Errors++
-		}
-		// update phase if that of the resource status is worse
-		if phaseOrder[resourcePhase] > phaseOrder[s.Phase] {
-			s.Phase = resourcePhase
+	for _, resourceStatusMap := range s.ResourcesStatuses {
+		for _, status := range resourceStatusMap {
+			s.Resources++
+			// Resource status can be for Kibana or Elasticsearch resources
+			resourcePhase := status.Phase
+
+			if resourcePhase == ReadyPhase {
+				s.Ready++
+			} else if resourcePhase == ErrorPhase {
+				s.Errors++
+			}
+			// update phase if that of the resource status is worse
+			if phaseOrder[resourcePhase] > phaseOrder[s.Phase] {
+				s.Phase = resourcePhase
+			}
 		}
 	}
 	s.setReadyCount()
@@ -253,4 +300,8 @@ func (s StackConfigPolicyStatus) IsDegraded(prev StackConfigPolicyStatus) bool {
 // IsMarkedForDeletion returns true if the StackConfigPolicy resource is going to be deleted.
 func (p *StackConfigPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
+}
+
+func (s StackConfigPolicyStatus) getResourceStatusKey(nsn types.NamespacedName) string {
+	return nsn.String()
 }

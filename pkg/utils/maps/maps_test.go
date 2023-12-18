@@ -278,3 +278,70 @@ func TestContainsKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestIsEqualSubset(t *testing.T) {
+	tests := []struct {
+		name string
+		map1 map[string]string
+		map2 map[string]string
+		keys []string
+		want bool
+	}{
+		{
+			name: "when a key is changed",
+			map1: map[string]string{
+				"a": "x",
+				"b": "y",
+			},
+			map2: map[string]string{
+				"a": "w",
+				"b": "y",
+			},
+			keys: []string{"a"},
+			want: false,
+		},
+		{
+			name: "when a given key to compare does not exist in one of the maps",
+			map1: map[string]string{
+				"a": "x",
+				"b": "y",
+			},
+			map2: map[string]string{
+				"b": "y",
+			},
+			keys: []string{"a"},
+			want: false,
+		},
+		{
+			name: "when a given key to compare does not exist in both maps",
+			map1: map[string]string{
+				"b": "y",
+			},
+			map2: map[string]string{
+				"b": "y",
+			},
+			keys: []string{"a"},
+			want: true,
+		},
+		{
+			name: "when a key not in the keys to be compared list is changed",
+			map1: map[string]string{
+				"a": "x",
+				"b": "y",
+			},
+			map2: map[string]string{
+				"a": "x",
+				"b": "w",
+			},
+			keys: []string{"a"},
+			want: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			have := IsEqualSubset(tc.map1, tc.map2, tc.keys)
+			require.Equal(t, tc.want, have)
+		})
+	}
+}

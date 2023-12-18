@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
@@ -41,8 +41,8 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			}
 		},
 		AssociationConfAnnotationNameBase:     commonv1.KibanaConfigAnnotationNameBase,
-		AssociationResourceNameLabelName:      kibana.KibanaNameLabelName,
-		AssociationResourceNamespaceLabelName: kibana.KibanaNamespaceLabelName,
+		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
+		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
 			ElasticsearchRef: getElasticsearchFromKibana,
