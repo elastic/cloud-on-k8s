@@ -1,5 +1,6 @@
 run:
   timeout: 360s
+  go: '1.21'
 
 linters-settings:
   exhaustive:
