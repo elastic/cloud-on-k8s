@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -37,7 +38,12 @@ var (
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
 		checkNoDowngrade,
+		checkPVCchanges,
 	}
+)
+
+const (
+	pvcImmutableMsg = "Volume claim templates cannot be modified"
 )
 
 func checkNoUnknownFields(a *Agent) field.ErrorList {
@@ -135,6 +141,27 @@ func checkNoDowngrade(prev, curr *Agent) field.ErrorList {
 		return nil
 	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+func checkPVCchanges(current, proposed *Agent) field.ErrorList {
+	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
+
+	// need to check if current and proposed are both statefulsets
+	if current.Spec.StatefulSet == nil || proposed.Spec.StatefulSet == nil {
+		return errs
+	}
+
+	// checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
+	if !apiequality.Semantic.DeepEqual(current.Spec.StatefulSet.VolumeClaimTemplates, proposed.Spec.StatefulSet.VolumeClaimTemplates) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"),
+			proposed.Spec.StatefulSet.VolumeClaimTemplates, pvcImmutableMsg))
+	}
+
+	return errs
 }
 
 func checkSingleConfigSource(a *Agent) field.ErrorList {
