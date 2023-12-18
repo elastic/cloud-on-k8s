@@ -46,7 +46,7 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 One out the following two fields and one of the resprective sub fields must be present as well:
 
 * `spec.elasticsearch` describes the settings to configure for elasticsearch. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
-  ** `clusterSettings` are dynamic Elasticsearch cluster settings that can be set without having to restart Elasticsearch
+  ** `clusterSettings` are dynamic settings that can be set on a running cluster like with the Cluster Update Settings API.
   ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots. Check <<{p}-{page_id}-specifics-snap-repo>> for more information.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
   ** `securityRoleMappings` are role mappings, to define which roles are assigned to each user by identifying them through rules.
