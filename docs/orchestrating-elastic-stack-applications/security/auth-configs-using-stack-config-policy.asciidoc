@@ -9,12 +9,17 @@ endif::[]
 
 NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
-Starting from ECK `2.11.0` new options were added that enable adding configurations that go into `elasticsearch.yml` and `kibana.yml` to the Elastic Stack configuration policy.
-There is also an option to add additional secrets that will be mounted to the Elasticsearch Pods managed by the Elastic Stack configuration policy. This can be used to configure authentication in Elastic Stack configuration policy. 
+
+ECK `2.11.0` extends the functionality of <<{p}-stack-config-policy,Elastic Stack configuration policies>> so that it becomes possible to configure Elasticsearch security realms for more than one Elastic stack at once. 
 The authentication will apply to all Elasticsearch clusters and Kibana instances managed by the Elastic Stack configuration policy.
 
-Examples for configuring some of the authentication policies can be found below:
+
+Examples for configuring some of the authentication methods can be found below:
 
 ** <<{p}-ldap-using-stack-config-policy,LDAP authentication using Elastic Stack configuration policy>>
 ** <<{p}-oidc-stack-config-policy,OpenID Connect authentication using Elastic Stack configuration policy>>
 ** <<{p}-jwt-stack-config-policy,JWT authentication using Elastic Stack configuration policy>>
+
+include::managing-authentication-for-multiple-stacks/ldap-using-stack-config-policy.asciidoc[leveloffset=+1]
+include::managing-authentication-for-multiple-stacks/oidc-stack-config-policy.asciidoc[leveloffset=+1]
+include::managing-authentication-for-multiple-stacks/jwt-stack-config-policy.asciidoc[leveloffset=+1]
