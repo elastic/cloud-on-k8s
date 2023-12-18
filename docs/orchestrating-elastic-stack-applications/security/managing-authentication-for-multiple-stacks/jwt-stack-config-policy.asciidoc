@@ -15,7 +15,7 @@ TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elast
 
 Configuring JWT with Elastic Stack configuration policy
 
-. Add your JWT realm to the elasticsearch.yml file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy
+. Add your JWT realm to the `elasticsearch.yml` file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy
 
 +
 [source,yaml,subs="attributes,+macros"]

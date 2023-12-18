@@ -112,7 +112,7 @@ spec:
 
 To configure an LDAP realm with user DN templates:
 
-Add a realm configuration to elasticsearch.yml in the xpack.security.authc.realms.ldap namespace. At a minimum, you must specify the url and order of the LDAP server, and specify at least one template with the user_dn_templates option. See link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#ref-ldap-settings[LDAP realm settings]  for all of the options you can set for an ldap realm.
+Add a realm configuration to `elasticsearch.yml` in the xpack.security.authc.realms.ldap namespace. At a minimum, you must specify the url and order of the LDAP server, and specify at least one template with the user_dn_templates option. See link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#ref-ldap-settings[LDAP realm settings]  for all of the options you can set for an ldap realm.
 
 For example, the following snippet shows an LDAP realm configured with user DN templates:
 
@@ -133,7 +133,7 @@ xpack:
             unmapped_groups_as_roles: false
 ----
 
-Example Elastic Stack config policy to configure LDAP realm with user DN templates
+Example Elastic Stack config policy to configure LDAP realm with user DN templates:
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -167,5 +167,5 @@ spec:
           unmapped_groups_as_roles: false
 ----
 
-The bind_dn setting is not used in template mode. All LDAP operations run as the authenticating user. So there is no need of setting up any additional secrets to be stored in keystore.
+The `bind_dn` setting is not used in template mode. All LDAP operations run as the authenticating user. So there is no need of setting up any additional secrets to be stored in keystore.
 

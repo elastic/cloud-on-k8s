@@ -47,7 +47,7 @@ elasticsearch:
                    claim_patterns.principal: "^([^@]+)@elastic\\.co$"
 ----
 
-. Another piece of configuration of the OpenID Connect realm is to set the Client Secret that was assigned to the Relying Parties (RP) during registration in the OpenID Connect Provider (OP). This is a secure setting and as such is not defined in the realm configuration in elasticsearch.yml but added to the elasticsearch keystore. To set this up using Elastic Stack configuration policy, use the following steps.
+. Another piece of configuration of the OpenID Connect realm is to set the Client Secret that was assigned to the Relying Parties (RP) during registration in the OpenID Connect Provider (OP). This is a secure setting and as such is not defined in the realm configuration in `elasticsearch.yml` but added to the Elasticsearch keystore. To set this up using Elastic Stack configuration policy, use the following steps.
     .. Create a secret in the operator namespace that has the Client Secret
 +
 [source,sh]

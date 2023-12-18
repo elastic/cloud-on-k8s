@@ -43,9 +43,9 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 
 * `name` is a unique name used to identify the policy.
 
-One out the following two fields and one of the resprective sub fields must be present as well:
+One out the following two fields and one of the respective sub fields must be present as well:
 
-* `spec.elasticsearch` describes the settings to configure for elasticsearch. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
+* `spec.elasticsearch` describes the settings to configure for Elasticsearch. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
   ** `clusterSettings` are dynamic settings that can be set on a running cluster like with the Cluster Update Settings API.
   ** `snapshotRepositories` are snapshot repositories for defining an off-cluster storage location for your snapshots. Check <<{p}-{page_id}-specifics-snap-repo>> for more information.
   ** `snapshotLifecyclePolicies` are snapshot lifecycle policies, to automatically take snapshots and control how long they are retained.
@@ -54,18 +54,18 @@ One out the following two fields and one of the resprective sub fields must be p
   ** `indexLifecyclePolicies` are index lifecycle policies, to automatically manage the index lifecycle.
   ** `indexTemplates.componentTemplates` are component templates that are building blocks for constructing index templates that specify index mappings, settings, and aliases.
   ** `indexTemplates.composableIndexTemplates` are index templates to define settings, mappings, and aliases that can be applied automatically to new indices.
-  ** `config` are the settings that go into the elasticsearch.yml file.
+  ** `config` are the settings that go into the `elasticsearch.yml` file.
   ** `secretMounts` are the additional user created secrets that need to be mounted to the Elasticsearch Pods.
   ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-custom-images,Elasticsearch Secure Settings>>.
-* `spec.kibana` describes the settings to configure for kibana.
-  ** `config` are the settings that go into the kibana.yml file.
+* `spec.kibana` describes the settings to configure for Kibana.
+  ** `config` are the settings that go into the `kibana.yml` file.
   ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the link:https://www.elastic.co/guide/en/kibana/current/secure-settings.html[Kibana Secure Settings].
 
 The following fields are optional:
 
 * `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, the policy applies to all namespaces managed by the operator, otherwise the policy only applies to the namespace of the policy.
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
-* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>. (This field is deprecated with ECK `2.11.0`, it is preferred to set this under the elasticsearch or kibana fields)
+* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>. This field is deprecated with ECK `2.11.0`, it is preferred to set this under the elasticsearch or kibana fields.
 
 Secure settings may be required to configure Cloud snapshot repositories (Azure, GCS, S3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
 (<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
@@ -323,10 +323,10 @@ In order to avoid a conflict between multiple Elasticsearch clusters writing the
 
 In ECK `2.11.0` a new field was introduced to the Elastic Stack configuration policy under the `elasticsearch` field called `secretMounts`.
 This field allows users to specify a user created secret and a mountPath to indicate where this secret should be mounted in the Elasticsearch Pods that are managed by the Elastic Stack configuration policy.
-This field can be used to add additional secrets to the Elasticsearch Pods that might be needed to configure things like Authorization Configurations.
+This field can be used to add additional secrets to the Elasticsearch Pods that may be needed for sensitive files required for configuring Elasticsearch realms.
 The secret should be created by the user is the same namespace as the operator.
 The operator will read this secret and copy it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
-Example of configuring secret mounts in the Elastic Stack configuration policy
+Example of configuring secret mounts in the Elastic Stack configuration policy:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -340,6 +340,6 @@ secretMounts:
 
 [float]
 [id="{p}-{page_id}-configuring-authentication-policies"]
-== Configuring authentication policies using Elastic Stack configuration policy.
+== Configuring authentication policies using Elastic Stack configuration policy
 
 In ECK `2.11.0` with the introduction of the `config` field for `elasticsearch` and `kibana`, `secretMounts` field for `elasticsearch`, Elastic Stack configuration policy can be used to configure authentication for Elasticsearch clusters. For some examples of the various authentication configurations that can be used refer to <<{p}-auth-config-using-stack-config-policy>>
