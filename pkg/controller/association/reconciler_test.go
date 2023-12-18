@@ -1137,11 +1137,6 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, err
 			}
 
-			// if both agent and ES are same namespace no copying needed
-			if agent.GetNamespace() == esAssociation.GetNamespace() {
-				return nil, nil
-			}
-
 			conf, err := esAssociation.AssociationConf()
 			if err != nil {
 				return nil, err
