@@ -110,7 +110,7 @@ spec:
           unmapped_groups_as_roles: false
 ----
 
-To configure an ldap realm with user DN templates:
+To configure an LDAP realm with user DN templates:
 
 Add a realm configuration to elasticsearch.yml in the xpack.security.authc.realms.ldap namespace. At a minimum, you must specify the url and order of the LDAP server, and specify at least one template with the user_dn_templates option. See link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#ref-ldap-settings[LDAP realm settings]  for all of the options you can set for an ldap realm.
 

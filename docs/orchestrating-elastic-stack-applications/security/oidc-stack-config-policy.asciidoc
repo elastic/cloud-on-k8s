@@ -19,7 +19,7 @@ NOTE: This guide only provides simple examples of how to use the Elastic Stack c
 . Add OIDC realm to the `elasticsearch.yml` file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy, also enable token service. 
 
 +
-NOTE: Below snippet is an example of using google as OP, the values will change depending on the OP being used.
+NOTE: Below snippet is an example of using Goole as OpenID provider, the values will change depending on the provider being used.
 
 +
 [source,yaml,subs="attributes,+macros"]

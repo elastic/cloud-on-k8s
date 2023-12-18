@@ -51,7 +51,7 @@ kubectl create secret generic shared-secret --from-literal=xpack.security.authc.
 :   - secretName: shared-secret
 ----
 
-. Add an additional volume to the Elasticsearch pods that contain the jwkset, it should be mounted to the path that is configured for the `xpack.security.authc.realms.jwt.jwt1.pkc_jwkset_path` config. The file path is resolved relative to the Elasticsearch configuration directory. The following steps can be followed to do this.
+. Add an additional volume to the Elasticsearch pods that contain the JSON Web Keys, it should be mounted to the path that is configured for the `xpack.security.authc.realms.jwt.jwt1.pkc_jwkset_path` config. The file path is resolved relative to the Elasticsearch configuration directory. The following steps can be followed to do this.
 
     .. Create a secret in the operator namespace that has the jwk set
 +
@@ -82,7 +82,7 @@ securityRoleMappings:
         enabled: true
 ----
 
-Simple example of a full Elastic Stack configuration policy to configure JWT
+The following example demonstrates how an Elastic Stack configuration policy can be used to configure a JWT realm:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
