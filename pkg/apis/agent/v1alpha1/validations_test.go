@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,6 +122,103 @@ func Test_checkPolicyID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkPolicyID(&tc.beat)
 			assert.Equal(t, tc.wantErr, got)
+		})
+	}
+}
+
+func Test_checkAtMostOneDeploymentOption(t *testing.T) {
+	type args struct {
+		a *Agent
+	}
+	tests := []struct {
+		name string
+		args args
+		want field.ErrorList
+	}{
+		{
+			name: "deployment option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment: &DeploymentSpec{},
+				}},
+			},
+		},
+		{
+			name: "daemonset option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					DaemonSet: &DaemonSetSpec{},
+				}},
+			},
+		},
+		{
+			name: "statefulset option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+		},
+		{
+			name: "statefulset and deployment options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [deployment, statefulSet]"),
+			},
+		},
+		{
+			name: "deployment and daemonset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment: &DeploymentSpec{},
+					DaemonSet:  &DaemonSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, deployment]"),
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [daemonSet, deployment]"),
+			},
+		},
+		{
+			name: "daemonset and statefulset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [daemonSet, statefulSet]"),
+			},
+		},
+		{
+			name: "deployment, daemonset, and statefulset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := checkAtMostOneDeploymentOption(tt.args.a); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("checkAtMostOneDeploymentOption() = \n%v, \nwant \n%v", got, tt.want)
+			}
 		})
 	}
 }
