@@ -157,7 +157,7 @@ func checkPVCchanges(current, proposed *Agent) field.ErrorList {
 
 	// checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
 	if !apiequality.Semantic.DeepEqual(current.Spec.StatefulSet.VolumeClaimTemplates, proposed.Spec.StatefulSet.VolumeClaimTemplates) {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"),
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("statefulSet.").Child("volumeClaimTemplates"),
 			proposed.Spec.StatefulSet.VolumeClaimTemplates, pvcImmutableMsg))
 	}
 
