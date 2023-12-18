@@ -6,7 +6,6 @@ package association
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"testing"
@@ -135,7 +134,6 @@ var (
 				"kbname-kibana-user", "kbns-kbname-kibana-user",
 				true, "kbname-kb-es-ca",
 				fmt.Sprintf("https://%s.esns.svc:9200", svcName),
-				"",
 			),
 		}
 		return *kb
@@ -251,20 +249,9 @@ var (
 	}
 )
 
-func assocConf(authSecretName, authSecretKey string, caCertProvided bool, caSecretName, url, additionalSecretsHash string) string {
-	b, err := json.Marshal(commonv1.AssociationConf{
-		AuthSecretName:        authSecretName,
-		AuthSecretKey:         authSecretKey,
-		CASecretName:          caSecretName,
-		CACertProvided:        caCertProvided,
-		URL:                   url,
-		AdditionalSecretsHash: additionalSecretsHash,
-		Version:               "7.16.0",
-	})
-	if err != nil {
-		panic(fmt.Sprintf("while marshaling associationConf: %s", err))
-	}
-	return string(b)
+func assocConf(authSecretName string, authSecretKey string, caCertProvided bool, caSecretName string, url string) string {
+	return fmt.Sprintf("{\"authSecretName\":\"%s\",\"authSecretKey\":\"%s\",\"isServiceAccount\":false,\"caCertProvided\":%t,\"caSecretName\":\"%s\",\"url\":\"%s\",\"version\":\"%s\"}",
+		authSecretName, authSecretKey, caCertProvided, caSecretName, url, stackVersion)
 }
 
 type denyAllAccessReviewer struct{}
@@ -1558,7 +1545,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	expectedAssocConf := assocConf(
 		"sample-es-ref-secret", "password",
 		false, "",
-		"https://es.io:9243", "")
+		"https://es.io:9243")
 	require.Equal(t, expectedAssocConf, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
@@ -1575,7 +1562,7 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	expectedAssocConf = assocConf(
 		"sample-es-ref-secret", "password",
 		true, "sample-es-ref-secret",
-		"https://es.io:9243", "")
+		"https://es.io:9243")
 	require.Equal(t, expectedAssocConf, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
