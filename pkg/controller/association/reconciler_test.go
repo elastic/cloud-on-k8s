@@ -135,7 +135,7 @@ var (
 				"kbname-kibana-user", "kbns-kbname-kibana-user",
 				true, "kbname-kb-es-ca",
 				fmt.Sprintf("https://%s.esns.svc:9200", svcName),
-				"2166136261",
+				"",
 			),
 		}
 		return *kb
@@ -623,7 +623,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
 	// association conf should be set
-	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"additionalSecretsHash\":\"2166136261\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
+	require.Equal(t, "{\"authSecretName\":\"-\",\"authSecretKey\":\"\",\"isServiceAccount\":false,\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-ent-ca\",\"url\":\"https://entname-ent-http.entns.svc:3002\",\"version\":\"\"}",
 		updatedKibana.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
 	// ent association status should be established
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.EnterpriseSearchAssociationStatus)
