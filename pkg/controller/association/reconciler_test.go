@@ -7,7 +7,6 @@ package association
 import (
 	"context"
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -1113,53 +1112,43 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
 		ElasticsearchUserCreation:             nil,
 		AdditionalSecrets: func(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
-			log.Printf("in additionalsecrets")
 			associated := assoc.Associated()
 			var agent agentv1alpha1.Agent
 			nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
 			if err := c.Get(context.Background(), nsn, &agent); err != nil {
-				log.Printf("additionalsecrets: %s error: %s", nsn, err)
 				return nil, err
 			}
 			fleetServerRef := assoc.AssociationRef()
 			if !fleetServerRef.IsDefined() {
-				log.Printf("additionalsecrets: not defined")
 				return nil, nil
 			}
 			var fleetServer agentv1alpha1.Agent
 			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
-				log.Printf("additionalsecrets: get fleet server error: %s", err)
 				return nil, err
 			}
 
 			// If the Fleet Server Agent is not associated with an Elasticsearch cluster
 			// (potentially because of a manual setup) we should do nothing.
 			if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
-				log.Printf("additionalsecrets: len esref")
 				return nil, nil
 			}
 			esAssociation, err := SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
 			if err != nil {
-				log.Printf("additionalsecrets: single assoc error: %s", err)
 				return nil, err
 			}
 
 			// if both agent and ES are same namespace no copying needed
 			if agent.GetNamespace() == esAssociation.GetNamespace() {
-				log.Printf("additionalsecrets: same ns")
 				return nil, nil
 			}
 
 			conf, err := esAssociation.AssociationConf()
 			if err != nil {
-				log.Printf("additionalsecrets: assoc conf error: %s", err)
 				return nil, err
 			}
 			if conf == nil || !conf.CACertProvided {
-				log.Printf("additionalsecrets: conf == nil or ca not provided conf: %+v", conf)
 				return nil, nil
 			}
-			log.Printf("additionSecrets: %s/%s", fleetServer.Namespace, conf.CASecretName)
 			return []types.NamespacedName{{
 				Namespace: fleetServer.Namespace,
 				Name:      conf.CASecretName,
