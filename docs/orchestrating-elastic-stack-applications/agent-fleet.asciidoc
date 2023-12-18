@@ -707,10 +707,10 @@ Until version 7.14.0 and ECK version 2.10.0, Elastic Agent and Fleet Server were
 
 As of Elastic Stack version 7.14.0 and ECK version 2.10.0 it is also possible to run Elastic Agent and Fleet as a non-root user. See <<{p}_storing_local_state_in_host_path_volume>> for instructions.
 
-=== Elastic Agent running in the same namespace as Elastic Fleet Server
-Until ECK version 2.11.0, Elastic Agent and Fleet Server were required to run within the same Namespace.
+=== Elastic Agent running in the same namespace as the Elastic stack.
+Until ECK version 2.11.0, Elastic Agent and Fleet Server were required to run within the same Namespace as Elasticsearch.
 
-As of ECK version 2.11.0, Elastic Agent and Fleet Server can be deployed in different Namespaces.
+As of ECK version 2.11.0, Elastic Agent, Fleet Server and Elasticsearch can all be deployed in different Namespaces.
 
 === Running Endpoint Security integration
 Running Endpoint Security link:https://www.elastic.co/guide/en/security/current/install-endpoint.html[integration] is not yet supported in containerized environments, like Kubernetes. This is not an ECK limitation, but the limitation of the integration itself. Note that you can use ECK to deploy Elasticsearch, Kibana and Fleet Server, and add Endpoint Security integration to your policies if Elastic Agents running those policies are deployed in non-containerized environments.
