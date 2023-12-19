@@ -6,7 +6,6 @@ package v1
 
 import (
 	"encoding/json"
-	"reflect"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -60,10 +59,8 @@ func extractAssocConfFromAnnotation(annotations map[string]string, annotationNam
 }
 
 func unsafeStringToBytes(s string) []byte {
-	hdr := *(*reflect.StringHeader)(unsafe.Pointer(&s))    //nolint:govet
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{ //nolint:govet
-		Data: hdr.Data,
-		Len:  hdr.Len,
-		Cap:  hdr.Len,
-	}))
+	if s == "" {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
