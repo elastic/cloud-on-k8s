@@ -57,7 +57,7 @@ At least one of `spec.elasticsearch` or `spec.kibana` needs to be defined with a
   ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>.
 * `spec.kibana` describes the settings to configure for Kibana.
   ** `config` are the settings that go into the `kibana.yml` file.
-  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the <<p-kibana-secure-settings,Kibana Secure Settings>>.
+  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the <<{p}-kibana-secure-settings,Kibana Secure Settings>>.
 
 The following fields are optional:
 
