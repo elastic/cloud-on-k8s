@@ -291,7 +291,7 @@ type mockZen2BootstrapESClient struct {
 	client.Client
 }
 
-func (f *mockZen2BootstrapESClient) ClusterBootstrappedForZen2(ctx context.Context) (bool, error) {
+func (f *mockZen2BootstrapESClient) ClusterBootstrappedForZen2(_ context.Context) (bool, error) {
 	return f.zen2Bootstrapped, f.err
 }
 

@@ -134,7 +134,6 @@ func checkWantedDirectories() error {
 }
 
 func randomTestRunName() string {
-	rand.Seed(time.Now().UnixNano())
 	letters := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 	var prefix strings.Builder
 	prefix.WriteString("e2e-")

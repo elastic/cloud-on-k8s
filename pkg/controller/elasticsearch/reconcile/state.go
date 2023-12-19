@@ -128,7 +128,7 @@ func (s *State) UpdateMinRunningVersion(
 	resourcesState ResourcesState,
 ) *State {
 	lowestVersion, err := s.fetchMinRunningVersion(ctx, resourcesState)
-	if err != nil {
+	if err != nil { //nolint:revive
 		// error already handled in fetchMinRunningVersion, move on with the status update
 	} else if lowestVersion != nil {
 		s.status.Version = lowestVersion.String()

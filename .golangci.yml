@@ -25,9 +25,9 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - containedctx
-    - contextcheck
-    - errname
+    #- containedctx
+    #- contextcheck
+    #- errname
     - forcetypeassert
     - goimports
     - makezero

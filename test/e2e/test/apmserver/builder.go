@@ -136,7 +136,7 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 }
 
 func (b Builder) WithRUM(enabled bool) Builder {
-	return b.WithConfig(map[string]interface{}{"apm-server.rum.enabled": true})
+	return b.WithConfig(map[string]interface{}{"apm-server.rum.enabled": enabled})
 }
 
 func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {

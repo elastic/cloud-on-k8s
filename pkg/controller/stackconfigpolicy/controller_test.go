@@ -55,7 +55,7 @@ var fakeClientProvider = func(fileSettings esclient.FileSettings, err error) com
 	}
 }
 
-func (c fakeEsClient) GetClusterState(ctx context.Context) (esclient.ClusterState, error) {
+func (c fakeEsClient) GetClusterState(_ context.Context) (esclient.ClusterState, error) {
 	if c.err != nil {
 		return esclient.ClusterState{}, c.err
 	}
@@ -92,7 +92,7 @@ func fetchEvents(recorder *record.FakeRecorder) []string {
 	return events
 }
 
-func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
+func getEsPod(_ string, annotations map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-es-default-0",
