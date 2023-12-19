@@ -20,11 +20,9 @@ Starting from ECK `2.6.1` and Elasticsearch `8.6.1`, Elastic Stack configuration
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html[Components templates]
 - link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html[Role mappings]
 
-Starting from ECK `2.11.0`, Elastic Stack configuration policies allow you to configure the following settings as well for Elasticsearch:
-
-- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Elasticsearch Configuration] (configuration settings for Elasticsearch that will go into `elasticsearch.yml`)
-- <<{p}-custom-images,Elasticsearch Secure Settings>>
-- <<{p}-{page_id}-specifics-secret-mounts,Secret Mounts>>
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Elasticsearch Configuration] (configuration settings for Elasticsearch that will go into `elasticsearch.yml`) added:[ECK 2.11.0]
+- <<{p}-es-secure-settings,Elasticsearch Secure Settings>> added:[ECK 2.11.0]
+- <<{p}-{page_id}-specifics-secret-mounts,Secret Mounts>> added:[ECK 2.11.0]
 
 Additionally with ECK `2.11.0` it is posssible to configure Kibana as well using Elastic Stack configuration policies, the following settings can be configured for Kibana:
 
@@ -43,7 +41,7 @@ Elastic Stack configuration policies can be defined in a `StackConfigPolicy` res
 
 * `name` is a unique name used to identify the policy.
 
-One out the following two fields and one of the respective sub fields must be present as well:
+At least one of `spec.elasticsearch` or `spec.kibana` needs to be defined with at least one of its attributes.
 
 * `spec.elasticsearch` describes the settings to configure for Elasticsearch. Each of the following fields except `clusterSettings` is an associative array where keys are arbitrary names and values are definitions:
   ** `clusterSettings` are dynamic settings that can be set on a running cluster like with the Cluster Update Settings API.
@@ -56,10 +54,10 @@ One out the following two fields and one of the respective sub fields must be pr
   ** `indexTemplates.composableIndexTemplates` are index templates to define settings, mappings, and aliases that can be applied automatically to new indices.
   ** `config` are the settings that go into the `elasticsearch.yml` file.
   ** `secretMounts` are the additional user created secrets that need to be mounted to the Elasticsearch Pods.
-  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-custom-images,Elasticsearch Secure Settings>>.
+  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>.
 * `spec.kibana` describes the settings to configure for Kibana.
   ** `config` are the settings that go into the `kibana.yml` file.
-  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the link:https://www.elastic.co/guide/en/kibana/current/secure-settings.html[Kibana Secure Settings].
+  ** `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Kibana instance(s) to which this policy applies, similar to the <<p-kibana-secure-settings,Kibana Secure Settings>>.
 
 The following fields are optional:
 
@@ -194,7 +192,7 @@ spec:
           version: 1
 ----
 
-Example of configuring Elasticsearch and Kibana using Elastic Stack configuration policy:
+Example of configuring Elasticsearch and Kibana using an Elastic Stack configuration policy:
 [source,yaml,subs="attributes,+macros"]
 ----
 apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
@@ -321,9 +319,9 @@ In order to avoid a conflict between multiple Elasticsearch clusters writing the
 [id="{p}-{page_id}-specifics-secret-mounts"]
 == Specifics for secret mounts
 
-In ECK `2.11.0` a new field was introduced to the Elastic Stack configuration policy under the `elasticsearch` field called `secretMounts`.
+ECK `2.11.0` introduces `spec.elasticsearch.secretMounts as a new field`.
 This field allows users to specify a user created secret and a mountPath to indicate where this secret should be mounted in the Elasticsearch Pods that are managed by the Elastic Stack configuration policy.
-This field can be used to add additional secrets to the Elasticsearch Pods that may be needed for sensitive files required for configuring Elasticsearch realms.
+This field can be used to add additional secrets to the Elasticsearch Pods that may be needed for example for sensitive files required to configure Elasticsearch security realms.
 The secret should be created by the user is the same namespace as the operator.
 The operator will read this secret and copy it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
 Example of configuring secret mounts in the Elastic Stack configuration policy:

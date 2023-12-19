@@ -34,7 +34,7 @@ elasticsearch:
          claims.principal: sub
 ----
 
-. Add `shared_secret` that will be used for client authentication to the Elasticsearch keystore. The following steps can be followed to do this.
+. Add the `shared_secret` setting that will be used for client authentication to the Elasticsearch keystore.
 
     .. Create a secret in the operator namespace containing the shared secret
 +
@@ -51,7 +51,7 @@ kubectl create secret generic shared-secret --from-literal=xpack.security.authc.
 :   - secretName: shared-secret
 ----
 
-. Add an additional volume to the Elasticsearch pods that contain the JSON Web Keys, it should be mounted to the path that is configured for the `xpack.security.authc.realms.jwt.jwt1.pkc_jwkset_path` config. The file path is resolved relative to the Elasticsearch configuration directory. The following steps can be followed to do this.
+. Add an additional volume to the Elasticsearch pods that contain the JSON Web Keys, it should be mounted to the path that is configured for the `xpack.security.authc.realms.jwt.jwt1.pkc_jwkset_path` config. The file path is resolved relative to the Elasticsearch configuration directory.
 
     .. Create a secret in the operator namespace that has the jwk set
 +

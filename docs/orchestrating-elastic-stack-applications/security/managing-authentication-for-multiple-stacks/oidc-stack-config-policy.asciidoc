@@ -63,7 +63,7 @@ elasticsearch:
     - secretName: oidc-client-secret
 ----
 
-. When a user authenticates using OpenID Connect, they are identified to the Elastic Stack, but this does not automatically grant them access to perform any actions or access any data.Your OpenID Connect users cannot do anything until they are assigned roles. Roles can be assigned by adding role mappings to the Elastic Stack configuration policy. The below example is giving a specific user access as a superuser to Elasticsearch, if you want to assign roles to all users authenticating with oidc, you can remove the username field.
+. When a user authenticates using OpenID Connect, they are identified to the Elastic Stack, but this does not automatically grant them access to perform any actions or access any data. Your OpenID Connect users cannot do anything until they are assigned roles. Roles can be assigned by adding role mappings to the Elastic Stack configuration policy. The below example is giving a specific user access as a superuser to Elasticsearch, if you want to assign roles to all users authenticating with OIDC, you can remove the username field.
 
 +
 [source,yaml,subs="attributes,+macros"]
