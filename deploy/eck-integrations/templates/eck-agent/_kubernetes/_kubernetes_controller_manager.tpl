@@ -19,7 +19,7 @@ Config input for kube_controllermanage
         dataset: kubernetes.controllermanager
       metricsets:
         - controllermanager
-{{- mergeOverwrite $vars .Values.kubernetes.controller_manager.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $vars .Values.kubernetes.controller_manager.vars | toYaml | nindent 4 }}
   meta:
     package:
       name: kubernetes

@@ -19,7 +19,7 @@ Config input for kube proxy
         dataset: kubernetes.proxy
       metricsets:
         - proxy
-{{- mergeOverwrite $vars .Values.kubernetes.proxy.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $vars .Values.kubernetes.proxy.vars | toYaml | nindent 4 }}
   meta:
     package:
       name: kubernetes

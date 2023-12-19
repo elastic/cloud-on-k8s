@@ -19,7 +19,7 @@ Config input for kube_scheduler
         dataset: kubernetes.scheduler
       metricsets:
         - scheduler
-{{- mergeOverwrite $vars .Values.kubernetes.scheduler.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $vars .Values.kubernetes.scheduler.vars | toYaml | nindent 4 }}
   meta:
     package:
       name: kubernetes

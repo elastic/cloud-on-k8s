@@ -19,7 +19,7 @@ Config input for kube apiserver
         dataset: kubernetes.apiserver
     metricsets:
         - apiserver
-{{- mergeOverwrite $vars .Values.kubernetes.apiserver.vars | toYaml | nindent 4 -}}
+{{- mergeOverwrite $vars .Values.kubernetes.apiserver.vars | toYaml | nindent 4 }}
   meta:
     package:
       name: kubernetes
@@ -32,9 +32,9 @@ Defaults for kube_apiserver input streams
 */}}
 {{- define "agent.kubernetes.config.kube_apiserver.default_vars" -}}
 hosts:
-- "https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}"
+- 'https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}'
 period: "30s"
-bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+bearer_token_file: '/var/run/secrets/kubernetes.io/serviceaccount/token'
 ssl.certificate_authorities:
-- "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+- '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
 {{- end -}}
