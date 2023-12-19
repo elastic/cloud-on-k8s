@@ -113,6 +113,9 @@ default:
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kubelet" -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_proxy" -}}
 {{- end -}}
+{{- if .Values.cloudDefend.enabled -}}
+{{- $configsToCheck = append $configsToCheck "agent.cloud_defend.config" -}}
+{{- end -}}
 {{- $enabledConfigs := (list) -}}
 {{- range $configTmplName := $configsToCheck -}}
 {{- $tplName := print $configTmplName ".enabled" -}}

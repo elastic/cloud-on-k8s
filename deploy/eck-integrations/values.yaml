@@ -10,15 +10,6 @@ elasticsearch:
   pass: ""
   apiKey: ""
 
-## @section cloud-defend integration parameters
-## ref: https://docs.elastic.co/integrations/cloud_defend
-##
-cloudDefend:
-  ## @param cloudDefend.enabled [default: false] Enable cloud-defend integration.
-  ##Please note that you have to set this to true if you want kubernetes integration to be enabled
-  ##
-  enabled: false
-
 ## @section Kubernetes integration parameters
 ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html
 ##
@@ -260,6 +251,93 @@ kubernetes:
     metrics:
       enabled: true
       vars: {}
+
+## @section cloud-defend integration parameters
+## ref: https://docs.elastic.co/integrations/cloud_defend
+##
+cloudDefend:
+  ## @param cloudDefend.enabled [default: false] Enable cloud-defend integration.
+  ##Please note that you have to set this to true if you want kubernetes integration to be enabled
+  ##
+  enabled: false
+  ## @param cloudDefend.version [default: 1.2.0] cloud-defend integration version
+  ##
+  version: 1.2.0
+  ## @param cloudDefend.process.selectors [default: {}] cloud-defend process selectors to match on operations and or conditions of interest
+  ## @param cloudDefend.process.responses [default: {}] cloud-defend process responses for each selector
+  ##
+  process:
+    ## E.g.
+    ##selectors:
+    ## - name: test1
+    ##   operation:
+    ##     - fork
+    ##     - exec
+    ##   containerImageFullName:
+    ##     - docker.io/nginx
+    ##   containerImageTag:
+    ##     - latest
+    ##   kubernetesClusterId:
+    ##     - 4edca81b9ab1505cd5e4a0f268b63bc9
+    ##   kubernetesClusterName:
+    ##     - gke-cluster
+    ##   kubernetesNamespace:
+    ##     - default
+    ##   kubernetesPodName:
+    ##     - nginx*
+    ##   kubernetesPodLabel:
+    ##     - 'app:nginx'
+    ##   processExecutable:
+    ##     - /bin/*
+    ##   sessionLeaderInteractive: true
+    selectors: {}
+    ## E.g.
+    ##responses:
+    ##  - match:
+    ##      - test1
+    ##    actions:
+    ##      - log
+    ##      - alert
+    ##      - block
+    responses: {}
+  ## @param cloudDefend.file.selectors [default: {}] cloud-defend file selectors to match on operations and or conditions of interest
+  ## @param cloudDefend.file.responses [default: {}] cloud-defend file responses for each selector
+  ##
+  file:
+    ## E.g.
+    ##selectors:
+    ##- name: executableChanges
+    ##  operation:
+    ##    - createExecutable
+    ##    - modifyExecutable
+    ##  ignoreVolumeMounts: true
+    ##  targetFilePath:
+    ##    - /bin/**
+    ##  kubernetesPodLabel:
+    ##    - 'app:nginx'
+    ##  kubernetesPodName:
+    ##    - nginx*
+    ##  kubernetesNamespace:
+    ##    - default
+    ##  containerImageFullName:
+    ##    - docker.io/nginx
+    ##  containerImageTag:
+    ##    - latest
+    ##  kubernetesClusterId:
+    ##    - 4edca81b9ab1505cd5e4a0f268b63bc9
+    ##  kubernetesClusterName:
+    ##    - gke-cluster
+    selectors: {}
+    ## E.g.
+    ##responses:
+    ##- match:
+    ##   - executableChanges
+    ##  actions:
+    ##   - alert
+    ##   - log
+    ##   - block
+    ##  exclude: []
+    responses: {}
 
 eck_agent:
   enabled: true
