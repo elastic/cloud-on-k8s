@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -35,6 +36,12 @@ func serviceWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-svc-watch", associated.Namespace, associated.Name)
 }
 
+// additionalSecretWatchName returns the name of the watch setup on any additional secrets that
+// are copied during the association reconciliation.
+func additionalSecretWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches for:
 // * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
@@ -43,7 +50,7 @@ func serviceWatchName(associated types.NamespacedName) string {
 // * if there's an ES user to create, watch the user Secret in ES namespace
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
-func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associations []commonv1.Association) error {
+func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
 	managedElasticRef := filterManagedElasticRef(associations)
 	unmanagedElasticRef := filterUnmanagedElasticRef(associations)
 
@@ -93,7 +100,55 @@ func (r *Reconciler) reconcileWatches(associated types.NamespacedName, associati
 		}
 	}
 
+	if r.AdditionalSecrets != nil {
+		if err := reconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, additionalSecretWatchName(associated), func() ([]types.NamespacedName, error) {
+			var toWatch []types.NamespacedName
+			for _, association := range associations {
+				secs, err := r.AdditionalSecrets(ctx, r.Client, association)
+				if err != nil {
+					return nil, err
+				}
+				// Watch the source secrets
+				toWatch = append(toWatch, secs...)
+				// Also watch the target secrets
+				for _, sec := range secs {
+					toWatch = append(toWatch, types.NamespacedName{
+						Name:      sec.Name,
+						Namespace: association.GetNamespace(),
+					})
+				}
+			}
+			return toWatch, nil
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func reconcileGenericWatch(
+	associated types.NamespacedName,
+	associations []commonv1.Association,
+	dynamicRequest *watches.DynamicEnqueueRequest,
+	watchName string,
+	watchedFunc func() ([]types.NamespacedName, error),
+) error {
+	if len(associations) == 0 {
+		// clean up if there are none
+		RemoveWatch(dynamicRequest, watchName)
+		return nil
+	}
+
+	watched, err := watchedFunc()
+	if err != nil {
+		return err
+	}
+	return dynamicRequest.AddHandler(watches.NamedWatch{
+		Name:    watchName,
+		Watched: watched,
+		Watcher: associated,
+	})
 }
 
 // ReconcileWatch sets or removes `watchName` watch in `dynamicRequest` based on `associated` and `associations` and
@@ -105,26 +160,17 @@ func ReconcileWatch(
 	watchName string,
 	watchedFunc func(association commonv1.Association) types.NamespacedName,
 ) error {
-	if len(associations) == 0 {
-		// clean up if there are none
-		RemoveWatch(dynamicRequest, watchName)
-		return nil
-	}
+	return reconcileGenericWatch(associated, associations, dynamicRequest, watchName, func() ([]types.NamespacedName, error) {
+		emptyNamespacedName := types.NamespacedName{}
 
-	emptyNamespacedName := types.NamespacedName{}
-
-	toWatch := make([]types.NamespacedName, 0, len(associations))
-	for _, association := range associations {
-		watchedNamespacedName := watchedFunc(association)
-		if watchedNamespacedName != emptyNamespacedName {
-			toWatch = append(toWatch, watchedFunc(association))
+		toWatch := make([]types.NamespacedName, 0, len(associations))
+		for _, association := range associations {
+			watchedNamespacedName := watchedFunc(association)
+			if watchedNamespacedName != emptyNamespacedName {
+				toWatch = append(toWatch, watchedFunc(association))
+			}
 		}
-	}
-
-	return dynamicRequest.AddHandler(watches.NamedWatch{
-		Name:    watchName,
-		Watched: toWatch,
-		Watcher: associated,
+		return toWatch, nil
 	})
 }
 
@@ -142,4 +188,6 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Services, serviceWatchName(associated))
 	// - ES user secret
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
+	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
+	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
 }

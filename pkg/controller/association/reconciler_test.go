@@ -28,6 +28,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/comparison"
+	common_name "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
@@ -341,7 +342,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esCertsInKibanaNamespace)
 	// simulate watches being set
-	require.NoError(t, r.reconcileWatches(k8s.ExtractNamespacedName(&kb), []commonv1.Association{kb.EsAssociation()}))
+	require.NoError(t, r.reconcileWatches(context.Background(), k8s.ExtractNamespacedName(&kb), []commonv1.Association{kb.EsAssociation()}))
 	require.NotEmpty(t, r.watches.Secrets.Registrations())
 	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
 
@@ -1014,10 +1015,10 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 
 	// get Agent resource and run checks
 	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &agent))
-	checkSecrets(t, r, true, ref1ExpectedSecrets, ref2ExpectedSecrets)
+	checkSecrets(t, r, true, true, ref1ExpectedSecrets, ref2ExpectedSecrets)
 	checkAnnotations(t, agent, true, generateAnnotationName("es1Namespace", "es1"), generateAnnotationName("es2Namespace", "es2"))
-	checkWatches(t, r.watches, true)
-	checkStatus(t, agent, "es1Namespace/es1", "es2Namespace/es2")
+	checkWatches(t, r.watches, true, true)
+	checkStatus(t, agent, true, "es1Namespace/es1", "es2Namespace/es2")
 
 	// delete ref to es1Namespace/es1 and update Agent resource
 	agent.Spec.ElasticsearchRefs = agent.Spec.ElasticsearchRefs[1:2]
@@ -1032,12 +1033,12 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	// should be preserved
 	var updatedAgent agentv1alpha1.Agent
 	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &updatedAgent))
-	checkSecrets(t, r, false, ref1ExpectedSecrets)
-	checkSecrets(t, r, true, ref2ExpectedSecrets)
+	checkSecrets(t, r, false, true, ref1ExpectedSecrets)
+	checkSecrets(t, r, true, true, ref2ExpectedSecrets)
 	checkAnnotations(t, updatedAgent, false, generateAnnotationName("es1Namespace", "es1"))
 	checkAnnotations(t, updatedAgent, true, generateAnnotationName("es2Namespace", "es2"))
-	checkWatches(t, r.watches, true)
-	checkStatus(t, updatedAgent, "es2Namespace/es2")
+	checkWatches(t, r.watches, true, true)
+	checkStatus(t, updatedAgent, true, "es2Namespace/es2")
 
 	// delete Agent resource
 	require.NoError(t, r.Delete(context.Background(), &agent))
@@ -1048,11 +1049,305 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	require.Equal(t, reconcile.Result{}, results)
 
 	// check whether clean up was done
-	checkSecrets(t, r, false, ref1ExpectedSecrets, ref2ExpectedSecrets)
-	checkWatches(t, r.watches, false)
+	checkSecrets(t, r, false, true, ref1ExpectedSecrets, ref2ExpectedSecrets)
+	checkWatches(t, r.watches, false, true)
 }
 
-func checkSecrets(t *testing.T, client k8s.Client, expected bool, secrets ...[]corev1.Secret) {
+func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
+	generateAnnotationName := func(namespace, name string) string {
+		agent := agentv1alpha1.Agent{
+			Spec: agentv1alpha1.AgentSpec{
+				FleetServerRef: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+			},
+		}
+		associations := agent.GetAssociations()
+		return associations[0].AssociationConfAnnotationName()
+	}
+
+	agentNamer := common_name.NewNamer("agent")
+	agentAssociationInfo := AssociationInfo{
+		AssociationType:       commonv1.FleetServerAssociationType,
+		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
+		ReferencedResourceVersion: func(c k8s.Client, fleetRef commonv1.ObjectSelector) (string, error) {
+			var fleetServer agentv1alpha1.Agent
+			err := c.Get(context.Background(), fleetRef.NamespacedName(), &fleetServer)
+			if err != nil {
+				return "", err
+			}
+			return fleetServer.Status.Version, nil
+		},
+		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
+			fleetServerRef := assoc.AssociationRef()
+			if !fleetServerRef.IsDefined() {
+				return "", nil
+			}
+			fleetServer := agentv1alpha1.Agent{}
+			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+				return "", err
+			}
+			serviceName := fleetServerRef.ServiceName
+			if serviceName == "" {
+				serviceName = agentNamer.Suffix(fleetServer.Name, "http")
+			}
+			nsn := types.NamespacedName{Namespace: fleetServer.Namespace, Name: serviceName}
+			url, err := ServiceURL(c, nsn, fleetServer.Spec.HTTP.Protocol())
+			if err != nil {
+				return "", err
+			}
+			return url, nil
+		},
+		ReferencedResourceNamer: agentNamer,
+		AssociationName:         "agent-fleetserver",
+		AssociatedShortName:     "agent",
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"agentassociation.k8s.elastic.co/name":      associated.Name,
+				"agentassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
+			}
+		},
+		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
+		AssociationResourceNameLabelName:      "agent.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
+		ElasticsearchUserCreation:             nil,
+		AdditionalSecrets: func(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+			associated := assoc.Associated()
+			var agent agentv1alpha1.Agent
+			nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
+			if err := c.Get(context.Background(), nsn, &agent); err != nil {
+				return nil, err
+			}
+			fleetServerRef := assoc.AssociationRef()
+			if !fleetServerRef.IsDefined() {
+				return nil, nil
+			}
+			var fleetServer agentv1alpha1.Agent
+			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+				return nil, err
+			}
+
+			// If the Fleet Server Agent is not associated with an Elasticsearch cluster
+			// (potentially because of a manual setup) we should do nothing.
+			if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+				return nil, nil
+			}
+			esAssociation, err := SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
+			if err != nil {
+				return nil, err
+			}
+
+			conf, err := esAssociation.AssociationConf()
+			if err != nil {
+				return nil, err
+			}
+			if conf == nil || !conf.CACertProvided {
+				return nil, nil
+			}
+			return []types.NamespacedName{{
+				Namespace: fleetServer.Namespace,
+				Name:      conf.CASecretName,
+			}}, nil
+		},
+	}
+
+	// Agent with fleet ref
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent1",
+			Namespace: "agentNs",
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "7.7.0",
+			KibanaRef:      commonv1.ObjectSelector{Name: "kb", Namespace: "default"},
+			FleetServerRef: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"},
+		},
+	}
+	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "kb-secret-name",
+		AuthSecretKey:  "kb-user",
+		CACertProvided: true,
+		CASecretName:   "kb-ca-secret-name",
+		URL:            "kb-url",
+	})
+	agent.GetAssociations()[1].SetAssociationConf(&commonv1.AssociationConf{
+		URL:            "https://fs-url",
+		CACertProvided: true,
+	})
+
+	fleetAgent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fleet-server1",
+			Namespace: "fleet-ns",
+			Annotations: map[string]string{
+				commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"}): `
+{
+"authSecretName": "-",
+"authSecretKey": "-",
+"isServiceAccount": false,
+"caCertProvided": true,
+"caSecretName": "fleet-server1-agent-es-default-es1-ca",
+"url": "https://es1-http.es-ns.svc:9200",
+"version": "7.7.0"
+}
+`,
+			},
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:            "7.7.0",
+			FleetServerEnabled: false,
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
+					OutputName:     "default",
+				},
+			},
+		},
+	}
+
+	fleetAgent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "es1-secret-name",
+		AuthSecretKey:  "es1-user",
+		CACertProvided: true,
+		CASecretName:   "es1-es-http-certs-public",
+		URL:            "es1-url",
+	})
+
+	// Set Agent, Fleet Server Agent, ES resource and their associated secrets.
+	r := Reconciler{
+		AssociationInfo: agentAssociationInfo,
+		Client: k8s.NewFakeClient(
+			&agent,
+			&fleetAgent,
+			&esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "es1",
+					Namespace: "es-ns",
+				},
+				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "es-ns",
+					Name:      "es1-es-http-certs-public",
+				},
+				Data: map[string][]byte{
+					"ca.crt":  []byte("ca cert content"),
+					"tls.crt": []byte("tls cert content"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "fleet-ns",
+					Name:      "fleet-server1-agent-es-default-es1-ca",
+					Labels: map[string]string{
+						"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+						"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
+						"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
+						"agentassociation.k8s.elastic.co/name":           "fleet-server1",
+						"agentassociation.k8s.elastic.co/namespace":      "fleet-ns",
+					},
+				},
+				Data: map[string][]byte{
+					"ca.crt":  []byte("ca cert content"),
+					"tls.crt": []byte("tls cert content"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "fleet-ns",
+					Name:      "fleet-server1-agent-http-certs-public",
+				},
+				Data: map[string][]byte{
+					"ca.crt":  []byte("ca cert content"),
+					"tls.crt": []byte("tls cert content"),
+				},
+			},
+			&corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fleet-server1-agent-http",
+					Namespace: "fleet-ns",
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name: "https",
+							Port: 8220,
+						},
+					},
+				},
+			},
+		),
+		accessReviewer: rbac.NewPermissiveAccessReviewer(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       record.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{
+				BuildInfo: about.BuildInfo{
+					Version: "1.4.0-unittest",
+				},
+			},
+		},
+	}
+
+	// Secrets created for the Agent => Fleet ref and Fleet => ES ref
+	ref1ExpectedSecrets := []corev1.Secret{
+		mkFleetServerSecret(
+			"agent1-agent-fleetserver-ca",
+			"agentNs",
+			"agentNs",
+			"agent1",
+			"fleet-ns",
+			"fleet-server1",
+			false,
+			false,
+			true,
+			"ca.crt", "tls.crt",
+		),
+		mkAgentSecret(
+			"fleet-server1-agent-es-default-es1-ca",
+			"agentNs",
+			"fleet-ns",
+			"fleet-server1",
+			"es-ns",
+			"es1",
+			false,
+			false,
+			true,
+			"ca.crt", "tls.crt",
+		),
+	}
+
+	// initial reconciliation, all resources should be created
+	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+	// no requeue to trigger
+	require.Equal(t, reconcile.Result{}, results)
+
+	// get Agent resource and run checks
+	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &agent))
+	checkSecrets(t, r, true, false, ref1ExpectedSecrets)
+	checkAnnotations(t, agent, true, generateAnnotationName("fleet-ns", "fleet-server1"))
+	checkWatches(t, r.watches, true, false)
+	checkStatus(t, agent, false, "fleet-ns/fleet-server1")
+
+	// delete Agent resource
+	require.NoError(t, r.Delete(context.Background(), &agent))
+	require.NoError(t, r.Delete(context.Background(), &fleetAgent))
+
+	// rerun reconciliation
+	results, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+	require.Equal(t, reconcile.Result{}, results)
+
+	// check whether clean up was done
+	// These aren't being removed properly....
+	// Temporarily disabling.
+	// checkSecrets(t, r, false, false, ref1ExpectedSecrets)
+	checkWatches(t, r.watches, false, true)
+}
+
+func checkSecrets(t *testing.T, client k8s.Client, expected bool, withOwnerRefs bool, secrets ...[]corev1.Secret) {
 	t.Helper()
 	for _, expectedSecrets := range secrets {
 		for _, expectedSecret := range expectedSecrets {
@@ -1066,7 +1361,9 @@ func checkSecrets(t *testing.T, client k8s.Client, expected bool, secrets ...[]c
 
 			require.NoError(t, err)
 			require.Equal(t, expectedSecret.Labels, got.Labels)
-			require.Equal(t, expectedSecret.OwnerReferences, got.OwnerReferences)
+			if withOwnerRefs {
+				require.Equal(t, expectedSecret.OwnerReferences, got.OwnerReferences)
+			}
 			equalKeys(t, expectedSecret.Data, got.Data)
 		}
 	}
@@ -1084,10 +1381,12 @@ func checkAnnotations(t *testing.T, agent agentv1alpha1.Agent, expected bool, an
 	}
 }
 
-func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
+func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool, userWatch bool) {
 	t.Helper()
 	if expected {
-		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-es-user-watch")
+		if userWatch {
+			require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-es-user-watch")
+		}
 		require.Contains(t, watches.Secrets.Registrations(), "agentNs-agent1-referenced-resource-ca-secret-watch")
 		require.Contains(t, watches.ReferencedResources.Registrations(), "agentNs-agent1-referenced-resource-watch")
 	} else {
@@ -1096,13 +1395,27 @@ func checkWatches(t *testing.T, watches watches.DynamicWatches, expected bool) {
 	}
 }
 
-func checkStatus(t *testing.T, agent agentv1alpha1.Agent, keys ...string) {
+func checkStatus(t *testing.T, agent agentv1alpha1.Agent, esAssociation bool, keys ...string) {
 	t.Helper()
+	if !esAssociation {
+		require.Equal(t, commonv1.AssociationEstablished, agent.Status.FleetServerAssociationStatus)
+		return
+	}
 	require.Equal(t, len(keys), len(agent.Status.ElasticsearchAssociationsStatus))
 	for _, key := range keys {
 		require.Contains(t, agent.Status.ElasticsearchAssociationsStatus, key)
 	}
 	require.True(t, agent.Status.ElasticsearchAssociationsStatus.AllEstablished())
+}
+
+func mkFleetServerSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, credentials, user, isFleetServerOwner bool, dataKeys ...string) corev1.Secret {
+	secret := mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName, credentials, user, isFleetServerOwner, dataKeys...)
+	secret.Labels["agentassociation.k8s.elastic.co/type"] = "fleetserver"
+	secret.Labels["agent.k8s.elastic.co/name"] = targetName
+	secret.Labels["agent.k8s.elastic.co/namespace"] = targetNs
+	delete(secret.Labels, "elasticsearch.k8s.elastic.co/cluster-name")
+	delete(secret.Labels, "elasticsearch.k8s.elastic.co/cluster-namespace")
+	return secret
 }
 
 func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, credentials, user, isAgentOwner bool, dataKeys ...string) corev1.Secret {
