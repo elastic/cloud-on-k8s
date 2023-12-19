@@ -8,3 +8,9 @@
 
 - op: remove
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/deployment/properties/podTemplate/properties
+
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/statefulSet/properties/podTemplate/properties
+
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/statefulSet/properties/volumeClaimTemplates/items/properties/status

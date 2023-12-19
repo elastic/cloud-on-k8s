@@ -154,11 +154,17 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					Version: b.Agent.Spec.Version,
 					Health:  "green",
 				}
-				if b.Agent.Spec.Deployment != nil {
+
+				switch {
+				case b.Agent.Spec.Deployment != nil:
 					expectedReplicas := pointer.Int32OrDefault(b.Agent.Spec.Deployment.Replicas, int32(1))
 					expected.ExpectedNodes = expectedReplicas
 					expected.AvailableNodes = expectedReplicas
-				} else {
+				case b.Agent.Spec.StatefulSet != nil:
+					expectedReplicas := pointer.Int32OrDefault(b.Agent.Spec.StatefulSet.Replicas, int32(1))
+					expected.ExpectedNodes = expectedReplicas
+					expected.AvailableNodes = expectedReplicas
+				default:
 					// don't check the replicas count for daemonsets
 					agent.Status.ExpectedNodes = 0
 					agent.Status.AvailableNodes = 0
