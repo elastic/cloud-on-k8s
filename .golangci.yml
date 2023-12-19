@@ -23,47 +23,16 @@ linters-settings:
 
 # Run `golangci-lint linters` to see the descriptions for the linters. 
 linters:
-  disable:
-    - cyclop
-    - depguard
-    - dupl
-    - exhaustivestruct
-    - forbidigo
-    - funlen
-    - gci
-    - gochecknoinits
-    - gocognit
-    - goconst
-    - gocyclo
-    - godot
-    - godox
-    - goerr113
-    - gofmt
-    - gofumpt
-    - golint
-    - gomnd
-    - gomodguard
-    - interfacer
-    - maligned
-    - nlreturn
-    - paralleltest
-    - rowserrcheck
-    - scopelint
-    - sqlclosecheck
-    - stylecheck
-    - testpackage
-    - wrapcheck
-    - wsl
-
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
+    - containedctx
+    - contextcheck
     - dogsled
     - durationcheck
     - errcheck
+    - errname
     - errorlint
-    - exhaustive
     - exportloopref
     - forcetypeassert
     - gocritic
@@ -73,6 +42,7 @@ linters:
     - gosec
     - gosimple
     - govet
+    - ifshort
     - importas
     - ineffassign
     - makezero
@@ -86,14 +56,12 @@ linters:
     - predeclared
     - revive
     - staticcheck
-    - structcheck
     - thelper
     - tparallel
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - wastedassign
     - whitespace
 
@@ -108,7 +76,3 @@ issues:
     - path: (^test/.*\.go|.*_test\.go)
       linters:
         - unparam
-    - path: pkg/controller/common/tracing/apmclientgo/client.go
-      linters:
-        - staticcheck
-      text: SA1019
