@@ -14,8 +14,6 @@ TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elast
 
 Configuring OpenID Connect using Elastic Stack configuration policy
 
-NOTE: This guide only provides simple examples of how to use the Elastic Stack configuration policy to configure OpenID Connect, for a complete guide please refer to the link mentioned above.
-
 . Add OIDC realm to the `elasticsearch.yml` file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy, also enable token service. 
 
 +

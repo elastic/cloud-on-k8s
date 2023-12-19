@@ -73,13 +73,13 @@ secretMounts:
 [source,yaml,subs="attributes,+macros"]
 ----
 securityRoleMappings:
-      jwt1-user-role:
-        roles: [ "superuser" ]
-        rules:
-          all:
-            - field: { realm.name: "jwt1" }
-            - field: { username: "jwt-user" }
-        enabled: true
+  jwt1-user-role:
+    roles: [ "superuser" ]
+    rules:
+      all:
+        - field: { realm.name: "jwt1" }
+        - field: { username: "jwt-user" }
+    enabled: true
 ----
 
 The following example demonstrates how an Elastic Stack configuration policy can be used to configure a JWT realm:

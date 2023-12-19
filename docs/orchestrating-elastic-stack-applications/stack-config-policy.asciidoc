@@ -63,10 +63,6 @@ The following fields are optional:
 
 * `namespace` is the namespace of the `StackConfigPolicy` resource and used to identify the Elasticsearch clusters to which this policy applies. If it equals to the operator namespace, the policy applies to all namespaces managed by the operator, otherwise the policy only applies to the namespace of the policy.
 * `resourceSelector` is a link:https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[label selector] to identify the Elasticsearch clusters to which this policy applies in combination with the namespace(s). No `resourceSelector` means all Elasticsearch clusters in the namespace(s).
-* `secureSettings` is a list of Secrets containing Secure Settings to inject into the keystore(s) of the Elasticsearch cluster(s) to which this policy applies, similar to the <<{p}-es-secure-settings,Elasticsearch Secure Settings>>. This field is deprecated with ECK `2.11.0`, it is preferred to set this under the elasticsearch or kibana fields.
-
-Secure settings may be required to configure Cloud snapshot repositories (Azure, GCS, S3) if you are not using Cloud-provider specific means to leverage Kubernetes service accounts
-(<<{p}-gke-workload-identiy,GKE Workload Identity>> or <<{p}-iam-service-accounts,AWS IAM roles for service accounts>>, for example).
 
 Example of applying a policy that configures snapshot repository, SLM Policies, and cluster settings:
 
@@ -322,8 +318,8 @@ In order to avoid a conflict between multiple Elasticsearch clusters writing the
 ECK `2.11.0` introduces `spec.elasticsearch.secretMounts as a new field`.
 This field allows users to specify a user created secret and a mountPath to indicate where this secret should be mounted in the Elasticsearch Pods that are managed by the Elastic Stack configuration policy.
 This field can be used to add additional secrets to the Elasticsearch Pods that may be needed for example for sensitive files required to configure Elasticsearch security realms.
-The secret should be created by the user is the same namespace as the operator.
-The operator will read this secret and copy it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
+The secret should be created by the user is the same namespace as the Elastic Stack configuration policy.
+The operator reads this secret and copies it over to the namespace of Elasticsearch so that it can be mounted by the Elasticsearch Pods.
 Example of configuring secret mounts in the Elastic Stack configuration policy:
 
 [source,yaml,subs="attributes,+macros,callouts"]
@@ -333,7 +329,7 @@ secretMounts:
     mountPath: "/usr/share/elasticsearch/config/jwks" <2>
 ----
 
-<1> name of the secret created by the user in the operator namespace.
+<1> name of the secret created by the user in the Elastic Stack configuration policy namespace.
 <2> mount path where the secret must be mounted to inside the Elasticsearch Pod.
 
 [float]
