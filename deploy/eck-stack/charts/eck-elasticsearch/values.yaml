@@ -91,7 +91,7 @@ http: {}
 # Control Elasticsearch Secure Settings.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html#k8s-es-secure-settings
 #
-secureSettings: {}
+secureSettings: []
   # - secretName: one-secure-settings-secret
   # Projection of secret keys to specific paths
   # - secretName: gcs-secure-settings
