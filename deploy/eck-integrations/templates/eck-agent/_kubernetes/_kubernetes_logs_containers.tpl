@@ -1,12 +1,15 @@
+{{- define "agent.kubernetes.config.container_logs.enabled" -}}
+enabled: {{ .Values.kubernetes.containers.logs.enabled }}
+{{- end -}}
+
 {{/*
 Config input for container logs
 */}}
 {{- define "agent.kubernetes.config.container_logs.input" -}}
-{{- if default false .containers.logs.enabled -}}
 - id: filestream-container-logs
   type: filestream
   data_stream:
-    namespace: {{ .namespace }}
+    namespace: {{ .Values.kubernetes.namespace }}
   use_output: default
   streams:
   - id: kubernetes-container-logs-${kubernetes.pod.name}-${kubernetes.container.id}
@@ -14,11 +17,11 @@ Config input for container logs
       dataset: kubernetes.container_logs
     paths:
       - '/var/log/containers/*${kubernetes.container.id}.log'
-    prospector.scanner.symlinks: {{ dig "vars" "symlinks" true .containers.logs }}
+    prospector.scanner.symlinks: {{ dig "vars" "symlinks" true .Values.kubernetes.containers.logs }}
     parsers:
       - container:
-          stream: {{ dig "vars" "stream" "all" .containers.logs }}
-          format: {{ dig "vars" "format" "auto" .containers.logs }}
+          stream: {{ dig "vars" "stream" "all" .Values.kubernetes.containers.logs }}
+          format: {{ dig "vars" "format" "auto" .Values.kubernetes.containers.logs }}
     processors:
       - add_fields:
           target: kubernetes
@@ -42,6 +45,5 @@ Config input for container logs
   meta:
     package:
       name: kubernetes
-      version: {{ .version }}
-{{- end -}}
+      version: {{ .Values.kubernetes.version }}
 {{- end -}}

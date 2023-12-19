@@ -1,12 +1,16 @@
+{{- define "agent.kubernetes.config.kube_proxy.enabled" -}}
+enabled: {{ .Values.kubernetes.proxy.enabled }}
+{{- end -}}
+
 {{/*
 Config input for kube proxy
 */}}
 {{- define "agent.kubernetes.config.kube_proxy.input" -}}
-{{- if default .proxy.metrics.enabled false -}}
+{{- $vars := (include "agent.kubernetes.config.kube_proxy.default_vars" .) | fromYaml -}}
 - id: kubernetes/metrics-kube-proxy
   type: kubernetes/metrics
   data_stream:
-    namespace: {{ .namespace }}
+    namespace: {{ .Values.kubernetes.namespace }}
   use_output: default
   streams:
     - id: kubernetes/metrics-kubernetes.proxy
@@ -15,22 +19,19 @@ Config input for kube proxy
         dataset: kubernetes.proxy
       metricsets:
         - proxy
-{{- include "agent.kubernetes.config.kube_proxy.defaults" .proxy | nindent 4 }}
+{{- mergeOverwrite $vars .Values.kubernetes.proxy.vars | toYaml | nindent 4 -}}
   meta:
     package:
       name: kubernetes
       version: 1.51.0
-{{- end -}}
 {{- end -}}
 
 
 {{/*
 Defaults for kube_proxy input streams
 */}}
-{{- define "agent.kubernetes.config.kube_proxy.defaults" -}}
+{{- define "agent.kubernetes.config.kube_proxy.default_vars" -}}
 hosts:
-{{- range dig "vars" "hosts" (list "localhost:10249") . }}
-- {{. | quote}}
-{{- end }}
-period: {{ dig "vars" "period" "10s" . }}
+- "localhost:10249"
+period: "10s"
 {{- end -}}

@@ -1,3 +1,5 @@
+{{- include "elasticagent.daemonset" $ -}}
+{{- if $.Values.eck_agent.daemonset.enabled }}
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -105,3 +107,4 @@ spec:
           hostPath:
             path: /sys/kernel/debug
         {{- end}}
+{{- end -}}

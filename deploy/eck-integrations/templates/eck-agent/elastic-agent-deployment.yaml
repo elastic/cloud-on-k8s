@@ -1,3 +1,5 @@
+{{- include "elasticagent.deployment" $ -}}
+{{- if $.Values.eck_agent.deployment.enabled }}
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -24,7 +26,7 @@ spec:
         nodeSelector:
           kubernetes.io/os: linux
         serviceAccountName: eck-agent-deployment
-        {{- if default false .Values.kubernetes.hints.enabled }}
+        {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
         initContainers:
         - name: k8s-templates-downloader
           image: busybox:1.36
@@ -39,6 +41,8 @@ spec:
               mountPath: /etc/elastic-agent/inputs.d
         {{- end }}
         containers:
+        {{- if has "agent.kubernetes.config.kube_state" .Values.eck_agent.deployment.enabled_configs }}
+        {{- if default false .Values.kubernetes.state.deployKSM }}
         - image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0
           livenessProbe:
             httpGet:
@@ -68,6 +72,8 @@ spec:
             runAsUser: 65534
             seccompProfile:
               type: RuntimeDefault
+        {{- end }}
+        {{- end }}
         - name: agent
           securityContext:
             runAsUser: 0
@@ -91,12 +97,13 @@ spec:
           - name: ELASTIC_NETINFO
             value: {{ .Values.eck_agent.netinfo | quote }}
           volumeMounts:
-            {{- if default false .Values.kubernetes.hints.enabled }}
+            {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
             - name: external-inputs
               mountPath: /etc/elastic-agent/inputs.d
             {{- end }}
         volumes:
-        {{- if default false .Values.kubernetes.hints.enabled }}
+        {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
         - name: external-inputs
           emptyDir: {}
         {{- end }}
+{{- end -}}

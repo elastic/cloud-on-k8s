@@ -72,3 +72,61 @@ default:
 {{- end -}}
 {{- $_ := required "Specifying either user,pass or api_key for elastic search is required!" $found -}}
 {{- end }}
+
+{{- define "elasticagent.deployment" -}}
+{{- if not (hasKey $.Values.eck_agent "deployment") -}}
+{{- $_ := set .Values.eck_agent "deployment" dict -}}
+{{- $configsToCheck := (list) -}}
+{{- if .Values.kubernetes.enabled -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_state" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.hints" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_apiserver" -}}
+{{- end -}}
+{{- $enabledConfigs := (list) -}}
+{{- range $configTmplName := $configsToCheck -}}
+{{- $tplName := print $configTmplName ".enabled" -}}
+{{- $inputConfig := (include $tplName $ | fromYaml) -}}
+{{- if $inputConfig.enabled -}}
+{{- $enabledConfigs = append $enabledConfigs $configTmplName }}
+{{- end -}}
+{{- end -}}
+{{- if empty $enabledConfigs -}}
+{{- $_ := set .Values.eck_agent.deployment "enabled" false -}}
+{{- $_ := set .Values.eck_agent.deployment "enabled_configs" list -}}
+{{- else -}}
+{{- $_ := set .Values.eck_agent.deployment "enabled" true -}}
+{{- $_ := set .Values.eck_agent.deployment "enabled_configs" $enabledConfigs -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "elasticagent.daemonset" -}}
+{{- if not (hasKey $.Values.eck_agent "daemonset") -}}
+{{- $_ := set .Values.eck_agent "daemonset" dict -}}
+{{- $configsToCheck := (list) -}}
+{{- if .Values.kubernetes.enabled -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_controller" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_scheduler" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.audit_logs" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.container_logs" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kubelet" -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_proxy" -}}
+{{- end -}}
+{{- $enabledConfigs := (list) -}}
+{{- range $configTmplName := $configsToCheck -}}
+{{- $tplName := print $configTmplName ".enabled" -}}
+{{- $inputConfig := (include $tplName $ | fromYaml) -}}
+{{- if $inputConfig.enabled -}}
+{{- $enabledConfigs = append $enabledConfigs $configTmplName }}
+{{- end -}}
+{{- end -}}
+{{- if empty $enabledConfigs -}}
+{{- $_ := set .Values.eck_agent.daemonset "enabled" false -}}
+{{- $_ := set .Values.eck_agent.daemonset "enabled_configs" list -}}
+{{- else -}}
+{{- $_ := set .Values.eck_agent.daemonset "enabled" true -}}
+{{- $_ := set .Values.eck_agent.daemonset "enabled_configs" $enabledConfigs -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

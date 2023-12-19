@@ -1,12 +1,15 @@
+{{- define "agent.kubernetes.config.audit_logs.enabled" -}}
+enabled: {{ .Values.kubernetes.containers.audit_logs.enabled }}
+{{- end -}}
+
 {{/*
 Config input for kube audit_logs_filestream
 */}}
 {{- define "agent.kubernetes.config.audit_logs.input" -}}
-{{- if default false .containers.audit_logs.enabled -}}
 - id: filestream-audit-logs
   type: filestream
   data_stream:
-    namespace: {{.namespace}}
+    namespace: {{.Values.kubernetes.namespace}}
   use_output: default
   streams:
   - id: filestream-kubernetes.audit_logs
@@ -56,6 +59,5 @@ Config input for kube audit_logs_filestream
   meta:
     package:
       name: kubernetes
-      version: {{ .version }}
-{{- end -}}
+      version: {{ .Values.kubernetes.version }}
 {{- end -}}

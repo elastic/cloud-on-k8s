@@ -1,88 +1,265 @@
+## @section Elasticsearch connection parameters
+## @param elasticsearch.host [default: ""] Elasticsearch host
+## @param elasticsearch.user [default: ""] Elasticsearch username
+## @param elasticsearch.pass [default: ""] Elasticsearch password
+## @param elasticsearch.apiKey [default: ""] Elasticsearch access key
+## You may specify an access key instead of username and password
 elasticsearch:
   host: ""
   user: ""
   pass: ""
   apiKey: ""
 
+## @section cloud-defend integration parameters
+## ref: https://docs.elastic.co/integrations/cloud_defend
+##
 cloudDefend:
+  ## @param cloudDefend.enabled [default: false] Enable cloud-defend integration.
+  ##Please note that you have to set this to true if you want kubernetes integration to be enabled
+  ##
   enabled: false
 
-kubernetes: 
-  version: 1.51.0
+## @section Kubernetes integration parameters
+## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html
+##
+kubernetes:
+  ## @param kubernetes.enabled [default: false] Enable Kubernetes integration.
+  ## Please note that you have to set this to true if you want kubernetes integration to be enabled
+  ##
   enabled: false
+  ## @param kubernetes.version [default: 1.51.0] Kubernetes integration version
+  ##
+  version: 1.51.0
+  ## @param kubernetes.namespace [default: default] Kubernetes namespace
+  ##
   namespace: default
+  ## @param kubernetes.hints.enabled [default: true] Enable Kubernetes autodiscovery
+  ## ref: https://www.elastic.co/guide/en/fleet/current/elastic-agent-kubernetes-autodiscovery.html
+  ##
   hints:
     enabled: true
-  system:
-    metrics:
-      enabled: true
+  ## @param kubernetes.state.enabled [default: not set] Enable Kubernetes state (kube-state-metrics) input
+  ## Please note that setting this to false results in overriding and disabling all the respective state streams
+  ## such as in containers, pods, etc. Setting this to true has no effect.
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_state_and_event
+  ## @param kubernetes.state.deployKSM [default: true] deploy kube-state-metrics
+  ## @param kubernetes.state.vars [default: {}] kube-state-metrics stream variables. Please note that colliding
+  ## vars also defined in respective state streams, such as in containers, pods, etc. will *not* be overridden.
+  ##
+  state:
+    enabled: true
+    deployKSM: true
+    ## E.g.
+    ## vars:
+    ##  add_metadata: true
+    ##  hosts:
+    ##    - "localhost:8080"
+    ##  period: "10s"
+    ##  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    vars: {}
+  ## @param kubernetes.metrics.enabled [default: not set] Enable Kubernetes metrics (kubelet) input
+  ## Please note that setting this to false results in overriding and disabling all the respective metrics streams
+  ## such as in containers, pods, etc. Setting this to true has no effect.
+  ##
+  metrics:
+    enabled: true
+    ## E.g.
+    ## vars:
+    ##  add_metadata: true
+    ##  hosts:
+    ##    - "https://${env.NODE_NAME}:10250"
+    ##  period: "10s"
+    ##  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ##  ssl.verification_mode: "none"
+    vars: {}
+  ## @param kubernetes.apiserver.enabled [default: true] Enable Kubernetes apiserver input
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_apiserver
+  ##
+  apiserver:
+    enabled: true
+    ## E.g.
+    ## vars:
+    ##  hosts:
+    ##    - "https://${env.KUBERNETES_SERVICE_HOST}:${env.KUBERNETES_SERVICE_PORT}"
+    ##  period: "30s"
+    ##  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ##  ssl.certificate_authorities:
+    ##    - "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    vars: {}
+  ## @param kubernetes.proxy.enabled [default: false] Enable Kubernetes proxy input
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_proxy
+  ##
+  proxy:
+    enabled: false
+    ## E.g.
+    ## vars:
+    ##  hosts:
+    ##    - "localhost:10249"
+    ##  period: "10s"
+    vars: {}
+  ## @param kubernetes.scheduler.enabled [default: false] Enable Kubernetes proxy input
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_scheduler_and_controllermanager
+  ##
+  scheduler:
+    enabled: false
+    ## E.g.
+    ## vars:
+    ##  hosts:
+    ##    - "https://0.0.0.0:10259"
+    ##  period: "10s"
+    ##  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ##  ssl.verification_mode: "none"
+    ##  condition: "${kubernetes.labels.component} == ''kube-scheduler''"
+    vars: {}
+  ## @param kubernetes.controller_manager.enabled [default: false] Enable Kubernetes controller_manager input
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-module-kubernetes.html#_scheduler_and_controllermanager
+  ##
+  controller_manager:
+    enabled: false
+    ## E.g.
+    ## vars:
+    ##  hosts:
+    ##    - "https://0.0.0.0:10257"
+    ##  period: "10s"
+    ##  bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ##  ssl.verification_mode: "none"
+    ##  condition: "${kubernetes.labels.component} == ''kube-controller-manager''"
+    vars: {}
+  ## @param kubernetes.containers.metrics [default: true] Enable Kubernetes containers kubelet metrics
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-metricset-kubernetes-container.html
+  ## @param kubernetes.containers.state [default: true] Enable Kubernetes containers kube-state metrics
+  ## ref: https://www.elastic.co/guide/en/beats/metricbeat/8.11/metricbeat-metricset-kubernetes-state_container.html
+  ## @param kubernetes.containers.logs [default: true] Enable Kubernetes container logs
+  ## ref: https://docs.elastic.co/integrations/kubernetes/container-logs
+  ## @param kubernetes.containers.audit_logs [default: true] Enable Kubernetes audit logs
+  ## https://docs.elastic.co/integrations/kubernetes/audit-logs
+  ##
   containers:
     metrics:
       enabled: true
+      vars: {}
     state:
       enabled: true
+      vars: {}
     logs:
       enabled: true
     audit_logs:
       enabled: true
+  ## @param kubernetes.pods.metrics [default: true] Enable Kubernetes pods kubelet metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kubelet#pod
+  ## @param kubernetes.pods.state [default: true] Enable Kubernetes pods kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_pod
+  ##
   pods:
     metrics:
       enabled: true
+      vars: {}
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.deployments.state [default: true] Enable Kubernetes deployments kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_deployment
+  ##
   deployments:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.statefulsets.state [default: true] Enable Kubernetes statefulsets kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_statefulset
+  ##
   statefulsets:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.daemonsets.state [default: true] Enable Kubernetes daemonsets kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_daemonset
+  ##
   daemonsets:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.replicasets.state [default: true] Enable Kubernetes replicasets kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_replicaset
+  ##
   replicasets:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.volumes.metrics [default: true] Enable Kubernetes volumes kubelet metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kubelet#volume
+  ##
   volumes:
     metrics:
       enabled: true
+      vars: {}
+  ## param kubernetes.nodes.metrics [default: true] Enable Kubernetes nodes kubelet metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kubelet#node
+  ## param kubernetes.nodes.state [default: true] Enable Kubernetes nodes kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_node
+  ##
   nodes:
     metrics:
       enabled: true
+      vars: {}
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.storageclasses.state [default: true] Enable Kubernetes storageclasses kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_storageclass
+  ##
   storageclasses:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.jobs.state [default: true] Enable Kubernetes jobs kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_job
+  ##
   jobs:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.cronjobs.state [default: true] Enable Kubernetes cronjobs kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_cronjob
+  ##
   cronjobs:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.persistentvolumes.state [default: true] Enable Kubernetes namespaces kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_persistentvolume
+  ##
   persistentvolumes:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.persistentvolumeclaims.state [default: true] Enable Kubernetes namespaces kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_persistentvolumeclaim
+  ##
   persistentvolumeclaims:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.resourcequotas.state [default: true] Enable Kubernetes namespaces kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_resourcequota
+  ##
   resourcequotas:
     state:
       enabled: true
+      vars: {}
+  ## @param kubernetes.services.state [default: true] Enable Kubernetes services kube-state metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kube-state-metrics#state_service
+  ##
   services:
     state:
       enabled: true
-  apiserver:
+      vars: {}
+  ## @param kubernetes.system.metrics [default: true] Enable Kubernetes system kubelet metrics
+  ## ref: https://docs.elastic.co/integrations/kubernetes/kubelet#system
+  ##
+  system:
     metrics:
       enabled: true
-  proxy:
-    metrics:
-      enabled: false
-  scheduler:
-    metrics:
-      enabled: false
-  controller_manager:
-    metrics:
-      enabled: false
+      vars: {}
 
 eck_agent:
   enabled: true
