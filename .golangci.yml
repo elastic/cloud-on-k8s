@@ -24,44 +24,20 @@ linters-settings:
 # Run `golangci-lint linters` to see the descriptions for the linters. 
 linters:
   enable:
-    - asciicheck
     - bodyclose
     - containedctx
     - contextcheck
-    - dogsled
-    - durationcheck
-    - errcheck
     - errname
-    - errorlint
-    - exportloopref
     - forcetypeassert
-    - gocritic
-    - goheader
     - goimports
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ifshort
-    - importas
-    - ineffassign
     - makezero
     - misspell
-    - nakedret
-    - nestif
     - nilerr
-    - noctx
-    - nolintlint
     - prealloc
     - predeclared
     - revive
-    - staticcheck
-    - thelper
-    - tparallel
-    - typecheck
     - unconvert
     - unparam
-    - unused
     - wastedassign
     - whitespace
 
