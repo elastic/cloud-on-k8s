@@ -27,8 +27,8 @@ const (
 	cfgHashAnnotation = "logstash.k8s.elastic.co/monitoring-config-hash"
 )
 
-type ApiServerCredentials struct {
-	Api struct {
+type APIServerCredentials struct {
+	API struct {
 		Auth struct {
 			Type  string `yaml:"type"`
 			Basic struct {
@@ -45,7 +45,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		protocol = "https"
 	}
 
-	var credentials ApiServerCredentials
+	var credentials APIServerCredentials
 	_ = logstashConfig.Unpack(&credentials)
 
 	metricbeat, err := stackmon.NewMetricBeatSidecar(
@@ -57,8 +57,8 @@ func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha
 		metricbeatConfigTemplate,
 		logstashv1alpha1.Namer,
 		fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
-		credentials.Api.Auth.Basic.Username,
-		credentials.Api.Auth.Basic.Password,
+		credentials.API.Auth.Basic.Username,
+		credentials.API.Auth.Basic.Password,
 		useTLS,
 	)
 	if err != nil {

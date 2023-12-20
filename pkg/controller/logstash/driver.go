@@ -109,11 +109,11 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	configHash := fnv.New32a()
 
-	if cfg, err := reconcileConfig(params, configHash); err != nil {
+	cfg, err := reconcileConfig(params, configHash)
+	if err != nil {
 		return results.WithError(err), params.Status
-	} else {
-		params.LogstashConfig = cfg
 	}
+	params.LogstashConfig = cfg
 
 	// reconcile beats config secrets if Stack Monitoring is defined
 	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.UseTLS, params.LogstashConfig); err != nil {

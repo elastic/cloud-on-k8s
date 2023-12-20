@@ -11,9 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

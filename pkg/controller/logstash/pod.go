@@ -161,14 +161,14 @@ func readinessProbe(params Params) corev1.Probe {
 // getHttpHeaders when api.auth.basic.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
 // to build Authorization header
 func getHttpHeaders(params Params) []corev1.HTTPHeader {
-	var credentials stackmon.ApiServerCredentials
+	var credentials stackmon.APIServerCredentials
 	_ = params.LogstashConfig.Unpack(&credentials)
 
-	if strings.ToLower(credentials.Api.Auth.Type) != "basic" {
+	if strings.ToLower(credentials.API.Auth.Type) != "basic" {
 		return nil
 	}
 
-	usernamePassword := fmt.Sprintf("%s:%s", credentials.Api.Auth.Basic.Username, credentials.Api.Auth.Basic.Password)
+	usernamePassword := fmt.Sprintf("%s:%s", credentials.API.Auth.Basic.Username, credentials.API.Auth.Basic.Password)
 	encodedUsernamePassword := base64.StdEncoding.EncodeToString([]byte(usernamePassword))
 	authHeader := corev1.HTTPHeader{Name: "Authorization", Value: fmt.Sprintf("Basic %s", encodedUsernamePassword)}
 

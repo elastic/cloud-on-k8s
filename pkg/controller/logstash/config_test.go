@@ -185,7 +185,7 @@ log:
 			}
 			require.NoError(t, err)
 
-			gotBytes, err := got.Render()
+			gotBytes, _ := got.Render()
 			gotStr := string(gotBytes)
 			if gotStr != tt.want {
 				t.Errorf("newConfig() got = \n%v\n, want \n%v\n", gotStr, tt.want)
