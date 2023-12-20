@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
@@ -151,7 +152,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, false, settings.NewCanonicalConfig())
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))

@@ -17,3 +17,12 @@ func ContainerByName(podSpec corev1.PodSpec, name string) *corev1.Container {
 	}
 	return nil
 }
+
+func InitContainerByName(podSpec corev1.PodSpec, name string) *corev1.Container {
+	for i, c := range podSpec.InitContainers {
+		if c.Name == name {
+			return &podSpec.InitContainers[i]
+		}
+	}
+	return nil
+}

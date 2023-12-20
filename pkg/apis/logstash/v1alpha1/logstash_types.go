@@ -386,6 +386,21 @@ func (l *Logstash) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1
 	}
 }
 
+// APIServerService returns the user defined API Service
+func (l *Logstash) APIServerService() LogstashService {
+	for _, service := range l.Spec.Services {
+		if UserServiceName(l.Name, service.Name) == APIServiceName(l.Name) {
+			return service
+		}
+	}
+	return LogstashService{}
+}
+
+// APIServerTLSOptions returns the user defined TLSOptions of API Service
+func (l *Logstash) APIServerTLSOptions() commonv1.TLSOptions {
+	return l.APIServerService().TLS
+}
+
 func init() {
 	SchemeBuilder.Register(&Logstash{}, &LogstashList{})
 }

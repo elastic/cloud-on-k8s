@@ -13,9 +13,12 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
@@ -37,6 +40,8 @@ type Params struct {
 
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
+	UseTLS            bool                      // Logstash API Server
+	LogstashConfig    *settings.CanonicalConfig // logstash.yml config
 }
 
 // K8sClient returns the Kubernetes client.
@@ -74,19 +79,44 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	_, err := reconcileServices(params)
+	_, apiSvc, err := reconcileServices(params)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	configHash := fnv.New32a()
+	apiSvcTLS := params.Logstash.APIServerTLSOptions()
 
-	// reconcile beats config secrets if Stack Monitoring is defined
-	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash); err != nil {
-		return results.WithError(err), params.Status
+	_, results = certificates.Reconciler{
+		K8sClient:             params.Client,
+		DynamicWatches:        params.Watches,
+		Owner:                 &params.Logstash,
+		TLSOptions:            apiSvcTLS,
+		Namer:                 logstashv1alpha1.Namer,
+		Labels:                NewLabels(params.Logstash),
+		Services:              []corev1.Service{apiSvc},
+		GlobalCA:              params.OperatorParams.GlobalCA,
+		CACertRotation:        params.OperatorParams.CACertRotation,
+		CertRotation:          params.OperatorParams.CertRotation,
+		GarbageCollectSecrets: true,
+	}.ReconcileCAAndHTTPCerts(params.Context)
+	if results.HasError() {
+		_, err := results.Aggregate()
+		k8s.MaybeEmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		return results, params.Status
 	}
 
-	if err := reconcileConfig(params, configHash); err != nil {
+	params.UseTLS = apiSvcTLS.Enabled()
+
+	configHash := fnv.New32a()
+
+	if cfg, err := reconcileConfig(params, configHash); err != nil {
+		return results.WithError(err), params.Status
+	} else {
+		params.LogstashConfig = cfg
+	}
+
+	// reconcile beats config secrets if Stack Monitoring is defined
+	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.UseTLS, params.LogstashConfig); err != nil {
 		return results.WithError(err), params.Status
 	}
 

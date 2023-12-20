@@ -19,8 +19,10 @@ import (
 )
 
 type Request struct {
-	Name string
-	Path string
+	Name     string
+	Path     string
+	Username string
+	Password string
 }
 
 type Want struct {
@@ -187,7 +189,7 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path)
+			bytes, err := DoRequest(client, b.Logstash, "GET", req.Path, req.Username, req.Password)
 			if err != nil {
 				return err
 			}

@@ -5,7 +5,9 @@
 package logstash
 
 import (
+	"fmt"
 	"hash"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,18 +18,28 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
 
 const (
-	ConfigFileName = "logstash.yml"
+	ConfigFileName         = "logstash.yml"
+	APIKeystorePath        = volume.ConfigMountPath + "/" + APIKeystoreFileName
+	APIKeystoreFileName    = "api_keystore.p12"
+	APIKeystoreDefaultPass = "ch@ng3m3" // #nosec G101
+	APIKeystorePassEnv     = "API_KEYSTORE_PASS"
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) error {
+func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalConfig, error) {
 	defer tracing.Span(&params.Context)()
 
-	cfgBytes, err := buildConfig(params)
+	cfg, err := buildConfig(params)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	cfgBytes, err := cfg.Render()
+	if err != nil {
+		return nil, err
 	}
 
 	expected := corev1.Secret{
@@ -42,28 +54,33 @@ func reconcileConfig(params Params, configHash hash.Hash) error {
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
-		return err
+		return nil, err
 	}
 
 	_, _ = configHash.Write(cfgBytes)
 
-	return nil
+	return cfg, nil
 }
 
-func buildConfig(params Params) ([]byte, error) {
+func buildConfig(params Params) (*settings.CanonicalConfig, error) {
 	userProvidedCfg, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := defaultConfig()
+	tls := tlsConfig(params.UseTLS)
 
 	// merge with user settings last so they take precedence
-	if err := cfg.MergeWith(userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(tls, userProvidedCfg); err != nil {
 		return nil, err
 	}
 
-	return cfg.Render()
+	if err = checkTLSConfig(cfg, params.UseTLS); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
@@ -84,4 +101,29 @@ func defaultConfig() *settings.CanonicalConfig {
 	}
 
 	return settings.MustCanonicalConfig(settingsMap)
+}
+
+func tlsConfig(useTLS bool) *settings.CanonicalConfig {
+	if !useTLS {
+		return nil
+	}
+	return settings.MustCanonicalConfig(map[string]interface{}{
+		"api.ssl.enabled":           true,
+		"api.ssl.keystore.path":     APIKeystorePath,
+		"api.ssl.keystore.password": APIKeystoreDefaultPass,
+	})
+}
+
+// checkTLSConfig ensure logstash config `api.ssl.enabled` matches the TLS setting of API service
+func checkTLSConfig(cfg *settings.CanonicalConfig, useTLS bool) error {
+	sslEnabled, err := cfg.String("api.ssl.enabled")
+	if err != nil {
+		sslEnabled = "false"
+	}
+
+	if strconv.FormatBool(useTLS) != sslEnabled {
+		return fmt.Errorf("API Service `spec.services.tls.selfSignedCertificate.disabled` is set to `%t`, but logstash config `api.ssl.enabled` is set to `%s`", !useTLS, sslEnabled)
+	}
+
+	return nil
 }

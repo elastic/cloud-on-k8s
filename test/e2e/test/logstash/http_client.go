@@ -18,22 +18,23 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-// TODO refactor identical to Kibana client
-func NewLogstashClient(logstash v1alpha1.Logstash, _ *test.K8sClient) (*http.Client, error) {
+func NewLogstashClient(ls v1alpha1.Logstash, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
-	// TODO: Integrate with TLS on metrics API
-	// if ems.Spec.HTTP.TLS.Enabled() {
-	//	crts, err := k.GetHTTPCerts(maps.EMSNamer, ems.Namespace, ems.Name)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	caCerts = crts
-	//}
+	if ls.APIServerTLSOptions().Enabled() {
+		crts, err := k.GetHTTPCerts(v1alpha1.Namer, ls.Namespace, ls.Name)
+		if err != nil {
+			return nil, err
+		}
+		caCerts = crts
+	}
 	return test.NewHTTPClient(caCerts), nil
 }
 
-func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path string) ([]byte, error) {
+func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path string, username string, password string) ([]byte, error) {
 	var scheme = "http"
+	if logstash.APIServerTLSOptions().Enabled() {
+		scheme = "https"
+	}
 	var port = network.HTTPPort
 	for _, service := range logstash.Spec.Services {
 		if service.Name == ls.LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
@@ -48,6 +49,9 @@ func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path str
 	}
 
 	request, err := http.NewRequestWithContext(context.Background(), method, url.String(), nil)
+	if username != "" && password != "" {
+		request.SetBasicAuth(username, password)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("while constructing request: %w", err)
 	}

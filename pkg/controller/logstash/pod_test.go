@@ -6,9 +6,12 @@ package logstash
 
 import (
 	"context"
+	"encoding/base64"
 	"hash/fnv"
+	"strings"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,9 +27,18 @@ import (
 )
 
 func TestNewPodTemplateSpec(t *testing.T) {
+	testHTTPCertsInternalSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-ls-http-certs-internal",
+			Namespace: "default",
+		},
+	}
+
 	tests := []struct {
 		name       string
 		logstash   logstashv1alpha1.Logstash
+		config     *settings.CanonicalConfig
+		useTLS     bool
 		assertions func(pod corev1.PodTemplateSpec)
 	}{
 		{
@@ -215,6 +227,46 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
+			name: "with basic auth set, readiness probe creates Authorization header",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+				}},
+			config: settings.MustCanonicalConfig(
+				map[string]interface{}{
+					"api.auth.type":           "basic",
+					"api.auth.basic.username": "logstash",
+					"api.auth.basic.password": "whatever",
+				}),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				authHeader := GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.HTTPHeaders[0]
+				b, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader.Value, "Basic "))
+				assert.Equal(t, "Authorization", authHeader.Name)
+				assert.Equal(t, "logstash:whatever", string(b))
+			},
+		},
+		{
+			name: "with tls set, readiness probe use https protocol",
+			logstash: logstashv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fake",
+					Namespace: "default",
+				},
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+				}},
+			useTLS: true,
+			config: settings.MustCanonicalConfig(
+				map[string]interface{}{
+					"api.ssl.keystore.password": "whatever",
+				}),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, UseTLSEnv))
+				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, APIKeystorePassEnv))
+				assert.Equal(t, corev1.URISchemeHTTPS, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Scheme)
+			},
+		},
+		{
 			name: "with default service, readiness probe hits the correct port",
 			logstash: logstashv1alpha1.Logstash{
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -267,9 +319,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params := Params{
-				Context:  context.Background(),
-				Client:   k8s.NewFakeClient(),
-				Logstash: tt.logstash,
+				Context:        context.Background(),
+				Client:         k8s.NewFakeClient(&testHTTPCertsInternalSecret),
+				Logstash:       tt.logstash,
+				LogstashConfig: tt.config,
+				UseTLS:         tt.useTLS,
 			}
 			configHash := fnv.New32a()
 			got, err := buildPodTemplate(params, configHash)
@@ -283,4 +337,17 @@ func TestNewPodTemplateSpec(t *testing.T) {
 // GetLogstashContainer returns the Logstash container from the given podSpec.
 func GetLogstashContainer(podSpec corev1.PodSpec) *corev1.Container {
 	return pod.ContainerByName(podSpec, logstashv1alpha1.LogstashContainerName)
+}
+
+func GetConfigInitContainer(podSpec corev1.PodSpec) *corev1.Container {
+	return pod.InitContainerByName(podSpec, InitConfigContainerName)
+}
+
+func GetEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
+	for i, e := range envs {
+		if e.Name == name {
+			return &envs[i]
+		}
+	}
+	return nil
 }

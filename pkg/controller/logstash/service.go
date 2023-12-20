@@ -22,30 +22,34 @@ const (
 //
 // When a service is defined that matches the API service name, then that service is used to define
 // the service for the logstash API. If not, then a default service is created for the API service
-func reconcileServices(params Params) ([]corev1.Service, error) {
+// return Services, the API Service, error
+func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) {
+	var apiSvc corev1.Service
 	createdAPIService := false
 
 	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
 	for _, service := range params.Logstash.Spec.Services {
 		logstash := params.Logstash
-		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
-			createdAPIService = true
-		}
 		svc := newService(service, params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
-			return []corev1.Service{}, err
+			return []corev1.Service{}, corev1.Service{}, err
+		}
+		if logstashv1alpha1.UserServiceName(logstash.Name, service.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
+			createdAPIService = true
+			apiSvc = *svc
 		}
 		svcs = append(svcs, *svc)
 	}
 	if !createdAPIService {
 		svc := newAPIService(params.Logstash)
 		if err := reconcileService(params, svc); err != nil {
-			return []corev1.Service{}, err
+			return []corev1.Service{}, corev1.Service{}, err
 		}
+		apiSvc = *svc
 		svcs = append(svcs, *svc)
 	}
 
-	return svcs, nil
+	return svcs, apiSvc, nil
 }
 
 func reconcileService(params Params, service *corev1.Service) error {

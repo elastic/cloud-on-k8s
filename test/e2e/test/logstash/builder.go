@@ -24,6 +24,7 @@ import (
 type Builder struct {
 	Logstash    logstashv1alpha1.Logstash
 	MutatedFrom *Builder
+	GlobalCA    bool
 }
 
 func NewBuilder(name string) Builder {
@@ -253,6 +254,23 @@ func (b Builder) SkipTest() bool {
 
 	ver := version.MustParse(b.Logstash.Spec.Version)
 	return supportedVersions.WithinRange(ver) != nil
+}
+
+func (b Builder) WithGlobalCA(v bool) Builder {
+	b.GlobalCA = v
+	return b
+}
+
+func (b Builder) DeepCopy() *Builder {
+	ls := b.Logstash.DeepCopy()
+	builderCopy := Builder{
+		Logstash: *ls,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	builderCopy.GlobalCA = b.GlobalCA
+	return &builderCopy
 }
 
 var _ test.Builder = Builder{}

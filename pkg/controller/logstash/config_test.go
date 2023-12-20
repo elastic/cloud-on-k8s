@@ -28,6 +28,7 @@ func Test_newConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		useTLS  bool
 		want    string
 		wantErr bool
 	}{
@@ -47,18 +48,46 @@ config:
 			wantErr: false,
 		},
 		{
+			name: "no user config with TLS",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{},
+			},
+			useTLS: true,
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: ch@ng3m3
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
 			name: "inline user config",
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]interface{}{
-						"log.level": "debug",
+						"log.level":                 "debug",
+						"api.ssl.keystore.password": "Str0ngP@ssw0rd",
 					}}},
 				},
 			},
+			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: Str0ngP@ssw0rd
+            path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
         automatic: true
@@ -110,6 +139,29 @@ log:
 			},
 			wantErr: true,
 		},
+		{
+			name: "logstash config disables TLS and service enables TLS",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Config: &commonv1.Config{Data: map[string]interface{}{
+							"api.ssl.enabled": "false",
+						}},
+						Services: []v1alpha1.LogstashService{{
+							Name: LogstashAPIServiceName,
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: false,
+								},
+							},
+						}},
+					},
+				},
+			},
+			useTLS:  true,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,6 +171,7 @@ log:
 				EventRecorder: record.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
+				UseTLS:        tt.useTLS,
 			}
 
 			got, err := buildConfig(params)
@@ -126,12 +179,16 @@ log:
 				t.Errorf("newConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if tt.wantErr {
 				return // no point in checking the config contents
 			}
 			require.NoError(t, err)
-			if string(got) != tt.want {
-				t.Errorf("newConfig() got = \n%v\n, want \n%v\n", string(got), tt.want)
+
+			gotBytes, err := got.Render()
+			gotStr := string(gotBytes)
+			if gotStr != tt.want {
+				t.Errorf("newConfig() got = \n%v\n, want \n%v\n", gotStr, tt.want)
 			}
 		})
 	}

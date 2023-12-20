@@ -95,12 +95,14 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 	tt := []struct {
 		name     string
 		logstash logstashv1alpha1.Logstash
+		useTLS   bool
 	}{
 		{
 			name: "with default data PVC",
 			logstash: logstashv1alpha1.Logstash{
 				Spec: logstashv1alpha1.LogstashSpec{},
 			},
+			useTLS: false,
 		},
 		{
 			name: "with user provided data PVC",
@@ -124,6 +126,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 						},
 					}},
 			},
+			useTLS: false,
 		},
 		{
 			name: "with user provided other PVC",
@@ -147,6 +150,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 						},
 					}},
 			},
+			useTLS: false,
 		},
 		{
 			name: "with user provided other PVC and logstash-data",
@@ -185,6 +189,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 						},
 					}},
 			},
+			useTLS: false,
 		},
 		{
 			name: "with user provided data empty volume",
@@ -202,6 +207,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 					},
 				},
 			},
+			useTLS: false,
 		},
 		{
 			name: "with user provided data hostpath volume",
@@ -223,6 +229,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 					},
 				},
 			},
+			useTLS: false,
 		},
 	}
 
@@ -230,7 +237,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.logstash.Spec.VolumeClaimTemplates = AppendDefaultPVCs(tc.logstash.Spec.VolumeClaimTemplates,
 				tc.logstash.Spec.PodTemplate.Spec)
-			_, volumeMounts, err := BuildVolumes(tc.logstash)
+			_, volumeMounts, err := BuildVolumes(tc.logstash, tc.useTLS)
 			assert.NoError(t, err)
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))

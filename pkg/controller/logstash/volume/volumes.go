@@ -7,6 +7,7 @@ package volume
 import (
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -38,7 +39,7 @@ func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec core
 	return existingPVCs
 }
 
-func BuildVolumes(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.VolumeMount, error) {
+func BuildVolumes(ls logstashv1alpha1.Logstash, useTLS bool) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	// all volumes with CAs of direct associations
 	volumeLikes, err := getVolumesFromAssociations(ls.GetAssociations())
 	if err != nil {
@@ -52,6 +53,12 @@ func BuildVolumes(ls logstashv1alpha1.Logstash) ([]corev1.Volume, []corev1.Volum
 		PipelineVolume(ls),
 		DefaultLogsVolume,
 	)
+
+	if useTLS {
+		httpCertsVolume := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, ls.Name)
+		volumeLikes = append(volumeLikes, httpCertsVolume)
+	}
+
 	volumes, volumeMounts := volume.Resolve(volumeLikes)
 
 	// append future volumes from PVCs
