@@ -879,7 +879,7 @@ spec:
 
 experimental[]
 
-When running {ls} with plugins outside of those included in the standard, distribution, you can install those plugins in one of two ways - either by using an `initContainer` to install plugins before the main container starts, or creating a custom docker image that includes the installed plugins. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
+When running {ls} with plugins outside of those included in the standard, distribution, you can install those plugins in one of two ways - either by using an `initContainer` to install plugins before the main container starts, or creating a custom Docker image that includes the installed plugins. Refer to <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
 
 To add plugins, both of these options require the `bin/logstash-plugin` utility to be run to add the plugin(s) to the logstash pod before it starts.
 
@@ -918,7 +918,7 @@ FROM docker.elastic.co/logstash/logstash:{version}
 RUN bin/logstash-plugin install logstash-filter-tld
 ----
 
-Then after building and deploying the custom image (see <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+Then after building and deploying the custom image (refer to <<{p}-custom-images>> for more details), include it in the {ls} manifest:
 
 [source,yaml]
 ----
@@ -933,12 +933,12 @@ spec:
 [id="({p}-logstash-jar-files"]
 == Working with plugins that require additional files
 
-Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin. To add these files, there are two options available - using an `initContainer` to add files before the main container start, or creating a custom docker image that includes the required files. See <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
+Running {ls} may require additional files, such as JAR files needed to load JDBC drivers when using a JDBC or JMS plugin. To add these files, there are two options available - using an `initContainer` to add files before the main container start, or creating a custom Docker image that includes the required files. Refer to <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
 
 
-=== Using an initContainer
+=== Adding files using an initContainer
 
-This example creates an `initContainer` to download a `postgres` JDBC Driver JAR file, and place it in a volume mount accessible to the main `container`, and then use it in a JDBC input in the pipeline configuration.
+This example creates an `initContainer` to download a PostgreSQL JDBC driver JAR file, and place it in a volume mount accessible to the main `container`, and then use it in a JDBC input in the pipeline configuration.
 
 [source,yaml]
 ----
@@ -971,9 +971,9 @@ spec:
 ----
 <1> Referring to the external file should match the `mountPath` of the `container`
 
-=== Using a custom image
+=== Adding files using a custom image
 
-This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the docker image
+This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the Docker image.
 
 First, create a Dockerfile based on the logstash docker image, and download the JDBC driver, storing it alongside the other JAR files in the Logstash classpath:
 
@@ -985,7 +985,7 @@ RUN curl -o /usr/share/logstash/logstash-core/lib/jars/postgresql.jar -L https:/
 ----
 <1> Placing the JAR file in the `/usr/share/logstash/logstash-core/lib/jars` folder places it on Logstash's classpath.
 
-Then after building and deploying the custom image (see <<{p}-custom-images>> for more details), include it in the {ls} manifest:
+Then after building and deploying the custom image (refer to <<{p}-custom-images>> for more details), include it in the {ls} manifest:
 
 [source,yaml]
 ----
