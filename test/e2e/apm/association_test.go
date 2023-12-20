@@ -61,7 +61,7 @@ func TestAPMKibanaAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(ns).
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO .ds-metrics-fleet_server.agent_status-default index is created with a replica.
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO revert when https://github.com/elastic/cloud-on-k8s/issues/7376 is resolved.
 
 		WithRestrictedSecurityContext()
 
