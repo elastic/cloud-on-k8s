@@ -151,16 +151,16 @@ func readinessProbe(params Params) corev1.Probe {
 				Port:        intstr.FromInt(port),
 				Path:        "/",
 				Scheme:      scheme,
-				HTTPHeaders: getHttpHeaders(params),
+				HTTPHeaders: getHTTPHeaders(params),
 			},
 		},
 	}
 	return probe
 }
 
-// getHttpHeaders when api.auth.basic.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
+// getHTTPHeaders when api.auth.basic.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
 // to build Authorization header
-func getHttpHeaders(params Params) []corev1.HTTPHeader {
+func getHTTPHeaders(params Params) []corev1.HTTPHeader {
 	var credentials stackmon.APIServerCredentials
 	_ = params.LogstashConfig.Unpack(&credentials)
 

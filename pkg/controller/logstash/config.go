@@ -24,9 +24,9 @@ import (
 const (
 	ConfigFileName         = "logstash.yml"
 	APIKeystorePath        = volume.ConfigMountPath + "/" + APIKeystoreFileName
-	APIKeystoreFileName    = "api_keystore.p12"
-	APIKeystoreDefaultPass = "ch@ng3m3" // #nosec G101
-	APIKeystorePassEnv     = "API_KEYSTORE_PASS"
+	APIKeystoreFileName    = "api_keystore.p12"  // #nosec G101
+	APIKeystoreDefaultPass = "ch@ng3m3"          // #nosec G101
+	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
 func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalConfig, error) {
