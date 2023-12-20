@@ -79,7 +79,6 @@ default:
 {{- $configsToCheck := (list) -}}
 {{- if .Values.kubernetes.enabled -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_state" -}}
-{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.hints" -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_apiserver" -}}
 {{- end -}}
 {{- $enabledConfigs := (list) -}}
@@ -106,6 +105,7 @@ default:
 {{- $_ := set .Values.eck_agent "daemonset" dict -}}
 {{- $configsToCheck := (list) -}}
 {{- if .Values.kubernetes.enabled -}}
+{{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.hints" -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_controller" -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.kube_scheduler" -}}
 {{- $configsToCheck = append $configsToCheck "agent.kubernetes.config.audit_logs" -}}

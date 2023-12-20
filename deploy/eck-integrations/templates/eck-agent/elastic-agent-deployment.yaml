@@ -26,20 +26,6 @@ spec:
         nodeSelector:
           kubernetes.io/os: linux
         serviceAccountName: eck-agent-deployment
-        {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
-        initContainers:
-        - name: k8s-templates-downloader
-          image: busybox:1.36
-          command: [ 'sh' ]
-          args:
-            - -c
-            - >-
-              mkdir -p /etc/elastic-agent/inputs.d &&
-              wget -O - https://github.com/elastic/elastic-agent/archive/8.11.tar.gz | tar xz -C /etc/elastic-agent/inputs.d --strip=5 "elastic-agent-8.11/deploy/kubernetes/elastic-agent-standalone/templates.d"
-          volumeMounts:
-            - name: external-inputs
-              mountPath: /etc/elastic-agent/inputs.d
-        {{- end }}
         containers:
         {{- if has "agent.kubernetes.config.kube_state" .Values.eck_agent.deployment.enabled_configs }}
         {{- if default false .Values.kubernetes.state.deployKSM }}
@@ -96,14 +82,4 @@ spec:
             value: "/etc/elastic-agent"
           - name: ELASTIC_NETINFO
             value: {{ .Values.eck_agent.netinfo | quote }}
-          volumeMounts:
-            {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
-            - name: external-inputs
-              mountPath: /etc/elastic-agent/inputs.d
-            {{- end }}
-        volumes:
-        {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.deployment.enabled_configs }}
-        - name: external-inputs
-          emptyDir: {}
-        {{- end }}
 {{- end -}}
