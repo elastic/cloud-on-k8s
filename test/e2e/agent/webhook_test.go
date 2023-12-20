@@ -34,6 +34,6 @@ func TestWebhook(t *testing.T) {
 	require.Contains(
 		t,
 		err.Error(),
-		`either daemonset or deployment must be specified`,
+		`either daemonSet or deployment or statefulSet must be specified`,
 	)
 }
