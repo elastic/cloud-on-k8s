@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/rbac"
 )
 
@@ -30,6 +31,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationName:           "agent-fleetserver",
 		AssociatedShortName:       "agent",
 		AssociationType:           commonv1.FleetServerAssociationType,
+		AdditionalSecrets:         additionalSecrets,
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				AgentAssociationLabelName:      associated.Name,
@@ -43,6 +45,48 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 
 		ElasticsearchUserCreation: nil,
 	})
+}
+
+func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+	log := ulog.FromContext(ctx)
+	associated := assoc.Associated()
+	var agent agentv1alpha1.Agent
+	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
+	if err := c.Get(ctx, nsn, &agent); err != nil {
+		return nil, err
+	}
+	fleetServerRef := assoc.AssociationRef()
+	if !fleetServerRef.IsDefined() {
+		return nil, nil
+	}
+	fleetServer := agentv1alpha1.Agent{}
+	if err := c.Get(ctx, fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+		return nil, err
+	}
+
+	// If the Fleet Server Agent is not associated with an Elasticsearch cluster
+	// (potentially because of a manual setup) we should do nothing.
+	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+		return nil, nil
+	}
+	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
+	if err != nil {
+		return nil, err
+	}
+
+	conf, err := esAssociation.AssociationConf()
+	if err != nil {
+		log.V(1).Info("no additional secrets because no assoc conf")
+		return nil, err
+	}
+	if conf == nil || !conf.CACertProvided {
+		log.V(1).Info("no additional secrets because conf nil or no CA provided")
+		return nil, nil
+	}
+	return []types.NamespacedName{{
+		Namespace: fleetServer.Namespace,
+		Name:      conf.CASecretName,
+	}}, nil
 }
 
 func getFleetServerExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {

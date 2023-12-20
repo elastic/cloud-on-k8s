@@ -68,7 +68,9 @@ func TestKibanaStandalone(t *testing.T) {
 	// set up a 1-node Kibana deployment manually connected to Elasticsearch
 	name := "test-kb-standalone"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO revert when https://github.com/elastic/cloud-on-k8s/issues/7376 is resolved.
+		// Fleet integration is now enabled by default and has a replica enabled by default.
+		// https://github.com/elastic/cloud-on-k8s/issues/7376#issuecomment-1863353206
 		WithRestrictedSecurityContext()
 	esBuilder.Elasticsearch.Spec.Auth = esv1.Auth{
 		FileRealm: []esv1.FileRealmSource{

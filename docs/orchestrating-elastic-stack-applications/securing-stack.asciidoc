@@ -14,7 +14,14 @@ You can secure your Elastic Stack by specifying the following settings:
 - <<{p}-rotate-credentials>>
 - <<{p}-saml-authentication>>
 
+You can use Elastic Stack configuration policy to configure the following authentication methods:
+
+- <<{p}-ldap-using-stack-config-policy>>
+- <<{p}-oidc-stack-config-policy>>
+- <<{p}-jwt-stack-config-policy>>
+
 include::security/custom-http-certificate.asciidoc[leveloffset=+1]
 include::security/users-and-roles.asciidoc[leveloffset=+1]
 include::security/rotate-credentials.asciidoc[leveloffset=+1]
 include::security/saml-authentication.asciidoc[leveloffset=+1]
+include::security/auth-configs-using-stack-config-policy.asciidoc[leveloffset=+1]

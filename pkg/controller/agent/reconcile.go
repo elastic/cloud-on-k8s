@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/pointer"
@@ -36,25 +37,57 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
 
-	var toDelete client.Object
+	var toDelete []client.Object
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
 		reconciliationFunc = reconcileDaemonSet
-		toDelete = &v1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+		toDelete = append(toDelete,
+			&v1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		}
+			&v1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
+			},
+		)
 	case spec.Deployment != nil:
 		reconciliationFunc = reconcileDeployment
-		toDelete = &v1.DaemonSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Agent.Namespace,
+		toDelete = append(toDelete,
+			&v1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
 			},
-		}
+			&v1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
+			},
+		)
+	case spec.StatefulSet != nil:
+		reconciliationFunc = reconcileStatefulSet
+		toDelete = append(toDelete,
+			&v1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
+			},
+			&v1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: params.Agent.Namespace,
+				},
+			},
+		)
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
@@ -68,14 +101,16 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		return results.WithError(err), params.Status
 	}
 
-	// clean up the other one
-	if err := params.Client.Get(params.Context, types.NamespacedName{
-		Namespace: params.Agent.Namespace,
-		Name:      name,
-	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(params.Context, toDelete))
-	} else if !apierrors.IsNotFound(err) {
-		results.WithError(err)
+	for _, obj := range toDelete {
+		// clean up the other ones
+		if err := params.Client.Get(params.Context, types.NamespacedName{
+			Namespace: params.Agent.Namespace,
+			Name:      name,
+		}, obj); err == nil {
+			results.WithError(params.Client.Delete(params.Context, obj))
+		} else if !apierrors.IsNotFound(err) {
+			results.WithError(err)
+		}
 	}
 
 	var status agentv1alpha1.AgentStatus
@@ -102,6 +137,31 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	}
 
 	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.agent)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+}
+
+func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
+	d := statefulset.New(statefulset.Params{
+		Name:                 Name(rp.agent.Name),
+		Namespace:            rp.agent.Namespace,
+		ServiceName:          rp.agent.Spec.StatefulSet.ServiceName,
+		Selector:             rp.agent.GetIdentityLabels(),
+		Labels:               rp.agent.GetIdentityLabels(),
+		PodTemplateSpec:      rp.podTemplate,
+		VolumeClaimTemplates: rp.agent.Spec.StatefulSet.VolumeClaimTemplates,
+		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.StatefulSet.Replicas, int32(1)),
+		PodManagementPolicy:  rp.agent.Spec.StatefulSet.PodManagementPolicy,
+		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
+	})
+	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
+		return 0, 0, err
+	}
+
+	reconciled, err := statefulset.Reconcile(rp.ctx, rp.client, d, &rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}

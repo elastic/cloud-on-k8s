@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,6 +126,103 @@ func Test_checkPolicyID(t *testing.T) {
 	}
 }
 
+func Test_checkAtMostOneDeploymentOption(t *testing.T) {
+	type args struct {
+		a *Agent
+	}
+	tests := []struct {
+		name string
+		args args
+		want field.ErrorList
+	}{
+		{
+			name: "deployment option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment: &DeploymentSpec{},
+				}},
+			},
+		},
+		{
+			name: "daemonset option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					DaemonSet: &DaemonSetSpec{},
+				}},
+			},
+		},
+		{
+			name: "statefulset option",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+		},
+		{
+			name: "statefulset and deployment options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [deployment, statefulSet]"),
+			},
+		},
+		{
+			name: "deployment and daemonset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment: &DeploymentSpec{},
+					DaemonSet:  &DaemonSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, deployment]"),
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [daemonSet, deployment]"),
+			},
+		},
+		{
+			name: "daemonset and statefulset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [daemonSet, statefulSet]"),
+			},
+		},
+		{
+			name: "deployment, daemonset, and statefulset options",
+			args: args{
+				a: &Agent{Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				}},
+			},
+			want: field.ErrorList{
+				field.Forbidden(field.NewPath("spec.daemonSet"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.deployment"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+				field.Forbidden(field.NewPath("spec.statefulSet"), "Specify at most one of [daemonSet, deployment, statefulSet]"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := checkAtMostOneDeploymentOption(tt.args.a); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("checkAtMostOneDeploymentOption() = \n%v, \nwant \n%v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_checkSpec(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -132,7 +230,7 @@ func Test_checkSpec(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "deployment absent, dset present",
+			name: "deployment absent, statefulSet absent, daemonSet present",
 			beat: Agent{
 				Spec: AgentSpec{
 					DaemonSet: &DaemonSetSpec{},
@@ -141,10 +239,19 @@ func Test_checkSpec(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "deployment present, dset absent",
+			name: "deployment present, statefulSet absent, daemonSet absent",
 			beat: Agent{
 				Spec: AgentSpec{
 					Deployment: &DeploymentSpec{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment absent, statefulSet present, daemonSet absent",
+			beat: Agent{
+				Spec: AgentSpec{
+					StatefulSet: &StatefulSetSpec{},
 				},
 			},
 			wantErr: false,
@@ -157,11 +264,42 @@ func Test_checkSpec(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "both present",
+			name: "both daemonSet and deployment present",
 			beat: Agent{
 				Spec: AgentSpec{
 					Deployment: &DeploymentSpec{},
 					DaemonSet:  &DaemonSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "both daemonSet and statefulSet present",
+			beat: Agent{
+				Spec: AgentSpec{
+					DaemonSet:   &DaemonSetSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "both statefulSet and deployment present",
+			beat: Agent{
+				Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "all statefulSet, daemonSet and deployment present",
+			beat: Agent{
+				Spec: AgentSpec{
+					Deployment:  &DeploymentSpec{},
+					StatefulSet: &StatefulSetSpec{},
+					DaemonSet:   &DaemonSetSpec{},
 				},
 			},
 			wantErr: true,
