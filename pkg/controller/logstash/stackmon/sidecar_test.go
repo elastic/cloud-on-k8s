@@ -78,6 +78,8 @@ func TestWithMonitoring(t *testing.T) {
 	tests := []struct {
 		name                      string
 		ls                        func() logstashv1alpha1.Logstash
+		useTLS                    bool
+		logstashConfig            *settings.CanonicalConfig
 		containersLength          int
 		esEnvVarsLength           int
 		podVolumesLength          int
@@ -102,6 +104,23 @@ func TestWithMonitoring(t *testing.T) {
 			esEnvVarsLength:           0,
 			podVolumesLength:          3,
 			metricsVolumeMountsLength: 3,
+		},
+		{
+			name: "with TLS metrics monitoring",
+			ls: func() logstashv1alpha1.Logstash {
+				sampleLs.Spec.Monitoring.Metrics.ElasticsearchRefs = monitoringEsRef
+				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
+				return sampleLs
+			},
+			useTLS: true,
+			logstashConfig: settings.MustCanonicalConfig(
+				map[string]interface{}{
+					"api.ssl.enabled": "true",
+				}),
+			containersLength:          2,
+			esEnvVarsLength:           0,
+			podVolumesLength:          4,
+			metricsVolumeMountsLength: 4,
 		},
 		{
 			name: "with logs monitoring",
@@ -152,7 +171,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, false, settings.NewCanonicalConfig())
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.useTLS, tc.logstashConfig)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))

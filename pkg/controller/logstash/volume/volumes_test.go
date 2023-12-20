@@ -105,6 +105,13 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 			useTLS: false,
 		},
 		{
+			name: "with default data PVC and http certs",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{},
+			},
+			useTLS: true,
+		},
+		{
 			name: "with user provided data PVC",
 			logstash: logstashv1alpha1.Logstash{
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -242,6 +249,9 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))
 			assert.True(t, contains(volumeMounts, "config", "/usr/share/logstash/config"))
+			if tc.useTLS {
+				assert.True(t, contains(volumeMounts, "elastic-internal-http-certificates", "/mnt/elastic-internal/http-certs"))
+			}
 		})
 	}
 }
