@@ -300,7 +300,7 @@ By default, a PersistentVolume called `logstash-data` is created, that maps to `
 
 For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. To override this volume claim for `data` usages, the name of this volume claim must be `logstash-data`.
 
-This example updates the default data template to increase the storage to `2Gi` for the logstash data folder:
+This example updates the default data template to increase the storage to `2Gi` for the {ls} data folder:
 
 [source,yaml,subs="attributes,+macros,callouts"]
 ----
@@ -881,7 +881,7 @@ experimental[]
 
 When running {ls} with plugins outside of those included in the standard, distribution, you can install those plugins in one of two ways - either by using an `initContainer` to install plugins before the main container starts, or creating a custom Docker image that includes the installed plugins. Refer to <<{p}-bundles-plugins>> for a run down of which option might be most suitable for you.
 
-To add plugins, both of these options require the `bin/logstash-plugin` utility to be run to add the plugin(s) to the logstash pod before it starts.
+To add plugins, both of these options require the `bin/logstash-plugin` utility to be run to add the plugin(s) to the {ls} pod before it starts.
 
 === Adding a plugin using an initContainer
 
@@ -901,7 +901,7 @@ spec:
 The init container inherits:
 
 * The image of the main container image, if one is not explicitly set.
-* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition
+* The volume mounts from the main container unless a volume mount with the same name and mount path is present in the init container definition.
 * The Pod name and IP address environment variables.
 
 
@@ -909,7 +909,7 @@ The init container inherits:
 
 This example installs the same plugin, but uses a custom image to install the plugin.
 
-First, create a Dockerfile based on the logstash docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s)
+First, create a Dockerfile based on the {ls} Docker image, running `bin/logstash-plugin install` to install the appropriate plugin(s):
 
 [subs="attributes,+macros,callouts"]
 ----
@@ -973,9 +973,9 @@ spec:
 
 === Adding files using a custom image
 
-This example downloads the same `postgres` JDBC driver, and adds it to the Logstash classpath in the Docker image.
+This example downloads the same `postgres` JDBC driver, and adds it to the {ls} classpath in the Docker image.
 
-First, create a Dockerfile based on the logstash docker image, and download the JDBC driver, storing it alongside the other JAR files in the Logstash classpath:
+First, create a Dockerfile based on the {ls} Docker image, and download the JDBC driver, storing it alongside the other JAR files in the {ls} classpath:
 
 [source,subs="attributes,+macros,callouts"]
 ----
@@ -1006,14 +1006,14 @@ Then after building and deploying the custom image (refer to <<{p}-custom-images
 
 ----
 <1> Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
-<2> Note that when you place the JAR file on the Logstash classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
+<2> Note that when you place the JAR file on the {ls} classpath, you do not need to specify the `jdbc_driver_library` location in the plugin configuration.
 
 [id="{p}-logstash-scaling-logstash"]
 == Scaling Logstash
 
 experimental[]
 
-The ability to scale Logstash is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all Logstash deployments can be scaled horizontally by increasing the number of Logstash Pods defined in the Logstash resource.
+The ability to scale {ls} is highly dependent on the pipeline configurations, and the plugins used in those pipelines. Not all {ls} deployments can be scaled horizontally by increasing the number of {ls} Pods defined in the Logstash resource.
 Increasing the number of Pods can cause data loss/duplication, or Pods running idle because they are unable to be utilized.
 
 These risks are especially likely with plugins that:
