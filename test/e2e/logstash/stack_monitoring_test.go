@@ -7,10 +7,10 @@
 package logstash
 
 import (
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"testing"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/checks"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
@@ -33,7 +33,12 @@ func TestLogstashStackMonitoring(t *testing.T) {
 	monitored := logstash.NewBuilder("test-ls-mon-a").
 		WithNodeCount(1).
 		WithMetricsMonitoring(metrics.Ref()).
-		WithLogsMonitoring(logs.Ref())
+		WithLogsMonitoring(logs.Ref()).
+		WithConfig(map[string]interface{}{
+			"api.auth.type":           "basic",
+			"api.auth.basic.username": "logstash",
+			"api.auth.basic.password": "ch@ng3m3",
+		})
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {

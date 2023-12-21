@@ -158,7 +158,7 @@ func readinessProbe(params Params) corev1.Probe {
 	return probe
 }
 
-// getHTTPHeaders when api.auth.basic.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
+// getHTTPHeaders when api.auth.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
 // to build Authorization header
 func getHTTPHeaders(params Params) []corev1.HTTPHeader {
 	var credentials stackmon.APIServerCredentials

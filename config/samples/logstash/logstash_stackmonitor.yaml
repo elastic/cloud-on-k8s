@@ -4,10 +4,10 @@ kind: Elasticsearch
 metadata:
   name: monitoring
 spec:
-  version: 8.10.4
+  version: 8.11.2
   nodeSets:
     - name: default
-      count: 3
+      count: 3 # for health check to be green
       config:
         node.store.allow_mmap: false
 ---
@@ -17,10 +17,9 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 8.10.4
+  version: 8.11.2
   config:
     log.level: info
-    api.http.host: "0.0.0.0"
     queue.type: memory
   elasticsearchRefs:
     - clusterName: test
@@ -55,7 +54,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 8.10.4
+  version: 8.11.2
   elasticsearchRef:
     name: monitoring
   count: 1

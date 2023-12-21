@@ -14,6 +14,7 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -156,19 +157,30 @@ func uniqueAssociationCount(refsList ...[]v1.ObjectSelector) int {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
+	var credentials stackmon.APIServerCredentials
+
+	if b.Logstash.Spec.Config != nil {
+		cfg := settings.MustCanonicalConfig(b.Logstash.Spec.Config.Data)
+		_ = cfg.Unpack(&credentials)
+	}
+
 	return test.StepList{
 		b.CheckMetricsRequest(k,
 			Request{
-				Name: "metrics",
-				Path: "/",
+				Name:     "metrics",
+				Path:     "/",
+				Username: credentials.API.Auth.Basic.Username,
+				Password: credentials.API.Auth.Basic.Password,
 			},
 			Want{
 				Match: map[string]string{"status": "green"},
 			}),
 		b.CheckMetricsRequest(k,
 			Request{
-				Name: "default pipeline",
-				Path: "/_node/pipelines/main",
+				Name:     "default pipeline",
+				Path:     "/_node/pipelines/main",
+				Username: credentials.API.Auth.Basic.Username,
+				Password: credentials.API.Auth.Basic.Password,
 			},
 			Want{
 				Match: map[string]string{
