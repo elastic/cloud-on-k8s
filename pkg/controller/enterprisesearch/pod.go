@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 )
 
@@ -64,10 +65,15 @@ func newPodSpec(ent entv1.EnterpriseSearch, configHash string) (corev1.PodTempla
 	readinessProbeVolume := ReadinessProbeSecretVolume(ent)
 	logsVolume := volume.NewEmptyDirVolume("logs", LogVolumeMountPath)
 
+	v, err := version.Parse(ent.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+
 	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1.EnterpriseSearchContainerName).
 		WithAnnotations(annotations).
 		WithResources(DefaultResources).
-		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ent.Spec.Version)).
+		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, v)).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(ReadinessProbe).
 		WithEnv(DefaultEnv...).
@@ -75,7 +81,7 @@ func newPodSpec(ent entv1.EnterpriseSearch, configHash string) (corev1.PodTempla
 		WithVolumeMounts(cfgVolume.VolumeMount(), readinessProbeVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
 
-	builder, err := withESCertsVolume(builder, ent)
+	builder, err = withESCertsVolume(builder, ent)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

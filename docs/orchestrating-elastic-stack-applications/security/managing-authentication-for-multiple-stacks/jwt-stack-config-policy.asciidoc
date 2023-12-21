@@ -1,0 +1,121 @@
+:parent_page_id: auth-config-using-stack-config-policy
+:page_id: jwt-stack-config-policy
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+
+= JWT using Elastic Stack configuration policy
+
+NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elasticsearch/reference/current/jwt-auth-realm.html[guide to setting up JWT with Elasticsearch].
+
+Configuring JWT with Elastic Stack configuration policy
+
+. Add your JWT realm to the `elasticsearch.yml` file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy
+
++
+[source,yaml,subs="attributes,+macros"]
+----
+elasticsearch:
+    config:
+       xpack.security.authc.realms.jwt.jwt1:
+         order: -98
+         token_type: id_token
+         client_authentication.type: shared_secret
+         allowed_issuer: "https://es.k8s.elastic.co"
+         allowed_audiences: [ "elasticsearch" ]
+         allowed_subjects: ["elastic-user"]
+         allowed_signature_algorithms: [RS512]
+         pkc_jwkset_path: jwks/jwkset.json
+         claims.principal: sub
+----
+
+. Add the `shared_secret` setting that will be used for client authentication to the Elasticsearch keystore.
+
+    .. Create a secret in the operator namespace containing the shared secret
++
+[source,sh]
+----
+kubectl create secret generic shared-secret --from-literal=xpack.security.authc.realms.jwt.jwt1.client_authentication.shared_secret=<sharedsecret>
+----
+    .. Add the secret name to the `secureSettings` field under `elasticsearch` in the Elastic Stack configuration policy
++
+[source,yaml,subs="attributes,+macros"]
+----
+  elasticsearch:
+    secureSettings:
+:   - secretName: shared-secret
+----
+
+. Add an additional volume to the Elasticsearch pods that contain the JSON Web Keys, it should be mounted to the path that is configured for the `xpack.security.authc.realms.jwt.jwt1.pkc_jwkset_path` config. The file path is resolved relative to the Elasticsearch configuration directory.
+
+    .. Create a secret in the operator namespace that has the jwk set
++
+[source,sh]
+----
+kubectl create secret generic jwks-secret --from-file=jwkset.json
+----
+    .. Add the secret name and mountpath to the `secretMounts` field under `elasticsearch` in the Elastic Stack configuration policy
++
+[source,yaml,subs="attributes,+macros"]
+----
+secretMounts:
+    - secretName: jwks-secret
+      mountPath: "/usr/share/elasticsearch/config/jwks"
+----
+
+. You can use the `securityRoleMappings` field under `elasticsearch` in the Elastic Stack configuration policy to define role mappings that determine which roles should be assigned to each user based on their username, groups, or other metadata.
++
+[source,yaml,subs="attributes,+macros"]
+----
+securityRoleMappings:
+  jwt1-user-role:
+    roles: [ "superuser" ]
+    rules:
+      all:
+        - field: { realm.name: "jwt1" }
+        - field: { username: "jwt-user" }
+    enabled: true
+----
+
+The following example demonstrates how an Elastic Stack configuration policy can be used to configure a JWT realm:
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+metadata:
+  name: test-stack-config-policy
+spec:
+  resourceSelector:
+    matchLabels:
+      env: my-label
+  elasticsearch:
+    secureSettings:
+    - secretName: shared-secret
+    securityRoleMappings:
+      jwt1-user-role:
+        roles: [ "superuser" ]
+        rules:
+          all:
+            - field: { realm.name: "jwt1" }
+            - field: { username: "jwt-user" }
+        enabled: true
+    config:
+       xpack.security.authc.realms.jwt.jwt1:
+         order: -98
+         token_type: id_token
+         client_authentication.type: shared_secret
+         allowed_issuer: "https://es.k8s.elastic.co"
+         allowed_audiences: [ "elasticsearch" ]
+         allowed_subjects: ["elastic-user"]
+         allowed_signature_algorithms: [RS512]
+         pkc_jwkset_path: jwks/jwkset.json
+         claims.principal: sub
+    secretMounts:
+    - secretName: jwks-secret
+      mountPath: "/usr/share/elasticsearch/config/jwks"
+----

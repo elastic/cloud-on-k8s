@@ -18,7 +18,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/stackmon"
 )
@@ -74,15 +76,19 @@ func readinessProbe(useTLS bool) corev1.Probe {
 
 func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Kibana, keystore *keystore.Resources, volumes []volume.VolumeLike) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
-	labels[KibanaVersionLabelName] = kb.Spec.Version
+	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
 
 	ports := getDefaultContainerPorts(kb)
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
 
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
-		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
+		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithInitContainers(initConfigContainer(kb))
@@ -96,7 +102,7 @@ func NewPodTemplateSpec(ctx context.Context, client k8sclient.Client, kb kbv1.Ki
 			WithInitContainers(keystore.InitContainer)
 	}
 
-	builder, err := stackmon.WithMonitoring(ctx, client, builder, kb)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

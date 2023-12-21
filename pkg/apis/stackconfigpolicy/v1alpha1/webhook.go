@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,7 +20,8 @@ import (
 
 const (
 	// webhookPath is the HTTP path for the StackConfigPolicy validating webhook.
-	webhookPath = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
+	webhookPath                  = "/validate-scp-k8s-elastic-co-v1alpha1-stackconfigpolicies"
+	SpecSecureSettingsDeprecated = "spec.SecureSettings is deprecated, secure settings must be set per application"
 )
 
 var (
@@ -78,6 +81,16 @@ func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 	return nil, nil
 }
 
+func (p *StackConfigPolicy) GetWarnings() []string {
+	if p == nil {
+		return nil
+	}
+	if len(p.Spec.SecureSettings) > 0 {
+		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, p.Namespace, p.Name, SpecSecureSettingsDeprecated)}
+	}
+	return nil
+}
+
 func checkNoUnknownFields(policy *StackConfigPolicy) field.ErrorList {
 	return commonv1.NoUnknownFields(policy, policy.ObjectMeta)
 }
@@ -122,8 +135,11 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 	if !uniqueSecretMountPaths(policy.Spec.Elasticsearch.SecretMounts) {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("elasticsearch").Child("secretMounts"), policy.Spec.Elasticsearch.SecretMounts, "SecretMounts cannot have duplicate mount paths")}
 	}
+	if policy.Spec.Kibana.Config != nil {
+		settingsCount += len(policy.Spec.Kibana.Config.Data)
+	}
 	if settingsCount == 0 {
-		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "Elasticsearch settings are mandatory and must not be empty")}
+		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
 	}
 	return nil
 }

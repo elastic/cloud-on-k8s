@@ -11,13 +11,18 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/jsonpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
+	commonhash "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -188,4 +193,33 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 		}
 	}
 	return r
+}
+
+// copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
+	var original corev1.Secret
+	if err := client.Get(ctx, source, &original); err != nil {
+		return err
+	}
+	// update the hash if there are additional secrets event if
+	// they are in the same namespace to ensure that the pods are
+	// rotated when the original CA secret is updated.
+	commonhash.WriteHashObject(secHash, original.Data)
+	if targetNamespace == original.Namespace {
+		return nil
+	}
+
+	expected := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        original.Name,
+			Namespace:   targetNamespace,
+			Labels:      original.Labels,
+			Annotations: original.Annotations,
+		},
+		Data: original.Data,
+		Type: original.Type,
+	}
+
+	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil)
+	return err
 }

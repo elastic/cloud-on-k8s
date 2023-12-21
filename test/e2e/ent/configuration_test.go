@@ -93,9 +93,9 @@ email:
 			WithSteps(entWithConfig.MutationTestSteps(k)).
 			WithStep(test.Step{
 				Name: "Config file in the Pod should contain the additional config",
-				Test: func(t *testing.T) {
-					require.NoError(t, CheckPartialConfig(k, entWithConfig.EnterpriseSearch, expectedAdditionalConfig))
-				},
+				Test: test.Eventually(func() error {
+					return CheckPartialConfig(k, entWithConfig.EnterpriseSearch, expectedAdditionalConfig)
+				}),
 			}).
 			// mutate with additional configRef
 			WithStep(test.Step{
@@ -107,9 +107,9 @@ email:
 			WithSteps(entWithConfigRef.MutationTestSteps(k)).
 			WithStep(test.Step{
 				Name: "Config file in the Pod should contain the additional config & configRef",
-				Test: func(t *testing.T) {
-					require.NoError(t, CheckPartialConfig(k, entWithConfigRef.EnterpriseSearch, expectedAdditionalCfgRef))
-				},
+				Test: test.Eventually(func() error {
+					return CheckPartialConfig(k, entWithConfigRef.EnterpriseSearch, expectedAdditionalCfgRef)
+				}),
 			})
 	}
 

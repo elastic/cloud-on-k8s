@@ -1,0 +1,25 @@
+:page_id: auth-config-using-stack-config-policy
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Managing authentication for multiple stacks using Elastic Stack configuration policy
+
+NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+
+ECK `2.11.0` extends the functionality of <<{p}-stack-config-policy,Elastic Stack configuration policies>> so that it becomes possible to configure Elasticsearch security realms for more than one Elastic stack at once. 
+The authentication will apply to all Elasticsearch clusters and Kibana instances managed by the Elastic Stack configuration policy.
+
+
+Examples for configuring some of the authentication methods can be found below:
+
+** <<{p}-ldap-using-stack-config-policy,LDAP authentication using Elastic Stack configuration policy>>
+** <<{p}-oidc-stack-config-policy,OpenID Connect authentication using Elastic Stack configuration policy>>
+** <<{p}-jwt-stack-config-policy,JWT authentication using Elastic Stack configuration policy>>
+
+include::managing-authentication-for-multiple-stacks/ldap-using-stack-config-policy.asciidoc[leveloffset=+1]
+include::managing-authentication-for-multiple-stacks/oidc-stack-config-policy.asciidoc[leveloffset=+1]
+include::managing-authentication-for-multiple-stacks/jwt-stack-config-policy.asciidoc[leveloffset=+1]

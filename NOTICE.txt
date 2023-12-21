@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-containerregistry
-Version : v0.16.1
-Time    : 2023-08-02T20:59:06Z
+Version : v0.17.0
+Time    : 2023-11-29T21:32:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.16.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregistry@v0.17.0/LICENSE:
 
 
                                  Apache License
@@ -926,11 +926,11 @@ Contents of probable licence file $GOMODCACHE/github.com/google/go-containerregi
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/uuid
-Version : v1.4.0
-Time    : 2023-10-26T15:24:04Z
+Version : v1.5.0
+Time    : 2023-12-12T17:21:37Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/uuid@v1.5.0/LICENSE:
 
 Copyright (c) 2009,2014 Google Inc. All rights reserved.
 
@@ -3815,11 +3815,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.15.0
-Time    : 2023-11-08T19:10:19Z
+Version : v0.17.0
+Time    : 2023-12-18T16:33:08Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.15.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.17.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15917,11 +15917,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.14.0
-Time    : 2023-11-03T11:48:45Z
+Version : v0.15.0
+Time    : 2023-11-18T01:08:36Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.14.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.15.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15954,11 +15954,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.14.0
-Time    : 2023-11-07T19:02:24Z
+Version : v0.15.0
+Time    : 2023-11-27T15:36:23Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.14.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.15.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 

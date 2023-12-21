@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -155,13 +155,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
-
-					for _, f := range continuousHealthChecks.Failures {
-						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
+					if continuousHealthChecks.FailureCount > b.mutationToleratedChecksFailureCount {
+						t.Errorf("ContinuousHealthChecks failures count (%d) is above the tolerance (%d): %s",
+							continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount, continuousHealthChecks.FailuresAsString())
 					}
-
-					fmt.Printf("Continuous health checks failures: %d (tolerated: %d)\n", continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
-					assert.LessOrEqual(t, continuousHealthChecks.FailureCount, b.mutationToleratedChecksFailureCount)
 				},
 			},
 			test.Step{
@@ -288,6 +285,22 @@ func (hc *ContinuousHealthCheck) Start() {
 // Stop the health checks goroutine
 func (hc *ContinuousHealthCheck) Stop() {
 	hc.stopChan <- struct{}{}
+}
+
+// FailuresAsString returns a list of the total number of each failure as a string
+func (hc *ContinuousHealthCheck) FailuresAsString() string {
+	if len(hc.Failures) == 0 {
+		return "0 failure"
+	}
+	errCountMap := map[string]int{}
+	for _, f := range hc.Failures {
+		errCountMap[f.err.Error()]++
+	}
+	strList := []string{}
+	for err, total := range errCountMap {
+		strList = append(strList, fmt.Sprintf("%d x [%s]", total, err))
+	}
+	return strings.Join(strList, "\n")
 }
 
 type clusterUnavailability struct {

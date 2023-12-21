@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
 )
@@ -195,11 +196,16 @@ func buildPodTemplate(
 		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
 
+	v, err := version.Parse(spec.Version)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
+	}
+
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(labels).
 		WithAnnotations(annotations).
 		WithResources(defaultResources).
-		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
+		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, v)).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).

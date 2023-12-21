@@ -14,6 +14,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	common "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/stackconfigpolicy"
@@ -43,7 +44,7 @@ func getPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 
 	// Additional annotations to be applied on the Elasticsearch pods
 	policyConfig.PolicyAnnotations = map[string]string{
-		stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation: stackConfigPolicyConfigSecret.Annotations[stackconfigpolicy.ElasticsearchConfigAndSecretMountsHashAnnotation],
+		commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: stackConfigPolicyConfigSecret.Annotations[commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation],
 	}
 
 	// Parse Elasticsearch config from the stack config policy secret.

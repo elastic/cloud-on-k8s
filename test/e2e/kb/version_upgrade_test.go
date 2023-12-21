@@ -16,7 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/reconcile"
-	kibana2 "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
@@ -48,8 +48,8 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			commonv1.TypeLabelName:      kibana2.Type,
-			kibana2.KibanaNameLabelName: kbBuilder.Kibana.Name,
+			commonv1.TypeLabelName:      kblabel.Type,
+			kblabel.KibanaNameLabelName: kbBuilder.Kibana.Name,
 		}),
 	}
 
@@ -61,7 +61,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
 		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithNodeCount(3).WithMutatedFrom(&kbBuilder)},
-		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
+		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kblabel.KibanaVersionLabelName, opts...)},
 	)
 }
 
@@ -97,8 +97,8 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder1.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			commonv1.TypeLabelName:      kibana2.Type,
-			kibana2.KibanaNameLabelName: kbBuilder1.Kibana.Name,
+			commonv1.TypeLabelName:      kblabel.Type,
+			kblabel.KibanaNameLabelName: kbBuilder1.Kibana.Name,
 		}),
 	}
 
@@ -131,7 +131,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder1},
 		[]test.Builder{esBuilder, kbBuilder2, kbBuilder3},
-		[]test.Watcher{w, test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
+		[]test.Watcher{w, test.NewVersionWatcher(kblabel.KibanaVersionLabelName, opts...)},
 	)
 }
 
@@ -155,8 +155,8 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			commonv1.TypeLabelName:      kibana2.Type,
-			kibana2.KibanaNameLabelName: kbBuilder.Kibana.Name,
+			commonv1.TypeLabelName:      kblabel.Type,
+			kblabel.KibanaNameLabelName: kbBuilder.Kibana.Name,
 		}),
 	}
 
@@ -171,7 +171,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
 			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),
 		},
-		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
+		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kblabel.KibanaVersionLabelName, opts...)},
 	)
 }
 
@@ -207,8 +207,8 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder1.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			commonv1.TypeLabelName:      kibana2.Type,
-			kibana2.KibanaNameLabelName: kbBuilder1.Kibana.Name,
+			commonv1.TypeLabelName:      kblabel.Type,
+			kblabel.KibanaNameLabelName: kbBuilder1.Kibana.Name,
 		}),
 	}
 
@@ -241,7 +241,7 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder1},
 		[]test.Builder{esBuilder, kbBuilder2, kbBuilder3},
-		[]test.Watcher{w, test.NewVersionWatcher(kibana2.KibanaVersionLabelName, opts...)},
+		[]test.Watcher{w, test.NewVersionWatcher(kblabel.KibanaVersionLabelName, opts...)},
 	)
 }
 

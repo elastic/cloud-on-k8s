@@ -10,6 +10,8 @@ endif::[]
 
 Any setting defined in the `elasticsearch.yml` configuration file can also be defined for a set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
+Some settings are managed by ECK, it is not recommended to change them, refer to <<{p}-reserved-settings>> for more details.
+
 [source,yaml]
 ----
 spec:

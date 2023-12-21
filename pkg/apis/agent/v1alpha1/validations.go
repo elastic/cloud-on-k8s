@@ -7,7 +7,9 @@ package v1alpha1
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
@@ -36,7 +38,12 @@ var (
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
 		checkNoDowngrade,
+		checkPVCchanges,
 	}
+)
+
+const (
+	pvcImmutableMsg = "Volume claim templates cannot be modified"
 )
 
 func checkNoUnknownFields(a *Agent) field.ErrorList {
@@ -70,12 +77,25 @@ func checkPolicyID(a *Agent) field.ErrorList {
 }
 
 func checkAtMostOneDeploymentOption(a *Agent) field.ErrorList {
-	if a.Spec.DaemonSet != nil && a.Spec.Deployment != nil {
-		msg := "Specify either daemonSet or deployment, not both"
-		return field.ErrorList{
-			field.Forbidden(field.NewPath("spec").Child("daemonSet"), msg),
-			field.Forbidden(field.NewPath("spec").Child("deployment"), msg),
+	var enabledSpecsNames []string
+
+	if a.Spec.DaemonSet != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "daemonSet")
+	}
+	if a.Spec.Deployment != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "deployment")
+	}
+	if a.Spec.StatefulSet != nil {
+		enabledSpecsNames = append(enabledSpecsNames, "statefulSet")
+	}
+
+	if enabledSpecsLen := len(enabledSpecsNames); enabledSpecsLen > 1 {
+		msg := fmt.Sprintf("Specify at most one of [%s]", strings.Join(enabledSpecsNames, ", "))
+		errList := make(field.ErrorList, enabledSpecsLen)
+		for index, specName := range enabledSpecsNames {
+			errList[index] = field.Forbidden(field.NewPath("spec").Child(specName), msg)
 		}
+		return errList
 	}
 
 	return nil
@@ -123,6 +143,27 @@ func checkNoDowngrade(prev, curr *Agent) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
 }
 
+// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+func checkPVCchanges(current, proposed *Agent) field.ErrorList {
+	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
+
+	// need to check if current and proposed are both statefulsets
+	if current.Spec.StatefulSet == nil || proposed.Spec.StatefulSet == nil {
+		return errs
+	}
+
+	// checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
+	if !apiequality.Semantic.DeepEqual(current.Spec.StatefulSet.VolumeClaimTemplates, proposed.Spec.StatefulSet.VolumeClaimTemplates) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("statefulSet.").Child("volumeClaimTemplates"),
+			proposed.Spec.StatefulSet.VolumeClaimTemplates, pvcImmutableMsg))
+	}
+
+	return errs
+}
+
 func checkSingleConfigSource(a *Agent) field.ErrorList {
 	if a.Spec.Config != nil && a.Spec.ConfigRef != nil {
 		msg := "Specify at most one of [`config`, `configRef`], not both"
@@ -136,9 +177,20 @@ func checkSingleConfigSource(a *Agent) field.ErrorList {
 }
 
 func checkSpec(a *Agent) field.ErrorList {
-	if (a.Spec.DaemonSet == nil && a.Spec.Deployment == nil) || (a.Spec.DaemonSet != nil && a.Spec.Deployment != nil) {
+	enabledSpecs := 0
+	if a.Spec.DaemonSet != nil {
+		enabledSpecs++
+	}
+	if a.Spec.Deployment != nil {
+		enabledSpecs++
+	}
+	if a.Spec.StatefulSet != nil {
+		enabledSpecs++
+	}
+
+	if enabledSpecs != 1 {
 		return field.ErrorList{
-			field.Invalid(field.NewPath("spec"), a.Spec, "either daemonset or deployment must be specified"),
+			field.Invalid(field.NewPath("spec"), a.Spec, "either daemonSet or deployment or statefulSet must be specified"),
 		}
 	}
 	return nil

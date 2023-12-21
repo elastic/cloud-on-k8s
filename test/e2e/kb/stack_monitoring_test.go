@@ -31,7 +31,7 @@ func TestKBStackMonitoring(t *testing.T) {
 	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources) // TODO revert when https://github.com/elastic/cloud-on-k8s/issues/7376 is resolved.
 	monitored := kibana.NewBuilder("test-kb-mon-a").
 		WithElasticsearchRef(assocEs.Ref()).
 		WithNodeCount(1).

@@ -17,6 +17,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -63,7 +64,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
-							Labels:    map[string]string{KibanaNameLabelName: defaultKibana.Name},
+							Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{},
 					}},
@@ -84,7 +85,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
-							Labels:    map[string]string{KibanaNameLabelName: defaultKibana.Name},
+							Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{
 							SettingsFilename: []byte("eW8h"),
@@ -108,7 +109,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList
-			labelSelector := client.MatchingLabels(map[string]string{KibanaNameLabelName: tt.args.kb.Name})
+			labelSelector := client.MatchingLabels(map[string]string{kblabel.KibanaNameLabelName: tt.args.kb.Name})
 			err = k8sClient.List(context.Background(), &secrets, labelSelector)
 			assert.NoError(t, err)
 			err = tt.assertions(secrets)

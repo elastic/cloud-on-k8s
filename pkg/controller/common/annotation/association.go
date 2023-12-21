@@ -10,13 +10,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 )
 
-const (
-	// CurrAssocStatusAnnotation describes the currently observed association status of an object.
-	CurrAssocStatusAnnotation = "association.k8s.elastic.co/current-status"
-	// PrevAssocStatusAnnotation describes the previously observed association status of an object.
-	PrevAssocStatusAnnotation = "association.k8s.elastic.co/previous-status"
-)
-
 // ForAssociationStatusChange constructs the annotation map for an association status change event.
 func ForAssociationStatusChange(prevStatus, currStatus commonv1.AssociationStatusMap) (map[string]string, error) {
 	return map[string]string{

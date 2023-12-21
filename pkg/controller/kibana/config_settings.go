@@ -80,7 +80,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -157,8 +157,8 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		}
 	}
 
-	// merge the configuration with userSettings last so they take precedence
-	if err = cfg.MergeWith(userSettings); err != nil {
+	// Kibana settings from a StackConfigPolicy takes precedence over user provided settings, merge them last.
+	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
 	}
 

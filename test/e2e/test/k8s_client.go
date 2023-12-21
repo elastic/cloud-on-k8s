@@ -41,7 +41,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/enterprisesearch"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/v2/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -415,7 +415,7 @@ func ESPodListOptionsByNodeSet(esNamespace, esName, nodeSetName string) []k8scli
 func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(kbNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		kibana.KibanaNameLabelName: kbName,
+		kblabel.KibanaNameLabelName: kbName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

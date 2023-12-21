@@ -8,9 +8,12 @@ import (
 	"context"
 	"encoding/json"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	commonlabels "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -24,24 +27,27 @@ import (
 )
 
 const (
-	ElasticSearchConfigKey                           = "elasticsearch.json"
-	SecretsMountKey                                  = "secretMounts.json"
-	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
-	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
+	ElasticSearchConfigKey = "elasticsearch.json"
+	SecretsMountKey        = "secretMounts.json"
 )
 
 func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (corev1.Secret, error) {
-	secretMountBytes, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
-	if err != nil {
-		return corev1.Secret{}, err
-	}
-	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
-	var configDataJSONBytes []byte
-	if policy.Spec.Elasticsearch.Config != nil {
-		configDataJSONBytes, err = policy.Spec.Elasticsearch.Config.MarshalJSON()
+	data := make(map[string][]byte)
+	if len(policy.Spec.Elasticsearch.SecretMounts) > 0 {
+		secretMountBytes, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+		data[SecretsMountKey] = secretMountBytes
+	}
+
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+	if policy.Spec.Elasticsearch.Config != nil {
+		configDataJSONBytes, err := policy.Spec.Elasticsearch.Config.MarshalJSON()
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		data[ElasticSearchConfigKey] = configDataJSONBytes
 	}
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -52,20 +58,17 @@ func newElasticsearchConfigSecret(policy policyv1alpha1.StackConfigPolicy, es es
 				Namespace: es.Namespace,
 			}),
 			Annotations: map[string]string{
-				ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
+				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
 			},
 		},
-		Data: map[string][]byte{
-			ElasticSearchConfigKey: configDataJSONBytes,
-			SecretsMountKey:        secretMountBytes,
-		},
+		Data: data,
 	}
 
-	// Set Elasticsearch as the soft owner
+	// Set StackConfigPolicy as the soft owner
 	filesettings.SetSoftOwner(&elasticsearchConfigSecret, policy)
 
 	// Add label to delete secret on deletion of the stack config policy
-	elasticsearchConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
+	elasticsearchConfigSecret.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
 	return elasticsearchConfigSecret, nil
 }
@@ -93,7 +96,7 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 					Namespace: es.Namespace,
 				}),
 				Annotations: map[string]string{
-					SourceSecretAnnotationName: secretMount.SecretName,
+					commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
 				},
 			},
 			Data: additionalSecret.Data,
@@ -103,10 +106,9 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 		filesettings.SetSoftOwner(&expected, *policy)
 
 		// Set the secret to be deleted when the stack config policy is deleted.
-		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanObjectDeleteOnPolicyDelete
+		expected.Labels[commonlabels.StackConfigPolicyOnDeleteLabelName] = commonlabels.OrphanSecretDeleteOnPolicyDelete
 
-		_, err := reconciler.ReconcileSecret(ctx, c, expected, nil)
-		if err != nil {
+		if _, err := reconciler.ReconcileSecret(ctx, c, expected, nil); err != nil {
 			return err
 		}
 	}
@@ -118,4 +120,24 @@ func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, s
 		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
 	}
 	return hash.HashObject(secretMounts)
+}
+
+// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config and secret mounts from the stack config policy have been applied to the Elasticsearch cluster.
+func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, policy policyv1alpha1.StackConfigPolicy, es esv1.Elasticsearch) (bool, error) {
+	// Get Pods for the given Elasticsearch
+	podList := corev1.PodList{}
+	if err := c.List(ctx, &podList, client.InNamespace(es.Namespace), client.MatchingLabels{
+		eslabel.ClusterNameLabelName: es.Name,
+	}); err != nil || len(podList.Items) == 0 {
+		return false, err
+	}
+
+	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+	for _, esPod := range podList.Items {
+		if esPod.Annotations[commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

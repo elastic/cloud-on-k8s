@@ -43,6 +43,20 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
+			Name:      "create-valid-kibana",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{}
+				m.Spec.Kibana = policyv1alpha1.KibanaConfigPolicySpec{
+					Config: &commonv1.Config{Data: map[string]interface{}{"a": "b"}},
+				}
+				return serialize(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "unknown-field",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
@@ -87,7 +101,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
-				"Elasticsearch settings are mandatory and must not be empty",
+				"One out of Elasticsearch or Kibana settings is mandatory, both must not be empty",
 			),
 		},
 		{

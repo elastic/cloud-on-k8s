@@ -1,0 +1,180 @@
+:parent_page_id: auth-config-using-stack-config-policy
+:page_id: oidc-stack-config-policy
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= OIDC using Elastic stack configuration policy
+
+NOTE: This requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
+
+TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elasticsearch/reference/current/oidc-guide.html[guide to setting up OpenID Connect with Elasticsearch].
+
+Configuring OpenID Connect using Elastic Stack configuration policy
+
+. Add OIDC realm to the `elasticsearch.yml` file using the `config` field under `elasticsearch` in the Elastic Stack configuration policy, also enable token service. 
+
++
+NOTE: Below snippet is an example of using Google as OpenID provider, the values will change depending on the provider being used.
+
++
+[source,yaml,subs="attributes,+macros"]
+----
+elasticsearch:
+    config:
+       xpack:
+         security:
+           authc:
+             token.enabled: true
+             realms:
+               oidc:
+                 oidc1:
+                   order: 2
+                   rp.client_id: "<client id>"
+                   rp.response_type: "code"
+                   rp.requested_scopes: ["openid", "email"]
+                   rp.redirect_uri: "${KIBANA_URL}/api/security/oidc/callback"
+                   op.issuer: "https://accounts.google.com"
+                   op.authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth"
+                   op.token_endpoint: "https://oauth2.googleapis.com/token"
+                   op.userinfo_endpoint: "https://openidconnect.googleapis.com/v1/userinfo"
+                   op.jwkset_path: "https://www.googleapis.com/oauth2/v3/certs"
+                   claims.principal: email
+                   claim_patterns.principal: "^([^@]+)@elastic\\.co$"
+----
+
+. Another piece of configuration of the OpenID Connect realm is to set the Client Secret that was assigned to the Relying Parties (RP) during registration in the OpenID Connect Provider (OP). This is a secure setting and as such is not defined in the realm configuration in `elasticsearch.yml` but added to the Elasticsearch keystore. To set this up using Elastic Stack configuration policy, use the following steps.
+    .. Create a secret in the operator namespace that has the Client Secret
++
+[source,sh]
+----
+kubectl create secret generic oidc-client-secret --from-literal=xpack.security.authc.realms.oidc.oidc1.rp.client_secret=<client_secret>
+----
+    .. Add the secret name to the `secureSettings` field under `elasticsearch`
++
+[source,yaml,subs="attributes,+macros"]
+----
+elasticsearch:
+    secureSettings:
+    - secretName: oidc-client-secret
+----
+
+. When a user authenticates using OpenID Connect, they are identified to the Elastic Stack, but this does not automatically grant them access to perform any actions or access any data. Your OpenID Connect users cannot do anything until they are assigned roles. Roles can be assigned by adding role mappings to the Elastic Stack configuration policy. The below example is giving a specific user access as a superuser to Elasticsearch, if you want to assign roles to all users authenticating with OIDC, you can remove the username field.
+
++
+[source,yaml,subs="attributes,+macros"]
+----
+elasticsearch:
+    secureSettings:
+    - secretName: oidc-client-secret
+    securityRoleMappings:
+      oidc_kibana:
+        roles: [ "superuser" ]
+        rules:
+          all:
+            - field: { realm.name: "oidc1" }
+            - field: { username: "<username>" }
+        enabled: true
+----
+
+. Update Kibana to use OpenID Connect as the authentication provider:
+
++
+[source,yaml,subs="attributes,+macros"]
+----
+kibana:
+    config:
+      xpack.security.authc.providers:
+        oidc.oidc1:
+          order: 0
+          realm: oidc1
+          description: "Log in with GCP"
+----
+
+Example full Elastic Stack configuration policy to configure oidc
+
+[source,yaml,subs="attributes,+macros,callouts"]
+----
+apiVersion: stackconfigpolicy.k8s.elastic.co/v1alpha1
+kind: StackConfigPolicy
+metadata:
+  name: test-stack-config-policy
+spec:
+  resourceSelector:
+    matchLabels:
+      env: my-label
+  secureSettings:
+  - secretName: oidc-secret
+  elasticsearch:
+    secureSettings:
+    - secretName: oidc-secret
+    securityRoleMappings:
+      oidc_kibana:
+        roles: [ "superuser" ]
+        rules:
+          all:
+            - field: { realm.name: "oidc1" }
+            - field: { username: "<username>" }
+        enabled: true
+    config:
+       logger.org.elasticsearch.discovery: DEBUG
+       xpack:
+         security:
+           authc:
+             token.enabled: true
+             realms:
+               oidc:
+                 oidc1:
+                   order: 2
+                   rp.client_id: "<client id>"
+                   rp.response_type: "code"
+                   rp.requested_scopes: ["openid", "email"]
+                   rp.redirect_uri: "${KIBANA_URL}/api/security/oidc/callback" <1>
+                   op.issuer: "https://accounts.google.com"
+                   op.authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth"
+                   op.token_endpoint: "https://oauth2.googleapis.com/token"
+                   op.userinfo_endpoint: "https://openidconnect.googleapis.com/v1/userinfo"
+                   op.jwkset_path: "https://www.googleapis.com/oauth2/v3/certs"
+                   claims.principal: email
+                   claim_patterns.principal: "^([^@]+)@elastic\\.co$"
+  kibana:
+    config:
+      xpack.security.authc.providers:
+        oidc.oidc1:
+          order: 0
+          realm: oidc1
+          description: "Log in with GCP"
+        basic.basic1:
+          order: 1
+----
+
+<1> The Kibana URL should be an environment variable that should be configured on the Elasticsearch Clusters managed by the Elastic Stack Configuration policy. This can be done by adding an environment variable to the pod template in the Elasticsearch CR.
++
+[source,yaml,subs="attributes,+macros"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+  namespace: kvalliy
+  labels:
+    env: my-label
+spec:
+  version: 8.10.3
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+            - name: KIBANA_URL
+              value: "https://kibana.eck-ocp.elastic.dev"
+----
+
+NOTE: The OpenID Connect Provider (OP) should have support to configure multiple Redirect URLs, so that the same `rp.client_id` and `client_secret` can be used for all the Elasticsearch clusters managed by the Elastic Stack configuration policy.

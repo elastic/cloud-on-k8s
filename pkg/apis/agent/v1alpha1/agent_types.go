@@ -65,16 +65,21 @@ type AgentSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
-	// Cannot be used along with `deployment`.
+	// Cannot be used along with `deployment` or `statefulSet`.
 	// +kubebuilder:validation:Optional
 	DaemonSet *DaemonSetSpec `json:"daemonSet,omitempty"`
 
 	// Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec.
-	// Cannot be used along with `daemonSet`.
+	// Cannot be used along with `daemonSet` or `statefulSet`.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 
-	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment.
+	// StatefulSet specifies the Agent should be deployed as a StatefulSet, and allows providing its spec.
+	// Cannot be used along with `daemonSet` or `deployment`.
+	// +kubebuilder:validation:Optional
+	StatefulSet *StatefulSetSpec `json:"statefulSet,omitempty"`
+
+	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment or StatefulSet.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
@@ -125,6 +130,32 @@ type DeploymentSpec struct {
 	Replicas    *int32                 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:Optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+}
+
+type StatefulSetSpec struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	Replicas    *int32                 `json:"replicas,omitempty"`
+	ServiceName string                 `json:"serviceName,omitempty"`
+
+	// PodManagementPolicy controls how pods are created during initial scale up,
+	// when replacing pods on nodes, or when scaling down. The default policy is
+	// `Parallel`, where pods are created in parallel to match the desired scale
+	// without waiting, and on scale down will delete all pods at once.
+	// The alternative policy is `OrderedReady`, the default for vanilla kubernetes
+	// StatefulSets, where pods are created in increasing order in increasing order
+	// (pod-0, then pod-1, etc.) and the controller will wait until each pod is ready before
+	// continuing. When scaling down, the pods are removed in the opposite order.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=OrderedReady;Parallel
+	// +kubebuilder:default:=Parallel
+	PodManagementPolicy appsv1.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
+	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod.
+	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
+	// Items defined here take precedence over any default claims added by the operator with the same name.
+	// +kubebuilder:validation:Optional
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
 // AgentStatus defines the observed state of the Agent

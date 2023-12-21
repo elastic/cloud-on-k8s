@@ -1,0 +1,469 @@
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 8.10.4
+  elasticsearchRefs:
+  - name: elasticsearch
+  statefulSet:
+    podTemplate:
+      metadata:
+        labels:
+          app.kubernetes.io/name: kube-state-metrics
+      spec:
+        automountServiceAccountToken: true
+        serviceAccountName: elastic-agent
+        containers:
+        - image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.0
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          name: kube-state-metrics
+          args:
+            - --pod=$(POD_NAME)
+            - --pod-namespace=$(POD_NAMESPACE)
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 8080
+              name: http-metrics
+            - containerPort: 8081
+              name: telemetry
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+        - name: agent
+          securityContext:
+            runAsUser: 0
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+  config:
+    agent:
+      monitoring:
+        namespace: default
+        use_output: default
+        enabled: true
+        logs: true
+        metrics: true
+    providers:
+      kubernetes_leaderelection:
+        enabled: false
+    inputs:
+      - id: kubernetes/metrics-kube-state-metrics
+        type: kubernetes/metrics
+        data_stream:
+          namespace: default
+        use_output: default
+        streams:
+          - id: kubernetes/metrics-kubernetes.state_container
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_container
+            metricsets:
+              - state_container
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_cronjob
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_cronjob
+            metricsets:
+              - state_cronjob
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_daemonset
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_daemonset
+            metricsets:
+              - state_daemonset
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_deployment
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_deployment
+            metricsets:
+              - state_deployment
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_job
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_job
+            metricsets:
+              - state_job
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_node
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_node
+            metricsets:
+              - state_node
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_persistentvolume
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_persistentvolume
+            metricsets:
+              - state_persistentvolume
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_persistentvolumeclaim
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_persistentvolumeclaim
+            metricsets:
+              - state_persistentvolumeclaim
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_pod
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_pod
+            metricsets:
+              - state_pod
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_replicaset
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_replicaset
+            metricsets:
+              - state_replicaset
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_resourcequota
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_resourcequota
+            metricsets:
+              - state_resourcequota
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_service
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_service
+            metricsets:
+              - state_service
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_statefulset
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_statefulset
+            metricsets:
+              - state_statefulset
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - id: kubernetes/metrics-kubernetes.state_storageclass
+            data_stream:
+              type: metrics
+              dataset: kubernetes.state_storageclass
+            metricsets:
+              - state_storageclass
+            add_metadata: true
+            hosts:
+              - "localhost:8080"
+            period: 10s
+            bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        meta:
+          package:
+            name: kubernetes
+            version: 1.51.0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: exporter
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/version: 2.10.0
+  name: kube-state-metrics
+  namespace: kube-system
+spec:
+  clusterIP: None
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+    - name: telemetry
+      port: 8081
+      targetPort: telemetry
+  selector:
+    app.kubernetes.io/name: kube-state-metrics
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources:
+      - namespaces
+      - pods
+      - persistentvolumes
+      - persistentvolumeclaims
+      - persistentvolumeclaims/status
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - nodes/stats
+      - services
+      - events
+      - configmaps
+      - secrets
+      - nodes
+      - pods
+      - services
+      - serviceaccounts
+      - resourcequotas
+      - replicationcontrollers
+      - limitranges
+      - endpoints
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+      - volumeattachments
+    verbs:
+      - get
+      - watch
+      - list
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+      - watch
+      - list
+  - nonResourceURLs:
+      - /healthz
+      - /healthz/*
+      - /livez
+      - /livez/*
+      - /metrics
+      - /metrics/slis
+      - /readyz
+      - /readyz/*
+    verbs:
+      - get
+  - apiGroups: ["apps"]
+    resources:
+      - replicasets
+      - deployments
+      - daemonsets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+      - ingressclasses
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - update
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+      - clusterroles
+      - rolebindings
+      - roles
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 8.10.4
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.10.4
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+...

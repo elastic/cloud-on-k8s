@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -112,7 +112,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 						return
 					}
 
-					assert.Equal(t, expectedSecret.Data, getSecretMountSecret(t, esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName), "test-ns", "test-policy", "test-policy-ns", "delete").Data, "secrets do not match")
+					require.Equal(t, expectedSecret.Data, getSecretMountSecret(t, esv1.ESNamer.Suffix(tt.args.es.Name, secretMount.SecretName), "test-ns", "test-policy", "test-policy-ns", "delete").Data, "secrets do not match")
 				}
 			}
 		})
@@ -127,6 +127,7 @@ func getSecretMountSecret(t *testing.T, name string, namespace string, policyNam
 			Namespace: namespace,
 			Labels: map[string]string{
 				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
+				"common.k8s.elastic.co/type":                "elasticsearch",
 				"asset.policy.k8s.elastic.co/on-delete":     orphanObjectOnPolicyDeleteStratergy,
 				"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
 				"eck.k8s.elastic.co/owner-name":             policyName,
