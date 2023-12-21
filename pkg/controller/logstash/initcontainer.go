@@ -29,7 +29,9 @@ http_cert_path=` + certificates.HTTPCertificatesSecretVolumeMountPath + `
 
 if [[ "$USE_TLS" == "true" ]] && [[ -d "$http_cert_path" ]] && [[ "$(ls -A $http_cert_path)" ]]; then
     echo "Setup Logstash keystore for API server"
-	ln -sf $http_cert_path/` + certificates.CAFileName + ` $mount_path
+	if [[ -e $http_cert_path/` + certificates.CAFileName + ` ]]; then
+		ln -sf $http_cert_path/` + certificates.CAFileName + ` $mount_path
+	fi
 	ln -sf $http_cert_path/` + certificates.CertFileName + ` $mount_path
 	ln -sf $http_cert_path/` + certificates.KeyFileName + ` $mount_path
 	openssl pkcs12 -export -in $mount_path/` + certificates.CertFileName + ` -inkey $mount_path/` + certificates.KeyFileName + ` -out $mount_path/` + APIKeystoreFileName + ` -name "logstash_tls" -passout "pass:$API_KEYSTORE_PASS"
