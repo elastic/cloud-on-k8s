@@ -40,7 +40,7 @@ type Params struct {
 
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
-	UseTLS            bool                      // Logstash API Server
+	UseTLS            bool                      // Logstash API Server uses TLS
 	LogstashConfig    *settings.CanonicalConfig // logstash.yml config
 }
 

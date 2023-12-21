@@ -213,7 +213,7 @@ func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
 	return httpCerts, nil
 }
 
-// writeHTTPSCertsToConfigHash fetch the http-certs-internal secret and use the content of tls.crt to calculate the checksum
+// writeHTTPSCertsToConfigHash fetches the http-certs-internal secret and adds the content of tls.crt to checksum
 func writeHTTPSCertsToConfigHash(params Params, configHash hash.Hash) error {
 	if params.UseTLS {
 		httpCerts, err := getHTTPSInternalCertsSecret(params)

@@ -114,7 +114,7 @@ func tlsConfig(useTLS bool) *settings.CanonicalConfig {
 	})
 }
 
-// checkTLSConfig ensure logstash config `api.ssl.enabled` matches the TLS setting of API service
+// checkTLSConfig ensures logstash config `api.ssl.enabled` matches the TLS setting of API service, otherwise throws error
 func checkTLSConfig(cfg *settings.CanonicalConfig, useTLS bool) error {
 	sslEnabled, err := cfg.String("api.ssl.enabled")
 	if err != nil {

@@ -18,11 +18,10 @@ const (
 	LogstashAPIServiceName = "api"
 )
 
-// reconcileServices reconcile Services defined in spec
+// reconcileServices reconcile Services defined in spec, return Services, the API Service, error
 //
 // When a service is defined that matches the API service name, then that service is used to define
-// the service for the logstash API. If not, then a default service is created for the API service
-// return Services, the API Service, error
+// the service for the logstash API. If not, then a default service is created for the API service.
 func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) {
 	var apiSvc corev1.Service
 	createdAPIService := false
