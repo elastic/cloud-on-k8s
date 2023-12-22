@@ -61,7 +61,7 @@ func TestEntSearchAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esKbNamespace).
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO .ds-metrics-fleet_server.agent_status-default index is created with a replica
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	entBuilder := enterprisesearch.NewBuilder(name).
 		WithNamespace(entNamespace).
@@ -113,7 +113,7 @@ func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	name := "test-kb-del-referenced-es"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(2, elasticsearch.DefaultResources) // TODO .ds-metrics-fleet_server.agent_status-default index is created with a replica
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
