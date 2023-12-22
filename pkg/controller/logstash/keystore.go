@@ -23,7 +23,7 @@ var (
 	keystoreCommand          = "echo 'y' | /usr/share/logstash/bin/logstash-keystore"
 	initContainersParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         keystoreCommand + " create",
-		KeystoreAddCommand:            keystoreCommand + ` add "$key" --stdin < "$filename"`,
+		KeystoreAddCommand:            keystoreCommand + ` add "$key" < "$filename"`,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		KeystoreVolumePath:            volume.ConfigMountPath,
 		Resources: corev1.ResourceRequirements{
