@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -29,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test/logstash"
 )
 
 func TestGlobalCA(t *testing.T) {
@@ -59,6 +61,14 @@ func TestGlobalCA(t *testing.T) {
 		WithElasticsearchRefs(elasticagent.ToOutput(es.Ref(), "default")).
 		WithDefaultESValidation(elasticagent.HasWorkingDataStream(elasticagent.LogsType, "elastic_agent", "default"))
 	agent = elasticagent.ApplyYamls(t, agent, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate)
+	ls := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithElasticsearchRefs(
+			logstashv1alpha1.ElasticsearchCluster{
+				ObjectSelector: es.Ref(),
+				ClusterName:    "es",
+			}).
+		WithGlobalCA(true)
 
 	// create a self-signed CA for testing purposes
 	duration := 48 * time.Hour
@@ -86,6 +96,7 @@ func TestGlobalCA(t *testing.T) {
 	// check for update rollout (e.g. observed generation or hash changes)
 	kbUpd := kb.DeepCopy().WithGlobalCA(false)
 	entUpd := ent.DeepCopy().WithGlobalCA(false)
+	lsUpd := ls.DeepCopy().WithGlobalCA(false)
 
 	esUpd := test.WrappedBuilder{
 		BuildingThis: es.DeepCopy().WithGlobalCA(false),
@@ -124,12 +135,14 @@ func TestGlobalCA(t *testing.T) {
 			// add the other builder checks here because we are not really mutating the resources we just want to check
 			// that the CA change gets picked up and secrets are created for example
 			return kbUpd.CheckK8sTestSteps(k).WithSteps(
-				entUpd.CheckK8sTestSteps(k),
+				entUpd.CheckK8sTestSteps(k).WithSteps(
+					lsUpd.CheckK8sTestSteps(k),
+				),
 			)
 		},
 	}
 
-	test.RunMutations(t, []test.Builder{es, kb, ent, agent, testPod}, []test.Builder{esUpd})
+	test.RunMutations(t, []test.Builder{es, kb, ent, agent, ls, testPod}, []test.Builder{esUpd})
 }
 
 func removeFromOperatorConfig(k k8s.Client, key string) error {
