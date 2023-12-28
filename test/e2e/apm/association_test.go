@@ -33,7 +33,7 @@ func TestCrossNSAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO: revert when https://github.com/elastic/cloud-on-k8s/issues/7418 is resolved.
 		WithRestrictedSecurityContext()
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNamespace(apmNamespace).
@@ -61,7 +61,7 @@ func TestAPMKibanaAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(ns).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources). // TODO: revert when https://github.com/elastic/cloud-on-k8s/issues/7418 is resolved.
 		WithRestrictedSecurityContext()
 
 	kbBuilder := kibana.NewBuilder(name).
