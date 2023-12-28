@@ -118,7 +118,7 @@ func tlsConfig(useTLS bool) *settings.CanonicalConfig {
 func checkTLSConfig(cfg *settings.CanonicalConfig, useTLS bool) error {
 	sslEnabled, err := cfg.String("api.ssl.enabled")
 	if err != nil {
-		sslEnabled = "false"
+		sslEnabled = "true"
 	}
 
 	if strconv.FormatBool(useTLS) != sslEnabled {

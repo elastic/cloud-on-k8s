@@ -38,21 +38,6 @@ func Test_newConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash:    v1alpha1.Logstash{},
 			},
-			want: `api:
-    http:
-        host: 0.0.0.0
-config:
-    reload:
-        automatic: true
-`,
-			wantErr: false,
-		},
-		{
-			name: "no user config with TLS",
-			args: args{
-				runtimeObjs: nil,
-				logstash:    v1alpha1.Logstash{},
-			},
 			useTLS: true,
 			want: `api:
     http:
@@ -102,9 +87,15 @@ log:
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash:    logstashWithConfigRef("cfg", nil),
 			},
+			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: ch@ng3m3
+            path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
         automatic: true
@@ -121,9 +112,15 @@ log:
 					"log.level": "warn",
 				}}),
 			},
+			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: ch@ng3m3
+            path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
         automatic: true
