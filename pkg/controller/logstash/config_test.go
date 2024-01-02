@@ -28,7 +28,6 @@ func Test_newConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		useTLS  bool
 		want    string
 		wantErr bool
 	}{
@@ -38,7 +37,6 @@ func Test_newConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash:    v1alpha1.Logstash{},
 			},
-			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
@@ -64,7 +62,6 @@ config:
 					}}},
 				},
 			},
-			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
@@ -87,7 +84,6 @@ log:
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash:    logstashWithConfigRef("cfg", nil),
 			},
-			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
@@ -112,7 +108,6 @@ log:
 					"log.level": "warn",
 				}}),
 			},
-			useTLS: true,
 			want: `api:
     http:
         host: 0.0.0.0
@@ -156,8 +151,37 @@ log:
 					},
 				},
 			},
-			useTLS:  true,
 			wantErr: true,
+		},
+		{
+			name: "logstash config disables TLS and service disables TLS",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Config: &commonv1.Config{Data: map[string]interface{}{
+							"api.ssl.enabled": "false",
+						}},
+						Services: []v1alpha1.LogstashService{{
+							Name: LogstashAPIServiceName,
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: "false"
+config:
+    reload:
+        automatic: true
+`,
 		},
 	}
 	for _, tt := range tests {
@@ -168,7 +192,7 @@ log:
 				EventRecorder: record.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
-				UseTLS:        tt.useTLS,
+				UseTLS:        tt.args.logstash.APIServerTLSOptions().Enabled(),
 			}
 
 			got, err := buildConfig(params)
