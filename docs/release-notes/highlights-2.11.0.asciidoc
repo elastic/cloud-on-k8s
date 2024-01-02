@@ -1,0 +1,20 @@
+[[release-highlights-2.11.0]]
+== 2.11.0 release highlights
+
+[float]
+[id="{p}-2110-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.11.0 of {n}. Check <<release-notes-2.11.0>> for the full list of changes.
+
+[float]
+[id="{p}-2110-kibana-stack-config-policy"]
+=== Allowing Kibana configuration in stack configuration policies
+
+ECK 2.11.0 supports managing Kibana Authentication Policies via Stack Config Policies (see https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-securing-stack.html[examples]).
+
+[float]
+[id="{p}-2110-agent-statefulset-deployment-option"]
+=== StatefulSet as a deployment option for Elastic Agent
+
+ECK 2.11.0 supports running Elastic Agent as a StatefulSet (see https://github.com/elastic/cloud-on-k8s/blob/main/config/recipes/elastic-agent/ksm-sharding.yaml[example]).
