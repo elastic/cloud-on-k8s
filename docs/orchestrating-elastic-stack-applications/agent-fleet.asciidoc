@@ -383,7 +383,7 @@ You can upgrade the Elastic Agent version or change settings by editing the YAML
 [id="{p}-elastic-agent-fleet-configuration-chose-the-deployment-model"]
 === Choose the deployment model
 
-Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] or a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet]. To choose how to deploy your Elastic Agents, provide a `podTemplate` element under the `deployment` or the `daemonSet` element in the specification. If you choose the `deployment` option, you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
+Depending on the use case, Elastic Agent may need to be deployed as a link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment], a link:https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/[DaemonSet], or a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulSet/[StatefulSet]. To choose how to deploy your Elastic Agents, provide a `podTemplate` element under the `deployment` or the `daemonSet` element in the specification. If you choose the `deployment` option, you can additionally specify the link:https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy[strategy] used to replace old Pods with new ones.
 
 Similarly, you can set the link:https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/[update strategy] when deploying as a DaemonSet. This allows you to control the rollout speed for new configuration by modifying the `maxUnavailable` setting:
 
