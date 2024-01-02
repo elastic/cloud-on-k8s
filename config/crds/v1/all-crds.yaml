@@ -10714,29 +10714,7 @@ spec:
             type: object
           status:
             properties:
-              errors:
-                description: Errors is the number of resources which have an incorrect
-                  configuration
-                type: integer
-              observedGeneration:
-                description: ObservedGeneration is the most recent generation observed
-                  for this StackConfigPolicy.
-                format: int64
-                type: integer
-              phase:
-                description: Phase is the phase of the StackConfigPolicy.
-                type: string
-              ready:
-                description: Ready is the number of resources successfully configured.
-                type: integer
-              readyCount:
-                description: ReadyCount is a human representation of the number of
-                  resources successfully configured.
-                type: string
-              resources:
-                description: Resources is the number of resources to be configured.
-                type: integer
-              resourcesStatuses:
+              details:
                 additionalProperties:
                   additionalProperties:
                     description: ResourcePolicyStatus models the status of the policy
@@ -10766,11 +10744,33 @@ spec:
                         type: string
                     type: object
                   type: object
-                description: ResourcesStatuses holds the status for each resource
-                  to be configured.
+                description: Details holds the status details for each resource to
+                  be configured.
                 type: object
+              errors:
+                description: Errors is the number of resources which have an incorrect
+                  configuration
+                type: integer
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this StackConfigPolicy.
+                format: int64
+                type: integer
+              phase:
+                description: Phase is the phase of the StackConfigPolicy.
+                type: string
+              ready:
+                description: Ready is the number of resources successfully configured.
+                type: integer
+              readyCount:
+                description: ReadyCount is a human representation of the number of
+                  resources successfully configured.
+                type: string
+              resources:
+                description: Resources is the number of resources to be configured.
+                type: integer
             required:
-            - resourcesStatuses
+            - details
             type: object
         type: object
     served: true

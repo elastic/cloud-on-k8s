@@ -432,7 +432,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.ResourcesStatuses["elasticsearch"]["ns/test-es"].Phase)
+				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
@@ -485,7 +485,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
-				assert.Equal(t, "invalid cluster settings", policy.Status.ResourcesStatuses["elasticsearch"]["ns/test-es"].Error.Message)
+				assert.Equal(t, "invalid cluster settings", policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message)
 			},
 			wantErr:          false,
 			wantRequeue:      true,
@@ -666,8 +666,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.ResourcesStatuses["elasticsearch"]["ns/test-es"].Phase)
-				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.ResourcesStatuses["kibana"]["ns/test-kb"].Phase)
+				assert.Equal(t, policyv1alpha1.UnknownPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Details["kibana"]["ns/test-kb"].Phase)
 				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
@@ -685,8 +685,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
-				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.ResourcesStatuses["elasticsearch"]["ns/test-es"].Phase)
-				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.ResourcesStatuses["kibana"]["ns/test-kb"].Phase)
+				assert.Equal(t, policyv1alpha1.ReadyPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Details["kibana"]["ns/test-kb"].Phase)
 				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Phase)
 			},
 			wantErr:          false,
