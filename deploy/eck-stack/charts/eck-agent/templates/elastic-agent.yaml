@@ -12,7 +12,7 @@ metadata:
     {{- end }}
 spec:
   version: {{ required "An Elastic Agent version is required" .Values.version }}
-  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) }}
-  {{ fail "At least one of daemonSet or deployment is required" }}
+  {{- if and (not (hasKey .Values.spec "daemonSet")) (not (hasKey .Values.spec "deployment")) (not (hasKey .Values.spec "statefulSet")) }}
+  {{ fail "At least one of daemonSet or deployment or statefulSet is required" }}
   {{- end }}
   {{- toYaml .Values.spec | nindent 2 }}
