@@ -1,0 +1,2 @@
+config:
+  console.ui.enabled: false
