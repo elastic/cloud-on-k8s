@@ -10,7 +10,7 @@
 [float]
 === New features
 
-* Introduce Kibana config field in stack config policy allowing management of authentication policies {pull}7324[#7324]
+* Introduce Kibana config field in stack config policy {pull}7324[#7324]
 * Add StatefulSet as a deployment option for Elastic Agent {pull}7357[#7357]
 
 [[enhancement-2.11.0]]
@@ -35,13 +35,13 @@
 [float]
 === Documentation improvements
 
-* Add doc changes to include the new fields in stack config policy {pull}7381[#7381]
+* Document how to use stack config policies to manage authentication {pull}7381[#7381]
 * Document known issue with Kibana 8.11.2 using secure settings {pull}7373[#7373] (issue: {issue}7371[#7371])
-* Add details about rolling restarts behaviors {pull}7372[#7372]
-* Update node-configuration documentation to note Reserved Settings. {pull}7351[#7351]
+* Add details about rolling restart behaviors {pull}7372[#7372]
+* Update node configuration documentation to note reserved settings. {pull}7351[#7351]
 * Use `docker.io/bash` for sleep container of max-map-count-setter Daemonset {pull}7332[#7332]
-* Update beats stack monitoring recipe {pull}7322[#7322]
-* Add doc for basic snapshot repository setup for Azure {pull}7308[#7308]
+* Update Beats stack monitoring recipe {pull}7322[#7322]
+* Document basic snapshot repository setup for Azure {pull}7308[#7308]
 * Documentation link replaced with markup in 2.10 release notes {pull}7306[#7306]
 * Make plugin installation via initContainer more robust {pull}7305[#7305]
 * Add additional details on CA requirements. {pull}7271[#7271]
