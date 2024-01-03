@@ -37,7 +37,7 @@
 
 * Document how to use stack config policies to manage authentication {pull}7381[#7381]
 * Document known issue with Kibana 8.11.2 using secure settings {pull}7373[#7373] (issue: {issue}7371[#7371])
-* Add details about rolling restart behaviors {pull}7372[#7372]
+* Add details about rolling restart behavior {pull}7372[#7372]
 * Update node configuration documentation to note reserved settings. {pull}7351[#7351]
 * Use `docker.io/bash` for sleep container of max-map-count-setter Daemonset {pull}7332[#7332]
 * Update Beats stack monitoring recipe {pull}7322[#7322]
