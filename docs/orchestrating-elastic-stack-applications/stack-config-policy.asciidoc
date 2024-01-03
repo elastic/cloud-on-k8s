@@ -267,7 +267,7 @@ kubectl get -n b scp test-err-stack-config-policy -o jsonpath="{.status}" | jq .
   "phase": "Error",
   "readyCount": "1/2",
   "resources": 2,
-  "resourcesStatuses": {
+  "details": {
     "elasticsearch": {
       "b/banana-staging": {
         "currentVersion": 1670342369361604600,
