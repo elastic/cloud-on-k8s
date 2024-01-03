@@ -28,7 +28,6 @@
 === Bug fixes
 
 * Update eck-elasticsearch default secureSettings values to be slice. {pull}7397[#7397]
-* Fix secure settings link on stack config policy page {pull}7377[#7377]
 * Fix recipe name to run Fleet as non-root {pull}7313[#7313] (issue: {issue}7312[#7312])
 
 [[docs-2.11.0]]
@@ -36,6 +35,7 @@
 === Documentation improvements
 
 * Document how to use stack config policies to manage authentication {pull}7381[#7381]
+* Fix secure settings link on stack config policy page {pull}7377[#7377]
 * Document known issue with Kibana 8.11.2 using secure settings {pull}7373[#7373] (issue: {issue}7371[#7371])
 * Add details about rolling restart behavior {pull}7372[#7372]
 * Update node configuration documentation to note reserved settings. {pull}7351[#7351]
