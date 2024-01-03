@@ -17,7 +17,7 @@ kubectl get namespaces --no-headers -o custom-columns=:metadata.name \
   | xargs -n1 kubectl delete elastic --all -n
 ----
 +
-This deletes all underlying Elastic Stack resources, included their Pods, Secrets, Services, and so on.
+This deletes all underlying Elastic Stack resources, including their Pods, Secrets, Services, and so on.
 
 . Uninstall the operator:
 +
