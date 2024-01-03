@@ -11,6 +11,7 @@
 === New features
 
 * Introduce Kibana config field in stack config policy {pull}7324[#7324]
+* Introduce Elasticsearch config and additional secret mounts to stack config policy {pull}7233[#7233]
 * Add StatefulSet as a deployment option for Elastic Agent {pull}7357[#7357]
 
 [[enhancement-2.11.0]]
