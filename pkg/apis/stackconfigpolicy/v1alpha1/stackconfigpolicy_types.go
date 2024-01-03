@@ -120,8 +120,8 @@ type IndexTemplates struct {
 }
 
 type StackConfigPolicyStatus struct {
-	// ResourcesStatuses holds the status for each resource to be configured.
-	ResourcesStatuses map[ResourceType]map[string]ResourcePolicyStatus `json:"resourcesStatuses"`
+	// Details holds the status details for each resource to be configured.
+	Details map[ResourceType]map[string]ResourcePolicyStatus `json:"details"`
 	// Resources is the number of resources to be configured.
 	Resources int `json:"resources,omitempty"`
 	// Ready is the number of resources successfully configured.
@@ -185,7 +185,7 @@ type SecretMount struct {
 
 func NewStatus(scp StackConfigPolicy) StackConfigPolicyStatus {
 	status := StackConfigPolicyStatus{
-		ResourcesStatuses:  map[ResourceType]map[string]ResourcePolicyStatus{},
+		Details:            map[ResourceType]map[string]ResourcePolicyStatus{},
 		Phase:              ReadyPhase,
 		ObservedGeneration: scp.Generation,
 	}
@@ -200,27 +200,27 @@ func (s *StackConfigPolicyStatus) setReadyCount() {
 // AddPolicyErrorFor adds given error message to status of a resource. Only one error can be reported per resource
 func (s *StackConfigPolicyStatus) AddPolicyErrorFor(resource types.NamespacedName, phase PolicyPhase, msg string, resourceType ResourceType) error {
 	resourceStatusKey := s.getResourceStatusKey(resource)
-	if s.ResourcesStatuses[resourceType] == nil {
-		s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+	if s.Details[resourceType] == nil {
+		s.Details[resourceType] = make(map[string]ResourcePolicyStatus)
 	}
-	if status, exists := s.ResourcesStatuses[resourceType][resourceStatusKey]; exists && status.Error.Message != "" {
+	if status, exists := s.Details[resourceType][resourceStatusKey]; exists && status.Error.Message != "" {
 		return fmt.Errorf("policy error already exists for resource %q", resource)
 	}
 	resourcePolicyStatus := ResourcePolicyStatus{
 		Phase: phase,
 		Error: PolicyStatusError{Message: msg},
 	}
-	s.ResourcesStatuses[resourceType][resourceStatusKey] = resourcePolicyStatus
+	s.Details[resourceType][resourceStatusKey] = resourcePolicyStatus
 	s.Update()
 	return nil
 }
 
 func (s *StackConfigPolicyStatus) UpdateResourceStatusPhase(resource types.NamespacedName, status ResourcePolicyStatus, applicationConfigsApplied bool, resourceType ResourceType) error {
 	defer func() {
-		if s.ResourcesStatuses[resourceType] == nil {
-			s.ResourcesStatuses[resourceType] = make(map[string]ResourcePolicyStatus)
+		if s.Details[resourceType] == nil {
+			s.Details[resourceType] = make(map[string]ResourcePolicyStatus)
 		}
-		s.ResourcesStatuses[resourceType][s.getResourceStatusKey(resource)] = status
+		s.Details[resourceType][s.getResourceStatusKey(resource)] = status
 		s.Update()
 	}()
 	switch resourceType {
@@ -272,7 +272,7 @@ func (s *StackConfigPolicyStatus) Update() {
 	s.Resources = 0
 	s.Ready = 0
 	s.Errors = 0
-	for _, resourceStatusMap := range s.ResourcesStatuses {
+	for _, resourceStatusMap := range s.Details {
 		for _, status := range resourceStatusMap {
 			s.Resources++
 			// Resource status can be for Kibana or Elasticsearch resources
