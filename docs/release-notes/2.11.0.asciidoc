@@ -4,6 +4,11 @@
 [[release-notes-2.11.0]]
 == {n} version 2.11.0
 
+[[breaking-2.11.0]]
+[float]
+=== Breaking changes
+
+* The `resourceStatuses` field of the status subresource of the Stack Configuration Policy has been renamed to `details`. {pull}7433[#7433]
 
 
 [[feature-2.11.0]]
