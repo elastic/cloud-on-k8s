@@ -1,0 +1,20 @@
+[[release-highlights-2.11.0]]
+== 2.11.0 release highlights
+
+[float]
+[id="{p}-2110-new-and-notable"]
+=== New and notable
+
+New and notable changes in version 2.11.0 of {n}. Check <<release-notes-2.11.0>> for the full list of changes.
+
+[float]
+[id="{p}-2110-kibana-stack-config-policy"]
+=== Allowing Kibana configuration in stack configuration policies
+
+Starting with ECK 2.11.0 support has been added for Kibana and Elasticsearch configuration within the Stack Config Policies which enables a variety of new use cases such as defining common security realms via LDAP, OIDC or JWT for multiple Elasticsearch clusters, refer to <<{p}-securing-stack>> for some examples.
+
+[float]
+[id="{p}-2110-agent-statefulset-deployment-option"]
+=== StatefulSet as a deployment option for Elastic Agent
+
+ECK 2.11.0 supports running Elastic Agent as a StatefulSet. An example can be found link:{eck_github}/blob/{eck_release_branch}/config/recipes/elastic-agent/ksm-sharding.yaml[in the ECK GitHub repository].
