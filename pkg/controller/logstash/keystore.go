@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
@@ -44,7 +44,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 		params.Context,
 		params,
 		&params.Logstash,
-		logstashv1alpha1.Namer,
+		v1alpha1.Namer,
 		NewLabels(params.Logstash),
 		initContainersParameters,
 	); err != nil {
@@ -63,16 +63,12 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 }
 
 // getKeystorePass return env LOGSTASH_KEYSTORE_PASS from main container if set
-func getKeystorePass(logstash logstashv1alpha1.Logstash) *corev1.EnvVar {
-	for _, c := range logstash.Spec.PodTemplate.Spec.Containers {
-		if c.Name == logstashv1alpha1.LogstashContainerName {
-			for _, env := range c.Env {
-				if env.Name == KeystorePassKey {
-					return &env
-				}
-			}
+func getKeystorePass(logstash v1alpha1.Logstash) *corev1.EnvVar {
+	c := getLogstashContainer(logstash.Spec.PodTemplate.Spec.Containers)
+	for _, env := range c.Env {
+		if env.Name == KeystorePassKey {
+			return &env
 		}
 	}
-
 	return nil
 }
