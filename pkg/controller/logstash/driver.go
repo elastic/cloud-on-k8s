@@ -109,10 +109,8 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	configHash := fnv.New32a()
 
-	if _, apiServerConfig, err := reconcileConfig(params, configHash); err != nil {
+	if _, params.APIServerConfig, err = reconcileConfig(params, configHash); err != nil {
 		return results.WithError(err), params.Status
-	} else {
-		params.APIServerConfig = apiServerConfig
 	}
 
 	// reconcile beats config secrets if Stack Monitoring is defined

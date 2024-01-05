@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
@@ -57,7 +57,7 @@ func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalCo
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Logstash.Namespace,
-			Name:      logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+			Name:      v1alpha1.ConfigSecretName(params.Logstash.Name),
 			Labels:    labels.AddCredentialsLabel(params.Logstash.GetIdentityLabels()),
 		},
 		Data: map[string][]byte{
@@ -206,7 +206,7 @@ func getKeystoreEnvKeyValue(params Params) (map[string]string, error) {
 
 	// from ENV
 	for _, c := range params.Logstash.Spec.PodTemplate.Spec.Containers {
-		if c.Name == logstashv1alpha1.LogstashContainerName {
+		if c.Name == v1alpha1.LogstashContainerName {
 			for _, env := range c.Env {
 				data[env.Name] = env.Value
 			}

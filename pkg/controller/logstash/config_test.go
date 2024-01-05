@@ -300,7 +300,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 		},
 	}
 
-	envFromSecretName := "logstash-env-secret"
+	envFromSecretName := "logstash-env-secret" // #nosec G101
 	envFromSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: envFromSecretName},
 		Data: map[string][]byte{
