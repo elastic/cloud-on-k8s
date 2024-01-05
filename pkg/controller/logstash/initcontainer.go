@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 )
@@ -35,7 +36,7 @@ if [[ "$USE_TLS" == "true" ]] && [[ -d "$http_cert_path" ]] && [[ "$(ls -A $http
 	ln -sf $http_cert_path/` + certificates.CertFileName + ` $mount_path
 	ln -sf $http_cert_path/` + certificates.KeyFileName + ` $mount_path
 	openssl pkcs12 -export -in $mount_path/` + certificates.CertFileName + ` -inkey $mount_path/` + certificates.KeyFileName + ` -out $mount_path/` + APIKeystoreFileName + ` -name "logstash_tls" -passout "pass:$API_KEYSTORE_PASS"
-	echo "Logstash keystore successfully prepared."
+	echo "Logstash API server keystore successfully prepared."
 fi
 
 if [[ -f "${init_config_initialized_flag}" ]]; then
@@ -101,8 +102,18 @@ func initConfigContainer(params Params) corev1.Container {
 	}
 
 	if params.UseTLS {
-		apiKeystorePassword, _ := params.LogstashConfig.String("api.ssl.keystore.password")
-		container.Env = append(container.Env, corev1.EnvVar{Name: APIKeystorePassEnv, Value: apiKeystorePassword})
+		container.Env = append(container.Env,
+			corev1.EnvVar{
+				Name: APIKeystorePassEnv,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+						},
+						Key: APIKeystorePassEnv,
+					},
+				},
+			})
 	}
 
 	return container

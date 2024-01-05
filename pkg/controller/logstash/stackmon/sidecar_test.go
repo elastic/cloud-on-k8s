@@ -16,8 +16,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -79,7 +79,7 @@ func TestWithMonitoring(t *testing.T) {
 		name                      string
 		ls                        func() logstashv1alpha1.Logstash
 		useTLS                    bool
-		logstashConfig            *settings.CanonicalConfig
+		apiServerConfig           *configs.APIServer
 		containersLength          int
 		esEnvVarsLength           int
 		podVolumesLength          int
@@ -100,6 +100,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
+			apiServerConfig:           GetAPIServerWithAuth(),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          3,
@@ -112,11 +113,8 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetMetricsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
-			useTLS: true,
-			logstashConfig: settings.MustCanonicalConfig(
-				map[string]interface{}{
-					"api.ssl.enabled": "true",
-				}),
+			useTLS:                    true,
+			apiServerConfig:           GetAPIServerWithAuth(),
 			containersLength:          2,
 			esEnvVarsLength:           0,
 			podVolumesLength:          4,
@@ -130,6 +128,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&monitoringAssocConf)
 				return sampleLs
 			},
+			apiServerConfig:       GetAPIServerWithAuth(),
 			containersLength:      2,
 			esEnvVarsLength:       1,
 			podVolumesLength:      3,
@@ -144,6 +143,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
+			apiServerConfig:           GetAPIServerWithAuth(),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          5,
@@ -159,6 +159,7 @@ func TestWithMonitoring(t *testing.T) {
 				monitoring.GetLogsAssociation(&sampleLs)[0].SetAssociationConf(&logsAssocConf)
 				return sampleLs
 			},
+			apiServerConfig:           GetAPIServerWithAuth(),
 			containersLength:          3,
 			esEnvVarsLength:           1,
 			podVolumesLength:          6,
@@ -171,7 +172,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := tc.ls()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, logstashv1alpha1.LogstashContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.useTLS, tc.logstashConfig)
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, ls, tc.useTLS, tc.apiServerConfig)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tc.containersLength, len(builder.PodTemplate.Spec.Containers))
@@ -195,5 +196,15 @@ func TestWithMonitoring(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func GetAPIServerWithAuth() *configs.APIServer {
+	return &configs.APIServer{
+		SSLEnabled:       "true",
+		KeystorePassword: "blablabla",
+		AuthType:         "basic",
+		Username:         "logstash",
+		Password:         "whatever",
 	}
 }

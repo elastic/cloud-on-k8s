@@ -14,7 +14,6 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
@@ -41,7 +40,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		expected := []test.ExpectedSecret{
 			{
 				Name: logstashName + "-ls-config",
-				Keys: []string{"logstash.yml"},
+				Keys: []string{"logstash.yml", "API_KEYSTORE_PASS"},
 				Labels: map[string]string{
 					"eck.k8s.elastic.co/credentials": "true",
 					"logstash.k8s.elastic.co/name":   logstashName,
@@ -157,11 +156,15 @@ func uniqueAssociationCount(refsList ...[]v1.ObjectSelector) int {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	var credentials stackmon.APIServerCredentials
+	var username, password string
 
-	if b.Logstash.Spec.Config != nil {
+	if b.ExpectedAPIServer != nil {
+		username = b.ExpectedAPIServer.Username
+		password = b.ExpectedAPIServer.Password
+	} else if b.Logstash.Spec.Config != nil {
 		cfg := settings.MustCanonicalConfig(b.Logstash.Spec.Config.Data)
-		_ = cfg.Unpack(&credentials)
+		username, _ = cfg.String("api.auth.basic.username")
+		password, _ = cfg.String("api.auth.basic.password")
 	}
 
 	return test.StepList{
@@ -169,8 +172,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			Request{
 				Name:     "metrics",
 				Path:     "/",
-				Username: credentials.API.Auth.Basic.Username,
-				Password: credentials.API.Auth.Basic.Password,
+				Username: username,
+				Password: password,
 			},
 			Want{
 				Match: map[string]string{"status": "green"},
@@ -179,8 +182,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			Request{
 				Name:     "default pipeline",
 				Path:     "/_node/pipelines/main",
-				Username: credentials.API.Auth.Basic.Username,
-				Password: credentials.API.Auth.Basic.Password,
+				Username: username,
+				Password: password,
 			},
 			Want{
 				Match: map[string]string{

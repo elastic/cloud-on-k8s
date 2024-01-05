@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 )
 
@@ -37,11 +36,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		logstash   logstashv1alpha1.Logstash
-		config     *settings.CanonicalConfig
-		useTLS     bool
-		assertions func(pod corev1.PodTemplateSpec)
+		name            string
+		logstash        logstashv1alpha1.Logstash
+		apiServerConfig *configs.APIServer
+		useTLS          bool
+		assertions      func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
@@ -50,6 +49,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Version: "8.6.1",
 				},
 			},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
@@ -70,6 +70,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Image:   "my-custom-image:1.0.0",
 				Version: "8.6.1",
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetLogstashContainer(pod.Spec).Image)
 			},
@@ -79,6 +80,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			logstash: logstashv1alpha1.Logstash{Spec: logstashv1alpha1.LogstashSpec{
 				Version: "8.6.1",
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, DefaultResources, GetLogstashContainer(pod.Spec).Resources)
 			},
@@ -102,6 +104,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, corev1.ResourceRequirements{
 					Limits: map[corev1.ResourceName]resource.Quantity{
@@ -124,6 +127,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 2)
 				assert.Equal(t, pod.Spec.Containers[0].Image, pod.Spec.InitContainers[0].Image)
@@ -147,6 +151,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 					Version: "8.6.1",
 				}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				labels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "logstash-name"}}).GetIdentityLabels()
 				labels[VersionLabelName] = "8.6.1"
@@ -176,6 +181,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, GetLogstashContainer(pod.Spec).Env, 1)
 			},
@@ -205,6 +211,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, 9200, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
 			},
@@ -226,6 +233,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 							}},
 					},
 				}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, 9200, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
 			},
@@ -236,12 +244,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 				}},
-			config: settings.MustCanonicalConfig(
-				map[string]interface{}{
-					"api.auth.type":           "basic",
-					"api.auth.basic.username": "logstash",
-					"api.auth.basic.password": "whatever",
-				}),
+			apiServerConfig: GetAPIServerWithAuth(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				authHeader := GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.HTTPHeaders[0]
 				b, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader.Value, "Basic "))
@@ -259,11 +262,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 				}},
-			useTLS: true,
-			config: settings.MustCanonicalConfig(
-				map[string]interface{}{
-					"api.ssl.keystore.password": "whatever",
-				}),
+			useTLS:          true,
+			apiServerConfig: GetAPIServerWithAuth(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, UseTLSEnv))
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, APIKeystorePassEnv))
@@ -276,6 +276,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 				}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, 9600, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
 			},
@@ -287,6 +288,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Image:   "my-custom-image:1.0.0",
 				Version: "8.6.1",
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetLogstashContainer(pod.Spec).Image)
 			},
@@ -315,6 +317,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			}},
+			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.Volumes, 5)
 				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 5)
@@ -324,11 +327,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params := Params{
-				Context:        context.Background(),
-				Client:         k8s.NewFakeClient(&testHTTPCertsInternalSecret),
-				Logstash:       tt.logstash,
-				LogstashConfig: tt.config,
-				UseTLS:         tt.useTLS,
+				Context:         context.Background(),
+				Client:          k8s.NewFakeClient(&testHTTPCertsInternalSecret),
+				Logstash:        tt.logstash,
+				APIServerConfig: tt.apiServerConfig,
+				UseTLS:          tt.useTLS,
 			}
 			configHash := fnv.New32a()
 			got, err := buildPodTemplate(params, configHash)
@@ -355,4 +358,24 @@ func GetEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
 		}
 	}
 	return nil
+}
+
+func GetAPIServerWithAuth() *configs.APIServer {
+	return &configs.APIServer{
+		SSLEnabled:       "true",
+		KeystorePassword: "blablabla",
+		AuthType:         "basic",
+		Username:         "logstash",
+		Password:         "whatever",
+	}
+}
+
+func GetDefaultAPIServer() *configs.APIServer {
+	return &configs.APIServer{
+		SSLEnabled:       "true",
+		KeystorePassword: APIKeystoreDefaultPass,
+		AuthType:         "",
+		Username:         "",
+		Password:         "",
+	}
 }

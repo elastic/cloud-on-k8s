@@ -18,9 +18,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
@@ -40,8 +40,8 @@ type Params struct {
 
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
-	UseTLS            bool                      // Logstash API Server uses TLS
-	LogstashConfig    *settings.CanonicalConfig // logstash.yml config
+	UseTLS            bool               // Service of API Server uses TLS
+	APIServerConfig   *configs.APIServer // resolved API server config
 }
 
 // K8sClient returns the Kubernetes client.
@@ -109,14 +109,14 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	configHash := fnv.New32a()
 
-	cfg, err := reconcileConfig(params, configHash)
-	if err != nil {
+	if _, apiServerConfig, err := reconcileConfig(params, configHash); err != nil {
 		return results.WithError(err), params.Status
+	} else {
+		params.APIServerConfig = apiServerConfig
 	}
-	params.LogstashConfig = cfg
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.UseTLS, params.LogstashConfig); err != nil {
+	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.UseTLS, params.APIServerConfig); err != nil {
 		return results.WithError(err), params.Status
 	}
 

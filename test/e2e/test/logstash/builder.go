@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/cmd/run"
@@ -22,9 +23,10 @@ import (
 )
 
 type Builder struct {
-	Logstash    logstashv1alpha1.Logstash
-	MutatedFrom *Builder
-	GlobalCA    bool
+	Logstash          logstashv1alpha1.Logstash
+	MutatedFrom       *Builder
+	GlobalCA          bool
+	ExpectedAPIServer *configs.APIServer
 }
 
 func NewBuilder(name string) Builder {
@@ -198,6 +200,12 @@ func (b Builder) WithSecureSettings(secretSource ...commonv1.SecretSource) Build
 
 func (b Builder) WithPodTemplate(podTemplate corev1.PodTemplateSpec) Builder {
 	b.Logstash.Spec.PodTemplate = podTemplate
+	return b
+}
+
+// WithExpectedAPIServer builder uses the username password in APIServer to verify endpoint
+func (b Builder) WithExpectedAPIServer(apiServer configs.APIServer) Builder {
+	b.ExpectedAPIServer = &apiServer
 	return b
 }
 

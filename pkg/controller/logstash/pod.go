@@ -116,7 +116,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
-	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.UseTLS, params.LogstashConfig)
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.UseTLS, params.APIServerConfig)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -167,14 +167,11 @@ func readinessProbe(params Params) corev1.Probe {
 // getHTTPHeaders when api.auth.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
 // to build Authorization header
 func getHTTPHeaders(params Params) []corev1.HTTPHeader {
-	var credentials stackmon.APIServerCredentials
-	_ = params.LogstashConfig.Unpack(&credentials)
-
-	if strings.ToLower(credentials.API.Auth.Type) != "basic" {
+	if strings.ToLower(params.APIServerConfig.AuthType) != "basic" {
 		return nil
 	}
 
-	usernamePassword := fmt.Sprintf("%s:%s", credentials.API.Auth.Basic.Username, credentials.API.Auth.Basic.Password)
+	usernamePassword := fmt.Sprintf("%s:%s", params.APIServerConfig.Username, params.APIServerConfig.Password)
 	encodedUsernamePassword := base64.StdEncoding.EncodeToString([]byte(usernamePassword))
 	authHeader := corev1.HTTPHeader{Name: "Authorization", Value: fmt.Sprintf("Basic %s", encodedUsernamePassword)}
 
