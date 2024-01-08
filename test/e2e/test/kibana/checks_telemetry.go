@@ -39,7 +39,7 @@ func MakeTelemetryRequest(kbBuilder Builder, k *test.K8sClient) (StackStats, err
 
 	// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
 	// in which case we'll just retry that test step
-	bytes, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes, extraHeaders)
+	bytes, _, err := DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes, extraHeaders)
 	if err != nil {
 		return StackStats{}, err
 	}

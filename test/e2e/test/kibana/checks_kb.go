@@ -15,8 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v2/test/e2e/test"
 )
 
-type kbChecks struct {
-	client *test.K8sClient
+type KbChecks struct {
+	Client *test.K8sClient
 }
 
 type kbStatus struct {
@@ -33,8 +33,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		return test.StepList{}
 	}
 
-	checks := kbChecks{
-		client: k,
+	checks := KbChecks{
+		Client: k,
 	}
 	tests := test.StepList{
 		checks.CheckKbStatusHealthy(b),
@@ -47,15 +47,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 }
 
 // CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
-func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
+func (check *KbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {
-			password, err := check.client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
-			body, err := DoRequest(check.client, b.Kibana, password, "GET", "/api/status", nil, http.Header{})
+			body, _, err := DoRequest(check.Client, b.Kibana, password, "GET", "/api/status", nil, http.Header{})
 			if err != nil {
 				return err
 			}
@@ -80,11 +80,11 @@ func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 }
 
 // CheckEntSearchAccess checks that the Enterprise Search UI is accessible in Kibana.
-func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
+func (check *KbChecks) CheckEntSearchAccess(b Builder) test.Step {
 	return test.Step{
 		Name: "The Enterprise Search UI should be available in Kibana",
 		Test: test.Eventually(func() error {
-			password, err := check.client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
 			if err != nil {
 				return errors.Wrap(err, "while getting elastic password")
 			}
@@ -95,8 +95,31 @@ func (check *kbChecks) CheckEntSearchAccess(b Builder) test.Step {
 			if version.MustParse(b.Kibana.Spec.Version).GTE(version.MinFor(7, 16, 0)) {
 				path = "/internal/workplace_search/overview"
 			}
-			_, err = DoRequest(check.client, b.Kibana, password, "GET", path, nil, http.Header{})
+			_, _, err = DoRequest(check.Client, b.Kibana, password, "GET", path, nil, http.Header{})
 			return err
+		}),
+	}
+}
+
+func (check *KbChecks) CheckHeaderForKey(b Builder, key string, value string) test.Step {
+	return test.Step{
+		Name: "The expected key and value should exist in the response header from Kibana",
+		Test: test.Eventually(func() error {
+			password, err := check.Client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
+			if err != nil {
+				return errors.Wrap(err, "while getting elastic password")
+			}
+			_, respHeader, err := DoRequest(check.Client, b.Kibana, password, "GET", "/api/status", nil, http.Header{})
+			if err != nil {
+				return err
+			}
+
+			valFromResp := respHeader.Get(key)
+			if valFromResp != value {
+				return fmt.Errorf("expected key and value not found in response header, expected value %s, got value %s, key %s", value, valFromResp, key)
+			}
+
+			return nil
 		}),
 	}
 }

@@ -85,6 +85,9 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 	esWithlicense := test.LicenseTestBuilder(esBuilder)
 
 	steps := func(k *test.K8sClient) test.StepList {
+		kibanaChecks := kibana.KbChecks{
+			Client: k,
+		}
 		return test.StepList{
 			test.Step{
 				Name: "Create a Secure Settings secret",
@@ -101,6 +104,7 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 				}),
 			},
 			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout"}, kbPodListOpts...),
+			kibanaChecks.CheckHeaderForKey(kbBuilder, "test", "kb-scp-test"),
 			test.Step{
 				Name: "Deleting the StackConfigPolicy should return no error",
 				Test: test.Eventually(func() error {
