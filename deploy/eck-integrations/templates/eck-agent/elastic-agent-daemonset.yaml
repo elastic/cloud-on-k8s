@@ -40,6 +40,9 @@ spec:
               - name: external-inputs
                 mountPath: /etc/elastic-agent/inputs.d
         {{- end }}
+        {{- if eq .Values.cloudDefend.enabled true }}
+        hostPID: true
+        {{- end}}
         containers:
         - name: agent
           securityContext:
@@ -53,7 +56,7 @@ spec:
             {{- end}}
           resources:
             limits:
-              memory: 700Mi
+              memory: 800Mi
             requests:
               cpu: 100m
               memory: 400Mi
@@ -92,8 +95,16 @@ spec:
           - name: elastic-agent-state
             mountPath: /usr/share/elastic-agent/state
           {{- if eq .Values.cloudDefend.enabled true}}
+          - name: boot
+            mountPath: /boot
+            readOnly: true
           - name: sys-kernel-debug
             mountPath: /sys/kernel/debug
+          - name: sys-fs-bpf
+            mountPath: /sys/fs/bpf
+          - name: sys-kernel-security
+            mountPath: /sys/kernel/security
+            readOnly: true
           {{- end }}
           {{- if has "agent.kubernetes.config.hints" .Values.eck_agent.daemonset.enabled_configs }}
           - name: external-inputs
@@ -127,8 +138,17 @@ spec:
           emptyDir: {}
         {{- end }}
         {{- if eq .Values.cloudDefend.enabled true}}
+        - name: boot
+          hostPath:
+            path: /boot
         - name: sys-kernel-debug
           hostPath:
             path: /sys/kernel/debug
+        - name: sys-fs-bpf
+          hostPath:
+            path: /sys/fs/bpf
+        - name: sys-kernel-security
+          hostPath:
+            path: /sys/kernel/security
         {{- end}}
 {{- end -}}
