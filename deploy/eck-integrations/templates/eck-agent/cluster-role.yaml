@@ -1,6 +1,5 @@
-{{- include "elasticagent.deployment" $ -}}
 {{- include "elasticagent.daemonset" $ -}}
-{{- if or $.Values.eck_agent.deployment.enabled $.Values.eck_agent.daemonset.enabled}}
+{{- if $.Values.eck_agent.daemonset.enabled}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -29,6 +28,7 @@ rules:
   - persistentvolumeclaims/status
   - nodes
   - nodes/metrics
+  - configmaps
   - nodes/proxy
   - nodes/stats
   - services
@@ -88,6 +88,9 @@ rules:
   - list
   - watch
 ---
+{{- end }}
+{{- include "elasticagent.deployment" $ -}}
+{{- if $.Values.eck_agent.deployment.enabled}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
