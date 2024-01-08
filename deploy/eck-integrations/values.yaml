@@ -290,7 +290,7 @@ cloudDefend:
     ##   processExecutable:
     ##     - /bin/*
     ##   sessionLeaderInteractive: true
-    selectors: {}
+    selectors: []
     ## E.g.
     ##responses:
     ##  - match:
@@ -299,7 +299,7 @@ cloudDefend:
     ##      - log
     ##      - alert
     ##      - block
-    responses: {}
+    responses: []
   ## @param cloudDefend.file.selectors [default: {}] cloud-defend file selectors to match on operations and or conditions of interest
   ## @param cloudDefend.file.responses [default: {}] cloud-defend file responses for each selector
   ##
@@ -327,7 +327,7 @@ cloudDefend:
     ##    - 4edca81b9ab1505cd5e4a0f268b63bc9
     ##  kubernetesClusterName:
     ##    - gke-cluster
-    selectors: {}
+    selectors: []
     ## E.g.
     ##responses:
     ##- match:
@@ -337,7 +337,7 @@ cloudDefend:
     ##   - log
     ##   - block
     ##  exclude: []
-    responses: {}
+    responses: []
 
 eck_agent:
   enabled: true
