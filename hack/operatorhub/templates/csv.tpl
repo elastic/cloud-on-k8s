@@ -276,9 +276,9 @@ spec:
     Supported versions:
 
 
-    * Kubernetes 1.24-1.28
+    * Kubernetes 1.25-1.29
 
-    * OpenShift 4.11-4.13
+    * OpenShift 4.11-4.14
 
     * Google Kubernetes Engine (GKE), Azure Kubernetes Service (AKS), and Amazon Elastic Kubernetes Service (EKS)
 
