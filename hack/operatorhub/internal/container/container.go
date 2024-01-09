@@ -328,7 +328,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 func isImageScanned(c CommonConfig, tag string) (image *Image, done bool, err error) {
 	images, err := getImagesByTag(c, tag)
 	if err != nil {
-		log.Printf("failed to find image in redhat catlog api, retrying: %s", err)
+		log.Printf("failed to find image in redhat catalog api, retrying: %s", err)
 		return nil, false, nil
 	}
 	if len(images) == 0 {
@@ -338,14 +338,19 @@ func isImageScanned(c CommonConfig, tag string) (image *Image, done bool, err er
 	if image == nil {
 		return nil, false, nil
 	}
-	switch image.ScanStatus {
-	case scanStatusPassed:
+	switch image.ContainerGrades.Status {
+	case gradingStatusCompleted:
 		log.Println("✓")
 		return image, true, nil
-	case scanStatusFailed:
-		return nil, true, fmt.Errorf("image scan failed")
-	case scanStatusInProgress:
-		log.Println("scan still in progress")
+	case gradingStatusFailed:
+		return nil, true, fmt.Errorf("image grading failed: message: %s", image.ContainerGrades.StatusMessage)
+	case gradingStatusInProgress:
+		log.Println("grading still in progress")
+		return nil, false, nil
+	case gradingStatusAborted:
+		return nil, true, fmt.Errorf("image grading aborted: message: %s", image.ContainerGrades.StatusMessage)
+	case gradingStatusPending:
+		log.Println("grading pending")
 		return nil, false, nil
 	}
 	return nil, false, nil
