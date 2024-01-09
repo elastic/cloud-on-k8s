@@ -424,11 +424,6 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 							"api.auth.basic.username":   "${API_USERNAME:superman}",
 							"api.auth.basic.password":   "${API_PASSWORD:i_am_handsome}",
 						}},
-						PodTemplate: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								Containers: []corev1.Container{{Name: "logstash"}},
-							},
-						},
 					},
 				},
 			},

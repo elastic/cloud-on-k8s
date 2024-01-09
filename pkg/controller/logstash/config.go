@@ -203,38 +203,11 @@ func patchWithPatternValue(config *configs.APIServer) map[string]*string {
 // and Keystore from SecureSettings. If the same key defined in both places, keystore takes the precedence.
 func getKeystoreEnvKeyValue(params Params) (map[string]string, error) {
 	data := make(map[string]string)
-	c := getLogstashContainer(params.Logstash.Spec.PodTemplate.Spec.Containers)
 
 	// from ENV
-	for _, env := range c.Env {
-		data[env.Name] = env.Value
-	}
-
-	for _, envFrom := range c.EnvFrom {
-		// from ConfigMap
-		if envFrom.ConfigMapRef != nil {
-			configMap := corev1.ConfigMap{}
-			nsn := types.NamespacedName{Name: envFrom.ConfigMapRef.LocalObjectReference.Name, Namespace: params.Logstash.Namespace}
-			if err := params.Client.Get(params.Context, nsn, &configMap); err != nil {
-				return nil, err
-			}
-
-			for key, value := range configMap.Data {
-				data[key] = value
-			}
-		}
-
-		// from Secret
-		if envFrom.SecretRef != nil {
-			secret := corev1.Secret{}
-			nsn := types.NamespacedName{Name: envFrom.SecretRef.LocalObjectReference.Name, Namespace: params.Logstash.Namespace}
-			if err := params.Client.Get(params.Context, nsn, &secret); err != nil {
-				return nil, err
-			}
-
-			for key, value := range secret.Data {
-				data[key] = string(value)
-			}
+	if c := getLogstashContainer(params.Logstash.Spec.PodTemplate.Spec.Containers); c != nil {
+		if err := getEnvKeyValue(params, c, data); err != nil {
+			return nil, err
 		}
 	}
 
@@ -252,6 +225,42 @@ func getKeystoreEnvKeyValue(params Params) (map[string]string, error) {
 	}
 
 	return data, nil
+}
+
+func getEnvKeyValue(params Params, c *corev1.Container, data map[string]string) error {
+	for _, env := range c.Env {
+		data[env.Name] = env.Value
+	}
+
+	for _, envFrom := range c.EnvFrom {
+		// from ConfigMap
+		if envFrom.ConfigMapRef != nil {
+			configMap := corev1.ConfigMap{}
+			nsn := types.NamespacedName{Name: envFrom.ConfigMapRef.LocalObjectReference.Name, Namespace: params.Logstash.Namespace}
+			if err := params.Client.Get(params.Context, nsn, &configMap); err != nil {
+				return err
+			}
+
+			for key, value := range configMap.Data {
+				data[key] = value
+			}
+		}
+
+		// from Secret
+		if envFrom.SecretRef != nil {
+			secret := corev1.Secret{}
+			nsn := types.NamespacedName{Name: envFrom.SecretRef.LocalObjectReference.Name, Namespace: params.Logstash.Namespace}
+			if err := params.Client.Get(params.Context, nsn, &secret); err != nil {
+				return err
+			}
+
+			for key, value := range secret.Data {
+				data[key] = string(value)
+			}
+		}
+	}
+
+	return nil
 }
 
 func getLogstashContainer(containers []corev1.Container) *corev1.Container {
