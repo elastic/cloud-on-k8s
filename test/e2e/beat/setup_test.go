@@ -124,7 +124,7 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 						// We are exploiting the fact here that Beats dashboards follow a naming convention that contains the
 						// name of the beat. This test will obviously break if future versions of Beats abandon this naming convention.
 						query := fmt.Sprintf("/api/saved_objects/_find?type=dashboard&search_fields=title&search=%s", beat)
-						body, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
+						body, _, err := kibana.DoRequest(client, kbBuilder.Kibana, password,
 							"GET", query, nil, http.Header{},
 						)
 						if err != nil {
