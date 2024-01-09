@@ -700,7 +700,7 @@ spec:
 The name of the container in the Pod template must be `logstash`.
 
 
-[id="{p}-securing-monitoring-endpoint"]
+[id="{p}-logstash-securing-monitoring-endpoint"]
 == Securing Monitoring Endpoint
 
 [id="{p}-logstash-https"]
