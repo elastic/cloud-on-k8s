@@ -710,15 +710,15 @@ Access to the link:https://www.elastic.co/guide/en/logstash/current/monitoring-l
 
 You can further secure the {ls} Monitoring APIs by requiring HTTP Basic authentication by setting `api.auth.type: basic`, and providing the relevant credentials `api.auth.basic.username` and `api.auth.basic.password`:
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: v1
 kind: Secret
 metadata:
   name: logstash-api-secret
 stringData:
-  API_USERNAME: "AWESOME_USER"  <1>
-  API_PASSWORD: "T0p_Secret" <1>
+  API_USERNAME: "AWESOME_USER"   <1>
+  API_PASSWORD: "T0p_Secret"     <1>
 ---
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
@@ -729,17 +729,16 @@ spec:
   count: 1
   config:
     api.auth.type: basic
-    api.auth.basic.username: "${API_USERNAME}" <3>
-    api.auth.basic.password: "${API_PASSWORD}" <3>
+    api.auth.basic.username: "${API_USERNAME}"   <3>
+    api.auth.basic.password: "${API_PASSWORD}"   <3>
   podTemplate:
     spec:
       containers:
         - name: logstash
           envFrom:
             - secretRef:
-                name: logstash-api-secret <2>
+                name: logstash-api-secret   <2>
 ----
-
 <1> Store the username and password in a Secret.
 <2> Map the username and password to the environment variables of the Pod.
 <3> At Logstash startup, `${API_USERNAME}` and `${API_PASSWORD}` are replaced by the value of environment variables. Check links:https://www.elastic.co/guide/en/logstash/current/environment-variables.html[using environment variables] for more details.
@@ -751,7 +750,7 @@ An alternative is to set up <<{p}-logstash-keystore, keystore>> to resolve `${AP
 
 If you want to use your own certificate, the required configuration is similar to Elasticsearch. Configure the certificate in `api` Service. Check <<{p}-custom-http-certificate>>.
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros,callouts"]
 ----
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
@@ -763,12 +762,11 @@ spec:
   elasticsearchRef:
     name: "elasticsearch-sample"
   services:
-    - name: api <1>
+    - name: api   <1>
       tls:
          certificate:
            secretName: my-cert
 ----
-
 <1> The service name `api` is reserved for {ls} monitoring endpoint.
 
 [id="{p}-logstash-http-disable-tls"]
