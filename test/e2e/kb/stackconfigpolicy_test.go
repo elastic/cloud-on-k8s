@@ -38,7 +38,7 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 	}
 
 	namespace := test.Ctx().ManagedNamespace(0)
-	// set up a 1-node Kibana deployment manually connected to Elasticsearch
+	// set up a 1-node Kibana deployment
 	name := "test-kb-scp"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
@@ -104,6 +104,7 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 				}),
 			},
 			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, []string{"elasticsearch.pingTimeout"}, kbPodListOpts...),
+			// We set test: kb-scp-test as a config for server.customResponseHeaders, so we should that see that in the response headers from Kibana
 			kibanaChecks.CheckHeaderForKey(kbBuilder, "test", "kb-scp-test"),
 			test.Step{
 				Name: "Deleting the StackConfigPolicy should return no error",
@@ -113,6 +114,12 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 			},
 			// keystore should be reset
 			test.CheckKeystoreEntries(k, KibanaKeystoreCmd, nil, kbPodListOpts...),
+			test.Step{
+				Name: "Delete secure settings secret",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &secureSettingsSecret)
+				}),
+			},
 		}
 	}
 

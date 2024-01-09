@@ -276,6 +276,18 @@ func TestStackConfigPolicy(t *testing.T) {
 			},
 			// keystore entries should be removed
 			elasticsearch.CheckESKeystoreEntries(k, es, noEntries),
+			test.Step{
+				Name: "Delete secure settings secret",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &secureSettingsSecret)
+				}),
+			},
+			test.Step{
+				Name: "Delete secure mounts secret",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &secretMountsSecret)
+				}),
+			},
 		}
 	}
 
