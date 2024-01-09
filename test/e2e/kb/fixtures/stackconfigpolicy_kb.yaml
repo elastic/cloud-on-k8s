@@ -1,0 +1,3 @@
+config:
+  server.customResponseHeaders:
+    test: kb-scp-test
