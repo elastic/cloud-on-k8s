@@ -183,18 +183,17 @@ func TestStackConfigPolicy(t *testing.T) {
 				}),
 			},
 			test.Step{
-				Name: "Cluster Name should be as set in config",
+				Name: "Cluster name should be as set in the config",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
 					assert.NoError(t, err)
 
-					var clusterName ClusterName
-					_, err = request(esClient, http.MethodGet, "/_cluster/health", nil, &clusterName)
-					if err != nil {
+					var apiResponse ClusterInfoResponse
+					if _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
 						return err
 					}
 
-					require.Equal(t, clusterNameFromConfig, clusterName.ClusterNameFromAPI)
+					require.Equal(t, clusterNameFromConfig, apiResponse.ClusterName)
 					return nil
 				}),
 			},
@@ -314,8 +313,8 @@ type ClusterSettings struct {
 	} `json:"persistent"`
 }
 
-type ClusterName struct {
-	ClusterNameFromAPI string `json:"cluster_name"`
+type ClusterInfoResponse struct {
+	ClusterName string `json:"cluster_name"`
 }
 
 type SnapshotRepositories map[string]SnapshotRepository
