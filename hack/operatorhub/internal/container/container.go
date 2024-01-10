@@ -280,16 +280,16 @@ func syncImagesTaggedAsLatest(c CommonConfig, newTag Tag) error {
 	return nil
 }
 
-// publishImageInProject will wait until the image with the given tag is scanned, and then attempt to publish
-// the image within the Red Hat certification API.  If imageScanTimeout is reached waiting for the image to
-// be set as scanned within the API and error will be returned.
+// publishImageInProject will wait until the image with the given tag has been graded, and then attempt to publish
+// the image within the Red Hat certification API. If imageScanTimeout is reached waiting for the image to
+// be set as graded within the API an error will be returned.
 func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Duration) error {
 	ticker := time.NewTicker(5 * time.Minute)
 	ctx, cancel := context.WithTimeout(context.Background(), imageScanTimeout)
 	defer cancel()
 
-	log.Printf("waiting for image to complete scan process... ")
-	image, done, err := isImageScanned(c, newTag.Name)
+	log.Printf("waiting for image to complete grading process... ")
+	image, done, err := hasBeenGraded(c, newTag.Name)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 	for {
 		select {
 		case <-ticker.C:
-			image, done, err := isImageScanned(c, newTag.Name)
+			image, done, err := hasBeenGraded(c, newTag.Name)
 			if err != nil {
 				return err
 			}
@@ -323,29 +323,34 @@ func publishImageInProject(c CommonConfig, newTag Tag, imageScanTimeout time.Dur
 	}
 }
 
-// isImageScanned will get the first valid image tag within the Red Hat certification API
-// and ensure that the scan status is set to "passed", returning the image.
-func isImageScanned(c CommonConfig, tag string) (image *Image, done bool, err error) {
+// hasBeenGraded will get the first valid image tag within the Red Hat certification API
+// and ensure that the grades status is set to "completed", returning the image.
+func hasBeenGraded(c CommonConfig, tag string) (*Image, bool, error) {
 	images, err := getImagesByTag(c, tag)
 	if err != nil {
-		log.Printf("failed to find image in redhat catlog api, retrying: %s", err)
+		log.Printf("failed to find image in redhat catalog api, retrying: %s", err)
 		return nil, false, nil
 	}
 	if len(images) == 0 {
 		return nil, false, nil
 	}
-	image = getFirstUndeletedImage(images)
+	image := getFirstUndeletedImage(images)
 	if image == nil {
 		return nil, false, nil
 	}
-	switch image.ScanStatus {
-	case scanStatusPassed:
+	switch image.ContainerGrades.Status {
+	case gradingStatusCompleted:
 		log.Println("✓")
 		return image, true, nil
-	case scanStatusFailed:
-		return nil, true, fmt.Errorf("image scan failed")
-	case scanStatusInProgress:
-		log.Println("scan still in progress")
+	case gradingStatusFailed:
+		return nil, true, fmt.Errorf("image grading failed: message: %s", image.ContainerGrades.StatusMessage)
+	case gradingStatusInProgress:
+		log.Println("grading still in progress")
+		return nil, false, nil
+	case gradingStatusAborted:
+		return nil, true, fmt.Errorf("image grading aborted: message: %s", image.ContainerGrades.StatusMessage)
+	case gradingStatusPending:
+		log.Println("grading pending")
 		return nil, false, nil
 	}
 	return nil, false, nil
