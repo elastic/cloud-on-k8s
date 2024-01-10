@@ -189,7 +189,7 @@ func TestStackConfigPolicy(t *testing.T) {
 					assert.NoError(t, err)
 
 					var clusterName ClusterName
-					_, err = request(esClient, http.MethodGet, "/_health_report", nil, &clusterName)
+					_, err = request(esClient, http.MethodGet, "/_cluster/health", nil, &clusterName)
 					if err != nil {
 						return err
 					}
