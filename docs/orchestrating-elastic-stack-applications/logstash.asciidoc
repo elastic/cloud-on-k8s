@@ -741,7 +741,7 @@ spec:
 ----
 <1> Store the username and password in a Secret.
 <2> Map the username and password to the environment variables of the Pod.
-<3> At Logstash startup, `${API_USERNAME}` and `${API_PASSWORD}` are replaced by the value of environment variables. Check links:https://www.elastic.co/guide/en/logstash/current/environment-variables.html[using environment variables] for more details.
+<3> At Logstash startup, `${API_USERNAME}` and `${API_PASSWORD}` are replaced by the value of environment variables. Check link:https://www.elastic.co/guide/en/logstash/current/environment-variables.html[using environment variables] for more details.
 
 An alternative is to set up <<{p}-logstash-keystore, keystore>> to resolve `${API_USERNAME}` and `${API_PASSWORD}`
 
