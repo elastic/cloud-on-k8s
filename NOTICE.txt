@@ -2853,11 +2853,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/viper
-Version : v1.17.0
-Time    : 2023-10-06T12:22:22Z
+Version : v1.18.2
+Time    : 2023-12-18T18:22:25Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/viper@v1.18.2/LICENSE:
 
 The MIT License (MIT)
 
@@ -7193,11 +7193,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/frankban/quicktest
-Version : v1.14.4
-Time    : 2022-11-19T10:50:20Z
+Version : v1.14.6
+Time    : 2023-08-01T06:27:26Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/frankban/quicktest@v1.14.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/frankban/quicktest@v1.14.6/LICENSE:
 
 MIT License
 
@@ -7224,11 +7224,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/fsnotify/fsnotify
-Version : v1.6.0
-Time    : 2022-10-13T01:18:11Z
+Version : v1.7.0
+Time    : 2023-10-22T06:24:00Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/fsnotify/fsnotify@v1.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/fsnotify/fsnotify@v1.7.0/LICENSE:
 
 Copyright © 2012 The Go Authors. All rights reserved.
 Copyright © fsnotify Authors. All rights reserved.
@@ -15173,11 +15173,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/sagikazarmark/locafero
-Version : v0.3.0
-Time    : 2023-09-13T14:06:36Z
+Version : v0.4.0
+Time    : 2023-11-29T14:40:36Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/sagikazarmark/locafero@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/sagikazarmark/locafero@v0.4.0/LICENSE:
 
 Copyright (c) 2023 Márk Sági-Kazár <mark.sagikazar@gmail.com>
 
@@ -15356,11 +15356,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/afero
-Version : v1.10.0
-Time    : 2023-09-22T14:18:35Z
+Version : v1.11.0
+Time    : 2023-11-28T09:46:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.10.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.11.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -15540,11 +15540,11 @@ Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.10.0/LIC
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cast
-Version : v1.5.1
-Time    : 2023-05-15T08:28:46Z
+Version : v1.6.0
+Time    : 2023-11-28T09:52:19Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.6.0/LICENSE:
 
 The MIT License (MIT)
 
@@ -15806,11 +15806,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.17.0
-Time    : 2023-10-10T15:45:19Z
+Version : v0.19.0
+Time    : 2023-11-27T17:26:17Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.17.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.19.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15843,11 +15843,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/oauth2
-Version : v0.12.0
-Time    : 2023-09-05T16:42:47Z
+Version : v0.15.0
+Time    : 2023-11-27T17:50:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.12.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/oauth2@v0.15.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -15880,11 +15880,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.3.0
-Time    : 2023-06-01T20:35:10Z
+Version : v0.5.0
+Time    : 2023-10-11T14:04:17Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.5.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -16028,11 +16028,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/time
-Version : v0.3.0
-Time    : 2022-11-16T15:19:46Z
+Version : v0.5.0
+Time    : 2023-11-21T18:52:48Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/time@v0.5.0/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
