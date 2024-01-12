@@ -772,7 +772,7 @@ spec:
 [id="{p}-logstash-http-disable-tls"]
 === Disable TLS
 
-You can disable the generation of the self-signed certificate and hence disable TLS.
+You can disable TLS by disabling the generation of the self-signed certificate in the API service definition
 
 [source,yaml,subs="attributes"]
 ----
