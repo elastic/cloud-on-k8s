@@ -47,7 +47,7 @@ func TestLogstashStackMonitoring(t *testing.T) {
 		WithConfig(map[string]interface{}{
 			"api.auth.type":           "basic",
 			"api.auth.basic.username": "logstash",
-			"api.auth.basic.password": "ch@ng3m3",
+			"api.auth.basic.password": "changeit",
 		})
 
 	// checks that the sidecar beats have sent data in the monitoring clusters

@@ -45,7 +45,7 @@ func Test_newConfig(t *testing.T) {
     ssl:
         enabled: true
         keystore:
-            password: ch@ng3m3
+            password: changeit
             path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
@@ -92,7 +92,7 @@ log:
     ssl:
         enabled: true
         keystore:
-            password: ch@ng3m3
+            password: changeit
             path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
@@ -116,7 +116,7 @@ log:
     ssl:
         enabled: true
         keystore:
-            password: ch@ng3m3
+            password: changeit
             path: /usr/share/logstash/config/api_keystore.p12
 config:
     reload:
@@ -408,31 +408,6 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				AuthType:         "basic",
 				Username:         "batman",
 				Password:         "i_am_rich",
-			},
-			wantErr: false,
-		},
-		{
-			name: "resolve variable from the default value of dollar variable",
-			args: args{
-				runtimeObjs: nil,
-				logstash: v1alpha1.Logstash{
-					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]interface{}{
-							"api.ssl.enabled":           "${SSL_ENABLED:false}",
-							"api.ssl.keystore.password": "${SSL_KEYSTORE_PASSWORD:sleepy_night}",
-							"api.auth.type":             "${API_AUTH_TYPE:bearer?}",
-							"api.auth.basic.username":   "${API_USERNAME:superman}",
-							"api.auth.basic.password":   "${API_PASSWORD:i_am_handsome}",
-						}},
-					},
-				},
-			},
-			want: &configs.APIServer{
-				SSLEnabled:       "false",
-				KeystorePassword: "sleepy_night",
-				AuthType:         "bearer?",
-				Username:         "superman",
-				Password:         "i_am_handsome",
 			},
 			wantErr: false,
 		},

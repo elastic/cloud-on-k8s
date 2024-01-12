@@ -28,7 +28,7 @@ const (
 	ConfigFileName         = "logstash.yml"
 	APIKeystorePath        = volume.ConfigMountPath + "/" + APIKeystoreFileName
 	APIKeystoreFileName    = "api_keystore.p12"  // #nosec G101
-	APIKeystoreDefaultPass = "ch@ng3m3"          // #nosec G101
+	APIKeystoreDefaultPass = "changeit"          // #nosec G101
 	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
@@ -144,19 +144,19 @@ func checkTLSConfig(config *configs.APIServer, useTLS bool) error {
 func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (*configs.APIServer, error) {
 	config := baseAPIServer(cfg)
 
-	if unresolvedConfig := patchWithPatternValue(config); len(unresolvedConfig) > 0 {
+	if unresolvedConfig := getUnresolvedVars(config); len(unresolvedConfig) > 0 {
 		combinedMap, err := getKeystoreEnvKeyValue(params)
 		if err != nil {
 			return nil, err
 		}
 
-		resolveConfigValue(unresolvedConfig, combinedMap)
+		patchConfigValue(unresolvedConfig, combinedMap)
 	}
 
 	return config, nil
 }
 
-// baseAPIServer gives api.* configs with the default value
+// baseAPIServer gives api.* configs
 func baseAPIServer(cfg *settings.CanonicalConfig) *configs.APIServer {
 	enabled, _ := cfg.String("api.ssl.enabled")
 	keystorePassword, _ := cfg.String("api.ssl.keystore.password")
@@ -173,26 +173,20 @@ func baseAPIServer(cfg *settings.CanonicalConfig) *configs.APIServer {
 	}
 }
 
-// patchWithPatternValue matches the pattern ${VAR:default_value} against config and assign the default value
-// It gives a map of string (VAR) and config pointer that need to further resolve
-// VAR is the variable name that expect to be defined in Keystore or Env
-//
-//	The variable name can consist of digit, underscores and letters
-//	The default value is optional, ${VAR:} and ${VAR} are valid.
-//
-// config is updated with the default value
-func patchWithPatternValue(config *configs.APIServer) map[string]*string {
+// getUnresolvedVars matches pattern ${VAR} against the configuration value in logstash.yml, such as api.auth.basic.username:  ${API_USERNAME}
+// and gives a map of string and string pointer, for example: {"API_USERNAME" : &config.Username}
+// The keys in the map represent variable names that require further resolution, retrieving the values from either the Keystore or Environment variables.
+// The variable name can consist of digit, underscores and letters.
+func getUnresolvedVars(config *configs.APIServer) map[string]*string {
 	data := make(map[string]*string)
 
-	pattern := `^\${([a-zA-Z0-9_]+)(?::(.*?))?}$`
+	pattern := `^\${([a-zA-Z0-9_]+)}$`
 	regex := regexp.MustCompile(pattern)
 
-	for _, configKey := range []*string{&config.SSLEnabled, &config.KeystorePassword, &config.AuthType, &config.Username, &config.Password} {
-		if match := regex.FindStringSubmatch(*configKey); match != nil {
-			key := match[1]
-			defaultValue := match[2]
-			*configKey = defaultValue
-			data[key] = configKey
+	for _, configVal := range []*string{&config.SSLEnabled, &config.KeystorePassword, &config.AuthType, &config.Username, &config.Password} {
+		if match := regex.FindStringSubmatch(*configVal); match != nil {
+			varName := match[1]
+			data[varName] = configVal
 		}
 	}
 
@@ -272,8 +266,8 @@ func getLogstashContainer(containers []corev1.Container) *corev1.Container {
 	return nil
 }
 
-// resolveConfigValue updates the configs with the actual values from Env or Keystore
-func resolveConfigValue(unresolved map[string]*string, combinedMap map[string]string) {
+// patchConfigValue updates the configs with the actual values from Env or Keystore
+func patchConfigValue(unresolved map[string]*string, combinedMap map[string]string) {
 	for varName, config := range unresolved {
 		if actualValue, ok := combinedMap[varName]; ok {
 			*config = actualValue

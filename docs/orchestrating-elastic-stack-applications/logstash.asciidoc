@@ -745,6 +745,28 @@ spec:
 
 An alternative is to set up <<{p}-logstash-keystore, keystore>> to resolve `${API_USERNAME}` and `${API_PASSWORD}`
 
+NOTE: The variable substitution in `config` does not support the syntax of default value.
+
+[id="{p}-logstash-http-tls-keystore"]
+=== TLS keystore
+
+The TLS Keystore is automatically generated and includes a certificate and a private key, with default password protection set to `changeit`.
+This password can be modified by configuring the `api.ssl.keystore.password` value.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash-sample
+spec:
+  count: 1
+  version: 8.12.0
+  config:
+    api.ssl.keystore.password: "${SSL_KEYSTORE_PASSWORD}"
+----
+
+
 [id="{p}-logstash-http-custom-tls"]
 === Provide your own certificate
 
