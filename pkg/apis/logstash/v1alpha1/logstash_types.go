@@ -7,6 +7,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -87,6 +88,10 @@ type LogstashSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// UpdateStrategy is a StatefulSetUpdateStrategy. The type is "OnDelete" or "RollingUpdate".
+	// +kubebuilder:validation:Optional
+	UpdateStrategy appsv1.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod.
 	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.

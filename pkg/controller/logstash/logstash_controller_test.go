@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -141,6 +142,14 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.6.1",
 						Count:   1,
+						UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+							Type: appsv1.RollingUpdateStatefulSetStrategyType,
+							RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+								MaxUnavailable: &intstr.IntOrString{
+									IntVal: 1,
+								},
+							},
+						},
 					},
 					Status: logstashv1alpha1.LogstashStatus{
 						ObservedGeneration: 1,
@@ -201,6 +210,14 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 					Count:   1,
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: 1,
+							},
+						},
+					},
 				},
 				Status: logstashv1alpha1.LogstashStatus{
 					Version:            "8.6.1",

@@ -39,6 +39,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		PodTemplateSpec:      podTemplate,
 		Replicas:             params.Logstash.Spec.Count,
 		RevisionHistoryLimit: params.Logstash.Spec.RevisionHistoryLimit,
+		UpdateStrategy:       params.Logstash.Spec.UpdateStrategy,
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
 	if err := controllerutil.SetControllerReference(&params.Logstash, &s, scheme.Scheme); err != nil {
