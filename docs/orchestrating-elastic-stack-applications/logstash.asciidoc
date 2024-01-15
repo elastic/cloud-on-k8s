@@ -804,7 +804,7 @@ spec:
       maxUnavailable: 1   <3>
 ----
 
-<1> The `RollingUpdate` update strategy will update all Pods in a StatefulSet, in reverse ordinal order, Another options is `OnDelete`. Check out link:https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#on-delete[docs] for more details.
+<1> The `RollingUpdate` update strategy will update all Pods in a StatefulSet, in reverse ordinal order, Another option is `OnDelete`. Check out link:https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#on-delete[docs] for more details.
 <2> This means that all the Pods from ordinal Replicas-1 to `partition` are updated . You can split the update into partitions to perform canary rollout. Check out link:https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#rolling-out-a-canary[docs] for more details.
 <3> This ensures that the cluster has no more than one unavailable Pod at any given point in time.
 
