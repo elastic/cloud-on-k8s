@@ -89,7 +89,7 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// UpdateStrategy is a StatefulSetUpdateStrategy. The type is "OnDelete" or "RollingUpdate".
+	// UpdateStrategy is a StatefulSetUpdateStrategy. The default type is "RollingUpdate".
 	// +kubebuilder:validation:Optional
 	UpdateStrategy appsv1.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
 

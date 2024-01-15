@@ -8296,8 +8296,8 @@ spec:
                   type: object
                 type: array
               updateStrategy:
-                description: UpdateStrategy is a StatefulSetUpdateStrategy. The type
-                  is "OnDelete" or "RollingUpdate".
+                description: UpdateStrategy is a StatefulSetUpdateStrategy. The default
+                  type is "RollingUpdate".
                 properties:
                   rollingUpdate:
                     description: RollingUpdate is used to communicate parameters when
