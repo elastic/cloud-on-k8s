@@ -45,7 +45,7 @@ func (l StatefulSetList) GetByName(ssetName string) (appsv1.StatefulSet, bool) {
 	}
 	return appsv1.StatefulSet{}, false
 }
-//
+
 // Names returns the set of StatefulSets names.
 func (l StatefulSetList) Names() set.StringSet {
 	names := set.Make()
@@ -62,7 +62,7 @@ func (l StatefulSetList) Names() set.StringSet {
 // Status of the pods (running, error, etc.) is ignored.
 func (l StatefulSetList) PodReconciliationDone(ctx context.Context, c k8s.Client) (bool, string, error) {
 	for _, statefulSet := range l {
-		pendingCreations, pendingDeletions, err := pendingPodsForStatefulSet(ctx, c, statefulSet)
+		pendingCreations, pendingDeletions, err := pendingPodsForStatefulSet(c, statefulSet)
 		if err != nil {
 			return false, "", err
 		}
@@ -88,7 +88,7 @@ func (l StatefulSetList) PodReconciliationDone(ctx context.Context, c k8s.Client
 	return true, "", nil
 }
 
-func pendingPodsForStatefulSet(ctx context.Context, c k8s.Client, statefulSet appsv1.StatefulSet) ([]string, []string, error) {
+func pendingPodsForStatefulSet(c k8s.Client, statefulSet appsv1.StatefulSet) ([]string, []string, error) {
 	// check all expected pods are there: no more, no less
 	actualPods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
 	if err != nil {

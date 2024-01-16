@@ -6,7 +6,7 @@ package logstash
 
 import (
 	"context"
-    "fmt"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -61,7 +61,11 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(params.Client, k8s.ExtractNamespacedName(&params.Logstash))
 
-	if (len(actualStatefulSets) > 0) {
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	if len(actualStatefulSets) > 0 {
 		if _, exists := actualStatefulSets.GetByName(actualStatefulSets[0].Name); exists {
 			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSets[0], true)
 

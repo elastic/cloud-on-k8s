@@ -20,7 +20,8 @@ import (
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
-	//"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+
+	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -94,7 +95,6 @@ func resizePVCs(
 	expectedSset appsv1.StatefulSet,
 	actualSset appsv1.StatefulSet,
 ) error {
-
 	// match each existing PVC with an expected claim, and decide whether the PVC should be resized
 	actualPVCs, err := sset.RetrieveActualPVCs(k8sClient, actualSset)
 
@@ -155,7 +155,6 @@ func annotateForRecreation(
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
 func needsRecreate(expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet) bool {
-
 	for _, expectedClaim := range expectedSset.Spec.VolumeClaimTemplates {
 		actualClaim := sset.GetClaim(actualSset.Spec.VolumeClaimTemplates, expectedClaim.Name)
 		if actualClaim == nil {

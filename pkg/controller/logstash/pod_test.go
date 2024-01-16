@@ -150,8 +150,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
-								"label1":      "value1",
-								"label2":      "value2",
+								"label1":               "value1",
+								"label2":               "value2",
 								lslabels.NameLabelName: "overridden-logstash-name",
 							},
 						},

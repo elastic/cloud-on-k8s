@@ -23,7 +23,6 @@ const (
 
 	// StatefulSetNameLabelName used to store the name of the statefulset.
 	StatefulSetNameLabelName = "logstash.k8s.elastic.co/statefulset-name"
-
 )
 
 // NewLabels returns the set of common labels for an Elastic Logstash.
@@ -36,8 +35,8 @@ func NewLabels(logstash logstashv1alpha1.Logstash) map[string]string {
 
 func NewPodLabels(logstash logstashv1alpha1.Logstash, ssetName string) map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName: TypeLabelValue,
-		NameLabelName:          logstash.Name,
+		commonv1.TypeLabelName:   TypeLabelValue,
+		NameLabelName:            logstash.Name,
 		StatefulSetNameLabelName: ssetName,
 	}
 }

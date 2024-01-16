@@ -12,13 +12,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/labels"
 
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/maps"
@@ -109,7 +109,6 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, o
 func EqualTemplateHashLabels(expected, actual appsv1.StatefulSet) bool {
 	return expected.Labels[hash.TemplateHashLabelName] == actual.Labels[hash.TemplateHashLabelName]
 }
-
 
 // GetReplicas returns the replicas configured for this StatefulSet, or 0 if nil.
 func GetReplicas(statefulSet appsv1.StatefulSet) int32 {

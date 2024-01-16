@@ -13,6 +13,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -61,17 +62,6 @@ func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *core
 		}
 	}
 	return nil
-}
-
-// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
-func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
-	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
-	for _, claim := range claims {
-		patchedClaim := *claim.DeepCopy()
-		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
-		result = append(result, patchedClaim)
-	}
-	return result
 }
 
 // EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
