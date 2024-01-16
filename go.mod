@@ -31,7 +31,7 @@ require (
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.7
 	go.elastic.co/apm/module/apmhttp/v2 v2.4.7
 	go.elastic.co/apm/module/apmzap/v2 v2.4.7
-	go.elastic.co/apm/v2 v2.4.7
+	go.elastic.co/apm/v2 v2.4.8
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.18.0
