@@ -271,10 +271,14 @@ go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.7 h1:Gfp+wxPotE1s5X5ufn3W28zYa
 go.elastic.co/apm/module/apmelasticsearch/v2 v2.4.7/go.mod h1:taxw6rHuZtTF0p0DAv1xAg0fkvGprVIJu92JvbcgifU=
 go.elastic.co/apm/module/apmhttp/v2 v2.4.7 h1:IL+DRK8ODO791ai/l1g/8dk6E3VPomiV0jbRIxBWbqM=
 go.elastic.co/apm/module/apmhttp/v2 v2.4.7/go.mod h1:Itj4PGNVO33Tpp/9UPf4A6pCezTmADRRi/ytLAGms24=
+go.elastic.co/apm/module/apmhttp/v2 v2.4.8 h1:C1piLq4wcFHFB7jpFW1WPEyEl6zbRpf9SAY8S8tX7Qk=
+go.elastic.co/apm/module/apmhttp/v2 v2.4.8/go.mod h1:FzO5ptAs5oKB3xE1/hpxMA0a7mLIycp2RZdBtp4+uTA=
 go.elastic.co/apm/module/apmzap/v2 v2.4.7 h1:j96pvon+IhbFpzV4IflXwxOKD+l5rApyyN2ycarJG6Y=
 go.elastic.co/apm/module/apmzap/v2 v2.4.7/go.mod h1:bi0A6hYYwModJI70LJDB8IHqw7291Ub16LRdEXNcOcU=
 go.elastic.co/apm/v2 v2.4.7 h1:m5B2m59KgbiupuzFUkKqEvwHABIZxl2Ob0tCgc0XG9w=
 go.elastic.co/apm/v2 v2.4.7/go.mod h1:+CiBUdrrAGnGCL9TNx7tQz3BrfYV23L8Ljvotoc87so=
+go.elastic.co/apm/v2 v2.4.8 h1:3RuqxDjhgumT1BYxJGnVPdGY12lCzF+KGyvtSTynCYo=
+go.elastic.co/apm/v2 v2.4.8/go.mod h1:+CiBUdrrAGnGCL9TNx7tQz3BrfYV23L8Ljvotoc87so=
 go.elastic.co/fastjson v1.1.0 h1:3MrGBWWVIxe/xvsbpghtkFoPciPhOCmjsR/HfwEeQR4=
 go.elastic.co/fastjson v1.1.0/go.mod h1:boNGISWMjQsUPy/t6yqt2/1Wx4YNPSe+mZjlyw9vKKI=
 go.uber.org/atomic v1.7.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=
