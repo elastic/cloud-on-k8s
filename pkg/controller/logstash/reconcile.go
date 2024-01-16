@@ -14,6 +14,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,31 +66,36 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		return results.WithError(err), params.Status
 	}
 
-	if len(actualStatefulSets) > 0 {
-		if _, exists := actualStatefulSets.GetByName(actualStatefulSets[0].Name); exists {
-			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSets[0], true)
-
+	recreations := 0
+	for _, actualStatefulSet := range actualStatefulSets {
+		//nolint:nestif
+		if _, exists := actualStatefulSets.GetByName(actualStatefulSet.Name); exists {
+			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
 			if err != nil {
 				return results.WithError(err), params.Status
 			}
-
 			if recreateSset {
-				ulog.FromContext(params.Context).V(1).Info("Handling Volume Expansion")
-				recreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
+				sSetRecreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
+				recreations += sSetRecreations
 				if err != nil {
+					if apierrors.IsConflict(err) {
+						ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
+						return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+					}
 					return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
-				}
-				if recreations > 0 {
-					// Some StatefulSets are in the process of being recreated to handle PVC expansion:
-					// it is safer to requeue until the re-creation is done.
-					// Otherwise, some operation could be performed with wrong assumptions:
-					// the sset doesn't exist (was just deleted), but the Pods do actually exist.
-					ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
-						"recreations", recreations, "status", params.Status)
-					return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
 				}
 			}
 		}
+	}
+
+	if recreations > 0 {
+		// Some StatefulSets are in the process of being recreated to handle PVC expansion:
+		// it is safer to requeue until the re-creation is done.
+		// Otherwise, some operation could be performed with wrong assumptions:
+		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+		ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
+			"recreations", recreations, "status", params.Status)
+		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
 	}
 
 	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)

@@ -150,18 +150,17 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	}
 
 	results, status := r.doReconcile(ctx, *logstash)
+	logger := ulog.FromContext(ctx)
 
-	if err := updateStatus(ctx, *logstash, r.Client, status); err != nil {
+	err := updateStatus(ctx, *logstash, r.Client, status)
+	if err != nil {
 		if apierrors.IsConflict(err) {
-			return results.WithResult(reconcile.Result{Requeue: true}).Aggregate()
+			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
+			return reconcile.Result{Requeue: true}, nil
 		}
-		results = results.WithError(err)
+		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
-
-	result, err := results.Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
-
-	return result, err
+	return results.WithError(err).Aggregate()
 }
 
 func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1alpha1.Logstash) (*reconciler.Results, logstashv1alpha1.LogstashStatus) {

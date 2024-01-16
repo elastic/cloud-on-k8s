@@ -156,7 +156,6 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 // (eg. incorrect number of nodes or master-eligible nodes topology)
 // - create or delete more than one master node at once
 func (p *Params) expectationsSatisfied(ctx context.Context) (bool, string, error) {
-
 	log := ulog.FromContext(ctx)
 	// make sure the cache is up-to-date
 	expectationsOK, reason, err := p.Expectations.Satisfied()
