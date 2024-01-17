@@ -19,9 +19,8 @@ import (
 
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/sset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/logstash/volume"
 
-	// "github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -49,7 +48,7 @@ func handleVolumeExpansion(
 	validateStorageClass bool,
 ) (bool, error) {
 	// ensure there are no incompatible storage size modification
-	if err := volume.ValidateClaimsStorageUpdate(
+	if err := volumevalidations.ValidateClaimsStorageUpdate(
 		ctx,
 		k8sClient,
 		actualSset.Spec.VolumeClaimTemplates,

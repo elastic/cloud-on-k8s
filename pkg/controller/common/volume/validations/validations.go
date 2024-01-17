@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package volume
+package validations
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	pvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	PvcImmutableErrMsg                     = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
 )
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
@@ -36,7 +36,7 @@ func ValidateClaimsStorageUpdate(
 		initialClaim := claimMatchingName(initial, updatedClaim.Name)
 		if initialClaim == nil {
 			// existing claim does not exist in updated
-			return errors.New(pvcImmutableErrMsg)
+			return errors.New(PvcImmutableErrMsg)
 		}
 
 		cmp := k8s.CompareStorageRequests(initialClaim.Spec.Resources, updatedClaim.Spec.Resources)
@@ -48,7 +48,7 @@ func ValidateClaimsStorageUpdate(
 			}
 		case cmp.Decrease:
 			// storage decrease is not supported
-			return errors.New(pvcImmutableErrMsg)
+			return fmt.Errorf("decreasing storage size is not supported: an attempt was made to decrease storage size for claim %s", updatedClaim.Name)
 		}
 	}
 	return nil
@@ -62,6 +62,7 @@ func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *core
 	}
 	return nil
 }
+
 
 // EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion, and returns an error if it doesn't.

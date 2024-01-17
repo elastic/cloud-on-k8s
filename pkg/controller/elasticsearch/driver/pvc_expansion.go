@@ -16,10 +16,10 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v2/pkg/controller/common/volume/validations"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v2/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v2/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v2/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v2/pkg/utils/log"
 )
@@ -46,7 +46,7 @@ func handleVolumeExpansion(
 	validateStorageClass bool,
 ) (bool, error) {
 	// ensure there are no incompatible storage size modification
-	if err := validation.ValidateClaimsStorageUpdate(
+	if err := volumevalidations.ValidateClaimsStorageUpdate(
 		ctx,
 		k8sClient,
 		actualSset.Spec.VolumeClaimTemplates,
