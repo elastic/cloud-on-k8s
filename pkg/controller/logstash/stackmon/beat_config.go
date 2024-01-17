@@ -26,7 +26,7 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, useTLS bool, apiServer *configs.APIServer) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, useTLS bool, apiServer configs.APIServer) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
 		return err

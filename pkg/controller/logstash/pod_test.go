@@ -38,7 +38,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
 		name            string
 		logstash        logstashv1alpha1.Logstash
-		apiServerConfig *configs.APIServer
+		apiServerConfig configs.APIServer
 		useTLS          bool
 		assertions      func(pod corev1.PodTemplateSpec)
 	}{
@@ -360,8 +360,8 @@ func GetEnvByName(envs []corev1.EnvVar, name string) *corev1.EnvVar {
 	return nil
 }
 
-func GetAPIServerWithAuth() *configs.APIServer {
-	return &configs.APIServer{
+func GetAPIServerWithAuth() configs.APIServer {
+	return configs.APIServer{
 		SSLEnabled:       "true",
 		KeystorePassword: "blablabla",
 		AuthType:         "basic",
@@ -370,8 +370,8 @@ func GetAPIServerWithAuth() *configs.APIServer {
 	}
 }
 
-func GetDefaultAPIServer() *configs.APIServer {
-	return &configs.APIServer{
+func GetDefaultAPIServer() configs.APIServer {
+	return configs.APIServer{
 		SSLEnabled:       "true",
 		KeystorePassword: APIKeystoreDefaultPass,
 		AuthType:         "",

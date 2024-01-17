@@ -79,7 +79,7 @@ func TestWithMonitoring(t *testing.T) {
 		name                      string
 		ls                        func() logstashv1alpha1.Logstash
 		useTLS                    bool
-		apiServerConfig           *configs.APIServer
+		apiServerConfig           configs.APIServer
 		containersLength          int
 		esEnvVarsLength           int
 		podVolumesLength          int
@@ -199,8 +199,8 @@ func TestWithMonitoring(t *testing.T) {
 	}
 }
 
-func GetAPIServerWithAuth() *configs.APIServer {
-	return &configs.APIServer{
+func GetAPIServerWithAuth() configs.APIServer {
+	return configs.APIServer{
 		SSLEnabled:       "true",
 		KeystorePassword: "blablabla",
 		AuthType:         "basic",

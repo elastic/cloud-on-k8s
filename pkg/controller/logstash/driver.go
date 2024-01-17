@@ -40,8 +40,8 @@ type Params struct {
 
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
-	UseTLS            bool               // Service of API Server uses TLS
-	APIServerConfig   *configs.APIServer // resolved API server config
+	UseTLS            bool              // Service of API Server uses TLS
+	APIServerConfig   configs.APIServer // resolved API server config
 }
 
 // K8sClient returns the Kubernetes client.

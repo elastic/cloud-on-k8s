@@ -222,13 +222,13 @@ func logstashWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.Logstash 
 func Test_checkTLSConfig(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *configs.APIServer
+		config  configs.APIServer
 		useTLS  bool
 		wantErr bool
 	}{
 		{
 			name: "both svc and config enable TLS",
-			config: &configs.APIServer{
+			config: configs.APIServer{
 				SSLEnabled: "true",
 			},
 			useTLS:  true,
@@ -236,7 +236,7 @@ func Test_checkTLSConfig(t *testing.T) {
 		},
 		{
 			name: "both svc and config disable TLS",
-			config: &configs.APIServer{
+			config: configs.APIServer{
 				SSLEnabled: "false",
 			},
 			useTLS:  false,
@@ -244,13 +244,13 @@ func Test_checkTLSConfig(t *testing.T) {
 		},
 		{
 			name:    "svc disable TLS and config is unset",
-			config:  &configs.APIServer{},
+			config:  configs.APIServer{},
 			useTLS:  false,
 			wantErr: false,
 		},
 		{
 			name: "svc disable TLS but config enable TLS",
-			config: &configs.APIServer{
+			config: configs.APIServer{
 				SSLEnabled: "true",
 			},
 			useTLS:  false,
@@ -258,7 +258,7 @@ func Test_checkTLSConfig(t *testing.T) {
 		},
 		{
 			name: "svc enable TLS but config disable TLS",
-			config: &configs.APIServer{
+			config: configs.APIServer{
 				SSLEnabled: "false",
 			},
 			useTLS:  true,
@@ -266,7 +266,7 @@ func Test_checkTLSConfig(t *testing.T) {
 		},
 		{
 			name:    "svc enable TLS but config is unset",
-			config:  &configs.APIServer{},
+			config:  configs.APIServer{},
 			useTLS:  true,
 			wantErr: true,
 		},
@@ -339,7 +339,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *configs.APIServer
+		want    configs.APIServer
 		wantErr bool
 	}{
 		{
@@ -352,7 +352,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 					},
 				},
 			},
-			want: &configs.APIServer{
+			want: configs.APIServer{
 				SSLEnabled:       "true",
 				KeystorePassword: APIKeystoreDefaultPass,
 				AuthType:         "",
@@ -402,7 +402,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 					},
 				},
 			},
-			want: &configs.APIServer{
+			want: configs.APIServer{
 				SSLEnabled:       "true",
 				KeystorePassword: "whatever",
 				AuthType:         "basic",
@@ -445,7 +445,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 					},
 				},
 			},
-			want: &configs.APIServer{
+			want: configs.APIServer{
 				SSLEnabled:       "true",
 				KeystorePassword: "whatever",
 				AuthType:         "basic",
@@ -482,7 +482,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 					},
 				},
 			},
-			want: &configs.APIServer{
+			want: configs.APIServer{
 				SSLEnabled:       "true",
 				KeystorePassword: "whatever!",
 				AuthType:         "basic",
@@ -519,7 +519,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 					},
 				},
 			},
-			want: &configs.APIServer{
+			want: configs.APIServer{
 				SSLEnabled:       "true",
 				KeystorePassword: "whatever?",
 				AuthType:         "basic",

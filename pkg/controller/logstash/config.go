@@ -32,26 +32,26 @@ const (
 	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalConfig, *configs.APIServer, error) {
+func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
 	defer tracing.Span(&params.Context)()
 
 	cfg, err := buildConfig(params)
 	if err != nil {
-		return nil, nil, err
+		return nil, configs.APIServer{}, err
 	}
 
 	apiServerConfig, err := resolveAPIServerConfig(cfg, params)
 	if err != nil {
-		return nil, nil, err
+		return nil, configs.APIServer{}, err
 	}
 
 	if err = checkTLSConfig(apiServerConfig, params.UseTLS); err != nil {
-		return nil, nil, err
+		return nil, configs.APIServer{}, err
 	}
 
 	cfgBytes, err := cfg.Render()
 	if err != nil {
-		return nil, nil, err
+		return nil, configs.APIServer{}, err
 	}
 
 	expected := corev1.Secret{
@@ -72,7 +72,7 @@ func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalCo
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
-		return nil, nil, err
+		return nil, configs.APIServer{}, err
 	}
 
 	_, _ = configHash.Write(cfgBytes)
@@ -130,7 +130,7 @@ func tlsConfig(useTLS bool) *settings.CanonicalConfig {
 
 // checkTLSConfig ensures logstash config `api.ssl.enabled` matches the TLS setting of API service
 // we allow disabling TLS in service and leaving `api.ssl.enabled` unset in logstash.yml, otherwise throw error
-func checkTLSConfig(config *configs.APIServer, useTLS bool) error {
+func checkTLSConfig(config configs.APIServer, useTLS bool) error {
 	svcUseTLS := strconv.FormatBool(useTLS)
 	sslEnabled := config.SSLEnabled
 	if (svcUseTLS == sslEnabled) || (!useTLS && sslEnabled == "") {
@@ -141,13 +141,13 @@ func checkTLSConfig(config *configs.APIServer, useTLS bool) error {
 }
 
 // resolveAPIServerConfig gives ExpectedAPIServer with the resolved ${VAR} value
-func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (*configs.APIServer, error) {
+func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (configs.APIServer, error) {
 	config := baseAPIServer(cfg)
 
-	if unresolvedConfig := getUnresolvedVars(config); len(unresolvedConfig) > 0 {
+	if unresolvedConfig := getUnresolvedVars(&config); len(unresolvedConfig) > 0 {
 		combinedMap, err := getKeystoreEnvKeyValues(params)
 		if err != nil {
-			return nil, err
+			return configs.APIServer{}, err
 		}
 
 		patchConfigValue(unresolvedConfig, combinedMap)
@@ -157,14 +157,14 @@ func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (*conf
 }
 
 // baseAPIServer gives api.* configs
-func baseAPIServer(cfg *settings.CanonicalConfig) *configs.APIServer {
+func baseAPIServer(cfg *settings.CanonicalConfig) configs.APIServer {
 	enabled, _ := cfg.String("api.ssl.enabled")
 	keystorePassword, _ := cfg.String("api.ssl.keystore.password")
 	authType, _ := cfg.String("api.auth.type")
 	username, _ := cfg.String("api.auth.basic.username")
 	pw, _ := cfg.String("api.auth.basic.password")
 
-	return &configs.APIServer{
+	return configs.APIServer{
 		SSLEnabled:       enabled,
 		KeystorePassword: keystorePassword,
 		AuthType:         authType,
