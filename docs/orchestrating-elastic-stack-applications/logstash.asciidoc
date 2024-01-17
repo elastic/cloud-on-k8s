@@ -19,7 +19,7 @@ This section describes how to configure and deploy Logstash with ECK.
 ** <<{p}-logstash-volumes,Configuring Volumes>>
 ** <<{p}-logstash-pipelines-es,Using Elasticsearch in Logstash Pipelines>>
 ** <<{p}-logstash-expose-services,Exposing Services>>
-* <<{p}-logstash-securing-monitoring-endpoint,Securing Monitoring Endpoint>>
+* <<{p}-logstash-securing-api,Securing Logstash API>>
 * <<{p}-logstash-configuration-examples,Configuration examples>>
 * <<{p}-logstash-advanced-configuration,Advanced Configuration>>
 ** <<{p}-logstash-jvm-options,Setting JVM Options>>
@@ -700,8 +700,8 @@ spec:
 The name of the container in the Pod template must be `logstash`.
 
 
-[id="{p}-logstash-securing-monitoring-endpoint"]
-== Securing Monitoring Endpoint
+[id="{p}-logstash-securing-api"]
+== Securing Logstash API
 
 [id="{p}-logstash-https"]
 === Enable HTTPS
