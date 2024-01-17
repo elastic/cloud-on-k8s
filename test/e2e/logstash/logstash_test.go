@@ -23,6 +23,28 @@ func TestSingleLogstash(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
 
+func TestLogstashWithEnv(t *testing.T) {
+	name := "test-env-logstash"
+	logstashBuilder := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithPodTemplate(corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: "logstash",
+						Env: []corev1.EnvVar{
+							{
+								Name:  "NODE_NAME",
+								Value: "node01",
+							},
+						},
+					},
+				},
+			},
+		})
+	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
+}
+
 func TestLogstashWithCustomService(t *testing.T) {
 	name := "test-multiple-custom-logstash"
 	service := logstashv1alpha1.LogstashService{
@@ -35,9 +57,9 @@ func TestLogstashWithCustomService(t *testing.T) {
 			},
 		},
 	}
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
-		WithServices(service))
+		WithServices(service)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
@@ -55,13 +77,13 @@ func TestLogstashWithReworkedApiService(t *testing.T) {
 			},
 		},
 	}
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
 		// Change the Logstash API service port
 		WithConfig(map[string]interface{}{
 			"api.http.port": 9200,
 		}).
-		WithServices(service))
+		WithServices(service)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }
@@ -91,13 +113,13 @@ func TestLogstashWithCustomServiceAndAmendedApi(t *testing.T) {
 		},
 	}
 
-	logstashBuilder := (logstash.NewBuilder(name).
+	logstashBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
 		// Change the Logstash API service port
 		WithConfig(map[string]interface{}{
 			"api.http.port": 9601,
 		}).
-		WithServices(apiService, customService))
+		WithServices(apiService, customService)
 
 	test.Sequence(nil, test.EmptySteps, logstashBuilder).RunSequential(t)
 }

@@ -32,7 +32,7 @@ mount_path=` + volume.InitContainerConfigVolumeMountPath + `
 
 cp -f /usr/share/logstash/config/*.* "$mount_path"
 
-ln -sf ` + volume.InternalConfigVolumeMountPath + `/` + ConfigFileName + ` $mount_path
+cp ` + volume.InternalConfigVolumeMountPath + `/` + ConfigFileName + ` $mount_path
 ln -sf ` + volume.InternalPipelineVolumeMountPath + `/` + PipelineFileName + ` $mount_path
 
 touch "${init_config_initialized_flag}"
