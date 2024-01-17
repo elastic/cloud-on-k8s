@@ -36,15 +36,6 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	defer tracing.Span(&params.Context)()
 	results := reconciler.NewResult(params.Context)
 
-	ok, _, err := params.expectationsSatisfied(params.Context)
-	if err != nil {
-		return results.WithError(err), params.Status
-	}
-
-	if !ok {
-		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
-	}
-
 	expected := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
@@ -56,36 +47,18 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		RevisionHistoryLimit: params.Logstash.Spec.RevisionHistoryLimit,
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
-	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
-		return results.WithError(err), params.Status
-	}
-
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(params.Client, k8s.ExtractNamespacedName(&params.Logstash))
-
-	if err != nil {
-		return results.WithError(err), params.Status
-	}
 
 	recreations := 0
-	for _, actualStatefulSet := range actualStatefulSets {
-		//nolint:nestif
-		if _, exists := actualStatefulSets.GetByName(actualStatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
-			if err != nil {
-				return results.WithError(err), params.Status
-			}
-			if recreateSset {
-				sSetRecreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
-				recreations += sSetRecreations
-				if err != nil {
-					if apierrors.IsConflict(err) {
-						ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
-						return results.WithResult(reconcile.Result{Requeue: true}), params.Status
-					}
-					return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
-				}
-			}
+
+	sSetRecreations, err := recreateStatefulSets(params.Context, params.Client, params.Logstash)
+
+	recreations += sSetRecreations
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
+			return results.WithResult(reconcile.Result{Requeue: true}), params.Status
 		}
+		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
 	}
 
 	if recreations > 0 {
@@ -97,8 +70,40 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 			"recreations", recreations, "status", params.Status)
 		return results.WithResult(reconcile.Result{RequeueAfter: 30 * time.Second}), params.Status
 	}
+	ok, _, err := params.expectationsSatisfied(params.Context)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	if !ok {
+		return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+	}
+
+	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(params.Client, k8s.ExtractNamespacedName(&params.Logstash))
+
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	// recreations := 0
+	for _, actualStatefulSet := range actualStatefulSets {
+		if _, exists := actualStatefulSets.GetByName(actualStatefulSet.Name); exists {
+			recreateSset, err := handleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
+			if err != nil {
+				return results.WithError(err), params.Status
+			}
+			if recreateSset {
+				return results.WithResult(reconcile.Result{Requeue: true}), params.Status
+			}
+		}
+	}
 
 	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, &params.Logstash, params.Expectations)
+
 	if err != nil {
 		return results.WithError(err), params.Status
 	}

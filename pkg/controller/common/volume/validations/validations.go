@@ -38,7 +38,6 @@ func ValidateClaimsStorageUpdate(
 			// existing claim does not exist in updated
 			return errors.New(PvcImmutableErrMsg)
 		}
-
 		cmp := k8s.CompareStorageRequests(initialClaim.Spec.Resources, updatedClaim.Spec.Resources)
 		switch {
 		case cmp.Increase:

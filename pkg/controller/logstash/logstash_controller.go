@@ -135,6 +135,8 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 	logstash := &logstashv1alpha1.Logstash{}
 	if err := r.Client.Get(ctx, request.NamespacedName, logstash); err != nil {
 		if apierrors.IsNotFound(err) {
+			ulog.FromContext(ctx).V(1).Info("Logstash not gound", "name", request.NamespacedName)
+
 			return reconcile.Result{}, r.onDelete(ctx, request.NamespacedName)
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
