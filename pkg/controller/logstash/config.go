@@ -145,7 +145,7 @@ func resolveAPIServerConfig(cfg *settings.CanonicalConfig, params Params) (*conf
 	config := baseAPIServer(cfg)
 
 	if unresolvedConfig := getUnresolvedVars(config); len(unresolvedConfig) > 0 {
-		combinedMap, err := getKeystoreEnvKeyValue(params)
+		combinedMap, err := getKeystoreEnvKeyValues(params)
 		if err != nil {
 			return nil, err
 		}
@@ -193,14 +193,14 @@ func getUnresolvedVars(config *configs.APIServer) map[string]*string {
 	return data
 }
 
-// getKeystoreEnvKeyValue gives a map that consolidate all key value pairs from user defined environment variables
+// getKeystoreEnvKeyValues gives a map that consolidate all key value pairs from user defined environment variables
 // and Keystore from SecureSettings. If the same key defined in both places, keystore takes the precedence.
-func getKeystoreEnvKeyValue(params Params) (map[string]string, error) {
+func getKeystoreEnvKeyValues(params Params) (map[string]string, error) {
 	data := make(map[string]string)
 
 	// from ENV
 	if c := getLogstashContainer(params.Logstash.Spec.PodTemplate.Spec.Containers); c != nil {
-		if err := getEnvKeyValue(params, c, data); err != nil {
+		if err := getEnvKeyValues(params, c, data); err != nil {
 			return nil, err
 		}
 	}
@@ -221,7 +221,7 @@ func getKeystoreEnvKeyValue(params Params) (map[string]string, error) {
 	return data, nil
 }
 
-func getEnvKeyValue(params Params, c *corev1.Container, data map[string]string) error {
+func getEnvKeyValues(params Params, c *corev1.Container, data map[string]string) error {
 	for _, env := range c.Env {
 		data[env.Name] = env.Value
 	}
