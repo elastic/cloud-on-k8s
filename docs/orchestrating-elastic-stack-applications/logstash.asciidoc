@@ -786,8 +786,8 @@ spec:
   services:
     - name: api   <1>
       tls:
-         certificate:
-           secretName: my-cert
+        certificate:
+          secretName: my-cert
 ----
 <1> The service name `api` is reserved for {ls} monitoring endpoint.
 
@@ -810,8 +810,8 @@ spec:
   services:
     - name: api
       tls:
-         selfSignedCertificate:
-           disabled: true
+        selfSignedCertificate:
+          disabled: true
 ----
 
 
