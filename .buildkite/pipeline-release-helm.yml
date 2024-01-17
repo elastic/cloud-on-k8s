@@ -24,7 +24,7 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-operator
+      - releaser --env=dev --charts-dir=deploy/eck-operator --dry-run=false
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
@@ -45,7 +45,7 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-stack
+      - releaser --env=dev --charts-dir=deploy/eck-stack --dry-run=false
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
@@ -63,7 +63,7 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-operator
+      - releaser --env=prod --charts-dir=deploy/eck-operator --dry-run=false
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"
@@ -81,7 +81,7 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-stack
+      - releaser --env=prod --charts-dir=deploy/eck-stack --dry-run=false
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:bfddf2b3
       memory: "2G"

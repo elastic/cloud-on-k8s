@@ -30,5 +30,3 @@ steps:
           ( build.branch == "main" && build.source != "schedule" )
           || build.tag != null
         command: buildkite-agent pipeline upload .buildkite/pipeline-release-helm.yml
-        env:
-          HELM_DRY_RUN: false
