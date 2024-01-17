@@ -745,7 +745,7 @@ spec:
 
 An alternative is to set up <<{p}-logstash-keystore, keystore>> to resolve `${API_USERNAME}` and `${API_PASSWORD}`
 
-NOTE: The variable substitution in `config` does not support the syntax of default value.
+NOTE: The variable substitution in `config` does not support the default value syntax.
 
 [id="{p}-logstash-http-tls-keystore"]
 === TLS keystore
