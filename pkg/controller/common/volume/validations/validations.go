@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	PvcImmutableErrMsg                     = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
 )
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
@@ -62,7 +62,6 @@ func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *core
 	}
 	return nil
 }
-
 
 // EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion, and returns an error if it doesn't.
