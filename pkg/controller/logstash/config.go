@@ -32,10 +32,10 @@ const (
 	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
-func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
+func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
 	defer tracing.Span(&params.Context)()
 
-	cfg, err := buildConfig(params)
+	cfg, err := buildConfig(params, svcUseTLS)
 	if err != nil {
 		return nil, configs.APIServer{}, err
 	}
@@ -45,7 +45,7 @@ func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalCo
 		return nil, configs.APIServer{}, err
 	}
 
-	if err = checkTLSConfig(apiServerConfig, params.UseTLS); err != nil {
+	if err = checkTLSConfig(apiServerConfig, svcUseTLS); err != nil {
 		return nil, configs.APIServer{}, err
 	}
 
@@ -67,7 +67,7 @@ func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalCo
 
 	// store the keystore password for initConfigContainer to reference,
 	// so that the password does not expose in plain text
-	if params.UseTLS {
+	if apiServerConfig.UseTLS() {
 		expected.Data[APIKeystorePassEnv] = []byte(apiServerConfig.KeystorePassword)
 	}
 
@@ -80,14 +80,14 @@ func reconcileConfig(params Params, configHash hash.Hash) (*settings.CanonicalCo
 	return cfg, apiServerConfig, nil
 }
 
-func buildConfig(params Params) (*settings.CanonicalConfig, error) {
+func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) {
 	userProvidedCfg, err := getUserConfig(params)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := defaultConfig()
-	tls := tlsConfig(params.UseTLS)
+	tls := tlsConfig(useTLS)
 
 	// merge with user settings last so they take precedence
 	if err := cfg.MergeWith(tls, userProvidedCfg); err != nil {

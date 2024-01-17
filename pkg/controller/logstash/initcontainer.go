@@ -5,8 +5,6 @@
 package logstash
 
 import (
-	"strconv"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -80,7 +78,7 @@ func initConfigContainer(params Params) corev1.Container {
 		Env: []corev1.EnvVar{
 			{
 				Name:  UseTLSEnv,
-				Value: strconv.FormatBool(params.UseTLS),
+				Value: params.APIServerConfig.SSLEnabled,
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
@@ -101,7 +99,7 @@ func initConfigContainer(params Params) corev1.Container {
 		},
 	}
 
-	if params.UseTLS {
+	if params.APIServerConfig.UseTLS() {
 		container.Env = append(container.Env,
 			corev1.EnvVar{
 				Name: APIKeystorePassEnv,

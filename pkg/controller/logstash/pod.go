@@ -62,7 +62,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash, params.UseTLS)
+	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash, params.APIServerConfig.UseTLS())
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -116,7 +116,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
-	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.UseTLS, params.APIServerConfig)
+	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -135,7 +135,7 @@ func readinessProbe(params Params) corev1.Probe {
 	logstash := params.Logstash
 
 	var scheme = corev1.URISchemeHTTP
-	if params.UseTLS {
+	if params.APIServerConfig.UseTLS() {
 		scheme = corev1.URISchemeHTTPS
 	}
 
@@ -218,7 +218,7 @@ func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
 
 // writeHTTPSCertsToConfigHash fetches the http-certs-internal secret and adds the content of tls.crt to checksum
 func writeHTTPSCertsToConfigHash(params Params, configHash hash.Hash) error {
-	if params.UseTLS {
+	if params.APIServerConfig.UseTLS() {
 		httpCerts, err := getHTTPSInternalCertsSecret(params)
 		if err != nil {
 			return err

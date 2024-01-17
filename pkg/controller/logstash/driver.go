@@ -40,7 +40,6 @@ type Params struct {
 
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
-	UseTLS            bool              // Service of API Server uses TLS
 	APIServerConfig   configs.APIServer // resolved API server config
 }
 
@@ -105,16 +104,14 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results, params.Status
 	}
 
-	params.UseTLS = apiSvcTLS.Enabled()
-
 	configHash := fnv.New32a()
 
-	if _, params.APIServerConfig, err = reconcileConfig(params, configHash); err != nil {
+	if _, params.APIServerConfig, err = reconcileConfig(params, apiSvcTLS.Enabled(), configHash); err != nil {
 		return results.WithError(err), params.Status
 	}
 
 	// reconcile beats config secrets if Stack Monitoring is defined
-	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.UseTLS, params.APIServerConfig); err != nil {
+	if err := stackmon.ReconcileConfigSecrets(params.Context, params.Client, params.Logstash, params.APIServerConfig); err != nil {
 		return results.WithError(err), params.Status
 	}
 

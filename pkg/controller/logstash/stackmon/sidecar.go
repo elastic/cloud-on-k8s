@@ -27,7 +27,9 @@ const (
 	cfgHashAnnotation = "logstash.k8s.elastic.co/monitoring-config-hash"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, useTLS bool, apiServer configs.APIServer) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (stackmon.BeatSidecar, error) {
+	useTLS := apiServer.UseTLS()
+
 	var protocol = "http"
 	if useTLS {
 		protocol = "https"
@@ -58,7 +60,7 @@ func Filebeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.
 
 // WithMonitoring updates the Logstash Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Logstash pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, useTLS bool, apiServer configs.APIServer) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
 		return nil, err
@@ -71,7 +73,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	var volumes []corev1.Volume
 
 	if monitoring.IsMetricsDefined(&logstash) {
-		b, err := Metricbeat(ctx, client, logstash, useTLS, apiServer)
+		b, err := Metricbeat(ctx, client, logstash, apiServer)
 		if err != nil {
 			return nil, err
 		}

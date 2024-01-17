@@ -12,3 +12,13 @@ type APIServer struct {
 	Username         string
 	Password         string
 }
+
+func (server APIServer) UseTLS() bool {
+	switch server.SSLEnabled {
+	case "", "true":
+		return true
+	case "false":
+		return false
+	}
+	return false
+}

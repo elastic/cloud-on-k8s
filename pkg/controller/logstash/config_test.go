@@ -172,10 +172,9 @@ config:
 				EventRecorder: record.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
-				UseTLS:        tt.args.logstash.APIServerTLSOptions().Enabled(),
 			}
 
-			got, err := buildConfig(params)
+			got, err := buildConfig(params, tt.args.logstash.APIServerTLSOptions().Enabled())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -560,10 +559,9 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				EventRecorder: record.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
-				UseTLS:        tt.args.logstash.APIServerTLSOptions().Enabled(),
 			}
 
-			cfg, err := buildConfig(params)
+			cfg, err := buildConfig(params, tt.args.logstash.APIServerTLSOptions().Enabled())
 			if err != nil {
 				t.Errorf("buildConfig() error = %v", err)
 				return
